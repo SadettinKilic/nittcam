@@ -1,0 +1,94 @@
+# CI (T002, spec §10.5). Branch protection is not available (D-006), so the PO
+# merges only after this workflow is green.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: lint · typecheck · test · build · licences · e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      # Version comes from the `packageManager` field in package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Licence check (D-009)
+        run: pnpm licenses:check
+
+      - name: Install Playwright chromium
+        run: pnpm --filter @nittcam/e2e exec playwright install --with-deps chromium
+
+      - name: E2E (chromium)
+        run: pnpm --filter @nittcam/e2e e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  golden-guard:
+    name: golden-file guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Label PRs that touch golden G-code files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+          # Matches packages/machines/**/golden/** (** may be zero directories).
+          golden=$(printf '%s\n' "$files" | grep -E '^packages/machines/(.+/)?golden/' || true)
+          if [ -z "$golden" ]; then
+            echo "No golden files touched."
+            exit 0
+          fi
+          echo "Golden files touched (owner approval required):"
+          printf '  %s\n' $golden
+          gh api --method POST "repos/$REPO/issues/$PR/labels" -f "labels[]=needs-human" > /dev/null
+          echo "::warning::This PR changes golden G-code files; label needs-human added. Owner approval required."
