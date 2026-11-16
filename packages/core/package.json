@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bench:nesting": "vitest run --config vitest.bench.config.ts"
   },
   "devDependencies": {
     "cavalier-contours-js": "0.1.1",

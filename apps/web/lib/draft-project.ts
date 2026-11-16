@@ -1,4 +1,4 @@
-import type { Project } from '@nittcam/core';
+import { defaultMachineProfile, nestingToolDiameter, type Project } from '@nittcam/core';
 
 /**
  * Empty project for the parts step until the wizard (T023) creates and saves real projects.
@@ -20,6 +20,14 @@ export function draftProject(): Project {
     cutting: { tabs: { auto: true }, leadIn: 'arc', direction: 'climb' },
     settings: { dimensionMode: 'cut' },
   };
+}
+
+/**
+ * Tool diameter for nesting on the draft page: the example machine profile's tool for the draft's
+ * material and thickness (MDF 18 → T2, 8 mm). The wizard (T023) passes the selected machine instead.
+ */
+export function draftToolDiameter(project: Project): number {
+  return nestingToolDiameter(defaultMachineProfile(), project.stock) ?? 8;
 }
 
 let counter = 0;

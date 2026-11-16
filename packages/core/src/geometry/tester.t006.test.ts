@@ -336,6 +336,8 @@ describe('T006 tester: validate uses the arc-aware bbox', () => {
     const json: any = JSON.parse(JSON.stringify(mixed));
     json.layout.sheets = [];
     json.stock.sheet = { width: sheetW, height: sheetH, grain: 0 };
+    // T012: the rule now subtracts nesting.margin; these cases test the raw sheet.
+    json.nesting.margin = 0;
     const base = json.parts.find((p: any) => p.id === 'arch-panel');
     base.grainLock = grainLock;
     base.inners = [];

@@ -17,3 +17,4 @@ export * from './validate';
 export * from './geometry';
 export * from './machine';
 export * from './cutlist';
+export * from './nesting';
