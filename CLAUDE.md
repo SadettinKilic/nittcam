@@ -10,6 +10,7 @@ Web CAM for CNC routers: cut list / drawing / DXF / AI chat → nesting → tool
 - Flow per task: PO picks a task from `docs/BACKLOG.md` → dev (task branch, PR) → tester → on failure back to dev (max 3 rounds, then ask the owner) → PO reviews CI and merges. Agents run **sequentially**, never in parallel (usage limits).
 - **Models (owner's rule):** architecture decisions, planning and design reviews use the most capable model in the plan at no extra cost (Opus); dev = Opus; tester = Sonnet.
 - **Usage limit:** when an agent stops on a usage limit, the PO runs `node tools/team/status.mjs limit on "<HH:MM reset>"`, and after the reset `limit off`. The dashboard also turns red by itself when the status line reports a limit at 100%.
+- **Questions to the owner** go on the dashboard too (the owner follows from the phone): `node tools/team/status.mjs ask "<question>" ["option" ...]`; sync to the claude.ai artifact; read answers from the artifact db collection `answers` (ArtifactData list) or the terminal; then `answered <Qxxx> "<answer>"`.
 - Everyone reports progress: `node tools/team/status.mjs <po|dev|tester> <state> "<task>" "<message>"`. States: idle, planning, coding, testing, reviewing, blocked, done.
 
 ## Resume after a usage limit or a new session ("devam")

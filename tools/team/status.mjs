@@ -5,6 +5,7 @@
 //   node tools/team/status.mjs milestone "<M0 — Temel>"
 //   node tools/team/status.mjs limit on "<19:40>" | limit off
 //   (the status line writes .team/limits.json; it is merged into state.json on every write)
+//   node tools/team/status.mjs ask "<question>" ["option" ...]  |  answered <Qxxx> "<answer>"
 //   node tools/team/status.mjs print
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -56,6 +57,22 @@ if (AGENTS.includes(cmd)) {
     s.log.unshift({ t: now, who: 'po', state: 'planning', task: '', msg: 'Limit sıfırlandı, ekip devam ediyor.' });
   } else die('usage: limit on "<HH:MM>" ["note"] | limit off');
   s.log = s.log.slice(0, 60);
+} else if (cmd === 'ask') {
+  // ask "<question>" ["option 1" "option 2" ...]  -> shown on the dashboard until answered
+  const [text, ...options] = rest;
+  if (!text) die('usage: ask "<question>" ["option" ...]');
+  s.questions = s.questions || [];
+  const id = 'Q' + String(s.questions.length + 1).padStart(3, '0');
+  s.questions.push({ id, text, options, askedAt: now, status: 'open', answer: '' });
+  s.log.unshift({ t: now, who: 'po', state: 'blocked', task: id, msg: 'Sana soru: ' + text.slice(0, 80) });
+  s.log = s.log.slice(0, 60);
+  console.log(id);
+} else if (cmd === 'answered') {
+  // answered <Qxxx> "<answer>"
+  const [id, answer = ''] = rest;
+  const q = (s.questions || []).find((x) => x.id === id);
+  if (!q) die('unknown question ' + id);
+  Object.assign(q, { status: 'answered', answer, answeredAt: now });
 } else if (cmd === 'milestone') {
   s.milestone = rest[0] || s.milestone;
 } else if (cmd === 'print') {
