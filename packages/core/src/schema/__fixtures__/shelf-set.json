@@ -1,10 +1,17 @@
 {
   "schemaVersion": 1,
-  "machine": { "machineId": "demo-router", "profileVersion": 1 },
+  "machine": {
+    "machineId": "demo-router",
+    "profileVersion": 1
+  },
   "stock": {
     "material": "melamine-chipboard",
     "thickness": 18,
-    "sheet": { "width": 2800, "height": 2070, "grain": 90 },
+    "sheet": {
+      "width": 2800,
+      "height": 2070,
+      "grain": 90
+    },
     "useOffcuts": false
   },
   "parts": [
@@ -14,10 +21,19 @@
       "qty": 2,
       "grainLock": true,
       "kind": "rect",
-      "params": { "w": 300, "h": 1800, "r": 0 },
+      "params": {
+        "w": 300,
+        "h": 1800,
+        "r": 0
+      },
       "inners": [],
       "holes": [],
-      "edgeBand": { "top": 0.8, "right": 2, "bottom": 0, "left": 0 },
+      "edgeBand": {
+        "top": 0.8,
+        "right": 2,
+        "bottom": 0,
+        "left": 0
+      },
       "templates": []
     },
     {
@@ -26,10 +42,19 @@
       "qty": 5,
       "grainLock": true,
       "kind": "rect",
-      "params": { "w": 764, "h": 280, "r": 0 },
+      "params": {
+        "w": 764,
+        "h": 280,
+        "r": 0
+      },
       "inners": [],
       "holes": [],
-      "edgeBand": { "top": 0, "right": 0, "bottom": 2, "left": 0 },
+      "edgeBand": {
+        "top": 0,
+        "right": 0,
+        "bottom": 2,
+        "left": 0
+      },
       "templates": []
     },
     {
@@ -38,14 +63,38 @@
       "qty": 1,
       "grainLock": false,
       "kind": "rect",
-      "params": { "w": 800, "h": 300, "r": 5 },
+      "params": {
+        "w": 800,
+        "h": 300,
+        "r": 5
+      },
       "inners": [],
       "holes": [],
-      "edgeBand": { "top": 0, "right": 2, "bottom": 2, "left": 2 },
+      "edgeBand": {
+        "top": 0,
+        "right": 2,
+        "bottom": 2,
+        "left": 2
+      },
       "templates": []
     }
   ],
-  "nesting": { "mode": "fastest", "gap": 10, "margin": 12 },
-  "layout": { "sheets": [] },
-  "cutting": { "tabs": { "auto": false }, "leadIn": "line", "direction": "conventional" }
+  "nesting": {
+    "mode": "fastest",
+    "gap": 10,
+    "margin": 12
+  },
+  "layout": {
+    "sheets": []
+  },
+  "cutting": {
+    "tabs": {
+      "auto": false
+    },
+    "leadIn": "line",
+    "direction": "conventional"
+  },
+  "settings": {
+    "dimensionMode": "finished"
+  }
 }

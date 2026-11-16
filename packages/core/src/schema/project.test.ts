@@ -116,17 +116,85 @@ describe('invalid projects are rejected with readable paths', () => {
     // groove needs grooveWidth
     expectIssue(
       variant(
-        (j) => (j.parts[0].holes[0] = { type: 'groove', d: 40, cx: 50, cy: 50, depth: 3, tool: 1 }),
+        (j) =>
+          (j.parts[0].holes[0] = {
+            id: 'g',
+            type: 'groove',
+            d: 40,
+            cx: 50,
+            cy: 50,
+            depth: 3,
+            tool: 1,
+          }),
       ),
       'parts[0].holes[0].grooveWidth',
     );
     // through has no depth (it comes from stock + machine)
     const issues = issuesOf(
       variant(
-        (j) => (j.parts[0].holes[0] = { type: 'through', d: 8, cx: 5, cy: 5, depth: 3, tool: 1 }),
+        (j) =>
+          (j.parts[0].holes[0] = {
+            id: 't',
+            type: 'through',
+            d: 8,
+            cx: 5,
+            cy: 5,
+            depth: 3,
+            tool: 1,
+          }),
       ),
     );
     expect(issues.some((i) => i.path.startsWith('parts[0].holes[0]'))).toBe(true);
+  });
+
+  it('hole id is required and unique within the part', () => {
+    expectIssue(
+      variant((j) => delete j.parts[0].holes[0].id),
+      'parts[0].holes[0].id',
+    );
+    expectIssue(
+      variant((j) => (j.parts[0].holes[1].id = j.parts[0].holes[0].id)),
+      'parts[0].holes[1].id',
+      /duplicate hole id "h1" in part "door-left"/,
+    );
+    // the same hole id in different parts is fine (fixture already has h1 in both doors)
+    expect(parseProject(cabinetDoors).ok).toBe(true);
+  });
+
+  it('groove width must be smaller than the centreline diameter', () => {
+    const groove = (grooveWidth: number) =>
+      variant(
+        (j) =>
+          (j.parts[0].holes[0] = {
+            id: 'g',
+            type: 'groove',
+            d: 40,
+            cx: 50,
+            cy: 50,
+            depth: 3,
+            grooveWidth,
+            tool: 1,
+          }),
+      );
+    expectIssue(groove(40), 'parts[0].holes[0].grooveWidth', /smaller than the centreline/);
+    expectIssue(groove(55), 'parts[0].holes[0].grooveWidth', /smaller than the centreline/);
+    expect(parseProject(groove(39.9)).ok).toBe(true);
+  });
+
+  it('settings.dimensionMode defaults to "cut" and rejects unknown modes', () => {
+    const withoutSettings = parseProject(variant((j) => delete j.settings));
+    expect(withoutSettings.ok && withoutSettings.project.settings).toEqual({
+      dimensionMode: 'cut',
+    });
+    const emptySettings = parseProject(variant((j) => (j.settings = {})));
+    expect(emptySettings.ok && emptySettings.project.settings).toEqual({ dimensionMode: 'cut' });
+    const finished = parseProject(shelfSet);
+    expect(finished.ok && finished.project.settings.dimensionMode).toBe('finished');
+    expectIssue(
+      variant((j) => (j.settings.dimensionMode = 'net')),
+      'settings.dimensionMode',
+      /"cut" or "finished"/,
+    );
   });
 
   it('missing schemaVersion', () => {

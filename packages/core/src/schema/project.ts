@@ -61,7 +61,9 @@ export const contourSchema = z
 // ---------------------------------------------------------------------------
 
 const holeBase = {
-  /** Diameter in mm. */
+  /** Unique within the part (commands address holes by id). */
+  id: nonEmptyId,
+  /** Diameter in mm (for a groove: the centreline diameter the tool centre follows). */
   d: positiveMm,
   /** Centre relative to the part's local origin (bottom-left), mm. */
   cx: coord,
@@ -83,13 +85,18 @@ export const throughHoleSchema = z.strictObject({
   ...holeBase,
 });
 
-/** Ring groove along the circle of diameter `d`. */
-export const grooveHoleSchema = z.strictObject({
-  type: z.literal('groove'),
-  ...holeBase,
-  depth: positiveMm,
-  grooveWidth: positiveMm,
-});
+/** Ring groove: the tool centre follows the circle of diameter `d` (centreline). */
+export const grooveHoleSchema = z
+  .strictObject({
+    type: z.literal('groove'),
+    ...holeBase,
+    depth: positiveMm,
+    grooveWidth: positiveMm,
+  })
+  .refine((g) => g.grooveWidth < g.d, {
+    error: 'groove width must be smaller than the centreline diameter d',
+    path: ['grooveWidth'],
+  });
 
 export const holeSchema = z.discriminatedUnion(
   'type',
@@ -224,6 +231,19 @@ export const cuttingSchema = z.strictObject({
   }),
 });
 
+/**
+ * How entered part sizes are read (spec §4.8). `cut`: sizes are cut sizes. `finished`: sizes are
+ * finished sizes and the edge-band thickness is deducted from the cut size (applied later, not here).
+ */
+export const dimensionModeSchema = z.enum(['cut', 'finished'], {
+  error: 'dimensionMode must be "cut" or "finished"',
+});
+
+/** Project-level settings; omitted settings default to `{ dimensionMode: 'cut' }`. */
+export const settingsSchema = z
+  .strictObject({ dimensionMode: dimensionModeSchema.default('cut') })
+  .default({ dimensionMode: 'cut' });
+
 // ---------------------------------------------------------------------------
 // Project
 // ---------------------------------------------------------------------------
@@ -239,11 +259,23 @@ export const projectSchema = z
     nesting: nestingSchema,
     layout: layoutSchema,
     cutting: cuttingSchema,
+    settings: settingsSchema,
   })
   .superRefine((project, ctx) => {
-    // Cross-references: unique part ids; placements point at existing part copies.
+    // Cross-references: unique part ids and hole ids; placements point at existing part copies.
     const qtyById = new Map<string, number>();
     project.parts.forEach((part, i) => {
+      const holeIds = new Set<string>();
+      part.holes.forEach((hole, h) => {
+        if (holeIds.has(hole.id)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `duplicate hole id "${hole.id}" in part "${part.id}"`,
+            path: ['parts', i, 'holes', h, 'id'],
+          });
+        }
+        holeIds.add(hole.id);
+      });
       if (qtyById.has(part.id)) {
         ctx.addIssue({
           code: 'custom',
@@ -306,4 +338,9 @@ export type Nesting = z.infer<typeof nestingSchema>;
 export type Placement = z.infer<typeof placementSchema>;
 export type Layout = z.infer<typeof layoutSchema>;
 export type Cutting = z.infer<typeof cuttingSchema>;
+export type DimensionMode = z.infer<typeof dimensionModeSchema>;
+export type Settings = z.infer<typeof settingsSchema>;
+/** A validated project (defaults applied). */
 export type Project = z.infer<typeof projectSchema>;
+/** Project JSON as accepted on input (before defaults are applied). */
+export type ProjectInput = z.input<typeof projectSchema>;
