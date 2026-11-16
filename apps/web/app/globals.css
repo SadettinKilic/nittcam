@@ -1,0 +1,30 @@
+@import 'tailwindcss';
+/* Shared components live outside the app folder. */
+@source '../../../packages/ui/src';
+
+/* Design tokens: the single place for colors, spacing, radius and font (ui-conventions). */
+@theme {
+  --color-bg: #ffffff;
+  --color-sidebar: #f7f6f2;
+  --color-fg: #1c1c1a;
+  --color-fg-muted: #55554f;
+  --color-accent: #b4531f;
+  --radius-card: 0.75rem;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
