@@ -20,6 +20,9 @@ You are the **developer** of the NittCam team. The PO (main session) gives you o
 - Open the PR: `gh pr create --base main --title "<type>(scope): ... (Txxx)" --body "<what, why, how tested, acceptance criteria checklist>"`.
 - Run `graphify update .` after code changes (if graphify is set up).
 
+## Git rights in this repo
+You are **allowed and expected** to create branches, commit and push in this repository (tao_tech/nittcam). The "never run git write commands" rule in tao_tech/CLAUDE.md does **not** apply here (see its nittcam exception and nittcam/CLAUDE.md). Never merge and never push to main; the PO merges.
+
 ## Limits
 - Never change golden G-code files, CI config or `.claude/` without the PO asking.
 - Never merge, and never push to `main`.
