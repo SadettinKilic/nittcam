@@ -73,3 +73,13 @@ Code in `packages/core/src/geometry/` (`constants`, `types`, `segment`, `polylin
 - **Closing (§4.4):** `isClosed` = flagged closed, or open with ≥ 3 vertices and ends within JOIN_TOL. `close` drops the duplicate end vertex (the previous segment now ends at the first vertex, bulge kept) and sets `closed: true`; a larger gap returns the open copy unchanged so the caller can warn "kesilemez, kapalı değil".
 - **Wiring:** `PART_LARGER_THAN_SHEET` now covers freeform parts with the arc-aware bbox of `outline` (path `parts[i].outline`) and compares sizes with EPS slack (a bbox from arcs can overshoot an exact fit by rounding; rect parts get the same slack). Message sizes are rounded to 3 decimals. Margin/gap stay out (T012). `rectOutline` treats `r < EPS` as sharp corners (not machinable) and uses `sweepToBulge` for `QUARTER_ARC_BULGE`.
 - **Tests:** unit tests per helper and fast-check properties on rectangles, rounded rectangles and convex polygons with bulges in [−0.15, 0.4] (inward arcs limited so they cannot cross at a ≥ 36° corner).
+
+## D-013 Offset: our own TypeScript implementation (T007, PO decision, 2026-11-16)
+Evidence: `docs/spikes/T007-offset.md`. Chosen: **C, our own arc-preserving offset in `packages/core/src/geometry/offset.ts`**.
+- Why: as accurate as CavalierContours on every fixture and on 9 987 random contours (max deviation 2e-13 mm on fixtures); arcs stay bulges, so G2/G3 come out directly; 3.6 kB gzip, no runtime dependency, no second language (§8.4); does not inherit the 4 defects found in `cavalier-contours-js`. Clipper2 rejected: arcs come back only approximately (deviation above EPS) and its main repo is archived. Building Rust CavalierContours to WASM ourselves was rejected because it adds a second toolchain.
+- `cavalier-contours-js` stays as a **devDependency test oracle only** (never in the bundle).
+- API: in core, `offset(poly, d)` with d > 0 = right of travel. With stored orientations (outer CCW, inner CW), `+toolRadius` gives the tool-centre path for both. The toolpath layer (T014) exposes outer/inner semantics.
+- `ARC_COLLAPSED` (corner radius < tool radius): a warning, surfaced to the user as a validation warning (§4.4) by the toolpath layer.
+- `SPLIT` on an inward offset of an **inner contour or hole** is an **error that blocks export** (the tool cannot pass the neck, so the part stays attached). Implemented in the toolpath layer (T014). Safety first (§7).
+- Known limits: single closed non-self-intersecting contour, no islands, worst case O(n²) (2000 segments ≈ 130–320 ms).
+- Revisit triggers: pocket/island offsets, DXF contours with 1000+ segments, or a defect in C we cannot fix quickly.

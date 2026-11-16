@@ -91,6 +91,9 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      cavalier-contours-js:
+        specifier: 0.1.1
+        version: 0.1.1
       fast-check:
         specifier: 4.10.2
         version: 4.10.2
@@ -863,6 +866,10 @@ packages:
 
   caniuse-lite@1.0.30001826:
     resolution: {integrity: sha512-wTB+9tIbLro/BCXwLuNV1meHE4L9dS6dArMDwgYfNBPMYScqClHyGunhkCSDtHhe/69Xl0sHlKgBVZ+fNsYtWA==}
+
+  cavalier-contours-js@0.1.1:
+    resolution: {integrity: sha512-+8h+GfM80EznNDHrSpau9nX3/XTaRPb3ndQVMWQwO930mHdcTS2EoDY6uY99AZ4YWTUYVVoExs89f+bwrAZKJw==}
+    engines: {node: '>=18'}
 
   chai@6.3.0:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
@@ -2369,6 +2376,8 @@ snapshots:
   callsites@3.1.0: {}
 
   caniuse-lite@1.0.30001826: {}
+
+  cavalier-contours-js@0.1.1: {}
 
   chai@6.3.0: {}
 

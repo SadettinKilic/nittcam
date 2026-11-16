@@ -11,7 +11,7 @@ description: Touching geometry code: bulge polylines, units, contour direction, 
 - **Coordinates:** a part is in its local frame; the sheet origin is bottom-left, X right, Y up. Conversion to the machine origin happens **only** in the post.
 - **Z:** Z=0 is the material top, negative goes down. Conversion to the machine Z reference happens only in the post.
 - **Tolerance:** one `EPS = 0.001` mm and one `JOIN_TOL = 0.05` mm in `geometry/constants.ts`. No scattered magic numbers.
-- **Offset:** the tool-centre path is offset by the tool radius; outer contours outward, inner contours and holes inward. Arcs stay arcs. Library: decided in T007 (CavalierContours WASM vs Clipper2 + arc fitting), see DECISIONS.md.
+- **Offset:** the tool-centre path is offset by the tool radius; outer contours outward, inner contours and holes inward. Arcs stay arcs. Implementation: our own `geometry/offset.ts` (D-013). `offset(poly, d)`, d > 0 = right of travel; with outer CCW / inner CW, `+toolRadius` is the tool-centre path. `ARC_COLLAPSED` = warning; `SPLIT` on an inner contour = export-blocking error. The test oracle is `cavalier-contours-js` (dev only).
 - **Rules:** minimum concave corner radius = tool radius (warn or auto-fix); fillet radius is clamped to the adjacent segments; dogbone/T-bone overcut = tool radius; closed-contour auto-join within JOIN_TOL.
 - **Purity:** no Date, Math.random, I/O.
 
