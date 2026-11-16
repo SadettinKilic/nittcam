@@ -10,3 +10,5 @@ export type Millimetres = number;
 export function inchesToMm(inches: number): Millimetres {
   return inches * 25.4;
 }
+
+export * from './schema';

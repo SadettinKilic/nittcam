@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "machine": {
+    "machineId": "demo-router",
+    "profileVersion": 1
+  },
+  "stock": {
+    "material": "mdf",
+    "thickness": 18,
+    "sheet": {
+      "width": 2800,
+      "height": 2100,
+      "grain": 0
+    },
+    "useOffcuts": true
+  },
+  "parts": [
+    {
+      "id": "door-left",
+      "name": "Kapak sol",
+      "qty": 2,
+      "grainLock": true,
+      "kind": "rect",
+      "params": {
+        "w": 396,
+        "h": 716,
+        "r": 0
+      },
+      "inners": [],
+      "holes": [
+        {
+          "id": "h1",
+          "type": "pocket",
+          "d": 35,
+          "cx": 22.5,
+          "cy": 100,
+          "depth": 12.5,
+          "tool": 2
+        },
+        {
+          "id": "h2",
+          "type": "pocket",
+          "d": 35,
+          "cx": 22.5,
+          "cy": 616,
+          "depth": 12.5,
+          "tool": 2
+        }
+      ],
+      "edgeBand": {
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1
+      },
+      "templates": [
+        {
+          "templateId": "hinge-cup-35",
+          "version": 2,
+          "params": {
+            "d": 35,
+            "edgeDistance": 22.5,
+            "count": 2,
+            "mirror": false
+          },
+          "overrides": []
+        }
+      ]
+    },
+    {
+      "id": "door-right",
+      "name": "Kapak sağ",
+      "qty": 2,
+      "grainLock": true,
+      "kind": "rect",
+      "params": {
+        "w": 396,
+        "h": 716,
+        "r": 0
+      },
+      "outline": [
+        {
+          "x": 0,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 396,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 396,
+          "y": 716,
+          "bulge": 0
+        },
+        {
+          "x": 0,
+          "y": 716,
+          "bulge": 0
+        }
+      ],
+      "inners": [],
+      "holes": [
+        {
+          "id": "h1",
+          "type": "pocket",
+          "d": 35,
+          "cx": 373.5,
+          "cy": 100,
+          "depth": 12.5,
+          "tool": 2
+        },
+        {
+          "id": "h2",
+          "type": "pocket",
+          "d": 35,
+          "cx": 373.5,
+          "cy": 616,
+          "depth": 12.5,
+          "tool": 2
+        }
+      ],
+      "edgeBand": {
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1
+      },
+      "templates": [
+        {
+          "templateId": "hinge-cup-35",
+          "version": 2,
+          "params": {
+            "d": 35,
+            "edgeDistance": 22.5,
+            "count": 2,
+            "mirror": true
+          },
+          "overrides": []
+        }
+      ]
+    }
+  ],
+  "nesting": {
+    "mode": "minWaste",
+    "gap": 8,
+    "margin": 10
+  },
+  "layout": {
+    "sheets": [
+      {
+        "placements": [
+          {
+            "partId": "door-left",
+            "index": 0,
+            "x": 10,
+            "y": 10,
+            "rot": 0,
+            "locked": false
+          },
+          {
+            "partId": "door-left",
+            "index": 1,
+            "x": 414,
+            "y": 10,
+            "rot": 0,
+            "locked": false
+          },
+          {
+            "partId": "door-right",
+            "index": 0,
+            "x": 818,
+            "y": 10,
+            "rot": 0,
+            "locked": true
+          },
+          {
+            "partId": "door-right",
+            "index": 1,
+            "x": 1222,
+            "y": 10,
+            "rot": 180,
+            "locked": false
+          }
+        ]
+      }
+    ]
+  },
+  "cutting": {
+    "tabs": {
+      "auto": true
+    },
+    "leadIn": "arc",
+    "direction": "climb"
+  },
+  "settings": {
+    "dimensionMode": "cut"
+  }
+}
