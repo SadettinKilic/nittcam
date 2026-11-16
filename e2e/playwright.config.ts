@@ -1,7 +1,11 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 3100;
 const baseURL = `http://localhost:${PORT}`;
+// A fresh PGlite database per run, so the Makineler tests start from the seeded example only.
+const PGLITE_DIR = process.env.E2E_PGLITE_DIR ?? join(tmpdir(), `nittcam-e2e-${Date.now()}`);
 
 // The root `pnpm e2e` builds the web app first; here we only start the production server.
 export default defineConfig({
@@ -21,5 +25,6 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: { PGLITE_DIR },
   },
 });
