@@ -26,7 +26,7 @@ export interface MachineFormProps {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <fieldset className="rounded-card border border-border p-4">
+    <fieldset className="min-w-0 rounded-card border border-border p-4">
       <legend className="px-1 text-base font-semibold text-fg">{title}</legend>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
     </fieldset>
@@ -597,9 +597,9 @@ function RowTable(props: {
 }) {
   const { title, headers, addLabel, removeLabel, error, keys, onAdd, onRemove, renderRow } = props;
   return (
-    <fieldset className="rounded-card border border-border p-4">
+    <fieldset className="min-w-0 rounded-card border border-border p-4">
       <legend className="px-1 text-base font-semibold text-fg">{title}</legend>
-      <div className="overflow-x-auto">
+      <div className="relative max-w-full overflow-x-auto">
         <table className="w-full border-separate border-spacing-x-2 border-spacing-y-1 text-sm">
           <thead>
             <tr>

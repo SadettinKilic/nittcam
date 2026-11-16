@@ -243,9 +243,6 @@ test.describe('T010 Makineler UI (tester)', () => {
 
   for (const path of ['/makineler', '/']) {
     test(`mobile 390px: no horizontal scroll on ${path}`, async ({ browser }) => {
-      // BUG-1: the sr-only <span> in the last list header cell escapes the overflow-x-auto wrapper
-      // (no positioned ancestor) and widens the page to ~542px. Remove this line once fixed.
-      test.fail(path === '/makineler', 'BUG-1 sr-only actions header causes page-level h-scroll');
       const ctx = await browser.newContext({
         viewport: { width: 390, height: 844 },
         locale: 'tr-TR',
@@ -269,7 +266,6 @@ test.describe('T010 Makineler UI (tester)', () => {
   test('mobile 390px: the form (also after a failed submit) has no horizontal scroll', async ({
     browser,
   }) => {
-    test.fail(true, 'BUG-1 (same root cause: sr-only th in the tool/material tables)');
     const ctx = await browser.newContext({
       viewport: { width: 390, height: 844 },
       locale: 'tr-TR',

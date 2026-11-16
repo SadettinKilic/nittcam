@@ -188,7 +188,7 @@ function MachineList({
   }
   const c = t.columns;
   return (
-    <div className="overflow-x-auto rounded-card border border-border">
+    <div className="relative max-w-full overflow-x-auto rounded-card border border-border">
       <table className="w-full text-left text-sm">
         <thead className="bg-sidebar text-fg-muted">
           <tr>
