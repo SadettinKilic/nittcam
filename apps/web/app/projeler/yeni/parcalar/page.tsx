@@ -1,0 +1,17 @@
+import type { Metadata } from 'next';
+import { getMessages } from '../../../../lib/messages';
+import { CutListEditor } from './cut-list-editor';
+
+const messages = getMessages();
+
+export const metadata: Metadata = {
+  title: `${messages.cutList.title} · ${messages.meta.title}`,
+};
+
+/**
+ * Oluştur → Parçalar (spec §3.6 step 2, §4.1): the cut-list table and Excel/CSV paste.
+ * A standalone page until the wizard (T023) wraps it and saves the project.
+ */
+export default function PartsPage() {
+  return <CutListEditor t={messages.cutList} />;
+}

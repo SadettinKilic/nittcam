@@ -11,6 +11,20 @@ import { parseProject, type Project } from '../schema';
 import { CommandStack, type CommandContext } from './index';
 
 const mm = fc.double({ min: 0.1, max: 4000, noNaN: true, noDefaultInfinity: true });
+const band = fc.constantFrom(0, 0.4, 0.8, 2);
+/** Ids of the fixtures' parts plus the pool addPart uses. */
+const partIdArb = fc.constantFrom(
+  'a',
+  'b',
+  'c',
+  'door-left',
+  'door-right',
+  'side',
+  'shelf',
+  'arch-panel',
+  'tray',
+  'x1',
+);
 
 const commandArb = fc.oneof(
   fc.record({
@@ -50,6 +64,57 @@ const commandArb = fc.oneof(
         params: { w, h, r: (Math.min(w, h) / 2) * rFactor },
       })),
   }),
+  // T011 part commands. Ids come from the same pool as the fixtures and addPart, so unknown or
+  // taken ids (rejected commands) occur as well as valid ones.
+  fc.record({
+    name: fc.constant('updatePart'),
+    params: fc.record(
+      {
+        id: partIdArb,
+        name: fc.string({ maxLength: 8 }),
+        qty: fc.integer({ min: 0, max: 6 }),
+        grainLock: fc.boolean(),
+        params: fc.record(
+          { w: mm, h: mm, r: fc.double({ min: 0, max: 50, noNaN: true }) },
+          { requiredKeys: [] },
+        ),
+        edgeBand: fc.record(
+          { top: band, right: band, bottom: band, left: band },
+          { requiredKeys: [] },
+        ),
+      },
+      { requiredKeys: ['id'] },
+    ),
+  }),
+  fc.record({ name: fc.constant('removePart'), params: fc.record({ id: partIdArb }) }),
+  fc.record({
+    name: fc.constant('duplicatePart'),
+    params: fc.record(
+      { id: partIdArb, newId: partIdArb, name: fc.string({ maxLength: 8 }) },
+      {
+        requiredKeys: ['id', 'newId'],
+      },
+    ),
+  }),
+  fc.record({
+    name: fc.constant('importCutList'),
+    params: fc.record({
+      parts: fc.array(
+        fc.record(
+          {
+            id: partIdArb,
+            name: fc.string({ maxLength: 8 }),
+            qty: fc.integer({ min: 1, max: 20 }),
+            grainLock: fc.boolean(),
+            params: fc.record({ w: mm, h: mm, r: fc.constant(0) }),
+            edgeBand: fc.record({ top: band, right: band, bottom: band, left: band }),
+          },
+          { requiredKeys: ['id', 'params'] },
+        ),
+        { maxLength: 4 },
+      ),
+    }),
+  }),
 );
 
 const contextArb: fc.Arbitrary<CommandContext> = fc.record({
@@ -76,7 +141,9 @@ describe('undo/redo property', () => {
           const stack = new CommandStack(start);
           let executed = 0;
           for (const [cmd, ctx] of steps) {
-            if (stack.execute(cmd.name, cmd.params, ctx).ok) executed += 1;
+            const r = stack.execute(cmd.name, cmd.params, ctx);
+            // A no-op command (changed: false) leaves no history step.
+            if (r.ok && r.changed) executed += 1;
           }
           const end = stack.project;
           const endJson = JSON.stringify(end);

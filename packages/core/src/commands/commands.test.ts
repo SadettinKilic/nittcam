@@ -269,7 +269,17 @@ describe('commandToolDefinitions (future AI tools)', () => {
 
   it('exports one JSON Schema per AI-callable command', () => {
     expect(tools.map((t) => t.name).sort()).toEqual(
-      ['addPart', 'setMachine', 'setMaterial', 'setSheetSize', 'setThickness'].sort(),
+      [
+        'addPart',
+        'duplicatePart',
+        'importCutList',
+        'removePart',
+        'setMachine',
+        'setMaterial',
+        'setSheetSize',
+        'setThickness',
+        'updatePart',
+      ].sort(),
     );
     for (const tool of tools) {
       expect(tool.description.length).toBeGreaterThan(10);
