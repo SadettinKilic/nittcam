@@ -121,7 +121,14 @@ export interface HistoryStep {
 }
 
 export type ExecuteResult =
-  | { ok: true; project: Project; entry: CommandLogEntry; issues: ValidationIssue[] }
+  | {
+      ok: true;
+      project: Project;
+      entry: CommandLogEntry;
+      issues: ValidationIssue[];
+      /** False when the command changed nothing and therefore left no history (no undo step, no log entry). */
+      changed: boolean;
+    }
   | { ok: false; error: CommandError };
 
 /**
@@ -196,6 +203,11 @@ export class CommandStack {
       actor: ctx.data.actor,
       at: ctx.data.at,
     };
+    // A command that changes nothing (e.g. updatePart with the current values) is accepted but
+    // records no history: no undo step, no log entry, and the redo stack is kept.
+    if (result.patches.length === 0) {
+      return { ok: true, project: this.current, entry, issues: this.currentIssues, changed: false };
+    }
     this.undoSteps.push({
       entry,
       patches: result.patches,
@@ -204,7 +216,7 @@ export class CommandStack {
     this.redoSteps = [];
     this.entries.push(entry);
     this.setProject(result.project);
-    return { ok: true, project: this.current, entry, issues: this.currentIssues };
+    return { ok: true, project: this.current, entry, issues: this.currentIssues, changed: true };
   }
 
   /** Reverts the last executed (or redone) command. Returns false when there is nothing to undo. */

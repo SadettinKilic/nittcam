@@ -11,7 +11,7 @@ import {
   type DecimalSeparator,
   type LengthUnit,
 } from '@nittcam/core';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { fill, newPartId } from '../../../../lib/draft-project';
 import type { Messages } from '../../../../lib/messages';
 import { buttonClass } from './ui';
@@ -55,9 +55,13 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
   const [header, setHeader] = useState<boolean | null>(null);
   const [columns, setColumns] = useState<CutListField[] | null>(null);
   const [unit, setUnit] = useState<LengthUnit | null>(null);
-  const [unitError, setUnitError] = useState(false);
   const [applyError, setApplyError] = useState(false);
-  const unitRef = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+
+  // Opening the panel puts the cursor where the user pastes.
+  useEffect(() => {
+    textRef.current?.focus();
+  }, []);
 
   const result = useMemo(
     () =>
@@ -73,11 +77,13 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
   const validCount = result.rows.filter((r) => r.errors.length === 0).length;
   const invalidCount = result.rows.length - validCount;
   const hasText = text.trim() !== '';
+  /** Ambiguous unit: "Uygula" stays disabled until the user picks mm or cm (spec §5.4). */
+  const needsUnit = result.unitAmbiguous && unit === null;
+  const canApply = validCount > 0 && !needsUnit;
 
   function resetDerived() {
     setColumns(null);
     setUnit(null);
-    setUnitError(false);
     setApplyError(false);
   }
 
@@ -91,12 +97,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
   }
 
   function apply() {
-    if (validCount === 0) return;
-    if (result.unitAmbiguous && unit === null) {
-      setUnitError(true);
-      unitRef.current?.focus();
-      return;
-    }
+    if (!canApply) return;
     const chosen: LengthUnit = result.unitAmbiguous ? (unit ?? 'mm') : (result.headerUnit ?? 'mm');
     const ids = Array.from({ length: validCount }, () => newPartId());
     const ok = onApply(cutListToParts(result.rows, ids, chosen));
@@ -127,6 +128,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
         </label>
         <textarea
           id={textId}
+          ref={textRef}
           rows={6}
           wrap="off"
           spellCheck={false}
@@ -309,10 +311,9 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                 {result.headerUnit === 'cm' ? t.unit.helpHeader : t.unit.help} {t.unit.convert}
               </p>
               <div className="flex flex-wrap gap-4">
-                {(['mm', 'cm'] as const).map((u, i) => (
+                {(['mm', 'cm'] as const).map((u) => (
                   <label key={u} className="flex items-center gap-2 text-sm text-fg">
                     <input
-                      ref={i === 0 ? unitRef : undefined}
                       type="radio"
                       name={`${uid}-unit`}
                       value={u}
@@ -320,15 +321,14 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                       className="size-4 accent-accent focus-visible:outline-2 focus-visible:outline-accent"
                       onChange={() => {
                         setUnit(u);
-                        setUnitError(false);
                       }}
                     />
                     {t.unit[u]}
                   </label>
                 ))}
               </div>
-              {unitError ? (
-                <p role="alert" className="text-sm font-medium text-danger">
+              {needsUnit ? (
+                <p id={`${uid}-unit-required`} className="text-sm font-medium text-danger">
                   {t.unit.required}
                 </p>
               ) : null}
@@ -354,7 +354,8 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
         <button
           type="button"
           onClick={apply}
-          disabled={validCount === 0}
+          disabled={!canApply}
+          aria-describedby={needsUnit && validCount > 0 ? `${uid}-unit-required` : undefined}
           className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
         >
           {validCount > 0 ? fill(t.applyCount, { count: validCount }) : t.apply}

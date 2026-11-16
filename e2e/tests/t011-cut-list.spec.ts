@@ -34,7 +34,7 @@ const SAMPLE_TSV = [
 async function openPaste(page: Page) {
   await page.getByRole('button', { name: t.pasteOpen }).click();
   const area = page.getByLabel(p.textLabel);
-  await expect(area).toBeVisible();
+  await expect(area).toBeFocused();
   return area;
 }
 
@@ -112,13 +112,16 @@ test.describe('T011 cut list', () => {
     const area = await openPaste(page);
     await area.fill('Kapak\t39,6\t71,6\t2\nRaf\t56,4\t30\t1');
     await expect(page.getByRole('group', { name: p.unit.question })).toBeVisible();
-    await page.getByRole('button', { name: fill(p.applyCount, { count: 2 }) }).click();
-    await expect(page.getByRole('alert').filter({ hasText: p.unit.required })).toBeVisible();
+    // Uygula is disabled until a unit is chosen, and the reason is shown next to it.
+    const apply = page.getByRole('button', { name: fill(p.applyCount, { count: 2 }) });
+    await expect(apply).toBeDisabled();
+    await expect(page.getByText(p.unit.required)).toBeVisible();
     await expect(page.getByText(t.empty)).toBeVisible();
     await page.screenshot({ path: '__screenshots__/t011-birim-sorusu.png', fullPage: true });
 
     await page.getByLabel(p.unit.cm).check();
-    await page.getByRole('button', { name: fill(p.applyCount, { count: 2 }) }).click();
+    await expect(page.getByText(p.unit.required)).toHaveCount(0);
+    await apply.click();
     await expect(cell(page, 1, t.columns.w)).toHaveValue('396');
     await expect(cell(page, 1, t.columns.h)).toHaveValue('716');
     await expect(cell(page, 2, t.columns.w)).toHaveValue('564');

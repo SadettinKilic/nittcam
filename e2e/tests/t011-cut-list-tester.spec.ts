@@ -88,7 +88,8 @@ test.describe('T011 cut list (tester)', () => {
     await page.getByRole('button', { name: t.pasteOpen }).click();
     await page.getByLabel(p.textLabel).fill('Kapak\t39,6\t71,6\t2\nRaf\t56,4\t30\t1');
     const apply = page.getByRole('button', { name: fill(p.applyCount, { count: 2 }) });
-    await apply.click();
+    // PO decision (round 1): Uygula is disabled until a unit is chosen.
+    await expect(apply).toBeDisabled();
     await expect(page.getByText(t.empty)).toBeVisible();
     await expect(page.getByRole('button', { name: t.undo })).toBeDisabled();
     await page.getByLabel(p.unit.mm).check();
@@ -143,8 +144,8 @@ test.describe('T011 cut list (tester)', () => {
 // BUG (T011, cut-list-editor.tsx:91 + :114): Enter commits the cell and moves focus to the next
 // row; the blur of the old cell then commits again from a stale closure (draft still set), so a
 // second no-op `updatePart` lands on the undo stack. One edit then needs two undos.
-// test.fail(): passes while the bug exists and turns red when dev fixes it (then remove .fail).
-test.fail('Enter moving to the next row is still ONE undo step', async ({ page }) => {
+// Fixed in round 1: cell commits are idempotent and no-op commands leave no history.
+test('Enter moving to the next row is still ONE undo step', async ({ page }) => {
   await page.goto(URL);
   await page.getByRole('button', { name: t.pasteOpen }).click();
   await page.getByLabel(p.textLabel).fill('Kapak\t500\t700\t2\nRaf\t600\t800\t1');

@@ -245,3 +245,43 @@ describe('AI tool definitions of the part commands', () => {
     expect(schema('duplicatePart')?.['required']).toEqual(['id', 'newId']);
   });
 });
+
+describe('no-op commands leave no history (T011 round 1)', () => {
+  it('updatePart with the current values: accepted, no undo step, no log entry, redo kept', () => {
+    const stack = new CommandStack(load());
+    expect(stack.execute('updatePart', { id: 'door-left', params: { w: 500 } }, user).ok).toBe(
+      true,
+    );
+    const afterEdit = stack.project;
+    expect(stack.undo()).toBe(true);
+    expect(stack.redo()).toBe(true);
+    expect(stack.canRedo).toBe(false);
+
+    const before = stack.project;
+    const w = afterEdit.parts[0]?.kind === 'rect' ? afterEdit.parts[0].params.w : -1;
+    const same = stack.execute('updatePart', { id: 'door-left', params: { w } }, user);
+    expect(same).toMatchObject({ ok: true, changed: false });
+    expect(stack.project).toBe(before);
+    expect(stack.log).toHaveLength(1);
+
+    // One undo still goes back to before the single real edit.
+    expect(stack.undo()).toBe(true);
+    expect(stack.canUndo).toBe(false);
+
+    // A no-op after an undo keeps the redo stack.
+    const name = stack.project.parts[0]?.name ?? '';
+    expect(stack.execute('updatePart', { id: 'door-left', name }, user)).toMatchObject({
+      ok: true,
+      changed: false,
+    });
+    expect(stack.canRedo).toBe(true);
+  });
+
+  it('a real change reports changed: true', () => {
+    const stack = new CommandStack(load());
+    expect(stack.execute('updatePart', { id: 'door-left', qty: 9 }, user)).toMatchObject({
+      ok: true,
+      changed: true,
+    });
+  });
+});

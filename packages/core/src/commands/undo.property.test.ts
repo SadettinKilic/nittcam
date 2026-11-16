@@ -141,7 +141,9 @@ describe('undo/redo property', () => {
           const stack = new CommandStack(start);
           let executed = 0;
           for (const [cmd, ctx] of steps) {
-            if (stack.execute(cmd.name, cmd.params, ctx).ok) executed += 1;
+            const r = stack.execute(cmd.name, cmd.params, ctx);
+            // A no-op command (changed: false) leaves no history step.
+            if (r.ok && r.changed) executed += 1;
           }
           const end = stack.project;
           const endJson = JSON.stringify(end);

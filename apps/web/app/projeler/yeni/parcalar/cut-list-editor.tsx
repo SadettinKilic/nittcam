@@ -37,7 +37,10 @@ interface CellProps<T> {
   row: number;
   col: string;
   label: string;
+  /** Shown text of the current project value. */
   value: string;
+  /** The current project value; committing an equal value runs no command. */
+  current: T;
   numeric?: boolean;
   className?: string;
   validate: (text: string) => Validated<T>;
@@ -55,26 +58,42 @@ function Cell<T>({
   col,
   label,
   value,
+  current,
   numeric,
   className,
   validate,
   onCommit,
   rejected,
 }: CellProps<T>) {
-  const [draft, setDraft] = useState<string | null>(null);
+  const [draft, setDraftState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The pending text, read synchronously: Enter commits and moves focus, and the blur that follows
+  // must see that the edit is already committed (a state value would still be the stale draft).
+  const pending = useRef<string | null>(null);
   const id = cellId(row, col);
 
+  function setDraft(text: string | null) {
+    pending.current = text;
+    setDraftState(text);
+  }
+
+  /** Idempotent: commits each edit at most once and never runs a command for an unchanged value. */
   function commit(): boolean {
-    if (draft === null) return true;
-    if (draft === value) {
+    const text = pending.current;
+    if (text === null) return true;
+    if (text === value) {
       setDraft(null);
       return true;
     }
-    const v = validate(draft);
+    const v = validate(text);
     if (!v.ok) {
       setError(v.error);
       return false;
+    }
+    if (Object.is(v.value, current)) {
+      setDraft(null);
+      setError(null);
+      return true;
     }
     if (onCommit(v.value)) {
       setDraft(null);
@@ -178,6 +197,7 @@ function PartRow({
           col="name"
           label={label(t.columns.name)}
           value={part.name}
+          current={part.name}
           validate={(text) => ({ ok: true, value: text.trim() })}
           onCommit={(name) => update({ name })}
         />
@@ -196,6 +216,7 @@ function PartRow({
               numeric
               label={label(t.columns[key])}
               value={formatInput(rect.params[key])}
+              current={rect.params[key]}
               validate={positive(t)}
               onCommit={(v) => update({ params: { [key]: v } })}
             />
@@ -211,6 +232,7 @@ function PartRow({
           numeric
           label={label(t.columns.qty)}
           value={String(part.qty)}
+          current={part.qty}
           validate={quantity(t)}
           onCommit={(qty) => update({ qty })}
         />
@@ -235,6 +257,7 @@ function PartRow({
               numeric
               label={fill(t.edgeLabel, { n, edge: t.edge[edge] })}
               value={formatInput(part.edgeBand[edge])}
+              current={part.edgeBand[edge]}
               validate={band(t)}
               onCommit={(v) => update({ edgeBand: { [edge]: v } })}
             />
