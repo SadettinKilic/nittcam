@@ -1,6 +1,6 @@
 // Unit tests for scripts/check-licenses.mjs (D-009). Run: node --test scripts/
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -120,4 +120,60 @@ test('directDependencyNames reads every workspace package.json and skips workspa
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+// --- tester additions (T002, D-009 scenarios) ---
+
+test('D-009 scenarios: direct GPL and LGPL fail', () => {
+  fails('direct-gpl', 'GPL-3.0', true);
+  fails('direct-gpl-only', 'GPL-2.0-only', true);
+  fails('direct-lgpl', 'LGPL-3.0', true);
+  fails('direct-lgpl-2', 'LGPL-2.1-or-later', true);
+});
+
+test('D-009 scenarios: transitive AGPL fails, transitive MPL-2.0 passes', () => {
+  fails('trans-agpl', 'AGPL-3.0-or-later', false);
+  ok('trans-mpl', 'MPL-2.0', false);
+});
+
+test('D-009 scenarios: @img/sharp-* Apache-2.0 AND LGPL-3.0-or-later passes only transitively', () => {
+  ok('@img/sharp-linux-x64', 'Apache-2.0 AND LGPL-3.0-or-later', false);
+  ok('@img/sharp-darwin-arm64', 'Apache-2.0 AND LGPL-3.0-or-later', false);
+  fails('@img/sharp-linux-x64', 'Apache-2.0 AND LGPL-3.0-or-later', true);
+});
+
+test('D-009 scenarios: unknown and unparseable licences fail', () => {
+  fails('mystery', 'SEE LICENSE IN LICENSE.md', false);
+  fails('mystery', 'Totally-Made-Up-1.0', false);
+  fails('mystery', 'UNKNOWN', true);
+  fails('mystery', '', false);
+  fails('mystery', undefined, false);
+});
+
+test('D-009 scenarios: MIT OR GPL-3.0 passes (used under MIT)', () => {
+  ok('dual', 'MIT OR GPL-3.0', false);
+  ok('dual', 'MIT OR GPL-3.0', true);
+  ok('dual', 'GPL-3.0 OR MIT', true);
+  fails('dual-bad', 'GPL-2.0 OR AGPL-3.0', false);
+});
+
+test('golden guard regex in ci.yml matches golden paths only', () => {
+  const yml = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const m = yml.match(/grep -E '([^']+golden[^']*)'/);
+  assert.ok(m, 'golden grep pattern found in ci.yml');
+  const re = new RegExp(m[1]);
+  for (const p of [
+    'packages/machines/generic/v1/golden/a.nc',
+    'packages/machines/golden/a.nc',
+    'packages/machines/a/golden/sub/b.nc',
+  ])
+    assert.ok(re.test(p), `${p} should match`);
+  for (const p of [
+    'packages/machines/src/x.ts',
+    'packages/machines/golden-notes.md',
+    'packages/core/golden/a.nc',
+    'docs/golden/a.nc',
+    'packages/machines/src/notgolden/a.nc',
+  ])
+    assert.ok(!re.test(p), `${p} should not match`);
 });
