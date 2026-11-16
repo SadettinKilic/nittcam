@@ -122,7 +122,11 @@ export function segmentBBox(p0: Point, p1: Point, bulge: number): BBox {
  */
 export function sampleSegment(p0: Point, p1: Point, bulge: number, steps = 16): Point[] {
   const arc = arcOf(p0, p1, bulge);
-  if (!arc) return [{ x: p0.x, y: p0.y }, { x: p1.x, y: p1.y }];
+  if (!arc)
+    return [
+      { x: p0.x, y: p0.y },
+      { x: p1.x, y: p1.y },
+    ];
   const { center: c, radius: r, startAngle, sweep } = arc;
   return Array.from({ length: steps + 1 }, (_, i) => {
     const t = startAngle + (sweep * i) / steps;
