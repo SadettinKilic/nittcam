@@ -4,7 +4,9 @@ import cabinetDoors from '../schema/__fixtures__/cabinet-doors.json';
 import mixed from '../schema/__fixtures__/mixed.json';
 import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import { parseProject, type Project } from '../schema';
-import { holeDepthBelowThickness, partLargerThanSheet, validateProject } from './index';
+import { defaultMachineProfile } from '../machine';
+import { CommandStack } from '../commands';
+import { holeDepthBelowThickness, holeVsTool, partLargerThanSheet, validateProject } from './index';
 
 function project(mutate: (json: any) => void = () => {}, base: unknown = cabinetDoors): Project {
   const json = JSON.parse(JSON.stringify(base));
@@ -151,5 +153,88 @@ describe('(a) freeform parts use the arc-aware bbox (T006)', () => {
     expect(partLargerThanSheet(archOn(600, 800, true))).toEqual([]);
     expect(partLargerThanSheet(archOn(800, 600, false))).toEqual([]);
     expect(partLargerThanSheet(archOn(800, 600, true))).toHaveLength(1);
+  });
+});
+
+describe('(c) hole / groove vs tool diameter (spec §4.5, T010)', () => {
+  // Example profile: T1 = 6 mm, T2 = 8 mm flat end mills.
+  const machine = defaultMachineProfile();
+  const withHoles = (holes: object[]) =>
+    project((j) => {
+      j.parts[0].holes = holes;
+    });
+
+  it('the example projects are clean with the example profile', () => {
+    for (const fixture of [cabinetDoors, shelfSet, mixed]) {
+      expect(
+        validateProject(
+          project(() => {}, fixture),
+          { machine },
+        ),
+      ).toEqual([]);
+    }
+  });
+
+  it('without a profile the rule is skipped', () => {
+    const p = withHoles([{ id: 'a', type: 'through', d: 3, cx: 50, cy: 50, tool: 2 }]);
+    expect(holeVsTool(p)).toEqual([]);
+    expect(validateProject(p)).toEqual([]);
+  });
+
+  it('pocket / through smaller than the tool: error; equal (within EPS) or larger: fine', () => {
+    const p = withHoles([
+      { id: 'small', type: 'through', d: 5.99, cx: 50, cy: 50, tool: 1 },
+      { id: 'equal', type: 'through', d: 5.9995, cx: 60, cy: 50, tool: 1 },
+      { id: 'pocket', type: 'pocket', d: 7, cx: 70, cy: 50, depth: 5, tool: 2 },
+      { id: 'big', type: 'pocket', d: 35, cx: 120, cy: 50, depth: 5, tool: 2 },
+    ]);
+    const issues = holeVsTool(p, { machine });
+    expect(issues).toEqual([
+      expect.objectContaining({
+        code: 'HOLE_SMALLER_THAN_TOOL',
+        severity: 'error',
+        path: 'parts[0].holes[0].d',
+      }),
+      expect.objectContaining({
+        code: 'HOLE_SMALLER_THAN_TOOL',
+        severity: 'error',
+        path: 'parts[0].holes[2].d',
+      }),
+    ]);
+    expect(issues[0]?.message).toContain('5.99 mm, smaller than the 6 mm tool T1');
+  });
+
+  it('groove narrower than the tool: warning; equal or wider: fine', () => {
+    const p = withHoles([
+      { id: 'narrow', type: 'groove', d: 60, cx: 100, cy: 100, depth: 5, grooveWidth: 5, tool: 1 },
+      { id: 'single', type: 'groove', d: 60, cx: 200, cy: 100, depth: 5, grooveWidth: 6, tool: 1 },
+      { id: 'multi', type: 'groove', d: 60, cx: 300, cy: 100, depth: 5, grooveWidth: 12, tool: 2 },
+    ]);
+    expect(holeVsTool(p, { machine })).toEqual([
+      expect.objectContaining({
+        code: 'GROOVE_NARROWER_THAN_TOOL',
+        severity: 'warning',
+        path: 'parts[0].holes[0].grooveWidth',
+      }),
+    ]);
+  });
+
+  it('a tool number missing from the profile: error, no diameter check', () => {
+    const p = withHoles([{ id: 'x', type: 'through', d: 2, cx: 50, cy: 50, tool: 7 }]);
+    expect(holeVsTool(p, { machine })).toEqual([
+      expect.objectContaining({
+        code: 'TOOL_NOT_IN_PROFILE',
+        severity: 'error',
+        path: 'parts[0].holes[0].tool',
+      }),
+    ]);
+  });
+
+  it('the command stack runs the rule with the machine it was given', () => {
+    const p = withHoles([{ id: 'a', type: 'through', d: 5, cx: 50, cy: 50, tool: 1 }]);
+    expect(new CommandStack(p).issues).toEqual([]);
+    expect(new CommandStack(p, { machine }).issues.map((i) => i.code)).toEqual([
+      'HOLE_SMALLER_THAN_TOOL',
+    ]);
   });
 });
