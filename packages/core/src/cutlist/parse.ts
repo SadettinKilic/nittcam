@@ -124,7 +124,7 @@ interface RawRecord {
 }
 
 function splitRecords(text: string, delimiter: string): RawRecord[] {
-  const src = text.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+  const src = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const records: RawRecord[] = [];
   let cells: string[] = [];
   let cell = '';
@@ -209,12 +209,12 @@ const RE_TR_GROUPED_DEC = /^-?\d{1,3}(\.\d{3})+,\d+$/;
 const RE_EN_GROUPED_DEC = /^-?\d{1,3}(,\d{3})+\.\d+$/;
 const RE_DOT_GROUPS = /^-?\d{1,3}(\.\d{3}){2,}$/;
 const RE_COMMA_GROUPS = /^-?\d{1,3}(,\d{3}){2,}$/;
-const RE_SPACE_GROUPS = /^-?\d{1,3}([   ]\d{3})+([.,]\d+)?$/;
+const RE_SPACE_GROUPS = /^-?\d{1,3}([ \u00a0\u202f]\d{3})+([.,]\d+)?$/;
 
 function unspace(raw: string): string | null {
   const s = raw.trim();
-  if (!/[   ]/.test(s)) return s;
-  return RE_SPACE_GROUPS.test(s) ? s.replace(/[   ]/g, '') : null;
+  if (!/[ \u00a0\u202f]/.test(s)) return s;
+  return RE_SPACE_GROUPS.test(s) ? s.replace(/[ \u00a0\u202f]/g, '') : null;
 }
 
 /** Reads a number cell with the table's decimal separator; `null` when it is not a number. */

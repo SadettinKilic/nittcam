@@ -25,7 +25,7 @@ describe('parseCutListNumber', () => {
     ['1,220.5', 'comma', 1220.5],
     ['1.220.000', 'dot', 1220000],
     ['2 440', 'comma', 2440],
-    ['2 440,5', 'comma', 2440.5],
+    ['2\u00a0440,5', 'comma', 2440.5],
     [',5', 'comma', 0.5],
     ['-3', 'comma', -3],
   ] as const)('%s (%s) → %d', (raw, decimal, expected) => {
@@ -130,7 +130,7 @@ describe('parseCutList: delimiters and quotes', () => {
   });
 
   it('skips empty lines and trims cells; a BOM is ignored', () => {
-    const r = parseCutList('﻿\n  Kapak ; 396 ; 716 \n\n;;\nRaf;564;300\n\n');
+    const r = parseCutList('\uFEFF\n  Kapak ; 396 ; 716 \n\n;;\nRaf;564;300\n\n');
     expect(values(r.rows).map((v) => [v.name, v.w, v.h])).toEqual([
       ['Kapak', 396, 716],
       ['Raf', 564, 300],

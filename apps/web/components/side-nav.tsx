@@ -6,13 +6,13 @@ import type { Messages } from '../lib/messages';
 
 type NavText = Messages['nav'];
 
-/** Menu of spec §3.3. Only Ana sayfa and Makineler work so far; the rest are placeholders. */
+/** Menu of spec §3.3. Ana sayfa, Makineler and Oluştur (parts step) work so far; the rest are placeholders. */
 const ITEMS: { key: keyof NavText; href?: string }[] = [
   { key: 'home', href: '/' },
   { key: 'machines', href: '/makineler' },
   { key: 'projects' },
   { key: 'templates' },
-  { key: 'create' },
+  { key: 'create', href: '/projeler/yeni/parcalar' },
   { key: 'settings' },
 ];
 
