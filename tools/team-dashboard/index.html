@@ -53,6 +53,21 @@ h2{font-size:18px;margin:0 0 10px;color:var(--ply-hi)}
 .limit-band .mono{color:var(--amber)}
 body.limited .st .sprite{animation:none!important;filter:grayscale(.6) brightness(.8)}
 
+/* questions for the owner */
+.asks{border:2px solid var(--amber);background:linear-gradient(#2a2412,#1f1b10);padding:14px;display:grid;gap:12px}
+.asks h2{color:var(--amber);margin:0;display:flex;gap:10px;align-items:center}
+.asks h2 .n{font-family:var(--f-mono);font-size:12px;background:var(--amber);color:#191c30;padding:1px 7px;border-radius:2px}
+.ask{background:rgba(14,17,34,.7);border:1px solid #5a4a1c;padding:10px 12px;display:grid;gap:8px}
+.ask .qt{font-size:14.5px;line-height:1.45}
+.ask .qm{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.ask .opts{display:flex;flex-wrap:wrap;gap:6px}
+.ask button{font:inherit;font-size:13px;cursor:pointer;background:#2b3156;color:var(--ink);border:1px solid var(--line);padding:6px 10px;border-radius:3px}
+.ask button:hover{border-color:var(--amber)}
+.ask .row{display:flex;gap:6px;flex-wrap:wrap}
+.ask textarea{flex:1 1 220px;min-width:0;font:inherit;font-size:13px;background:#0d1020;color:var(--ink);border:1px solid var(--line);padding:6px 8px;min-height:38px;resize:vertical}
+.ask .sent{color:var(--green);font-size:12.5px}
+.chip.q{border-color:var(--amber);color:var(--amber)}
+
 /* machine: gantry over the task sheet */
 .machine{background:var(--panel);border:2px solid var(--line);padding:14px;display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:14px}
 @media (max-width:820px){.machine{grid-template-columns:minmax(0,1fr)}}
@@ -147,10 +162,17 @@ body.limited .st .sprite{animation:none!important;filter:grayscale(.6) brightnes
         <div class="q"><span>5 saat <b id="q5">—</b></span><div class="qb"><div class="qf" id="q5f" style="width:0%"></div></div></div>
         <div class="q"><span>7 gün <b id="q7">—</b></span><div class="qb"><div class="qf" id="q7f" style="width:0%"></div></div></div>
       </div>
+      <a class="chip q" id="askChip" href="#asks" hidden>❓ <b id="askChipN">0</b> soru</a>
       <span class="chip"><span class="dot" id="connDot"></span><span id="connTxt">bağlanıyor</span></span>
       <span class="chip">son güncelleme <b id="upd" class="mono">—</b></span>
     </div>
   </header>
+
+  <section class="asks" id="asks" aria-label="Sana sorularım" hidden>
+    <h2 class="px">Sana sorularım <span class="n" id="askN">0</span></h2>
+    <div id="askList"></div>
+    <p class="qm" id="askHint" style="margin:0;color:var(--muted);font-size:12px">Cevabın buradan bana ulaşır; terminalde de sorabilirsin.</p>
+  </section>
 
   <section class="limit-band" id="limitBand" role="status" hidden>
     <span class="px">⏸ MODEL LİMİTİ DOLDU</span>
@@ -351,6 +373,39 @@ body.limited .st .sprite{animation:none!important;filter:grayscale(.6) brightnes
     });
   }
 
+  // ---------- questions for the owner (answers go to the claude.ai db when available) ----------
+  let DB = null, ANSWERS = {};
+  function openQs(){ return (S.questions||[]).filter(q=>q.status==='open' && !ANSWERS[q.id]); }
+  function drawAsks(){
+    const qs = openQs(); const box = document.getElementById('asks');
+    box.hidden = !qs.length; document.getElementById('askN').textContent = qs.length;
+    document.getElementById('askChip').hidden = !qs.length; document.getElementById('askChipN').textContent = qs.length;
+    document.getElementById('askHint').textContent = DB ? 'Cevabın buradan bana ulaşır. Terminalden de cevaplayabilirsin.' : 'Bu görünümde cevap gönderilemiyor; claude.ai sayfasından ya da terminalden cevapla.';
+    const list = document.getElementById('askList');
+    const sig = qs.map(q=>q.id).join(',')+'|'+!!DB; if(list.dataset.sig===sig) return; list.dataset.sig=sig;
+    list.innerHTML = qs.map(q=>`<div class="ask" data-id="${esc(q.id)}">
+      <div class="qm">${esc(q.id)} · ${esc(ago(q.askedAt))}</div>
+      <div class="qt">${esc(q.text)}</div>
+      ${DB && (q.options||[]).length ? `<div class="opts">${q.options.map((o,i)=>`<button type="button" data-opt="${i}">${esc(o)}</button>`).join('')}</div>` : (q.options||[]).length ? `<div class="qm">Seçenekler: ${q.options.map(esc).join(' · ')}</div>` : ''}
+      ${DB ? `<div class="row"><textarea id="ans-${esc(q.id)}" aria-label="Cevabın" placeholder="Cevabını yaz…"></textarea><button type="button" data-send="1">Gönder</button></div><div class="sent" hidden></div>` : ''}
+    </div>`).join('');
+  }
+  document.getElementById('askList').addEventListener('click', async (e) => {
+    const card = e.target.closest('.ask'); if(!card || !DB) return;
+    const id = card.dataset.id; const q = (S.questions||[]).find(x=>x.id===id); if(!q) return;
+    let answer = '';
+    if(e.target.dataset.opt!=null) answer = q.options[+e.target.dataset.opt];
+    else if(e.target.dataset.send) answer = (card.querySelector('textarea').value||'').trim();
+    else return;
+    if(!answer) return;
+    const note = card.querySelector('.sent');
+    try{
+      await DB.doc('answers/'+id).set({ id, question: q.text, answer, at: new Date().toISOString() });
+      ANSWERS[id] = answer; if(note){ note.hidden=false; note.textContent='Gönderildi: '+answer; }
+      setTimeout(drawAsks, 1200);
+    }catch(err){ if(note){ note.hidden=false; note.style.color='var(--red)'; note.textContent='Gönderilemedi. Terminalden cevapla.'; } }
+  });
+
   // ---------- render ----------
   function render(){
     const tasks = S.tasks||[]; const done = tasks.filter(t=>t.status==='done').length;
@@ -377,6 +432,7 @@ body.limited .st .sprite{animation:none!important;filter:grayscale(.6) brightnes
     document.getElementById('tasks').innerHTML = tasks.length ? tasks.map(t=>`<li><span class="id">${esc(t.id)}</span><span>${esc(t.title)}</span><span class="ts ts-${esc(t.status)}">${TASK_TR[t.status]||esc(t.status)}</span></li>`).join('')
       : '<li class="empty">Görev yok.</li>';
     drawQuota();
+    drawAsks();
     drawSheet();
   }
 
@@ -423,6 +479,8 @@ body.limited .st .sprite{animation:none!important;filter:grayscale(.6) brightnes
     if(!window.claude || !window.claude.use) return;
     try{
       const db = await window.claude.use('db'); if(!db) return;
+      try{ const u = await window.claude.use('user'); const w = u ? await u.can('data.write') : null; if(w !== false) DB = db; }catch(e){ DB = db; }
+      db.collection('answers').onSnapshot(qs => { ANSWERS = {}; (qs.docs||[]).forEach(d => { const v=d.data(); if(v&&v.id) ANSWERS[v.id]=v.answer; }); drawAsks(); }, () => {});
       db.doc('team/state').onSnapshot(snap => {
         if(!snap.exists){ conn('', 'canlı · veri bekleniyor'); return; }
         live = true; clearInterval(pollId); apply(snap.data()); conn('live','canlı');
