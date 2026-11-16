@@ -108,11 +108,7 @@ function stripOwned(values: object): Record<string, unknown> {
   return rest;
 }
 
-function reader<T extends TenantTable>(
-  db: Db,
-  companyId: string,
-  table: T,
-): ScopedReader<Row<T>> {
+function reader<T extends TenantTable>(db: Db, companyId: string, table: T): ScopedReader<Row<T>> {
   const t = table as unknown as PgTable & TenantColumns;
   return {
     async list() {
@@ -194,6 +190,19 @@ export type MachineRow = typeof machinesTable.$inferSelect;
 export type MachineProfileVersionRow = typeof machineProfileVersions.$inferSelect;
 export type TemplateVersionRow = typeof templateVersions.$inferSelect;
 
+/**
+ * Converts a stored command row back to the core log shape. `at` is returned as UTC ISO 8601
+ * (`timestamptz` keeps the instant, not the client's offset).
+ */
+export function toCommandLogEntry(row: ProjectCommandRow): CommandLogEntry {
+  return {
+    command: row.command,
+    params: row.params,
+    actor: row.actor,
+    at: new Date(row.at).toISOString(),
+  };
+}
+
 function validProject(data: unknown): Project {
   const result = parseProject(data);
   if (!result.ok) throw new InvalidProject(result.issues);
@@ -221,7 +230,8 @@ export interface SaveProject {
 
 function projectsRepo(db: Db, companyId: string) {
   const base = reader(db, companyId, projectsTable);
-  const scope = (id: string) => and(eq(projectsTable.id, id), eq(projectsTable.companyId, companyId));
+  const scope = (id: string) =>
+    and(eq(projectsTable.id, id), eq(projectsTable.companyId, companyId));
   return {
     ...base,
     async list() {

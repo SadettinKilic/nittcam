@@ -112,9 +112,9 @@ export function storageForCompany(storage: Storage, companyId: string): Storage 
   };
   const base = `${companyId}/`;
   return {
-    put: (key, data) => storage.put(full(key), data),
-    get: (key) => storage.get(full(key)),
-    delete: (key) => storage.delete(full(key)),
+    put: async (key, data) => storage.put(full(key), data),
+    get: async (key) => storage.get(full(key)),
+    delete: async (key) => storage.delete(full(key)),
     async list(prefix = '') {
       const keys = await storage.list(base + prefix);
       return keys.map((k) => k.slice(base.length));
