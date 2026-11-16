@@ -1,15 +1,18 @@
+import { EPS } from '../geometry/constants';
+import { sweepToBulge } from '../geometry/segment';
 import type { Part, RectParams, Vertex } from './project';
 
 /** Bulge of a 90° arc: tan(90° / 4). */
-export const QUARTER_ARC_BULGE = Math.tan(Math.PI / 8);
+export const QUARTER_ARC_BULGE = sweepToBulge(Math.PI / 2);
 
 /**
  * Outline of a parametric rectangle in its local frame: bottom-left at (0, 0), CCW, closed
  * implicitly (the last vertex connects to the first). Rounded corners are quarter arcs
  * (bulge tan(22.5°)). Zero-length straight edges (r = w/2 or r = h/2) are dropped.
+ * A radius below EPS cannot be machined and gives sharp corners (D-012).
  */
 export function rectOutline({ w, h, r }: RectParams): Vertex[] {
-  if (r === 0) {
+  if (r < EPS) {
     return [
       { x: 0, y: 0, bulge: 0 },
       { x: w, y: 0, bulge: 0 },
