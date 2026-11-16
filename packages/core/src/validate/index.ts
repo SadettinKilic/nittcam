@@ -4,12 +4,18 @@
  * place (stock + part, tool table + hole) live here. Pure: same project, same list.
  */
 import { bbox, contour, EPS } from '../geometry';
+import { findTool, type MachineProfile } from '../machine';
 import type { Hole, Part, Project } from '../schema';
 import { formatPath } from '../schema';
 
 export type ValidationSeverity = 'error' | 'warning';
 
-export type ValidationCode = 'PART_LARGER_THAN_SHEET' | 'HOLE_DEPTH_NOT_BELOW_THICKNESS';
+export type ValidationCode =
+  | 'PART_LARGER_THAN_SHEET'
+  | 'HOLE_DEPTH_NOT_BELOW_THICKNESS'
+  | 'TOOL_NOT_IN_PROFILE'
+  | 'HOLE_SMALLER_THAN_TOOL'
+  | 'GROOVE_NARROWER_THAN_TOOL';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -20,8 +26,17 @@ export interface ValidationIssue {
   message: string;
 }
 
+/**
+ * Data from outside the project JSON that some rules need. The caller passes it in, so validation
+ * stays pure. `machine` is the profile version the project has selected (`project.machine`);
+ * without it the tool rules are skipped.
+ */
+export interface ValidationContext {
+  machine?: MachineProfile | undefined;
+}
+
 /** A rule inspects the project and returns its issues (possibly none). */
-export type ValidationRule = (project: Project) => ValidationIssue[];
+export type ValidationRule = (project: Project, context?: ValidationContext) => ValidationIssue[];
 
 /** Width/height of a part's bounding box in its local frame (arc-aware for freeform outlines). */
 function partSize(part: Part): { w: number; h: number } {
@@ -92,15 +107,66 @@ export const holeDepthBelowThickness: ValidationRule = (project) => {
 };
 
 /**
- * Rules run after every command, in this order. Tool rules (hole diameter and groove width vs the
- * tool diameter, spec §4.5) arrive with the tool table of the machine profile (T010).
+ * (c) Tool vs hole (spec §4.5), using the tool table of the selected machine profile (T010):
+ * - the hole's tool number must exist in the profile (`TOOL_NOT_IN_PROFILE`, error);
+ * - pocket/through: "Çap takım çapından küçük olamaz" → `d < tool diameter` is an error
+ *   (equal is fine: a single plunge or drill cycle);
+ * - groove: "Kanal genişliği takım çapına eşitse tek geçiş, büyükse çok geçiş; küçükse uyarı" →
+ *   `grooveWidth < tool diameter` is a warning.
+ * Comparisons allow EPS, so a hole within 0.001 mm of the tool diameter counts as equal.
+ * Skipped when the caller passes no profile.
  */
+export const holeVsTool: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine) return [];
+  const issues: ValidationIssue[] = [];
+  project.parts.forEach((part, i) => {
+    part.holes.forEach((hole, h) => {
+      const tool = findTool(machine, hole.tool);
+      if (!tool) {
+        issues.push({
+          code: 'TOOL_NOT_IN_PROFILE',
+          severity: 'error',
+          path: formatPath(['parts', i, 'holes', h, 'tool']),
+          message: `${hole.type} "${hole.id}" in part "${part.id}" uses tool T${hole.tool}, which is not in the machine's tool table`,
+        });
+        return;
+      }
+      if (hole.type === 'groove') {
+        if (hole.grooveWidth + EPS < tool.diameter) {
+          issues.push({
+            code: 'GROOVE_NARROWER_THAN_TOOL',
+            severity: 'warning',
+            path: formatPath(['parts', i, 'holes', h, 'grooveWidth']),
+            message: `groove "${hole.id}" in part "${part.id}" is ${mm(hole.grooveWidth)} mm wide, narrower than the ${mm(tool.diameter)} mm tool T${tool.number}`,
+          });
+        }
+        return;
+      }
+      if (hole.d + EPS < tool.diameter) {
+        issues.push({
+          code: 'HOLE_SMALLER_THAN_TOOL',
+          severity: 'error',
+          path: formatPath(['parts', i, 'holes', h, 'd']),
+          message: `${hole.type} "${hole.id}" in part "${part.id}" is ${mm(hole.d)} mm, smaller than the ${mm(tool.diameter)} mm tool T${tool.number}`,
+        });
+      }
+    });
+  });
+  return issues;
+};
+
+/** Rules run after every command, in this order. */
 export const VALIDATION_RULES: readonly ValidationRule[] = [
   partLargerThanSheet,
   holeDepthBelowThickness,
+  holeVsTool,
 ];
 
 /** Runs every rule and returns the combined list (errors and warnings, in rule order). */
-export function validateProject(project: Project): ValidationIssue[] {
-  return VALIDATION_RULES.flatMap((rule) => rule(project));
+export function validateProject(
+  project: Project,
+  context: ValidationContext = {},
+): ValidationIssue[] {
+  return VALIDATION_RULES.flatMap((rule) => rule(project, context));
 }

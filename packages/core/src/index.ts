@@ -15,3 +15,4 @@ export * from './schema';
 export * from './commands';
 export * from './validate';
 export * from './geometry';
+export * from './machine';

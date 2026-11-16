@@ -38,6 +38,9 @@ importers:
       '@nittcam/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@nittcam/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@nittcam/ui':
         specifier: workspace:*
         version: link:../../packages/ui

@@ -5,7 +5,7 @@
 import { Immer, enablePatches, type Patch } from 'immer';
 import { z } from 'zod';
 import { formatPath, projectSchema, type Project } from '../schema';
-import { validateProject, type ValidationIssue } from '../validate';
+import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
 import { addPart } from './part';
 import { setMachine, setMaterial, setSheetSize, setThickness } from './plate';
 import {
@@ -132,9 +132,16 @@ export class CommandStack {
   private redoSteps: HistoryStep[] = [];
   private readonly entries: CommandLogEntry[] = [];
 
-  constructor(project: Project) {
+  /**
+   * @param validation extra data for rule validation (the selected machine profile); without it
+   * the tool rules are skipped.
+   */
+  constructor(
+    project: Project,
+    private readonly validation: ValidationContext = {},
+  ) {
     this.current = project;
-    this.currentIssues = validateProject(project);
+    this.currentIssues = validateProject(project, validation);
   }
 
   get project(): Project {
@@ -216,7 +223,7 @@ export class CommandStack {
 
   private setProject(project: Project): void {
     this.current = project;
-    this.currentIssues = validateProject(project);
+    this.currentIssues = validateProject(project, this.validation);
   }
 }
 
