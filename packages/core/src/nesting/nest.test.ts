@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion -- tests edit raw JSON and index known results */
 import { describe, expect, it } from 'vitest';
 import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import mixed from '../schema/__fixtures__/mixed.json';

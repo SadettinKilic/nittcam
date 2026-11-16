@@ -75,7 +75,7 @@ export function invariantViolations(input: NestingInput, result: NestingResult):
         const sep = separation(r, o);
         if (sep < required - EPS) {
           out.push(
-            `${p.partId}#${p.index} is ${sep} mm from ${sh.placements[oi]!.partId}#${sh.placements[oi]!.index} on sheet ${si} (needs ${required})`,
+            `${p.partId}#${p.index} is ${sep} mm from placement ${oi} on sheet ${si} (needs ${required})`,
           );
         }
       });

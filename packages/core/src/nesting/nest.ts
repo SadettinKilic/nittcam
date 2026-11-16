@@ -167,8 +167,8 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
   };
   const place = (sheet: number, item: Item, fit: Fit, rot: 0 | 90): void => {
     const size = rotatedSize(item.w, item.h, rot);
-    bins[sheet]!.occupy({ x: fit.x, y: fit.y, w: size.w + 2 * s, h: size.h + 2 * s });
-    sheets[sheet]!.push({
+    bins[sheet]?.occupy({ x: fit.x, y: fit.y, w: size.w + 2 * s, h: size.h + 2 * s });
+    sheets[sheet]?.push({
       partId: item.partId,
       index: item.index,
       x: fit.x + s,
@@ -180,11 +180,12 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
 
   for (const item of items) {
     let done = false;
-    for (let i = 0; i < bins.length && !done; i++) {
-      const hit = tryBin(bins[i]!, item);
+    for (const [i, bin] of bins.entries()) {
+      const hit = tryBin(bin, item);
       if (hit) {
         place(i, item, hit.fit, hit.rot);
         done = true;
+        break;
       }
     }
     if (done) continue;
@@ -239,7 +240,8 @@ function wasteArea(
   const { width, height } = ctx.input.sheet;
   let waste = 0;
   sheets.forEach((placements, i) => {
-    const st = stats[i]!;
+    const st = stats[i];
+    if (!st) return;
     if (i < sheets.length - 1) {
       waste += st.wasteArea;
       return;
@@ -358,8 +360,9 @@ export function nest(input: NestingInput): NestingResult {
       if (best === null || better(cand, best)) best = cand;
     }
   }
-  // `best` is set: at least one ordering × heuristic always runs.
-  const win = best!;
+  // At least one ordering × heuristic always runs, so `best` is set.
+  if (best === null) throw new Error('nest: no candidate was tried');
+  const win: Candidate = best;
   const partArea = win.stats.reduce((sum, st) => sum + st.partArea, 0);
   const sheetArea = win.stats.reduce((sum, st) => sum + st.sheetArea, 0);
   const wastePercent = sheetArea > 0 ? (100 * (sheetArea - partArea)) / sheetArea : 0;
@@ -398,7 +401,7 @@ export function nestingInputFromProject(
   options: NestProjectOptions,
 ): NestingInput {
   const locked = project.layout.sheets.map((sheet) => sheet.placements.filter((p) => p.locked));
-  while (locked.length > 0 && locked[locked.length - 1]!.length === 0) locked.pop();
+  while (locked.length > 0 && locked[locked.length - 1]?.length === 0) locked.pop();
   return {
     sheet: { width: project.stock.sheet.width, height: project.stock.sheet.height },
     parts: project.parts.map((part) => ({

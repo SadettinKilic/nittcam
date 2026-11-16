@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- tests index results whose length is known */
 /**
  * Property tests of the placer invariants (spec §6.2, nesting-engine skill): no overlap after
  * inflation, inside the usable area, gap ≥ tool + gap, grain rule, deterministic, locked placements
