@@ -274,7 +274,7 @@ export const projectCommands = pgTable(
     /** Who sent it (same company); null for system actions. */
     userId: uuid('user_id'),
     /** `CommandLogEntry.at` (time the command was issued on the client). */
-    at: timestamp('at', { withTimezone: true, mode: 'string' }).notNull(),
+    at: timestamp('at', { withTimezone: true, mode: 'date' }).notNull(),
     createdAt: createdAt(),
   },
   (t) => [

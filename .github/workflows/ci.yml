@@ -65,6 +65,60 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+  # T008 / D-014: the main job tests the db package on PGlite. This job runs the migrations and
+  # the db tests (incl. tenant isolation) against a real Postgres 17, and checks that the
+  # committed migrations match the Drizzle schema.
+  db-postgres:
+    name: db · migrations + tests on Postgres 17
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: nittcam
+          POSTGRES_PASSWORD: nittcam
+          POSTGRES_DB: nittcam
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nittcam -d nittcam"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://nittcam:nittcam@localhost:5432/nittcam
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrations match the schema
+        run: |
+          pnpm --filter @nittcam/db db:generate
+          if [ -n "$(git status --porcelain packages/db/migrations)" ]; then
+            git status --porcelain packages/db/migrations
+            echo "::error::packages/db/migrations is out of date; run pnpm --filter @nittcam/db db:generate"
+            exit 1
+          fi
+
+      - name: Migrate (fresh database)
+        run: pnpm --filter @nittcam/db db:migrate
+
+      - name: Migrate again (no-op)
+        run: pnpm --filter @nittcam/db db:migrate
+
+      - name: DB tests on Postgres
+        run: pnpm --filter @nittcam/db exec vitest run --no-file-parallelism
+
   golden-guard:
     name: golden-file guard
     if: github.event_name == 'pull_request'

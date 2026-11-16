@@ -199,7 +199,7 @@ export function toCommandLogEntry(row: ProjectCommandRow): CommandLogEntry {
     command: row.command,
     params: row.params,
     actor: row.actor,
-    at: new Date(row.at).toISOString(),
+    at: row.at.toISOString(),
   };
 }
 
@@ -294,7 +294,7 @@ function projectsRepo(db: Db, companyId: string) {
               command: c.command,
               params: c.params,
               actor: c.actor,
-              at: c.at,
+              at: new Date(c.at),
               userId: input.userId ?? null,
             })),
           );
