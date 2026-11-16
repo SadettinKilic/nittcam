@@ -4,3 +4,4 @@ export * from './types';
 export * from './segment';
 export * from './polyline';
 export * from './transform';
+export * from './offset';
