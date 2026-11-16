@@ -22,3 +22,6 @@ next-env.d.ts
 # Playwright
 blob-report/
 playwright/.cache/
+
+# local database and file storage (D-004, D-014)
+.data/

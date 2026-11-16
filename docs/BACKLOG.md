@@ -73,10 +73,10 @@ Acceptance:
 ### T008 Database: schema v1 + local dev without Docker   [status: todo]
 Spec: §8.5, §9.1, §8.6 · Depends: T001 · Owner: dev
 Acceptance:
-- [ ] `packages/db` Drizzle schema for the §9.1 tables; every table has `company_id` (except companies); migrations generated
-- [ ] local dev and tests use PGlite (embedded Postgres) by default (D-004); `DATABASE_URL` switches to a real Postgres; `docker-compose.yml` kept for later
-- [ ] storage adapter interface with a local-filesystem implementation (S3/MinIO later)
-- [ ] tenant-scoped query helper + test: company A cannot read company B's rows
+- [x] `packages/db` Drizzle schema for the §9.1 tables; every table has `company_id` (except companies); migrations generated
+- [x] local dev and tests use PGlite (embedded Postgres) by default (D-004); `DATABASE_URL` switches to a real Postgres; `docker-compose.yml` kept for later
+- [x] storage adapter interface with a local-filesystem implementation (S3/MinIO later)
+- [x] tenant-scoped query helper + test: company A cannot read company B's rows
 
 ### T009 Detailed M1 backlog   [status: todo]
 Spec: §12.2 · Depends: T001–T008 · Owner: PO
