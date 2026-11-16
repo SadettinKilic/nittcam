@@ -151,7 +151,17 @@ describe('T005 tester: AI tool definitions', () => {
     const names = tools.map((t) => t.name);
     expect(new Set(names).size).toBe(names.length);
     expect(names.sort()).toEqual(
-      ['addPart', 'setMachine', 'setMaterial', 'setSheetSize', 'setThickness'].sort(),
+      [
+        'addPart',
+        'duplicatePart',
+        'importCutList',
+        'removePart',
+        'setMachine',
+        'setMaterial',
+        'setSheetSize',
+        'setThickness',
+        'updatePart',
+      ].sort(),
     );
     for (const t of tools) {
       expect(t.inputSchema['type']).toBe('object');

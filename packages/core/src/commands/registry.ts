@@ -6,7 +6,7 @@ import { Immer, enablePatches, type Patch } from 'immer';
 import { z } from 'zod';
 import { formatPath, projectSchema, type Project } from '../schema';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
-import { addPart } from './part';
+import { addPart, duplicatePart, importCutList, removePart, updatePart } from './part';
 import { setMachine, setMaterial, setSheetSize, setThickness } from './plate';
 import {
   commandContextSchema,
@@ -27,6 +27,10 @@ export const COMMANDS = {
   setThickness,
   setSheetSize,
   addPart,
+  updatePart,
+  removePart,
+  duplicatePart,
+  importCutList,
 } as const satisfies Record<string, CommandDefinition>;
 
 export type CommandName = keyof typeof COMMANDS;

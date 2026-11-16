@@ -1,4 +1,11 @@
 export * from './types';
 export * from './registry';
 export { setMachine, setMaterial, setThickness, setSheetSize } from './plate';
-export { addPart } from './part';
+export {
+  addPart,
+  updatePart,
+  removePart,
+  duplicatePart,
+  importCutList,
+  MAX_IMPORT_ROWS,
+} from './part';
