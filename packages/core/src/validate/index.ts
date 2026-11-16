@@ -6,6 +6,8 @@
 import { EPS } from '../geometry';
 import { findTool, type MachineProfile } from '../machine';
 import { fitsUsable, partBoxSize, usableSize } from '../nesting/fit';
+import { checkPlacement, partSizes } from '../nesting/placement';
+import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
 import { formatPath } from '../schema';
 
@@ -16,7 +18,8 @@ export type ValidationCode =
   | 'HOLE_DEPTH_NOT_BELOW_THICKNESS'
   | 'TOOL_NOT_IN_PROFILE'
   | 'HOLE_SMALLER_THAN_TOOL'
-  | 'GROOVE_NARROWER_THAN_TOOL';
+  | 'GROOVE_NARROWER_THAN_TOOL'
+  | 'LOCKED_PLACEMENT_INVALID';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -34,6 +37,12 @@ export interface ValidationIssue {
  */
 export interface ValidationContext {
   machine?: MachineProfile | undefined;
+  /**
+   * Cutting tool diameter (mm) for the spacing rule of locked placements. When it is missing it
+   * comes from `machine` (`nestingToolDiameter`, D-019); without either it counts as 0, so only
+   * the gap is required between parts.
+   */
+  toolDiameter?: number | undefined;
 }
 
 /** A rule inspects the project and returns its issues (possibly none). */
@@ -151,11 +160,55 @@ export const holeVsTool: ValidationRule = (project, context) => {
   return issues;
 };
 
+/** The tool diameter the spacing rules use (see `ValidationContext.toolDiameter`). */
+export function validationToolDiameter(project: Project, context?: ValidationContext): number {
+  if (context?.toolDiameter !== undefined) return context.toolDiameter;
+  if (context?.machine) return nestingToolDiameter(context.machine, project.stock) ?? 0;
+  return 0;
+}
+
+/**
+ * (d) Locked placements (spec §6.2 "Elle müdahale", D-020): a locked part copy must lie on the
+ * sheet, outside the margin band, and at least `toolDiameter + gap` from every other placed part
+ * on its sheet (the placer's spacing, D-019). Re-nesting never moves a locked copy, so a bad lock
+ * would reach the toolpath unchanged: error. Unlocked placements come from the placer and are
+ * correct by construction; they are only counted as neighbours here.
+ */
+export const lockedPlacementInvalid: ValidationRule = (project, context) => {
+  const toolDiameter = validationToolDiameter(project, context);
+  const sizes = partSizes(project);
+  const issues: ValidationIssue[] = [];
+  project.layout.sheets.forEach((sheet, s) => {
+    sheet.placements.forEach((pl, p) => {
+      if (!pl.locked || !sizes.has(pl.partId)) return;
+      const check = checkPlacement(project, s, pl, { toolDiameter }, sizes);
+      const reasons: string[] = [];
+      if (check.outsideSheet) reasons.push('lies outside the sheet');
+      if (check.inMargin) reasons.push(`lies in the ${mm(project.nesting.margin)} mm margin`);
+      if (check.conflicts.length > 0) {
+        const names = check.conflicts.map((c) => `"${c.partId}" #${c.index + 1}`).join(', ');
+        reasons.push(
+          `is closer than ${mm(toolDiameter + project.nesting.gap)} mm (tool + gap) to ${names}`,
+        );
+      }
+      if (reasons.length === 0) return;
+      issues.push({
+        code: 'LOCKED_PLACEMENT_INVALID',
+        severity: 'error',
+        path: formatPath(['layout', 'sheets', s, 'placements', p]),
+        message: `locked copy ${pl.index + 1} of part "${pl.partId}" on sheet ${s + 1} ${reasons.join(' and ')}`,
+      });
+    });
+  });
+  return issues;
+};
+
 /** Rules run after every command, in this order. */
 export const VALIDATION_RULES: readonly ValidationRule[] = [
   partLargerThanSheet,
   holeDepthBelowThickness,
   holeVsTool,
+  lockedPlacementInvalid,
 ];
 
 /** Runs every rule and returns the combined list (errors and warnings, in rule order). */
