@@ -16,7 +16,7 @@
  * polylines and self-intersecting input are rejected. A contour that disappears returns
  * `COLLAPSED`. A shrinking offset that splits into several loops returns all of them with a
  * `SPLIT` warning. Islands / several contours at once (e.g. an outline plus its inners) are not
- * combined here; each contour is offset on its own. Arcs with a radius above 100 m are replaced
+ * combined here; each contour is offset on its own. Arcs with a radius above 10 km are replaced
  * by lines within EPS / 10 (precision). Intersections use an x-sweep over bounding boxes and the
  * distance check skips far segments by their boxes; worst case is still O(n²) in the segments.
  *
@@ -59,12 +59,12 @@ const STITCH_TOL = 10 * NODE_TOL;
  */
 const VALID_REL_TOL = 1e-9;
 /**
- * Arcs with a larger radius (mm, 100 m) are replaced by lines whose distance from the arc is at most
+ * Arcs with a larger radius (mm, 10 km) are replaced by lines whose distance from the arc is at most
  * FLAT_TOL. Circle arithmetic (centre ± radius, √(r² − h²)) loses precision on huge circles; a
  * near-flat DXF bulge would otherwise break the intersection step. No real part has such an arc
  * except as noise.
  */
-const MAX_ARC_RADIUS = 1e5;
+const MAX_ARC_RADIUS = 1e7;
 /** Deviation allowed when a huge-radius arc is replaced by lines (EPS / 10). */
 const FLAT_TOL = EPS / 10;
 
