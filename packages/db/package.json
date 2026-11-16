@@ -7,9 +7,22 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "typescript": "6.0.3"
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.14",
+    "@nittcam/core": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "pg": "8.23.1"
   }
 }
