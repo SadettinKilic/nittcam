@@ -3,12 +3,18 @@
 //   node tools/team/status.mjs <po|dev|tester> <state> "<task>" "<message>"
 //   node tools/team/status.mjs task <Txxx> <todo|doing|review|done|blocked> ["title"] [owner]
 //   node tools/team/status.mjs milestone "<M0 — Temel>"
+//   node tools/team/status.mjs limit on "<19:40>" | limit off
+//   (the status line writes .team/limits.json; it is merged into state.json on every write)
 //   node tools/team/status.mjs print
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+import { execSync } from 'node:child_process';
+const here = dirname(fileURLToPath(import.meta.url));
+// .team lives in the main checkout so every git worktree shares one state
+let root = join(here, '..', '..');
+try { root = dirname(execSync('git rev-parse --path-format=absolute --git-common-dir', { cwd: here, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()); } catch {}
 const file = join(root, '.team', 'state.json');
 const AGENTS = ['po', 'dev', 'tester'];
 const STATES = ['idle', 'planning', 'coding', 'testing', 'reviewing', 'blocked', 'done'];
@@ -39,6 +45,17 @@ if (AGENTS.includes(cmd)) {
   if (!t) { t = { id, title: title || id, status, owner: owner || 'dev' }; s.tasks.push(t); }
   t.status = status; if (title) t.title = title; if (owner) t.owner = owner;
   s.tasks.sort((a, b) => a.id.localeCompare(b.id));
+} else if (cmd === 'limit') {
+  // limit on "<reset time, e.g. 19:40>" ["note"]  |  limit off
+  const [mode, resetsAt = '', note = ''] = rest;
+  if (mode === 'on') {
+    s.quota = { blocked: true, resetsAt, note, since: now };
+    s.log.unshift({ t: now, who: 'po', state: 'blocked', task: '', msg: `Model limiti doldu${resetsAt ? `, ${resetsAt}'de sıfırlanır` : ''}.` });
+  } else if (mode === 'off') {
+    s.quota = { blocked: false, resetsAt: '', note: '', since: now };
+    s.log.unshift({ t: now, who: 'po', state: 'planning', task: '', msg: 'Limit sıfırlandı, ekip devam ediyor.' });
+  } else die('usage: limit on "<HH:MM>" ["note"] | limit off');
+  s.log = s.log.slice(0, 60);
 } else if (cmd === 'milestone') {
   s.milestone = rest[0] || s.milestone;
 } else if (cmd === 'print') {
@@ -48,6 +65,8 @@ if (AGENTS.includes(cmd)) {
 }
 
 s.updated = now;
+// merge the latest usage-limit snapshot written by the Claude Code status line
+try { s.limits = JSON.parse(readFileSync(join(root, '.team', 'limits.json'), 'utf8')); } catch {}
 mkdirSync(dirname(file), { recursive: true });
 writeFileSync(file + '.tmp', JSON.stringify(s, null, 2) + '\n');
 renameSync(file + '.tmp', file);

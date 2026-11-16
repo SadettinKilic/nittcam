@@ -15,6 +15,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{background:var(--night);color:var(--ink)}
 body{font-family:var(--f-body);font-size:14px;line-height:1.45}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px;display:grid;gap:18px}
@@ -38,6 +39,19 @@ h2{font-size:18px;margin:0 0 10px;color:var(--ply-hi)}
 .xp .bar{height:12px;background:var(--panel);border:2px solid var(--line);position:relative;overflow:hidden}
 .xp .fill{position:absolute;inset:0 auto 0 0;background:repeating-linear-gradient(90deg,var(--ply) 0 8px,var(--ply-lo) 8px 10px);transition:width .8s steps(12)}
 .xp .lbl{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-bottom:3px}
+
+/* usage limits */
+.quota{display:flex;gap:10px;align-items:center;font-family:var(--f-mono);font-size:11px;color:var(--muted);padding:4px 9px;border:1px solid var(--line);border-radius:3px;background:var(--panel)}
+.q{display:grid;gap:2px;min-width:74px}
+.q .qb{height:6px;background:#0d1020;border:1px solid var(--line);position:relative;overflow:hidden}
+.q .qf{position:absolute;inset:0 auto 0 0;background:var(--green);transition:width .6s}
+.q .qf.warn{background:var(--amber)} .q .qf.crit{background:var(--red)}
+.q span b{color:var(--ink);font-weight:500}
+.limit-band{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;background:repeating-linear-gradient(-45deg,#3a1520 0 14px,#2b1018 14px 28px);border:2px solid var(--red);padding:12px 14px}
+.limit-band .px{font-size:20px;color:var(--red)}
+.limit-band p{margin:0;color:var(--ink);font-size:13.5px}
+.limit-band .mono{color:var(--amber)}
+body.limited .st .sprite{animation:none!important;filter:grayscale(.6) brightness(.8)}
 
 /* machine: gantry over the task sheet */
 .machine{background:var(--panel);border:2px solid var(--line);padding:14px;display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:14px}
@@ -129,10 +143,19 @@ h2{font-size:18px;margin:0 0 10px;color:var(--ply-hi)}
         <div class="lbl"><span id="ms">M0 — Temel</span><span id="xpTxt" class="mono">0/0 görev</span></div>
         <div class="bar"><div class="fill" id="xpFill" style="width:0%"></div></div>
       </div>
+      <div class="quota" id="quota" title="Claude kullanım limitleri" hidden>
+        <div class="q"><span>5 saat <b id="q5">—</b></span><div class="qb"><div class="qf" id="q5f" style="width:0%"></div></div></div>
+        <div class="q"><span>7 gün <b id="q7">—</b></span><div class="qb"><div class="qf" id="q7f" style="width:0%"></div></div></div>
+      </div>
       <span class="chip"><span class="dot" id="connDot"></span><span id="connTxt">bağlanıyor</span></span>
       <span class="chip">son güncelleme <b id="upd" class="mono">—</b></span>
     </div>
   </header>
+
+  <section class="limit-band" id="limitBand" role="status" hidden>
+    <span class="px">⏸ MODEL LİMİTİ DOLDU</span>
+    <p>Ekip mola verdi. Limit <b class="mono" id="limitReset">—</b> sıfırlanınca kaldığı yerden devam edecek.</p>
+  </section>
 
   <section class="machine" aria-label="Görev plakası">
     <div>
@@ -278,7 +301,7 @@ h2{font-size:18px;margin:0 0 10px;color:var(--ply-hi)}
     const {x,y,w,h}=active; return {r:active, pts:[[x,y],[x+w,y],[x+w,y+h],[x,y+h],[x,y]]};
   }
   function stepGantry(){
-    const tg = target(); const beam=document.getElementById('gbeam'), car=document.getElementById('gcar'), bit=document.getElementById('gbit');
+    const tg = document.body.classList.contains('limited') ? null : target(); const beam=document.getElementById('gbeam'), car=document.getElementById('gcar'), bit=document.getElementById('gbit');
     if(!beam) return;
     let tx=40, ty=40, cutting=false;
     if(tg){ cutting=true; if(!path.length||path.id!==tg.r.t.id){ path=tg.pts; path.id=tg.r.t.id; pi=0; }
@@ -297,6 +320,37 @@ h2{font-size:18px;margin:0 0 10px;color:var(--ply-hi)}
     }
   }
 
+  // ---------- usage limits (from the Claude Code status line) ----------
+  function fmtReset(v){
+    if(v==null||v==='') return '';
+    if(typeof v==='string' && /^\d{1,2}:\d{2}$/.test(v)) return v;
+    let d = typeof v==='number' ? new Date(v<1e12 ? v*1000 : v) : new Date(v);
+    if(isNaN(d)) return String(v);
+    const sameDay = d.toDateString()===new Date().toDateString();
+    return d.toLocaleString('tr-TR', sameDay ? {hour:'2-digit',minute:'2-digit'} : {weekday:'short',hour:'2-digit',minute:'2-digit'});
+  }
+  function limitInfo(){
+    const lim = S.limits||{}, q = S.quota||{};
+    const p5 = lim.five_hour && typeof lim.five_hour.used_percentage==='number' ? lim.five_hour.used_percentage : null;
+    const p7 = lim.seven_day && typeof lim.seven_day.used_percentage==='number' ? lim.seven_day.used_percentage : null;
+    const full5 = p5!=null && p5>=100, full7 = p7!=null && p7>=100;
+    const blocked = !!q.blocked || full5 || full7;
+    const reset = q.blocked && q.resetsAt ? fmtReset(q.resetsAt)
+      : fmtReset(full7 ? lim.seven_day.resets_at : full5 ? lim.five_hour.resets_at : null);
+    return {p5, p7, blocked, reset, r5: fmtReset(lim.five_hour&&lim.five_hour.resets_at), r7: fmtReset(lim.seven_day&&lim.seven_day.resets_at)};
+  }
+  function drawQuota(){
+    const L = limitInfo(); const box = document.getElementById('quota');
+    box.hidden = L.p5==null && L.p7==null;
+    [['q5',L.p5,L.r5],['q7',L.p7,L.r7]].forEach(([id,p,r])=>{
+      const f = document.getElementById(id+'f');
+      document.getElementById(id).textContent = p==null ? '—' : Math.round(p)+'%';
+      f.style.width = (p==null?0:Math.min(100,p))+'%';
+      f.className = 'qf' + (p>=90?' crit':p>=70?' warn':'');
+      f.parentElement.parentElement.title = r ? 'sıfırlanma: '+r : '';
+    });
+  }
+
   // ---------- render ----------
   function render(){
     const tasks = S.tasks||[]; const done = tasks.filter(t=>t.status==='done').length;
@@ -304,8 +358,13 @@ h2{font-size:18px;margin:0 0 10px;color:var(--ply-hi)}
     document.getElementById('xpTxt').textContent = `${done}/${tasks.length} görev`;
     document.getElementById('xpFill').style.width = tasks.length ? (100*done/tasks.length)+'%' : '0%';
     document.getElementById('upd').textContent = ago(S.updated);
+    const L = limitInfo(); document.body.classList.toggle('limited', L.blocked);
+    document.getElementById('limitBand').hidden = !L.blocked;
+    document.getElementById('limitReset').textContent = L.reset || 'yakında';
     CREW.forEach(c=>{
-      const a = (S.agents||{})[c.key] || {state:'idle'}; const st = STATE_TR[a.state] ? a.state : 'idle';
+      const raw = (S.agents||{})[c.key] || {state:'idle'};
+      const a = L.blocked ? {...raw, state:'idle', message:'Limit doldu, mola. '+(L.reset?L.reset+"'de dönüyorum.":'')} : raw;
+      const st = STATE_TR[a.state] ? a.state : 'idle';
       const el = document.getElementById('st-'+c.key); if(el.dataset.s!==st){ el.dataset.s=st; }
       const se = document.getElementById('state-'+c.key); se.className='state s-'+st; se.textContent=STATE_TR[st];
       document.getElementById('bub-'+c.key).textContent = a.message || STATE_TR[st];
@@ -317,6 +376,7 @@ h2{font-size:18px;margin:0 0 10px;color:var(--ply-hi)}
       : '<li class="empty">Henüz kayıt yok. Ekip çalışmaya başlayınca burada görünecek.</li>';
     document.getElementById('tasks').innerHTML = tasks.length ? tasks.map(t=>`<li><span class="id">${esc(t.id)}</span><span>${esc(t.title)}</span><span class="ts ts-${esc(t.status)}">${TASK_TR[t.status]||esc(t.status)}</span></li>`).join('')
       : '<li class="empty">Görev yok.</li>';
+    drawQuota();
     drawSheet();
   }
 
