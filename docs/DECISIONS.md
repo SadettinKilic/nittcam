@@ -24,3 +24,11 @@ The free plan has no branch protection on private repos. Instead: Claude's `.cla
 
 ## D-008 Toolchain versions for the skeleton (2026-11-16, T001)
 Versions are pinned exactly and are stable releases at least two weeks old. **TypeScript 6.0** (not 7.0): typescript-eslint 8 supports `typescript <6.1`. **ESLint 9.39** (not 10): `eslint-plugin-react` and `eslint-config-next` deps are not ESLint 10 ready; we use `@next/eslint-plugin-next` + `eslint-plugin-react-hooks` + typescript-eslint directly in one root flat config. Next.js 16.4 (Turbopack), React 19.3, Tailwind 4.3, Vitest 5.0, Playwright 1.64. Core purity is enforced with `no-restricted-imports` on `packages/core/**` (no `apps/*`, db, ui, React/Next). Translations are plain JSON (`apps/web/messages/tr.json`) read through a tiny typed helper; an i18n library (e.g. next-intl) is deferred until a second locale is needed. Revisit ESLint 10 / TS 7 when the plugins support them.
+
+## D-009 Licence policy (2026-11-16, T002)
+Enforced by `scripts/check-licenses.mjs` (zero dependencies, reads `pnpm licenses list --json`), run in CI and via `pnpm licenses:check`; unit tests in `scripts/check-licenses.test.mjs`.
+- **Direct dependencies** (`dependencies`/`devDependencies` of any workspace `package.json`) must be MIT, ISC, BSD-2-Clause, BSD-3-Clause, Apache-2.0, BSL-1.0, 0BSD, CC0-1.0, Unlicense or BlueOak-1.0.0. GPL, AGPL and LGPL in a direct dependency fail the build.
+- **Transitive dependencies** may also be MPL-2.0 (unmodified), CC-BY-4.0 (data, e.g. `caniuse-lite`), Python-2.0, and the LGPL-3.0 part of `@img/sharp-*` (dynamically linked, optional).
+- **GPL or AGPL anywhere fails the build.** Unknown or unparseable licences fail too.
+- SPDX expressions: `OR` means we may choose any allowed branch (a `MIT OR GPL-3.0` package passes, used under MIT); `AND` means every part must be allowed; `WITH <exception>` is judged by its base licence.
+New exceptions need a new decision entry.

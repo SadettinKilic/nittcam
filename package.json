@@ -9,11 +9,13 @@
   "scripts": {
     "dev": "pnpm --filter @nittcam/web dev",
     "build": "pnpm --filter @nittcam/web build",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --if-present test && pnpm test:scripts",
+    "test:scripts": "node --test \"scripts/*.test.mjs\"",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "pnpm -r --if-present typecheck",
     "e2e": "pnpm build && pnpm --filter @nittcam/e2e e2e",
+    "licenses:check": "node scripts/check-licenses.mjs",
     "team": "node tools/team-dashboard/server.mjs"
   },
   "devDependencies": {
