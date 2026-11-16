@@ -285,6 +285,45 @@ test.describe('T010 Makineler UI (tester)', () => {
     await ctx.close();
   });
 
+  for (const width of [320, 390, 768]) {
+    test(`responsive ${width}px: no page-level horizontal scroll (list, create, edit, errors)`, async ({
+      browser,
+    }) => {
+      const ctx = await browser.newContext({
+        viewport: { width, height: 844 },
+        locale: 'tr-TR',
+      });
+      const page = await ctx.newPage();
+      const overflow = () =>
+        page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      await page.goto('/');
+      await page.getByRole('heading', { level: 1 }).waitFor();
+      expect(await overflow(), '/').toBeLessThanOrEqual(0);
+
+      await page.goto('/makineler');
+      await page.getByRole('table').waitFor();
+      expect(await overflow(), '/makineler').toBeLessThanOrEqual(0);
+
+      await page.getByRole('button', { name: t.add }).click();
+      await page.getByRole('heading', { name: t.form.createTitle }).waitFor();
+      expect(await overflow(), 'create form').toBeLessThanOrEqual(0);
+      await page.getByRole('button', { name: t.form.save }).click();
+      await expect(page.getByText(t.errors.required).first()).toBeVisible();
+      expect(await overflow(), 'create form with errors').toBeLessThanOrEqual(0);
+
+      await page.goto('/makineler');
+      await page.getByRole('table').waitFor();
+      await page
+        .getByRole('button', { name: new RegExp(`^${t.edit}:`) })
+        .first()
+        .click();
+      await page.getByRole('heading', { level: 1 }).waitFor();
+      await page.waitForTimeout(200);
+      expect(await overflow(), 'edit form').toBeLessThanOrEqual(0);
+      await ctx.close();
+    });
+  }
+
   test('reduced motion: no running animations or transitions', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'reduce', locale: 'tr-TR' });
     const page = await ctx.newPage();
