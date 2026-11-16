@@ -40,8 +40,15 @@ export function assertValidKey(key: string): void {
 }
 
 /** `<repo>/.data/storage` (gitignored). */
-export const DEFAULT_STORAGE_DIR = fileURLToPath(
-  new URL('../../../.data/storage', import.meta.url),
+// `dirname`/`join`, not `new URL(rel, import.meta.url)`: bundlers treat that as an asset import
+// (see client.ts). Bundled callers pass `root` explicitly.
+export const DEFAULT_STORAGE_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  '.data',
+  'storage',
 );
 
 /** Stores objects as files under `root` (default `STORAGE_DIR` or `<repo>/.data/storage`). */
@@ -49,7 +56,7 @@ export class LocalFsStorage implements Storage {
   readonly root: string;
 
   constructor(root: string = process.env.STORAGE_DIR ?? DEFAULT_STORAGE_DIR) {
-    this.root = resolve(root);
+    this.root = resolve(/* turbopackIgnore: true */ root);
   }
 
   private path(key: string): string {

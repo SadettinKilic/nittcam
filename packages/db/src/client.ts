@@ -3,6 +3,7 @@
  * through `pg` when `DATABASE_URL` is set. Both expose the same Drizzle `PgDatabase` API.
  */
 import { mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
@@ -18,7 +19,14 @@ export type Schema = typeof schema;
 export type Db = PgDatabase<PgQueryResultHKT, Schema>;
 
 /** Default PGlite directory for local dev: `<repo>/.data/pglite` (gitignored). */
-export const DEFAULT_PGLITE_DIR = fileURLToPath(new URL('../../../.data/pglite', import.meta.url));
+/**
+ * This file's folder. Built with `dirname`/`join` rather than `new URL(rel, import.meta.url)`, which
+ * bundlers (Next/Turbopack) treat as a static asset import. Inside a bundle `import.meta.url` is
+ * not the source location, so bundled callers pass `migrationsFolder` and `pglite` explicitly.
+ */
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+export const DEFAULT_PGLITE_DIR = join(HERE, '..', '..', '..', '.data', 'pglite');
 
 export interface CreateDbOptions {
   /** Postgres URL. Defaults to `process.env.DATABASE_URL`. When set, PGlite is not used. */
@@ -28,6 +36,8 @@ export interface CreateDbOptions {
    * Defaults to `process.env.PGLITE_DIR` or `<repo>/.data/pglite`.
    */
   pglite?: 'memory' | (string & {}) | undefined;
+  /** Migrations folder. Defaults to `MIGRATIONS_DIR` (pass it when this module is bundled). */
+  migrationsFolder?: string | undefined;
 }
 
 export interface DbHandle {
@@ -39,18 +49,19 @@ export interface DbHandle {
 }
 
 /** Absolute path of the generated migrations folder. */
-export const MIGRATIONS_DIR = fileURLToPath(new URL('../migrations', import.meta.url));
+export const MIGRATIONS_DIR = join(HERE, '..', 'migrations');
 
 /** Opens the database. Call `migrate()` on the handle before first use of a fresh database. */
 export async function createDb(options: CreateDbOptions = {}): Promise<DbHandle> {
   const url = options.url ?? process.env.DATABASE_URL;
+  const migrationsFolder = options.migrationsFolder ?? MIGRATIONS_DIR;
   if (url) {
     const pool = new pg.Pool({ connectionString: url });
     const db = drizzlePg({ client: pool, schema });
     return {
       db: db as unknown as Db,
       driver: 'postgres',
-      migrate: () => migratePg(db, { migrationsFolder: MIGRATIONS_DIR }),
+      migrate: () => migratePg(db, { migrationsFolder }),
       close: () => pool.end(),
     };
   }
@@ -67,7 +78,7 @@ export async function createDb(options: CreateDbOptions = {}): Promise<DbHandle>
   return {
     db: db as unknown as Db,
     driver: 'pglite',
-    migrate: () => migratePglite(db, { migrationsFolder: MIGRATIONS_DIR }),
+    migrate: () => migratePglite(db, { migrationsFolder }),
     close: () => client.close(),
   };
 }
