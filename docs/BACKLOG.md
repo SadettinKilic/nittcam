@@ -78,11 +78,11 @@ Acceptance:
 - [x] storage adapter interface with a local-filesystem implementation (S3/MinIO later)
 - [x] tenant-scoped query helper + test: company A cannot read company B's rows
 
-### T009 Detailed M1 backlog   [status: review]
+### T009 Detailed M1 backlog   [status: done]
 Spec: §12.2 · Depends: T001–T008 · Owner: PO
 Acceptance:
 - [x] T010–T024 written with acceptance criteria and dependencies
-- [ ] owner approves
+- [x] owner approved (2026-11-16)
 
 ---
 
@@ -163,6 +163,7 @@ Acceptance:
 - [ ] declarative, versioned post config (Zod) covering every item of §6.4; one generator interprets it
 - [ ] all 10 rules of §7.2 enforced in the generator
 - [ ] machine-origin and Z-zero conversion happen only here
+- [ ] **two post configs:** "Genel düz G-code" and "Mach3" (D-015); the Mach3 dialect from Mach3 documentation, then checked against real Mach3 NC files from the owner's machine when they arrive
 - [ ] golden NC files for 3 fixtures in `packages/machines/generic/v1/golden/`, byte-for-byte test
 
 ### T018 G-code reader   [status: todo]
@@ -224,3 +225,5 @@ Spec: §12.1, §12.3 · Depends: T024
 - validate "pocket depth too close to thickness" (§4.5): M3 with the hole object
 - AI: flat w/h/r adapter for `addPart`: M5
 - command log: persist undo/redo events: with T023 if cheap, else M2
+- db defence in depth (tester note on T008): DB triggers that block UPDATE on version tables; Postgres RLS on company_id: M2 (before multi-company login)
+- owner: identify the second machine's controller (brand, model, software version) and collect 2–3 working NC files from each machine (§12.3)
