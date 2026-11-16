@@ -16,7 +16,8 @@
  * polylines and self-intersecting input are rejected. A contour that disappears returns
  * `COLLAPSED`. A shrinking offset that splits into several loops returns all of them with a
  * `SPLIT` warning. Islands / several contours at once (e.g. an outline plus its inners) are not
- * combined here; each contour is offset on its own. Intersections use an x-sweep over bounding boxes and the
+ * combined here; each contour is offset on its own. Arcs with a radius above 100 m are replaced
+ * by lines within EPS / 10 (precision). Intersections use an x-sweep over bounding boxes and the
  * distance check skips far segments by their boxes; worst case is still O(n²) in the segments.
  *
  * Pure: no I/O, clock or randomness. Inputs are never mutated.
@@ -28,11 +29,7 @@ import type { Orientation, Point, Polyline, Vertex } from './types';
 
 /** Why an offset could not be produced. */
 export type OffsetFailure =
-  | 'INVALID_DISTANCE'
-  | 'NOT_CLOSED'
-  | 'DEGENERATE'
-  | 'SELF_INTERSECTING'
-  | 'COLLAPSED';
+  'INVALID_DISTANCE' | 'NOT_CLOSED' | 'DEGENERATE' | 'SELF_INTERSECTING' | 'COLLAPSED';
 
 /** Non-fatal findings: the path is valid but the caller should tell the user. */
 export type OffsetWarning =
@@ -49,12 +46,27 @@ const TWO_PI = 2 * Math.PI;
 /** Points closer than this are the same node when splitting and stitching (well below EPS). */
 const NODE_TOL = EPS / 100;
 /**
+ * Piece ends closer than this are joined when stitching. Larger than NODE_TOL on purpose: a split
+ * point within NODE_TOL of a segment end does not split it, which can leave gaps of about NODE_TOL
+ * between pieces that belong together (tiny join arcs at almost straight corners). Far below EPS.
+ */
+const STITCH_TOL = 10 * NODE_TOL;
+/**
  * A piece is valid when every sample is at least |d| − tolerance from the original contour. Points
  * of true offset pieces are |d| away up to float rounding, so the tolerance is relative to the size
  * of the coordinates (1e-9 of it, at least 1e-9 mm); a looser one would keep pieces of tiny
  * overlaps at almost straight concave corners.
  */
 const VALID_REL_TOL = 1e-9;
+/**
+ * Arcs with a larger radius (mm, 100 m) are replaced by lines whose distance from the arc is at most
+ * FLAT_TOL. Circle arithmetic (centre ± radius, √(r² − h²)) loses precision on huge circles; a
+ * near-flat DXF bulge would otherwise break the intersection step. No real part has such an arc
+ * except as noise.
+ */
+const MAX_ARC_RADIUS = 1e5;
+/** Deviation allowed when a huge-radius arc is replaced by lines (EPS / 10). */
+const FLAT_TOL = EPS / 10;
 
 interface LineSeg {
   kind: 'line';
@@ -103,7 +115,8 @@ function segLength(s: Seg): number {
 
 /** Point at parameter t ∈ [0, 1] (arc: fraction of the sweep). */
 function pointAt(s: Seg, t: number): Point {
-  if (s.kind === 'line') return { x: s.p0.x + (s.p1.x - s.p0.x) * t, y: s.p0.y + (s.p1.y - s.p0.y) * t };
+  if (s.kind === 'line')
+    return { x: s.p0.x + (s.p1.x - s.p0.x) * t, y: s.p0.y + (s.p1.y - s.p0.y) * t };
   const a = s.a0 + s.sweep * t;
   return { x: s.c.x + s.r * Math.cos(a), y: s.c.y + s.r * Math.sin(a) };
 }
@@ -127,7 +140,15 @@ function paramOf(s: Seg, p: Point): number {
 /** Sub-segment between two points on it (given in path order). */
 function subSeg(s: Seg, p0: Point, p1: Point, t0: number, t1: number): Seg {
   if (s.kind === 'line') return { kind: 'line', p0, p1 };
-  return { kind: 'arc', p0, p1, c: s.c, r: s.r, a0: s.a0 + s.sweep * t0, sweep: s.sweep * (t1 - t0) };
+  return {
+    kind: 'arc',
+    p0,
+    p1,
+    c: s.c,
+    r: s.r,
+    a0: s.a0 + s.sweep * t0,
+    sweep: s.sweep * (t1 - t0),
+  };
 }
 
 /** Shortest distance from p to the segment. */
@@ -197,7 +218,7 @@ function lineCircle(l: LineSeg, c: ArcSeg): Point[] {
   if (h > c.r + NODE_TOL) return [];
   if (h >= c.r) return [{ x: fx, y: fy }]; // tangent (or just missing it)
   // no tangent snapping inside: a shallow crossing has its two points far apart (√(2rδ))
-  const k = Math.sqrt(c.r * c.r - h * h);
+  const k = Math.sqrt((c.r - h) * (c.r + h));
   return [
     { x: fx - k * ux, y: fy - k * uy },
     { x: fx + k * ux, y: fy + k * uy },
@@ -236,9 +257,25 @@ function segmentsOf(vs: readonly Vertex[]): Seg[] {
     const a = vs[i] as Vertex;
     const b = vs[(i + 1) % n] as Vertex;
     if (same(a, b, EPS)) continue;
-    segs.push(toSeg(a, b, a.bulge));
+    const seg = toSeg(a, b, a.bulge);
+    if (seg.kind === 'arc' && seg.r > MAX_ARC_RADIUS) segs.push(...flatten(seg));
+    else segs.push(seg);
   }
   return segs;
+}
+
+/** Lines through points of the arc, each within FLAT_TOL of it. */
+function flatten(s: ArcSeg): LineSeg[] {
+  const step = 2 * Math.acos(1 - FLAT_TOL / s.r); // sweep of one chord with sagitta FLAT_TOL
+  const count = Math.max(1, Math.ceil(Math.abs(s.sweep) / step));
+  const out: LineSeg[] = [];
+  let prev = s.p0;
+  for (let k = 1; k <= count; k++) {
+    const next = k === count ? s.p1 : pointAt(s, k / count);
+    out.push({ kind: 'line', p0: prev, p1: next });
+    prev = next;
+  }
+  return out;
 }
 
 interface BoxedSeg {
@@ -280,7 +317,9 @@ function selfIntersections(segs: readonly Seg[]): Point[][] {
   const splits: Point[][] = segs.map(() => []);
   const boxes = segs.map(boxed);
   // sweep along x: only pairs whose x ranges overlap are tested
-  const order = boxes.map((_, i) => i).sort((p, q) => (boxes[p] as BoxedSeg).minX - (boxes[q] as BoxedSeg).minX);
+  const order = boxes
+    .map((_, i) => i)
+    .sort((p, q) => (boxes[p] as BoxedSeg).minX - (boxes[q] as BoxedSeg).minX);
   for (let ka = 0; ka < n; ka++) {
     const oa = order[ka] as number;
     const maxX = (boxes[oa] as BoxedSeg).maxX + NODE_TOL;
@@ -336,6 +375,8 @@ function rawOffset(s: Seg, d: number): RawOffset {
   const q1 = { x: s.c.x + (s.p1.x - s.c.x) * k, y: s.c.y + (s.p1.y - s.c.y) * k };
   if (r2 > NODE_TOL)
     return { seg: { ...s, p0: q0, p1: q1, r: r2 }, start: q0, end: q1, collapsed: false };
+  // radius exactly |d|: the arc shrinks to its centre point (the tool just fits)
+  if (r2 >= -NODE_TOL) return { seg: undefined, start: s.c, end: s.c, collapsed: false };
   // collapsed: keep the loop connected with a straight connector; it is trimmed away later
   const seg: Seg | undefined = same(q0, q1) ? undefined : { kind: 'line', p0: q0, p1: q1 };
   return { seg, start: q0, end: q1, collapsed: true };
@@ -402,7 +443,8 @@ function stitch(pieces: readonly Seg[]): Seg[][] {
     const out: number[] = [];
     for (let k = 1; k < n; k++) {
       const idx = (cur + k) % n;
-      if (!used[idx] && !inPath.has(idx) && same((pieces[idx] as Seg).p0, end)) out.push(idx);
+      if (!used[idx] && !inPath.has(idx) && same((pieces[idx] as Seg).p0, end, STITCH_TOL))
+        out.push(idx);
     }
     return out;
   };
@@ -416,7 +458,7 @@ function stitch(pieces: readonly Seg[]): Seg[][] {
     let closed = false;
     while (path.length > 0 && budget-- > 0) {
       const cur = path[path.length - 1] as number;
-      if (path.length > 1 && same((pieces[cur] as Seg).p1, first)) {
+      if (path.length > 1 && same((pieces[cur] as Seg).p1, first, STITCH_TOL)) {
         closed = true;
         break;
       }
@@ -462,7 +504,9 @@ function mergeLoop(loop: readonly Seg[]): Seg[] {
     return false;
   };
   const merge = (a: Seg, b: Seg): Seg =>
-    a.kind === 'line' ? { kind: 'line', p0: a.p0, p1: b.p1 } : { ...a, p1: b.p1, sweep: a.sweep + (b as ArcSeg).sweep };
+    a.kind === 'line'
+      ? { kind: 'line', p0: a.p0, p1: b.p1 }
+      : { ...a, p1: b.p1, sweep: a.sweep + (b as ArcSeg).sweep };
 
   const out: Seg[] = [];
   for (const s of loop) {
@@ -509,13 +553,25 @@ export function offset(poly: Polyline, d: number): OffsetResult {
 
   const original = segmentsOf(poly.vertices);
   const dir: Orientation = original.length >= 2 ? orientation(poly) : 'none';
+  if (original.length >= 2 && isSelfIntersecting(original))
+    return {
+      ok: false,
+      reason: 'SELF_INTERSECTING',
+      message: 'Contour crosses or touches itself.',
+    };
   if (dir === 'none')
-    return { ok: false, reason: 'DEGENERATE', message: 'Contour has no area (fewer than 2 segments or zero area).' };
-  if (isSelfIntersecting(original))
-    return { ok: false, reason: 'SELF_INTERSECTING', message: 'Contour crosses or touches itself.' };
+    return {
+      ok: false,
+      reason: 'DEGENERATE',
+      message: 'Contour has no area (fewer than 2 segments or zero area).',
+    };
 
   if (Math.abs(d) < EPS)
-    return { ok: true, polylines: [{ closed: true, vertices: poly.vertices.map((v) => ({ ...v })) }], warnings: [] };
+    return {
+      ok: true,
+      polylines: [{ closed: true, vertices: poly.vertices.map((v) => ({ ...v })) }],
+      warnings: [],
+    };
 
   const absD = Math.abs(d);
   const warnings = new Set<OffsetWarning>();
