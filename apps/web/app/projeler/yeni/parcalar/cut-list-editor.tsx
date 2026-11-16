@@ -8,8 +8,10 @@ import {
   type ValidationIssue,
 } from '@nittcam/core';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { draftProject, fill, newPartId } from '../../../../lib/draft-project';
+import { draftProject, draftToolDiameter, fill, newPartId } from '../../../../lib/draft-project';
 import type { Messages } from '../../../../lib/messages';
+import { useNestingWorker } from '../../../../lib/use-nesting-worker';
+import { NestingPanel } from './nesting-panel';
 import { PastePanel } from './paste-panel';
 import { buttonClass } from './ui';
 
@@ -303,6 +305,11 @@ export function CutListEditor({ t }: { t: Text }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const focusNext = useRef<string | null>(null);
+  const runNesting = useNestingWorker();
+  const [nesting, setNesting] = useState(false);
+  const [nestMessage, setNestMessage] = useState<{ kind: 'error' | 'info'; text: string } | null>(
+    null,
+  );
   const pasteButton = useRef<HTMLButtonElement>(null);
 
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
@@ -368,6 +375,39 @@ export function CutListEditor({ t }: { t: Text }) {
       requestAnimationFrame(() => pasteButton.current?.focus());
     }
     return ok;
+  }
+
+  async function nest() {
+    const base = stack.project;
+    setNesting(true);
+    setNestMessage(null);
+    try {
+      const res = await runNesting(base, draftToolDiameter(base));
+      if (!res.ok) {
+        if (res.error !== 'terminated') {
+          setNestMessage({ kind: 'error', text: fill(t.nesting.failed, { error: res.error }) });
+        }
+        return;
+      }
+      const result = stack.executeApplied(
+        'runNesting',
+        res.applied,
+        { actor: 'user', at: new Date().toISOString() },
+        base,
+      );
+      if (!result.ok) {
+        setNestMessage(
+          result.error.code === 'STALE_BASE'
+            ? { kind: 'error', text: t.nesting.stale }
+            : { kind: 'error', text: fill(t.nesting.failed, { error: result.error.message }) },
+        );
+      } else if (!result.changed) {
+        setNestMessage({ kind: 'info', text: t.nesting.unchanged });
+      }
+      refresh();
+    } finally {
+      setNesting(false);
+    }
   }
 
   const issuesOf = (index: number) =>
@@ -505,6 +545,15 @@ export function CutListEditor({ t }: { t: Text }) {
         )}
         <p className="text-xs text-fg-muted">{t.shortcuts}</p>
       </section>
+
+      <NestingPanel
+        t={t.nesting}
+        project={project}
+        toolDiameter={draftToolDiameter(project)}
+        running={nesting}
+        message={nestMessage}
+        onRun={() => void nest()}
+      />
     </main>
   );
 }

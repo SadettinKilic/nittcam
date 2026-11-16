@@ -31,6 +31,7 @@ describe('nesting benchmark', () => {
         'median ms': times[Math.floor(RUNS / 2)],
       };
     });
-    console.table(rows);
+    // Core has no DOM/Node typings; the console exists in the Vitest worker.
+    (globalThis as unknown as { console: { table(data: unknown): void } }).console.table(rows);
   });
 });

@@ -3,3 +3,4 @@ export * from './types';
 export * from './fit';
 export { MaxRectsBin, GuillotineBin, compareScore, type Bin, type Fit, type FitRule } from './bins';
 export * from './nest';
+export * from './tool';

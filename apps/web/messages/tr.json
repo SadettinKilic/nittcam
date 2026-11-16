@@ -320,6 +320,23 @@
         "MIXED_DECIMALS": "Hem virgüllü hem noktalı ondalık sayılar var; değerleri kontrol edin.",
         "TOO_MANY_ROWS": "Bir seferde en fazla 2.000 satır eklenebilir; listeyi bölün."
       }
+    },
+    "nesting": {
+      "title": "Dizilim",
+      "run": "Diz",
+      "running": "Diziliyor…",
+      "help": "Parçaları plakalara yerleştirir (en az fire). Parça arası boşluk {gap} mm, kenar payı {margin} mm, takım çapı {tool} mm.",
+      "toolNote": "Takım çapı örnek makine profilinden gelir; proje sihirbazında seçilen makine kullanılacak.",
+      "none": "Henüz dizilim yok. \"Diz\" ile başlatın.",
+      "sheets": "Plaka sayısı",
+      "waste": "Toplam fire",
+      "utilisation": "Kullanım",
+      "percent": "%{value}",
+      "sheetLine": "Plaka {n}: {count} parça, fire %{waste}",
+      "unplaced": "{count} parça dizilimde yok (plakaya sığmıyor ya da dizilimden sonra eklendi).",
+      "stale": "Dizilim sürerken parçalar değişti; sonuç uygulanmadı. Yeniden \"Diz\"e basın.",
+      "failed": "Dizilim çalıştırılamadı: {error}",
+      "unchanged": "Dizilim zaten güncel."
     }
   }
 }
