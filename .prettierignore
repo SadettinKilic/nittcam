@@ -1,0 +1,12 @@
+pnpm-lock.yaml
+docs/
+.claude/
+tools/
+.team/
+CLAUDE.md
+**/.next/
+**/next-env.d.ts
+playwright-report/
+test-results/
+coverage/
+graphify-out/

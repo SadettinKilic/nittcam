@@ -1,0 +1,29 @@
+{
+  "name": "nittcam",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @nittcam/web dev",
+    "build": "pnpm --filter @nittcam/web build",
+    "test": "pnpm -r --if-present test",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "e2e": "pnpm build && pnpm --filter @nittcam/e2e e2e",
+    "team": "node tools/team-dashboard/server.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@next/eslint-plugin-next": "16.4.3",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.1.0",
+    "globals": "17.14.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1"
+  }
+}

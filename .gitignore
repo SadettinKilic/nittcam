@@ -17,3 +17,8 @@ graphify-out/
 .DS_Store
 Thumbs.db
 .team/HANDOFF.md
+# Next.js generated
+next-env.d.ts
+# Playwright
+blob-report/
+playwright/.cache/

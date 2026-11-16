@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "title": "NittCam",
+    "description": "CNC router için web tabanlı kesim programı"
+  },
+  "home": {
+    "title": "NittCam",
+    "subtitle": "Kesim listesinden G-code'a, tek ekranda.",
+    "status": "Kurulum aşamasında. Yakında burada projelerinizi göreceksiniz."
+  }
+}
