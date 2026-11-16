@@ -4,7 +4,16 @@
  * every insert sets `company_id` itself (a caller-supplied value is overwritten). The only
  * company-agnostic query is `companies.create`.
  */
-import { parseProject, type CommandLogEntry, type Project } from '@nittcam/core';
+import {
+  currentVerificationState,
+  parseMachineProfile,
+  parseProject,
+  type CommandLogEntry,
+  type MachineProfile,
+  type MachineProfileIssue,
+  type Project,
+  type VerificationState,
+} from '@nittcam/core';
 import { and, asc, desc, eq, max, sql } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import type { Db } from './client';
@@ -53,6 +62,14 @@ export class NotFound extends Error {
     readonly id: string,
   ) {
     super(`${entity} ${id} not found`);
+  }
+}
+
+/** The machine profile JSON failed core `parseMachineProfile`; nothing was written. */
+export class InvalidMachineProfile extends Error {
+  override readonly name = 'InvalidMachineProfile';
+  constructor(readonly issues: MachineProfileIssue[]) {
+    super(`invalid machine profile: ${issues.map((i) => `${i.path}: ${i.message}`).join('; ')}`);
   }
 }
 
@@ -177,6 +194,25 @@ export const companies = {
       .values(stripOwned(values) as NewCompany)
       .returning();
     return rows[0] as Company;
+  },
+  /**
+   * Single-user bootstrap (D-016, until auth in T023): returns the company with this fixed id,
+   * creating it on first use. `created` is true only for the call that inserted it, so the caller
+   * can seed it exactly once even when two requests race.
+   */
+  async ensure(
+    db: Db,
+    id: string,
+    values: NewCompany,
+  ): Promise<{ company: Company; created: boolean }> {
+    const inserted = await db
+      .insert(companiesTable)
+      .values({ ...(stripOwned(values) as NewCompany), id })
+      .onConflictDoNothing({ target: companiesTable.id })
+      .returning();
+    if (inserted[0]) return { company: inserted[0], created: true };
+    const rows = await db.select().from(companiesTable).where(eq(companiesTable.id, id));
+    return { company: rows[0] as Company, created: false };
   },
 };
 
@@ -321,7 +357,132 @@ export interface NewProfileVersion {
   postVersion: string;
 }
 
+/** A transaction handle (same API as `Db`). */
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+/** A machine with its latest profile version and derived verification state (§7.3). */
+export interface MachineWithProfile {
+  machine: MachineRow;
+  version: MachineProfileVersionRow;
+  profile: MachineProfile;
+  state: VerificationState;
+}
+
+function validMachineProfile(json: unknown): MachineProfile {
+  const result = parseMachineProfile(json);
+  if (!result.ok) throw new InvalidMachineProfile(result.issues);
+  return result.profile;
+}
+
+/**
+ * Columns written for a profile version. The post config itself arrives with T017; until then the
+ * version row records which post (`id`) and which post version the profile points at (D-016).
+ */
+function versionValues(profile: MachineProfile): NewProfileVersion {
+  return {
+    profile: profile as unknown as Record<string, unknown>,
+    postConfig: { id: profile.post.id },
+    postVersion: profile.post.version,
+  };
+}
+
+/** Denormalised machine columns kept in step with the latest profile. */
+function machineColumns(profile: MachineProfile) {
+  return {
+    name: profile.identity.name,
+    brand: profile.identity.brand,
+    model: profile.identity.model,
+  };
+}
+
 function machinesRepo(db: Db, companyId: string) {
+  const ownedMachine = (machineId: string) =>
+    and(eq(machinesTable.id, machineId), eq(machinesTable.companyId, companyId));
+  const versionsOf = (machineId: string) =>
+    and(
+      eq(machineProfileVersions.machineId, machineId),
+      eq(machineProfileVersions.companyId, companyId),
+    );
+
+  async function insertVersion(
+    tx: Tx,
+    machineId: string,
+    values: NewProfileVersion,
+  ): Promise<MachineProfileVersionRow> {
+    const last = await tx
+      .select({ v: max(machineProfileVersions.version) })
+      .from(machineProfileVersions)
+      .where(versionsOf(machineId));
+    const rows = await tx
+      .insert(machineProfileVersions)
+      .values({ companyId, machineId, version: (last[0]?.v ?? 0) + 1, ...values })
+      .returning();
+    return rows[0] as MachineProfileVersionRow;
+  }
+
+  /** Replaces the machine's `tools` rows with the tool table of `profile` (same transaction). */
+  async function syncTools(tx: Tx, machineId: string, profile: MachineProfile): Promise<void> {
+    await tx
+      .delete(tools)
+      .where(and(eq(tools.machineId, machineId), eq(tools.companyId, companyId)));
+    await tx.insert(tools).values(
+      profile.tools.map((t) => ({
+        companyId,
+        machineId,
+        number: t.number,
+        type: t.type,
+        diameter: t.diameter,
+      })),
+    );
+  }
+
+  /** Latest recorded verification of the machine, with the profile it was recorded against. */
+  async function lastVerification(machineId: string) {
+    const rows = await db
+      .select({ stage: validations.stage, profile: machineProfileVersions.profile })
+      .from(validations)
+      .innerJoin(
+        machineProfileVersions,
+        and(
+          eq(validations.machineProfileVersionId, machineProfileVersions.id),
+          eq(validations.companyId, machineProfileVersions.companyId),
+        ),
+      )
+      .where(
+        and(eq(validations.companyId, companyId), eq(machineProfileVersions.machineId, machineId)),
+      )
+      .orderBy(desc(validations.createdAt))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    const parsed = parseMachineProfile(row.profile);
+    // A version that predates the T010 schema cannot be compared: count it as changed.
+    return { stage: row.stage, profile: parsed.ok ? parsed.profile : null };
+  }
+
+  async function withProfile(machine: MachineRow): Promise<MachineWithProfile | null> {
+    const versions = await db
+      .select()
+      .from(machineProfileVersions)
+      .where(versionsOf(machine.id))
+      .orderBy(desc(machineProfileVersions.version))
+      .limit(1);
+    const version = versions[0];
+    if (!version) return null;
+    const parsed = parseMachineProfile(version.profile);
+    if (!parsed.ok) return null;
+    const last = await lastVerification(machine.id);
+    let state: VerificationState = 'draft';
+    if (last && last.profile === null) state = 'reverify_needed';
+    else if (last && last.profile) {
+      state = currentVerificationState(parsed.profile, {
+        stage: last.stage,
+        profile: last.profile,
+      });
+    }
+    return { machine, version, profile: parsed.profile, state };
+  }
+
   return {
     ...mutable(db, companyId, machinesTable),
     /**
@@ -337,29 +498,9 @@ function machinesRepo(db: Db, companyId: string) {
         const owner = await tx
           .select({ id: machinesTable.id })
           .from(machinesTable)
-          .where(and(eq(machinesTable.id, machineId), eq(machinesTable.companyId, companyId)));
+          .where(ownedMachine(machineId));
         if (owner.length === 0) throw new NotFound('machine', machineId);
-        const last = await tx
-          .select({ v: max(machineProfileVersions.version) })
-          .from(machineProfileVersions)
-          .where(
-            and(
-              eq(machineProfileVersions.machineId, machineId),
-              eq(machineProfileVersions.companyId, companyId),
-            ),
-          );
-        const rows = await tx
-          .insert(machineProfileVersions)
-          .values({
-            companyId,
-            machineId,
-            version: (last[0]?.v ?? 0) + 1,
-            profile: values.profile,
-            postConfig: values.postConfig,
-            postVersion: values.postVersion,
-          })
-          .returning();
-        return rows[0] as MachineProfileVersionRow;
+        return insertVersion(tx, machineId, values);
       });
     },
     /** All versions of a machine, oldest first. */
@@ -367,13 +508,73 @@ function machinesRepo(db: Db, companyId: string) {
       return db
         .select()
         .from(machineProfileVersions)
-        .where(
-          and(
-            eq(machineProfileVersions.machineId, machineId),
-            eq(machineProfileVersions.companyId, companyId),
-          ),
-        )
+        .where(versionsOf(machineId))
         .orderBy(asc(machineProfileVersions.version));
+    },
+    /**
+     * Creates a machine from a profile (validated with core `parseMachineProfile`): the machine
+     * row, profile version 1 and its tools, in one transaction. Throws `InvalidMachineProfile`.
+     */
+    async createWithProfile(json: unknown): Promise<MachineWithProfile> {
+      const profile = validMachineProfile(json);
+      const { machine, version } = await db.transaction(async (tx) => {
+        const rows = await tx
+          .insert(machinesTable)
+          .values({ companyId, ...machineColumns(profile) })
+          .returning();
+        const machine = rows[0] as MachineRow;
+        const version = await insertVersion(tx, machine.id, versionValues(profile));
+        await syncTools(tx, machine.id, profile);
+        return { machine, version };
+      });
+      return { machine, version, profile, state: 'draft' };
+    },
+    /**
+     * Saves an edited profile as a new immutable version (`max + 1`), refreshes the machine's
+     * name/brand/model and replaces its `tools` rows, in one transaction. The returned `state`
+     * is re-derived: a verified machine whose profile, tool set or post version changed is now
+     * `reverify_needed` (§7.3). Throws `InvalidMachineProfile` or `NotFound`.
+     */
+    async saveProfile(machineId: string, json: unknown): Promise<MachineWithProfile> {
+      const profile = validMachineProfile(json);
+      const machine = await db.transaction(async (tx) => {
+        const rows = await tx
+          .update(machinesTable)
+          .set({ ...machineColumns(profile), updatedAt: new Date() })
+          .where(ownedMachine(machineId))
+          .returning();
+        const machine = rows[0];
+        if (!machine) throw new NotFound('machine', machineId);
+        await insertVersion(tx, machineId, versionValues(profile));
+        await syncTools(tx, machineId, profile);
+        return machine;
+      });
+      const result = await withProfile(machine);
+      if (!result) throw new NotFound('machine', machineId);
+      return result;
+    },
+    /** A machine with its latest profile version and verification state; `null` if not found. */
+    async getWithProfile(machineId: string): Promise<MachineWithProfile | null> {
+      const rows = await db.select().from(machinesTable).where(ownedMachine(machineId));
+      const machine = rows[0];
+      return machine ? withProfile(machine) : null;
+    },
+    /**
+     * Every machine that has a valid profile version, oldest first, with its verification state.
+     * Machines without a T010 profile (none exist outside tests) are left out.
+     */
+    async listWithProfiles(): Promise<MachineWithProfile[]> {
+      const machines = await db
+        .select()
+        .from(machinesTable)
+        .where(eq(machinesTable.companyId, companyId))
+        .orderBy(asc(machinesTable.createdAt), asc(machinesTable.name));
+      const out: MachineWithProfile[] = [];
+      for (const m of machines) {
+        const item = await withProfile(m);
+        if (item) out.push(item);
+      }
+      return out;
     },
   };
 }

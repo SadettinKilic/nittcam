@@ -6,3 +6,4 @@ export * from './client';
 export * as schema from './schema';
 export * from './tenant';
 export * from './storage';
+export * from './seed';
