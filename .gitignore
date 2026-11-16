@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+graphify-out/
+.claude/settings.local.json
+# team runtime state (local; read by the dashboard)
+.team/*.json
+.team/*.tmp
+.DS_Store
+Thumbs.db
+.team/HANDOFF.md
