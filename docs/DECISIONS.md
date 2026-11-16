@@ -21,3 +21,6 @@ Node ≥ 22 (CI runs on Node 24 LTS), pnpm 9 via the `packageManager` field. Typ
 The free plan has no branch protection on private repos. Instead: Claude's `.claude/settings.json` denies pushes to `main` and force pushes; every change goes through a PR; the PO merges only after green CI and tester PASS. Revisit if the owner moves to GitHub Pro.
 
 ## D-007 M0 backlog approved by the owner (2026-11-16)
+
+## D-008 Toolchain versions for the skeleton (2026-11-16, T001)
+Versions are pinned exactly and are stable releases at least two weeks old. **TypeScript 6.0** (not 7.0): typescript-eslint 8 supports `typescript <6.1`. **ESLint 9.39** (not 10): `eslint-plugin-react` and `eslint-config-next` deps are not ESLint 10 ready; we use `@next/eslint-plugin-next` + `eslint-plugin-react-hooks` + typescript-eslint directly in one root flat config. Next.js 16.4 (Turbopack), React 19.3, Tailwind 4.3, Vitest 5.0, Playwright 1.64. Core purity is enforced with `no-restricted-imports` on `packages/core/**` (no `apps/*`, db, ui, React/Next). Translations are plain JSON (`apps/web/messages/tr.json`) read through a tiny typed helper; an i18n library (e.g. next-intl) is deferred until a second locale is needed. Revisit ESLint 10 / TS 7 when the plugins support them.
