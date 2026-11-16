@@ -115,6 +115,22 @@ const commandArb = fc.oneof(
       ),
     }),
   }),
+  // T012 nesting commands.
+  fc.record({
+    name: fc.constant('setNestingOptions'),
+    params: fc.record(
+      {
+        mode: fc.constantFrom('minWaste', 'fastest', 'minToolChanges'),
+        gap: fc.double({ min: 0, max: 30, noNaN: true }),
+        margin: fc.double({ min: 0, max: 50, noNaN: true }),
+      },
+      { requiredKeys: [] },
+    ),
+  }),
+  fc.record({
+    name: fc.constant('runNesting'),
+    params: fc.record({ toolDiameter: fc.constantFrom(0, 3, 6, 8, 60) }),
+  }),
 );
 
 const contextArb: fc.Arbitrary<CommandContext> = fc.record({

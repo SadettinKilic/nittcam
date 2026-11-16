@@ -155,6 +155,8 @@ describe('T005 tester: AI tool definitions', () => {
         'addPart',
         'duplicatePart',
         'importCutList',
+        'runNesting',
+        'setNestingOptions',
         'removePart',
         'setMachine',
         'setMaterial',

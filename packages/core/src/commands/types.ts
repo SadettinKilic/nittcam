@@ -21,7 +21,7 @@ export const commandContextSchema = z.strictObject({
 export type CommandContext = z.infer<typeof commandContextSchema>;
 
 /** Where a command lives (`packages/core/src/commands/<area>/`). */
-export type CommandArea = 'plate' | 'part';
+export type CommandArea = 'plate' | 'part' | 'nesting';
 
 /** Definition of one command. `params` is the single source for validation and the AI tool schema. */
 export interface CommandDefinition<S extends z.ZodType = z.ZodType> {
@@ -65,7 +65,8 @@ export type CommandErrorCode =
   | 'INVALID_CONTEXT'
   | 'INVALID_PARAMS'
   | 'PRECONDITION_FAILED'
-  | 'INVALID_RESULT';
+  | 'INVALID_RESULT'
+  | 'STALE_BASE';
 
 /** Why a command was rejected. The project is unchanged when this is returned. */
 export interface CommandError {

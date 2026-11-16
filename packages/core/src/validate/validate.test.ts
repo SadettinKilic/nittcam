@@ -42,6 +42,8 @@ describe('(a) part larger than the sheet', () => {
     project((j) => {
       j.layout.sheets = [];
       j.stock.sheet = { width: 2800, height: 2100, grain: 0 };
+      // Raw-sheet rules first; the margin (T012) is tested below.
+      j.nesting.margin = 0;
       j.parts = [part];
     });
 
@@ -133,6 +135,7 @@ describe('(a) freeform parts use the arc-aware bbox (T006)', () => {
     project((j) => {
       j.layout.sheets = [];
       j.stock.sheet = { width, height, grain: 0 };
+      j.nesting.margin = 0;
       j.parts = j.parts.filter((p: any) => p.id === 'arch-panel');
       j.parts[0].grainLock = grainLock;
     }, mixed);
@@ -236,5 +239,47 @@ describe('(c) hole / groove vs tool diameter (spec §4.5, T010)', () => {
     expect(new CommandStack(p, { machine }).issues.map((i) => i.code)).toEqual([
       'HOLE_SMALLER_THAN_TOOL',
     ]);
+  });
+});
+
+describe('(a) part larger than the sheet subtracts nesting.margin (T012)', () => {
+  const withMargin = (margin: number, part: object) =>
+    project((j) => {
+      j.layout.sheets = [];
+      j.stock.sheet = { width: 2800, height: 2100, grain: 0 };
+      j.nesting.margin = margin;
+      j.parts = [part];
+    });
+
+  it('a part that fits the raw sheet but not the sheet minus the margin: error', () => {
+    const issues = partLargerThanSheet(withMargin(10, rectPart('p', 2790, 1000, true)));
+    expect(issues.map((i) => i.code)).toEqual(['PART_LARGER_THAN_SHEET']);
+    expect(issues[0]?.message).toContain('2780 × 2080 mm usable area');
+    expect(issues[0]?.message).toContain('margin 10 mm');
+  });
+
+  it('an exact fit in the usable area passes, as is and turned', () => {
+    expect(partLargerThanSheet(withMargin(10, rectPart('p', 2780, 2080, true)))).toEqual([]);
+    expect(partLargerThanSheet(withMargin(10, rectPart('p', 2080, 2780, false)))).toEqual([]);
+    expect(partLargerThanSheet(withMargin(10, rectPart('p', 2080, 2780, true)))).toHaveLength(1);
+  });
+
+  it('freeform parts use their bbox against the usable area', () => {
+    const p = project((j) => {
+      j.layout.sheets = [];
+      j.stock.sheet = { width: 620, height: 820, grain: 0 };
+      j.nesting.margin = 10;
+      j.parts = j.parts.filter((x: any) => x.id === 'arch-panel');
+      j.parts[0].grainLock = true;
+    }, mixed);
+    expect(partLargerThanSheet(p)).toEqual([]);
+    const tight = project((j) => {
+      j.layout.sheets = [];
+      j.stock.sheet = { width: 620, height: 820, grain: 0 };
+      j.nesting.margin = 11;
+      j.parts = j.parts.filter((x: any) => x.id === 'arch-panel');
+      j.parts[0].grainLock = true;
+    }, mixed);
+    expect(partLargerThanSheet(tight).map((i) => i.path)).toEqual(['parts[0].outline']);
   });
 });

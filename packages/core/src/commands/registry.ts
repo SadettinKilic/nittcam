@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { formatPath, projectSchema, type Project } from '../schema';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
 import { addPart, duplicatePart, importCutList, removePart, updatePart } from './part';
+import { runNesting, setNestingOptions } from './nesting';
 import { setMachine, setMaterial, setSheetSize, setThickness } from './plate';
 import {
   commandContextSchema,
@@ -31,6 +32,8 @@ export const COMMANDS = {
   removePart,
   duplicatePart,
   importCutList,
+  setNestingOptions,
+  runNesting,
 } as const satisfies Record<string, CommandDefinition>;
 
 export type CommandName = keyof typeof COMMANDS;
@@ -216,6 +219,78 @@ export class CommandStack {
     this.redoSteps = [];
     this.entries.push(entry);
     this.setProject(result.project);
+    return { ok: true, project: this.current, entry, issues: this.currentIssues, changed: true };
+  }
+
+  /**
+   * Records a command that was applied elsewhere (e.g. `runNesting` computed in a Web Worker with
+   * `applyCommand`, spec §8.2) without computing it again. `basedOn` must be the project the
+   * command was applied to and still be the current project; otherwise the result is stale and is
+   * rejected (`STALE_BASE`). The patched project is re-checked against the schema, so an invalid
+   * result is rejected like in `execute`.
+   */
+  executeApplied(
+    name: string,
+    applied: Pick<AppliedCommand, 'params' | 'patches' | 'inversePatches'>,
+    context: CommandContext,
+    basedOn: Project,
+  ): ExecuteResult {
+    const ctx = commandContextSchema.safeParse(context);
+    if (!ctx.success) {
+      return {
+        ok: false,
+        error: {
+          code: 'INVALID_CONTEXT',
+          message: 'invalid command context',
+          issues: zodIssues(ctx.error, ['context']),
+        },
+      };
+    }
+    if (!isCommandName(name)) {
+      return {
+        ok: false,
+        error: { code: 'UNKNOWN_COMMAND', message: `unknown command "${name}"`, issues: [] },
+      };
+    }
+    if (basedOn !== this.current) {
+      return {
+        ok: false,
+        error: {
+          code: 'STALE_BASE',
+          message: `${name} was computed for an older project state`,
+          issues: [],
+        },
+      };
+    }
+    const entry: CommandLogEntry = {
+      command: name,
+      params: applied.params,
+      actor: ctx.data.actor,
+      at: ctx.data.at,
+    };
+    if (applied.patches.length === 0) {
+      return { ok: true, project: this.current, entry, issues: this.currentIssues, changed: false };
+    }
+    const next = applyPatches(this.current, applied.patches);
+    const check = projectSchema.safeParse(next);
+    if (!check.success) {
+      return {
+        ok: false,
+        error: {
+          code: 'INVALID_RESULT',
+          message: `${name} would make the project invalid`,
+          issues: zodIssues(check.error, []),
+        },
+      };
+    }
+    this.undoSteps.push({
+      entry,
+      patches: [...applied.patches],
+      inversePatches: [...applied.inversePatches],
+    });
+    this.redoSteps = [];
+    this.entries.push(entry);
+    this.setProject(next);
     return { ok: true, project: this.current, entry, issues: this.currentIssues, changed: true };
   }
 

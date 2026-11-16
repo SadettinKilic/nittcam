@@ -3,9 +3,10 @@
  * warning/error list. The schema stays permissive (D-010); rules that need data from more than one
  * place (stock + part, tool table + hole) live here. Pure: same project, same list.
  */
-import { bbox, contour, EPS } from '../geometry';
+import { EPS } from '../geometry';
 import { findTool, type MachineProfile } from '../machine';
-import type { Hole, Part, Project } from '../schema';
+import { fitsUsable, partBoxSize, usableSize } from '../nesting/fit';
+import type { Hole, Project } from '../schema';
 import { formatPath } from '../schema';
 
 export type ValidationSeverity = 'error' | 'warning';
@@ -38,43 +39,37 @@ export interface ValidationContext {
 /** A rule inspects the project and returns its issues (possibly none). */
 export type ValidationRule = (project: Project, context?: ValidationContext) => ValidationIssue[];
 
-/** Width/height of a part's bounding box in its local frame (arc-aware for freeform outlines). */
-function partSize(part: Part): { w: number; h: number } {
-  if (part.kind === 'rect') return { w: part.params.w, h: part.params.h };
-  const box = bbox(contour(part.outline));
-  return { w: box.maxX - box.minX, h: box.maxY - box.minY };
-}
-
 /** A size for messages: at most 3 decimals (EPS = 0.001 mm), no trailing zeros. */
 function mm(v: number): string {
   return String(Number(v.toFixed(3)));
 }
 
-/** Fits within EPS: a bbox computed from arcs may overshoot an exact fit by rounding. */
-function fits(size: number, room: number): boolean {
-  return size <= room + EPS;
-}
-
 /**
- * (a) A part that fits on the sheet in no allowed orientation (spec §5.4 "parça plakadan büyük mü").
- * A grain-locked part may only turn 0°/180° (spec §6.2), so w must fit the width and h the height.
- * A free part may also turn 90°. Freeform parts use the arc-aware bbox of their outline (T006).
- * Margin and gap are a nesting concern and are not counted here (T012).
+ * (a) A part that fits the usable sheet area in no allowed orientation (spec §5.4 "parça plakadan
+ * büyük mü"). The usable area is the sheet minus `nesting.margin` on every side (T012, D-019),
+ * the same room the placer has, so a part flagged here is exactly a part the placer reports
+ * `TOO_LARGE`. A grain-locked part may only turn 0°/180° (spec §6.2), so w must fit the width and
+ * h the height; a free part may also turn 90°. Freeform parts use the arc-aware bbox of their
+ * outline (T006). The gap and tool diameter only matter between parts and are not counted.
  */
 export const partLargerThanSheet: ValidationRule = (project) => {
   const { width, height } = project.stock.sheet;
+  const { margin } = project.nesting;
+  const usable = usableSize(project.stock.sheet, margin);
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
-    const size = partSize(part);
-    const fitsAsIs = fits(size.w, width) && fits(size.h, height);
-    const fitsTurned = !part.grainLock && fits(size.h, width) && fits(size.w, height);
-    if (fitsAsIs || fitsTurned) return;
+    const size = partBoxSize(part);
+    if (fitsUsable(size.w, size.h, part.grainLock, usable)) return;
     const how = part.grainLock ? 'grain-locked, no 90° turn' : 'in any orientation';
+    const room =
+      margin > 0
+        ? `the ${mm(usable.width)} × ${mm(usable.height)} mm usable area of the ${width} × ${height} mm sheet (margin ${mm(margin)} mm)`
+        : `the ${width} × ${height} mm sheet`;
     issues.push({
       code: 'PART_LARGER_THAN_SHEET',
       severity: 'error',
       path: formatPath(['parts', i, part.kind === 'rect' ? 'params' : 'outline']),
-      message: `part "${part.id}" (${mm(size.w)} × ${mm(size.h)} mm) does not fit on the ${width} × ${height} mm sheet (${how})`,
+      message: `part "${part.id}" (${mm(size.w)} × ${mm(size.h)} mm) does not fit on ${room} (${how})`,
     });
   });
   return issues;
