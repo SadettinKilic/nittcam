@@ -8,6 +8,8 @@ Web CAM for CNC routers: cut list / drawing / DXF / AI chat → nesting → tool
 - **dev** subagent (`.claude/agents/dev.md`): full-stack implementation and unit tests.
 - **tester** subagent (`.claude/agents/tester.md`): tests UI and backend, does the G-code safety review, and writes test files only.
 - Flow per task: PO picks a task from `docs/BACKLOG.md` → dev (task branch, PR) → tester → on failure back to dev (max 3 rounds, then ask the owner) → PO reviews CI and merges. Agents run **sequentially**, never in parallel (usage limits).
+- **Models (owner's rule):** architecture decisions, planning and design reviews use the most capable model in the plan at no extra cost (Opus); dev = Opus; tester = Sonnet.
+- **Usage limit:** when an agent stops on a usage limit, the PO runs `node tools/team/status.mjs limit on "<HH:MM reset>"`, and after the reset `limit off`. The dashboard also turns red by itself when the status line reports a limit at 100%.
 - Everyone reports progress: `node tools/team/status.mjs <po|dev|tester> <state> "<task>" "<message>"`. States: idle, planning, coding, testing, reviewing, blocked, done.
 
 ## Resume after a usage limit or a new session ("devam")

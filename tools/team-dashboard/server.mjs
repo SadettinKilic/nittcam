@@ -1,18 +1,23 @@
 #!/usr/bin/env node
 // Zero-dependency local server for the team dashboard: http://localhost:4321
 import { createServer } from 'node:http';
+import { execSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const stateFile = join(here, '..', '..', '.team', 'state.json');
+let root = join(here, '..', '..');
+try { root = dirname(execSync('git rev-parse --path-format=absolute --git-common-dir', { cwd: here, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()); } catch {}
+const stateFile = join(root, '.team', 'state.json');
 const port = Number(process.env.PORT || 4321);
 
 createServer(async (req, res) => {
   try {
     if (req.url.startsWith('/state.json')) {
-      const body = await readFile(stateFile, 'utf8').catch(() => '{}');
+      let st = {}; try { st = JSON.parse(await readFile(stateFile, 'utf8')); } catch {}
+      try { st.limits = JSON.parse(await readFile(join(dirname(stateFile), 'limits.json'), 'utf8')); } catch {}
+      const body = JSON.stringify(st);
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
       return res.end(body);
     }
