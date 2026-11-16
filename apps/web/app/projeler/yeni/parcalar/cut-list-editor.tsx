@@ -11,11 +11,13 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 import { draftProject, draftToolDiameter, fill, newPartId } from '../../../../lib/draft-project';
 import type { Messages } from '../../../../lib/messages';
 import { useNestingWorker } from '../../../../lib/use-nesting-worker';
+import { LayoutView, type LockRequest } from '../../../../components/layout-view/layout-view';
 import { NestingPanel } from './nesting-panel';
 import { PastePanel } from './paste-panel';
 import { buttonClass } from './ui';
 
 type Text = Messages['cutList'];
+type LayoutText = Messages['layout'];
 type EdgeKey = 'top' | 'right' | 'bottom' | 'left';
 
 const EDGES: readonly EdgeKey[] = ['top', 'right', 'bottom', 'left'];
@@ -299,8 +301,13 @@ function isTextField(target: EventTarget | null): boolean {
   );
 }
 
-export function CutListEditor({ t }: { t: Text }) {
-  const [stack] = useState(() => new CommandStack(draftProject()));
+export function CutListEditor({ t, layoutText }: { t: Text; layoutText: LayoutText }) {
+  // The validation context carries the nesting tool diameter, so LOCKED_PLACEMENT_INVALID checks
+  // the same spacing the placer keeps (D-020).
+  const [stack] = useState(() => {
+    const start = draftProject();
+    return new CommandStack(start, { toolDiameter: draftToolDiameter(start) });
+  });
   const [, setVersion] = useState(0);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -554,6 +561,18 @@ export function CutListEditor({ t }: { t: Text }) {
         message={nestMessage}
         onRun={() => void nest()}
       />
+
+      {project.layout.sheets.length > 0 ? (
+        <LayoutView
+          t={layoutText}
+          project={project}
+          toolDiameter={draftToolDiameter(project)}
+          issues={stack.issues}
+          onLock={(req: LockRequest) => run('lockPlacement', req)}
+          onRenest={() => void nest()}
+          renesting={nesting}
+        />
+      ) : null}
     </main>
   );
 }

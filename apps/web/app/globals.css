@@ -19,6 +19,15 @@
   --color-warn-bg: #fdf1d8;
   --color-info: #2f4f7a;
   --color-info-bg: #e8eef7;
+  /* Layout view (T013): sheet, margin band, waste, parts. Konva reads these at runtime. */
+  --color-sheet-waste: #efe9dc;
+  --color-sheet-margin: #d9d1bf;
+  --color-sheet-edge: #8a8371;
+  --color-part: #f3d9b8;
+  --color-part-stroke: #6b4a2b;
+  --color-part-locked: #c9dbef;
+  --color-part-locked-stroke: #2f4f7a;
+  --color-grid: #e2dccd;
   --radius-card: 0.75rem;
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }

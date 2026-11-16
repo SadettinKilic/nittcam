@@ -9,4 +9,10 @@ export {
   importCutList,
   MAX_IMPORT_ROWS,
 } from './part';
-export { setNestingOptions, runNesting, runNestingParamsSchema } from './nesting';
+export {
+  setNestingOptions,
+  runNesting,
+  runNestingParamsSchema,
+  lockPlacement,
+  lockPlacementParamsSchema,
+} from './nesting';

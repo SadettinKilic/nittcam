@@ -12,7 +12,7 @@ const percent = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 /**
  * Minimal nesting panel (T012): the "Diz" button and the result of the current layout (sheet
  * count, waste %). The figures are derived from the project, so undo/redo update them too. The
- * visual layout view comes with T013.
+ * visual layout view (T013) is rendered below this panel.
  */
 export function NestingPanel({
   t,

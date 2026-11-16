@@ -3,7 +3,7 @@ import { original } from 'immer';
 import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
 import { nestProject } from '../../nesting/nest';
-import { nestingSchema, type Project } from '../../schema';
+import { nestingSchema, placementSchema, type Project } from '../../schema';
 import { defineCommand } from '../types';
 
 /** Sets the nesting goal, part gap and sheet margin. At least one field is required. */
@@ -59,5 +59,59 @@ export const runNesting = defineCommand({
     // Same layout as stored (a re-run without changes): leave the draft untouched, so the command
     // records no undo step.
     if (JSON.stringify(layout) !== JSON.stringify(project.layout)) draft.layout = layout;
+  },
+});
+
+export const lockPlacementParamsSchema = z
+  .strictObject({
+    partId: placementSchema.shape.partId,
+    /** Which copy of the part. */
+    index: placementSchema.shape.index,
+    /** New bottom-left corner of the rotated bounding box, mm (sheet frame). Pass x and y together. */
+    x: placementSchema.shape.x.optional(),
+    y: placementSchema.shape.y.optional(),
+    rot: placementSchema.shape.rot.optional(),
+    /** Lock (default) or unlock the placement. */
+    locked: z.boolean({ error: 'must be true or false' }).default(true),
+  })
+  .refine((p) => (p.x === undefined) === (p.y === undefined), {
+    error: 'pass x and y together',
+  });
+
+/**
+ * Manual intervention (spec §6.2 "Elle müdahale"): moves a placed part copy and locks it, or only
+ * toggles its lock. One undo step. Re-nesting never moves a locked placement. The position is not
+ * judged here (the command has no tool diameter); the `LOCKED_PLACEMENT_INVALID` rule reports a
+ * locked placement in the margin, off the sheet or too close to another part, and the layout view
+ * refuses such drops before calling this. Not an AI tool: placements are geometry (spec §5.4).
+ */
+export const lockPlacement = defineCommand({
+  name: 'lockPlacement',
+  area: 'nesting',
+  description:
+    'Move a placed part copy to x, y (mm, sheet frame) with an optional rotation and lock it, or lock/unlock it in place.',
+  aiTool: false,
+  params: lockPlacementParamsSchema,
+  check: (project, params) =>
+    project.layout.sheets.some((sh) =>
+      sh.placements.some((p) => p.partId === params.partId && p.index === params.index),
+    )
+      ? undefined
+      : `copy ${params.index} of part "${params.partId}" is not placed`,
+  apply: (draft, params) => {
+    for (const sheet of draft.layout.sheets) {
+      const pl = sheet.placements.find(
+        (p) => p.partId === params.partId && p.index === params.index,
+      );
+      if (!pl) continue;
+      if (params.x !== undefined && params.y !== undefined) {
+        // Assign only real changes so an unchanged drop records no undo step.
+        if (pl.x !== params.x) pl.x = params.x;
+        if (pl.y !== params.y) pl.y = params.y;
+      }
+      if (params.rot !== undefined && pl.rot !== params.rot) pl.rot = params.rot;
+      if (pl.locked !== params.locked) pl.locked = params.locked;
+      return;
+    }
   },
 });

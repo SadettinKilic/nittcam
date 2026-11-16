@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { formatPath, projectSchema, type Project } from '../schema';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
 import { addPart, duplicatePart, importCutList, removePart, updatePart } from './part';
-import { runNesting, setNestingOptions } from './nesting';
+import { lockPlacement, runNesting, setNestingOptions } from './nesting';
 import { setMachine, setMaterial, setSheetSize, setThickness } from './plate';
 import {
   commandContextSchema,
@@ -34,6 +34,7 @@ export const COMMANDS = {
   importCutList,
   setNestingOptions,
   runNesting,
+  lockPlacement,
 } as const satisfies Record<string, CommandDefinition>;
 
 export type CommandName = keyof typeof COMMANDS;

@@ -240,7 +240,8 @@
     },
     "issues": {
       "PART_LARGER_THAN_SHEET": "Parça plakaya sığmıyor.",
-      "other": "Bu satırda bir sorun var."
+      "other": "Bu satırda bir sorun var.",
+      "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde."
     },
     "paste": {
       "title": "Excel'den yapıştır",
@@ -338,5 +339,65 @@
       "failed": "Dizilim çalıştırılamadı: {error}",
       "unchanged": "Dizilim zaten güncel."
     }
+  },
+  "layout": {
+    "title": "Plaka yerleşimi",
+    "help": "Bir parçayı seçip sürükleyerek yerini değiştirin; bıraktığınız yer uygunsa parça oraya kilitlenir. Kilitli parçalara \"Yeniden diz\" dokunmaz.",
+    "canvasLabel": "Plaka {n} dizilimi: {count} parça. Seçili parçayı ok tuşlarıyla 1 mm (Shift ile 10 mm) kaydırın, Enter ile uygulayın, Esc ile vazgeçin.",
+    "sheetTabs": "Plakalar",
+    "sheetTab": "Plaka {n}",
+    "sheetTabWaste": "fire %{waste}",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır",
+    "fit": "Ekrana sığdır",
+    "grid": "Milimetre ızgarası (100 mm)",
+    "renest": "Yeniden diz",
+    "renesting": "Diziliyor…",
+    "select": "Parça seç",
+    "selectNone": "Seçili parça yok",
+    "option": "{label} · {name}",
+    "unnamed": "(adsız)",
+    "info": {
+      "title": "Seçili parça",
+      "number": "No",
+      "name": "Ad",
+      "size": "Ölçü",
+      "sizeValue": "{w} × {h} mm",
+      "position": "Konum (sol alt köşe)",
+      "positionValue": "X {x} · Y {y} mm",
+      "rotation": "Dönüş",
+      "rotationValue": "{rot}°",
+      "locked": "Kilit",
+      "lockedYes": "Kilitli",
+      "lockedNo": "Serbest",
+      "grain": "Damar",
+      "grainYes": "Damar yönü kilitli",
+      "grainNo": "Serbest",
+      "lock": "Kilitle",
+      "unlock": "Kilidi aç",
+      "pending": "Yeni konum: X {x} · Y {y} mm. Enter ile uygula, Esc ile vazgeç."
+    },
+    "summary": "Plaka {n}: {count} parça, parça alanı {parts} m², fire {waste} m² (%{percent}).",
+    "total": "Toplam: {sheets} plaka, fire %{percent}, kullanım %{use}.",
+    "legend": {
+      "title": "Gösterim",
+      "part": "Parça",
+      "locked": "Kilitli parça",
+      "waste": "Fire alanı",
+      "margin": "Kenar payı ({margin} mm)",
+      "conflict": "Çakışma",
+      "sheetGrain": "Plaka damar yönü",
+      "partGrain": "Ok: damarı kilitli parça"
+    },
+    "drop": {
+      "locked": "Parça {label} yeni yerine kilitlendi (X {x} · Y {y} mm). Geri almak için \"Geri al\".",
+      "unchanged": "Parça yerinden oynamadı.",
+      "outsideSheet": "Buraya bırakılamaz: parça plakanın dışına taşıyor.",
+      "inMargin": "Buraya bırakılamaz: parça kenar payına ({margin} mm) giriyor.",
+      "conflict": "Buraya bırakılamaz: {others} parçasına {spacing} mm'den yakın (takım çapı + boşluk).",
+      "rejected": "Parça taşınamadı."
+    },
+    "lockedIssue": "Kilitli parça {label} geçersiz bir yerde (kenar payında, plaka dışında ya da başka parçaya çok yakın). Taşıyın ya da kilidini açıp yeniden dizin.",
+    "empty": "Dizilim yok."
   }
 }

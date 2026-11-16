@@ -162,7 +162,7 @@
           {
             "partId": "door-left",
             "index": 1,
-            "x": 414,
+            "x": 422,
             "y": 10,
             "rot": 0,
             "locked": false
@@ -170,7 +170,7 @@
           {
             "partId": "door-right",
             "index": 0,
-            "x": 818,
+            "x": 834,
             "y": 10,
             "rot": 0,
             "locked": true
@@ -178,7 +178,7 @@
           {
             "partId": "door-right",
             "index": 1,
-            "x": 1222,
+            "x": 1246,
             "y": 10,
             "rot": 180,
             "locked": false

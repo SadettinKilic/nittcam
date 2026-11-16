@@ -131,6 +131,21 @@ const commandArb = fc.oneof(
     name: fc.constant('runNesting'),
     params: fc.record({ toolDiameter: fc.constantFrom(0, 3, 6, 8, 60) }),
   }),
+  // T013 manual placement.
+  fc.record({
+    name: fc.constant('lockPlacement'),
+    params: fc.record(
+      {
+        partId: fc.constantFrom('door-left', 'door-right', 'arch-panel', 'tray', 'side', 'shelf'),
+        index: fc.integer({ min: 0, max: 3 }),
+        x: fc.integer({ min: -100, max: 3000 }),
+        y: fc.integer({ min: -100, max: 2200 }),
+        rot: fc.constantFrom(0, 90, 180, 270),
+        locked: fc.boolean(),
+      },
+      { requiredKeys: ['partId', 'index'] },
+    ),
+  }),
 );
 
 const contextArb: fc.Arbitrary<CommandContext> = fc.record({

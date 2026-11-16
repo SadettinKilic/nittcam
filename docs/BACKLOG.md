@@ -133,6 +133,7 @@ Acceptance:
 - [ ] drag + lock a part (`lockPlacement`); re-nest keeps locked parts
 - [ ] waste summary; Turkish labels; reduced motion respected
 - [ ] e2e: nest the shelf-set fixture → N parts and waste % shown
+- [ ] validate `LOCKED_PLACEMENT_INVALID` (error): a locked part in the margin, off the sheet, or closer than tool diameter + gap to another placed part; the drag-and-drop UI never commits an invalid drop (PO, from the T012 tester notes)
 
 ### T014 Toolpath model: outer contour, multi-pass, lead-in/out   [status: todo]
 Spec: §6.3 · Depends: T007, T010, T012 · Owner: dev
