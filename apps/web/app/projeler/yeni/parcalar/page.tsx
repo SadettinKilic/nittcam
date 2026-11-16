@@ -9,9 +9,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * Oluştur → Parçalar (spec §3.6 step 2, §4.1): the cut-list table and Excel/CSV paste.
+ * Oluştur → Parçalar (spec §3.6 step 2, §4.1): the cut-list table and Excel/CSV paste,
+ * nesting and the layout view (T013).
  * A standalone page until the wizard (T023) wraps it and saves the project.
  */
 export default function PartsPage() {
-  return <CutListEditor t={messages.cutList} />;
+  return <CutListEditor t={messages.cutList} layoutText={messages.layout} />;
 }
