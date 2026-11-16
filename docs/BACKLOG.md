@@ -54,6 +54,7 @@ Acceptance:
 - [ ] validation hook runs after each command and returns a warning list
 - [ ] property test: apply then undo restores the project exactly, for random command sequences
 - [ ] the command schemas export as JSON Schema (future AI tool definitions)
+- [ ] validation rule: blind pocket depth < thickness (§4.5)
 
 ### T006 Geometry core: bulge polyline   [status: todo]
 Spec: §6.1 · Depends: T001 · Owner: dev
