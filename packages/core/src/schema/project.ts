@@ -1,0 +1,309 @@
+/**
+ * Project JSON schema v1 (spec §9.2). All lengths are millimetres (spec §6.1).
+ * Validation only: no I/O, clock or randomness. Messages are English; the UI translates them.
+ */
+import { z } from 'zod';
+
+/** The schema version this build writes and reads natively. */
+export const LATEST_SCHEMA_VERSION = 1;
+
+// ---------------------------------------------------------------------------
+// Primitives
+// ---------------------------------------------------------------------------
+
+/** Any finite coordinate in mm (may be negative). */
+const coord = z.number({ error: 'must be a finite number (mm)' });
+
+/** A strictly positive length in mm. */
+const positiveMm = z
+  .number({ error: 'must be a number (mm)' })
+  .positive({ error: 'must be a positive length in mm' });
+
+/** A length in mm that may be zero. */
+const nonNegativeMm = z
+  .number({ error: 'must be a number (mm)' })
+  .nonnegative({ error: 'must be zero or a positive length in mm' });
+
+const nonEmptyId = z.string({ error: 'must be a string' }).min(1, { error: 'must not be empty' });
+
+const positiveInt = z
+  .number({ error: 'must be a number' })
+  .int({ error: 'must be an integer' })
+  .min(1, { error: 'must be an integer >= 1' });
+
+/** Grain direction in degrees. Free-angle grain is out of scope for now (spec §2.5). */
+const grainAngle = z.union([z.literal(0), z.literal(90)], { error: 'grain must be 0 or 90' });
+
+// ---------------------------------------------------------------------------
+// Geometry (spec §6.1): bulge polyline, closed implicitly
+// ---------------------------------------------------------------------------
+
+/** A polyline vertex; `bulge` = tan(θ/4) of the arc to the next vertex (0 = straight line). */
+export const vertexSchema = z.strictObject({
+  x: coord,
+  y: coord,
+  bulge: z.number({ error: 'bulge must be a finite number' }),
+});
+
+/**
+ * A closed contour as a vertex list (the last vertex connects back to the first).
+ * Two vertices are enough only when at least one segment is an arc (e.g. a full circle).
+ */
+export const contourSchema = z
+  .array(vertexSchema)
+  .min(2, { error: 'a contour needs at least 2 vertices' })
+  .refine((vs) => vs.length >= 3 || vs.some((v) => v.bulge !== 0), {
+    error: 'a contour with 2 vertices must contain an arc (non-zero bulge)',
+  });
+
+// ---------------------------------------------------------------------------
+// Holes (spec §4.5)
+// ---------------------------------------------------------------------------
+
+const holeBase = {
+  /** Diameter in mm. */
+  d: positiveMm,
+  /** Centre relative to the part's local origin (bottom-left), mm. */
+  cx: coord,
+  cy: coord,
+  /** Tool number in the machine profile. */
+  tool: positiveInt,
+};
+
+/** Blind pocket: the whole diameter cleared to `depth` (e.g. a 35 mm hinge cup). */
+export const pocketHoleSchema = z.strictObject({
+  type: z.literal('pocket'),
+  ...holeBase,
+  depth: positiveMm,
+});
+
+/** Through hole: the whole diameter cleared through the material; depth comes from stock + machine. */
+export const throughHoleSchema = z.strictObject({
+  type: z.literal('through'),
+  ...holeBase,
+});
+
+/** Ring groove along the circle of diameter `d`. */
+export const grooveHoleSchema = z.strictObject({
+  type: z.literal('groove'),
+  ...holeBase,
+  depth: positiveMm,
+  grooveWidth: positiveMm,
+});
+
+export const holeSchema = z.discriminatedUnion(
+  'type',
+  [pocketHoleSchema, throughHoleSchema, grooveHoleSchema],
+  { error: 'unknown hole type; expected "pocket", "through" or "groove"' },
+);
+
+// ---------------------------------------------------------------------------
+// Parts (spec §4.1, §4.3, §4.7, §4.8)
+// ---------------------------------------------------------------------------
+
+/** Edge band thickness per edge in mm; 0 = no band. */
+export const edgeBandSchema = z.strictObject({
+  top: nonNegativeMm,
+  right: nonNegativeMm,
+  bottom: nonNegativeMm,
+  left: nonNegativeMm,
+});
+
+/** A copy of a template as used in the project (spec §4.7). */
+export const templateRefSchema = z.strictObject({
+  templateId: nonEmptyId,
+  version: positiveInt,
+  params: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])),
+  /** Names of the template fields the user changed by hand (feeds the update conflict warning). */
+  overrides: z.array(z.string()),
+});
+
+const partBase = {
+  id: nonEmptyId,
+  name: z.string({ error: 'must be a string' }),
+  qty: positiveInt,
+  /** Grain-locked parts only rotate 0°/180° in nesting (spec §6.2). */
+  grainLock: z.boolean({ error: 'must be true or false' }),
+  /** Inner contours (windows, cut-outs), stored CW (spec §6.1). */
+  inners: z.array(contourSchema),
+  holes: z.array(holeSchema),
+  edgeBand: edgeBandSchema,
+  templates: z.array(templateRefSchema),
+};
+
+/** Parametric rectangle: `params` is the source; `outline` is derived (see deriveOutline). */
+export const rectParamsSchema = z
+  .strictObject({
+    w: positiveMm,
+    h: positiveMm,
+    /** Corner radius in mm; 0 = sharp corners. */
+    r: nonNegativeMm,
+  })
+  .refine((p) => p.r <= Math.min(p.w, p.h) / 2, {
+    error: 'corner radius must not exceed half of the shorter side',
+    path: ['r'],
+  });
+
+export const rectPartSchema = z.strictObject({
+  ...partBase,
+  kind: z.literal('rect'),
+  params: rectParamsSchema,
+  /** Optional cached outline; ignored as a source. Use deriveOutline(part). */
+  outline: z.array(vertexSchema).optional(),
+});
+
+/** Freeform part: `outline` is the source, stored CCW (spec §6.1). */
+export const freeformPartSchema = z.strictObject({
+  ...partBase,
+  kind: z.literal('freeform'),
+  outline: contourSchema,
+});
+
+export const partSchema = z.discriminatedUnion('kind', [rectPartSchema, freeformPartSchema], {
+  error: 'unknown part kind; expected "rect" or "freeform"',
+});
+
+// ---------------------------------------------------------------------------
+// Project sections
+// ---------------------------------------------------------------------------
+
+export const machineRefSchema = z.strictObject({
+  machineId: nonEmptyId,
+  profileVersion: positiveInt,
+});
+
+export const stockSchema = z.strictObject({
+  material: nonEmptyId,
+  thickness: positiveMm,
+  sheet: z.strictObject({
+    width: positiveMm,
+    height: positiveMm,
+    grain: grainAngle,
+  }),
+  useOffcuts: z.boolean({ error: 'must be true or false' }),
+});
+
+/** Nesting goal (spec §6.2). */
+export const nestingModeSchema = z.enum(['minWaste', 'fastest', 'minToolChanges'], {
+  error: 'nesting mode must be "minWaste", "fastest" or "minToolChanges"',
+});
+
+export const nestingSchema = z.strictObject({
+  mode: nestingModeSchema,
+  /** Gap between parts, mm. */
+  gap: nonNegativeMm,
+  /** Sheet edge margin, mm. */
+  margin: nonNegativeMm,
+});
+
+export const placementSchema = z.strictObject({
+  partId: nonEmptyId,
+  /** Which copy of the part (0 ≤ index < qty). */
+  index: z
+    .number({ error: 'must be a number' })
+    .int({ error: 'must be an integer' })
+    .nonnegative({ error: 'must be an integer >= 0' }),
+  x: coord,
+  y: coord,
+  rot: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)], {
+    error: 'rot must be 0, 90, 180 or 270',
+  }),
+  locked: z.boolean({ error: 'must be true or false' }),
+});
+
+/** Derived but stored, so manually locked placements survive (spec §9.2). */
+export const layoutSchema = z.strictObject({
+  sheets: z.array(z.strictObject({ placements: z.array(placementSchema) })),
+});
+
+export const cuttingSchema = z.strictObject({
+  tabs: z.strictObject({ auto: z.boolean({ error: 'must be true or false' }) }),
+  leadIn: z.enum(['arc', 'line'], { error: 'leadIn must be "arc" or "line"' }),
+  direction: z.enum(['climb', 'conventional'], {
+    error: 'direction must be "climb" or "conventional"',
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Project
+// ---------------------------------------------------------------------------
+
+export const projectSchema = z
+  .strictObject({
+    schemaVersion: z.literal(LATEST_SCHEMA_VERSION, {
+      error: `schemaVersion must be ${LATEST_SCHEMA_VERSION}`,
+    }),
+    machine: machineRefSchema,
+    stock: stockSchema,
+    parts: z.array(partSchema),
+    nesting: nestingSchema,
+    layout: layoutSchema,
+    cutting: cuttingSchema,
+  })
+  .superRefine((project, ctx) => {
+    // Cross-references: unique part ids; placements point at existing part copies.
+    const qtyById = new Map<string, number>();
+    project.parts.forEach((part, i) => {
+      if (qtyById.has(part.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `duplicate part id "${part.id}"`,
+          path: ['parts', i, 'id'],
+        });
+      } else {
+        qtyById.set(part.id, part.qty);
+      }
+    });
+    const seen = new Set<string>();
+    project.layout.sheets.forEach((sheet, s) => {
+      sheet.placements.forEach((pl, p) => {
+        const path = ['layout', 'sheets', s, 'placements', p];
+        const qty = qtyById.get(pl.partId);
+        if (qty === undefined) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `placement refers to unknown part "${pl.partId}"`,
+            path: [...path, 'partId'],
+          });
+          return;
+        }
+        if (pl.index >= qty) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `placement index ${pl.index} is out of range for part "${pl.partId}" (qty ${qty})`,
+            path: [...path, 'index'],
+          });
+        }
+        const key = `${pl.partId}#${pl.index}`;
+        if (seen.has(key)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `copy ${pl.index} of part "${pl.partId}" is placed more than once`,
+            path,
+          });
+        }
+        seen.add(key);
+      });
+    });
+  });
+
+export type Vertex = z.infer<typeof vertexSchema>;
+export type Contour = z.infer<typeof contourSchema>;
+export type PocketHole = z.infer<typeof pocketHoleSchema>;
+export type ThroughHole = z.infer<typeof throughHoleSchema>;
+export type GrooveHole = z.infer<typeof grooveHoleSchema>;
+export type Hole = z.infer<typeof holeSchema>;
+export type EdgeBand = z.infer<typeof edgeBandSchema>;
+export type TemplateRef = z.infer<typeof templateRefSchema>;
+export type RectParams = z.infer<typeof rectParamsSchema>;
+export type RectPart = z.infer<typeof rectPartSchema>;
+export type FreeformPart = z.infer<typeof freeformPartSchema>;
+export type Part = z.infer<typeof partSchema>;
+export type MachineRef = z.infer<typeof machineRefSchema>;
+export type Stock = z.infer<typeof stockSchema>;
+export type NestingMode = z.infer<typeof nestingModeSchema>;
+export type Nesting = z.infer<typeof nestingSchema>;
+export type Placement = z.infer<typeof placementSchema>;
+export type Layout = z.infer<typeof layoutSchema>;
+export type Cutting = z.infer<typeof cuttingSchema>;
+export type Project = z.infer<typeof projectSchema>;

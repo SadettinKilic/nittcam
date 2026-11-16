@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "machine": { "machineId": "demo-router", "profileVersion": 3 },
+  "stock": {
+    "material": "plywood",
+    "thickness": 18,
+    "sheet": { "width": 2440, "height": 1220, "grain": 0 },
+    "useOffcuts": true
+  },
+  "parts": [
+    {
+      "id": "arch-panel",
+      "name": "Kemerli pano",
+      "qty": 1,
+      "grainLock": false,
+      "kind": "freeform",
+      "outline": [
+        { "x": 0, "y": 0, "bulge": 0 },
+        { "x": 600, "y": 0, "bulge": 0 },
+        { "x": 600, "y": 500, "bulge": 1 },
+        { "x": 0, "y": 500, "bulge": 0 }
+      ],
+      "inners": [
+        [
+          { "x": 200, "y": 150, "bulge": 0 },
+          { "x": 200, "y": 350, "bulge": 0 },
+          { "x": 400, "y": 350, "bulge": 0 },
+          { "x": 400, "y": 150, "bulge": 0 }
+        ]
+      ],
+      "holes": [
+        { "type": "through", "d": 8, "cx": 50, "cy": 50, "tool": 1 },
+        { "type": "through", "d": 8, "cx": 550, "cy": 50, "tool": 1 },
+        {
+          "type": "groove",
+          "d": 120,
+          "cx": 300,
+          "cy": 620,
+          "depth": 4,
+          "grooveWidth": 6,
+          "tool": 1
+        }
+      ],
+      "edgeBand": { "top": 0, "right": 0, "bottom": 0, "left": 0 },
+      "templates": []
+    },
+    {
+      "id": "tray",
+      "name": "Tepsi tabanı",
+      "qty": 3,
+      "grainLock": true,
+      "kind": "rect",
+      "params": { "w": 400, "h": 250, "r": 20 },
+      "inners": [],
+      "holes": [{ "type": "pocket", "d": 30, "cx": 200, "cy": 125, "depth": 6, "tool": 2 }],
+      "edgeBand": { "top": 0, "right": 0, "bottom": 0, "left": 0 },
+      "templates": []
+    }
+  ],
+  "nesting": { "mode": "minToolChanges", "gap": 8, "margin": 10 },
+  "layout": {
+    "sheets": [
+      {
+        "placements": [
+          { "partId": "arch-panel", "index": 0, "x": 10, "y": 10, "rot": 0, "locked": false },
+          { "partId": "tray", "index": 0, "x": 620, "y": 10, "rot": 0, "locked": false }
+        ]
+      }
+    ]
+  },
+  "cutting": { "tabs": { "auto": true }, "leadIn": "arc", "direction": "climb" }
+}

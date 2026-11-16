@@ -32,3 +32,15 @@ Enforced by `scripts/check-licenses.mjs` (zero dependencies, reads `pnpm license
 - **GPL or AGPL anywhere fails the build.** Unknown or unparseable licences fail too.
 - SPDX expressions: `OR` means we may choose any allowed branch (a `MIT OR GPL-3.0` package passes, used under MIT); `AND` means every part must be allowed; `WITH <exception>` is judged by its base licence.
 New exceptions need a new decision entry.
+
+## D-010 Project JSON schema v1 interpretations (2026-11-16, T004)
+Zod schema in `packages/core/src/schema/` (exported from `@nittcam/core`), modelled on spec §9.2. Where the spec is silent:
+- **Strict objects:** unknown keys are rejected (no silent data loss); new fields arrive through a schema version + migration step.
+- **Rect parts:** `params {w, h, r}` is the source; `outline` is optional and treated as a cache that is never read (`deriveOutline(part)` recomputes it). `r ≤ min(w, h) / 2`. The derived outline starts at `(r, 0)` (or `(0, 0)` when `r = 0`), runs CCW, uses quarter arcs with bulge `tan(22.5°)` and drops zero-length straight edges.
+- **Contours:** `outline` and each `inners[]` entry are vertex arrays, implicitly closed. At least 3 vertices, or 2 when one segment is an arc (a circle). Direction (outer CCW, inner CW) is the stored convention but is not enforced by the schema; normalisation is T006's job.
+- **Holes:** discriminated by `type`. pocket = `d, cx, cy, depth, tool`; through = `d, cx, cy, tool` (no `depth`, it comes from stock thickness + machine sacrificial allowance, §4.5); groove = `d, cx, cy, depth, grooveWidth, tool`. `tool` is the tool number in the machine profile (integer ≥ 1). Rules that need other data (depth < thickness, d ≥ tool diameter, groove width vs tool) are validation rules for later tasks, not schema rules.
+- **Enums:** `nesting.mode` ∈ `minWaste | fastest | minToolChanges` (§6.2); `cutting.leadIn` ∈ `arc | line`; `cutting.direction` ∈ `climb | conventional`; sheet `grain` ∈ `0 | 90` (free-angle grain is out of scope, §2.5); placement `rot` ∈ `0 | 90 | 180 | 270`.
+- **Templates:** `params` is a record of number | string | boolean; `overrides` is the list of field names the user changed by hand.
+- **Cross-references** checked by the schema: unique part ids; each placement points at an existing part, `index < qty`, and each copy is placed at most once. The grain rotation rule is enforced by the nesting engine, not the schema.
+- **Migration:** `MIGRATIONS[n]` upgrades raw JSON from v`n` to v`n+1`; `parseProject(json)` upgrades then validates and returns `{ ok, project } | { ok: false, issues: [{ path, message }] }` (paths like `parts[0].holes[1].d`); `migrate(json)` throws `ProjectSchemaError`. Missing, non-integer or future `schemaVersion` is rejected with a clear message.
+- **Dependencies:** `zod` 4.6.7 (MIT) in core, `fast-check` 4.10.2 (MIT) as a core devDependency.
