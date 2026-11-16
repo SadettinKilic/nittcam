@@ -124,3 +124,32 @@ describe('(b) blind depth must be below the stock thickness (spec §4.5)', () =>
     expect(validateProject(p)).toHaveLength(4);
   });
 });
+
+describe('(a) freeform parts use the arc-aware bbox (T006)', () => {
+  // mixed.json "arch-panel": 600 × 500 rectangle with a semicircle (r = 300) on top → 600 × 800
+  const archOn = (width: number, height: number, grainLock = false) =>
+    project((j) => {
+      j.layout.sheets = [];
+      j.stock.sheet = { width, height, grain: 0 };
+      j.parts = j.parts.filter((p: any) => p.id === 'arch-panel');
+      j.parts[0].grainLock = grainLock;
+    }, mixed);
+
+  it('the arc counts: a sheet only as tall as the vertices is too small', () => {
+    const issues = partLargerThanSheet(archOn(700, 790));
+    expect(issues).toEqual([
+      expect.objectContaining({
+        code: 'PART_LARGER_THAN_SHEET',
+        severity: 'error',
+        path: 'parts[0].outline',
+      }),
+    ]);
+    expect(issues[0]?.message).toContain('600 × 800 mm');
+  });
+
+  it('an exact fit passes (EPS slack for arc rounding), turned too when free', () => {
+    expect(partLargerThanSheet(archOn(600, 800, true))).toEqual([]);
+    expect(partLargerThanSheet(archOn(800, 600, false))).toEqual([]);
+    expect(partLargerThanSheet(archOn(800, 600, true))).toHaveLength(1);
+  });
+});
