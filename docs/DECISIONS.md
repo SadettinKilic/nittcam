@@ -16,3 +16,8 @@ The dev machine has no Docker. Local dev and tests use **PGlite** (Postgres comp
 
 ## D-005 Runtime versions (2026-11-16)
 Node ≥ 22 (CI runs on Node 24 LTS), pnpm 9 via the `packageManager` field. TypeScript strict.
+
+## D-006 Branch protection without GitHub Pro (2026-11-16)
+The free plan has no branch protection on private repos. Instead: Claude's `.claude/settings.json` denies pushes to `main` and force pushes; every change goes through a PR; the PO merges only after green CI and tester PASS. Revisit if the owner moves to GitHub Pro.
+
+## D-007 M0 backlog approved by the owner (2026-11-16)

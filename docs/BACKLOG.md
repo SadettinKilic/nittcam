@@ -25,7 +25,7 @@ Acceptance:
 - [ ] Licence check fails the build on GPL/AGPL dependencies (allow MIT, BSD, Apache-2.0, BSL-1.0, ISC, 0BSD, CC0)
 - [ ] Golden-file guard: PRs touching `packages/machines/**/golden/**` get label `needs-human`
 - [ ] Node version pinned (`.nvmrc` / `engines`), pnpm via `packageManager` field
-- [ ] Branch protection on `main`: PR required, CI must pass, no force push (PO applies via `gh api`)
+- [ ] ~~Branch protection~~ not available on the free plan for private repos (D-006); local deny rules + PO merge discipline instead
 
 ### T003 Claude Code setup: CLAUDE.md, skills, agents, permissions   [status: review]
 Spec: §10.2–10.4, §10.6 · Depends: none · Owner: PO
