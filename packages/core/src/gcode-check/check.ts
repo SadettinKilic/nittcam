@@ -1,0 +1,215 @@
+/**
+ * Automatic G-code checks (spec §6.5, §7.2 rules 1–10; T019, D-027): the gate that decides whether
+ * a generated file may be downloaded (rule 9). The text is read by the independent reader (T018,
+ * strict mode) and the read program is judged; nothing from the post processor is used. Pure.
+ */
+import { readGcode, type GcodeReadResult } from '../gcode-reader';
+import { derive, type Derived } from './derive';
+import { cutLoops, matchLayout, matchModel, type CutLoop } from './match';
+import { toSheetMoves } from './path';
+import { headerRule, modalRule, motionRules, readerFindings, toolRules, type Push } from './rules';
+import type {
+  ExpectedPart,
+  GcodeCheckContext,
+  GcodeCheckFile,
+  GcodeCheckFilesContext,
+  GcodeCheckFilesResult,
+  GcodeCheckResult,
+  GcodeCheckRule,
+  GcodeCheckSummary,
+  GcodeCheckViolation,
+} from './types';
+
+/** Reader codes never reported (known M codes of the reader). */
+const READER_KNOWN_M = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 30]);
+
+function summarize(
+  violations: readonly GcodeCheckViolation[],
+  extra: Pick<GcodeCheckSummary, 'moves' | 'matchedOperations' | 'partsCut' | 'partsExpected'>,
+): GcodeCheckSummary {
+  const byRule: Partial<Record<GcodeCheckRule, number>> = {};
+  for (const v of violations) byRule[v.rule] = (byRule[v.rule] ?? 0) + 1;
+  return {
+    errors: violations.filter((v) => v.severity === 'error').length,
+    warnings: violations.filter((v) => v.severity === 'warning').length,
+    byRule,
+    ...extra,
+  };
+}
+
+function collector(): { violations: GcodeCheckViolation[]; push: Push } {
+  const violations: GcodeCheckViolation[] = [];
+  const seen = new Set<string>();
+  const push: Push = (rule, code, line, message, severity = 'error') => {
+    // One report per rule and code: the first occurrence (later ones follow from it).
+    const key = `${rule}/${code}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    violations.push({ rule, code, severity, line, message });
+  };
+  return { violations, push };
+}
+
+interface Analysis {
+  violations: GcodeCheckViolation[];
+  push: Push;
+  consumed: number;
+  matched: boolean;
+  loops: CutLoop[];
+  moves: number;
+}
+
+function read(text: string, d: Derived): GcodeReadResult {
+  const extra = d.vacuum
+    ? [d.vacuum.on, d.vacuum.off].filter((c) => c >= 0 && !READER_KNOWN_M.has(c))
+    : [];
+  return readGcode(text, {
+    strict: true,
+    dwellUnit: d.ctx.post?.dwell?.unit ?? 's',
+    extraMCodes: extra,
+  });
+}
+
+/** All rules on one file. `prefix`: the file may end early at an operation boundary (split). */
+function analyse(text: string, d: Derived, prefix: boolean): Analysis {
+  const { violations, push } = collector();
+  const r = read(text, d);
+  readerFindings(r, push);
+  headerRule(text, d, push);
+  modalRule(r, d, push);
+  const sm = toSheetMoves(r.moves, d.frame);
+  motionRules(r, sm, d, push);
+  const m = matchModel(sm, d.ops, d, prefix, push);
+  const rawLines = text.split(/\r\n|\r|\n/);
+  toolRules(r, rawLines, m.ok ? d.ops.slice(0, m.consumed) : d.ops, d, push);
+  const loops = cutLoops(sm, d, push);
+  return {
+    violations,
+    push,
+    consumed: m.consumed,
+    matched: m.ok,
+    loops,
+    moves: r.moves.length,
+  };
+}
+
+function inputFailure(violations: GcodeCheckViolation[]): GcodeCheckResult {
+  return {
+    ok: false,
+    violations,
+    summary: summarize(violations, {
+      moves: 0,
+      matchedOperations: 0,
+      partsCut: 0,
+      partsExpected: null,
+    }),
+  };
+}
+
+function finish(a: Analysis, layout: readonly ExpectedPart[] | null | undefined, d: Derived): GcodeCheckResult {
+  if (layout) matchLayout(a.loops, layout, d, a.push);
+  const ok = !a.violations.some((v) => v.severity === 'error');
+  return {
+    ok,
+    violations: a.violations,
+    summary: summarize(a.violations, {
+      moves: a.moves,
+      matchedOperations: a.matched ? a.consumed : a.consumed,
+      partsCut: a.loops.length,
+      partsExpected: layout ? layout.length : null,
+    }),
+  };
+}
+
+/**
+ * Checks one G-code program against its context: §7.2 rules 1–10, the tool changes, the read
+ * path against the toolpath model (every expected operation, in order) and, when `layout` is
+ * given, the parts cut against the layout. `ok` is false on any error-severity violation.
+ */
+export function checkGcode(text: string, context: GcodeCheckContext): GcodeCheckResult {
+  const dr = derive(context);
+  if (!dr.ok) return inputFailure(dr.violations);
+  if (typeof text !== 'string') {
+    return inputFailure([
+      { rule: 'INPUT', code: 'TEXT_MISSING', severity: 'error', line: 0, message: 'No G-code text.' },
+    ]);
+  }
+  return finish(analyse(text, dr.d, false), context.layout, dr.d);
+}
+
+/**
+ * Checks every file of an export. Files of one sheet are taken in order and consume that sheet's
+ * operations one after the other (a split program or one file per tool); the last file of a sheet
+ * must finish them, and the layout is checked over all files of the sheet together.
+ */
+export function checkGcodeFiles(
+  files: readonly GcodeCheckFile[],
+  context: GcodeCheckFilesContext,
+): GcodeCheckFilesResult {
+  const out: GcodeCheckFilesResult['files'] = [];
+  const all: GcodeCheckViolation[] = [];
+  const sheets = [...new Set(files.map((f) => f.sheet))];
+  const expectedSheets = new Set(context.toolpath?.operations.map((o) => o.sheet) ?? []);
+  for (const s of expectedSheets) {
+    if (!sheets.includes(s)) {
+      all.push({
+        rule: 'LAYOUT',
+        code: 'SHEET_MISSING',
+        severity: 'error',
+        line: 0,
+        message: `No program for sheet ${s}.`,
+      });
+    }
+  }
+  if (files.length === 0) {
+    all.push({ rule: 'INPUT', code: 'NO_FILES', severity: 'error', line: 0, message: 'No files to check.' });
+  }
+  for (const sheet of sheets) {
+    const group = files.filter((f) => f.sheet === sheet);
+    const sheetOps = context.toolpath?.operations.filter((o) => o.sheet === sheet) ?? [];
+    let cursor = 0;
+    const loops: CutLoop[] = [];
+    let lastResult: { analysis: Analysis; d: Derived; index: number } | null = null;
+    group.forEach((file, gi) => {
+      const isLast = gi === group.length - 1;
+      const ctx: GcodeCheckContext = {
+        ...context,
+        sheet,
+        operations: sheetOps.slice(cursor),
+        layout: null,
+      };
+      const dr = derive(ctx);
+      if (!dr.ok) {
+        const res = inputFailure(dr.violations);
+        out.push({ name: file.name, sheet, result: res });
+        return;
+      }
+      const a = analyse(file.content, dr.d, !isLast);
+      cursor += a.consumed;
+      loops.push(...a.loops);
+      out.push({ name: file.name, sheet, result: finish(a, null, dr.d) });
+      lastResult = { analysis: a, d: dr.d, index: out.length - 1 };
+    });
+    const layout = context.layout?.get(sheet);
+    const lr = lastResult as { analysis: Analysis; d: Derived; index: number } | null;
+    if (layout && lr) {
+      const before = lr.analysis.violations.length;
+      matchLayout(loops, layout, lr.d, lr.analysis.push);
+      const entry = out[lr.index];
+      if (entry && lr.analysis.violations.length > before) {
+        entry.result = finish(lr.analysis, null, lr.d);
+      }
+      if (entry) {
+        entry.result.summary.partsExpected = layout.length;
+        entry.result.summary.partsCut = loops.length;
+      }
+    }
+  }
+  for (const f of out) for (const v of f.result.violations) all.push({ ...v, file: f.name });
+  return { ok: !all.some((v) => v.severity === 'error'), violations: all, files: out };
+}
+
+/** T021 gate (§7.2 rule 9): a file set may be downloaded only when every check passed. */
+export function canDownload(result: GcodeCheckResult | GcodeCheckFilesResult): boolean {
+  return result.ok && !result.violations.some((v) => v.severity === 'error');
+}
