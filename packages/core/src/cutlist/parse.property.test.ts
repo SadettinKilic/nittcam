@@ -2,6 +2,8 @@
  * Property tests (T011): random cut lists serialised the way Excel or a CSV export writes them
  * (tab / semicolon / comma, Turkish decimal comma with or without thousands dots, quoted cells,
  * Turkish or English headers in any column order) parse back to the same values.
+ * T011b: per-edge band columns (named edges and U1/U2/K1/K2) are part of the round trip; the
+ * expected edges are computed here independently of the parser (D-024).
  */
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
@@ -71,6 +73,21 @@ function nameArbFor(delimiter: string): fc.Arbitrary<string> {
 
 const mmArb = fc.integer({ min: 1, max: 300_000 }).map((n) => n / 100);
 
+const bandArb = fc.constantFrom(0, 0.4, 0.8, 1, 2);
+
+type PerEdgeField = Exclude<Field, 'name' | 'w' | 'h' | 'qty' | 'grain' | 'edge'>;
+const NAMED_EDGES = {
+  edgeTop: 'top',
+  edgeBottom: 'bottom',
+  edgeLeft: 'left',
+  edgeRight: 'right',
+} as const;
+const LONG_SHORT = ['edgeLong1', 'edgeLong2', 'edgeShort1', 'edgeShort2'] as const;
+const PER_EDGE: readonly PerEdgeField[] = [
+  ...(Object.keys(NAMED_EDGES) as (keyof typeof NAMED_EDGES)[]),
+  ...LONG_SHORT,
+];
+
 function rowArbFor(delimiter: string) {
   return fc.record({
     name: nameArbFor(delimiter),
@@ -78,7 +95,18 @@ function rowArbFor(delimiter: string) {
     h: mmArb,
     qty: fc.option(fc.integer({ min: 1, max: 50 }), { nil: null }),
     grainLock: fc.boolean(),
-    edgeBand: fc.constantFrom(0, 0.4, 0.8, 1, 2),
+    edgeBand: bandArb,
+    // One value per per-edge column; null = empty cell (→ 0).
+    edges: fc.record({
+      edgeTop: fc.option(bandArb, { nil: null }),
+      edgeBottom: fc.option(bandArb, { nil: null }),
+      edgeLeft: fc.option(bandArb, { nil: null }),
+      edgeRight: fc.option(bandArb, { nil: null }),
+      edgeLong1: fc.option(bandArb, { nil: null }),
+      edgeLong2: fc.option(bandArb, { nil: null }),
+      edgeShort1: fc.option(bandArb, { nil: null }),
+      edgeShort2: fc.option(bandArb, { nil: null }),
+    }),
   });
 }
 type GenRow = ReturnType<typeof rowArbFor> extends fc.Arbitrary<infer T> ? T : never;
@@ -98,12 +126,20 @@ const HEADERS: Record<Field, readonly string[]> = {
   qty: ['Adet', 'Miktar', 'Qty', 'Quantity'],
   grain: ['Damar', 'Damar yönü', 'Grain'],
   edge: ['Bant', 'Kenar bandı', 'Edge band'],
+  edgeTop: ['Üst bant', 'Üst', 'ÜST', 'Top'],
+  edgeBottom: ['Alt bant', 'Alt', 'Bottom'],
+  edgeLeft: ['Sol bant', 'Sol', 'Left'],
+  edgeRight: ['Sağ bant', 'Sağ', 'Sag', 'Right'],
+  edgeLong1: ['Uzun1', 'Uzun 1', 'U1'],
+  edgeLong2: ['Uzun2', 'Uzun 2', 'U2'],
+  edgeShort1: ['Kısa1', 'Kısa 1', 'K1'],
+  edgeShort2: ['Kısa2', 'KISA 2', 'K2'],
 };
 
 const layoutArb = fc
   .tuple(
-    fc.subarray(['name', 'qty', 'grain', 'edge'] as Field[]),
-    fc.array(fc.double({ min: 0, max: 1, noNaN: true }), { minLength: 6, maxLength: 6 }),
+    fc.subarray(['name', 'qty', 'grain', 'edge', ...PER_EDGE] as Field[]),
+    fc.array(fc.double({ min: 0, max: 1, noNaN: true }), { minLength: 14, maxLength: 14 }),
   )
   .map(([optional, keys]) => {
     const fields: Field[] = ['w', 'h', ...optional];
@@ -127,6 +163,10 @@ function cellOf(field: Field, row: GenRow, f: Format, grainWords: [string, strin
       return row.grainLock ? grainWords[0] : grainWords[1];
     case 'edge':
       return formatNumber(row.edgeBand, f);
+    default: {
+      const v = row.edges[field];
+      return v === null ? '' : formatNumber(v, f);
+    }
   }
 }
 
@@ -141,8 +181,27 @@ function expected(row: GenRow, fields: readonly Field[]): CutListRowValues {
     h: row.h,
     qty: fields.includes('qty') ? (row.qty ?? 1) : 1,
     grainLock: fields.includes('grain') ? row.grainLock : false,
-    edgeBand: fields.includes('edge') ? row.edgeBand : 0,
+    edgeBand: expectedBand(row, fields),
   };
+}
+
+/** Independent statement of D-024: per-edge columns win; U/K follow the orientation. */
+function expectedBand(row: GenRow, fields: readonly Field[]): CutListRowValues['edgeBand'] {
+  const perEdge = fields.some((f) => (PER_EDGE as readonly Field[]).includes(f));
+  const single = fields.includes('edge') && !perEdge ? row.edgeBand : 0;
+  const out = { top: single, right: single, bottom: single, left: single };
+  const landscape = row.w >= row.h; // a square counts w as the long side
+  const longShort = {
+    edgeLong1: landscape ? 'bottom' : 'left',
+    edgeLong2: landscape ? 'top' : 'right',
+    edgeShort1: landscape ? 'left' : 'bottom',
+    edgeShort2: landscape ? 'right' : 'top',
+  } as const;
+  for (const f of LONG_SHORT) if (fields.includes(f)) out[longShort[f]] = row.edges[f] ?? 0;
+  for (const [f, side] of Object.entries(NAMED_EDGES) as [keyof typeof NAMED_EDGES, 'top'][]) {
+    if (fields.includes(f)) out[side] = row.edges[f] ?? 0;
+  }
+  return out;
 }
 
 describe('cut-list round trip (fast-check)', () => {
@@ -173,6 +232,15 @@ describe('cut-list round trip (fast-check)', () => {
           expect(result.columns.fields).toEqual(fields);
           expect(result.rows.map((r) => r.errors)).toEqual(rows.map(() => []));
           expect(result.rows.map((r) => r.values)).toEqual(rows.map((r) => expected(r, fields)));
+          const named = fields.some((f) => f in NAMED_EDGES);
+          const ls = fields.some((f) => (LONG_SHORT as readonly Field[]).includes(f));
+          const edgeWarnings = result.warnings
+            .map((w) => w.code)
+            .filter((c) => c.startsWith('EDGE_BAND'));
+          expect(edgeWarnings).toEqual([
+            ...(fields.includes('edge') && (named || ls) ? ['EDGE_BAND_CONFLICT'] : []),
+            ...(named && ls ? ['EDGE_BAND_MIXED'] : []),
+          ]);
         },
       ),
       { numRuns: 400 },
@@ -218,7 +286,11 @@ describe('cut-list round trip (fast-check)', () => {
             confidence: 'high',
           });
           expect(result.rows.map((r) => r.values)).toEqual(
-            rows.map((r) => ({ ...r, grainLock: false, edgeBand: 0 })),
+            rows.map((r) => ({
+              ...r,
+              grainLock: false,
+              edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+            })),
           );
         },
       ),

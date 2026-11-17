@@ -8,6 +8,7 @@ import {
   type CutListRow,
 } from './index';
 
+const allEdges = (n: number) => ({ top: n, right: n, bottom: n, left: n });
 const values = (rows: readonly CutListRow[]) => rows.map((r) => r.values);
 const codes = (row: CutListRow | undefined) => row?.errors.map((e) => e.code);
 
@@ -83,8 +84,8 @@ describe('parseCutList: delimiters and quotes', () => {
       confidence: 'high',
     });
     expect(values(r.rows)).toEqual([
-      { name: 'Kapak', w: 396.5, h: 716, qty: 4, grainLock: false, edgeBand: 0 },
-      { name: 'Raf', w: 564, h: 300, qty: 2, grainLock: false, edgeBand: 0 },
+      { name: 'Kapak', w: 396.5, h: 716, qty: 4, grainLock: false, edgeBand: allEdges(0) },
+      { name: 'Raf', w: 564, h: 300, qty: 2, grainLock: false, edgeBand: allEdges(0) },
     ]);
     expect(r.rows.map((row) => row.line)).toEqual([2, 3]);
     expect(r.unitAmbiguous).toBe(false);
@@ -198,8 +199,8 @@ describe('parseCutList: header and mapping', () => {
     );
     expect(r.columns.fields).toEqual(['qty', 'h', 'w', 'name', 'grain', 'edge']);
     expect(values(r.rows)).toEqual([
-      { name: 'Door', w: 396, h: 716, qty: 2, grainLock: true, edgeBand: 0.8 },
-      { name: 'Shelf', w: 564, h: 300, qty: 1, grainLock: false, edgeBand: 0 },
+      { name: 'Door', w: 396, h: 716, qty: 2, grainLock: true, edgeBand: allEdges(0.8) },
+      { name: 'Shelf', w: 564, h: 300, qty: 1, grainLock: false, edgeBand: allEdges(0) },
     ]);
   });
 
@@ -217,10 +218,10 @@ describe('parseCutList: header and mapping', () => {
       'Ad;En;Boy;Damar;Bant\nA;100;200;evet;yok\nB;100;200;hayır;2\nC;100;200;x;0,4\nD;100;200;;',
     );
     expect(values(r.rows).map((v) => [v.grainLock, v.edgeBand])).toEqual([
-      [true, 0],
-      [false, 2],
-      [true, 0.4],
-      [false, 0],
+      [true, allEdges(0)],
+      [false, allEdges(2)],
+      [true, allEdges(0.4)],
+      [false, allEdges(0)],
     ]);
   });
 

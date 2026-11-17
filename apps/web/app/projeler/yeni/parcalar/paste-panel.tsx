@@ -2,6 +2,7 @@
 
 import {
   CUT_LIST_FIELDS,
+  LONG_SHORT_FIELDS,
   cutListToParts,
   parseCutList,
   type CutListCellError,
@@ -10,6 +11,7 @@ import {
   type CutListPartInput,
   type DecimalSeparator,
   type LengthUnit,
+  type LongShortField,
 } from '@nittcam/core';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { fill, newPartId } from '../../../../lib/draft-project';
@@ -211,6 +213,11 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
               {sourceText}
               {result.columns.confidence === 'low' ? ` ${t.confidenceLow}` : ''}
             </p>
+            {result.columns.fields.some((f) => LONG_SHORT_FIELDS.includes(f as LongShortField)) ? (
+              <p className="text-sm text-fg-muted" data-testid="edge-help">
+                {t.edgeHelp}
+              </p>
+            ) : null}
             <div className="relative max-h-96 max-w-full overflow-auto rounded-card border border-border">
               <table className="w-full text-left text-sm" aria-label={t.preview}>
                 <thead className="sticky top-0 bg-sidebar text-fg-muted">

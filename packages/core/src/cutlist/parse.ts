@@ -6,8 +6,28 @@
  */
 import { MAX_IMPORT_ROWS } from '../commands/part';
 
-/** What a source column holds. `ignore` = not imported. */
-export type CutListField = 'name' | 'w' | 'h' | 'qty' | 'grain' | 'edge' | 'ignore';
+/**
+ * What a source column holds. `ignore` = not imported.
+ * Edge band: `edge` = one thickness for all four edges; `edgeTop/Bottom/Left/Right` = one named
+ * edge; `edgeLong1/2`, `edgeShort1/2` = the workshop long/short convention (U1, U2, K1, K2),
+ * mapped to edges by the part's orientation (`longShortEdges`, D-024).
+ */
+export type CutListField =
+  | 'name'
+  | 'w'
+  | 'h'
+  | 'qty'
+  | 'grain'
+  | 'edge'
+  | 'edgeTop'
+  | 'edgeBottom'
+  | 'edgeLeft'
+  | 'edgeRight'
+  | 'edgeLong1'
+  | 'edgeLong2'
+  | 'edgeShort1'
+  | 'edgeShort2'
+  | 'ignore';
 
 export const CUT_LIST_FIELDS: readonly CutListField[] = [
   'name',
@@ -16,8 +36,57 @@ export const CUT_LIST_FIELDS: readonly CutListField[] = [
   'qty',
   'grain',
   'edge',
+  'edgeTop',
+  'edgeBottom',
+  'edgeLeft',
+  'edgeRight',
+  'edgeLong1',
+  'edgeLong2',
+  'edgeShort1',
+  'edgeShort2',
   'ignore',
 ];
+
+/** One edge of a rectangle part (D-010 `edgeBand` keys). */
+export type EdgeSide = 'top' | 'right' | 'bottom' | 'left';
+
+/** Edge band thickness per edge in mm; 0 = none. Same shape as the part's `edgeBand`. */
+export type EdgeBandValues = Record<EdgeSide, number>;
+
+/** Per-edge fields that name one edge directly. */
+export const EXPLICIT_EDGE_FIELDS = {
+  edgeTop: 'top',
+  edgeBottom: 'bottom',
+  edgeLeft: 'left',
+  edgeRight: 'right',
+} as const satisfies Record<string, EdgeSide>;
+
+export type ExplicitEdgeField = keyof typeof EXPLICIT_EDGE_FIELDS;
+export type LongShortField = 'edgeLong1' | 'edgeLong2' | 'edgeShort1' | 'edgeShort2';
+
+export const LONG_SHORT_FIELDS: readonly LongShortField[] = [
+  'edgeLong1',
+  'edgeLong2',
+  'edgeShort1',
+  'edgeShort2',
+];
+
+/**
+ * Long/short edge convention → edges (D-024). Long edges are parallel to the longer dimension;
+ * a square (w == h) counts w as the long side.
+ * - w ≥ h: long edges are top and bottom: U1 → bottom, U2 → top, K1 → left, K2 → right.
+ * - w < h: long edges are left and right: U1 → left, U2 → right, K1 → bottom, K2 → top.
+ */
+export function longShortEdges(w: number, h: number): Record<LongShortField, EdgeSide> {
+  return w >= h
+    ? { edgeLong1: 'bottom', edgeLong2: 'top', edgeShort1: 'left', edgeShort2: 'right' }
+    : { edgeLong1: 'left', edgeLong2: 'right', edgeShort1: 'bottom', edgeShort2: 'top' };
+}
+
+/** True for the fields that set one edge (named or long/short), not the single `edge` column. */
+export function isPerEdgeField(field: CutListField): boolean {
+  return field in EXPLICIT_EDGE_FIELDS || (LONG_SHORT_FIELDS as readonly string[]).includes(field);
+}
 
 export type CutListDelimiter = '\t' | ';' | ',';
 /** Decimal separator of the numbers in the table; the other one (or a space) groups thousands. */
@@ -69,8 +138,8 @@ export interface CutListRowValues {
   h: number | null;
   qty: number | null;
   grainLock: boolean;
-  /** Edge band thickness in mm, applied to all four edges; 0 = none. */
-  edgeBand: number;
+  /** Edge band thickness per edge in mm; 0 = none (D-024). */
+  edgeBand: EdgeBandValues;
 }
 
 export interface CutListRow {
@@ -90,7 +159,9 @@ export type CutListWarningCode =
   | 'DUPLICATE_COLUMN'
   | 'THOUSANDS_ASSUMED'
   | 'MIXED_DECIMALS'
-  | 'TOO_MANY_ROWS';
+  | 'TOO_MANY_ROWS'
+  | 'EDGE_BAND_CONFLICT'
+  | 'EDGE_BAND_MIXED';
 
 export interface CutListWarning {
   code: CutListWarningCode;
@@ -287,6 +358,20 @@ function fold(text: string): string {
     .replace(/û/g, 'u');
 }
 
+/** "Üst", "Üst bant", "Üst kenar", "Üst kenar bandı", "Top", "Top band", "Top edge", ... */
+function edgeNames(words: readonly string[]): string[] {
+  return words.flatMap((w) => [
+    w,
+    `${w}bant`,
+    `${w}bandi`,
+    `${w}kenar`,
+    `${w}kenarbandi`,
+    `${w}band`,
+    `${w}edge`,
+    `${w}edgeband`,
+  ]);
+}
+
 const HEADER_NAMES: Record<Exclude<CutListField, 'ignore'>, readonly string[]> = {
   name: [
     'ad',
@@ -316,6 +401,14 @@ const HEADER_NAMES: Record<Exclude<CutListField, 'ignore'>, readonly string[]> =
     'desenyonu',
   ],
   edge: ['bant', 'kenarbandi', 'kenarbant', 'bantkalinligi', 'edge', 'edgeband', 'band'],
+  edgeTop: edgeNames(['ust', 'top']),
+  edgeBottom: edgeNames(['alt', 'bottom']),
+  edgeLeft: edgeNames(['sol', 'left']),
+  edgeRight: edgeNames(['sag', 'right']),
+  edgeLong1: ['uzun1', 'u1', 'uzunkenar1', 'uzunbant1', 'long1', 'longedge1'],
+  edgeLong2: ['uzun2', 'u2', 'uzunkenar2', 'uzunbant2', 'long2', 'longedge2'],
+  edgeShort1: ['kisa1', 'k1', 'kisakenar1', 'kisabant1', 'short1', 'shortedge1'],
+  edgeShort2: ['kisa2', 'k2', 'kisakenar2', 'kisabant2', 'short2', 'shortedge2'],
 };
 
 const HEADER_LOOKUP = new Map<string, Exclude<CutListField, 'ignore'>>(
@@ -457,6 +550,10 @@ const WARNINGS: Record<CutListWarningCode, string> = {
   THOUSANDS_ASSUMED: 'numbers like 1.220 were read with a thousands dot (1220)',
   MIXED_DECIMALS: 'both decimal commas and decimal dots were found',
   TOO_MANY_ROWS: `more than ${MAX_IMPORT_ROWS} valid rows; import them in parts`,
+  EDGE_BAND_CONFLICT:
+    'a single edge band column and per-edge columns are both mapped; the per-edge columns win',
+  EDGE_BAND_MIXED:
+    'named-edge and long/short edge columns are both mapped; a named edge wins on the same edge',
 };
 
 function warning(code: CutListWarningCode): CutListWarning {
@@ -534,9 +631,24 @@ export function parseCutList(text: string, options: ParseCutListOptions = {}): C
     grain: colOf('grain'),
     edge: colOf('edge'),
   };
+  const explicitCols = (Object.keys(EXPLICIT_EDGE_FIELDS) as ExplicitEdgeField[]).flatMap(
+    (field) => {
+      const col = colOf(field);
+      return col === null ? [] : [{ field, side: EXPLICIT_EDGE_FIELDS[field], col }];
+    },
+  );
+  const longShortCols = LONG_SHORT_FIELDS.flatMap((field) => {
+    const col = colOf(field);
+    return col === null ? [] : [{ field, col }];
+  });
+  const perEdge = explicitCols.length > 0 || longShortCols.length > 0;
   if (dataRecords.length > 0) {
     if (cols.w === null) warnings.push(warning('MISSING_WIDTH_COLUMN'));
     if (cols.h === null) warnings.push(warning('MISSING_HEIGHT_COLUMN'));
+    if (perEdge && cols.edge !== null) warnings.push(warning('EDGE_BAND_CONFLICT'));
+    if (explicitCols.length > 0 && longShortCols.length > 0) {
+      warnings.push(warning('EDGE_BAND_MIXED'));
+    }
   }
 
   const rows: CutListRow[] = dataRecords.map((record) => {
@@ -588,15 +700,36 @@ export function parseCutList(text: string, options: ParseCutListOptions = {}): C
       else grainLock = g;
     }
 
-    let edgeBand = 0;
-    if (cols.edge !== null) {
+    const edgeBand: EdgeBandValues = { top: 0, right: 0, bottom: 0, left: 0 };
+    if (!perEdge && cols.edge !== null) {
+      // Single column (D-018): one thickness for all four edges; "yok", "-" and empty = none.
+      // With per-edge columns mapped it is ignored entirely (EDGE_BAND_CONFLICT, D-024).
       const raw = cell(cols.edge);
       if (!EDGE_NONE.has(fold(raw))) {
         const n = parseCutListNumber(raw, decimal);
         if (n === null || n < 0) errors.push(error(cols.edge, 'edge', 'INVALID_EDGE_BAND'));
-        else edgeBand = n;
+        else edgeBand.top = edgeBand.right = edgeBand.bottom = edgeBand.left = n;
       }
     }
+    // Per-edge cells (D-024): numbers only (mm); empty = 0; anything else is a row error.
+    const thickness = (col: number, field: Exclude<CutListField, 'ignore'>): number => {
+      const raw = cell(col);
+      if (raw === '') return 0;
+      const n = parseCutListNumber(raw, decimal);
+      if (n === null || n < 0) {
+        errors.push(error(col, field, 'INVALID_EDGE_BAND'));
+        return 0;
+      }
+      return n;
+    };
+    if (longShortCols.length > 0) {
+      // Orientation from the parsed sizes (any unit: the ratio is the same). An invalid size
+      // already makes the row invalid, so the fallback orientation never reaches the project.
+      const sides = longShortEdges(w ?? 1, h ?? 1);
+      for (const { field, col } of longShortCols) edgeBand[sides[field]] = thickness(col, field);
+    }
+    // Named edges last, so they win over a long/short column that lands on the same edge.
+    for (const { field, side, col } of explicitCols) edgeBand[side] = thickness(col, field);
 
     return {
       line: record.line,
@@ -680,7 +813,7 @@ export function cutListToParts(
       qty,
       grainLock,
       params: { w: toMillimetres(w, unit), h: toMillimetres(h, unit), r: 0 },
-      edgeBand: { top: edgeBand, right: edgeBand, bottom: edgeBand, left: edgeBand },
+      edgeBand: { ...edgeBand },
     };
   });
 }

@@ -217,14 +217,14 @@
       "h": "Boy (mm)",
       "qty": "Adet",
       "grain": "Damar kilidi",
-      "edge": "Kenar bandı (mm)",
+      "edgeGroup": "Kenar bandı (mm)",
       "actions": "İşlem"
     },
     "edge": {
       "top": "Üst",
-      "right": "Sağ",
       "bottom": "Alt",
-      "left": "Sol"
+      "left": "Sol",
+      "right": "Sağ"
     },
     "cellLabel": "Satır {n}: {column}",
     "edgeLabel": "Satır {n}: {edge} kenar bandı (mm)",
@@ -278,7 +278,15 @@
         "h": "Boy",
         "qty": "Adet",
         "grain": "Damar kilidi",
-        "edge": "Kenar bandı",
+        "edge": "Kenar bandı (4 kenar)",
+        "edgeTop": "Üst bant",
+        "edgeBottom": "Alt bant",
+        "edgeLeft": "Sol bant",
+        "edgeRight": "Sağ bant",
+        "edgeLong1": "Uzun kenar 1 (U1)",
+        "edgeLong2": "Uzun kenar 2 (U2)",
+        "edgeShort1": "Kısa kenar 1 (K1)",
+        "edgeShort2": "Kısa kenar 2 (K2)",
         "ignore": "Kullanma"
       },
       "preview": "Önizleme",
@@ -309,7 +317,7 @@
         "NOT_POSITIVE": "{field} sıfırdan büyük olmalı.",
         "INVALID_QTY": "Adet 1 veya daha büyük tam sayı olmalı.",
         "INVALID_GRAIN": "Damar kilidi evet/hayır (1/0, x) olmalı.",
-        "INVALID_EDGE_BAND": "Kenar bandı 0 veya daha büyük bir kalınlık (mm) olmalı."
+        "INVALID_EDGE_BAND": "{field}: bant kalınlığı mm cinsinden sayı olmalı (ör. 0,8); boş = bant yok."
       },
       "warnings": {
         "EMPTY": "Yapıştırılan metinde satır yok.",
@@ -319,8 +327,11 @@
         "DUPLICATE_COLUMN": "Aynı alan birden fazla sütuna seçildi; ilki kullanıldı.",
         "THOUSANDS_ASSUMED": "1.220 gibi sayılar binlik ayraçlı okundu (1220). Yanlışsa ondalık ayracını \"Nokta\" yapın.",
         "MIXED_DECIMALS": "Hem virgüllü hem noktalı ondalık sayılar var; değerleri kontrol edin.",
-        "TOO_MANY_ROWS": "Bir seferde en fazla 2.000 satır eklenebilir; listeyi bölün."
-      }
+        "TOO_MANY_ROWS": "Bir seferde en fazla 2.000 satır eklenebilir; listeyi bölün.",
+        "EDGE_BAND_CONFLICT": "Hem tek \"Bant\" sütunu hem kenar başına bant sütunları var; kenar başına sütunlar kullanıldı, tek \"Bant\" sütunu yok sayıldı.",
+        "EDGE_BAND_MIXED": "Hem Üst/Alt/Sol/Sağ hem Uzun/Kısa (U1, U2, K1, K2) sütunları var; aynı kenara düşerse Üst/Alt/Sol/Sağ sütunu kullanıldı."
+      },
+      "edgeHelp": "Uzun/Kısa sütunları (U1, U2, K1, K2) parçanın yönüne göre kenarlara dağıtılır: uzun kenarlar uzun ölçüye paraleldir. En ≥ Boy ise U1 = Alt, U2 = Üst, K1 = Sol, K2 = Sağ; En < Boy ise U1 = Sol, U2 = Sağ, K1 = Alt, K2 = Üst."
     },
     "nesting": {
       "title": "Dizilim",
