@@ -671,7 +671,9 @@ test.describe('T023 tester: wizard flow', () => {
     );
   });
 
-  test('step 3 mode select works and carries the note; step 5 is honest', async ({ page }) => {
+  test('step 3 mode select works and carries the note; step 5 gates the download', async ({
+    page,
+  }) => {
     await openNewProject(page, 'parcalar');
     await paste(page, KITCHEN, 5);
     await goStep(page, 'dizilim');
@@ -687,9 +689,9 @@ test.describe('T023 tester: wizard flow', () => {
     await expect(page.getByTestId('export-status')).toHaveText(new RegExp(w.export.passed), {
       timeout: 30_000,
     });
+    // T021: the download waits for the pre-export checklist; nothing is downloaded before it.
     await expect(page.getByTestId('export-download')).toBeDisabled();
-    await expect(page.getByTestId('export-pending')).toContainText('T021');
-    // No download is offered anywhere on the page.
+    await expect(page.getByTestId('export-hint')).toHaveText(w.export.needChecks);
     const downloads: string[] = [];
     page.on('download', (d) => downloads.push(d.suggestedFilename()));
     await page
@@ -698,7 +700,6 @@ test.describe('T023 tester: wizard flow', () => {
       .catch(() => undefined);
     await page.waitForTimeout(500);
     expect(downloads).toEqual([]);
-    await expect(page.locator('a[download]')).toHaveCount(0);
   });
 });
 

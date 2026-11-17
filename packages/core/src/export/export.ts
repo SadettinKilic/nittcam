@@ -141,3 +141,20 @@ export function exportNc(
     check: result,
   };
 }
+
+/**
+ * Does an export with this profile version and post carry the "DOĞRULANMADI, önce air cut" header
+ * and so need the user's acceptance before download (spec §7.2 rule 10)? Same rule as the
+ * generator's header: the profile version is not verified, is the example profile, or the post is
+ * not verified. A post whose status is unknown counts as unverified.
+ */
+export function needsUnverifiedAcceptance(
+  profileVersion: Pick<PostProfileVersion, 'profile' | 'verification'>,
+  post: { status?: unknown } | null | undefined,
+): boolean {
+  return (
+    profileVersion.verification !== 'verified' ||
+    profileVersion.profile.example ||
+    post?.status !== 'verified'
+  );
+}

@@ -247,6 +247,49 @@ describe('AutosaveQueue: unsent queue in sessionStorage (§8.2)', () => {
     expect(sent[1]).toMatchObject({ id: 'new-id', baseRevision: 1 });
   });
 
+  it('a new project sends its client id; a reload during the first save reuses it (D-030)', async () => {
+    const c = clock();
+    const storage = memoryStorage();
+    const sent: SaveRequest[] = [];
+    const NEW = '7d3f0e1a-1b2c-4d5e-8f90-a1b2c3d4e5f6';
+    const deps = {
+      send: async (req: SaveRequest): Promise<SendResult> => {
+        sent.push(req);
+        return { ok: false, kind: 'network' };
+      },
+      storage,
+      setTimer: c.setTimer,
+      clearTimer: c.clearTimer,
+    };
+    const first = new AutosaveQueue(deps, {
+      id: null,
+      revision: 0,
+      name: 'P',
+      project: P(0),
+      newId: NEW,
+    });
+    first.push({ entries: [e('a')], project: P(1) });
+    await c.advance(1000);
+    expect(sent[0]).toMatchObject({ id: null, newId: NEW });
+    // "Reload": the stored queue still carries the id, so the next page creates the same project.
+    first.dispose();
+    const stored = takeUnsentQueue(storage, null, 0);
+    expect(stored?.newId).toBe(NEW);
+    const second = new AutosaveQueue(
+      { ...deps, send: async (req) => (sent.push(req), { ok: true, id: NEW, revision: 1 }) },
+      { id: null, revision: 0, name: 'P', project: P(0), newId: stored?.newId ?? 'x' },
+    );
+    second.push({ entries: stored?.entries ?? [], project: P(1) });
+    await c.advance(1000);
+    expect(sent[sent.length - 1]).toMatchObject({ id: null, newId: NEW });
+    expect(second.projectId).toBe(NEW);
+    // Once created, saves are PUTs on the id and carry no newId.
+    second.push({ entries: [e('b')], project: P(2) });
+    await c.advance(1000);
+    expect(sent[sent.length - 1]?.id).toBe(NEW);
+    expect(sent[sent.length - 1]?.newId).toBeUndefined();
+  });
+
   it('works without storage (blocked site data)', async () => {
     const c = clock();
     const sent: SaveRequest[] = [];

@@ -127,7 +127,7 @@ test.describe('T023 wizard', () => {
     await expect(page.getByTestId('sim-canvas').locator('canvas').first()).toBeVisible();
     await shot(page, 't023-adim4-simulasyon');
 
-    // Step 5: checks passed, the download waits for T021 (disabled, nothing faked).
+    // Step 5: the server's checks passed; the download waits for the checklist (T021).
     await page.getByTestId('wizard-next').click();
     await wizardReady(page, 'export');
     await expect(page.getByTestId('export-status')).toHaveText(new RegExp(w.export.passed), {
@@ -135,7 +135,7 @@ test.describe('T023 wizard', () => {
     });
     await expect(page.getByTestId('export-status')).toHaveAttribute('data-ok', 'true');
     await expect(page.getByTestId('export-download')).toBeDisabled();
-    await expect(page.getByTestId('export-pending')).toHaveText(w.export.pending);
+    await expect(page.getByTestId('export-hint')).toHaveText(w.export.needChecks);
     await expect(page.getByTestId('wizard-next')).toHaveCount(0);
     await shot(page, 't023-adim5-export');
     expect(problems).toEqual([]);

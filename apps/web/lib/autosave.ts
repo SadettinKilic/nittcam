@@ -28,6 +28,11 @@ export type SaveState =
 export interface SaveRequest {
   /** Null for a project that does not exist on the server yet (created by this save). */
   id: string | null;
+  /**
+   * Client-generated id of a project that is not created yet (D-030): the create is idempotent on
+   * it, so a repeated create (reload during the first save, retry) returns the same project.
+   */
+  newId?: string;
   baseRevision: number;
   project: Project;
   commands: CommandLogEntry[];
@@ -63,6 +68,8 @@ export interface StoredQueue {
   baseRevision: number;
   entries: CommandLogEntry[];
   name: string;
+  /** The client-generated id of a project not created yet (D-030). */
+  newId?: string;
 }
 
 export const DEBOUNCE_MS = 1000;
@@ -91,7 +98,12 @@ function readQueue(storage: KeyValueStorage | null | undefined, key: string): St
     ) {
       return null;
     }
-    return { baseRevision: q.baseRevision, entries: q.entries, name: q.name };
+    return {
+      baseRevision: q.baseRevision,
+      entries: q.entries,
+      name: q.name,
+      ...(typeof q.newId === 'string' ? { newId: q.newId } : {}),
+    };
   } catch {
     return null;
   }
@@ -123,6 +135,7 @@ export function takeUnsentQueue(
 
 export class AutosaveQueue {
   private id: string | null;
+  private readonly newId: string | undefined;
   private revision: number;
   private name: string;
   private project: Project;
@@ -141,11 +154,19 @@ export class AutosaveQueue {
 
   constructor(
     deps: AutosaveDeps,
-    init: { id: string | null; revision: number; name: string; project: Project },
+    init: {
+      id: string | null;
+      revision: number;
+      name: string;
+      project: Project;
+      /** Client-generated id for the create of a new project (D-030). */
+      newId?: string;
+    },
   ) {
     this.deps = deps;
     this.createdListener = deps.onCreated;
     this.id = init.id;
+    this.newId = init.newId;
     this.revision = init.revision;
     this.name = init.name;
     this.project = init.project;
@@ -236,6 +257,7 @@ export class AutosaveQueue {
     try {
       result = await this.deps.send({
         id: this.id,
+        ...(this.id === null && this.newId ? { newId: this.newId } : {}),
         baseRevision: this.revision,
         project: this.project,
         commands: this.entries.slice(0, sentCount),
@@ -292,7 +314,12 @@ export class AutosaveQueue {
       this.removeStored(key);
       return;
     }
-    const q: StoredQueue = { baseRevision: this.revision, entries: this.entries, name: this.name };
+    const q: StoredQueue = {
+      baseRevision: this.revision,
+      entries: this.entries,
+      name: this.name,
+      ...(this.id === null && this.newId ? { newId: this.newId } : {}),
+    };
     try {
       this.deps.storage?.setItem(key, JSON.stringify(q));
     } catch {

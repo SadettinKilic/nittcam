@@ -20,7 +20,17 @@ describe('immutable versions', () => {
     expect(Object.keys(scope.machineProfileVersions).sort()).toEqual(['get', 'list']);
     expect(Object.keys(scope.templateVersions).sort()).toEqual(['get', 'list']);
     expect(Object.keys(scope.projectCommands).sort()).toEqual(['get', 'list']);
-    for (const key of ['exports', 'validations', 'chatMessages'] as const) {
+    // Exports (D-030): insert-once and read helpers only, still no update path.
+    expect(Object.keys(scope.exports).sort()).toEqual([
+      'create',
+      'createOnce',
+      'findSame',
+      'get',
+      'latestPerProject',
+      'list',
+      'listForProject',
+    ]);
+    for (const key of ['validations', 'chatMessages'] as const) {
       expect(Object.keys(scope[key]).sort()).toEqual(['create', 'get', 'list']);
     }
     // Compile-time guard: these lines must not type-check.

@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 // Unit tests of the web app: pure client logic (autosave queue) and the route handlers against an
@@ -5,7 +7,11 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['lib/**/*.test.ts', 'app/**/*.test.ts'],
-    env: { PGLITE_DIR: 'memory' },
+    // Export files (T021) go to a fresh temporary folder per run.
+    env: {
+      PGLITE_DIR: 'memory',
+      STORAGE_DIR: join(tmpdir(), `nittcam-test-storage-${Date.now()}`),
+    },
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },

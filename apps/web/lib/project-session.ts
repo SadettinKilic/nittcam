@@ -41,7 +41,12 @@ export async function sendSave(req: SaveRequest): Promise<SendResult> {
         ? await fetch('/api/projects', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ name: req.name, project: req.project, commands: req.commands }),
+            body: JSON.stringify({
+              ...(req.newId ? { id: req.newId } : {}),
+              name: req.name,
+              project: req.project,
+              commands: req.commands,
+            }),
           })
         : await fetch(`/api/projects/${encodeURIComponent(req.id)}`, {
             method: 'PUT',
@@ -98,7 +103,10 @@ export function useProjectSession({
     const stack = new CommandStack(initial.project);
     const stored = takeUnsentQueue(sessionStore(), initial.id, initial.revision);
     const replayed = stored ? stored.entries.slice(0, replayLog(stack, stored.entries)) : [];
-    return { stack, replayed, name: stored?.name ?? initial.name };
+    // A new project gets its id here (D-030); after a reload during the first save the stored
+    // queue keeps it, so the repeated create returns the same project instead of a duplicate.
+    const newId = initial.id === null ? (stored?.newId ?? crypto.randomUUID()) : undefined;
+    return { stack, replayed, name: stored?.name ?? initial.name, newId };
   });
   const stack = boot.stack;
   const [, setVersion] = useState(0);
@@ -125,6 +133,7 @@ export function useProjectSession({
           revision: initial.revision,
           name: initial.name,
           project: initial.project,
+          ...(boot.newId ? { newId: boot.newId } : {}),
         },
       ),
   );

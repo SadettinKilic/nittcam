@@ -15,12 +15,51 @@ import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
 import { MachineFields, SheetPreview } from './machine-step';
 import { ValidationPanel } from './validation-panel';
-import { STEPS, type StepKey } from '../../lib/wizard-steps';
+import { STEPS, toStep, type StepKey } from '../../lib/wizard-steps';
 
 const NEW_PATH = '/projeler/yeni';
 
 function stepUrl(id: string | null, step: StepKey): string {
   return `${id ? `/projeler/${id}` : NEW_PATH}?adim=${step}`;
+}
+
+/**
+ * History entries of wizard steps carry this marker (D-029, D-030: steps are `pushState` entries,
+ * so browser Back goes to the previous step). Next.js keeps extra keys in its history state.
+ */
+const STEP_STATE = 'nittcamStep';
+
+function isStepEntry(): boolean {
+  if (typeof window === 'undefined') return false;
+  const state: unknown = window.history.state;
+  return typeof state === 'object' && state !== null && STEP_STATE in state;
+}
+
+/**
+ * The URL the last browser Back/forward landed on. Next.js copies extra history-state keys into the
+ * entries it pushes, so a real navigation (e.g. "+ Yeni proje") also looks like a step entry; only
+ * a `popstate` tells the two apart.
+ */
+let poppedHref: string | null = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    poppedHref = window.location.href;
+  });
+}
+
+/**
+ * Did the router move to `pathname` because of browser Back/forward onto a wizard step entry?
+ * After a `popstate` the address bar already shows the new URL; during a link navigation the
+ * render runs while it still shows the old one. Pure (no consumed mark), so a StrictMode double
+ * render gives the same answer.
+ */
+function cameBackToStep(pathname: string): boolean {
+  return (
+    poppedHref !== null &&
+    poppedHref === window.location.href &&
+    window.location.pathname === pathname &&
+    isStepEntry()
+  );
 }
 
 type Loaded =
@@ -62,7 +101,10 @@ export function ProjectWizard({
   const [lastPath, setLastPath] = useState(pathname);
   if (pathname !== lastPath) {
     setLastPath(pathname);
-    if (pathname === NEW_PATH && created !== null) {
+    // Back/forward onto an earlier step entry of this project (its URL still says `yeni`) is not
+    // a new project; only a real navigation to `/projeler/yeni` is.
+    const back = typeof window !== 'undefined' && cameBackToStep(pathname);
+    if (pathname === NEW_PATH && created !== null && !back) {
       setCreated(null);
       setAttempt((a) => a + 1);
     }
@@ -229,7 +271,11 @@ function WizardSession({
 
   const created = useCallback(
     (id: string) => {
-      window.history.replaceState(null, '', stepUrl(id, stepRef.current));
+      window.history.replaceState(
+        { [STEP_STATE]: stepRef.current },
+        '',
+        stepUrl(id, stepRef.current),
+      );
       onCreated(id);
     },
     [onCreated],
@@ -275,13 +321,48 @@ function WizardSession({
 
   const go = useCallback(
     (next: StepKey) => {
-      stepRef.current = next;
       setStep(next);
       focusHeading.current = true;
-      window.history.replaceState(null, '', stepUrl(session.projectId, next));
+      if (next !== stepRef.current || !isStepEntry()) {
+        window.history.pushState({ [STEP_STATE]: next }, '', stepUrl(session.projectId, next));
+      }
+      stepRef.current = next;
     },
     [session.projectId],
   );
+
+  // The entry the wizard opened on is a step entry too, so Back from step 2 returns to it.
+  useEffect(() => {
+    if (!isStepEntry()) {
+      window.history.replaceState(
+        { [STEP_STATE]: stepRef.current },
+        '',
+        window.location.pathname + window.location.search,
+      );
+    }
+  }, []);
+
+  // Browser Back/forward between steps: follow the URL's `?adim=` (no new entry).
+  const projectIdRef = useRef(session.projectId);
+  useEffect(() => {
+    projectIdRef.current = session.projectId;
+  }, [session.projectId]);
+  useEffect(() => {
+    function onPop() {
+      if (!isStepEntry()) return;
+      const next = toStep(new URLSearchParams(window.location.search).get('adim') ?? undefined);
+      stepRef.current = next;
+      setStep(next);
+      focusHeading.current = true;
+      // An entry from before the first save still says `/projeler/yeni`: point it at the project.
+      const id = projectIdRef.current;
+      if (id && window.location.pathname === NEW_PATH) {
+        window.history.replaceState({ [STEP_STATE]: next }, '', stepUrl(id, next));
+      }
+    }
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   useEffect(() => {
     if (focusHeading.current) {
       focusHeading.current = false;
@@ -394,10 +475,14 @@ function WizardSession({
     both = (
       <ExportStep
         t={t.export}
+        corners={messages.machines.form.options.corner}
+        states={messages.machines.state}
         project={project}
         machine={simMachine}
+        projectId={session.projectId}
         revision={session.revision}
         saved={!session.dirty}
+        saveState={session.saveState}
       />
     );
   }
