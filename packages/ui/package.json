@@ -4,17 +4,34 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens.css"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "peerDependencies": {
-    "react": "^19.0.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
     "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "react": "19.3.1",
-    "typescript": "6.0.3"
+    "react-dom": "19.3.1",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "cmdk": "1.1.1",
+    "lucide-react": "1.74.0",
+    "next-themes": "0.4.6",
+    "radix-ui": "1.8.1",
+    "sonner": "2.0.8",
+    "tailwind-merge": "3.7.0"
   }
 }

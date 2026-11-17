@@ -1,0 +1,426 @@
+/*
+ * NittCam design tokens (T100, D-032, spec §3.7). The single source for colour, radius, spacing,
+ * elevation, type and motion. Light values live in `@theme` (Tailwind v4 turns them into
+ * utilities such as `bg-surface`, `text-fg-muted`, `rounded-md`, `shadow-sm`); `.dark` overrides
+ * the same variables, so every utility, Konva canvas and (later) 3D scene follows the theme.
+ *
+ * Rules (see .claude/skills/ui-conventions):
+ * - Screens use the SEMANTIC roles (bg, surface, fg, border, accent, success...), never the raw
+ *   scales. Raw scales exist for the token file itself and rare data-visualisation needs.
+ * - Pairs: `X` is a solid fill, `X-fg` is text on that fill, `X-text` is coloured text on
+ *   surfaces, `X-subtle` is a tinted background, `X-border` its border. Every text/background
+ *   pair is AA (≥ 4.5:1) in both themes; packages/ui/src/tokens.test.ts enforces it.
+ * - The Tailwind default palette is switched off: a class like `bg-blue-500` does nothing.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme static {
+  --color-*: initial;
+
+  /* ---- Raw scales ------------------------------------------------------------------------ */
+  /* Neutral: cool graphite with a faint blue cast. */
+  --color-neutral-0: #ffffff;
+  --color-neutral-25: #fcfcfd;
+  --color-neutral-50: #f7f8fa;
+  --color-neutral-100: #f0f2f5;
+  --color-neutral-150: #e8ebef;
+  --color-neutral-200: #e1e4ea;
+  --color-neutral-300: #cdd2da;
+  --color-neutral-400: #9da5b3;
+  --color-neutral-500: #737c8c;
+  --color-neutral-600: #586170;
+  --color-neutral-700: #3f4652;
+  --color-neutral-800: #2a2f38;
+  --color-neutral-850: #1e2229;
+  --color-neutral-900: #16191e;
+  --color-neutral-925: #121418;
+  --color-neutral-950: #0d0f12;
+  --color-neutral-1000: #08090b;
+
+  /* Brand: a confident cobalt, the single accent. */
+  --color-brand-50: #eff4ff;
+  --color-brand-100: #dce6fe;
+  --color-brand-200: #c0d2fd;
+  --color-brand-300: #94b3fb;
+  --color-brand-400: #6690f7;
+  --color-brand-500: #4470f0;
+  --color-brand-600: #2f56e3;
+  --color-brand-700: #2443c8;
+  --color-brand-800: #2238a2;
+  --color-brand-900: #213380;
+  --color-brand-950: #172050;
+
+  --color-success-50: #ecfdf3;
+  --color-success-100: #d1fadf;
+  --color-success-200: #a6f4c5;
+  --color-success-300: #6ce9a6;
+  --color-success-400: #32d583;
+  --color-success-500: #12b76a;
+  --color-success-600: #039855;
+  --color-success-700: #027a48;
+  --color-success-800: #05603a;
+  --color-success-900: #054f31;
+  --color-success-950: #052e1d;
+
+  --color-warning-50: #fffaeb;
+  --color-warning-100: #fef0c7;
+  --color-warning-200: #fedf89;
+  --color-warning-300: #fec84b;
+  --color-warning-400: #fdb022;
+  --color-warning-500: #f79009;
+  --color-warning-600: #dc6803;
+  --color-warning-700: #b54708;
+  --color-warning-800: #93370d;
+  --color-warning-900: #7a2e0e;
+  --color-warning-950: #3f1a07;
+
+  --color-danger-50: #fef3f2;
+  --color-danger-100: #fee4e2;
+  --color-danger-200: #fecdca;
+  --color-danger-300: #fda29b;
+  --color-danger-400: #f97066;
+  --color-danger-500: #f04438;
+  --color-danger-600: #d92d20;
+  --color-danger-700: #b42318;
+  --color-danger-800: #912018;
+  --color-danger-900: #7a271a;
+  --color-danger-950: #3d120c;
+
+  --color-info-50: #f0f9ff;
+  --color-info-100: #e0f2fe;
+  --color-info-200: #b9e6fe;
+  --color-info-300: #7cd4fd;
+  --color-info-400: #36bffa;
+  --color-info-500: #0ba5ec;
+  --color-info-600: #0086c9;
+  --color-info-700: #026aa2;
+  --color-info-800: #065986;
+  --color-info-900: #0b4a6f;
+  --color-info-950: #062c41;
+
+  /* ---- Semantic roles (light) ------------------------------------------------------------ */
+  --color-bg: var(--color-neutral-25);
+  --color-surface: var(--color-neutral-0);
+  --color-surface-subtle: var(--color-neutral-50);
+  --color-surface-raised: var(--color-neutral-0);
+  --color-surface-hover: var(--color-neutral-100);
+  --color-surface-active: var(--color-neutral-150);
+  --color-overlay: rgb(8 9 11 / 0.45);
+
+  --color-border-subtle: var(--color-neutral-150);
+  --color-border: var(--color-neutral-200);
+  --color-border-strong: var(--color-neutral-300);
+
+  --color-fg: var(--color-neutral-950);
+  --color-fg-muted: var(--color-neutral-600);
+  --color-fg-subtle: #636c7c;
+  --color-fg-disabled: var(--color-neutral-400);
+
+  --color-accent: var(--color-brand-600);
+  --color-accent-hover: var(--color-brand-700);
+  --color-accent-fg: var(--color-neutral-0);
+  --color-accent-text: var(--color-brand-600);
+  --color-accent-subtle: var(--color-brand-50);
+  --color-accent-border: var(--color-brand-200);
+  --color-focus: var(--color-brand-500);
+
+  --color-success: var(--color-success-700);
+  --color-success-fg: var(--color-neutral-0);
+  --color-success-text: var(--color-success-700);
+  --color-success-subtle: var(--color-success-50);
+  --color-success-border: var(--color-success-200);
+
+  --color-warning: var(--color-warning-700);
+  --color-warning-fg: var(--color-neutral-0);
+  --color-warning-text: var(--color-warning-800);
+  --color-warning-subtle: var(--color-warning-50);
+  --color-warning-border: var(--color-warning-200);
+
+  --color-danger: var(--color-danger-600);
+  --color-danger-hover: var(--color-danger-700);
+  --color-danger-fg: var(--color-neutral-0);
+  --color-danger-text: var(--color-danger-700);
+  --color-danger-subtle: var(--color-danger-50);
+  --color-danger-border: var(--color-danger-200);
+
+  --color-info: var(--color-info-700);
+  --color-info-fg: var(--color-neutral-0);
+  --color-info-text: var(--color-info-700);
+  --color-info-subtle: var(--color-info-50);
+  --color-info-border: var(--color-info-200);
+
+  /* Legacy names used by the M1 screens; they alias the roles until B3/B4 migrate them. */
+  --color-sidebar: var(--color-surface-subtle);
+  --color-ok: var(--color-success-text);
+  --color-ok-bg: var(--color-success-subtle);
+  --color-warn: var(--color-warning-text);
+  --color-warn-bg: var(--color-warning-subtle);
+  --color-danger-bg: var(--color-danger-subtle);
+  --color-info-bg: var(--color-info-subtle);
+
+  /* ---- Canvas: layout view (T013) and simulation (T020). Konva reads these at runtime. ---- */
+  --color-sheet-waste: #efe9dc;
+  --color-sheet-margin: #d9d1bf;
+  --color-sheet-edge: #8a8371;
+  --color-part: #f3d9b8;
+  --color-part-stroke: #6b4a2b;
+  --color-part-locked: #c9dbef;
+  --color-part-locked-stroke: #2f4f7a;
+  --color-grid: #e2dccd;
+  --color-sim-depth-top: #9ec5ea;
+  --color-sim-depth-bottom: #0f2f57;
+  --color-sim-rapid: #b4531f;
+  --color-sim-tool: #b4531f;
+  --color-sim-table: #2f4f7a;
+  --color-sim-envelope: #8a8371;
+  --color-sim-zero: #a8261b;
+  --color-sim-tab: #e8a317;
+  --color-sim-part: #f8ecdb;
+  --color-sim-part-stroke: #c9b79c;
+  --color-sim-badge: #1c1c1a;
+  --color-sim-badge-fg: #ffffff;
+
+  /* ---- Radius ---------------------------------------------------------------------------- */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-card: 0.75rem;
+
+  /* ---- Spacing: 4 px base; control heights keep touch targets ≥ 40 px at md (spec §3.7). -- */
+  --spacing: 0.25rem;
+  --spacing-control-sm: 2rem;
+  --spacing-control-md: 2.5rem;
+  --spacing-control-lg: 3rem;
+
+  /* ---- Elevation ------------------------------------------------------------------------- */
+  --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+  --shadow-sm: 0 1px 2px 0 rgb(16 24 40 / 0.06), 0 1px 3px 0 rgb(16 24 40 / 0.08);
+  --shadow-md: 0 2px 4px -2px rgb(16 24 40 / 0.06), 0 4px 8px -2px rgb(16 24 40 / 0.08);
+  --shadow-lg: 0 4px 6px -2px rgb(16 24 40 / 0.04), 0 12px 24px -4px rgb(16 24 40 / 0.1);
+  --shadow-xl: 0 8px 8px -4px rgb(16 24 40 / 0.04), 0 24px 48px -12px rgb(16 24 40 / 0.18);
+
+  /* ---- Typography ------------------------------------------------------------------------ */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-2xl--letter-spacing: -0.015em;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.375rem;
+  --text-3xl--letter-spacing: -0.02em;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.75rem;
+  --text-4xl--letter-spacing: -0.022em;
+
+  /* ---- Motion ---------------------------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --animate-fade-in: fade-in var(--duration-base) var(--ease-out);
+  --animate-fade-out: fade-out var(--duration-fast) ease-in;
+  --animate-pop-in: pop-in var(--duration-base) var(--ease-out);
+  --animate-pop-out: pop-out var(--duration-fast) ease-in;
+  --animate-sheet-in-right: sheet-in-right var(--duration-slow) var(--ease-out);
+  --animate-sheet-out-right: sheet-out-right var(--duration-base) ease-in;
+  --animate-sheet-in-left: sheet-in-left var(--duration-slow) var(--ease-out);
+  --animate-sheet-out-left: sheet-out-left var(--duration-base) ease-in;
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-spin: spin 0.8s linear infinite;
+}
+
+:root {
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+}
+
+/* ---- Dark theme ------------------------------------------------------------------------- */
+.dark {
+  --color-bg: var(--color-neutral-1000);
+  --color-surface: var(--color-neutral-950);
+  --color-surface-subtle: #0b0c0f;
+  --color-surface-raised: var(--color-neutral-900);
+  --color-surface-hover: var(--color-neutral-850);
+  --color-surface-active: var(--color-neutral-800);
+  --color-overlay: rgb(0 0 0 / 0.6);
+
+  --color-border-subtle: #1a1d23;
+  --color-border: #23272f;
+  --color-border-strong: #333944;
+
+  --color-fg: #eceef2;
+  --color-fg-muted: #a1a9b6;
+  --color-fg-subtle: #858e9c;
+  --color-fg-disabled: #565e6b;
+
+  --color-accent: var(--color-brand-600);
+  --color-accent-hover: #3a5fe8;
+  --color-accent-fg: var(--color-neutral-0);
+  --color-accent-text: var(--color-brand-300);
+  --color-accent-subtle: #141c38;
+  --color-accent-border: #26356e;
+  --color-focus: var(--color-brand-400);
+
+  --color-success: var(--color-success-400);
+  --color-success-fg: var(--color-success-950);
+  --color-success-text: var(--color-success-400);
+  --color-success-subtle: #0a2018;
+  --color-success-border: #0f3d29;
+
+  --color-warning: var(--color-warning-400);
+  --color-warning-fg: var(--color-warning-950);
+  --color-warning-text: var(--color-warning-300);
+  --color-warning-subtle: #241706;
+  --color-warning-border: #4a2c0a;
+
+  --color-danger: var(--color-danger-400);
+  --color-danger-hover: var(--color-danger-300);
+  --color-danger-fg: var(--color-danger-950);
+  --color-danger-text: var(--color-danger-400);
+  --color-danger-subtle: #2a0f0c;
+  --color-danger-border: #571d16;
+
+  --color-info: var(--color-info-400);
+  --color-info-fg: var(--color-info-950);
+  --color-info-text: var(--color-info-300);
+  --color-info-subtle: #071f2e;
+  --color-info-border: #0c3a55;
+
+  --color-sheet-waste: #2b2720;
+  --color-sheet-margin: #3a342a;
+  --color-sheet-edge: #8a8371;
+  --color-part: #6b5236;
+  --color-part-stroke: #e6c9a2;
+  --color-part-locked: #2a4260;
+  --color-part-locked-stroke: #a9c6ea;
+  --color-grid: #2a2b30;
+  --color-sim-part: #2c2822;
+  --color-sim-part-stroke: #6b604f;
+  --color-sim-badge: #eceef2;
+  --color-sim-badge-fg: #0d0f12;
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4), 0 1px 3px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 2px 4px -2px rgb(0 0 0 / 0.4), 0 4px 8px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 4px 6px -2px rgb(0 0 0 / 0.3), 0 12px 24px -4px rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 8px 8px -4px rgb(0 0 0 / 0.3), 0 24px 48px -12px rgb(0 0 0 / 0.6);
+}
+
+/* ---- Keyframes -------------------------------------------------------------------------- */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px) scale(0.97);
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes sheet-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes sheet-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes sheet-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes sheet-out-left {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes shimmer {
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Base ------------------------------------------------------------------------------- */
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    /* Inter: open digits, single-storey a off, straight-sided l; crisp at small sizes. */
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-accent-subtle);
+    color: var(--color-fg);
+  }
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+}
+
+/* Measurements: tabular figures so columns of numbers line up (spec §3.7). */
+@utility numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum', 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+/* Hareketi azalt: honour the OS setting everywhere (ui-conventions). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,18 +1,52 @@
 ---
 name: ui-conventions
-description: Any UI work in apps/web: design tokens, Turkish text rules, simple mode, reduced motion, accessibility, layout from spec §3.
+description: Any UI work in apps/web or packages/ui: design tokens, components, theme, Turkish text rules, simple mode, reduced motion, accessibility, layout from spec §3 / §3.7.
 ---
 
-# UI conventions (spec §3, §8.2)
+# UI conventions (spec §3, §3.7, §8.2, D-032)
 
-- Next.js App Router + React + Tailwind. Shared components in `packages/ui`.
-- **Design tokens** in one place (colors, spacing, radius, font). Light, off-white left menu; white work area. No hard-coded colors.
-- **Text:** all UI text in translation files (`apps/web/messages/tr.json` first, en later). Use plain workshop language ("İçini boşalt", "Sadece çember (kanal)"), never CAM jargon without explanation. Use Turkish number format in the UI (1.220 × 2.440 mm) while data stays in mm numbers.
+Look: modern, calm, corporate (Linear / Vercel class). Neutral graphite surfaces, **one** accent (cobalt `accent`), Inter, generous spacing, 1 px subtle borders, soft shadows only on floating layers, short eased motion.
+
+## Stack
+- Next.js App Router + Tailwind v4. Components are ours, in `packages/ui` (shadcn style on Radix via the `radix-ui` package), `cva` variants, `cn()` for class merging, `lucide-react` icons, `sonner` toasts, `cmdk` palette, `next-themes`.
+- New or changed screens use `@nittcam/ui` components and tokens only. No ad-hoc buttons/inputs in apps/web.
+- Gallery of every component/variant/state: `/dev/ui` (dev only). Add a new component there in the same PR.
+
+## Tokens (`packages/ui/src/tokens.css`, the only place for values)
+- The Tailwind default palette is **off** (`bg-blue-500` does nothing). No hex/rgb in components or screens.
+- Use **semantic roles**, not raw scales (`neutral-*`, `brand-*`, `success-*`... exist only for the token file and data-viz):
+  - Backgrounds: `bg` (page), `surface` (cards, panels, inputs), `surface-subtle` (sidebar, wells, table headers), `surface-raised` (popover, menu, dialog), `surface-hover`, `surface-active`, `overlay` (modal scrim).
+  - Borders: `border-subtle` (dividers inside cards), `border` (default), `border-strong` (inputs, hover).
+  - Text: `fg`, `fg-muted` (secondary), `fg-subtle` (hints, placeholders), `fg-disabled`.
+  - Accent: `accent` (solid fill) + `accent-fg` (text on it), `accent-hover`, `accent-text` (links, active nav text), `accent-subtle` (selected row/tint), `accent-border`; `focus` is the focus-ring colour.
+  - Status `success | warning | danger | info`: `X` solid, `X-fg` text on solid, `X-text` coloured text on surfaces, `X-subtle` tint, `X-border`. `danger-hover` for destructive buttons.
+  - Legacy aliases (`sidebar`, `ok`, `ok-bg`, `warn`, `warn-bg`, `danger-bg`, `info-bg`) exist only for M1 screens until B3/B4; do not use them in new code.
+  - Canvas (`sheet-*`, `part-*`, `grid`, `sim-*`): Konva/3D read them with `getComputedStyle(document.documentElement)`; they have dark values too.
+- Radius: `rounded-sm` (6 px: badges, kbd), `rounded-md` (8 px: buttons, inputs), `rounded-lg` (10 px: menus, popovers), `rounded-xl` (14 px: cards, dialogs).
+- Spacing: 4 px grid (`p-1` = 4 px). Control heights: `h-control-sm` 32 px, `h-control-md` 40 px (default; ≥ 40 px touch target, spec §3.7), `h-control-lg` 48 px.
+- Elevation: `shadow-xs` (buttons, inputs), `shadow-sm` (cards), `shadow-md` (popover, menu), `shadow-lg` (dialog, sheet), `shadow-xl` (command palette). Flat surfaces use a border, not a shadow.
+- Type: Inter via `next/font` (`--font-inter`). Scale `text-2xs` 11 · `xs` 12 · `sm` 14 (UI default) · `base` 16 · `lg` 18 · `xl` 20 · `2xl` 24 · `3xl` 30 · `4xl` 36; headings `font-semibold`, large sizes carry negative tracking. **Measurements use `numeric`** (tabular figures) so columns line up.
+- Motion: `--duration-instant|fast|base|slow` (80/120/180/280 ms), `ease-out`; animations `animate-fade-in|out`, `animate-pop-in|out`, `animate-sheet-in|out-right|left`. Use `duration-(--duration-fast)` in transitions. The global reduced-motion rule turns all of it off.
+- Contrast: every text/background pair is AA in both themes; `packages/ui/src/tokens.test.ts` enforces it. A new pair → add it there.
+
+## Theme
+- `ThemeProvider` (in the root layout) = next-themes, class strategy on `<html>`, `system` default, stored under `nittcam-theme`, no flash. Read/set with `useTheme()`; `ThemeSwitcher` gives the Sistem/Açık/Koyu control.
+- Style dark mode through tokens, not `dark:` overrides. `dark:` is only for rare exceptions.
+
+## Components and states
+- Every interactive element is keyboard operable with the visible focus ring (`focus-visible:` 2 px `focus` ring with offset). Icon-only buttons need `aria-label` (IconButton enforces it).
+- Numbers: `NumberInput` parses Turkish input (`12,5`, `1.200,5`), shows the unit suffix (mm) and errors; display with Turkish formatting (1.220 × 2.440 mm).
+- Every screen needs empty, loading (`Skeleton`) and error states. Forms use `FormField` (label + hint + error, wired with aria-describedby).
+
+## Text
+- All UI text in translation files (`apps/web/messages/tr.json` first). Components in `packages/ui` take text as props; they never hard-code Turkish strings.
+- Plain workshop language ("İçini boşalt", "Sadece çember (kanal)"), never CAM jargon without explanation.
+
+## Behaviour
 - **Simple mode** for old computers: no 3D, no heavy animation.
-- **Reduced motion:** honor `prefers-reduced-motion`; pause animations when the tab is hidden; turn them off on small screens.
-- **Accessibility:** keyboard navigation, focus rings, labels, contrast ≥ 4.5:1.
+- **Reduced motion:** honour `prefers-reduced-motion`; pause animations when the tab is hidden.
+- Responsive: 390 / 768 / 1024 / 1440 px, no page-level horizontal scroll.
 - Heavy work (nesting, toolpath) runs in a Web Worker; the UI never freezes.
 - The UI never mutates the project directly; it always calls commands (command-layer skill).
-- Every screen needs empty, loading and error states.
 - Menu: Ana sayfa, Makineler, Projeler, Şablonlar, Oluştur, Ayarlar, plus a prominent "+ Yeni proje".
-- The `frontend-design` skill may be used for visual quality.
+- Visual QA: `pnpm e2e:visual` (Playwright `visual` project, 1440×900 and 390×844, light + dark, `snap()` and `expectNoA11yViolations()` from `e2e/tests/visual/helpers.ts`).
