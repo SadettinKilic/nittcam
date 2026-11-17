@@ -131,4 +131,62 @@ export default tseslint.config(
       ],
     },
   },
+  // Automatic G-code checks (spec §6.5, T019, D-027): they judge the generator's output, so they
+  // must not use the post processor's code (frame conversion, formatting, rules). They may import
+  // the reader, the toolpath model (the expected reference), machine/schema types and geometry.
+  // Test files may drive the generator to produce input, so they are exempt.
+  {
+    files: ['packages/core/src/gcode-check/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.ts', '**/*.testing.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...CORE_PURE_PATTERNS,
+            {
+              // Any path through a `post` folder ('../post', '../post/frame', './../post/x').
+              regex: '(?:^|[/\\\\])post(?:[/\\\\]|$)',
+              message:
+                'gcode-check must not import the post processor (spec §6.5 independence, D-027).',
+            },
+            {
+              // The core barrel re-exports the post processor.
+              regex: '^(?:\\./)?\\.\\.(?:[/\\\\](?:index(?:\\.[jt]s)?)?)?$',
+              message: 'gcode-check must not import the core barrel (it re-exports post).',
+            },
+            {
+              regex: '^(?:[/\\\\]|[A-Za-z]:|file:)',
+              message: 'gcode-check must not import by absolute path.',
+            },
+            {
+              regex: '^@nittcam/',
+              message: 'gcode-check must not import workspace packages.',
+            },
+            {
+              group: ['module', 'node:module'],
+              message: 'gcode-check must not build its own require.',
+            },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        { selector: 'ImportExpression', message: 'gcode-check: static imports only (D-027).' },
+        {
+          selector: "CallExpression[callee.name='require']",
+          message: 'gcode-check: no require() (D-027).',
+        },
+        {
+          selector: "CallExpression[callee.property.name='require']",
+          message: 'gcode-check: no require() (D-027).',
+        },
+        {
+          selector: 'TSImportEqualsDeclaration',
+          message: 'gcode-check: no `import x = require()` (D-027).',
+        },
+        { selector: 'TSImportType', message: 'gcode-check: no `import()` types (D-027).' },
+      ],
+    },
+  },
 );

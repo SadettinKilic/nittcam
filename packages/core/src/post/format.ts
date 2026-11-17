@@ -38,6 +38,20 @@ export function formatFixedCeil(value: number, decimals: number): string {
   return formatFixed(Math.ceil(value * f - 1e-9) / f, decimals);
 }
 
+/**
+ * Z word rounding (PO decision on PR #25, D-025): rounded **toward +Z** onto the decimal grid, so
+ * a written Z is never deeper than the model (a through cut never goes below the spoilboard
+ * allowance by rounding). A value within 1e-6 of a grid step (float noise such as
+ * −12.199999999999999) snaps to that step instead of jumping one step up.
+ */
+export function formatFixedUp(value: number, decimals: number): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return formatFixed(value, decimals);
+  const f = 10 ** decimals;
+  const x = value * f;
+  const r = Math.round(x);
+  return formatFixed((Math.abs(x - r) <= 1e-6 ? r : Math.ceil(x)) / f, decimals);
+}
+
 const TURKISH: Record<string, string> = {
   ş: 's',
   Ş: 'S',

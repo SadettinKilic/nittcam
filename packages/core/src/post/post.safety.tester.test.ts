@@ -100,7 +100,8 @@ interface Result {
 
 export function readAndCheck(text: string, ctx: Ctx): Result {
   const v: string[] = [];
-  const ZT = Math.pow(10, -ctx.dec.z) * 0.6; // written values are rounded to the configured decimals
+  // Z words are rounded toward +Z (D-025, PO decision on PR #25): up to one unit above the model.
+  const ZT = Math.pow(10, -ctx.dec.z) * 1.01;
   const moves: Mv[] = [];
   const fail = (rule: number, line: number, msg: string) => v.push(`R${rule} line ${line}: ${msg}`);
 

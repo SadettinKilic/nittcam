@@ -21,3 +21,5 @@ export * from './nesting';
 export * from './toolpath';
 export * from './post';
 export * from './gcode-reader';
+export * from './gcode-check';
+export * from './export';
