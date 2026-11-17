@@ -20,7 +20,8 @@ type Text = Messages['cutList'];
 type LayoutText = Messages['layout'];
 type EdgeKey = 'top' | 'right' | 'bottom' | 'left';
 
-const EDGES: readonly EdgeKey[] = ['top', 'right', 'bottom', 'left'];
+/** Grid order of the edge band columns: Üst, Alt, Sol, Sağ (T011b). */
+const EDGES: readonly EdgeKey[] = ['top', 'bottom', 'left', 'right'];
 
 const inputClass =
   'w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger-bg';
@@ -251,23 +252,21 @@ function PartRow({
           onChange={(e) => void update({ grainLock: e.target.checked })}
         />
       </td>
-      <td className="px-1 py-1">
-        <div className="grid min-w-56 grid-cols-4 gap-1">
-          {EDGES.map((edge) => (
-            <Cell
-              key={edge}
-              {...cellProps}
-              col={`edge-${edge}`}
-              numeric
-              label={fill(t.edgeLabel, { n, edge: t.edge[edge] })}
-              value={formatInput(part.edgeBand[edge])}
-              current={part.edgeBand[edge]}
-              validate={band(t)}
-              onCommit={(v) => update({ edgeBand: { [edge]: v } })}
-            />
-          ))}
-        </div>
-      </td>
+      {EDGES.map((edge) => (
+        <td key={edge} className="min-w-16 px-0.5 py-1">
+          <Cell
+            {...cellProps}
+            col={`edge-${edge}`}
+            numeric
+            className="px-1.5"
+            label={fill(t.edgeLabel, { n, edge: t.edge[edge] })}
+            value={formatInput(part.edgeBand[edge])}
+            current={part.edgeBand[edge]}
+            validate={band(t)}
+            onCommit={(v) => update({ edgeBand: { [edge]: v } })}
+          />
+        </td>
+      ))}
       <td className="px-1 py-1">
         <div className="flex gap-1">
           <button
@@ -502,37 +501,46 @@ export function CutListEditor({ t, layoutText }: { t: Text; layoutText: LayoutTe
             <table className="w-full text-left text-sm" aria-labelledby="cut-list-title">
               <thead className="bg-sidebar text-fg-muted">
                 <tr>
-                  <th scope="col" className="px-2 py-2 text-right font-medium">
+                  <th scope="col" rowSpan={2} className="px-2 py-2 text-right font-medium">
                     {t.columns.index}
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
+                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
                     {t.columns.name}
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
+                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
                     {t.columns.w}
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
+                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
                     {t.columns.h}
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
+                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
                     {t.columns.qty}
                   </th>
-                  <th scope="col" className="px-2 py-2 text-center font-medium">
+                  <th scope="col" rowSpan={2} className="px-2 py-2 text-center font-medium">
                     {t.columns.grain}
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
-                    {t.columns.edge}
-                    <span className="mt-0.5 grid grid-cols-4 gap-1 text-xs font-normal">
-                      {EDGES.map((e) => (
-                        <span key={e} className="text-center">
-                          {t.edge[e]}
-                        </span>
-                      ))}
-                    </span>
+                  <th
+                    scope="colgroup"
+                    colSpan={EDGES.length}
+                    className="px-1 pt-2 pb-0.5 text-center font-medium whitespace-nowrap"
+                  >
+                    {t.columns.edgeGroup}
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
+                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
                     {t.columns.actions}
                   </th>
+                </tr>
+                <tr>
+                  {EDGES.map((e) => (
+                    <th
+                      key={e}
+                      scope="col"
+                      className="px-0.5 pb-2 text-center text-xs font-normal"
+                      data-testid={`edge-col-${e}`}
+                    >
+                      {t.edge[e]}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

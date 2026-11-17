@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { parseCutList, parseCutListNumber } from './index';
 
+/** T011b: edgeBand is per edge now; a no-band row has 0 on all four edges. */
+const allEdges = (n: number) => ({ top: n, right: n, bottom: n, left: n });
 const vals = (text: string, opts = {}) => parseCutList(text, opts).rows.map((r) => r.values);
 
 describe('workshop pastes', () => {
@@ -14,8 +16,8 @@ describe('workshop pastes', () => {
     expect(r.rows).toHaveLength(2);
     expect(r.rows.every((x) => x.errors.length === 0)).toBe(true);
     expect(vals(text)).toEqual([
-      { name: 'Kapak', w: 396.5, h: 716, qty: 4, grainLock: false, edgeBand: 0 },
-      { name: 'Raf', w: 564, h: 300.25, qty: 2, grainLock: false, edgeBand: 0 },
+      { name: 'Kapak', w: 396.5, h: 716, qty: 4, grainLock: false, edgeBand: allEdges(0) },
+      { name: 'Raf', w: 564, h: 300.25, qty: 2, grainLock: false, edgeBand: allEdges(0) },
     ]);
     expect(r.unitAmbiguous).toBe(false);
   });
