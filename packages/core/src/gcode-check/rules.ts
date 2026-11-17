@@ -618,3 +618,33 @@ export function toolRules(
 }
 
 export type { GcodeCheckViolation };
+
+/**
+ * Air-cut floor (D-031): when the context sets `zFloor`, no move of the program may reach below it
+ * (sheet frame, 0 = material top). Every read move counts: rapids, leads, passes, tool-change and
+ * end-park moves. A move made before the program set Z has an unknown height: also refused.
+ */
+export function floorRule(sm: readonly SheetMove[], d: Derived, push: Push): void {
+  const floor = d.ctx.zFloor;
+  if (floor === undefined) return;
+  for (const m of sm) {
+    if (m.toAssumed.includes('z')) {
+      push(
+        'R3',
+        'AIR_CUT_BELOW_FLOOR',
+        m.line,
+        `Move before any Z was set; the air cut must stay at Z >= ${floor} above the material top.`,
+      );
+      return;
+    }
+    if (m.to.z < floor - Z_FLOAT_NOISE) {
+      push(
+        'R3',
+        'AIR_CUT_BELOW_FLOOR',
+        m.line,
+        `Move reaches Z ${m.to.z.toFixed(4)} (sheet frame), below the air-cut floor ${floor}.`,
+      );
+      return;
+    }
+  }
+}

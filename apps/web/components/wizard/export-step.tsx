@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { Project } from '@nittcam/core';
 import { useEffect, useState } from 'react';
 import { fill } from '../../lib/draft-project';
@@ -351,6 +352,22 @@ export function ExportStep({
           >
             <p className="font-semibold">{t.unverifiedTitle}</p>
             <p>{t.unverifiedBody}</p>
+            {(preview.unverifiedReasons ?? []).length > 0 ? (
+              <ul className="list-disc pl-5" data-testid="export-unverified-reasons">
+                {(preview.unverifiedReasons ?? []).map((r) => (
+                  <li key={r}>{t.reasons[r]}</li>
+                ))}
+              </ul>
+            ) : null}
+            {preview.profile ? (
+              <Link
+                href={`/makineler/${preview.profile.machineId}/dogrulama`}
+                data-testid="export-verify-link"
+                className="font-medium underline"
+              >
+                {t.unverifiedLink}
+              </Link>
+            ) : null}
             <label className="flex items-start gap-2 font-medium">
               <input
                 type="checkbox"

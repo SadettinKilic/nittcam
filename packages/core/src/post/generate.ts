@@ -316,7 +316,8 @@ class Writer {
   operation(op: Operation): void {
     this.op = op;
     const profile = this.c.profile;
-    if (op.kind !== 'outerContour') {
+    // Pockets come only from the test part (T022); the moves are checked like any other.
+    if (op.kind !== 'outerContour' && op.kind !== 'pocket') {
       this.fail('UNSUPPORTED_OPERATION', `Operation kind ${String(op.kind)} is not supported.`);
     }
     if (!profile.tools.some((t) => t.number === op.tool)) {

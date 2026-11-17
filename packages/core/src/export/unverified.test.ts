@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { golden, postConfig } from '../gcode-check/check.testing';
 import type { VerificationState } from '../machine';
-import { exportNc, needsUnverifiedAcceptance } from './export';
+import { exportNc, needsUnverifiedAcceptance, unverifiedReasons } from './export';
 
 const STATES: VerificationState[] = ['draft', 'air_cut_approved', 'verified', 'reverify_needed'];
 
@@ -37,5 +37,23 @@ describe('needsUnverifiedAcceptance', () => {
     expect(needsUnverifiedAcceptance(pv, null)).toBe(true);
     expect(needsUnverifiedAcceptance(pv, {})).toBe(true);
     expect(needsUnverifiedAcceptance(pv, { status: 'verified' })).toBe(false);
+  });
+});
+
+describe('unverifiedReasons', () => {
+  it('names every reason; empty only for a verified, non-example profile with a verified post', () => {
+    const g = golden('generic', 'mixed');
+    const p = (example: boolean) => ({ ...g.context.profile, example });
+    expect(unverifiedReasons({ profile: p(true), verification: 'draft' }, null)).toEqual([
+      'profile',
+      'example',
+      'post',
+    ]);
+    expect(
+      unverifiedReasons({ profile: p(false), verification: 'verified' }, { status: 'unverified' }),
+    ).toEqual(['post']);
+    expect(
+      unverifiedReasons({ profile: p(false), verification: 'verified' }, { status: 'verified' }),
+    ).toEqual([]);
   });
 });
