@@ -583,7 +583,7 @@ function NameField({
     if (name !== '' && name !== value) onCommit(name.slice(0, 120));
   }
   return (
-    <label className="flex min-w-0 flex-1 flex-col gap-1">
+    <label className="flex min-w-64 flex-1 flex-col gap-1">
       <span className="text-xs text-fg-muted">{label}</span>
       <input
         type="text"
