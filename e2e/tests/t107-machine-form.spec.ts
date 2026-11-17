@@ -91,7 +91,9 @@ test.describe('T107 machine form', () => {
     await row(page, name)
       .getByRole('button', { name: `${t.edit}: ${name}` })
       .click();
-    await expect(page.getByText(t.form.versionBadge.replace('{version}', '1'))).toBeVisible();
+    await expect(
+      page.getByText(t.form.versionBadge.replace('{version}', '1'), { exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole('radio', { name: t.form.options.corner.backRight })).toBeChecked();
     await page.getByRole('radio', { name: t.form.options.corner.frontLeft }).click();
     await page.getByRole('button', { name: t.form.save }).click();

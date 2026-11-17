@@ -12,7 +12,8 @@ test.describe('T001 home page', () => {
     await page.goto('/');
     await expect(page.locator('html')).toHaveAttribute('lang', 'tr');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(tr.home.title);
-    await expect(page.getByText(tr.home.subtitle)).toBeVisible();
+    // The streamed page can briefly hold a hidden copy of the body (Suspense, T105/T106).
+    await expect(page.getByText(tr.home.subtitle).filter({ visible: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: tr.home.recent })).toBeVisible();
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       'content',
