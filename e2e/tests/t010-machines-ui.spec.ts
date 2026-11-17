@@ -331,6 +331,8 @@ test.describe('T010 Makineler UI (tester)', () => {
     await page.goto('/makineler');
     await page.getByRole('button', { name: t.add }).click();
     await page.getByRole('heading', { name: t.form.createTitle }).waitFor();
+    // Let hydration and the form mount settle (a late mount under load was the flake).
+    await page.waitForTimeout(300);
     const result = await page.evaluate(() => {
       const bad: string[] = [];
       for (const el of Array.from(document.querySelectorAll('*'))) {
