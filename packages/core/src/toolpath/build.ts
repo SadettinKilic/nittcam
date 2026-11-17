@@ -25,12 +25,14 @@ import {
 } from './path';
 import { toolpathSafetyViolations } from './safety';
 import { summarizeToolpath } from './stats';
+import { TAB_DEFAULTS, defaultTabHeight, isSmallPart, passMovesWithTabs, placeTabs } from './tabs';
 import type {
   LeadType,
   Move,
   MoveSegment,
   Operation,
   PlungeOption,
+  Tab,
   Toolpath,
   ToolpathCode,
   ToolpathIssue,
@@ -164,6 +166,20 @@ interface Params {
   plunge: PlungeOption;
   travel: 'cw' | 'ccw';
   sheet: { width: number; height: number };
+  tabs: TabParams;
+}
+
+/** Resolved tab settings (D-022). */
+interface TabParams {
+  /** Tabs on every part (else only on small parts). */
+  all: boolean;
+  count: number;
+  width: number;
+  height: number;
+  /** target + height. */
+  top: number;
+  smallPartArea: number;
+  smallPartMinSide: number;
 }
 
 function rapid(p: Point, z: number): Move {
@@ -205,6 +221,7 @@ function buildOuterOperation(
   p: Params,
   warnings: ToolpathIssue[],
   errors: ToolpathIssue[],
+  smallWarned: Set<string>,
 ): Operation | null {
   const where = { copy: ctx.placement.index, sheet: ctx.sheetIndex };
   const partId = ctx.part.id;
@@ -298,6 +315,57 @@ function buildOuterOperation(
       );
     }
   }
+  // Tabs (T015, D-022): every part when tabs are on, small parts always (§6.3 small-part safety).
+  const small = isSmallPart(ctx.outline, p.tabs.smallPartArea, p.tabs.smallPartMinSide);
+  let tabs: Tab[] = [];
+  if (p.tabs.all || small) {
+    if (small && !p.tabs.all && !smallWarned.has(partId)) {
+      smallWarned.add(partId);
+      warnings.push(
+        issue(
+          'SMALL_PART_AUTO_TABS',
+          'warning',
+          partId,
+          'Small part: tabs added automatically so the vacuum does not lose it.',
+        ),
+      );
+    }
+    const autoSmall = small && !p.tabs.all;
+    const count = autoSmall ? Math.max(p.tabs.count, TAB_DEFAULTS.smallPartMinCount) : p.tabs.count;
+    const leadIn = leads.leadIn ? leadReach(leads.leadIn) : 0;
+    const leadOut = leads.leadOut ? leadReach(leads.leadOut) : 0;
+    tabs = placeTabs(segs, {
+      count,
+      width: p.tabs.width,
+      toolDiameter: p.toolDiameter,
+      keepFwd: Math.max(leadOut, rampLeg) + toolRadius,
+      keepBack: leadIn + toolRadius,
+      minCount: autoSmall ? TAB_DEFAULTS.smallPartMinCount : 1,
+      z: p.tabs.top,
+    });
+    if (tabs.length === 0) {
+      warnings.push(
+        issue(
+          'TABS_NOT_PLACED',
+          'warning',
+          partId,
+          `No room for ${autoSmall ? `${TAB_DEFAULTS.smallPartMinCount} tabs` : 'a tab'} away from corners, arcs and the lead; the part is cut free.`,
+          where,
+        ),
+      );
+    } else if (tabs.length < count) {
+      warnings.push(
+        issue(
+          'TABS_REDUCED',
+          'warning',
+          partId,
+          `Only ${tabs.length} of ${count} tabs fit away from corners, arcs and the lead.`,
+          where,
+        ),
+      );
+    }
+  }
+
   const rampFwd = ramp ? subpath(segs, rampLeg) : [];
   const rampBack = reversePath(rampFwd);
 
@@ -312,7 +380,12 @@ function buildOuterOperation(
       // Step down in the existing kerf at the start point.
       moves.push(plungeTo(start, z, p.plungeFeed));
     }
-    moves.push(...pathMoves(segs, z, z, p.feed));
+    // Passes deeper than the tab top fly over the tabs (D-022); the others are above them.
+    if (tabs.length > 0 && z < p.tabs.top - EPS) {
+      moves.push(...passMovesWithTabs(segs, z, tabs, p.feed, p.plungeFeed));
+    } else {
+      moves.push(...pathMoves(segs, z, z, p.feed));
+    }
     segments.push({
       role: 'pass',
       pass: i,
@@ -343,8 +416,17 @@ function buildOuterOperation(
     plungeFeed: p.plungeFeed,
     travel: p.travel,
     passDepths: [...p.passDepths],
+    tabs,
     segments,
   };
+}
+
+/**
+ * How far a lead reaches from the start point: its chord. A quarter arc of radius L (chord L·√2)
+ * and a 45° line of length L both stay within it, so this bounds the lead's reach along the contour.
+ */
+function leadReach(seg: PathSeg): number {
+  return Math.hypot(seg.p0.x - seg.p1.x, seg.p0.y - seg.p1.y);
 }
 
 function positive(x: number | undefined): x is number {
@@ -491,6 +573,44 @@ export function buildToolpath(
   }
   const direction = options.direction ?? project.cutting.direction;
 
+  // Tabs (D-022): options > project.cutting.tabs > material set > built-in defaults.
+  const to = options.tabs ?? {};
+  const pt = project.cutting.tabs;
+  const thickness = project.stock.thickness;
+  const spoil = machine.zZero.spoilboardAllowance;
+  const tabCount = to.count ?? pt.count ?? set?.tabs?.count ?? TAB_DEFAULTS.count;
+  const tabWidth = to.width ?? pt.width ?? set?.tabs?.width ?? TAB_DEFAULTS.width;
+  const tabHeight =
+    to.height ?? pt.height ?? set?.tabs?.height ?? defaultTabHeight(thickness, spoil);
+  const smallPartArea = to.smallPartArea ?? TAB_DEFAULTS.smallPartArea;
+  const smallPartMinSide = to.smallPartMinSide ?? TAB_DEFAULTS.smallPartMinSide;
+  if (!(Number.isInteger(tabCount) && tabCount >= 1) || !positive(tabWidth)) {
+    errors.push(
+      issue('INVALID_TAB', 'error', null, 'Tab count must be a whole number ≥ 1 and width > 0.'),
+    );
+    return fail(clearanceZ);
+  }
+  if (!positive(tabHeight) || tabHeight >= thickness - EPS || tabHeight <= spoil + EPS) {
+    errors.push(
+      issue(
+        'INVALID_TAB',
+        'error',
+        null,
+        `Tab height ${tabHeight} mm must be less than the thickness (${thickness} mm) and more than the spoilboard allowance (${spoil} mm), or the tab is not in the material.`,
+      ),
+    );
+    return fail(clearanceZ);
+  }
+  if (
+    !(Number.isFinite(smallPartArea) && smallPartArea >= 0) ||
+    !(Number.isFinite(smallPartMinSide) && smallPartMinSide >= 0)
+  ) {
+    errors.push(
+      issue('INVALID_TAB', 'error', null, 'Small-part thresholds must be zero or positive.'),
+    );
+    return fail(clearanceZ);
+  }
+
   const params: Params = {
     tool: tool.number,
     toolDiameter: tool.diameter,
@@ -507,6 +627,15 @@ export function buildToolpath(
     // CW spindle (M3): climb on an outer contour = CW travel around the part (D-021).
     travel: direction === 'climb' ? 'cw' : 'ccw',
     sheet: project.stock.sheet,
+    tabs: {
+      all: to.auto ?? pt.auto,
+      count: tabCount,
+      width: tabWidth,
+      height: tabHeight,
+      top: target + tabHeight,
+      smallPartArea,
+      smallPartMinSide,
+    },
   };
 
   // Features not cut yet in M1: block export instead of silently leaving them out.
@@ -563,6 +692,7 @@ export function buildToolpath(
 
   const partsById = new Map(project.parts.map((p) => [p.id, p]));
   const operations: Operation[] = [];
+  const smallWarned = new Set<string>();
   project.layout.sheets.forEach((sheet, sheetIndex) => {
     const placed = sheet.placements.flatMap((placement) => {
       const part = partsById.get(placement.partId);
@@ -577,6 +707,7 @@ export function buildToolpath(
         params,
         warnings,
         errors,
+        smallWarned,
       );
       if (op) operations.push(op);
     });

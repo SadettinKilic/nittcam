@@ -73,6 +73,24 @@ export interface MoveSegment {
   moves: Move[];
 }
 
+/**
+ * One tab (T015, D-022) on the passes below the tab top. Positions are arc lengths along the
+ * tool-centre loop from the start point in the travel direction; the raised span [start, end] is
+ * flown at `z` (= target + tab height) and is `width + tool diameter` long.
+ */
+export interface Tab {
+  centre: number;
+  start: number;
+  end: number;
+  /** XY where the tool rises (start) and goes back down (end). */
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  /** Tab top Z. */
+  z: number;
+}
+
 export type OperationKind = 'outerContour';
 
 export interface Operation {
@@ -92,6 +110,8 @@ export interface Operation {
   travel: 'cw' | 'ccw';
   /** Pass depths (negative Z), last = target depth. */
   passDepths: number[];
+  /** Tabs (empty = none); applied to every pass deeper than the tab top (D-022). */
+  tabs: Tab[];
   /** Approach, lead-in, passes (one per depth), lead-out, retract. Starts and ends at safe Z. */
   segments: MoveSegment[];
 }
@@ -131,13 +151,17 @@ export type ToolpathCode =
   | 'HOLES_NOT_SUPPORTED'
   | 'NO_PLACEMENTS'
   | 'SAFETY_VIOLATION'
+  | 'INVALID_TAB'
   // warnings
   | 'ARC_COLLAPSED'
   | 'LEAD_SHORTENED'
   | 'LEAD_REMOVED'
   | 'RAMP_STEEPER'
   | 'CLEARANCE_CLAMPED'
-  | 'UNPLACED_COPIES';
+  | 'UNPLACED_COPIES'
+  | 'SMALL_PART_AUTO_TABS'
+  | 'TABS_REDUCED'
+  | 'TABS_NOT_PLACED';
 
 export interface ToolpathIssue {
   code: ToolpathCode;
@@ -169,7 +193,26 @@ export interface CuttingParamsOverride {
   passDepth?: number;
 }
 
+/**
+ * Tab settings (D-022). Each field overrides `project.cutting.tabs`, which overrides the material
+ * parameter set's tab defaults, which override `TAB_DEFAULTS`.
+ */
+export interface TabOptions {
+  /** true = tabs on every part; false = only on small parts. */
+  auto?: boolean;
+  count?: number;
+  /** Bridge width along the contour, mm. */
+  width?: number;
+  /** Height above the through-cut bottom, mm; tab top = target + height. */
+  height?: number;
+  /** Small-part area threshold, mm² (default 50 000 = 0.05 m²). */
+  smallPartArea?: number;
+  /** Small-part smaller-side threshold, mm (default 100). */
+  smallPartMinSide?: number;
+}
+
 export interface ToolpathOptions {
+  tabs?: TabOptions;
   /** Default: `project.cutting.leadIn`. */
   lead?: LeadType;
   /** Lead arc radius / lead line length, mm. Default: tool radius. */

@@ -27,7 +27,9 @@ function finite(...xs: number[]): boolean {
  *   rapid never enters the material (rules 2, 3);
  * - every move that goes down in Z is a feed move at the plunge feed; plunges are vertical (rule 3);
  * - every feed is positive and finite; every coordinate finite (rule 8);
- * - no move below the target depth;
+ * - no move below the target depth; no feed move above the material top (Z 0);
+ * - tabs (D-022): every tab top lies strictly between the target depth and Z 0; a vertical feed
+ *   move down (back into the cut after a tab) is a plunge at the plunge feed;
  * - arc ends are equidistant from the centre.
  */
 export function toolpathSafetyViolations(tp: Toolpath): string[] {
@@ -42,6 +44,12 @@ export function toolpathSafetyViolations(tp: Toolpath): string[] {
       out.push(`${op.id}: does not start with a rapid at safe Z`);
     }
     if (!last || !atSafe(last.z)) out.push(`${op.id}: does not end at safe Z`);
+    (op.tabs ?? []).forEach((t, k) => {
+      if (!finite(t.z, t.x0, t.y0, t.x1, t.y1, t.start, t.end))
+        out.push(`${op.id} tab ${k}: non-finite`);
+      if (!(t.z > targetDepth + EPS && t.z < 0 - EPS))
+        out.push(`${op.id} tab ${k}: tab top ${t.z} not between the target and Z 0`);
+    });
     // Before the operation the tool is at safe Z (previous operation's end / program start).
     let prev = first ? { x: first.x, y: first.y, z: safeZ } : { x: 0, y: 0, z: safeZ };
     moves.forEach((m, i) => {
@@ -55,6 +63,10 @@ export function toolpathSafetyViolations(tp: Toolpath): string[] {
         if (m.z < clearanceZ - EPS) out.push(`${where}: rapid ends below the clearance height`);
       } else {
         if (!finite(m.feed) || m.feed <= 0) out.push(`${where}: feed not positive`);
+        if (m.z > EPS) out.push(`${where}: feed move above the material top (${m.z})`);
+        if (m.z < prev.z - EPS && !xyMoved && m.kind !== 'plunge') {
+          out.push(`${where}: vertical move down is not a plunge`);
+        }
         if (m.z < prev.z - EPS && Math.abs(m.feed - op.plungeFeed) > EPS) {
           out.push(`${where}: goes down at ${m.feed} mm/min, not the plunge feed`);
         }

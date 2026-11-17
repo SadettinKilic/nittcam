@@ -11,3 +11,13 @@ export {
 export type { ContourPathResult } from './build';
 export { toolpathSafetyViolations, operationMoves, toolpathMoves } from './safety';
 export { summarizeToolpath, moveLength } from './stats';
+export {
+  TAB_DEFAULTS,
+  defaultTabHeight,
+  isSmallPart,
+  placeTabs,
+  evenTabCentres,
+  tabCentreIntervals,
+  passMovesWithTabs,
+} from './tabs';
+export type { Interval } from './tabs';

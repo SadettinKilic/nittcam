@@ -34,6 +34,9 @@ export const PROFILE_BOUNDS = {
   feed: { min: 100, max: 60_000 },
   plungeFeed: { min: 50, max: 30_000 },
   stepDown: { max: 50 },
+  tabCount: { min: 1, max: 20 },
+  tabWidth: { max: 200 },
+  tabHeight: { max: 200 },
   fileNameLength: { min: 8, max: 255 },
   fileSizeMb: { max: 4_096 },
   text: { max: 80 },
@@ -196,6 +199,19 @@ export const materialKindSchema = z.enum(
   { error: 'unknown material' },
 );
 
+/**
+ * Tab defaults of a material parameter set (§3.6 "tab ayarı varsayılanları", §6.3, D-022). Optional:
+ * a set without it uses the toolpath layer's built-in defaults (`TAB_DEFAULTS`).
+ */
+export const tabParamsSchema = z.strictObject({
+  /** Tabs per part. */
+  count: int().min(PROFILE_BOUNDS.tabCount.min).max(PROFILE_BOUNDS.tabCount.max),
+  /** Bridge width along the contour, mm. */
+  width: lengthUpTo(PROFILE_BOUNDS.tabWidth.max),
+  /** Tab height above the through-cut bottom (target depth), mm; tab top = target + height. */
+  height: lengthUpTo(PROFILE_BOUNDS.tabHeight.max),
+});
+
 /** Defaults for one material + thickness on this machine (§3.6 "Malzeme = parametre seti"). */
 export const materialParamsSchema = z.strictObject({
   material: materialKindSchema,
@@ -206,6 +222,8 @@ export const materialParamsSchema = z.strictObject({
   stepDown: lengthUpTo(PROFILE_BOUNDS.stepDown.max),
   /** Suggested tool number (must exist in the tool table). */
   tool: int().min(PROFILE_BOUNDS.toolNumber.min).max(PROFILE_BOUNDS.toolNumber.max),
+  /** Tab defaults (optional; added in T015, older profiles stay valid). */
+  tabs: tabParamsSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -304,6 +322,22 @@ export const machineProfileSchema = z
           'plunge feed must not exceed feed',
         );
       }
+      if (m.tabs && m.tabs.height >= m.thickness) {
+        crossIssue(
+          ctx,
+          ['materials', i, 'tabs', 'height'],
+          'tabHeightAboveThickness',
+          'tab height must be less than the material thickness',
+        );
+      }
+      if (m.tabs && m.tabs.height <= p.zZero.spoilboardAllowance) {
+        crossIssue(
+          ctx,
+          ['materials', i, 'tabs', 'height'],
+          'tabHeightNotAboveSpoilboard',
+          'tab height must exceed the spoilboard allowance, or the tab leaves no material',
+        );
+      }
       if (m.rpm < p.spindle.minRpm || m.rpm > p.spindle.maxRpm) {
         crossIssue(
           ctx,
@@ -321,6 +355,7 @@ export type MachineProfileInput = z.input<typeof machineProfileSchema>;
 export type Tool = z.infer<typeof toolSchema>;
 export type ToolType = z.infer<typeof toolTypeSchema>;
 export type MaterialParams = z.infer<typeof materialParamsSchema>;
+export type TabParams = z.infer<typeof tabParamsSchema>;
 export type MaterialKind = z.infer<typeof materialKindSchema>;
 export type OriginCorner = z.infer<typeof originCornerSchema>;
 
