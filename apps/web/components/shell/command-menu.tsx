@@ -49,6 +49,7 @@ export interface CommandMenuProps {
   onOpenChange: (open: boolean) => void;
   t: { palette: Messages['palette']; nav: Messages['nav']; shortcuts: Messages['shortcuts'] };
   actions: CommandActions;
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 type Recent =
@@ -83,7 +84,13 @@ function PaletteItem({
 }
 
 /** Ctrl/⌘+K palette (T104, spec §3.7): pages, new project, recent projects, theme, shortcuts. */
-export function CommandMenu({ open, onOpenChange, t, actions }: CommandMenuProps) {
+export function CommandMenu({
+  open,
+  onOpenChange,
+  t,
+  actions,
+  onCloseAutoFocus,
+}: CommandMenuProps) {
   const p = t.palette;
   const [recent, setRecent] = useState<Recent>({ status: 'loading' });
   // Show "loading" again on every opening (state adjusted during render, not in an effect).
@@ -120,6 +127,7 @@ export function CommandMenu({ open, onOpenChange, t, actions }: CommandMenuProps
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
+      onCloseAutoFocus={onCloseAutoFocus}
       title={p.title}
       description={p.description}
       label={p.label}

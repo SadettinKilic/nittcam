@@ -30,6 +30,7 @@ import { CommandMenu, type CommandActions } from './command-menu';
 import { ShortcutKeys, useIsMac } from './keys';
 import { ShellProvider } from './shell-context';
 import { ShortcutsDialog } from './shortcuts-dialog';
+import { useReturnFocus } from './use-return-focus';
 import { SearchButton } from './search-button';
 import { Sidebar, SidebarContent, type ShellText } from './sidebar';
 import { TopBar } from './top-bar';
@@ -57,6 +58,12 @@ export function AppShell({ t, company, children }: AppShellProps) {
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  // Overlays open from state (no Radix Trigger): give focus back to whoever opened them.
+  const drawerFocus = useReturnFocus();
+  const paletteFocus = useReturnFocus();
+  const helpFocus = useReturnFocus();
+  const rememberPalette = paletteFocus.remember;
+  const rememberHelp = helpFocus.remember;
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const isMac = useIsMac();
@@ -69,9 +76,13 @@ export function AppShell({ t, company, children }: AppShellProps) {
       toggleTheme: () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark'),
       toggleSidebar,
       // After the palette has closed and given focus back, so the dialogs do not fight over it.
-      openHelp: () => window.setTimeout(() => setHelpOpen(true), 0),
+      openHelp: () =>
+        window.setTimeout(() => {
+          rememberHelp();
+          setHelpOpen(true);
+        }, 0),
     }),
-    [router, setTheme, resolvedTheme, toggleSidebar],
+    [router, setTheme, resolvedTheme, toggleSidebar, rememberHelp],
   );
 
   // Global shortcuts from the registry (T104); ignored while typing, except the palette.
@@ -95,9 +106,11 @@ export function AppShell({ t, company, children }: AppShellProps) {
       const a = actionsRef.current;
       switch (hit.id) {
         case 'palette':
+          if (!inDialog) rememberPalette();
           setPaletteOpen((o) => !o);
           break;
         case 'help':
+          rememberHelp();
           setHelpOpen(true);
           break;
         case 'toggleTheme':
@@ -124,7 +137,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [bare, isMac]);
+  }, [bare, isMac, rememberPalette, rememberHelp]);
 
   // The drawer belongs to narrow screens: close it when the window grows past 768 px.
   useEffect(() => {
@@ -161,6 +174,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
               closeLabel={t.shell.closeMenu}
               className="gap-0 bg-surface-subtle md:hidden"
               data-testid="shell-drawer"
+              onCloseAutoFocus={drawerFocus.onCloseAutoFocus}
             >
               <SheetTitle className="sr-only">{t.shell.menuTitle}</SheetTitle>
               <SheetDescription className="sr-only">{t.shell.workspace}</SheetDescription>
@@ -170,8 +184,19 @@ export function AppShell({ t, company, children }: AppShellProps) {
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar
               t={t}
-              onOpenMenu={() => setDrawerOpen(true)}
-              search={<SearchButton t={t.shell} onOpen={() => setPaletteOpen(true)} />}
+              onOpenMenu={() => {
+                drawerFocus.remember();
+                setDrawerOpen(true);
+              }}
+              search={
+                <SearchButton
+                  t={t.shell}
+                  onOpen={() => {
+                    rememberPalette();
+                    setPaletteOpen(true);
+                  }}
+                />
+              }
               themeExtra={
                 <>
                   <DropdownMenuSeparator />
@@ -195,8 +220,14 @@ export function AppShell({ t, company, children }: AppShellProps) {
           onOpenChange={setPaletteOpen}
           t={{ palette: t.palette, nav: t.nav, shortcuts: t.shortcuts }}
           actions={actions}
+          onCloseAutoFocus={paletteFocus.onCloseAutoFocus}
         />
-        <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} t={t.shortcuts} />
+        <ShortcutsDialog
+          open={helpOpen}
+          onOpenChange={setHelpOpen}
+          t={t.shortcuts}
+          onCloseAutoFocus={helpFocus.onCloseAutoFocus}
+        />
         <Toaster />
       </TooltipProvider>
     </ShellProvider>

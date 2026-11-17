@@ -10,14 +10,20 @@ export function ShortcutsDialog({
   open,
   onOpenChange,
   t,
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   t: Messages['shortcuts'];
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent closeLabel={t.close} data-testid="shortcuts-dialog">
+      <DialogContent
+        closeLabel={t.close}
+        data-testid="shortcuts-dialog"
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <DialogHeader>
           <DialogTitle>{t.title}</DialogTitle>
           <DialogDescription>{t.description}</DialogDescription>

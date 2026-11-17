@@ -37,6 +37,8 @@ export interface CommandDialogProps {
   children: ReactNode;
   /** Footer row (e.g. key hints). */
   footer?: ReactNode;
+  /** Where focus goes on close; needed when the palette is opened without a Trigger. */
+  onCloseAutoFocus?: ((event: Event) => void) | undefined;
 }
 
 /** Command palette in a dialog: top-aligned, wide, with the elevated xl shadow. */
@@ -48,12 +50,14 @@ export function CommandDialog({
   label,
   children,
   footer,
+  onCloseAutoFocus,
 }: CommandDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         size="lg"
         data-testid="command-palette"
+        onCloseAutoFocus={onCloseAutoFocus}
         className="top-[12vh] max-h-[min(32rem,76vh)] translate-y-0 gap-0 overflow-hidden p-0 sm:top-[16vh]"
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
