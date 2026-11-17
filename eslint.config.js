@@ -5,6 +5,22 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+/** packages/core is pure (spec §10.1). */
+const CORE_PURE_PATTERNS = [
+  {
+    group: ['@nittcam/web', '@nittcam/web/*', '**/apps/**'],
+    message: 'packages/core must not import from apps/* (spec §10.1).',
+  },
+  {
+    group: ['@nittcam/db', '@nittcam/db/*', '@nittcam/ui', '@nittcam/ui/*'],
+    message: 'packages/core is pure: no database or UI code.',
+  },
+  {
+    group: ['react', 'react-dom', 'next', 'next/*'],
+    message: 'packages/core is pure: no UI framework code.',
+  },
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -48,23 +64,69 @@ export default tseslint.config(
   {
     files: ['packages/core/**/*.{ts,tsx}'],
     rules: {
+      'no-restricted-imports': ['error', { patterns: CORE_PURE_PATTERNS }],
+    },
+  },
+  // G-code reader independence (spec §6.5, gcode-safety skill, T018, D-026): the reader is a
+  // second, independent implementation, so it must not import the generator side (post
+  // processor, toolpath model) or the core barrel that re-exports them. The only import allowed
+  // outside its own folder is the shared tolerance file `geometry/constants`.
+  // Flat config replaces rule options per file, so the core patterns are repeated here.
+  {
+    files: ['packages/core/src/gcode-reader/**/*.{ts,tsx}'],
+    rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
+            ...CORE_PURE_PATTERNS,
             {
-              group: ['@nittcam/web', '@nittcam/web/*', '**/apps/**'],
-              message: 'packages/core must not import from apps/* (spec §10.1).',
+              // Any `..` segment anywhere ('../x', './../x', './a/../../x', '..\x'), except
+              // exactly '../geometry/constants'. The folder has no subfolders, so every `..`
+              // leaves it; a roundabout spelling of the allowed file is rejected too.
+              regex: '^(?!\\.\\./geometry/constants$)(?:.*[/\\\\])?\\.\\.(?:[/\\\\]|$)',
+              message:
+                'gcode-reader must stay independent of the generator (spec §6.5): only ../geometry/constants may be imported from outside the folder.',
             },
             {
-              group: ['@nittcam/db', '@nittcam/db/*', '@nittcam/ui', '@nittcam/ui/*'],
-              message: 'packages/core is pure: no database or UI code.',
+              regex: '^(?:[/\\\\]|[A-Za-z]:|file:)',
+              message: 'gcode-reader must not import by absolute path (spec §6.5 independence).',
             },
             {
-              group: ['react', 'react-dom', 'next', 'next/*'],
-              message: 'packages/core is pure: no UI framework code.',
+              regex: '^@nittcam/',
+              message: 'gcode-reader must not import workspace packages (spec §6.5 independence).',
+            },
+            {
+              group: ['module', 'node:module'],
+              message: 'gcode-reader must not build its own require (spec §6.5 independence).',
             },
           ],
+        },
+      ],
+      // Imports that no-restricted-imports cannot see: dynamic import(), require(),
+      // `import x = require()` and `typeof import()` types. The reader needs none of them.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportExpression',
+          message:
+            'gcode-reader: no dynamic import() (spec §6.5 independence, static imports only).',
+        },
+        {
+          selector: "CallExpression[callee.name='require']",
+          message: 'gcode-reader: no require() (spec §6.5 independence, static imports only).',
+        },
+        {
+          selector: "CallExpression[callee.property.name='require']",
+          message: 'gcode-reader: no require() (spec §6.5 independence, static imports only).',
+        },
+        {
+          selector: 'TSImportEqualsDeclaration',
+          message: 'gcode-reader: no `import x = require()` (spec §6.5 independence).',
+        },
+        {
+          selector: 'TSImportType',
+          message: 'gcode-reader: no `import()` types (spec §6.5 independence).',
         },
       ],
     },
