@@ -50,3 +50,18 @@ Look: modern, calm, corporate (Linear / Vercel class). Neutral graphite surfaces
 - The UI never mutates the project directly; it always calls commands (command-layer skill).
 - Menu: Ana sayfa, Makineler, Projeler, Şablonlar, Oluştur, Ayarlar, plus a prominent "+ Yeni proje".
 - Visual QA: `pnpm e2e:visual` (Playwright `visual` project, 1440×900 and 390×844, light + dark, `snap()` and `expectNoA11yViolations()` from `e2e/tests/visual/helpers.ts`).
+
+## App shell (B2, T103–T105)
+- Every page renders inside `AppShell` (`apps/web/components/shell/`): sidebar (224 px, collapsible, state remembered), sticky top bar (breadcrumb + title), drawer below 768 px, skip link. Pages render their own `<main>` inside `#content`.
+- Top-bar slots from a page: `<ShellActions>` (page actions), `<ShellStatus>` (save status, e.g. the wizard autosave) and `useShellTitle(title)` (last breadcrumb, e.g. the project name) from `shell-context.tsx`.
+- Shortcuts live in one registry, `apps/web/lib/shortcuts.ts`; it drives the global handler, the Ctrl/⌘+K palette hints, tooltips, the `?` dialog and `aria-keyshortcuts`. Shortcuts never fire while typing in inputs.
+- Feedback: `notify.success|info|error` (sonner) for toasts; `EmptyState` / `ErrorState` (with `onRetry`) for empty and failed lists; `PageSkeleton` or `Skeleton` while loading; `CanvasBoundary` around Konva/3D canvases so a canvas crash keeps the page.
+- `/dev/ui` renders without the shell, so gallery baselines do not move with shell changes.
+
+## Page patterns (B3, T106–T108)
+- Page body: `pageContainer` + `PageHeader` (title, description, actions on the title's baseline; actions drop below on phones) and `SectionHeader` (section title with a right-aligned link on the same line) from `apps/web/components/page/page-header.tsx`. Use `sectionLink` for "Tüm … →" links and `focusRing` for custom focusable elements.
+- Data lists: TanStack Table v9 (`useTable`, `tableFeatures`, `createColumnHelper`) inside a `Card` on wide screens; a card list below `lg`. Keep the same accessible names on both (e.g. `Düzenle: <name>`).
+- Long forms: sections as `Card`s with title + one-line hint, a sticky side index on `lg`, a floating sticky save bar (status left: clean / unsaved / errors / saving; actions right), and a leave guard (in-app links, reload, Vazgeç) when dirty. Every mm/feed/rpm value uses `NumberInput` with a unit; parse errors block saving and show inline.
+- Verification badges: `MachineStateBadge` (`STATE_TONE` in `lib/machine-state.ts`); steppers use `stepStatuses()` (done / current / upcoming, `aria-current="step"`).
+- Scrollable regions (`overflow-x-auto` around tables without inputs) need `role="region"`, an `aria-label` and `tabIndex={0}` (axe `scrollable-region-focusable`).
+- Visual QA for redesigned pages: full-page `expectNoA11yViolations(page)` in light and dark at 1440 and 390 px. Captures of pages whose data is shared with other tests use `snap(page, name, { baseline: false })` (review capture only); deterministic states (fresh visual DB) get baselines.

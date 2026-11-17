@@ -20,13 +20,16 @@ test.describe('T017 Makineler: post seçimi ve hızlı hareket hızı', () => {
     await page.getByLabel(f.controllerFamily).fill('Mach3');
 
     const post = page.getByLabel(f.postId);
-    await expect(post).toHaveValue('generic');
-    await expect(post.locator('option')).toHaveText([
+    // Radix select (T107): the trigger shows the choice, the list holds the shipped posts.
+    await expect(post).toHaveText('Genel düz G-code (generic 1.0.0)');
+    await post.click();
+    await expect(page.getByRole('option')).toHaveText([
       'Genel düz G-code (generic 1.0.0)',
       'Mach3 (mach3 1.0.0)',
     ]);
-    await post.selectOption('mach3');
-    await expect(page.getByLabel(f.rapidFeed)).toHaveValue('10000');
+    await page.getByRole('option', { name: 'Mach3 (mach3 1.0.0)' }).click();
+    // NumberInput shows Turkish thousands grouping.
+    await expect(page.getByLabel(f.rapidFeed)).toHaveValue('10.000');
     await page.getByLabel(f.rapidFeed).fill('8000');
     await page.getByRole('button', { name: t.form.save }).click();
     await expect(page.getByText(t.form.saved.replace('{version}', '1'))).toBeVisible();
@@ -34,8 +37,8 @@ test.describe('T017 Makineler: post seçimi ve hızlı hareket hızı', () => {
     await row(page, name)
       .getByRole('button', { name: `${t.edit}: ${name}` })
       .click();
-    await expect(page.getByLabel(f.postId)).toHaveValue('mach3');
-    await expect(page.getByLabel(f.rapidFeed)).toHaveValue('8000');
+    await expect(page.getByLabel(f.postId)).toHaveText('Mach3 (mach3 1.0.0)');
+    await expect(page.getByLabel(f.rapidFeed)).toHaveValue('8.000');
     await page.screenshot({ path: '__screenshots__/t017-post-secimi.png', fullPage: true });
 
     expect(problems).toEqual([]);

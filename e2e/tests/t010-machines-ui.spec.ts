@@ -89,6 +89,7 @@ test.describe('T010 Makineler UI (tester)', () => {
 
     // Back to the list: nothing was added.
     await page.getByRole('button', { name: t.form.cancel }).click();
+    await page.getByRole('button', { name: t.form.leave.discard }).click();
     // Latin-only ASCII English leaks: no English validation text on screen.
     await expect(page.getByText(/must not be empty|must be a number/)).toHaveCount(0);
   });
@@ -250,7 +251,7 @@ test.describe('T010 Makineler UI (tester)', () => {
       const page = await ctx.newPage();
       await page.goto(path);
       await page.getByRole('heading', { level: 1 }).waitFor();
-      if (path === '/makineler') await page.getByRole('table').waitFor();
+      if (path === '/makineler') await page.getByTestId('machine-list').waitFor();
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - window.innerWidth,
       );
@@ -301,7 +302,7 @@ test.describe('T010 Makineler UI (tester)', () => {
       expect(await overflow(), '/').toBeLessThanOrEqual(0);
 
       await page.goto('/makineler');
-      await page.getByRole('table').waitFor();
+      await page.getByTestId('machine-list').waitFor();
       expect(await overflow(), '/makineler').toBeLessThanOrEqual(0);
 
       await page.getByRole('button', { name: t.add }).click();
@@ -312,7 +313,7 @@ test.describe('T010 Makineler UI (tester)', () => {
       expect(await overflow(), 'create form with errors').toBeLessThanOrEqual(0);
 
       await page.goto('/makineler');
-      await page.getByRole('table').waitFor();
+      await page.getByTestId('machine-list').waitFor();
       await page
         .getByRole('button', { name: new RegExp(`^${t.edit}:`) })
         .first()
@@ -330,6 +331,8 @@ test.describe('T010 Makineler UI (tester)', () => {
     await page.goto('/makineler');
     await page.getByRole('button', { name: t.add }).click();
     await page.getByRole('heading', { name: t.form.createTitle }).waitFor();
+    // Let hydration and the form mount settle (a late mount under load was the flake).
+    await page.waitForTimeout(300);
     const result = await page.evaluate(() => {
       const bad: string[] = [];
       for (const el of Array.from(document.querySelectorAll('*'))) {

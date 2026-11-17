@@ -1,9 +1,13 @@
 'use client';
 
-import { notify } from '@nittcam/ui';
-import { defaultMachineProfile, type MachineProfile, type VerificationState } from '@nittcam/core';
+import { defaultMachineProfile, type MachineProfile } from '@nittcam/core';
+import { Badge, Button, Card, EmptyState, ErrorState, Skeleton, notify } from '@nittcam/ui';
+import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
+import { Cpu, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MachineStateBadge } from '../../components/machines/state-badge';
+import { PageHeader, pageContainer } from '../../components/page/page-header';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { MachineForm } from './machine-form';
@@ -17,20 +21,15 @@ type Mode =
   | { kind: 'list' }
   | { kind: 'loading'; machineId: string }
   | { kind: 'loadError'; machineId: string }
-  | { kind: 'form'; machineId: string | null; initial: MachineProfile; key: number };
+  | {
+      kind: 'form';
+      machineId: string | null;
+      version?: number;
+      initial: MachineProfile;
+      key: number;
+    };
 
 const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
-
-const STATE_STYLE: Record<VerificationState, string> = {
-  draft: 'bg-info-bg text-info',
-  air_cut_approved: 'bg-warn-bg text-warn',
-  test_cut_approved: 'bg-warn-bg text-warn',
-  verified: 'bg-ok-bg text-ok',
-  reverify_needed: 'bg-danger-bg text-danger',
-};
-
-const buttonClass =
-  'rounded-lg px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
 /** A new machine starts from the generic profile, not marked as an example, with no name. */
 function newProfile(): MachineProfile {
@@ -40,9 +39,15 @@ function newProfile(): MachineProfile {
   return p;
 }
 
-export function MachinesView({ t }: { t: Text }) {
+function tableSize(m: MachineListItem): string {
+  return `${mmFormat.format(m.table.width)} × ${mmFormat.format(m.table.depth)} mm`;
+}
+
+export function MachinesView({ t, startNew = false }: { t: Text; startNew?: boolean }) {
   const [list, setList] = useState<ListState>({ status: 'loading' });
-  const [mode, setMode] = useState<Mode>({ kind: 'list' });
+  const [mode, setMode] = useState<Mode>(() =>
+    startNew ? { kind: 'form', machineId: null, initial: newProfile(), key: 0 } : { kind: 'list' },
+  );
   const [formKey, setFormKey] = useState(0);
 
   const loadList = useCallback(async () => {
@@ -62,6 +67,11 @@ export function MachinesView({ t }: { t: Text }) {
     void loadList();
   }, [loadList]);
 
+  // Opening or closing the form starts at the top of the page.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [mode.kind]);
+
   async function openEdit(machineId: string) {
     setMode({ kind: 'loading', machineId });
     try {
@@ -69,7 +79,13 @@ export function MachinesView({ t }: { t: Text }) {
       if (!res.ok) throw new Error(String(res.status));
       const detail = (await res.json()) as MachineDetail;
       setFormKey((k) => k + 1);
-      setMode({ kind: 'form', machineId, initial: detail.profile, key: formKey + 1 });
+      setMode({
+        kind: 'form',
+        machineId,
+        version: detail.version,
+        initial: detail.profile,
+        key: formKey + 1,
+      });
     } catch {
       setMode({ kind: 'loadError', machineId });
     }
@@ -87,60 +103,56 @@ export function MachinesView({ t }: { t: Text }) {
   }
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-semibold tracking-tight">{t.title}</h1>
-          <p className="text-fg-muted">{t.subtitle}</p>
-        </div>
-        {mode.kind === 'list' ? (
-          <button
-            type="button"
-            onClick={openNew}
-            className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
-          >
-            {t.add}
-          </button>
-        ) : null}
-      </header>
+    <main className={`${pageContainer} gap-6`}>
+      <PageHeader
+        title={t.title}
+        description={t.subtitle}
+        actions={
+          mode.kind === 'list' ? (
+            <Button onClick={openNew}>
+              <Plus aria-hidden />
+              {t.add}
+            </Button>
+          ) : null
+        }
+      />
 
       {mode.kind === 'form' ? (
         <MachineForm
           key={mode.key}
           t={t}
           machineId={mode.machineId}
+          version={mode.version}
           initial={mode.initial}
           onSaved={onSaved}
           onCancel={() => setMode({ kind: 'list' })}
         />
       ) : mode.kind === 'loading' ? (
-        <p role="status" className="text-fg-muted">
-          {t.form.loading}
-        </p>
-      ) : mode.kind === 'loadError' ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-danger-bg p-3">
-          <span className="text-sm text-danger">{t.form.loadError}</span>
-          <button
-            type="button"
-            onClick={() => void openEdit(mode.machineId)}
-            className={`${buttonClass} border border-border bg-bg`}
-          >
-            {t.retry}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode({ kind: 'list' })}
-            className={`${buttonClass} border border-border bg-bg`}
-          >
-            {t.form.cancel}
-          </button>
+        <div role="status" className="flex flex-col gap-4">
+          <span className="sr-only">{t.form.loading}</span>
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-64 w-full rounded-xl" />
         </div>
+      ) : mode.kind === 'loadError' ? (
+        <ErrorState
+          title={t.form.loadError}
+          onRetry={() => void openEdit(mode.machineId)}
+          retryLabel={t.retry}
+          action={
+            <Button variant="ghost" size="sm" onClick={() => setMode({ kind: 'list' })}>
+              {t.form.cancel}
+            </Button>
+          }
+        />
       ) : (
         <MachineList t={t} list={list} onRetry={() => void loadList()} onEdit={openEdit} />
       )}
     </main>
   );
 }
+
+const features = tableFeatures({});
+const column = createColumnHelper<typeof features, MachineListItem>();
 
 function MachineList({
   t,
@@ -155,100 +167,191 @@ function MachineList({
 }) {
   if (list.status === 'loading') {
     return (
-      <p role="status" className="text-fg-muted">
-        {t.loading}
-      </p>
-    );
-  }
-  if (list.status === 'error') {
-    return (
-      <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-danger-bg p-3">
-        <span className="text-sm text-danger">{t.loadError}</span>
-        <button
-          type="button"
-          onClick={onRetry}
-          className={`${buttonClass} border border-border bg-bg`}
-        >
-          {t.retry}
-        </button>
+      <div role="status" className="flex flex-col gap-2" data-testid="machine-list-loading">
+        <span className="sr-only">{t.loading}</span>
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-16 w-full rounded-xl" />
+        ))}
       </div>
     );
   }
-  if (list.items.length === 0) {
-    return <p className="rounded-card bg-sidebar p-6 text-fg-muted">{t.empty}</p>;
+  if (list.status === 'error') {
+    return <ErrorState title={t.loadError} onRetry={onRetry} retryLabel={t.retry} />;
   }
-  const c = t.columns;
+  if (list.items.length === 0) {
+    return <EmptyState icon={<Cpu />} title={t.emptyTitle} description={t.empty} />;
+  }
   return (
-    <div className="relative max-w-full overflow-x-auto rounded-card border border-border">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-sidebar text-fg-muted">
-          <tr>
-            <th scope="col" className="px-4 py-3 font-medium">
-              {c.name}
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              {c.controller}
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              {c.table}
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              {c.version}
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              {c.status}
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              <span className="sr-only">{c.actions}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {list.items.map((m) => (
-            <tr key={m.id} className="border-t border-border">
-              <td className="px-4 py-3 font-medium">
-                {m.name}
-                {m.example ? (
-                  <span className="ml-2 rounded-full bg-warn-bg px-2 py-0.5 text-xs text-warn">
-                    {t.example}
-                  </span>
-                ) : null}
-              </td>
-              <td className="px-4 py-3">{m.controller}</td>
-              <td className="px-4 py-3 whitespace-nowrap">
-                {mmFormat.format(m.table.width)} × {mmFormat.format(m.table.depth)} mm
-              </td>
-              <td className="px-4 py-3">v{m.version}</td>
-              <td className="px-4 py-3">
+    <div data-testid="machine-list" className="flex flex-col gap-3">
+      <p className="text-sm text-fg-muted">{t.count.replace('{n}', String(list.items.length))}</p>
+      <MachineTable t={t} items={list.items} onEdit={onEdit} />
+      <ul className="flex flex-col gap-3 lg:hidden">
+        {list.items.map((m) => (
+          <li key={m.id}>
+            <Card className="flex flex-col gap-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-sm font-semibold text-fg">{m.name}</span>
+                  <span className="truncate text-xs text-fg-muted">{m.controller}</span>
+                </div>
+                <span className="numeric shrink-0 text-xs text-fg-muted">v{m.version}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <MachineStateBadge state={m.state} label={t.state[m.state]} />
+                {m.example ? <Badge>{t.example}</Badge> : null}
+                <span className="numeric ml-auto text-xs text-fg-muted">{tableSize(m)}</span>
+              </div>
+              <RowActions
+                t={t}
+                m={m}
+                onEdit={onEdit}
+                className="border-t border-border-subtle pt-3"
+              />
+            </Card>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function RowActions({
+  t,
+  m,
+  onEdit,
+  className,
+}: {
+  t: Text;
+  m: MachineListItem;
+  onEdit: (id: string) => void;
+  className?: string;
+}) {
+  return (
+    <div className={`flex items-center justify-end gap-2 ${className ?? ''}`}>
+      <Button asChild size="sm" variant="outline">
+        <Link
+          href={`/makineler/${m.id}/dogrulama`}
+          aria-label={`${t.verify}: ${m.name}`}
+          data-testid="machine-verify"
+        >
+          <ShieldCheck aria-hidden />
+          {t.verify}
+        </Link>
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => onEdit(m.id)}
+        aria-label={`${t.edit}: ${m.name}`}
+      >
+        <Pencil aria-hidden />
+        {t.edit}
+      </Button>
+    </div>
+  );
+}
+
+/** Wide screens: a data table (TanStack Table v9, D-032). Phones get the card list instead. */
+function MachineTable({
+  t,
+  items,
+  onEdit,
+}: {
+  t: Text;
+  items: MachineListItem[];
+  onEdit: (id: string) => void;
+}) {
+  const c = t.columns;
+  const columns = useMemo(
+    () =>
+      column.columns([
+        column.accessor('name', {
+          header: c.machine,
+          cell: (info) => {
+            const m = info.row.original;
+            return (
+              <div className="flex min-w-0 items-center gap-3">
                 <span
-                  data-testid="machine-state"
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${STATE_STYLE[m.state]}`}
+                  aria-hidden
+                  className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-surface-subtle text-fg-muted [&_svg]:size-4"
                 >
-                  {t.state[m.state]}
+                  <Cpu />
                 </span>
-              </td>
-              <td className="flex justify-end gap-2 px-4 py-3 text-right">
-                <Link
-                  href={`/makineler/${m.id}/dogrulama`}
-                  aria-label={`${t.verify}: ${m.name}`}
-                  data-testid="machine-verify"
-                  className={`${buttonClass} border border-border bg-bg whitespace-nowrap hover:bg-sidebar`}
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-medium text-fg">{m.name}</span>
+                    {m.example ? <Badge>{t.example}</Badge> : null}
+                  </span>
+                  <span className="truncate text-xs text-fg-muted">{m.controller}</span>
+                </div>
+              </div>
+            );
+          },
+        }),
+        column.accessor('table', {
+          header: c.table,
+          cell: (info) => (
+            <span className="numeric whitespace-nowrap text-fg-muted">
+              {tableSize(info.row.original)}
+            </span>
+          ),
+        }),
+        column.accessor('version', {
+          header: c.version,
+          cell: (info) => <span className="numeric text-fg-muted">v{info.getValue()}</span>,
+        }),
+        column.accessor('state', {
+          header: c.status,
+          cell: (info) => (
+            <MachineStateBadge
+              state={info.getValue()}
+              label={t.state[info.getValue()]}
+              data-testid="machine-state"
+            />
+          ),
+        }),
+        column.display({
+          id: 'actions',
+          header: () => <span className="sr-only">{c.actions}</span>,
+          cell: (info) => <RowActions t={t} m={info.row.original} onEdit={onEdit} />,
+        }),
+      ]),
+    [c, t, onEdit],
+  );
+  const table = useTable({ features, columns, data: items, getRowId: (m) => m.id });
+  return (
+    <Card className="hidden overflow-hidden lg:block">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b border-border bg-surface-subtle">
+          {table.getHeaderGroups().map((group) => (
+            <tr key={group.id}>
+              {group.headers.map((header) => (
+                <th
+                  key={header.id}
+                  scope="col"
+                  className="px-4 py-2.5 text-xs font-medium whitespace-nowrap text-fg-muted"
                 >
-                  {t.verify}
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => onEdit(m.id)}
-                  aria-label={`${t.edit}: ${m.name}`}
-                  className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-                >
-                  {t.edit}
-                </button>
-              </td>
+                  {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody className="divide-y divide-border-subtle">
+          {table.getRowModel().rows.map((row) => (
+            <tr
+              key={row.id}
+              className="transition-colors duration-(--duration-fast) hover:bg-surface-hover"
+            >
+              {row.getAllCells().map((cell) => (
+                <td key={cell.id} className="px-4 py-3 align-middle">
+                  <table.FlexRender cell={cell} />
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   );
 }

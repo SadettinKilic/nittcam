@@ -1,46 +1,51 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import {
+  Checkbox,
+  FormField,
+  Input,
+  Label,
+  NumberInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+  type NumberParseError,
+} from '@nittcam/ui';
+import type { ReactNode } from 'react';
 
 /** DOM id for a profile path like `tools[1].diameter`. */
 export function fieldId(path: string): string {
   return `f-${path.replace(/[.[\]]+/g, '-').replace(/-$/, '')}`;
 }
 
-const inputClass =
-  'w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent aria-[invalid=true]:border-danger';
-
 interface FieldProps {
   path: string;
   label: string;
   error?: string | undefined;
   help?: string | undefined;
-  /** Table cells: the label is for screen readers only. */
+  /** Table cells: the label is for screen readers only and there is no help line. */
   compact?: boolean;
 }
 
-function Field({
+/** A table cell control: aria-label instead of a visible label, the error under it. */
+function Compact({
   path,
-  label,
   error,
-  help,
-  compact = false,
   children,
-}: FieldProps & { children: ReactNode }) {
-  const id = fieldId(path);
+}: {
+  path: string;
+  error: string | undefined;
+  children: (aria: { 'aria-describedby'?: string }) => ReactNode;
+}) {
+  const errorId = `${fieldId(path)}-error`;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className={compact ? 'sr-only' : 'text-sm font-medium text-fg'}>
-        {label}
-      </label>
-      {children}
-      {help && !compact ? (
-        <p id={`${id}-help`} className="text-xs text-fg-muted">
-          {help}
-        </p>
-      ) : null}
+      {children(error ? { 'aria-describedby': errorId } : {})}
       {error ? (
-        <p id={`${id}-error`} className="text-xs font-medium text-danger">
+        <p id={errorId} className="text-xs leading-4 font-medium text-danger-text">
           {error}
         </p>
       ) : null}
@@ -48,71 +53,67 @@ function Field({
   );
 }
 
-function describedBy(path: string, error?: string, help?: string): string | undefined {
-  const id = fieldId(path);
-  const ids = [error ? `${id}-error` : '', help ? `${id}-help` : ''].filter(Boolean);
-  return ids.length > 0 ? ids.join(' ') : undefined;
-}
-
-/** Shows a number with a Turkish decimal comma, without grouping (it is an input). */
-function formatNumber(v: number): string {
-  return Number.isFinite(v) ? String(v).replace('.', ',') : '';
-}
-
-/** Accepts `12,5` and `12.5`; anything else (or empty) is NaN, which the schema reports. */
-export function parseNumber(text: string): number {
-  const s = text.trim().replace(',', '.');
-  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(s)) return Number.NaN;
-  return Number(s);
-}
-
 export function NumberField(
-  props: FieldProps & { value: number; onChange: (value: number) => void },
+  props: FieldProps & {
+    value: number;
+    onChange: (value: number) => void;
+    /** Typed text that is not a number yet (shown as the field's error by the form). */
+    onParseError: (path: string, error: NumberParseError | null) => void;
+    unit?: string | undefined;
+    maxDecimals?: number;
+  },
 ) {
-  const { path, error, help, compact, value, onChange } = props;
-  // The text the user typed is kept as is ("12," while typing); the profile gets the number.
-  const [text, setText] = useState(() => formatNumber(value));
+  const { path, label, error, help, compact, value, onChange, onParseError, unit } = props;
+  const control = (extra: { 'aria-describedby'?: string; 'aria-label'?: string }) => (
+    <NumberInput
+      {...extra}
+      id={fieldId(path)}
+      name={path}
+      required
+      value={Number.isFinite(value) ? value : null}
+      {...(unit ? { unit } : {})}
+      maxDecimals={props.maxDecimals ?? 3}
+      invalid={!!error}
+      inputSize={compact ? 'sm' : 'md'}
+      {...(compact ? { className: unit && unit.length > 2 ? 'min-w-36' : 'min-w-24' } : {})}
+      onValueChange={(v) => {
+        if (v !== null) onChange(v);
+      }}
+      onValidityChange={(e) => onParseError(path, e)}
+    />
+  );
+  if (compact) {
+    return (
+      <Compact path={path} error={error}>
+        {(aria) => control({ ...aria, 'aria-label': label })}
+      </Compact>
+    );
+  }
   return (
-    <Field {...props}>
-      <input
-        id={fieldId(path)}
-        name={path}
-        type="text"
-        inputMode="decimal"
-        autoComplete="off"
-        className={`${inputClass} ${compact ? 'min-w-16' : ''}`}
-        value={text}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(path, error, compact ? undefined : help)}
-        onChange={(e) => {
-          setText(e.target.value);
-          onChange(parseNumber(e.target.value));
-        }}
-      />
-    </Field>
+    <FormField id={fieldId(path)} label={label} hint={help} error={error}>
+      {control({})}
+    </FormField>
   );
 }
 
 export function TextField(
   props: FieldProps & { value: string; onChange: (value: string) => void; multiline?: boolean },
 ) {
-  const { path, error, help, value, onChange, multiline } = props;
-  const common = {
-    id: fieldId(path),
-    name: path,
-    className: inputClass,
-    value,
-    'aria-invalid': error ? true : undefined,
-    'aria-describedby': describedBy(path, error, help),
-  } as const;
+  const { path, label, error, help, value, onChange, multiline } = props;
   return (
-    <Field {...props}>
+    <FormField
+      id={fieldId(path)}
+      label={label}
+      hint={help}
+      error={error}
+      {...(multiline ? { className: 'sm:col-span-2' } : {})}
+    >
       {multiline ? (
-        <textarea {...common} rows={2} onChange={(e) => onChange(e.target.value)} />
+        <Textarea name={path} rows={2} value={value} onChange={(e) => onChange(e.target.value)} />
       ) : (
-        <input {...common} type="text" onChange={(e) => onChange(e.target.value)} />
+        <Input name={path} value={value} onChange={(e) => onChange(e.target.value)} />
       )}
-    </Field>
+    </FormField>
   );
 }
 
@@ -123,46 +124,70 @@ export function SelectField<T extends string>(
     onChange: (value: T) => void;
   },
 ) {
-  const { path, error, help, value, options, onChange } = props;
-  return (
-    <Field {...props}>
-      <select
+  const { path, label, error, help, compact, value, options, onChange } = props;
+  const control = (extra: { 'aria-describedby'?: string; 'aria-label'?: string }) => (
+    <Select value={value} onValueChange={(v) => onChange(v as T)} name={path}>
+      <SelectTrigger
+        {...extra}
         id={fieldId(path)}
-        name={path}
-        className={inputClass}
-        value={value}
+        size={compact ? 'sm' : 'md'}
+        {...(compact ? { className: 'min-w-36' } : {})}
         aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(path, error, help)}
-        onChange={(e) => onChange(e.target.value as T)}
       >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
         {(Object.keys(options) as T[]).map((k) => (
-          <option key={k} value={k}>
+          <SelectItem key={k} value={k}>
             {options[k]}
-          </option>
+          </SelectItem>
         ))}
-      </select>
-    </Field>
+      </SelectContent>
+    </Select>
+  );
+  if (compact) {
+    return (
+      <Compact path={path} error={error}>
+        {(aria) => control({ ...aria, 'aria-label': label })}
+      </Compact>
+    );
+  }
+  return (
+    <FormField id={fieldId(path)} label={label} hint={help} error={error}>
+      {control({})}
+    </FormField>
   );
 }
 
 export function CheckField(props: {
   path: string;
   label: string;
+  help?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) {
-  const { path, label, checked, onChange } = props;
+  const { path, label, help, checked, onChange } = props;
+  const id = fieldId(path);
   return (
-    <label htmlFor={fieldId(path)} className="flex items-center gap-2 py-2 text-sm text-fg">
-      <input
-        id={fieldId(path)}
+    <div className="flex items-start gap-3 py-1">
+      <Checkbox
+        id={id}
         name={path}
-        type="checkbox"
-        className="size-4 accent-accent focus-visible:outline-2 focus-visible:outline-accent"
+        className="mt-0.5"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        aria-describedby={help ? `${id}-hint` : undefined}
+        onCheckedChange={(v) => onChange(v === true)}
       />
-      {label}
-    </label>
+      <div className="flex flex-col gap-0.5">
+        <Label htmlFor={id} className="font-normal">
+          {label}
+        </Label>
+        {help ? (
+          <p id={`${id}-hint`} className="text-xs text-fg-muted">
+            {help}
+          </p>
+        ) : null}
+      </div>
+    </div>
   );
 }
