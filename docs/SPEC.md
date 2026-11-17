@@ -1,12 +1,12 @@
-# NittCam — Proje Dokümanı v2
+# NittCam — Proje Dokümanı v3
 
-Nov 16, 2026 · @Sadettin
+Nov 16, 2026 · @Sadettin · v3: 17 Kasım 2026
 
 ## 1. Özet
 
 NittCam, CNC router kullanan atölyeler için web tabanlı CAM ve üretim planlama yazılımıdır. Girdi kesim listesi, çizim, DXF veya AI sohbettir; çıktı plaka dizilimi, takım yolu ve makine profiline uygun G-code, DXF ve PDF'tir.
 
-- **Durum:** fikir / ön geliştirme. Yan proje, tek geliştirici, Claude Code ile AI destekli kodlama.
+- **Durum:** M0 ve M1 tamamlandı (17 Kasım 2026); v3 planıyla M2–M9 sürüyor. Yan proje, tek geliştirici, Claude Code ile AI destekli kodlama.
 - **Önceki ad:** SmartNest CAM. Güncel ad: NittCam.
 - **Slogan:** "Teknik çizim yapma, üretim tarifini ver."
 - **Değişmez kural:** AI geometri veya G-code üretmez. Makineye kritik her işlem deterministik kodla yapılır ve üretilen G-code geri okunarak denetlenir.
@@ -24,6 +24,23 @@ NittCam, CNC router kullanan atölyeler için web tabanlı CAM ve üretim planla
 | Yerel kayıt | Dexie.js ikinci kaynak gibi | Sunucu tek kaynak; yerelde yalnızca gönderilmemiş değişiklik kuyruğu | "Tek doğru kaynak" kuralı bozulmasın |
 | Makine profili | Z sıfır referansı ve orijin köşesi yok | Eklendi (bölüm 7.1) | Takım kırdıran en yaygın hata kaynağı |
 | Yeni özellikler | — | Kesim listesi yapıştırma, artık parça stoğu, parça etiketi, kenar bandı, dogbone, küçük parça güvenliği | Bölüm 2.4 |
+
+### v3 değişiklikleri (17 Kasım 2026, sahibin kararı)
+
+M0 ve M1 bitti. Sahibin geri bildirimi üzerine kapsam ve sıra değişti (kararlar: DECISIONS D-032…D-036).
+
+| Konu | v2 | v3 kararı | Neden |
+| --- | --- | --- | --- |
+| Saha testi zamanı | M1 sonunda Saha 1, M3 sonunda Saha 2 | Tek saha testi, ürün ~%90 bittiğinde (M9 sonu); Saha 1 ve Saha 2 birleşti | Sahip makine testini neredeyse bitmiş ürünle yapmak istiyor |
+| Milestone sırası | Hesap → editör → şablon/dizilim → AI → 3D | Tasarım sistemi → kesim listesi + damar → çizim tahtası → delik/şablon/DXF → 3D → dizilim → export → cila → saha; hesap ve AI sahadan sonra | Sahip için değer sırası; her yeni ekran yeni tasarımla yapılır |
+| Damar yönü | 0°/90°; serbest açı kapsam dışı | Serbest açılı damar: plaka ve parça başına açı kadranı (bölüm 3.6, 6.2) | Sahibin talebi |
+| Gerçek şekil nesting | Sonraki sürüm | M7'de: serbest şekil, DXF parçaları ve açılı damarlı parçalar için | Açılı damar ve çizilen parçalar sınırlayıcı kutuyla çok fire verir |
+| Arayüz | Basit Tailwind sayfaları | Kurumsal, modern tasarım sistemi: belirteçler, açık/koyu tema, uygulama kabuğu, komut paleti, bildirimler (bölüm 3.7) | Sahip: "demode, kurumsal değil" |
+| 3D önizleme | M6 sonunda, açılı hafif hareketli plaka | M6'da tam 3D: 360° döndürme, plakayı taşıma, kalınlık, delik/cep, takım yolu, kesim oynatma, parça ayırma (bölüm 3.8) | Sahibin talebi |
+| Kesim listesi | Tablo + Excel yapıştırma | Satır içi düzenleme, çoğalt, toplu düzenleme, CSV/XLSX dosya, malzeme kütüphanesi, basit parametrik dolap kutusu | "Kesim listesi sadece Excel" eleştirisi |
+| Görev boyu | Görev başına bir PR | Küçük görevler, 2–4 görevlik paketler (batch), paket başına bir PR | Developer bir çalışmada daha çok iş bitirsin |
+
+Eski milestone adlarının yeni karşılıkları bölüm 12.1'dedir.
 
 Controller markası hâlâ bilinmiyor. Bu yüzden M1 genel bir "düz G-code" post ayarıyla başlar ve makine bilgisi gelince uyarlanır (bölüm 12.3'teki bilgi toplama listesi).
 
@@ -44,30 +61,31 @@ Kurulum gerekmez, tarayıcıdan çalışır. CNC makinesi internete bağlanmaz; 
 | Segment | İlk sürümde ne alır | Sınır |
 | --- | --- | --- |
 | KOBİ mobilya ve panel işleme atölyeleri | Kesim listesi, parametrik parça, şablon, nesting, G-code | Birleştirme (joinery) ve dolap tasarımı yok |
-| Fason CNC kesim işletmeleri | DXF içe aktarma, katmana göre işlem atama, nesting, G-code | Parçalar sınırlayıcı kutusuyla dizilir, gerçek şekil nesting sonraya |
+| Fason CNC kesim işletmeleri | DXF içe aktarma, katmana göre işlem atama, nesting (M7'den itibaren gerçek şekil), G-code | Serbest şekilli cep ve parça-içi-parça sınırlı |
 | Reklam / tabela üreticileri | DXF'ten harf ve şekil kontur kesimi | V-oyma, yazı aracı ve serbest şekilli cep yok; yazı DXF'te eğriye çevrilmiş gelmeli |
 
 Başlangıç makine segmenti: düz G-code kullanan routerlar (Mach3, Syntec, NcStudio gibi controller'lar). Kendi program formatı olan makineler (Biesse CIX, Homag woodWOP MPR, SCM Xilog) kapsam dışıdır; bu müşterilere DXF/PDF export ile hizmet verilir.
 
 ### 2.3 İlk sürüm kapsamı
 
-- Giriş ekranı, üyelik, şirket, roller (Yönetici / Operatör)
+- Giriş ekranı, üyelik, şirket, roller (Yönetici / Operatör) (v3: saha testinden sonra, M10)
 - Menü: Ana sayfa, Makineler, Projeler, Şablonlar, Oluştur, Ayarlar
+- Kurumsal, modern tasarım sistemi; açık/koyu tema; komut paleti (v3, bölüm 3.7)
 - Makine yönetimi, makine ve takım profili, manuel bakım takibi
 - Oluştur sihirbazı: makine, malzeme, kalınlık, plaka ölçüsü, damar yönü
-- Kesim listesi tablosu ve Excel/CSV yapıştırma
+- Kesim listesi tablosu ve Excel/CSV yapıştırma; satır içi düzenleme, toplu düzenleme, CSV/XLSX dosya, malzeme kütüphanesi, basit parametrik dolap kutusu (v3)
 - 2D çizim editörü: parametrik parçalar, serbest şekiller, özellikler paneli, köşe yuvarlama, dogbone
 - Delik nesnesi (cep / geçme / kanal)
 - DXF içe aktarma (bölüm 4.6'daki sınırlarla)
 - Şablonlar ve şablon güncelleme akışı
-- Nesting, 3 dizilim modu, damar yönü, artık parça stoğu
+- Nesting, 3 dizilim modu, serbest açılı damar yönü, gerçek şekil nesting, artık parça stoğu (v3)
 - Takım offset'i, tab, kesim sırası, lead-in/out, çok paso, küçük parça güvenliği
 - Tek controller ailesi ve tek post processor ile başlangıç
 - G-code geri okuyucu, önizleme ve simülasyon
 - Test programı (air cut) ve doğrulama ekranları
 - NC, DXF, PDF export; parça etiketi; proje kaydı, kopyalama, export geçmişi
 - AI sohbet (komut katmanı üzerinden)
-- Giriş animasyonu, 3D plaka önizleme, kamera geçişi
+- Giriş animasyonu, 3D önizleme (360°, kesim oynatma), kamera geçişi
 
 ### 2.4 v2'de eklenen özellikler
 
@@ -75,24 +93,25 @@ Başlangıç makine segmenti: düz G-code kullanan routerlar (Mach3, Syntec, NcS
 | --- | --- | --- |
 | Kesim listesi yapıştırma | Excel/CSV'den ad, en, boy, adet, damar sütunlarını tabloya alır; AI gerekmez | M1 |
 | Makine profilinde Z sıfır ve orijin | Z sıfırı tabla mı malzeme üstü mü, orijin hangi köşe | M1 |
-| Küçük parça güvenliği | Eşik altındaki parçalara otomatik tab veya son pasoda ince tabaka bırakma | M1 (tab), M3 (ince tabaka) |
-| Parça numarası ve etiket | PDF'te ve dizilim görünümünde parça numarası; etiket sayfası | M2 |
-| DXF içe aktarma | Fason ve tabela işleri için hazır çizimi alma | M3 |
-| Dogbone / T-bone | Geçmeli parçalarda iç köşeyi takım yarıçapı kadar taşırır | M3 |
-| Artık parça stoğu | Kalan dikdörtgen plakayı kaydeder, sonraki işte önce onu kullanır | M4 |
-| Kenar bandı bilgisi | Parça kenarı başına bant kalınlığı; kesim ölçüsünden düşme seçeneği | M4 |
+| Küçük parça güvenliği | Eşik altındaki parçalara otomatik tab veya son pasoda ince tabaka bırakma | M1 (tab), M5 (ince tabaka) |
+| Parça numarası ve etiket | PDF'te ve dizilim görünümünde parça numarası; etiket sayfası | M8 |
+| DXF içe aktarma | Fason ve tabela işleri için hazır çizimi alma | M5 |
+| Dogbone / T-bone | Geçmeli parçalarda iç köşeyi takım yarıçapı kadar taşırır | M4 |
+| Artık parça stoğu | Kalan dikdörtgen plakayı kaydeder, sonraki işte önce onu kullanır | M7 |
+| Serbest açılı damar (v3) | Plaka ve parça için açı kadranı; dizilim parçayı damara göre döndürür | M3 (gerçek şekil M7) |
+| Tasarım sistemi (v3) | Kurumsal görünüm, açık/koyu tema, komut paleti, bildirimler | M2 |
+| Parametrik dolap kutusu (v3) | En/boy/derinlikten yan, üst, alt, raf, arkalık ve kapak parçalarını üretir; birleştirme yok | M3 |
+| Kenar bandı bilgisi | Parça kenarı başına bant kalınlığı; kesim ölçüsünden düşme seçeneği | M1 (bilgi), M7 (düşme) |
 
 ### 2.5 Başlangıçta dışarıda
 
-- 3D CAM, çok eksenli CNC, tam 3D simülasyon
+- 3D CAM, çok eksenli CNC, malzeme kaldırma (voxel) simülasyonu (3D önizleme ve kesim oynatma kapsamda, bölüm 3.8)
 - Mermer/taş malzeme (arayüzde "yakında")
 - DWG içe aktarma; DXF'te yazı, ölçü, tarama ve blok içi blok
 - V-oyma, yazı aracı, serbest şekilli cep boşaltma
-- Gerçek şekil (dikdörtgen olmayan) nesting
 - Birden fazla controller ailesi
 - Kendi formatı olan makineler için doğrudan dosya üretimi
 - Karmaşık birleştirme (joinery), kural tabanlı akıllı şablonlar, genel kısıt çözücü
-- Serbest açılı damar yönü
 - Tam ERP, stok, sipariş yönetimi, teklif/maliyet, QR etiket
 - Gerçek çalışma saatine dayalı bakım takibi
 - Offline masaüstü uygulaması
@@ -121,7 +140,7 @@ Başlangıç makine segmenti: düz G-code kullanan routerlar (Mach3, Syntec, NcS
 
 ### 3.3 Ana yapı ve menü
 
-- Solda hafif kırık beyaz dikey menü. Sol üstte şirket logosu, altında giriş yapan operatörün adı.
+- Solda dikey menü (açık temada hafif kırık beyaz, koyu temada koyu yüzey; ikonlu, daraltılabilir; 768 px altında çekmece). Sol üstte şirket logosu, altında giriş yapan operatörün adı.
 - Menü: Ana sayfa, Makineler, Projeler, Şablonlar, Oluştur, Ayarlar.
 - Oluştur ana eylemdir; menü öğesine ek olarak belirgin bir "+ Yeni proje" butonu bulunur.
 - Proje ekranında sağ altta AI sohbet paneli (bölüm 5).
@@ -134,8 +153,8 @@ Başlangıç makine segmenti: düz G-code kullanan routerlar (Mach3, Syntec, NcS
 | Makineler | Liste, ekle / çıkar / düzenle, makine ve takım profili, doğrulama durumu, manuel bakım kaydı (son bakım tarihi, aralık, hatırlatma) |
 | Projeler | Liste (ad, durum: taslak / üretildi / tamamlandı, makine, malzeme, tarih), arama ve filtre, açma, kopyalama, export geçmişi, yeniden export |
 | Şablonlar | Şirket şablonları, hazır kütüphane (menteşe, kulp, çekmece rayı) |
-| Artık parçalar | Kayıtlı artık plakalar: malzeme, kalınlık, ölçü, damar, kaynak proje (M4; Projeler altında sekme) |
-| Ayarlar | Şirket bilgileri, kullanıcılar ve roller, malzeme varsayılanları, abonelik ve fatura |
+| Artık parçalar | Kayıtlı artık plakalar: malzeme, kalınlık, ölçü, damar, kaynak proje (M7; Projeler altında sekme) |
+| Ayarlar | Şirket bilgileri, malzeme kütüphanesi ve varsayılanları, DXF katman eşleme, görünüm (tema, yoğunluk, 3D basit mod); kullanıcılar/roller ve abonelik M10 ve sonrası |
 
 Gerçek çalışma saati ölçülmez, çünkü makine internete bağlı değildir.
 
@@ -159,16 +178,50 @@ Plaka adımı alanları:
 - **Malzeme:** ahşap (MDF, kontrplak, melamin, masif), plastik (akrilik, PVC). Mermer/taş "yakında".
 - **Kalınlık:** kesim derinliği ve paso sayısı buna bağlıdır.
 - **Ölçü:** hazır plaka ölçüleri (ör. 1220×2440, 2100×2800) ve özel ölçü. Önizleme canlı şekil alır.
-- **Damar yönü:** yalnızca ahşap ve kaplamalı malzemede görünür. Açı kadranı; hızlı butonlar 0° / 90°.
+- **Damar yönü:** yalnızca ahşap ve kaplamalı malzemede görünür. **Açı kadranı (v3):** dairesel kadranda tutamaç sürüklenir veya derece yazılır; 0°/45°/90°/135° katlarına ±3° içinde yapışır (Alt ile kapatılır); hızlı butonlar 0° / 45° / 90° / 135°; klavye okları ±1°, Shift ile ±15°. Damar yönsüzdür: 30° ile 210° aynıdır, açı 0–180° aralığında saklanır. Aynı kadran parça başına damar için de kullanılır (bölüm 4.1, 6.2).
 - **Malzeme = parametre seti:** her malzeme ve kalınlık için besleme, devir, paso derinliği, önerilen takım, tab ayarı varsayılanları. Şirket bunları kendi makinesine göre düzenler.
 
-Önizleme M1'de 2D'dir. M6'da açılı, hafif hareketli 3D plaka önizlemesine dönüşür; doku kodla üretilir, "İleri" denince kamera yumuşak geçişle kuşbakışı görünüme döner. Düşük performanslı bilgisayarlar için basit mod kalır.
+Önizleme M1'de 2D'dir. M6'da tam 3D önizleme eklenir (bölüm 3.8); 2D/3D arasında geçilir, "İleri" denince kamera yumuşak geçişle kuşbakışı görünüme döner. Düşük performanslı bilgisayarlar için basit mod ve 2D'ye düşüş kalır.
+
+### 3.7 Tasarım sistemi ve arayüz (v3)
+
+Hedef: kurumsal, profesyonel, modern ve kolay kullanılan bir arayüz. Her ekran aynı bileşen ve belirteçlerden kurulur.
+
+- **Belirteçler:** renk ölçekleri ve anlamsal roller (zemin, yüzey, kenar, metin, vurgu, odak, başarı/uyarı/hata), yarıçap, boşluk, gölge, yazı ölçeği, hareket süreleri. Tek dosyada, açık ve koyu tema değerleriyle.
+- **Tema:** sistem / açık / koyu; yüklemede yanıp sönme yok. Canvas ve 3D renkleri de belirteçlerden gelir.
+- **Yazı:** Inter (veya Geist), ölçüler için eşit genişlikte rakamlar.
+- **Kabuk:** daraltılabilir ikonlu sol menü, üst çubuk (yol, sayfa başlığı, kayıt durumu, tema), 768 px altında çekmece menü.
+- **Komut paleti:** Ctrl/Cmd+K ile sayfaya git, yeni proje, son projeler, tema; "?" ile kısayol listesi. Kısayollar tek kayıttan gelir.
+- **Geri bildirim:** bildirim (toast), boş durum, hata durumu, iskelet yükleme; Türkçe 404 ve hata sayfaları.
+- **Erişilebilirlik:** tüm akış klavyeyle yapılabilir; görünür odak; AA kontrast her iki temada; "hareketi azalt" ayarına uyulur.
+- **Duyarlı tasarım:** 390 / 768 / 1024 / 1440 px; atölye tableti için en az 40 px dokunma hedefi; sayfa düzeyinde yatay kaydırma yok.
+- **Görsel kalite güvencesi:** her ekran 1440 ve 390 px'te, açık ve koyu temada ekran görüntüsüyle ve axe erişilebilirlik taramasıyla test edilir (bölüm 11).
+
+### 3.8 3D önizleme (v3)
+
+- **Görünüm:** tabla ve plaka gerçek ölçü ve kalınlıkta; 360° döndürme, yakınlaştırma, kaydırma; Üst / İzometrik / Ön hazır görünümler.
+- **Plakayı taşıma:** kullanıcı plakayı tabla üzerinde sürükleyip bakabilir. Bu yalnızca görünümdür; dizilimi ve makine ofsetini değiştirmez.
+- **Parçalar:** dış kontur kalınlıkta, iç konturlar ve geçme delikler boşluk, kör cep ve kanallar çukur olarak görünür. Parça seçilince bilgi kartı (numara, ad, ölçü, damar). "Ayır/kaldır" ile parçalar plakadan kaldırılır; fire gizlenebilir.
+- **Malzeme ve damar:** MDF, kontrplak, melamin, akrilik dokuları kodla üretilir (görsel indirilmez); damar çizgileri plaka açısına ve parçanın etkin damar açısına göre döner; bantlı kenarlar renklidir.
+- **Takım yolu ve kesim oynatma:** okunan G-code'dan çizilir (bölüm 6.5); 2D simülasyonla aynı oynatıcıya bağlıdır; takım hareket eder, kesim izi ilerledikçe açılır. "Simülasyon air cut'ın yerine geçmez" uyarısı burada da görünür.
+- **Montaj görünümü:** parametrik dolap kutusundan gelen parçalar kutu hâlinde gösterilebilir (birleştirme detayı yok).
+- **Performans:** 300 parçada döndürürken en az 45 fps, yüklemeden sonra ilk kare ≤ 1,5 sn. WebGL2 yoksa veya fps düşükse basit moda, gerekirse 2D'ye düşer. 3D kodu yalnızca açıldığında yüklenir.
+- **Sınır:** 3D önizleme malzeme kaldırma simülasyonu değildir; kesim izi takım yolundan çizilir.
 
 ## 4. Parça girişi ve çizim editörü
 
 ### 4.1 Kesim listesi
 
 Kesim listesi, parçaların tablo görünümüdür: ad, en, boy, adet, damar kilidi, kenar bandı. Excel veya CSV'den kopyalanan satırlar tabloya yapıştırılır; sütunlar otomatik eşlenir, kullanıcı onaylar. Birim (mm/cm) belirsizse sorulur. Tablodaki her satır editörde parametrik dikdörtgen parçadır.
+
+v3 eklemeleri:
+
+- Satır içi düzenleme (tıkla/Enter, Tab, oklar, Esc), Türkçe ondalık virgül, hücre başına doğrulama; her düzenleme tek geri alma adımıdır.
+- Çoğalt, sil, çoklu seçim, toplu düzenleme (adet, damar, kenar bandı, ad öneki); alt bilgide toplam parça, alan ve tahmini plaka sayısı.
+- CSV/XLSX dosyadan içe aktarma ve CSV dışa aktarma; gruplama, arama, sıralama, filtre (yalnızca görünüm, proje sırası değişmez).
+- Damar sütunu: serbest/sabit ve açı; düzenleme açı kadranıyla (bölüm 3.6).
+- Malzeme kütüphanesi: malzeme türü, kalınlıklar, stok plaka ölçüleri, varsayılan damar açısı, makineye göre parametre seti (Ayarlar → Malzemeler).
+- **Parametrik dolap kutusu:** en, boy, derinlik, kalınlık, arkalık, raf sayısı, kapak sayısı ve süpürgelik yüksekliğinden yan, üst, alt, raf, arkalık ve kapak parçaları üretilir; damar ve bant varsayılanlarıyla kesim listesine tek adımda eklenir. Birleştirme (joinery) ve kural tabanlı akıllı şablon yoktur (bölüm 2.5).
 
 ### 4.2 Editör geneli
 
@@ -326,9 +379,10 @@ Kullanıcı hedef seçer: en az fire, en hızlı üretim (kısa kesim yolu), en 
 ```
 
 - **Algoritma:** kendi dikdörtgen yerleştiricimiz (MaxRects ve giyotin sezgileri). Birkaç sıralama ve sezgi denenir, hedef fonksiyonu en düşük olan seçilir. Sonuç deterministiktir: aynı girdi aynı dizilimi verir.
-- **Serbest şekil ve DXF parçaları:** sınırlayıcı dikdörtgeniyle dizilir. Gerçek şekil nesting sonraki sürümdedir.
+- **Serbest şekil ve DXF parçaları:** M7'ye kadar sınırlayıcı dikdörtgeniyle, M7'den itibaren gerçek şekille dizilir (v3). Gerçek şekil motoru: parça izi = kontur + takım yarıçapı + boşluk/2; deterministik sol-alt yerleştirme ve kesin çokgen çakışma testi; isteğe bağlı küçük parçayı büyük iç boşluğa yerleştirme. Dikdörtgen ve eksene hizalı işler MaxRects ile kalır.
 - **Boşluklar:** takım çapı, parça arası boşluk ve plaka kenar payı hesaba katılır.
-- **Damar kuralı:** damarı kilitli parça yalnızca 0°/180° döner; diğerleri 0°/90°/180°/270°. Kural motorda uygulanır, AI yalnızca alanı doldurur.
+- **Damar kuralı (v3, serbest açı):** plakanın damar açısı θp (0–180°, yoksa damar yok) ve parçanın kendi çerçevesinde damar açısı θ ve modu (serbest / sabit) vardır. Sabit parça yalnızca (θ + dönüş) ≡ θp (mod 180°) sağlayan iki açıda yerleşir: g = θp − θ ve g + 180°. Serbest parça 0°/90°/180°/270° döner (gerçek şekilde ayarlanabilir adım). Kural motorda uygulanır, AI yalnızca alanı doldurur.
+- **Eksene hizalı olmayan açı:** g 90°'nin katı değilse parça döndürülmüş yerleşir. M7'ye kadar döndürülmüş konturun eksene hizalı sınırlayıcı kutusu dizilir ve ek fire bilgi olarak gösterilir; M7'de gerçek şekil motoru kullanılır. Takım yolu, post ve kontroller her açıyı destekler.
 - **Çoklu plaka:** parçalar sığmazsa yeni plaka açılır; plaka sayısı raporlanır.
 - **Artık parça:** aynı malzeme ve kalınlıktaki kayıtlı artıklar önce denenir. Dizilim sonunda eşik üstü (varsayılan 300×300 mm) dikdörtgen artık, kullanıcı onayıyla stoğa kaydedilir.
 - **Elle müdahale:** kullanıcı bir parçayı sürükleyip kilitleyebilir; yeniden dizilim kilitli parçalara dokunmaz.
@@ -386,6 +440,8 @@ Simülasyon ekranı (2D üstten, Canvas):
 - Z derinliği (renk veya yan görünüm)
 - Oynat/durdur, hız, kaydırma çubuğu, oynatılan G-code satırı vurgusu
 - Özet: tahmini süre, kesim uzunluğu, takım değişim sayısı. Süre yaklaşıktır, saha ölçümüyle kalibre edilir.
+
+3D önizleme aynı okunan veriyi ve aynı oynatıcıyı kullanır (bölüm 3.8).
 
 Export öncesi kontrol listesi: orijin doğru mu, takım doğru mu, air cut yapılacak mı. Ekranda açıkça yazar: simülasyon air cut'ın yerine geçmez.
 
@@ -498,7 +554,11 @@ Vurgulu kutu güvenlik kapısıdır: üretilen G-code geri okunur, kontrolleri g
 | Arayüz | Next.js (App Router), React, Tailwind CSS |  |
 | Arayüz durumu | Zustand + Immer yamaları | Geri al/yinele komut yamalarından |
 | 2D editör ve simülasyon | Konva (react-konva) | Performans yetmezse özel Canvas katmanı |
-| 3D plaka önizleme | Three.js (react-three-fiber) | M6; doku kodla üretilir |
+| Arayüz bileşenleri (v3) | Radix primitifleri üzerine kendi bileşenlerimiz (shadcn tarzı, `packages/ui`), class-variance-authority, tailwind-merge | Bileşen kodu bizde; MIT |
+| İkon, palet, bildirim, tema (v3) | lucide-react, cmdk, sonner, next-themes | ISC / MIT |
+| Tablo (v3) | TanStack Table + TanStack Virtual | Kesim listesi; MIT |
+| Yazı tipi (v3) | Inter veya Geist, `next/font` ile; PDF'e gömülü | OFL-1.1 |
+| 3D önizleme | three, @react-three/fiber, @react-three/drei | M6; yalnızca açılınca yüklenir; doku kodla üretilir; MIT |
 | Şema ve doğrulama | Zod | Komut şemaları AI araç tanımına çevrilir |
 | Offset | CavalierContours (WASM) adayı; yedek Clipper2 + yay uydurma | M0'da deneme görevi ile karar |
 | Nesting | Kendi MaxRects / giyotin yerleştiricimiz | Damar, artık parça ve mod kontrolü için |
@@ -508,10 +568,10 @@ Vurgulu kutu güvenlik kapısıdır: üretilen G-code geri okunur, kontrolleri g
 | PDF | pdf-lib + gömülü font | Türkçe karakter için font gömülür |
 | Sunucu | Next.js route handler'ları | Ayrı backend servisi yok |
 | Veritabanı | PostgreSQL + Drizzle ORM | Proje JSON'u `jsonb` sütununda |
-| Kimlik | Better Auth (şirket ve rol desteğiyle) adayı | M2 başında doğrulanır |
+| Kimlik | Better Auth (şirket ve rol desteğiyle) adayı | M10 başında doğrulanır |
 | Dosya depolama | S3 uyumlu object storage | Export dosyaları |
-| AI | Anthropic API, araç çağrısı (tool use), yalnızca sunucudan | M5 |
-| Test | Vitest, fast-check, Playwright | Bölüm 11 |
+| AI | Anthropic API, araç çağrısı (tool use), yalnızca sunucudan | M11 |
+| Test | Vitest, fast-check, Playwright, @axe-core/playwright | Bölüm 11; axe-core MPL-2.0, yalnızca geliştirme bağımlılığı (D-032) |
 | CI | GitHub Actions | Her PR'da |
 
 Lisans kuralı: MIT, BSD, Apache-2.0, BSL-1.0 kabul; GPL ve AGPL bağımlılık alınmaz. "Aday" yazan kütüphanelerin lisansı, bakım durumu ve tarayıcıda çalışması M0'da doğrulanır; uymazsa yedeğe geçilir.
@@ -529,7 +589,7 @@ Bedeli: Shapely ve rectpack gibi olgun kütüphaneler yerine offset kütüphanes
 
 - **Yerel:** Docker Compose ile PostgreSQL ve S3 uyumlu depo (MinIO). Tek komutla ayağa kalkar.
 - **Önizleme:** her PR için otomatik önizleme ortamı (barındırma seçilince).
-- **Canlı:** barındırma kararı M2 sonunda verilir. KVKK yurt dışı aktarım kuralları kararı etkiler (bölüm 13.5); açık madde.
+- **Canlı:** barındırma kararı M10'da verilir. KVKK yurt dışı aktarım kuralları kararı etkiler (bölüm 13.5); açık madde.
 
 ### 8.6 Güvenlik ve çok şirketli yapı
 
@@ -566,7 +626,7 @@ Makine profili düzenlenince yeni sürüm satırı açılır; eski sürüm deği
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "machine": { "machineId": "…", "profileVersion": 3 },
   "stock": {
     "material": "mdf", "thickness": 18,
@@ -574,7 +634,7 @@ Makine profili düzenlenince yeni sürüm satırı açılır; eski sürüm deği
     "useOffcuts": true
   },
   "parts": [{
-    "id": "p1", "name": "Kapak", "qty": 4, "grainLock": true,
+    "id": "p1", "name": "Kapak", "qty": 4, "grain": { "mode": "fixed", "angle": 0 },
     "kind": "rect", "params": { "w": 396, "h": 716, "r": 0 },
     "outline": [{ "x": 0, "y": 0, "bulge": 0 }],
     "inners": [],
@@ -588,6 +648,7 @@ Makine profili düzenlenince yeni sürüm satırı açılır; eski sürüm deği
 }
 ```
 
+- **Damar (şema v2, v3):** `stock.sheet.grain` derece (0–180) veya `null`; parça `grain.mode` serbest/sabit, `grain.angle` parçanın kendi çerçevesinde derece; yerleşim `rot` her açı (derece). v1 projeleri göçle açılır: `grainLock: true` → sabit, açı = plaka damarı.
 - Parametrik parçada `params` kaynaktır, `outline` ondan türetilir. Serbest şekilde `outline` kaynaktır.
 - `layout` türetilmiş veridir ama saklanır; kullanıcı elle kilitlediği yerleşimi kaybetmez.
 - Takım yolu ve G-code projede saklanmaz; her seferinde yeniden üretilir. Export edilen dosya ayrıca `exports` tablosunda durur.
@@ -659,7 +720,7 @@ Her skill `.claude/skills/<ad>/SKILL.md` dosyasıdır ve ilgili işte otomatik y
 | `dxf-io` | DXF okuma/yazma | Desteklenen varlıklar, birim, birleştirme toleransı, katman eşleme, test dosyaları |
 | `ui-conventions` | Arayüz işlerinde | Tasarım belirteçleri, Türkçe metin kuralları, basit mod, "hareketi azalt", erişilebilirlik |
 | `db-multitenancy` | Veritabanı ve API işlerinde | `company_id` kuralı, rol kontrolü, göç yazma, revizyon kilidi |
-| `ai-chat` | M5'te | Araç tanımları, onay akışı, kota, yüklenen içeriğin talimat sayılmaması |
+| `ai-chat` | M11'de | Araç tanımları, onay akışı, kota, yüklenen içeriğin talimat sayılmaması |
 
 Hazır skill'lerden `frontend-design` (arayüz kalitesi) ve `skill-creator` (skill yazıp ölçmek) kullanılabilir.
 
@@ -674,10 +735,11 @@ Hazır skill'lerden `frontend-design` (arayüz kalitesi) ve `skill-creator` (ski
 - Ana oturum `dev` bitince `tester`'ı çağırır; otomatik tetiklenmez, talimat CLAUDE.md'de yazılıdır.
 - Hata varsa `dev`'e döner; deneme sayısı 3 ile sınırlıdır, sonra insana sorulur.
 - Agent'lar sıralı çalışır (kullanım limiti için paralel değil).
+- **Paket (batch) çalışma (v3):** PO dev'e 2–4 küçük görevlik bir paket verir; paket tek branch ve tek PR'dır, her görevden sonra commit + push + PR açıklamasına kısa kontrol noktası yazılır. Bağlam büyürse agent görev sınırında durur ve kontrol noktasıyla PO'ya döner; PO yeni agent başlatır.
 
 ### 10.5 Git ve CI
 
-- Her görev için ayrı branch: `feat/T012-nesting-modes`, `fix/T020-offset-bug`.
+- Her görev paketi (batch) için ayrı branch ve PR: `feat/B07-cutlist-grid` (v3); tek görevlik işler `feat/T012-nesting-modes`, `fix/T020-offset-bug`.
 - Commit: Conventional Commits + görev numarası, ör. `feat(nesting): add grain rule (T012)`.
 - `main` için branch protection; PR açılır, merge'i geliştirici yapar.
 - GitHub Actions her PR'da: lint, typecheck, birim testleri, golden karşılaştırma, lisans denetimi, Playwright.
@@ -703,11 +765,14 @@ Yanlış G-code fiziksel hasar demektir; bu yüzden çekirdek paket testle birli
 | Güvenlik senaryoları | Vitest | Bilerek bozulmuş G-code (malzemede rapid, sınır aşımı, spindle kapalı kesim) yakalanır |
 | Çok şirketli yapı | Vitest + test veritabanı | Bir şirket diğerinin verisini okuyamaz |
 | Uçtan uca | Playwright | Kesim listesi → dizilim → simülasyon → export akışı çalışır |
+| Görsel (v3) | Playwright ekran görüntüsü | Her ekran 1440 ve 390 px'te, açık ve koyu temada; temel görüntüler CI'da (Linux) |
+| Erişilebilirlik (v3) | @axe-core/playwright | Ciddi ve kritik ihlal yok; klavyeyle tam akış |
+| Performans (v3) | Playwright trace, bundle raporu | 3D: 300 parça ≥ 45 fps; kesim listesi 1 000 satır akıcı; ilk JS bütçesi |
 | Saha | Gerçek makine (insan) | Air cut ve test kesimi; sonuç `docs/machines/` altına kaydedilir |
 
 Özellik tabanlı testlerin denetlediği değişmezler:
 
-- **Nesting:** parçalar çakışmaz; hepsi plaka ve kenar payı içindedir; boşluk kuralı sağlanır; damarı kilitli parça 90° dönmez; aynı girdi aynı sonucu verir.
+- **Nesting:** parçalar çakışmaz; hepsi plaka ve kenar payı içindedir; boşluk kuralı sağlanır; sabit damarlı parçanın etkin damar açısı plaka damarına eşittir (mod 180°); aynı girdi aynı sonucu verir.
 - **Offset:** offset edilen yolun her noktası orijinal kontura takım yarıçapı kadar uzaktadır (tolerans içinde); yön korunur; kapalı kontur kapalı kalır.
 - **Takım yolu:** delik ve cepler dış konturdan önce gelir; hiçbir kesim hareketi hedef derinliğin altına inmez; tab'lar kontur üzerindedir.
 - **G-code:** bölüm 7.2'deki kuralların her biri için ayrı test vardır.
@@ -717,7 +782,7 @@ Sahadan gelen her hata önce onu yeniden üreten bir test olarak yazılır, sonr
 
 ## 12. Milestone planı ve ilk gün
 
-Tüm özellikler ilk sürümdedir, ama gerçek makineye M1 sonunda çıkılır. Her milestone çalışan, gösterilebilir bir ürün bırakır.
+Tüm özellikler ilk sürümdedir. v3 kararıyla saha testi ürün ~%90 bittiğinde (M9 sonu) yapılır; hesap/çok şirket ve AI sahadan sonra gelir. Her milestone çalışan, gösterilebilir bir ürün bırakır. Ayrıntılı görevler `docs/BACKLOG.md`'dedir.
 
 ### 12.1 Milestone'lar
 
@@ -725,20 +790,28 @@ Tüm özellikler ilk sürümdedir, ama gerçek makineye M1 sonunda çıkılır. 
 | --- | --- | --- |
 | M0 — Temel | Monorepo, CI, CLAUDE.md, skill'ler, agent'lar, proje şeması, komut katmanı iskeleti, offset kütüphanesi denemesi, ayrıntılı M1 backlog'u | CI yeşil; offset kararı `DECISIONS.md`'de |
 | M1 — İnce dilim | Makine profili formu, kesim listesi tablosu ve yapıştırma, dikdörtgen parça, en az fire nesting, dış kontur takım yolu (çok paso, tab, lead-in), genel post ayarı, G-code geri okuyucu, 2D simülasyon, NC export, air cut test programı. Tek kullanıcı, basit proje kaydı | Tarayıcıdan indirilen dosya tüm otomatik kontrolleri geçer |
-| Saha 1 (insan) | Makine bilgisi toplanır, post ayarı uyarlanır, air cut, sonra fire plakada test kesimi, ölçü formu | İki makinede test kesimi tolerans içinde; "NittCam test etti" kaydı |
-| M2 — Hesap ve iskelet | Giriş, şirket, roller, menü, Ana sayfa, Makineler (bakım dahil), Projeler, Ayarlar, export geçmişi, doğrulama ekranları, PDF ve DXF export, parça etiketi | İki rolle uçtan uca akış; şirketler arası yalıtım testi geçer |
-| M3 — Editör | Parametrik parçalar, serbest şekil, özellikler paneli, köşe yuvarlama, dogbone, iç kontur, delik nesnesi, DXF içe aktarma, katman eşleme, ince tabaka seçeneği | Çizilen ve DXF'ten gelen parça kesilebilir G-code üretir |
-| Saha 2 (insan) | Delik, cep, iç kontur ve yaylı (G2/G3) parçalar gerçek makinede kesilir | Delik çapı ve cep derinliği tolerans içinde |
-| M4 — Şablon ve dizilim | Şablon sistemi ve güncelleme akışı, hazır kütüphane, 3 dizilim modu, damar yönü, artık parça stoğu, kenar bandı, elle yerleşim kilidi | Menteşeli kapak projesi şablonla 2 dakikada hazırlanır |
-| M5 — AI sohbet | Sohbet paneli, komut önerisi ve onay, uyarı rozeti, şablon güncelleme sorusu, dağınık sipariş okuma, kota | AI hiçbir değişikliği onaysız uygulayamaz (testle) |
-| M6 — Animasyon ve 3D | Giriş animasyonu, 3D plaka önizleme, kamera geçişi, doku ve damar, basit mod | Eski bilgisayarda basit mod akıcı çalışır |
-| M7 — Pilot | 5–10 pilot atölye, kurucu üye fiyatı, fiyat testi, geri bildirim | En az 3 atölye gerçek iş kesti |
-| M8 — Ticari | Abonelik ve ödeme, kullanım şartları, şirket yapısı, KVKK, doğrulanmış profil kütüphanesi | İlk ücretli müşteri |
-| M9 — Büyüme | İkinci controller ailesi, İngilizce arayüz ve global satış, teklif/maliyet, QR etiket, stok | — |
+| M2 — Tasarım sistemi ve kabuk | Belirteçler, açık/koyu tema, bileşenler, uygulama kabuğu, komut paleti, bildirimler; mevcut tüm ekranların yeniden tasarımı; görsel ve erişilebilirlik testleri | Mevcut her ekran yeni tasarımda; görsel + axe CI'da |
+| M3 — Kesim listesi ve damar | Serbest açılı damar (şema v2, kadran, motor), satır içi düzenleme, toplu düzenleme, CSV/XLSX, malzeme kütüphanesi, parametrik dolap kutusu | Serbest açılı damar kesim listesinden G-code'a kadar uyulur |
+| M4 — Çizim tahtası I | Editör tuvali, yakalama, dikdörtgen/daire/çizgi/yay araçları, özellikler paneli, köşe yuvarlama, iç köşe kuralı, dogbone, ölçü etiketleri, iç kontur, kesim listesi eşlemesi | Çizilen serbest parça kontrolleri geçen G-code üretir |
+| M5 — Çizim tahtası II | Delik nesnesi, delme/cep/kanal/iç kontur/çizgi üzerinden takım yolları, ince tabaka, DXF içe aktarma ve katman eşleme, şablonlar ve hazır kütüphane | Şablonla menteşeli kapak ve DXF tabela işi kontrolleri geçen G-code üretir |
+| M6 — 3D önizleme | 360° 3D, plakayı taşıma, kalınlık, delik/cep, doku ve damar, takım yolu, kesim oynatma, parça ayırma, montaj görünümü, basit mod | 300 parçada performans bütçesi; WebGL yoksa 2D |
+| M7 — Dizilim yükseltmeleri | 3 dizilim modu, seçenekler ve iptal, çoklu stok ölçüsü, gerçek şekil nesting (döndürme, parça içinde parça), artık parça stoğu, kenar bandı düşme, yerleşim düzenleme | Üç mod, gerçek şekil ve artık parça çalışır |
+| M8 — Export ve proje yönetimi | PDF (dizilim, parça listesi, fire raporu), etiket, DXF export, tüm export kayıtları, Projeler (arama, kopyalama, durum), Ana sayfa verisi, bakım kaydı, Ayarlar | NC, DXF, PDF ve etiket sunucudan üretilir |
+| M9 — Cila ve saha hazırlığı | İlk kullanım, erişilebilirlik, performans, hata dayanıklılığı, duyarlı tasarım, yeni işlemler için golden ve güvenlik testleri, regresyon senaryoları, saha kiti | **~%90 çizgisi:** sahip onayıyla saha testine hazır |
+| Saha 1 (insan) | Makine bilgisi, post uyarlama, air cut, fire plakada test kesimi: dış kontur, delik, cep, kanal, yay, açılı damarlı parça | İki makinede test kesimi tolerans içinde; "NittCam test etti" kaydı |
+| M10 — Hesap ve çok şirket | Giriş ekranı ve animasyon, şirket, roller, kullanıcılar, RLS, barındırma kararı | İki rolle uçtan uca akış; şirketler arası yalıtım testi geçer |
+| M11 — AI sohbet | Sohbet paneli, komut önerisi ve onay, uyarı rozeti, şablon güncelleme sorusu, dağınık sipariş okuma, kota (Q001) | AI hiçbir değişikliği onaysız uygulayamaz (testle) |
+| M12 — Pilot | 5–10 pilot atölye, kurucu üye fiyatı, fiyat testi, geri bildirim | En az 3 atölye gerçek iş kesti |
+| M13 — Ticari | Abonelik ve ödeme, kullanım şartları, şirket yapısı, KVKK, doğrulanmış profil kütüphanesi | İlk ücretli müşteri |
+| M14 — Büyüme | İkinci controller ailesi, İngilizce arayüz ve global satış, teklif/maliyet, QR etiket, stok | — |
+
+**Eski (v2) milestone adlarının karşılığı:** v2 M2 Hesap → M10 (ekranlar M2/M8'de); v2 M3 Editör → M4 + M5; v2 Saha 2 → Saha 1'e katıldı; v2 M4 Şablon ve dizilim → M5 (şablon) + M7 (dizilim); v2 M5 AI → M11; v2 M6 Animasyon ve 3D → M6 (3D), giriş animasyonu M10; v2 M7–M9 → M12–M14. Eski kararlardaki milestone adları bu tabloya göre okunur.
 
 Süre tahmini bilinçli olarak verilmedi: haftalık ayrılan saat ve iki makinenin controller'ı belli olunca M0 sonunda eklenir.
 
 ### 12.2 M0 ve M1 görev taslağı
+
+M0 ve M1 tamamlandı. M2 ve sonrasının görevleri (T100+), paketleri ve kabul ölçütleri `docs/BACKLOG.md`'dedir.
 
 M0:
 
@@ -772,7 +845,7 @@ M1:
 
 ### 12.3 Makine bilgi toplama listesi (sana düşen iş)
 
-İki test makinesi için aşağıdakiler M1 bitmeden toplanmalı; en değerlisi ilk maddedir.
+İki test makinesi için aşağıdakiler saha testinden (M9 sonu) önce toplanmalı; en değerlisi ilk maddedir.
 
 - [ ] Makinede bugün sorunsuz çalışan 2–3 NC dosyası (USB'den kopyala). Post ayarını bunlara bakarak yazarız.
 - [ ] Controller ekranının ve etiketinin fotoğrafı: marka, model, yazılım sürümü
@@ -891,7 +964,9 @@ Başlamadan önce:
 | Geometri hataları | Offset, iç köşe, kesim sırası yanlış çıkar | Özellik tabanlı testler; offset kütüphanesi denemesi |
 | Offset kütüphanesi uymaz | M0 uzar | Yedek plan Clipper2 + yay uydurma; karar M0'da |
 | Kapsam büyüklüğü | Geri bildirim ve gelir gecikir | Her milestone gösterilebilir ürün bırakır; M1 sonunda saha |
-| Çizim editörü | Projenin en büyük iş kalemi | M3'e alındı; genel kısıt çözücü yok; basit kurallar |
+| Çizim editörü | Projenin en büyük iş kalemi | M4–M5'e bölündü; genel kısıt çözücü yok; basit kurallar |
+| Geç saha testi (v3) | Yanlış G-code varsayımı geç fark edilir; çok kod etkilenir | Sahibin kararı. Bölüm 7.2 kuralları, geri okuyucu, golden dosyalar ve M9'daki regresyon seti; post bildirimsel olduğu için uyarlama çoğunlukla ayar değişikliğidir |
+| 3D performansı (v3) | Eski atölye bilgisayarında yavaşlık | Tembel yükleme, basit mod, 2D'ye düşüş, performans bütçesi testleri |
 | DXF çeşitliliği | Gerçek dosyalar kirli gelir | Sınırlı varlık listesi, önizleme ve rapor, gerçek müşteri dosyalarıyla test |
 | AI hataları | Yanlış ölçü veya parça | Komut onayı, kodla doğrulama, AI'ın export'a erişememesi |
 | Satış ve güven | Atölyeler yeni yazılıma yavaş güvenir; yerinde destek isteyebilir | Pilot, kurucu üye fiyatı, makine satıcısı kanalı |
@@ -908,7 +983,7 @@ Makine (bölüm 12.3'teki listeyle kapanır):
 - [ ] Dosya uzantısı, takım değiştirme tipi, tabla tutma tipi, Z sıfırlama yöntemi
 - [ ] Eski controller kısıtları (dosya adı, boyut, yay, satır numarası, delik döngüsü)
 
-Teknik (M0–M2'de kapanır):
+Teknik (M0–M2'de kapanır; kimlik ve barındırma M10'da):
 
 - [ ] Offset kütüphanesi kararı
 - [ ] DXF ve PDF kütüphanelerinin lisans ve bakım doğrulaması
@@ -932,14 +1007,12 @@ Marka ve hukuk:
 
 ### 14.3 Sonraki sürümler
 
-- Gerçek şekil (dikdörtgen olmayan) nesting
 - Serbest şekilli cep, V-oyma, yazı aracı
 - DWG içe aktarma, DXF'te yazı ve blok içi blok
 - Kural tabanlı akıllı şablonlar (ör. kapak yüksekliğine göre menteşe adedi)
-- Serbest açılı damar yönü
 - Mermer/taş malzeme desteği
 - Maliyet hesabı (parça, plaka, işçilik, CNC süresi, takım, fire), teklif
 - QR/barkod etiket, stok, sipariş yönetimi, üretim analitiği, ERP entegrasyonu
-- Tam 3D simülasyon
+- Malzeme kaldırma (voxel) 3D simülasyonu
 - Offline masaüstü uygulaması (Tauri)
 - Kendi formatı olan makineler için doğrudan dosya üretimi

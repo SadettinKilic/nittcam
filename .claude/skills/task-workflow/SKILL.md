@@ -16,7 +16,7 @@ Acceptance:
 
 ## Flow
 1. PO moves the task to `doing` and updates `.team/HANDOFF.md`.
-2. dev: branch `feat/Txxx-short` (or `fix/`, `chore/`, `docs/`, `test/`) → commits `type(scope): msg (Txxx)` → PR.
+2. dev: one branch per batch `feat/Bxx-short` (single task: `feat/Txxx-short`; or `fix/`, `chore/`, `docs/`, `test/`) → one commit set per task `type(scope): msg (Txxx)`, push + PR checkpoint line after each task → one PR per batch (D-036).
 3. tester: PASS/FAIL comment on the PR. A FAIL goes back to dev (max 3 rounds, then ask the owner).
 4. PO: CI green + tester PASS → `gh pr merge <n> --squash --delete-branch` → task `done` → HANDOFF updated.
 
