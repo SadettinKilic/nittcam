@@ -1193,7 +1193,24 @@
       "result": "Ölçüm"
     },
     "historyVersion": "Sürüm {n}",
-    "editProfile": "Profili düzenle"
+    "editProfile": "Profili düzenle",
+    "stepShort": {
+      "draft": "Taslak",
+      "air_cut_approved": "Air cut",
+      "test_cut_approved": "Test kesimi",
+      "verified": "Doğrulanmış"
+    },
+    "stepHint": {
+      "draft": "Profil oluşturuldu",
+      "air_cut_approved": "Malzemesiz deneme çalışması",
+      "test_cut_approved": "Fire plakada kesim ve ölçüm",
+      "verified": "Ölçüler tolerans içinde"
+    },
+    "stepStatus": {
+      "done": "tamamlandı",
+      "current": "sıradaki adım",
+      "upcoming": "bekliyor"
+    }
   },
   "devUi": {
     "title": "Arayüz galerisi",

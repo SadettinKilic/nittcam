@@ -44,6 +44,20 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoA11yViolations(page);
         await snap(page, `t107-form-${vp}-${theme}`, { fullPage: false });
       });
+
+      test('verification: stepper, download cards, checklist (T108)', async ({ page }) => {
+        await page.goto('/makineler');
+        await page.getByTestId('machine-list').waitFor();
+        await page
+          .getByTestId('machine-list')
+          .getByRole('link', { name: new RegExp('^' + tr.machines.verify + ':') })
+          .first()
+          .click();
+        await expect(page.getByTestId('verification-stepper')).toBeVisible();
+        await expect(page.getByTestId('air-cut-download')).toBeDisabled();
+        await expectNoA11yViolations(page);
+        await snap(page, 't108-verification-' + vp + '-' + theme);
+      });
     });
   }
 }

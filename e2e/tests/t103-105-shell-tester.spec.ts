@@ -65,6 +65,8 @@ test.describe('B2 tester: palette', () => {
     await page.reload();
     await page.waitForLoadState('networkidle');
     await page.keyboard.press('Control+k');
+    // The palette fetches the projects when it opens: wait for the list before counting.
+    await expect(palette(page).getByTestId('palette-recent').first()).toBeVisible();
     const n = await palette(page).getByTestId('palette-recent').count();
     expect(n).toBeGreaterThan(0);
     expect(n).toBeLessThanOrEqual(10);

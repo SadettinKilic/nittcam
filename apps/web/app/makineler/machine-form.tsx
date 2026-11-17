@@ -790,7 +790,7 @@ export function MachineForm({
       {/* Sticky save bar: unsaved-changes state, errors and the actions, always in reach. */}
       <div
         data-testid="machine-save-bar"
-        className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-surface/95 px-4 py-3 shadow-sm backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+        className="sticky bottom-4 z-10 rounded-xl border border-border bg-surface/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:px-5"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div aria-live="polite" className="flex min-w-0 items-center gap-2 text-sm">
