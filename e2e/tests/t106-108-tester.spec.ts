@@ -8,7 +8,8 @@ async function seedProject(request: APIRequestContext, name: string) {
     id: string;
     version: number;
   }[];
-  const m = machines[0]!;
+  const m = machines[0];
+  if (!m) throw new Error('no machine');
   const part = {
     id: 'a',
     name: 'P',
@@ -65,7 +66,7 @@ test.describe('B3 sidebar spans the full height when the page scrolls', () => {
         await page.waitForTimeout(200);
         const probe = await page.evaluate(() => {
           const sb = document
-            .querySelector('[data-testid="shell-sidebar"]')!
+            .querySelector('[data-testid="shell-sidebar"]') as Element
             .getBoundingClientRect();
           // pixel just below the sidebar's first viewport: what element is at the sidebar's x, bottom of viewport
           const el = document.elementFromPoint(40, window.innerHeight - 4);
@@ -159,7 +160,8 @@ test('B3 KPI tiles follow the database (projects, exports this week)', async ({
     id: string;
     name: string;
   }[];
-  const id = list.find((x) => x.name === 'KPI proje')!.id;
+  const id = list.find((x) => x.name === 'KPI proje')?.id;
+  expect(id).toBeTruthy();
   const detail = (await (await request.get(`/api/projects/${id}`)).json()) as { revision: number };
   const res = await request.post(`/api/projects/${id}/export`, {
     data: { revision: detail.revision, acceptUnverified: true },
