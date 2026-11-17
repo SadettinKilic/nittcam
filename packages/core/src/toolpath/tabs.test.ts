@@ -22,7 +22,20 @@ import {
   toolpathViolations,
   type CheckOptions,
 } from './toolpath.testing';
-import type { Move, Operation, PlungeOption, ToolpathOptions, ToolpathResult } from './types';
+import type {
+  Move,
+  Operation,
+  PlungeOption,
+  TabOptions,
+  ToolpathOptions,
+  ToolpathResult,
+} from './types';
+
+/** Property run count: env NITTCAM_RUNS (default 80). */
+const RUNS = Number(
+  (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env
+    .NITTCAM_RUNS ?? 80,
+);
 
 // ---------------------------------------------------------------------------
 // Independent helpers
@@ -124,7 +137,9 @@ const partArb = (i: number) =>
 
 const plungeArb: fc.Arbitrary<PlungeOption> = fc.oneof(
   fc.constant({ type: 'straight' as const }),
-  fc.double({ min: 2, max: 30, noNaN: true }).map((angleDeg) => ({ type: 'ramp' as const, angleDeg })),
+  fc
+    .double({ min: 2, max: 30, noNaN: true })
+    .map((angleDeg) => ({ type: 'ramp' as const, angleDeg })),
 );
 
 const caseArb = fc.record({
@@ -219,7 +234,7 @@ function tabViolations(project: Project, res: ToolpathResult, c: Case, height: n
     // evenly spaced by arc length
     for (let k = 1; k < n; k++) {
       const d = op.tabs[k]!.centre - op.tabs[k - 1]!.centre;
-      if (Math.abs(d - total / n) > 1e-4) out.push(`${op.id}: tab spacing ${d}, want ${total / n}`);
+      if (Math.abs(d - total / n) > EPS) out.push(`${op.id}: tab spacing ${d}, want ${total / n}`);
     }
     for (const t of op.tabs) {
       // exact Z
@@ -231,7 +246,7 @@ function tabViolations(project: Project, res: ToolpathResult, c: Case, height: n
       if (Math.abs(span - (c.width + op.toolDiameter)) > 1e-6)
         out.push(`${op.id}: raised span ${span}, want width + D`);
       // not over the start point (lead-in/out, plunge)
-      if (!(t.start > tr - 1e-9 && t.end < total - tr + 1e-9))
+      if (!(t.start > tr - EPS && t.end < total - tr + EPS))
         out.push(`${op.id}: tab over the start point`);
     }
     // every pass deeper than the tab top flies the tabs; the others do not
@@ -239,7 +254,9 @@ function tabViolations(project: Project, res: ToolpathResult, c: Case, height: n
       const spans = raisedSpans(op, i);
       const expected = depth < tabTop - EPS ? n : 0;
       if (spans.length !== expected)
-        out.push(`${op.id}: pass ${i} (${depth}) has ${spans.length} raised spans, want ${expected}`);
+        out.push(
+          `${op.id}: pass ${i} (${depth}) has ${spans.length} raised spans, want ${expected}`,
+        );
       spans.forEach((s, k) => {
         const t = op.tabs[k]!;
         if (s.z !== tabTop) out.push(`${op.id}: raised z ${s.z}`);
@@ -289,7 +306,7 @@ describe('tabs (fast-check)', () => {
         expect(toolpathViolations(project, res, check)).toEqual([]);
       }),
       {
-        numRuns: 80,
+        numRuns: RUNS,
         examples: [
           [
             {
@@ -333,9 +350,15 @@ describe('tabs (fast-check)', () => {
 
   it('evenTabCentres: exactly total / n apart, all inside the allowed set, or null', () => {
     const ivArb = fc
-      .array(fc.tuple(fc.double({ min: 0, max: 1000, noNaN: true }), fc.double({ min: 0, max: 200, noNaN: true })), {
-        maxLength: 8,
-      })
+      .array(
+        fc.tuple(
+          fc.double({ min: 0, max: 1000, noNaN: true }),
+          fc.double({ min: 0, max: 200, noNaN: true }),
+        ),
+        {
+          maxLength: 8,
+        },
+      )
       .map((xs) =>
         xs
           .map(([lo, len]) => ({ lo, hi: lo + len }))
@@ -449,7 +472,13 @@ describe('hand-computed', () => {
     const many = projectOf({
       parts: [{ id: 's', w: 80, h: 80, qty: 3 }],
       placements: [
-        [0, 1, 2].map((i) => ({ partId: 's', index: i, x: 100 + i * 120, y: 100, rot: 0 as const })),
+        [0, 1, 2].map((i) => ({
+          partId: 's',
+          index: i,
+          x: 100 + i * 120,
+          y: 100,
+          rot: 0 as const,
+        })),
       ],
     });
     expect(buildToolpath(many, machineOf()).warnings.map((w) => w.code)).toEqual([
@@ -465,7 +494,9 @@ describe('hand-computed', () => {
     let op = buildToolpath(project, machine).toolpath.operations[0]!;
     expect(op.tabs).toHaveLength(2);
     expect(op.tabs[0]!.z).toBe(-18.3 + 5);
-    expect(Math.hypot(op.tabs[0]!.x1 - op.tabs[0]!.x0, op.tabs[0]!.y1 - op.tabs[0]!.y0)).toBeCloseTo(26, 9);
+    expect(
+      Math.hypot(op.tabs[0]!.x1 - op.tabs[0]!.x0, op.tabs[0]!.y1 - op.tabs[0]!.y0),
+    ).toBeCloseTo(26, 9);
     project.cutting.tabs = { auto: true, count: 3, width: 12, height: 4 };
     op = buildToolpath(project, machine).toolpath.operations[0]!;
     expect(op.tabs).toHaveLength(3);
@@ -529,7 +560,7 @@ describe('hand-computed', () => {
 
   it('INVALID_TAB: height ≥ thickness, height ≤ spoilboard, bad count / width / thresholds', () => {
     const project = projectOf({ parts: [{ id: 'a', w: 600, h: 400 }], placements: at('a') });
-    const bad: ToolpathOptions['tabs'][] = [
+    const bad: TabOptions[] = [
       { height: 18 },
       { height: 25 },
       { height: 0.3 },
@@ -619,7 +650,11 @@ describe('schemas (backward compatible)', () => {
     json.cutting.tabs = { auto: true, count: 3, width: 8, height: 2 };
     const r = parseProject(json);
     expect(r.ok && r.project.cutting.tabs).toEqual({ auto: true, count: 3, width: 8, height: 2 });
-    for (const tabs of [{ auto: true, count: 0 }, { auto: true, width: -1 }, { auto: true, x: 1 }]) {
+    for (const tabs of [
+      { auto: true, count: 0 },
+      { auto: true, width: -1 },
+      { auto: true, x: 1 },
+    ]) {
       json.cutting.tabs = tabs;
       expect(parseProject(json).ok).toBe(false);
     }
