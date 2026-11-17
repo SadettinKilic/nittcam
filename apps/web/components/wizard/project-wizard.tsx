@@ -35,6 +35,33 @@ function isStepEntry(): boolean {
   return typeof state === 'object' && state !== null && STEP_STATE in state;
 }
 
+/**
+ * The URL the last browser Back/forward landed on. Next.js copies extra history-state keys into the
+ * entries it pushes, so a real navigation (e.g. "+ Yeni proje") also looks like a step entry; only
+ * a `popstate` tells the two apart.
+ */
+let poppedHref: string | null = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    poppedHref = window.location.href;
+  });
+}
+
+/**
+ * Did the router move to `pathname` because of browser Back/forward onto a wizard step entry?
+ * After a `popstate` the address bar already shows the new URL; during a link navigation the
+ * render runs while it still shows the old one. Pure (no consumed mark), so a StrictMode double
+ * render gives the same answer.
+ */
+function cameBackToStep(pathname: string): boolean {
+  return (
+    poppedHref !== null &&
+    poppedHref === window.location.href &&
+    window.location.pathname === pathname &&
+    isStepEntry()
+  );
+}
+
 type Loaded =
   | { status: 'loading' }
   | { status: 'error' }
@@ -76,7 +103,8 @@ export function ProjectWizard({
     setLastPath(pathname);
     // Back/forward onto an earlier step entry of this project (its URL still says `yeni`) is not
     // a new project; only a real navigation to `/projeler/yeni` is.
-    if (pathname === NEW_PATH && created !== null && !isStepEntry()) {
+    const back = typeof window !== 'undefined' && cameBackToStep(pathname);
+    if (pathname === NEW_PATH && created !== null && !back) {
       setCreated(null);
       setAttempt((a) => a + 1);
     }

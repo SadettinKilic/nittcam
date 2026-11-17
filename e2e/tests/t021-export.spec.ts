@@ -9,6 +9,7 @@ import {
   projectId,
   saved,
   watchConsole,
+  wizardReady,
 } from './wizard-helpers';
 
 /**
@@ -86,4 +87,25 @@ test('export: checklist + acceptance → stored file with the header; same input
   const refused = await page.request.post(`/api/projects/${id}/export`, { data: { revision } });
   expect(refused.status()).toBe(428);
   expect(problems).toEqual([]);
+});
+
+test('browser Back goes to the previous step; + Yeni proje still starts a new project', async ({
+  page,
+}) => {
+  await openNewProject(page, 'parcalar');
+  await pasteAndNest(page);
+  await saved(page);
+  const id = await projectId(page);
+  await goStep(page, 'simulasyon');
+  await page.goBack();
+  await wizardReady(page, 'dizilim');
+  await page.goBack();
+  await wizardReady(page, 'parcalar');
+  await expect(page).toHaveURL(new RegExp(id));
+  await page.goForward();
+  await wizardReady(page, 'dizilim');
+  await page.getByTestId('nav-new-project').click();
+  await wizardReady(page);
+  await expect(page).not.toHaveURL(new RegExp(id));
+  await expect(page.getByTestId('save-status')).toHaveText(tr.wizard.save.new);
 });
