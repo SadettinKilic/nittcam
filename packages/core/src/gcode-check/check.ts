@@ -118,7 +118,7 @@ function finish(
     violations: a.violations,
     summary: summarize(a.violations, {
       moves: a.moves,
-      matchedOperations: a.matched ? a.consumed : a.consumed,
+      matchedOperations: a.consumed,
       partsCut: a.loops.length,
       partsExpected: layout ? layout.length : null,
     }),

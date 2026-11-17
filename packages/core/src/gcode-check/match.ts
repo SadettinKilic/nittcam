@@ -170,7 +170,7 @@ export function matchModel(
       for (;;) {
         const t = tryMove(mv, pos, ri);
         if (t.ok) {
-          for (let j = ri; j < t.next; j++) toolAndRpm(sm[j] as SheetMove, op, d, push);
+          for (let j = ri; j < t.next; j++) toolAndRpm(sm[j] as SheetMove, op, push);
           ri = t.next;
           break;
         }
@@ -196,7 +196,7 @@ export function matchModel(
 }
 
 /** Per matched move: the active tool (when the program names it) and the spindle speed. */
-function toolAndRpm(r: SheetMove, op: Operation, d: Derived, push: Push): void {
+function toolAndRpm(r: SheetMove, op: Operation, push: Push): void {
   if (r.kind === 'rapid') return;
   if (r.raw.tool !== null && r.raw.tool !== op.tool) {
     push(
@@ -214,7 +214,6 @@ function toolAndRpm(r: SheetMove, op: Operation, d: Derived, push: Push): void {
       `Operation ${op.id} expects S${op.rpm}, read S${r.raw.rpm}.`,
     );
   }
-  void d;
 }
 
 // ---------------------------------------------------------------------------
