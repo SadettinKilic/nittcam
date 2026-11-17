@@ -79,7 +79,9 @@ export const scenarioArb: fc.Arbitrary<Scenario> = fc.record({
   lead: fc.constantFrom('arc' as const, 'line' as const, 'none' as const),
   plunge2: fc.oneof(
     fc.constant({ type: 'straight' as const }),
-    fc.double({ min: 2, max: 25, noNaN: true }).map((angleDeg) => ({ type: 'ramp' as const, angleDeg })),
+    fc
+      .double({ min: 2, max: 25, noNaN: true })
+      .map((angleDeg) => ({ type: 'ramp' as const, angleDeg })),
   ),
   direction: fc.constantFrom('climb' as const, 'conventional' as const),
   tabs: fc.boolean(),
@@ -172,19 +174,19 @@ export function buildScenario(s: Scenario): Built | null {
   // A second tool (same diameter, so the geometry stays valid) on every other operation.
   if (s.twoTools) toolpath.operations.forEach((op, i) => (op.tool = i % 2 === 1 ? 5 : 3));
   const post = postConfig(s.post);
-  if (s.files === 'split') post.file.maxSizeBytes = 9_000;
+  if (s.files === 'split') post.file.maxSizeBytes = 4_000;
   if (s.files === 'none') post.toolChange = { ...post.toolChange, mode: 'none' };
-  const result = generateGcode(
-    toolpath,
-    { profile, version: 1, verification: 'draft' },
-    post,
-    {
-      projectName: 'Kontrol denemesi',
-      revision: 1,
-      fileStem: 'kontrol',
-      stock: { material: 'mdf', thickness: s.thickness, sheetWidth: s.sheet.width, sheetHeight: s.sheet.height },
+  const result = generateGcode(toolpath, { profile, version: 1, verification: 'draft' }, post, {
+    projectName: 'Kontrol denemesi',
+    revision: 1,
+    fileStem: 'kontrol',
+    stock: {
+      material: 'mdf',
+      thickness: s.thickness,
+      sheetWidth: s.sheet.width,
+      sheetHeight: s.sheet.height,
     },
-  );
+  });
   const context: GcodeCheckFilesContext = {
     profile,
     verification: 'draft',

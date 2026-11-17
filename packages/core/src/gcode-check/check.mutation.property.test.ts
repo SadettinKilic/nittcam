@@ -9,7 +9,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { readGcode, type GcodeReadResult } from '../gcode-reader';
 import { checkGcodeFiles } from './check';
-import { buildScenario, fileList, scenarioArb } from './scenario.testing';
+import { buildScenario, scenarioArb } from './scenario.testing';
 
 type Mutator = (line: string, rnd: number) => string | null;
 
@@ -20,14 +20,19 @@ function words(line: string): RegExpMatchArray[] {
 }
 
 /** Replaces the k-th numeric word (k from `rnd`) with `f(letter, value, text)`. */
-function onWord(line: string, rnd: number, f: (letter: string, v: number, text: string) => string): string | null {
+function onWord(
+  line: string,
+  rnd: number,
+  f: (letter: string, v: number, text: string) => string,
+): string | null {
   const ws = words(line);
   if (ws.length === 0) return null;
   const w = ws[Math.floor(rnd * ws.length) % ws.length];
   if (!w || w.index === undefined) return null;
   const letter = w[1] ?? '';
   const text = w[2] ?? '';
-  const out = line.slice(0, w.index) + f(letter, Number(text), text) + line.slice(w.index + w[0].length);
+  const out =
+    line.slice(0, w.index) + f(letter, Number(text), text) + line.slice(w.index + w[0].length);
   return out === line ? null : out;
 }
 
@@ -37,8 +42,10 @@ function decimals(text: string): number {
 
 /** The catalogue of single-line mutators (one line in, one line or nothing out). */
 const LINE_MUTATORS: Record<string, Mutator> = {
-  perturbTiny: (l, r) => onWord(l, r, (k, v, t) => `${k}${(v + 0.0004).toFixed(Math.max(decimals(t), 4))}`),
-  perturbSmall: (l, r) => onWord(l, r, (k, v, t) => `${k}${(v + 0.02).toFixed(Math.max(decimals(t), 2))}`),
+  perturbTiny: (l, r) =>
+    onWord(l, r, (k, v, t) => `${k}${(v + 0.0004).toFixed(Math.max(decimals(t), 4))}`),
+  perturbSmall: (l, r) =>
+    onWord(l, r, (k, v, t) => `${k}${(v + 0.02).toFixed(Math.max(decimals(t), 2))}`),
   perturbLarge: (l, r) => onWord(l, r, (k, v, t) => `${k}${(v + 7).toFixed(decimals(t))}`),
   negate: (l, r) => onWord(l, r, (k, v, t) => `${k}${(-v).toFixed(decimals(t))}`),
   zeroValue: (l, r) => onWord(l, r, (k, _v, t) => `${k}${(0).toFixed(decimals(t))}`),
@@ -50,8 +57,10 @@ const LINE_MUTATORS: Record<string, Mutator> = {
     return ws.filter((_, k) => k !== i).join(' ');
   },
   rapidToFeed: (l) => (/^G0 /.test(l) ? l.replace(/^G0 /, 'G1 ') : null),
-  feedToRapid: (l) => (/^G1 /.test(l) ? l.replace(/^G1 /, 'G0 ').replace(/ F\d+(\.\d+)?/, '') : null),
-  flipArc: (l) => (/^G[23] /.test(l) ? l.replace(/^G([23])/, (_, d: string) => (d === '2' ? 'G3' : 'G2')) : null),
+  feedToRapid: (l) =>
+    /^G1 /.test(l) ? l.replace(/^G1 /, 'G0 ').replace(/ F\d+(\.\d+)?/, '') : null,
+  flipArc: (l) =>
+    /^G[23] /.test(l) ? l.replace(/^G([23])/, (_, d: string) => (d === '2' ? 'G3' : 'G2')) : null,
   addUnknown: (l) => (l.startsWith('(') ? null : `${l} Q1`),
   deleteLine: () => '',
 };
@@ -66,8 +75,16 @@ type Op =
   | { kind: 'swap' };
 
 const opArb: fc.Arbitrary<Op> = fc.oneof(
-  { weight: 6, arbitrary: fc.constantFrom(...(Object.keys(LINE_MUTATORS) as (keyof typeof LINE_MUTATORS)[])).map((name) => ({ kind: 'line' as const, name })) },
-  { weight: 2, arbitrary: fc.constantFrom(...INSERTS).map((text) => ({ kind: 'insert' as const, text })) },
+  {
+    weight: 6,
+    arbitrary: fc
+      .constantFrom(...(Object.keys(LINE_MUTATORS) as (keyof typeof LINE_MUTATORS)[]))
+      .map((name) => ({ kind: 'line' as const, name })),
+  },
+  {
+    weight: 2,
+    arbitrary: fc.constantFrom(...INSERTS).map((text) => ({ kind: 'insert' as const, text })),
+  },
   { weight: 1, arbitrary: fc.constant({ kind: 'duplicate' as const }) },
   { weight: 1, arbitrary: fc.constant({ kind: 'swap' as const }) },
 );
@@ -155,7 +172,9 @@ function meaning(r: GcodeReadResult, warmup: number, tol: number) {
   return {
     errors: r.errors.length,
     moves,
-    tools: r.events.filter((e) => e.kind === 'toolChange').map((e) => (e.kind === 'toolChange' ? e.tool : null)),
+    tools: r.events
+      .filter((e) => e.kind === 'toolChange')
+      .map((e) => (e.kind === 'toolChange' ? e.tool : null)),
     pauses: r.events.filter((e) => e.kind === 'pause').length,
     end: { spindle: r.finalState.spindle, vacuum, ended: r.finalState.ended },
   };
@@ -197,7 +216,12 @@ function sameMove(m: Snapshot, n: Snapshot | undefined, tol: number, ftol: numbe
  * Safe-equivalent: same meaning within the tolerances; or one straight cut vertex removed whose
  * point lies within the chord tolerance of the merged segment (a chord of an arc written as lines).
  */
-function equivalent(a: ReturnType<typeof meaning>, b: ReturnType<typeof meaning>, tol: number, ftol: number): boolean {
+function equivalent(
+  a: ReturnType<typeof meaning>,
+  b: ReturnType<typeof meaning>,
+  tol: number,
+  ftol: number,
+): boolean {
   if (a.errors !== b.errors || b.errors > 0) return false;
   if (JSON.stringify(a.tools) !== JSON.stringify(b.tools) || a.pauses !== b.pauses) return false;
   if (JSON.stringify(a.end) !== JSON.stringify(b.end)) return false;
@@ -210,8 +234,18 @@ function equivalent(a: ReturnType<typeof meaning>, b: ReturnType<typeof meaning>
     const n = b.moves[k];
     const prev = a.moves[k - 1];
     const next = a.moves[k + 1];
-    if (diff.length !== 1 || !o || !n || !prev || !next || o.type !== 'feed' || next.type !== 'feed') return false;
-    if (!sameMove({ ...o, x: n.x, y: n.y, z: n.z }, n, tol, ftol) || Math.abs(o.z - n.z) > tol) return false;
+    if (
+      diff.length !== 1 ||
+      !o ||
+      !n ||
+      !prev ||
+      !next ||
+      o.type !== 'feed' ||
+      next.type !== 'feed'
+    )
+      return false;
+    if (!sameMove({ ...o, x: n.x, y: n.y, z: n.z }, n, tol, ftol) || Math.abs(o.z - n.z) > tol)
+      return false;
     return Math.min(segDist(n, prev, o), segDist(n, o, next)) <= CHORD_TOL;
   }
   if (a.moves.length !== b.moves.length + 1) return false;
@@ -225,7 +259,10 @@ function equivalent(a: ReturnType<typeof meaning>, b: ReturnType<typeof meaning>
   const dx = next.x - prev.x;
   const dy = next.y - prev.y;
   const len2 = dx * dx + dy * dy;
-  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((gone.x - prev.x) * dx + (gone.y - prev.y) * dy) / len2));
+  const t =
+    len2 === 0
+      ? 0
+      : Math.max(0, Math.min(1, ((gone.x - prev.x) * dx + (gone.y - prev.y) * dy) / len2));
   const off = Math.hypot(prev.x + t * dx - gone.x, prev.y + t * dy - gone.y);
   const zOff = Math.abs(prev.z + t * (next.z - prev.z) - gone.z);
   return off <= CHORD_TOL && zOff <= tol;
@@ -240,7 +277,11 @@ describe('random single-line mutations are caught or harmless', () => {
       fc.property(
         scenarioArb.filter((s) => s.files === 'normal'),
         fc.array(
-          fc.tuple(opArb, fc.nat({ max: 1_000_000 }), fc.double({ min: 0, max: 0.999, noNaN: true })),
+          fc.tuple(
+            opArb,
+            fc.nat({ max: 1_000_000 }),
+            fc.double({ min: 0, max: 0.999, noNaN: true }),
+          ),
           { minLength: 5, maxLength: 5 },
         ),
         (s, ops) => {
@@ -260,12 +301,21 @@ describe('random single-line mutations are caught or harmless', () => {
             const text = `${out.join('\r\n')}\r\n`;
             if (text === file.content) continue;
             stats.total++;
-            const name = op.kind === 'line' ? op.name : op.kind === 'insert' ? `insert ${op.text}` : op.kind;
+            const name =
+              op.kind === 'line' ? op.name : op.kind === 'insert' ? `insert ${op.text}` : op.kind;
             const entry = byOp.get(name) ?? { n: 0, caught: 0, eq: 0 };
             entry.n++;
             byOp.set(name, entry);
-            const caught = !checkGcodeFiles([{ ...fileList([file])[0]!, content: text }], b.context).ok;
-            const eq = equivalent(orig, meaning(readGcode(text, opts), b.profile.spindle.warmupSeconds, tol), tol, 0.5 + 1e-9);
+            const caught = !checkGcodeFiles(
+              [{ name: file.name, sheet: file.sheet, content: text }],
+              b.context,
+            ).ok;
+            const eq = equivalent(
+              orig,
+              meaning(readGcode(text, opts), b.profile.spindle.warmupSeconds, tol),
+              tol,
+              0.5 + 1e-9,
+            );
             if (eq) {
               stats.equivalent++;
               entry.eq++;

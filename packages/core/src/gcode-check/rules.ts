@@ -174,7 +174,8 @@ export function motionRules(
     const code = which === 'on' ? d.vacuum.on : d.vacuum.off;
     if (e.kind === 'mcode') return e.code === code;
     if (e.kind === 'coolant') {
-      if (which === 'on') return (code === 7 && e.state === 'mist') || (code === 8 && e.state === 'flood');
+      if (which === 'on')
+        return (code === 7 && e.state === 'mist') || (code === 8 && e.state === 'flood');
       return code === 9 && e.state === 'off';
     }
     return false;
@@ -191,7 +192,12 @@ export function motionRules(
         st.spindle = e.state;
         st.dwell = 0;
         if (e.state === 'ccw') {
-          push('R4', 'SPINDLE_DIRECTION', e.line, 'M4 (counter-clockwise): the toolpath assumes M3.');
+          push(
+            'R4',
+            'SPINDLE_DIRECTION',
+            e.line,
+            'M4 (counter-clockwise): the toolpath assumes M3.',
+          );
         }
         if (e.rpm === null || !(e.rpm > 0)) {
           push('R4', 'SPINDLE_NO_RPM', e.line, 'Spindle started without a spindle speed (S).');
@@ -219,7 +225,12 @@ export function motionRules(
           );
         }
         if (st.spindle !== 'off') {
-          push('TOOLS', 'TOOL_CHANGE_SPINDLE_ON', e.line, 'Tool change or pause with the spindle running.');
+          push(
+            'TOOLS',
+            'TOOL_CHANGE_SPINDLE_ON',
+            e.line,
+            'Tool change or pause with the spindle running.',
+          );
         }
         return;
       case 'coolant':
@@ -265,17 +276,37 @@ export function motionRules(
   const envelope = (x: number, y: number, z: number, line: number) => {
     const into = intoTable(f, x, y);
     if (into.x < -lim || into.x > profile.workEnvelope.x + lim) {
-      push('R6', 'OUT_OF_ENVELOPE', line, `X ${x} is ${into.x.toFixed(4)} mm from program zero, travel 0–${profile.workEnvelope.x}.`);
+      push(
+        'R6',
+        'OUT_OF_ENVELOPE',
+        line,
+        `X ${x} is ${into.x.toFixed(4)} mm from program zero, travel 0–${profile.workEnvelope.x}.`,
+      );
     }
     if (into.y < -lim || into.y > profile.workEnvelope.y + lim) {
-      push('R6', 'OUT_OF_ENVELOPE', line, `Y ${y} is ${into.y.toFixed(4)} mm from program zero, travel 0–${profile.workEnvelope.y}.`);
+      push(
+        'R6',
+        'OUT_OF_ENVELOPE',
+        line,
+        `Y ${y} is ${into.y.toFixed(4)} mm from program zero, travel 0–${profile.workEnvelope.y}.`,
+      );
     }
     const h = aboveTable(f, z, stock.thickness);
     if (h < -profile.zZero.spoilboardAllowance - lim) {
-      push('R6', 'BELOW_SPOILBOARD_ALLOWANCE', line, `Z ${z} is ${(-h).toFixed(4)} mm below the table surface, allowance ${profile.zZero.spoilboardAllowance}.`);
+      push(
+        'R6',
+        'BELOW_SPOILBOARD_ALLOWANCE',
+        line,
+        `Z ${z} is ${(-h).toFixed(4)} mm below the table surface, allowance ${profile.zZero.spoilboardAllowance}.`,
+      );
     }
     if (h > profile.workEnvelope.z + lim) {
-      push('R6', 'OUT_OF_ENVELOPE', line, `Z ${z} is ${h.toFixed(4)} mm above the table, Z travel ${profile.workEnvelope.z}.`);
+      push(
+        'R6',
+        'OUT_OF_ENVELOPE',
+        line,
+        `Z ${z} is ${h.toFixed(4)} mm above the table, Z travel ${profile.workEnvelope.z}.`,
+      );
     }
   };
 
@@ -291,7 +322,12 @@ export function motionRules(
     if (i === 0) {
       const zOnly = m.toAssumed.includes('x') && m.toAssumed.includes('y');
       if (m.kind !== 'rapid' || !zOnly || m.toAssumed.includes('z') || m.to.z < d.safeZ - tol) {
-        push('R2', 'FIRST_MOVE_NOT_SAFE_Z', m.line, `The first move must be a Z-only rapid up to safe Z ${d.safeZ}.`);
+        push(
+          'R2',
+          'FIRST_MOVE_NOT_SAFE_Z',
+          m.line,
+          `The first move must be a Z-only rapid up to safe Z ${d.safeZ}.`,
+        );
       }
     }
     if (needSafeZ) {
@@ -301,7 +337,12 @@ export function motionRules(
         Math.abs(m.to.y - m.from.y) <= tol &&
         m.to.z >= d.safeZ - tol;
       if (!zOnlyUp) {
-        push('R2', 'NO_SAFE_Z_AFTER_TOOL_CHANGE', m.line, `The first move after the ${needSafeZ.kind === 'pause' ? 'pause' : 'tool change'} on line ${needSafeZ.line} must be a Z-only rapid to safe Z ${d.safeZ}.`);
+        push(
+          'R2',
+          'NO_SAFE_Z_AFTER_TOOL_CHANGE',
+          m.line,
+          `The first move after the ${needSafeZ.kind === 'pause' ? 'pause' : 'tool change'} on line ${needSafeZ.line} must be a Z-only rapid to safe Z ${d.safeZ}.`,
+        );
       }
       needSafeZ = null;
     }
@@ -311,44 +352,87 @@ export function motionRules(
       Math.abs(m.to.x - m.from.x) > tol ||
       Math.abs(m.to.y - m.from.y) > tol;
     if (m.kind === 'rapid') {
-      if (xyChange && (m.fromAssumed.includes('z') || m.from.z < d.safeZ - tol || m.to.z < d.safeZ - tol)) {
-        push('R2', 'XY_RAPID_BELOW_SAFE_Z', m.line, `XY rapid from ${fmt(m.from)} to ${fmt(m.to)} below safe Z ${d.safeZ}.`);
+      if (
+        xyChange &&
+        (m.fromAssumed.includes('z') || m.from.z < d.safeZ - tol || m.to.z < d.safeZ - tol)
+      ) {
+        push(
+          'R2',
+          'XY_RAPID_BELOW_SAFE_Z',
+          m.line,
+          `XY rapid from ${fmt(m.from)} to ${fmt(m.to)} below safe Z ${d.safeZ}.`,
+        );
       }
       // --- R3: no rapid ends below the clearance plane (a straight retract upwards is fine) ---
       const retract = !xyChange && m.to.z > m.from.z + tol;
       if (!retract && m.to.z < d.clearanceZ - tol) {
         if (m.to.z <= tol) {
-          push('R3', 'RAPID_INTO_MATERIAL', m.line, `Rapid ends at Z ${m.to.z.toFixed(4)} (sheet frame), inside the material.`);
+          push(
+            'R3',
+            'RAPID_INTO_MATERIAL',
+            m.line,
+            `Rapid ends at Z ${m.to.z.toFixed(4)} (sheet frame), inside the material.`,
+          );
         } else {
-          push('R3', 'RAPID_BELOW_CLEARANCE', m.line, `Rapid ends at Z ${m.to.z.toFixed(4)}, below the clearance plane ${d.clearanceZ}.`);
+          push(
+            'R3',
+            'RAPID_BELOW_CLEARANCE',
+            m.line,
+            `Rapid ends at Z ${m.to.z.toFixed(4)}, below the clearance plane ${d.clearanceZ}.`,
+          );
         }
       }
       afterRapid = true;
     } else {
       if (m.fromAssumed.length > 0 || m.toAssumed.length > 0) {
-        push('R2', 'FEED_FROM_UNKNOWN_POSITION', m.line, 'Cutting move from a position the program never set.');
+        push(
+          'R2',
+          'FEED_FROM_UNKNOWN_POSITION',
+          m.line,
+          'Cutting move from a position the program never set.',
+        );
       }
       // --- R3: descending into the material at the plunge feed ---
       if (m.to.z < m.from.z - tol && m.to.z < -tol && raw.feed !== null) {
         const limit = plungeLimit(raw.tool);
         if (raw.feed > limit + d.feedTol) {
-          push('R3', 'PLUNGE_TOO_FAST', m.line, `Descending move at F${raw.feed}, plunge feed is ${limit}.`);
+          push(
+            'R3',
+            'PLUNGE_TOO_FAST',
+            m.line,
+            `Descending move at F${raw.feed}, plunge feed is ${limit}.`,
+          );
         }
       }
       // --- R4: spindle on, in range, warmed up; hold-down on ---
       if (!raw.spindleOn || st.spindle === 'off') {
         push('R4', 'CUT_SPINDLE_OFF', m.line, 'Cutting move with the spindle off.');
       } else if (st.dwell < warmup - 1e-9) {
-        push('R4', 'WARMUP_MISSING', m.line, `Cutting move after ${st.dwell} s dwell, warm-up is ${warmup} s.`);
+        push(
+          'R4',
+          'WARMUP_MISSING',
+          m.line,
+          `Cutting move after ${st.dwell} s dwell, warm-up is ${warmup} s.`,
+        );
       }
       if (d.vacuum && !st.vacuumOn) {
-        push('R4', 'VACUUM_NOT_ON', m.line, `Cutting move without the vacuum on (M${d.vacuum.on}).`);
+        push(
+          'R4',
+          'VACUUM_NOT_ON',
+          m.line,
+          `Cutting move without the vacuum on (M${d.vacuum.on}).`,
+        );
       }
       // --- R5: explicit F on the first cut after a rapid; never an undefined feed ---
       if (raw.feed === null) {
         push('R5', 'FEED_UNDEFINED', m.line, 'Cutting move with no feed defined.');
       } else if (afterRapid && !raw.feedExplicit) {
-        push('R5', 'FEED_NOT_EXPLICIT', m.line, 'The first cutting move after a rapid must state its feed (F).');
+        push(
+          'R5',
+          'FEED_NOT_EXPLICIT',
+          m.line,
+          'The first cutting move after a rapid must state its feed (F).',
+        );
       }
       afterRapid = false;
     }
@@ -369,8 +453,17 @@ export function motionRules(
     if (m.kind !== 'rapid' && Math.min(m.from.z, m.to.z) < -tol) {
       const pts = [m.to, ...(m.arc ? arcExtremes(m.from, m.arc) : [])];
       const r = toolRadius + tol;
-      if (pts.some((p) => p.x < -r || p.y < -r || p.x > stock.sheetWidth + r || p.y > stock.sheetHeight + r)) {
-        push('R6', 'CUT_OUTSIDE_SHEET', m.line, `Cutting move to ${fmt(m.to)} leaves the sheet (plus the tool radius).`);
+      if (
+        pts.some(
+          (p) => p.x < -r || p.y < -r || p.x > stock.sheetWidth + r || p.y > stock.sheetHeight + r,
+        )
+      ) {
+        push(
+          'R6',
+          'CUT_OUTSIDE_SHEET',
+          m.line,
+          `Cutting move to ${fmt(m.to)} leaves the sheet (plus the tool radius).`,
+        );
       }
     }
   });
@@ -379,13 +472,23 @@ export function motionRules(
   // --- R7: end sequence ---
   const last = sm[sm.length - 1];
   if (last && (last.toAssumed.includes('z') || last.to.z < d.safeZ - tol)) {
-    push('R7', 'END_NOT_AT_SAFE_Z', last.line, `The program ends at Z ${last.to.z.toFixed(4)}, not at safe Z ${d.safeZ}.`);
+    push(
+      'R7',
+      'END_NOT_AT_SAFE_Z',
+      last.line,
+      `The program ends at Z ${last.to.z.toFixed(4)}, not at safe Z ${d.safeZ}.`,
+    );
   }
   if (read.finalState.spindle !== 'off' || st.spindle !== 'off') {
     push('R7', 'END_SPINDLE_ON', 0, 'The spindle is not switched off at the end (M5).');
   }
   if (st.vacuumOn) {
-    push('R7', 'END_VACUUM_ON', 0, `The vacuum is not switched off at the end (M${d.vacuum?.off ?? '?'}).`);
+    push(
+      'R7',
+      'END_VACUUM_ON',
+      0,
+      `The vacuum is not switched off at the end (M${d.vacuum?.off ?? '?'}).`,
+    );
   }
   const end = events.find((e) => e.kind === 'end');
   if (!end || !read.finalState.ended) {
@@ -403,10 +506,17 @@ export function toolRuns(ops: readonly Operation[]): number[] {
 }
 
 /** Comments that belong to a line: its own and the comment-only lines right above it. */
-function promptComments(read: GcodeReadResult, rawLines: readonly string[], line: number): string[] {
+function promptComments(
+  read: GcodeReadResult,
+  rawLines: readonly string[],
+  line: number,
+): string[] {
   const out: string[] = [...(read.lines[line - 1]?.comments ?? [])];
   for (let i = line - 2; i >= 0 && i >= line - 6; i--) {
-    const text = (rawLines[i] ?? '').replace(/\([^)]*\)/g, '').replace(/;.*$/, '').trim();
+    const text = (rawLines[i] ?? '')
+      .replace(/\([^)]*\)/g, '')
+      .replace(/;.*$/, '')
+      .trim();
     if (text !== '' && text !== '%') break;
     out.push(...(read.lines[i]?.comments ?? []));
   }
@@ -425,17 +535,24 @@ export function toolRules(
   const known = new Set(profile.tools.map((t) => t.number));
   const runs = toolRuns(ops);
   for (const t of runs) {
-    if (!known.has(t)) push('TOOLS', 'TOOL_NOT_IN_PROFILE', 0, `Model tool T${t} is not in the machine profile.`);
+    if (!known.has(t))
+      push('TOOLS', 'TOOL_NOT_IN_PROFILE', 0, `Model tool T${t} is not in the machine profile.`);
   }
   const changes = read.events.filter((e) => e.kind === 'toolChange');
   for (const c of changes) {
-    if (c.tool === null) push('TOOLS', 'TOOL_CHANGE_WITHOUT_T', c.line, 'M6 without a tool number.');
+    if (c.tool === null)
+      push('TOOLS', 'TOOL_CHANGE_WITHOUT_T', c.line, 'M6 without a tool number.');
     else if (!known.has(c.tool)) {
       push('TOOLS', 'TOOL_NOT_IN_PROFILE', c.line, `T${c.tool} is not in the machine profile.`);
     }
   }
   if (changes.length > 0 && profile.toolChanger.type !== 'auto') {
-    push('TOOLS', 'M6_WITHOUT_CHANGER', changes[0]?.line ?? 0, `M6 on a machine whose tool changer is ${profile.toolChanger.type}.`);
+    push(
+      'TOOLS',
+      'M6_WITHOUT_CHANGER',
+      changes[0]?.line ?? 0,
+      `M6 on a machine whose tool changer is ${profile.toolChanger.type}.`,
+    );
   }
   if (d.toolMode === 'auto') {
     const seq = changes.map((c) => c.tool);
@@ -454,9 +571,15 @@ export function toolRules(
   } else if (d.toolMode === 'manual') {
     const pauses = read.events.filter((e) => e.kind === 'pause');
     const first = d.ctx.post?.toolChange?.pauseForFirstTool;
-    const counts = first === undefined ? [runs.length - 1, runs.length] : [runs.length - 1 + (first ? 1 : 0)];
+    const counts =
+      first === undefined ? [runs.length - 1, runs.length] : [runs.length - 1 + (first ? 1 : 0)];
     if (!counts.includes(pauses.length)) {
-      push('TOOLS', 'TOOL_PAUSE_COUNT', pauses[0]?.line ?? 0, `Expected ${counts.join(' or ')} tool-change pauses (M0/M1), read ${pauses.length}.`);
+      push(
+        'TOOLS',
+        'TOOL_PAUSE_COUNT',
+        pauses[0]?.line ?? 0,
+        `Expected ${counts.join(' or ')} tool-change pauses (M0/M1), read ${pauses.length}.`,
+      );
       return;
     }
     const offset = pauses.length === runs.length ? 0 : 1;
@@ -475,11 +598,17 @@ export function toolRules(
         );
       }
       for (const t of named) {
-        if (!known.has(t)) push('TOOLS', 'TOOL_NOT_IN_PROFILE', p.line, `T${t} is not in the machine profile.`);
+        if (!known.has(t))
+          push('TOOLS', 'TOOL_NOT_IN_PROFILE', p.line, `T${t} is not in the machine profile.`);
       }
     });
   } else if (runs.length > 1) {
-    push('TOOLS', 'TOOL_RUNS_IN_ONE_FILE', 0, `A "none" tool-change post needs one file per tool, this file has ${runs.length} tools.`);
+    push(
+      'TOOLS',
+      'TOOL_RUNS_IN_ONE_FILE',
+      0,
+      `A "none" tool-change post needs one file per tool, this file has ${runs.length} tools.`,
+    );
   }
 }
 

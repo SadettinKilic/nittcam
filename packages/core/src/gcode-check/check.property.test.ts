@@ -10,7 +10,16 @@ import { buildScenario, fileList, scenarioArb } from './scenario.testing';
 
 describe('generated programs pass every check', () => {
   it('random projects, both posts, 4 corners, 2 Z references', () => {
-    const seen = { programs: 0, generic: 0, mach3: 0, split: 0, none: 0, twoTools: 0, corners: new Set<string>(), zRefs: new Set<string>() };
+    const seen = {
+      programs: 0,
+      generic: 0,
+      mach3: 0,
+      split: 0,
+      none: 0,
+      twoTools: 0,
+      corners: new Set<string>(),
+      zRefs: new Set<string>(),
+    };
     fc.assert(
       fc.property(scenarioArb, (s) => {
         const b = buildScenario(s);
@@ -33,7 +42,7 @@ describe('generated programs pass every check', () => {
         seen.corners.add(s.corner);
         seen.zRefs.add(s.zRef);
       }),
-      { numRuns: Number(process.env.FC_RUNS ?? 150) },
+      { numRuns: Number(process.env.FC_RUNS ?? 300) },
     );
     expect(seen.generic).toBeGreaterThan(10);
     expect(seen.mach3).toBeGreaterThan(10);
@@ -41,5 +50,6 @@ describe('generated programs pass every check', () => {
     expect(seen.zRefs.size).toBe(2);
     expect(seen.twoTools).toBeGreaterThan(5);
     expect(seen.none).toBeGreaterThan(5);
+    expect(seen.split).toBeGreaterThan(3);
   }, 180_000);
 });

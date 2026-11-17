@@ -106,7 +106,11 @@ function inputFailure(violations: GcodeCheckViolation[]): GcodeCheckResult {
   };
 }
 
-function finish(a: Analysis, layout: readonly ExpectedPart[] | null | undefined, d: Derived): GcodeCheckResult {
+function finish(
+  a: Analysis,
+  layout: readonly ExpectedPart[] | null | undefined,
+  d: Derived,
+): GcodeCheckResult {
   if (layout) matchLayout(a.loops, layout, d, a.push);
   const ok = !a.violations.some((v) => v.severity === 'error');
   return {
@@ -131,7 +135,13 @@ export function checkGcode(text: string, context: GcodeCheckContext): GcodeCheck
   if (!dr.ok) return inputFailure(dr.violations);
   if (typeof text !== 'string') {
     return inputFailure([
-      { rule: 'INPUT', code: 'TEXT_MISSING', severity: 'error', line: 0, message: 'No G-code text.' },
+      {
+        rule: 'INPUT',
+        code: 'TEXT_MISSING',
+        severity: 'error',
+        line: 0,
+        message: 'No G-code text.',
+      },
     ]);
   }
   return finish(analyse(text, dr.d, false), context.layout, dr.d);
@@ -162,7 +172,13 @@ export function checkGcodeFiles(
     }
   }
   if (files.length === 0) {
-    all.push({ rule: 'INPUT', code: 'NO_FILES', severity: 'error', line: 0, message: 'No files to check.' });
+    all.push({
+      rule: 'INPUT',
+      code: 'NO_FILES',
+      severity: 'error',
+      line: 0,
+      message: 'No files to check.',
+    });
   }
   for (const sheet of sheets) {
     const group = files.filter((f) => f.sheet === sheet);

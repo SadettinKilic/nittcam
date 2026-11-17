@@ -100,7 +100,8 @@ export function matchModel(
       }
       if (!feedOk(r, mv.feed)) return { ok: false, at: j, why: 'feed differs' };
       let p = angleTravelled(a0, Math.atan2(r.to.y - mv.cy, r.to.x - mv.cx), mv.direction);
-      if (p + angTol < prev || (p <= angTol && sweep > TWO_PI - angTol && prev > Math.PI)) p += TWO_PI;
+      if (p + angTol < prev || (p <= angTol && sweep > TWO_PI - angTol && prev > Math.PI))
+        p += TWO_PI;
       if (p > sweep + angTol || p + angTol < prev) {
         return { ok: false, at: j, why: 'arc goes past the model end or backwards' };
       }
@@ -109,7 +110,11 @@ export function matchModel(
       }
       // A chord (arcs written as lines) may leave the arc by at most the chord tolerance.
       if (!r.arc && R * (1 - Math.cos((p - prev) / 2)) > chordTol + tol) {
-        return { ok: false, at: j, why: 'chord leaves the model arc by more than the chord tolerance' };
+        return {
+          ok: false,
+          at: j,
+          why: 'chord leaves the model arc by more than the chord tolerance',
+        };
       }
       const zWant = from.z + ((mv.z - from.z) * Math.min(p, sweep)) / sweep;
       if (Math.abs(r.to.z - zWant) > tol) return { ok: false, at: j, why: 'helix height differs' };
@@ -130,7 +135,8 @@ export function matchModel(
       return { ok: false, at: ri, why: 'move type differs' };
     }
     if (!close3(r.to, mv, tol)) return { ok: false, at: ri, why: 'end point differs' };
-    if (mv.kind !== 'rapid' && !feedOk(r, mv.feed)) return { ok: false, at: ri, why: 'feed differs' };
+    if (mv.kind !== 'rapid' && !feedOk(r, mv.feed))
+      return { ok: false, at: ri, why: 'feed differs' };
     return { ok: true, next: ri + 1 };
   };
 
@@ -193,10 +199,20 @@ export function matchModel(
 function toolAndRpm(r: SheetMove, op: Operation, d: Derived, push: Push): void {
   if (r.kind === 'rapid') return;
   if (r.raw.tool !== null && r.raw.tool !== op.tool) {
-    push('TOOLS', 'TOOL_MISMATCH', r.line, `Operation ${op.id} expects T${op.tool}, the spindle holds T${r.raw.tool}.`);
+    push(
+      'TOOLS',
+      'TOOL_MISMATCH',
+      r.line,
+      `Operation ${op.id} expects T${op.tool}, the spindle holds T${r.raw.tool}.`,
+    );
   }
   if (r.raw.rpm !== null && Math.abs(r.raw.rpm - op.rpm) > 0.5) {
-    push('MODEL', 'RPM_MISMATCH', r.line, `Operation ${op.id} expects S${op.rpm}, read S${r.raw.rpm}.`);
+    push(
+      'MODEL',
+      'RPM_MISMATCH',
+      r.line,
+      `Operation ${op.id} expects S${op.rpm}, read S${r.raw.rpm}.`,
+    );
   }
   void d;
 }
@@ -218,11 +234,7 @@ export interface CutLoop {
  * the same XY (the final pass from the start point back to it; leads and ramps stay outside). The
  * tool-centre loop is the outline offset by the tool radius, so its box centre is the outline's.
  */
-export function cutLoops(
-  sm: readonly SheetMove[],
-  d: Derived,
-  push: Push,
-): CutLoop[] {
+export function cutLoops(sm: readonly SheetMove[], d: Derived, push: Push): CutLoop[] {
   const tol = d.posTol;
   const loops: CutLoop[] = [];
   let i = 0;
@@ -258,7 +270,12 @@ export function cutLoops(
     }
     const first = cut[0] as SheetMove;
     if (!best) {
-      push('LAYOUT', 'CUT_NOT_CLOSED', first.line, 'A through cut does not close into a loop: the part is not cut free.');
+      push(
+        'LAYOUT',
+        'CUT_NOT_CLOSED',
+        first.line,
+        'A through cut does not close into a loop: the part is not cut free.',
+      );
       continue;
     }
     let minX = Infinity;
@@ -277,7 +294,11 @@ export function cutLoops(
       add(m.to);
       if (m.arc) arcExtremes(m.from, m.arc).forEach(add);
     }
-    loops.push({ cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, line: (cut[best[0]] as SheetMove).line });
+    loops.push({
+      cx: (minX + maxX) / 2,
+      cy: (minY + maxY) / 2,
+      line: (cut[best[0]] as SheetMove).line,
+    });
   }
   return loops;
 }
@@ -306,13 +327,28 @@ export function matchLayout(
     else extra.push(l);
   }
   if (loops.length !== expected.length) {
-    push('LAYOUT', 'PART_COUNT', 0, `The program cuts ${loops.length} parts, the layout has ${expected.length}.`);
+    push(
+      'LAYOUT',
+      'PART_COUNT',
+      0,
+      `The program cuts ${loops.length} parts, the layout has ${expected.length}.`,
+    );
   }
   for (const l of extra) {
-    push('LAYOUT', 'PART_POSITION', l.line, `A part cut with centre (${l.cx.toFixed(3)}, ${l.cy.toFixed(3)}) is not at any expected placement.`);
+    push(
+      'LAYOUT',
+      'PART_POSITION',
+      l.line,
+      `A part cut with centre (${l.cx.toFixed(3)}, ${l.cy.toFixed(3)}) is not at any expected placement.`,
+    );
   }
   for (const i of free) {
     const e = expected[i] as ExpectedPart;
-    push('LAYOUT', 'PART_MISSING', 0, `Part ${e.partId} copy ${e.copy} at (${e.cx.toFixed(3)}, ${e.cy.toFixed(3)}) is not cut.`);
+    push(
+      'LAYOUT',
+      'PART_MISSING',
+      0,
+      `Part ${e.partId} copy ${e.copy} at (${e.cx.toFixed(3)}, ${e.cy.toFixed(3)}) is not cut.`,
+    );
   }
 }

@@ -31,7 +31,9 @@ describe('the mutation catalogue', () => {
   });
 
   const runs = MUTATIONS.flatMap((m) =>
-    CASES.filter((g) => m.posts.includes(g.post)).map((g) => [m.id, g.post, g.fixture, m, g] as const),
+    CASES.filter((g) => m.posts.includes(g.post)).map(
+      (g) => [m.id, g.post, g.fixture, m, g] as const,
+    ),
   );
   it.each(runs)('%s is caught (%s %s)', (_id, _p, _f, m, g) => {
     const lines = g.text.split('\r\n');
@@ -43,7 +45,10 @@ describe('the mutation catalogue', () => {
     const hit = r.violations.filter((v) => v.rule === m.rule && v.severity === 'error');
     expect(hit.length, JSON.stringify(r.violations, null, 1)).toBeGreaterThan(0);
     if (m.code) {
-      expect(hit.map((v) => v.code), JSON.stringify(r.violations, null, 1)).toContain(m.code);
+      expect(
+        hit.map((v) => v.code),
+        JSON.stringify(r.violations, null, 1),
+      ).toContain(m.code);
     }
   });
 });

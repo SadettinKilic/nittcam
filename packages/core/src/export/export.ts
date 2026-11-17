@@ -9,7 +9,13 @@ import {
   type GcodeCheckFilesResult,
   type GcodeCheckPostExpectations,
 } from '../gcode-check';
-import { generateGcode, parsePostConfig, type PostFile, type PostIssue, type PostProfileVersion } from '../post';
+import {
+  generateGcode,
+  parsePostConfig,
+  type PostFile,
+  type PostIssue,
+  type PostProfileVersion,
+} from '../post';
 import type { Project } from '../schema';
 import { buildToolpath, type ToolpathIssue, type ToolpathOptions } from '../toolpath';
 
@@ -110,7 +116,9 @@ export function exportNc(
   const same =
     prev !== null &&
     prev.files.length === gen.files.length &&
-    prev.files.every((f, i) => f.name === gen.files[i]?.name && f.content === gen.files[i]?.content);
+    prev.files.every(
+      (f, i) => f.name === gen.files[i]?.name && f.content === gen.files[i]?.content,
+    );
   const result = same && prev ? prev.result : checkGcodeFiles(gen.files, context);
   if (!result.ok) {
     return {
