@@ -41,6 +41,9 @@ importers:
       '@nittcam/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@nittcam/machines':
+        specifier: workspace:*
+        version: link:../../packages/machines
       '@nittcam/ui':
         specifier: workspace:*
         version: link:../../packages/ui

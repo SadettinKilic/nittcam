@@ -22,11 +22,11 @@ test.describe('T010 Makineler', () => {
     );
 
     // Seeded example profile (D-016).
-    const seeded = row(page, 'Genel düz G-code router');
+    const seeded = row(page, 'Örnek router (Mach3)');
     await expect(seeded).toBeVisible();
     await expect(seeded.getByText(t.example)).toBeVisible();
     await expect(seeded.getByTestId('machine-state')).toHaveText(t.state.draft);
-    await expect(seeded).toContainText('2.440 × 1.220 mm');
+    await expect(seeded).toContainText('3.050 × 2.150 mm');
 
     // Create.
     const name = `E2E Router ${Date.now()}`;

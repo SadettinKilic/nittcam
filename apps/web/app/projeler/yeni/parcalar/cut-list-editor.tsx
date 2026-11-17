@@ -4,11 +4,14 @@ import {
   CommandStack,
   parseCutListNumber,
   type CutListPartInput,
+  type Project,
   type Part,
   type ValidationIssue,
 } from '@nittcam/core';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { draftProject, draftToolDiameter, fill, newPartId } from '../../../../lib/draft-project';
+import { saveDraft, useHydrated, useStoredDraft } from '../../../../lib/draft-store';
 import type { Messages } from '../../../../lib/messages';
 import { useNestingWorker } from '../../../../lib/use-nesting-worker';
 import { LayoutView, type LockRequest } from '../../../../components/layout-view/layout-view';
@@ -300,14 +303,51 @@ function isTextField(target: EventTarget | null): boolean {
   );
 }
 
-export function CutListEditor({ t, layoutText }: { t: Text; layoutText: LayoutText }) {
+/**
+ * The parts step with the draft restored from the shared store (T020): coming back from the
+ * simulation, or reloading the tab, keeps the cut list and the layout. The store is read only in
+ * the browser, so the first render matches the server; a stored draft then remounts the editor.
+ */
+export function DraftCutListEditor(props: {
+  t: Text;
+  layoutText: LayoutText;
+  simulateText: string;
+}) {
+  const stored = useStoredDraft();
+  const hydrated = useHydrated();
+  // Before hydration the stored draft is unknown: that editor must not save (it would overwrite
+  // the stored draft with an empty one). After hydration a stored draft remounts the editor.
+  return (
+    <CutListEditor
+      key={stored ? 'stored' : 'fresh'}
+      initial={stored}
+      persist={hydrated}
+      {...props}
+    />
+  );
+}
+
+export function CutListEditor({
+  t,
+  layoutText,
+  simulateText,
+  initial = null,
+  persist = true,
+}: {
+  t: Text;
+  layoutText: LayoutText;
+  simulateText: string;
+  initial?: Project | null;
+  /** Save every change to the shared draft store (false until the store was read). */
+  persist?: boolean;
+}) {
   // The validation context carries the nesting tool diameter, so LOCKED_PLACEMENT_INVALID checks
   // the same spacing the placer keeps (D-020).
   const [stack] = useState(() => {
-    const start = draftProject();
+    const start = initial ?? draftProject();
     return new CommandStack(start, { toolDiameter: draftToolDiameter(start) });
   });
-  const [, setVersion] = useState(0);
+  const [version, setVersion] = useState(0);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const focusNext = useRef<string | null>(null);
@@ -319,6 +359,11 @@ export function CutListEditor({ t, layoutText }: { t: Text; layoutText: LayoutTe
   const pasteButton = useRef<HTMLButtonElement>(null);
 
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
+
+  // Share the draft with the simulation step after every change (undo/redo included).
+  useEffect(() => {
+    if (persist) saveDraft(stack.project);
+  }, [stack, version, persist]);
 
   const run: Run = useCallback(
     (name, params) => {
@@ -580,6 +625,18 @@ export function CutListEditor({ t, layoutText }: { t: Text; layoutText: LayoutTe
           onRenest={() => void nest()}
           renesting={nesting}
         />
+      ) : null}
+
+      {project.layout.sheets.length > 0 ? (
+        <div className="flex justify-end">
+          <Link
+            href="/projeler/yeni/simulasyon"
+            data-testid="open-simulation"
+            className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
+          >
+            {simulateText}
+          </Link>
+        </div>
       ) : null}
     </main>
   );

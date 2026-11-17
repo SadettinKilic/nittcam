@@ -11,6 +11,7 @@ import {
   createDb,
   forCompany,
   seedDefaultProfile,
+  upgradeExampleProfile,
   type CompanyScope,
   type DbHandle,
 } from '@nittcam/db';
@@ -47,6 +48,8 @@ async function openScope(): Promise<CompanyScope> {
   });
   const scope = forCompany(db, company.id);
   if (created) await seedDefaultProfile(scope);
+  // Companies seeded before T020: replace an untouched old example by a new version (D-028).
+  else await upgradeExampleProfile(scope);
   return scope;
 }
 

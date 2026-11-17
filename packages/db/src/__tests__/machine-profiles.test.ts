@@ -1,8 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { defaultMachineProfile, DEFAULT_PROFILE_NAME, type MachineProfile } from '@nittcam/core';
+import {
+  defaultMachineProfile,
+  EXAMPLE_PROFILE_NAME,
+  exampleMachineProfile,
+  type MachineProfile,
+} from '@nittcam/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DbHandle } from '../client';
-import { seedDefaultProfile } from '../seed';
+import { seedDefaultProfile, upgradeExampleProfile } from '../seed';
 import {
   companies,
   forCompany,
@@ -132,16 +137,71 @@ describe('machine profiles (T010)', () => {
     expect(await scope.machines.listProfileVersions(machine.id)).toHaveLength(1);
   });
 
-  it('seedDefaultProfile adds the example router as a draft', async () => {
+  it('seedDefaultProfile adds the Mach3 example router as a draft (T020)', async () => {
     const fresh = forCompany(h.db, (await newCompany(h, 'Seed')).id);
     const seeded = await seedDefaultProfile(fresh);
-    expect(seeded.machine.name).toBe(DEFAULT_PROFILE_NAME);
+    expect(seeded.machine.name).toBe(EXAMPLE_PROFILE_NAME);
     expect(seeded.profile.example).toBe(true);
-    expect(seeded.profile.table).toEqual({ width: 2440, depth: 1220 });
+    expect(seeded.profile.post).toEqual({ id: 'mach3', version: '1.0.0' });
+    expect(seeded.profile.table).toEqual({ width: 3050, depth: 2150 });
     const list = await fresh.machines.listWithProfiles();
     expect(list.map((m) => [m.machine.name, m.state, m.version.version])).toEqual([
-      [DEFAULT_PROFILE_NAME, 'draft', 1],
+      [EXAMPLE_PROFILE_NAME, 'draft', 1],
     ]);
+    // A fresh seed is not a legacy one: the upgrade does nothing.
+    expect(await upgradeExampleProfile(fresh)).toEqual([]);
+  });
+
+  describe('upgradeExampleProfile (T020, D-028)', () => {
+    async function legacyCompany(name: string, edit?: (p: MachineProfile) => void) {
+      const c = forCompany(h.db, (await newCompany(h, name)).id);
+      const p = defaultMachineProfile();
+      edit?.(p);
+      const m = await c.machines.createWithProfile(p);
+      return { c, id: m.machine.id };
+    }
+
+    it('an untouched old seed gets the new example as version 2, once (idempotent)', async () => {
+      const { c, id } = await legacyCompany('Legacy');
+      const done = await upgradeExampleProfile(c);
+      expect(done.map((m) => m.machine.id)).toEqual([id]);
+      const versions = await c.machines.listProfileVersions(id);
+      expect(versions.map((v) => v.version)).toEqual([1, 2]);
+      // Append-only: version 1 is still the old profile.
+      expect((versions[0]?.profile as { post: { id: string } }).post.id).toBe('generic');
+      const now = await c.machines.getWithProfile(id);
+      expect(now?.profile).toEqual(exampleMachineProfile());
+      expect(now?.machine.name).toBe(EXAMPLE_PROFILE_NAME);
+      expect(await upgradeExampleProfile(c)).toEqual([]);
+      expect(await c.machines.listProfileVersions(id)).toHaveLength(2);
+    });
+
+    it('an old seed from before T017 (no rapid feed) is upgraded too', async () => {
+      const { c, id } = await legacyCompany('Legacy pre-T017', (p) => {
+        delete p.rapidFeed;
+      });
+      expect((await upgradeExampleProfile(c)).map((m) => m.machine.id)).toEqual([id]);
+    });
+
+    it('an edited old seed is left alone (changed value, or a second version)', async () => {
+      const changed = await legacyCompany('Edited value', (p) => {
+        p.safeZ = 25;
+      });
+      expect(await upgradeExampleProfile(changed.c)).toEqual([]);
+      expect(await changed.c.machines.listProfileVersions(changed.id)).toHaveLength(1);
+
+      const resaved = await legacyCompany('Edited version');
+      await resaved.c.machines.saveProfile(resaved.id, defaultMachineProfile());
+      expect(await upgradeExampleProfile(resaved.c)).toEqual([]);
+      expect(await resaved.c.machines.listProfileVersions(resaved.id)).toHaveLength(2);
+    });
+
+    it('a non-example machine with the same values is left alone', async () => {
+      const { c } = await legacyCompany('Not example', (p) => {
+        p.example = false;
+      });
+      expect(await upgradeExampleProfile(c)).toEqual([]);
+    });
   });
 
   it('companies.ensure creates once and then returns the same company', async () => {

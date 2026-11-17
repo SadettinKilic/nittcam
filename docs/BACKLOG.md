@@ -196,10 +196,10 @@ Acceptance:
 ### T020 Simulation screen (2D)   [status: todo]
 Spec: §6.5 · Depends: T018, T013 · Owner: dev
 Acceptance:
-- [ ] drawn from the **read G-code**: sheet, parts, tool-centre path, tool circle, dashed rapids, arrows, cut-order numbers, Z depth colour
-- [ ] play/pause, speed, scrubber, highlight of the current G-code line
-- [ ] summary: estimated time, cut length, tool changes; banner "Simülasyon air cut'ın yerine geçmez"
-- [ ] e2e: simulate a fixture to the end
+- [x] drawn from the **read G-code**: sheet, parts, tool-centre path, tool circle, dashed rapids, arrows, cut-order numbers, Z depth colour
+- [x] play/pause, speed, scrubber, highlight of the current G-code line
+- [x] summary: estimated time, cut length, tool changes; banner "Simülasyon air cut'ın yerine geçmez"
+- [x] e2e: simulate a fixture to the end
 
 ### T021 NC export   [status: todo]
 Spec: §6.6, §7.2 · Depends: T019 · Owner: dev

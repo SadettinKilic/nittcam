@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PROFILE_NAME,
   defaultMachineProfile,
+  EXAMPLE_PROFILE_NAME,
+  exampleMachineProfile,
+  isLegacyExampleProfile,
   machineProfileSchema,
   parseMachineProfile,
   PROFILE_BOUNDS,
@@ -199,5 +202,36 @@ describe('cross-field rules', () => {
 
   it('manual changer ignores the capacity', () => {
     expect(issuesOf(raw((p) => (p.toolChanger.capacity = 1)))).toEqual([]);
+  });
+});
+
+describe('seeded example "Örnek router (Mach3)" (T020, D-028)', () => {
+  it('is a valid unverified Mach3 example with the travel for the draft sheet', () => {
+    const p = exampleMachineProfile();
+    expect(p.identity.name).toBe(EXAMPLE_PROFILE_NAME);
+    expect(p.example).toBe(true);
+    expect(p.post).toEqual({ id: 'mach3', version: '1.0.0' });
+    expect(p.toolChanger.type).toBe('manual');
+    expect(p.workEnvelope).toEqual({ x: 3100, y: 2200, z: 200 });
+    expect(p.table).toEqual({ width: 3050, depth: 2150 });
+    expect(p.origin.corner).toBe('frontLeft');
+    expect(p.zZero.reference).toBe('materialTop');
+    expect(p.rapidFeed).toBe(10000);
+    expect(p.tools).toEqual(defaultMachineProfile().tools);
+    expect(p.materials).toEqual(defaultMachineProfile().materials);
+  });
+
+  it('legacy detection: the old seed (with or without rapid feed) only', () => {
+    expect(isLegacyExampleProfile(defaultMachineProfile())).toBe(true);
+    const noRapid = defaultMachineProfile();
+    delete noRapid.rapidFeed;
+    expect(isLegacyExampleProfile(noRapid)).toBe(true);
+    const edited = defaultMachineProfile();
+    edited.tools = edited.tools.map((t, i) => (i === 0 ? { ...t, diameter: 5 } : t));
+    expect(isLegacyExampleProfile(edited)).toBe(false);
+    const fastRapid = defaultMachineProfile();
+    fastRapid.rapidFeed = 12000;
+    expect(isLegacyExampleProfile(fastRapid)).toBe(false);
+    expect(isLegacyExampleProfile(exampleMachineProfile())).toBe(false);
   });
 });
