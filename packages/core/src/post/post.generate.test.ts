@@ -306,9 +306,27 @@ describe('tool change modes', () => {
     expect(run({ profile: p }).errors[0]!.code).toBe('TOOL_CHANGE_UNSUPPORTED');
   });
 
-  it('manual (Mach3): no M6; the first tool is a comment only', () => {
-    const c = run({ config: config('mach3'), profile: profileFor('mach3') }).files[0]!.content;
-    expect(c).not.toContain('M6');
+  it('manual (Mach3): no M6; the first tool pauses with a message before the spindle start', () => {
+    const lines = run({
+      config: config('mach3'),
+      profile: profileFor('mach3'),
+    }).files[0]!.content.split('\r\n');
+    expect(lines).not.toContain('T2 M6');
+    const k = lines.indexOf('M0');
+    expect(lines.slice(k - 1, k + 4)).toEqual([
+      '(TAKIM T2 D8.000 TAKILI MI? DEVAM ICIN CYCLE START)',
+      'M0',
+      'G0 Z20.0000',
+      'M3 S18000',
+      'G4 P5.0',
+    ]);
+    expect(lines.indexOf('M3 S18000')).toBeGreaterThan(k);
+  });
+
+  it('manual without pauseForFirstTool: the first tool is a comment only', () => {
+    const cfg = config('mach3');
+    cfg.toolChange.pauseForFirstTool = false;
+    const c = run({ config: cfg, profile: profileFor('mach3') }).files[0]!.content;
     expect(c).not.toMatch(/\r\nM0\r\n/);
     expect(c).toContain('(TAKIM: T2 D8.000)');
   });
@@ -324,7 +342,7 @@ describe('tool change modes', () => {
       profile: p,
       config: config('mach3'),
     }).files[0]!.content.split('\r\n');
-    const k = lines.indexOf('M0');
+    const k = lines.findIndex((l, i) => l === 'M0' && lines[i - 1]!.includes('T3'));
     expect(lines.slice(k - 2, k + 4)).toEqual([
       'M5',
       '(TAKIM DEGISTIR: T3 D6.000, sonra cycle start)',

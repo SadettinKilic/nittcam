@@ -114,6 +114,8 @@ class Writer {
   private wy: string | null = null;
   private wz: string | null = null;
   private motion: string | null = null;
+  // The last motion block was a Z-only rapid to safe Z (rule 7 end retract already done).
+  private atSafeZOnly = false;
   private feed: string | null = null;
   private forceFeed = true;
   private spindleRpm: number | null = null;
@@ -224,6 +226,14 @@ class Writer {
     this.pos = { ...this.pos, z };
     this.zKnown = true;
     this.forceFeed = true;
+    this.atSafeZOnly = true;
+  }
+
+  /** Rule 7: retract to safe Z once at the end, unless the last motion already did exactly that. */
+  endSafeZ(): void {
+    if (this.atSafeZOnly && this.zKnown && Math.abs(this.pos.z - this.c.toolpath.safeZ) <= EPS)
+      return;
+    this.safeZ();
   }
 
   private warmup(): void {
@@ -275,11 +285,15 @@ class Writer {
     } else if (mode === 'manual' && !first) {
       this.comment(`TAKIM DEĞİŞTİR: ${label}, sonra cycle start`);
       this.block([cfg.toolChange.manualStop]);
+    } else if (mode === 'manual' && cfg.toolChange.pauseForFirstTool) {
+      this.comment(`TAKIM ${label} TAKILI MI? DEVAM İÇİN CYCLE START`);
+      this.block([cfg.toolChange.manualStop]);
     } else {
       this.comment(`TAKIM: ${label}`);
     }
     this.tool = op.tool;
-    if (mode === 'auto' || (mode === 'manual' && !first)) {
+    const stopped = mode === 'manual' && (!first || cfg.toolChange.pauseForFirstTool);
+    if (mode === 'auto' || stopped) {
       // The change macro or the operator may have moved the machine: back to safe Z, XY unknown.
       this.xyKnown = false;
       this.wx = null;
@@ -338,7 +352,12 @@ class Writer {
       if (end.z <= EPS) this.fail('RAPID_INTO_MATERIAL', 'Rapid move into the material.', 3);
       const words: string[] = [];
       this.motionWord(this.c.cfg.motion.rapid, words);
-      if (this.axisWords(m, words, false)) this.block(words);
+      if (this.axisWords(m, words, false)) {
+        this.block(words);
+        this.atSafeZOnly =
+          !words.some((w) => w.startsWith('X') || w.startsWith('Y')) &&
+          Math.abs(end.z - tp.safeZ) <= EPS;
+      }
       this.pos = end;
       this.xyKnown = true;
       this.zKnown = true;
@@ -402,6 +421,7 @@ class Writer {
     if (this.axisWords(m, words, false)) {
       this.feedWord(feed, words);
       this.block(words);
+      this.atSafeZOnly = false;
     } else {
       this.motion = motionBefore;
     }
@@ -435,6 +455,7 @@ class Writer {
     }
     this.feedWord(feed, words);
     this.block(words);
+    this.atSafeZOnly = false;
     this.pos = p;
   }
 
@@ -508,8 +529,8 @@ function renderProgram(
   w.safeZ();
   if (c.vacuum) w.block([c.vacuum.on]);
   for (const op of ops) w.operation(op);
-  // Rule 7: safe Z, spindle off, vacuum off, end code.
-  w.safeZ();
+  // Rule 7: safe Z (once), spindle off, vacuum off, end code.
+  w.endSafeZ();
   w.spindleOff();
   if (c.vacuum) w.block([c.vacuum.off]);
   for (const l of cfg.program.end) w.block([l]);

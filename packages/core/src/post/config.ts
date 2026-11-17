@@ -88,6 +88,11 @@ export const postConfigSchema = z
       manualStop: z.enum(['M0', 'M1']),
       /** Write `G43 H<tool>` after a change when the profile has length compensation. */
       lengthOffset: z.boolean(),
+      /**
+       * Manual mode: also stop for the first tool (message + stop before the first spindle
+       * start), so the operator confirms the right tool is in the spindle.
+       */
+      pauseForFirstTool: z.boolean(),
     }),
 
     spindle: z.strictObject({

@@ -361,3 +361,22 @@ describe('rule 10: unverified profile header', () => {
     expect(UNVERIFIED_HEADER).toBe('DOĞRULANMADI, önce air cut');
   });
 });
+
+describe('end sequence retracts once', () => {
+  it('a single G0 Z<safe> before M5 (no duplicate after the toolpath retract)', () => {
+    const lines = readBlocks(content(run())).map((b) => b.line);
+    expect(lines.slice(-4)).toEqual(['G0 Z20.000', 'M5', 'M9', 'M30']);
+    expect(lines.filter((l) => l === 'G0 Z20.000').length).toBeGreaterThan(1);
+    expect(lines.at(-5)).not.toBe('G0 Z20.000');
+  });
+
+  it('still writes the end retract when the last motion was not a Z-only safe rapid', () => {
+    const tp = sampleToolpath();
+    const last = tp.operations.at(-1)!;
+    last.segments = last.segments.filter((s) => s.role !== 'retract');
+    // Lead-out ends in the material: the generator itself must retract.
+    const lines = readBlocks(content(run({ toolpath: tp }))).map((b) => b.line);
+    expect(lines.slice(-4)).toEqual(['G0 Z20.000', 'M5', 'M9', 'M30']);
+    expect(lines.at(-5)).toMatch(/^G[123] /);
+  });
+});

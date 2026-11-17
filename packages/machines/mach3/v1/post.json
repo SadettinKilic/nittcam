@@ -14,7 +14,12 @@
   "comments": { "style": "paren", "asciiOnly": true, "maxLength": 120 },
   "lineNumbers": { "enabled": false, "start": 10, "increment": 10, "max": 99999 },
   "modal": { "words": ["G21", "G90", "G91.1", "G17", "G40", "G49", "G54"] },
-  "toolChange": { "mode": "manual", "manualStop": "M0", "lengthOffset": false },
+  "toolChange": {
+    "mode": "manual",
+    "manualStop": "M0",
+    "lengthOffset": false,
+    "pauseForFirstTool": true
+  },
   "spindle": { "on": "M3", "off": "M5", "speedPosition": "after", "rpmDecimals": 0 },
   "dwell": { "word": "P", "unit": "s", "decimals": 1 },
   "motion": {
