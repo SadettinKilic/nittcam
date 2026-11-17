@@ -48,12 +48,12 @@ export async function settle(page: Page): Promise<void> {
 
 /**
  * Takes a review screenshot `e2e/__screenshots__/<name>.png` (every platform) and, on Linux,
- * compares the page against the baseline `e2e/visual-baselines/<name>.png`.
+ * compares the page against the baseline `e2e/visual-baselines/<name>.png` (unless `baseline: false`).
  */
 export async function snap(
   page: Page,
   name: string,
-  opts: { fullPage?: boolean } = {},
+  opts: { fullPage?: boolean; baseline?: boolean } = {},
 ): Promise<void> {
   const fullPage = opts.fullPage ?? true;
   await settle(page);
@@ -64,7 +64,8 @@ export async function snap(
     animations: 'disabled',
     caret: 'hide',
   });
-  if (compareBaselines) {
+  // baseline: false = review capture only (pages whose data is shared with other tests).
+  if (compareBaselines && opts.baseline !== false) {
     await expect(page).toHaveScreenshot(`${name}.png`, { fullPage });
   }
 }

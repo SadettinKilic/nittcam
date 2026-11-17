@@ -4,17 +4,63 @@
     "description": "CNC router için web tabanlı kesim programı"
   },
   "home": {
-    "title": "Ana sayfa",
-    "subtitle": "Son projeleriniz ve doğrulama bekleyen makineler.",
-    "newProject": "+ Yeni proje",
+    "title": "Atölye özeti",
+    "subtitle": "Projeleriniz, makineleriniz ve bu haftaki üretim tek bakışta.",
+    "newProject": "Yeni proje",
+    "stats": {
+      "label": "Özet",
+      "projects": "Projeler",
+      "projectsHint": "{n} taslak",
+      "exports": "Bu hafta export",
+      "exportsHint": "Son 7 günde üretilen NC dosyası",
+      "machines": "Doğrulanmış makine",
+      "machinesValue": "{verified} / {total}",
+      "machinesPending": "{n} makine doğrulama bekliyor",
+      "machinesAllVerified": "Bütün makineler doğrulanmış",
+      "waste": "Ortalama fire",
+      "wasteHint": "Kesimden sonra raporlanacak",
+      "soon": "Yakında"
+    },
     "recent": "Son projeler",
-    "recentEmpty": "Henüz proje yok. “+ Yeni proje” ile ilkini oluşturun.",
-    "allProjects": "Tüm projeler →",
-    "machines": "Doğrulama bekleyen makineler",
-    "machinesEmpty": "Bütün makineler doğrulanmış.",
-    "allMachines": "Makineler →",
-    "example": "örnek profil",
-    "error": "Veriler yüklenemedi. Sayfayı yenileyin."
+    "recentDescription": "En son değiştirdiğiniz projeler",
+    "allProjects": "Tüm projeler",
+    "recentEmptyTitle": "Henüz proje yok",
+    "recentEmpty": "İlk projenizi oluşturun ya da elinizdeki kesim listesini yapıştırarak başlayın.",
+    "card": {
+      "pieces": "{n} parça",
+      "sheets": "{n} plaka",
+      "lastExport": "Son export {date}",
+      "noExport": "Henüz export yok",
+      "noLayout": "Dizilim yok",
+      "thumb": "{name} dizilim önizlemesi",
+      "updated": "Güncellendi {date}"
+    },
+    "machines": "Makineler",
+    "machinesDescription": "Doğrulama durumu",
+    "allMachines": "Tüm makineler",
+    "verify": "Doğrula",
+    "verifyLabel": "Doğrula: {name}",
+    "machinesEmptyTitle": "Henüz makine yok",
+    "machinesEmpty": "Makinenizi ekleyin; ölçüleri ve takımları bir kez tanımlayın.",
+    "example": "Örnek",
+    "quick": {
+      "title": "Hızlı işlemler",
+      "newProject": {
+        "title": "Yeni proje",
+        "text": "Makine ve plaka seçerek başlayın"
+      },
+      "paste": {
+        "title": "Kesim listesi yapıştır",
+        "text": "Excel'den kopyaladığınız listeyi ekleyin"
+      },
+      "addMachine": {
+        "title": "Makine ekle",
+        "text": "Ölçüler, takımlar ve post ayarı"
+      }
+    },
+    "error": "Veriler yüklenemedi. Sayfayı yenileyin.",
+    "errorTitle": "Özet yüklenemedi",
+    "retry": "Yenile"
   },
   "nav": {
     "label": "Ana menü",
@@ -135,7 +181,7 @@
   "machines": {
     "title": "Makineler",
     "subtitle": "Makinenizin ölçülerini, takımlarını ve G-code biçimini burada tanımlayın.",
-    "add": "+ Yeni makine",
+    "add": "Yeni makine",
     "loading": "Makineler yükleniyor…",
     "loadError": "Makineler yüklenemedi. Bağlantıyı kontrol edip tekrar deneyin.",
     "retry": "Tekrar dene",
@@ -147,7 +193,8 @@
       "table": "Tabla",
       "version": "Sürüm",
       "status": "Durum",
-      "actions": "İşlem"
+      "actions": "İşlem",
+      "machine": "Makine"
     },
     "edit": "Düzenle",
     "state": {
@@ -286,6 +333,45 @@
           "acrylic": "Akrilik",
           "pvc": "PVC"
         }
+      },
+      "versionBadge": "Sürüm {version}",
+      "sectionsIndex": "Form bölümleri",
+      "sectionHints": {
+        "identity": "Makinenin adı, markası ve kontrol ünitesi.",
+        "envelope": "Eksenlerin gidebildiği sınırlar, tabla ölçüsü ve güvenli yükseklik.",
+        "origin": "Program sıfırının tabladaki yeri ve eksen yönleri.",
+        "zZero": "Z sıfırının hangi yüzeyde alındığı.",
+        "spindle": "İş milinin gücü, devir aralığı ve ısınma beklemesi.",
+        "toolChanger": "Takımların nasıl değiştiği.",
+        "holdDown": "Plakanın tablada nasıl tutulduğu.",
+        "post": "G-code dosyasının hangi biçimde yazılacağı.",
+        "constraints": "Kontrol ünitesinin dosya ve komut sınırları.",
+        "tools": "Makinede kullandığınız takımlar.",
+        "materials": "Her malzeme ve kalınlık için kesim değerleri."
+      },
+      "units": {
+        "mm": "mm",
+        "feed": "mm/dk",
+        "rpm": "dev/dk",
+        "kw": "kW",
+        "s": "sn",
+        "mb": "MB",
+        "chars": "karakter"
+      },
+      "corner": {
+        "hint": "Program sıfırının olduğu köşeyi seçin (tablaya yukarıdan bakış).",
+        "front": "Ön · operatör tarafı",
+        "back": "Arka"
+      },
+      "status": {
+        "dirty": "Kaydedilmemiş değişiklikler var",
+        "clean": "Değişiklik yok"
+      },
+      "leave": {
+        "title": "Değişiklikler kaydedilmedi",
+        "text": "Çıkarsanız bu formda yaptığınız değişiklikler kaybolur.",
+        "stay": "Düzenlemeye dön",
+        "discard": "Değişiklikleri at"
       }
     },
     "errors": {
@@ -312,7 +398,9 @@
       "plungeAboveFeed": "Dalma hızı beslemeden büyük olamaz.",
       "rpmOutsideSpindle": "Devir, spindle aralığının dışında."
     },
-    "verify": "Doğrula"
+    "verify": "Doğrula",
+    "emptyTitle": "Henüz makine yok",
+    "count": "{n} makine"
   },
   "cutList": {
     "title": "Parçalar",
