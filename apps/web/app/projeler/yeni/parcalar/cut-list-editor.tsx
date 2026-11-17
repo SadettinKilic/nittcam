@@ -253,12 +253,12 @@ function PartRow({
         />
       </td>
       {EDGES.map((edge) => (
-        <td key={edge} className="px-0.5 py-1">
+        <td key={edge} className="min-w-16 px-0.5 py-1">
           <Cell
             {...cellProps}
             col={`edge-${edge}`}
             numeric
-            className="w-14 px-1.5"
+            className="px-1.5"
             label={fill(t.edgeLabel, { n, edge: t.edge[edge] })}
             value={formatInput(part.edgeBand[edge])}
             current={part.edgeBand[edge]}
