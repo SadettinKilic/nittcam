@@ -7,7 +7,7 @@ Order inside a milestone is the order of work. Agents run sequentially.
 
 ## M0: Temel (exit: CI green; offset decision recorded in DECISIONS.md)
 
-### T001 Monorepo skeleton   [status: todo]
+### T001 Monorepo skeleton   [status: done]
 Spec: §8.3, §10.1 · Depends: none · Owner: dev
 Acceptance:
 - [ ] pnpm workspace with `apps/web` (Next.js App Router, React, Tailwind), `packages/core`, `packages/db`, `packages/ui`, `packages/machines`, `e2e/`
@@ -18,7 +18,7 @@ Acceptance:
 - [ ] `.gitignore` covers node_modules, .next, coverage, graphify-out, .env*, playwright reports
 - [ ] `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm build` all pass locally
 
-### T002 CI + branch protection + licence check   [status: todo]
+### T002 CI + branch protection + licence check   [status: done]
 Spec: §10.5, §8.3 · Depends: T001 · Owner: dev (PO sets branch protection)
 Acceptance:
 - [ ] `.github/workflows/ci.yml` on PRs and pushes to main: install (frozen lockfile), lint, typecheck, unit tests, build, Playwright (chromium)
@@ -27,7 +27,7 @@ Acceptance:
 - [ ] Node version pinned (`.nvmrc` / `engines`), pnpm via `packageManager` field
 - [ ] ~~Branch protection~~ not available on the free plan for private repos (D-006); local deny rules + PO merge discipline instead
 
-### T003 Claude Code setup: CLAUDE.md, skills, agents, permissions   [status: review]
+### T003 Claude Code setup: CLAUDE.md, skills, agents, permissions   [status: done]
 Spec: §10.2–10.4, §10.6 · Depends: none · Owner: PO
 Acceptance:
 - [x] `CLAUDE.md` (short; team model, resume protocol, rules, human gates)
@@ -37,7 +37,7 @@ Acceptance:
 - [x] team status CLI `tools/team/status.mjs` + dashboard `tools/team-dashboard/`
 - [ ] merged via PR after T001/T002 so CI validates it
 
-### T004 Project JSON schema v1 (Zod) + example projects   [status: todo]
+### T004 Project JSON schema v1 (Zod) + example projects   [status: done]
 Spec: §9.2, §6.1, §8.2 · Depends: T001 · Owner: dev
 Acceptance:
 - [ ] `packages/core/schema`: Zod schema matching §9.2 (schemaVersion, machine, stock, parts, nesting, layout, cutting); all lengths in mm
@@ -46,7 +46,7 @@ Acceptance:
 - [ ] 3 example projects in `packages/core/schema/__fixtures__/` (cabinet doors, shelf set, mixed with holes) that validate
 - [ ] invalid examples are rejected with readable errors (tests)
 
-### T005 Command layer skeleton + first 5 commands   [status: todo]
+### T005 Command layer skeleton + first 5 commands   [status: done]
 Spec: §5.1 · Depends: T004 · Owner: dev
 Acceptance:
 - [ ] registry with apply / undo / redo / log (who, when, command); pure apply via Immer patches
@@ -56,21 +56,21 @@ Acceptance:
 - [ ] the command schemas export as JSON Schema (future AI tool definitions)
 - [ ] validation rule: blind pocket depth < thickness (§4.5)
 
-### T006 Geometry core: bulge polyline   [status: todo]
+### T006 Geometry core: bulge polyline   [status: done]
 Spec: §6.1 · Depends: T001 · Owner: dev
 Acceptance:
 - [ ] types `Vertex {x,y,bulge}`, `Polyline {vertices, closed}`; constants EPS=0.001, JOIN_TOL=0.05
 - [ ] functions: signedArea, orientation/normalize (outer CCW, inner CW), bbox (arc-aware), length (arc-aware), transform (translate, rotate 90° steps, mirror)
 - [ ] fast-check: area invariant under translation and rotation; bbox contains every sampled point; orientation round-trips
 
-### T007 Offset spike: CavalierContours (WASM) vs Clipper2 + arc fitting   [status: todo]
+### T007 Offset spike: CavalierContours (WASM) vs Clipper2 + arc fitting   [status: done]
 Spec: §8.3, §14.1 · Depends: T006 · Owner: dev
 Acceptance:
 - [ ] both candidates evaluated on the same fixtures (rect, rounded rect, inner contour, small radius below the tool radius, self-intersecting result)
 - [ ] criteria scored: arc preservation, correctness (distance property test), browser + Node support, bundle size, licence, maintenance
 - [ ] decision written to `docs/DECISIONS.md`; the chosen one wrapped behind `offset(polyline, d)` in core with property tests
 
-### T008 Database: schema v1 + local dev without Docker   [status: todo]
+### T008 Database: schema v1 + local dev without Docker   [status: done]
 Spec: §8.5, §9.1, §8.6 · Depends: T001 · Owner: dev
 Acceptance:
 - [x] `packages/db` Drizzle schema for the §9.1 tables; every table has `company_id` (except companies); migrations generated
