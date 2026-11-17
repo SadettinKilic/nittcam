@@ -54,6 +54,22 @@ jobs:
       - name: E2E (chromium)
         run: pnpm --filter @nittcam/e2e e2e
 
+      # T102 / D-032: /dev/ui (later every screen) at 1440 and 390 px, light and dark, with
+      # screenshot baselines (Linux only; missing ones are written and uploaded) and axe.
+      - name: Visual + accessibility (pnpm e2e:visual)
+        run: pnpm --filter @nittcam/e2e e2e:visual
+
+      - name: Upload visual screenshots and baselines
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-screenshots
+          path: |
+            e2e/__screenshots__/t1*.png
+            e2e/visual-baselines/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4

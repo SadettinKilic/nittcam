@@ -1,0 +1,97 @@
+// Visual QA harness (T102, D-032, spec §11): screenshots and axe checks for every screen.
+import AxeBuilder from '@axe-core/playwright';
+import { expect, type Page } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export const VIEWPORTS = {
+  desktop: { width: 1440, height: 900 },
+  mobile: { width: 390, height: 844 },
+} as const;
+export type ViewportName = keyof typeof VIEWPORTS;
+
+export const THEMES = ['light', 'dark'] as const;
+export type Theme = (typeof THEMES)[number];
+
+/** Storage key of next-themes (packages/ui/src/theme.tsx). */
+const THEME_KEY = 'nittcam-theme';
+
+const SCREENSHOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '__screenshots__');
+
+/** Baselines are compared only on Linux (CI): font rendering differs on other systems. */
+export const compareBaselines = process.platform === 'linux';
+
+/** Picks the theme before any page script runs (no flash, no toggle click). */
+export async function applyTheme(page: Page, theme: Theme): Promise<void> {
+  await page.addInitScript(
+    ([key, value]) => {
+      try {
+        localStorage.setItem(key, value);
+      } catch {
+        /* storage blocked: next-themes falls back to the system theme */
+      }
+    },
+    [THEME_KEY, theme] as const,
+  );
+  await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+}
+
+/** Waits until web fonts are loaded and layout is stable, so captures are deterministic. */
+export async function settle(page: Page): Promise<void> {
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  });
+}
+
+/**
+ * Takes a review screenshot `e2e/__screenshots__/<name>.png` (every platform) and, on Linux,
+ * compares the page against the baseline `e2e/visual-baselines/<name>.png`.
+ */
+export async function snap(
+  page: Page,
+  name: string,
+  opts: { fullPage?: boolean } = {},
+): Promise<void> {
+  const fullPage = opts.fullPage ?? true;
+  await settle(page);
+  mkdirSync(SCREENSHOT_DIR, { recursive: true });
+  await page.screenshot({
+    path: join(SCREENSHOT_DIR, `${name}.png`),
+    fullPage,
+    animations: 'disabled',
+    caret: 'hide',
+  });
+  if (compareBaselines) {
+    await expect(page).toHaveScreenshot(`${name}.png`, { fullPage });
+  }
+}
+
+export interface A11yOptions {
+  /** CSS selectors to leave out (e.g. a third-party canvas). */
+  exclude?: string[];
+  /** Only check inside this selector. */
+  include?: string;
+}
+
+/** Runs axe (WCAG 2.1 A/AA); serious and critical violations fail the test. */
+export async function expectNoA11yViolations(page: Page, opts: A11yOptions = {}): Promise<void> {
+  let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
+  if (opts.include) builder = builder.include(opts.include);
+  for (const sel of opts.exclude ?? []) builder = builder.exclude(sel);
+  const { violations } = await builder.analyze();
+  const blocking = violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+  const report = blocking
+    .map(
+      (v) =>
+        `[${v.impact}] ${v.id}: ${v.help}\n` +
+        v.nodes
+          .slice(0, 5)
+          .map((n) => `    ${n.target.join(' ')}  ${n.failureSummary?.split('\n')[1] ?? ''}`)
+          .join('\n'),
+    )
+    .join('\n');
+  expect(blocking, `axe found serious/critical violations:\n${report}`).toEqual([]);
+}

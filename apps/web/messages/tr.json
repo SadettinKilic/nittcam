@@ -1000,5 +1000,164 @@
     },
     "historyVersion": "Sürüm {n}",
     "editProfile": "Profili düzenle"
+  },
+  "devUi": {
+    "title": "Arayüz galerisi",
+    "subtitle": "Tüm bileşenler, varyantlar ve durumlar. Yalnızca geliştirme ortamında görünür.",
+    "theme": {
+      "group": "Tema",
+      "system": "Sistem",
+      "light": "Açık",
+      "dark": "Koyu"
+    },
+    "sections": {
+      "colors": "Renkler",
+      "type": "Yazı",
+      "buttons": "Butonlar",
+      "forms": "Form alanları",
+      "numbers": "Sayı girişi",
+      "toggles": "Seçim kontrolleri",
+      "overlays": "Katmanlar",
+      "tabs": "Sekmeler",
+      "badges": "Rozetler",
+      "cards": "Kartlar",
+      "feedback": "Yükleme ve kısayollar"
+    },
+    "colorGroups": {
+      "surfaces": "Zemin ve yüzey",
+      "text": "Metin",
+      "accent": "Vurgu",
+      "status": "Durum"
+    },
+    "typeSample": "Plaka 1.220 × 2.440 mm, 18 mm MDF",
+    "typeBody": "Kesim listesi, dizilim ve G-code tek akışta. Ölçüler eşit genişlikte rakamlarla hizalanır.",
+    "variants": {
+      "primary": "Birincil",
+      "secondary": "İkincil",
+      "outline": "Çerçeveli",
+      "ghost": "Sade",
+      "destructive": "Sil"
+    },
+    "sizes": {
+      "sm": "Küçük",
+      "md": "Orta",
+      "lg": "Büyük"
+    },
+    "states": {
+      "disabled": "Pasif",
+      "loading": "Kaydediliyor"
+    },
+    "iconLabels": {
+      "add": "Ekle",
+      "settings": "Ayarlar",
+      "more": "Diğer işlemler",
+      "delete": "Sil"
+    },
+    "newProject": "Yeni proje",
+    "form": {
+      "name": "Proje adı",
+      "namePlaceholder": "Örn. Mutfak dolabı",
+      "nameHint": "Listede bu adla görünür.",
+      "notes": "Notlar",
+      "notesPlaceholder": "Atölye için kısa not",
+      "optional": "(isteğe bağlı)",
+      "disabled": "Pasif alan",
+      "disabledValue": "Değiştirilemez",
+      "invalid": "Hatalı alan",
+      "invalidError": "Bu alan boş bırakılamaz.",
+      "material": "Malzeme",
+      "materialPlaceholder": "Malzeme seçin",
+      "materials": {
+        "mdf": "MDF",
+        "plywood": "Kontrplak",
+        "melamine": "Melamin",
+        "acrylic": "Akrilik"
+      },
+      "materialGroup": "Levhalar"
+    },
+    "number": {
+      "width": "En",
+      "widthHint": "1 ile 2.440 mm arası. Ok tuşlarıyla 1, Shift ile 10 mm.",
+      "thickness": "Kalınlık",
+      "errorEmpty": "Bir değer girin.",
+      "errorInvalid": "Geçerli bir sayı girin (örn. 12,5).",
+      "errorMin": "Değer çok küçük.",
+      "errorMax": "Değer çok büyük.",
+      "increment": "Artır",
+      "decrement": "Azalt",
+      "value": "Değer",
+      "invalidDemo": "Geçersiz örnek",
+      "disabled": "Pasif"
+    },
+    "toggles": {
+      "grain": "Damar yönünü kilitle",
+      "grainHint": "Parça yalnızca damar yönünde döner.",
+      "edge": "Kenar bandı",
+      "sim": "Simülasyonda yavaş oynat",
+      "disabled": "Pasif seçenek",
+      "mode": "Dizilim modu",
+      "modes": {
+        "fast": "Hızlı",
+        "balanced": "Dengeli",
+        "tight": "Sıkı"
+      }
+    },
+    "overlays": {
+      "tooltipTrigger": "İpucu",
+      "tooltip": "Kısayol: Ctrl+K",
+      "popoverTrigger": "Açılır panel",
+      "popoverTitle": "Plaka kenar payı",
+      "popoverBody": "Her kenardan bırakılan boşluk.",
+      "menuTrigger": "Menü",
+      "menuLabel": "Proje",
+      "menuDuplicate": "Çoğalt",
+      "menuRename": "Yeniden adlandır",
+      "menuShowWaste": "Fireyi göster",
+      "menuDelete": "Sil",
+      "dialogTrigger": "Diyalog",
+      "dialogTitle": "Makine ekle",
+      "dialogDescription": "Makine adını ve tabla ölçüsünü girin.",
+      "cancel": "Vazgeç",
+      "save": "Kaydet",
+      "close": "Kapat",
+      "alertTrigger": "Silme onayı",
+      "alertTitle": "Proje silinsin mi?",
+      "alertDescription": "Bu işlem geri alınamaz. Proje ve dışa aktarımları silinir.",
+      "alertConfirm": "Evet, sil",
+      "sheetTrigger": "Yan panel",
+      "sheetTitle": "Parça ayrıntısı",
+      "sheetDescription": "Seçili parçanın ölçü ve damar bilgisi.",
+      "toastTrigger": "Bildirim göster",
+      "toastTitle": "Proje kaydedildi",
+      "toastBody": "Tüm değişiklikler kaydedildi."
+    },
+    "tabs": {
+      "cutList": "Kesim listesi",
+      "layout": "Dizilim",
+      "simulation": "Simülasyon",
+      "cutListBody": "Parçalar burada listelenir.",
+      "layoutBody": "Plakaya yerleşim burada görünür.",
+      "simulationBody": "Takım yolu burada oynatılır."
+    },
+    "badges": {
+      "neutral": "Taslak",
+      "accent": "Yeni",
+      "success": "Hazır",
+      "warning": "Uyarı",
+      "danger": "Hata",
+      "info": "Bilgi",
+      "solid": "Pro"
+    },
+    "cards": {
+      "title": "Mutfak dolabı",
+      "description": "12 parça · 2 plaka · 18 mm MDF",
+      "body": "Son düzenleme: bugün 14:20",
+      "open": "Aç",
+      "interactive": "Üzerine gelince öne çıkan kart"
+    },
+    "feedback": {
+      "loading": "Yükleniyor",
+      "shortcut": "Komut paleti"
+    }
   }
 }

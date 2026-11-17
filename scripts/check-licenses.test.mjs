@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import {
   checkPackage,
   checkReport,
+  devOnlyDependencyNames,
   directDependencyNames,
   isStrongCopyleft,
   parseExpression,
@@ -176,4 +177,54 @@ test('golden guard regex in ci.yml matches golden paths only', () => {
     'packages/machines/src/notgolden/a.nc',
   ])
     assert.ok(!re.test(p), `${p} should not match`);
+});
+
+// --- D-032: MPL-2.0 only as a direct devDependency (axe-core) ---
+test('D-032: direct MPL-2.0 passes only when dev-only', () => {
+  assert.equal(
+    checkPackage({ name: '@axe-core/playwright', license: 'MPL-2.0', direct: true, devOnly: true }),
+    null,
+  );
+  fails('@axe-core/playwright', 'MPL-2.0', true);
+  assert.notEqual(
+    checkPackage({ name: 'x', license: 'GPL-3.0', direct: true, devOnly: true }),
+    null,
+    'GPL stays forbidden for dev-only deps',
+  );
+  assert.notEqual(
+    checkPackage({ name: 'x', license: 'LGPL-3.0', direct: true, devOnly: true }),
+    null,
+  );
+});
+
+test('D-032: devOnlyDependencyNames excludes anything listed in dependencies', () => {
+  const root = mkdtempSync(join(tmpdir(), 'lic-'));
+  try {
+    const write = (rel, obj) => {
+      mkdirSync(join(root, rel), { recursive: true });
+      writeFileSync(join(root, rel, 'package.json'), JSON.stringify(obj));
+    };
+    writeFileSync(join(root, 'pnpm-workspace.yaml'), "packages:\n  - apps/*\n  - 'e2e'\n");
+    write('.', { devDependencies: { eslint: '9.0.0', shared: '1.0.0' } });
+    write('apps/web', { dependencies: { next: '16.0.0', shared: '1.0.0' } });
+    write('e2e', { devDependencies: { 'axe-x': '1.0.0' } });
+    assert.deepEqual([...devOnlyDependencyNames(root)].sort(), ['axe-x', 'eslint']);
+    const report = {
+      'MPL-2.0': [
+        { name: 'axe-x', versions: ['1'] },
+        { name: 'shared', versions: ['1'] },
+      ],
+    };
+    const { violations } = checkReport(
+      report,
+      directDependencyNames(root),
+      devOnlyDependencyNames(root),
+    );
+    assert.deepEqual(
+      violations.map((v) => v.name),
+      ['shared'],
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

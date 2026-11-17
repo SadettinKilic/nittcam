@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "typecheck": "pnpm -r --if-present typecheck",
     "e2e": "pnpm build && pnpm --filter @nittcam/e2e e2e",
+    "e2e:visual": "pnpm build && pnpm --filter @nittcam/e2e e2e:visual",
     "licenses:check": "node scripts/check-licenses.mjs",
     "team": "node tools/team-dashboard/server.mjs"
   },

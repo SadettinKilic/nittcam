@@ -10,6 +10,8 @@
 //   must use a licence from DIRECT_ALLOWED.
 // - Transitive dependencies may also use TRANSITIVE_EXTRA, and the LGPL-3.0 part of
 //   `@img/sharp-*` (dynamically linked, optional).
+// - A direct dependency that is only ever a devDependency (never in `dependencies`) may also use
+//   DEV_ONLY_DIRECT_EXTRA (D-032: axe-core MPL-2.0 for accessibility tests, never bundled).
 // - GPL or AGPL anywhere fails the build.
 // SPDX `OR` means we may pick any branch; `AND` means every part must be allowed.
 
@@ -30,6 +32,9 @@ export const DIRECT_ALLOWED = new Set([
   'Unlicense',
   'BlueOak-1.0.0',
 ]);
+
+/** Extra licences for direct dependencies used only as devDependencies (D-032). */
+export const DEV_ONLY_DIRECT_EXTRA = new Set(['MPL-2.0']);
 
 export const TRANSITIVE_EXTRA = new Set(['MPL-2.0', 'CC-BY-4.0', 'Python-2.0']);
 
@@ -97,10 +102,10 @@ export function parseExpression(expr) {
 }
 
 /** Is a single licence id allowed for this package? */
-export function isIdAllowed(id, { name, direct }) {
+export function isIdAllowed(id, { name, direct, devOnly = false }) {
   if (isStrongCopyleft(id)) return false;
   if (DIRECT_ALLOWED.has(id)) return true;
-  if (direct) return false;
+  if (direct) return devOnly && DEV_ONLY_DIRECT_EXTRA.has(id);
   if (TRANSITIVE_EXTRA.has(id)) return true;
   return SHARP_PACKAGE.test(name) && SHARP_LGPL.test(id);
 }
@@ -113,16 +118,16 @@ function evaluate(node, ctx) {
 
 /**
  * Checks one package. Returns null when allowed, otherwise a reason string.
- * @param {{name: string, license: string, direct: boolean}} pkg
+ * @param {{name: string, license: string, direct: boolean, devOnly?: boolean}} pkg
  */
-export function checkPackage({ name, license, direct }) {
+export function checkPackage({ name, license, direct, devOnly = false }) {
   let tree;
   try {
     tree = parseExpression(license);
   } catch (err) {
     return `unparseable licence: ${err.message}`;
   }
-  if (evaluate(tree, { name, direct })) return null;
+  if (evaluate(tree, { name, direct, devOnly })) return null;
   return direct
     ? `direct dependency licence "${license}" is not on the direct allow-list`
     : `transitive dependency licence "${license}" is not allowed`;
@@ -132,9 +137,10 @@ export function checkPackage({ name, license, direct }) {
  * Checks the parsed output of `pnpm licenses list --json`.
  * @param {Record<string, Array<{name: string, versions?: string[], license?: string}>>} report
  * @param {Set<string>} directNames
+ * @param {Set<string>} [devOnlyNames] direct dependencies that are never in `dependencies`
  * @returns {{checked: number, violations: Array<{name: string, versions: string[], license: string, direct: boolean, reason: string}>}}
  */
-export function checkReport(report, directNames) {
+export function checkReport(report, directNames, devOnlyNames = new Set()) {
   const violations = [];
   let checked = 0;
   for (const [group, pkgs] of Object.entries(report)) {
@@ -142,7 +148,8 @@ export function checkReport(report, directNames) {
       checked++;
       const license = p.license || group;
       const direct = directNames.has(p.name);
-      const reason = checkPackage({ name: p.name, license, direct });
+      const devOnly = direct && devOnlyNames.has(p.name);
+      const reason = checkPackage({ name: p.name, license, direct, devOnly });
       if (reason) {
         violations.push({ name: p.name, versions: p.versions ?? [], license, direct, reason });
       }
@@ -181,7 +188,18 @@ function readdirSyncDirs(dir) {
 
 /** Names of all direct, non-workspace dependencies. */
 export function directDependencyNames(root) {
-  const names = new Set();
+  return collectDirect(root).all;
+}
+
+/** Direct dependencies that appear only in `devDependencies`, never in `dependencies` (D-032). */
+export function devOnlyDependencyNames(root) {
+  const { all, prod } = collectDirect(root);
+  return new Set([...all].filter((n) => !prod.has(n)));
+}
+
+function collectDirect(root) {
+  const all = new Set();
+  const prod = new Set();
   for (const file of workspaceManifests(root)) {
     let pkg;
     try {
@@ -191,11 +209,13 @@ export function directDependencyNames(root) {
     }
     for (const field of ['dependencies', 'devDependencies']) {
       for (const [name, spec] of Object.entries(pkg[field] ?? {})) {
-        if (!String(spec).startsWith('workspace:')) names.add(name);
+        if (String(spec).startsWith('workspace:')) continue;
+        all.add(name);
+        if (field === 'dependencies') prod.add(name);
       }
     }
   }
-  return names;
+  return { all, prod };
 }
 
 function loadReport(file) {
@@ -212,7 +232,7 @@ function main() {
   const root = process.cwd();
   const report = loadReport(process.argv[2]);
   const direct = directDependencyNames(root);
-  const { checked, violations } = checkReport(report, direct);
+  const { checked, violations } = checkReport(report, direct, devOnlyDependencyNames(root));
   if (violations.length === 0) {
     console.log(`licence check: OK (${checked} packages, ${direct.size} direct)`);
     return;
