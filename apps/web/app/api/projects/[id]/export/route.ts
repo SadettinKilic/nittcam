@@ -52,6 +52,7 @@ export async function GET(request: Request, ctx: RouteContext<'/api/projects/[id
       violations: run.violations,
       files: fileInfos(run.files),
       needsAcceptance: run.needsAcceptance,
+      unverifiedReasons: run.unverifiedReasons,
       profile: profileInfo(run),
       post: run.post,
       checklist: run.checklist,

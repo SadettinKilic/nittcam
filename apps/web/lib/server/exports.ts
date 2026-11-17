@@ -10,8 +10,10 @@ import {
   findMaterialParams,
   needsUnverifiedAcceptance,
   parsePostConfig,
+  unverifiedReasons,
   type ExportNcResult,
   type PostFile,
+  type UnverifiedReason,
 } from '@nittcam/core';
 import type { CompanyScope, ExportRow, MachineWithProfile, ProjectRow } from '@nittcam/db';
 import { POST_CONFIGS } from '@nittcam/machines';
@@ -50,7 +52,7 @@ export function apiError(body: ExportApiError, status: number): NextResponse<Exp
 
 const texts = getMessages().simulation;
 
-function turkish(code: string): string {
+export function turkish(code: string): string {
   return (texts.codes as Record<string, string>)[code] ?? fill(texts.codeFallback, { code });
 }
 
@@ -108,6 +110,7 @@ export interface ExportRun {
   stage: ExportStage;
   violations: ExportViolation[];
   needsAcceptance: boolean;
+  unverifiedReasons: UnverifiedReason[];
   checklist: ExportChecklistInfo | null;
 }
 
@@ -146,6 +149,7 @@ export async function runExport(
     files: [] as PostFile[],
     ok: false,
     needsAcceptance: true,
+    unverifiedReasons: [] as UnverifiedReason[],
     checklist: null,
   };
   if (!machine) {
@@ -181,6 +185,7 @@ export async function runExport(
       stage: r.stage,
       violations: violationsOf(r),
       needsAcceptance: needsUnverifiedAcceptance(pv, cfg.config),
+      unverifiedReasons: unverifiedReasons(pv, cfg.config),
       checklist: checklistOf(machine, data),
     },
   };
