@@ -18,3 +18,4 @@ export * from './geometry';
 export * from './machine';
 export * from './cutlist';
 export * from './nesting';
+export * from './toolpath';
