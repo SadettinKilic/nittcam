@@ -212,8 +212,33 @@ export interface TabOptions {
   smallPartMinSide?: number;
 }
 
+/** Cut order options (T016, D-023). */
+export interface CutOrderOptionsInput {
+  /** Ordering preset; default `project.nesting.mode`. */
+  mode?: 'minWaste' | 'fastest' | 'minToolChanges';
+  /** 2-opt tour evaluations per sheet; default per mode. 0 = no 2-opt. */
+  maxEvaluations?: number;
+}
+
+/**
+ * Rapid travel between operations as the cut order measures it (D-023): XY distance from the sheet
+ * origin through every operation's start point, summed over the sheets, mm.
+ */
+export interface CutOrderSummary {
+  mode: 'minWaste' | 'fastest' | 'minToolChanges';
+  /** Placement order (the T014 order) with the default start points. */
+  placementRapid: number;
+  /** Naive order that obeys the cut-order rules (ties by placement order, default start points). */
+  naiveRapid: number;
+  /** The chosen order and start points; never more than `naiveRapid`. */
+  rapid: number;
+  /** Tool changes within the sheets (the first tool of a sheet is not counted). */
+  toolChanges: number;
+}
+
 export interface ToolpathOptions {
   tabs?: TabOptions;
+  order?: CutOrderOptionsInput;
   /** Default: `project.cutting.leadIn`. */
   lead?: LeadType;
   /** Lead arc radius / lead line length, mm. Default: tool radius. */
@@ -236,4 +261,5 @@ export interface ToolpathResult {
   warnings: ToolpathIssue[];
   errors: ToolpathIssue[];
   summary: ToolpathSummary;
+  order: CutOrderSummary;
 }

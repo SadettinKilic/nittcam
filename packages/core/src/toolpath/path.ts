@@ -38,26 +38,56 @@ export function pathLength(segs: readonly PathSeg[]): number {
  * corners.
  */
 export function startAtLongestLine(poly: Polyline): Polyline {
+  return startAtEdge(poly, startEdgeCandidates(poly)[0] ?? -1);
+}
+
+/**
+ * Indices of the straight segments of a closed loop that may hold the start point (T016, D-023):
+ * every straight segment at least `fraction` × the longest one (`fraction` ≥ 1: only the longest
+ * ones, within EPS). The first longest segment comes first (the default start of T014); the others
+ * follow in loop order. Empty for a loop without straight segments (a circle).
+ */
+export function startEdgeCandidates(poly: Polyline, fraction = 1): number[] {
   const vs = poly.vertices;
   const n = vs.length;
+  const lens: number[] = vs.map((v, i) => {
+    const next = vs[(i + 1) % n] as Vertex;
+    return isArc(v, next, v.bulge) ? -1 : Math.hypot(next.x - v.x, next.y - v.y);
+  });
   let best = -1;
   let bestLen = 0;
-  vs.forEach((v, i) => {
-    const next = vs[(i + 1) % n] as Vertex;
-    if (isArc(v, next, v.bulge)) return;
-    const len = Math.hypot(next.x - v.x, next.y - v.y);
+  lens.forEach((len, i) => {
     if (len > bestLen + EPS) {
       best = i;
       bestLen = len;
     }
   });
-  if (best < 0) return { closed: true, vertices: vs.map((v) => ({ ...v })) };
-  const a = vs[best] as Vertex;
-  const b = vs[(best + 1) % n] as Vertex;
-  const mid: Vertex = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, bulge: 0 };
+  if (best < 0) return [];
+  const limit = fraction >= 1 ? bestLen - EPS : bestLen * fraction - EPS;
+  const others = lens.flatMap((len, i) => (i !== best && len >= limit ? [i] : []));
+  return [best, ...others];
+}
+
+/** Midpoint of segment `i` of a closed loop. */
+export function edgeMidpoint(poly: Polyline, i: number): Point {
+  const vs = poly.vertices;
+  const a = vs[i] as Vertex;
+  const b = vs[(i + 1) % vs.length] as Vertex;
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+/**
+ * The same closed loop, starting at the midpoint of its straight segment `edge`. A negative index
+ * keeps the start vertex (loops without straight segments).
+ */
+export function startAtEdge(poly: Polyline, edge: number): Polyline {
+  const vs = poly.vertices;
+  const n = vs.length;
+  if (edge < 0) return { closed: true, vertices: vs.map((v) => ({ ...v })) };
+  const mid: Vertex = { ...edgeMidpoint(poly, edge), bulge: 0 };
   const out: Vertex[] = [mid];
   for (let k = 1; k <= n; k++) {
-    const v = vs[(best + k) % n] as Vertex;
+    const v = vs[(edge + k) % n] as Vertex;
     // the last one is `a`, whose segment now ends at `mid`: still a line
     out.push(k === n ? { x: v.x, y: v.y, bulge: 0 } : { ...v });
   }
