@@ -91,7 +91,11 @@ export interface Tab {
   z: number;
 }
 
-export type OperationKind = 'outerContour';
+/**
+ * `outerContour`: a part's outer contour (T014). `pocket`: a circular pocket cleared from its centre
+ * with concentric rings (the test part of T022, D-031); down to the target depth it is a hole.
+ */
+export type OperationKind = 'outerContour' | 'pocket';
 
 export interface Operation {
   /** `<partId>#<copy>` (unique in the toolpath). */

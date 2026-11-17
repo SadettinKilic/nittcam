@@ -6,6 +6,7 @@
 import {
   checkGcodeFiles,
   expectedLayouts,
+  type ExpectedPart,
   type GcodeCheckFilesResult,
   type GcodeCheckPostExpectations,
 } from '../gcode-check';
@@ -14,10 +15,16 @@ import {
   parsePostConfig,
   type PostFile,
   type PostIssue,
+  type PostMeta,
   type PostProfileVersion,
 } from '../post';
 import type { Project } from '../schema';
-import { buildToolpath, type ToolpathIssue, type ToolpathOptions } from '../toolpath';
+import {
+  buildToolpath,
+  type Toolpath,
+  type ToolpathIssue,
+  type ToolpathOptions,
+} from '../toolpath';
 
 export interface ExportNcOptions {
   /** Header and file name; default "NittCam". */
@@ -53,25 +60,68 @@ export function exportNc(
 ): ExportNcResult {
   const profile = profileVersion.profile;
   const tp = buildToolpath(project, profile, options.toolpath ?? {});
-  const base = { files: [], postErrors: [], postWarnings: [], check: null };
   const toolpathIssues = [...tp.errors, ...tp.warnings];
-  if (!tp.ok) return { ok: false, stage: 'toolpath', toolpathIssues, ...base };
+  if (!tp.ok) {
+    return {
+      ok: false,
+      stage: 'toolpath',
+      toolpathIssues,
+      files: [],
+      postErrors: [],
+      postWarnings: [],
+      check: null,
+    };
+  }
+  return postAndCheck(tp.toolpath, toolpathIssues, profileVersion, post, {
+    projectName: options.projectName ?? 'NittCam',
+    revision: options.revision ?? 0,
+    ...(options.fileStem ? { fileStem: options.fileStem } : {}),
+    stock: {
+      material: project.stock.material,
+      thickness: project.stock.thickness,
+      sheetWidth: project.stock.sheet.width,
+      sheetHeight: project.stock.sheet.height,
+    },
+    layout: expectedLayouts(project),
+  });
+}
 
+/** What `postAndCheck` needs besides the toolpath: the post meta plus the expected layout. */
+export interface PostAndCheckMeta extends PostMeta {
+  /** Expected parts per sheet; null = the layout check is skipped (no through cuts expected). */
+  layout: ReadonlyMap<number, readonly ExpectedPart[]> | null;
+}
+
+/**
+ * The post and check half of the pipeline (rule 9): an already built toolpath → G-code → the
+ * automatic checks. Files come back only when both passed. Used by `exportNc` and by the test
+ * programs (T022), so every generated program goes through the same post and the same checks.
+ */
+export function postAndCheck(
+  toolpath: Toolpath,
+  toolpathIssues: ToolpathIssue[],
+  profileVersion: PostProfileVersion,
+  post: unknown,
+  meta: PostAndCheckMeta,
+): ExportNcResult {
+  const profile = profileVersion.profile;
+  const base = { files: [], postErrors: [], postWarnings: [], check: null };
   const cfg = parsePostConfig(post);
   // An invalid config is refused by the generator itself; the checks only need its declarations.
   const expectations: GcodeCheckPostExpectations | undefined = cfg.ok ? cfg.config : undefined;
+  const { layout, ...postMeta } = meta;
   const stock = {
-    thickness: project.stock.thickness,
-    sheetWidth: project.stock.sheet.width,
-    sheetHeight: project.stock.sheet.height,
+    thickness: meta.stock.thickness,
+    sheetWidth: meta.stock.sheetWidth,
+    sheetHeight: meta.stock.sheetHeight,
   };
   const context = {
     profile,
     verification: profileVersion.verification,
     ...(expectations ? { post: expectations } : {}),
-    toolpath: tp.toolpath,
+    toolpath,
     stock,
-    layout: expectedLayouts(project),
+    ...(layout ? { layout } : {}),
   };
   let checked: { files: readonly PostFile[]; result: GcodeCheckFilesResult } | null = null;
   const run = (files: readonly PostFile[]) => {
@@ -80,26 +130,15 @@ export function exportNc(
     return result;
   };
 
-  const gen = generateGcode(
-    tp.toolpath,
-    profileVersion,
-    post,
-    {
-      projectName: options.projectName ?? 'NittCam',
-      revision: options.revision ?? 0,
-      ...(options.fileStem ? { fileStem: options.fileStem } : {}),
-      stock: { material: project.stock.material, ...stock },
-    },
-    {
-      check: (files) =>
-        run(files).violations.map((v) => ({
-          code: 'CHECK_FAILED' as const,
-          severity: v.severity,
-          rule: 9,
-          message: `[${v.rule} ${v.code}] ${v.file ?? ''}:${v.line} ${v.message}`,
-        })),
-    },
-  );
+  const gen = generateGcode(toolpath, profileVersion, post, postMeta, {
+    check: (files) =>
+      run(files).violations.map((v) => ({
+        code: 'CHECK_FAILED' as const,
+        severity: v.severity,
+        rule: 9,
+        message: `[${v.rule} ${v.code}] ${v.file ?? ''}:${v.line} ${v.message}`,
+      })),
+  });
   const prev = checked as { files: readonly PostFile[]; result: GcodeCheckFilesResult } | null;
   if (!gen.ok) {
     return {
@@ -143,6 +182,25 @@ export function exportNc(
 }
 
 /**
+ * Why a program for this profile version and post carries the "DOĞRULANMADI, önce air cut" header
+ * (spec §7.2 rule 10; same rule as the generator and the checks, D-025): `profile` = the profile
+ * version is not verified (§7.3), `example` = it is the example profile, `post` = the post config
+ * is not verified (or its status is unknown). Empty = no header, no acceptance needed (T022).
+ */
+export type UnverifiedReason = 'profile' | 'example' | 'post';
+
+export function unverifiedReasons(
+  profileVersion: Pick<PostProfileVersion, 'profile' | 'verification'>,
+  post: { status?: unknown } | null | undefined,
+): UnverifiedReason[] {
+  const out: UnverifiedReason[] = [];
+  if (profileVersion.verification !== 'verified') out.push('profile');
+  if (profileVersion.profile.example) out.push('example');
+  if (post?.status !== 'verified') out.push('post');
+  return out;
+}
+
+/**
  * Does an export with this profile version and post carry the "DOĞRULANMADI, önce air cut" header
  * and so need the user's acceptance before download (spec §7.2 rule 10)? Same rule as the
  * generator's header: the profile version is not verified, is the example profile, or the post is
@@ -152,9 +210,5 @@ export function needsUnverifiedAcceptance(
   profileVersion: Pick<PostProfileVersion, 'profile' | 'verification'>,
   post: { status?: unknown } | null | undefined,
 ): boolean {
-  return (
-    profileVersion.verification !== 'verified' ||
-    profileVersion.profile.example ||
-    post?.status !== 'verified'
-  );
+  return unverifiedReasons(profileVersion, post).length > 0;
 }
