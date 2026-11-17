@@ -47,6 +47,10 @@ const commandArb = fc.oneof(
     params: fc.record({ width: mm, height: mm }),
   }),
   fc.record({
+    name: fc.constant('setGrain'),
+    params: fc.record({ grain: fc.constantFrom(0, 90) }),
+  }),
+  fc.record({
     name: fc.constant('addPart'),
     params: fc
       .record({

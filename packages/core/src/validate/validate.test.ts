@@ -160,8 +160,11 @@ describe('(a) freeform parts use the arc-aware bbox (T006)', () => {
 });
 
 describe('(c) hole / groove vs tool diameter (spec §4.5, T010)', () => {
-  // Example profile: T1 = 6 mm, T2 = 8 mm flat end mills.
-  const machine = defaultMachineProfile();
+  // Example profile: T1 = 6 mm, T2 = 8 mm flat end mills. Its table (2440 × 1220) is smaller than the
+  // fixture sheets and it has no plywood/melamine sets; those rules (D-029) are tested separately,
+  // so the table is enlarged here and the stock rule is filtered out.
+  const machine = { ...defaultMachineProfile(), table: { width: 3100, depth: 2200 } };
+  const notStock = (i: { code: string }) => i.code !== 'NO_CUTTING_PARAMS';
   const withHoles = (holes: object[]) =>
     project((j) => {
       j.parts[0].holes = holes;
@@ -173,7 +176,7 @@ describe('(c) hole / groove vs tool diameter (spec §4.5, T010)', () => {
         validateProject(
           project(() => {}, fixture),
           { machine },
-        ),
+        ).filter(notStock),
       ).toEqual([]);
     }
   });
@@ -236,7 +239,7 @@ describe('(c) hole / groove vs tool diameter (spec §4.5, T010)', () => {
   it('the command stack runs the rule with the machine it was given', () => {
     const p = withHoles([{ id: 'a', type: 'through', d: 5, cx: 50, cy: 50, tool: 1 }]);
     expect(new CommandStack(p).issues).toEqual([]);
-    expect(new CommandStack(p, { machine }).issues.map((i) => i.code)).toEqual([
+    expect(new CommandStack(p, { machine }).issues.filter(notStock).map((i) => i.code)).toEqual([
       'HOLE_SMALLER_THAN_TOOL',
     ]);
   });

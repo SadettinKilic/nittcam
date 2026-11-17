@@ -8,7 +8,7 @@ import { formatPath, projectSchema, type Project } from '../schema';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
 import { addPart, duplicatePart, importCutList, removePart, updatePart } from './part';
 import { lockPlacement, runNesting, setNestingOptions } from './nesting';
-import { setMachine, setMaterial, setSheetSize, setThickness } from './plate';
+import { setGrain, setMachine, setMaterial, setSheetSize, setThickness } from './plate';
 import {
   commandContextSchema,
   type CommandContext,
@@ -27,6 +27,7 @@ export const COMMANDS = {
   setMaterial,
   setThickness,
   setSheetSize,
+  setGrain,
   addPart,
   updatePart,
   removePart,
@@ -153,7 +154,7 @@ export class CommandStack {
    */
   constructor(
     project: Project,
-    private readonly validation: ValidationContext = {},
+    private validation: ValidationContext = {},
   ) {
     this.current = project;
     this.currentIssues = validateProject(project, validation);
@@ -311,6 +312,15 @@ export class CommandStack {
     this.setProject(applyPatches(this.current, step.patches));
     this.undoSteps.push(step);
     return true;
+  }
+
+  /**
+   * Replaces the validation context (e.g. the wizard selected another machine profile) and
+   * re-validates the current project. History and log are kept.
+   */
+  setValidationContext(validation: ValidationContext): void {
+    this.validation = validation;
+    this.currentIssues = validateProject(this.current, validation);
   }
 
   private setProject(project: Project): void {
