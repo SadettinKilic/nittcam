@@ -58,7 +58,8 @@ const StaticLayer = memo(function StaticLayer({
   });
   const zero = machine ? { x: machine.zero.x, y: H - machine.zero.y } : null;
   const axis = 60 * px;
-  const grainLen = Math.min(W, H) * 0.12;
+  const chipH = 22 * px;
+  const chipW = (44 + grainLabel.length * 6.2) * px;
   return (
     <Layer listening={false}>
       {machine ? (
@@ -111,25 +112,36 @@ const StaticLayer = memo(function StaticLayer({
         strokeWidth={2 * px}
         perfectDrawEnabled={false}
       />
-      {/* Sheet grain: a double arrow just above the sheet (or right of it for 90°). */}
-      <Group
-        x={sheet.grain === 0 ? W - grainLen - 10 * px : W + 18 * px}
-        y={sheet.grain === 0 ? -18 * px : 10 * px}
-      >
+      {/* Sheet grain: a chip in the sheet's top-right corner (arrow along the grain + label). */}
+      <Group x={W - chipW - 8 * px} y={8 * px}>
+        <Rect
+          width={chipW}
+          height={chipH}
+          fill={colors.badgeFg}
+          opacity={0.9}
+          cornerRadius={4 * px}
+          stroke={colors.edge}
+          strokeWidth={px}
+          perfectDrawEnabled={false}
+        />
         <Arrow
-          points={sheet.grain === 0 ? [0, 0, grainLen, 0] : [0, 0, 0, grainLen]}
+          points={
+            sheet.grain === 0
+              ? [6 * px, chipH / 2, 30 * px, chipH / 2]
+              : [18 * px, chipH - 4 * px, 18 * px, 4 * px]
+          }
           stroke={colors.text}
           fill={colors.text}
           strokeWidth={1.5 * px}
-          pointerLength={7 * px}
-          pointerWidth={6 * px}
+          pointerLength={5 * px}
+          pointerWidth={5 * px}
           pointerAtBeginning
           perfectDrawEnabled={false}
         />
         <Text
           text={grainLabel}
-          x={sheet.grain === 0 ? -6 * px - grainLabel.length * 6.5 * px : 6 * px}
-          y={sheet.grain === 0 ? -6 * px : grainLen / 2 - 6 * px}
+          x={36 * px}
+          y={chipH / 2 - 5.5 * px}
           fontSize={11 * px}
           fill={colors.text}
           perfectDrawEnabled={false}
@@ -285,7 +297,7 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
       if (s && s.kind === 'rapid' && s.known) add(i);
     }
     ctx.setLineDash([6 * px, 4 * px]);
-    ctx.lineWidth = px;
+    ctx.lineWidth = 1.5 * px;
     ctx.strokeStyle = colors.rapid;
     ctx.globalAlpha = 0.85;
     ctx.stroke();

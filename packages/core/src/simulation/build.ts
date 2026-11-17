@@ -12,6 +12,12 @@ import type { SimContour, SimFile, SimSheet, SimStep } from './types';
 /** Chord tolerance of the drawn arcs, mm (far below a screen pixel at any useful zoom). */
 export const SIM_CHORD_TOLERANCE = 0.05;
 
+/**
+ * Shortest playback time of one move, s: a zero-length move (e.g. a repeated G0 to safe Z) still
+ * gets its own step, so stepping and the line highlight visit every move.
+ */
+export const SIM_MIN_STEP_SECONDS = 0.01;
+
 /** Feed assumed for a feed move without a feed (the checks refuse such a program anyway), mm/min. */
 const FALLBACK_FEED = 1000;
 
@@ -112,7 +118,10 @@ export function buildSimSheet(input: SimSheetInput): SimSheet {
       const length = gcodeMoveLength(m);
       const rapid = m.type === 'rapid';
       const feed = rapid ? null : (m.feed ?? FALLBACK_FEED);
-      const seconds = (length / (rapid ? rapidFeed : (feed ?? FALLBACK_FEED))) * 60;
+      const seconds = Math.max(
+        SIM_MIN_STEP_SECONDS,
+        (length / (rapid ? rapidFeed : (feed ?? FALLBACK_FEED))) * 60,
+      );
       const t0 = t + dwell;
       t = t0 + seconds;
       const known = xyKnown;

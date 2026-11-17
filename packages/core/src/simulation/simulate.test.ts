@@ -38,6 +38,10 @@ describe.each(['generic', 'mach3'] as const)('%s', (post) => {
       expect(s.t1).toBeGreaterThanOrEqual(s.t0);
       if (i > 0) expect(s.t0).toBeGreaterThanOrEqual(sheet.steps[i - 1]?.t1 ?? 0);
     });
+    // Stepping visits every move: each step ends strictly after the previous one.
+    sheet.steps.forEach((s, i) => {
+      if (i > 0) expect(s.t1).toBeGreaterThan(sheet.steps[i - 1]?.t1 ?? 0);
+    });
     // One contour per cut part; the final depth is the toolpath target depth.
     expect(sheet.contours.length).toBe(g.toolpath.operations.length);
     expect(sheet.zBottom).toBeCloseTo(g.toolpath.targetDepth, 3);

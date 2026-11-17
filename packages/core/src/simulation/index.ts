@@ -2,7 +2,7 @@
  * 2D simulation from the read G-code (spec §6.5, T020, D-028): build and playback model.
  */
 export * from './types';
-export { buildSimSheet, splitGcodeLines, SIM_CHORD_TOLERANCE } from './build';
+export { buildSimSheet, splitGcodeLines, SIM_CHORD_TOLERANCE, SIM_MIN_STEP_SECONDS } from './build';
 export type { SimSheetInput } from './build';
 export {
   SIM_TIME_EPS,

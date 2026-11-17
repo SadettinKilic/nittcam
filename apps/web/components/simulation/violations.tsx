@@ -11,6 +11,8 @@ export interface Finding {
   code: string;
   message: string;
   file?: string;
+  /** Sheet index, when the issue belongs to one sheet. */
+  sheet?: number;
   /** 1-based G-code line; 0 or missing = the whole program. */
   line?: number;
 }
@@ -39,7 +41,13 @@ export function findings(result: SimulateResult): Finding[] {
   const out: Finding[] = [];
   const ex = result.export;
   for (const i of ex.toolpathIssues) {
-    out.push({ group: 'TOOLPATH', severity: i.severity, code: i.code, message: i.message });
+    out.push({
+      group: 'TOOLPATH',
+      severity: i.severity,
+      code: i.code,
+      message: i.message,
+      ...(i.sheet !== undefined ? { sheet: i.sheet } : {}),
+    });
   }
   const checked = ex.check !== null;
   for (const i of [...ex.postErrors, ...ex.postWarnings]) {
@@ -49,6 +57,7 @@ export function findings(result: SimulateResult): Finding[] {
       severity: i.severity,
       code: i.code,
       message: i.message,
+      ...(i.sheet !== undefined ? { sheet: i.sheet } : {}),
     });
   }
   for (const v of ex.check?.violations ?? []) {
@@ -107,6 +116,9 @@ function FindingList({ t, items }: { t: SimText; items: readonly Finding[] }) {
                 className="flex flex-col gap-0.5 rounded-md bg-bg/70 px-3 py-2 text-sm sm:flex-row sm:items-baseline sm:gap-3"
               >
                 <span className="shrink-0 font-mono text-xs text-fg-muted">
+                  {f.sheet !== undefined && !f.file
+                    ? `${fill(t.sheetTab, { n: f.sheet + 1 })} · `
+                    : ''}
                   {f.file ? `${f.file} · ` : ''}
                   {f.line && f.line > 0
                     ? fill(t.blocked.line, { line: f.line })

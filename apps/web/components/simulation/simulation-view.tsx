@@ -48,7 +48,12 @@ const SimulationCanvas = dynamic(() => import('./simulation-canvas'), { ssr: fal
 const SPEEDS = [1, 2, 5, 10, 'max'] as const;
 type Speed = (typeof SPEEDS)[number];
 
+const playBtn =
+  'inline-flex min-w-28 items-center justify-center gap-1.5 rounded-lg border border-accent bg-accent px-3 py-2 text-sm font-semibold text-accent-fg hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50';
+
 const MACHINE_KEY = 'nittcam.simulation.machine';
+/** Scrubber resolution: tenths of a second. */
+const SCRUB_UNITS = 10;
 
 const btn =
   'inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-2 text-sm font-medium hover:bg-sidebar focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50';
@@ -315,7 +320,7 @@ export function SimulationView({ t }: { t: SimText }) {
         className="sticky top-0 z-10 flex flex-col gap-0.5 rounded-lg border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn shadow-sm sm:flex-row sm:items-baseline sm:gap-2"
       >
         <strong className="font-semibold">⚠ {t.banner}</strong>
-        <span>{t.bannerDetail}</span>
+        <span className="hidden sm:inline">{t.bannerDetail}</span>
       </p>
 
       {hasLayout ? (
@@ -616,7 +621,7 @@ function Player({
             </button>
             <button
               type="button"
-              className={`${btn} min-w-28 border-accent bg-accent text-accent-fg hover:bg-accent hover:brightness-110`}
+              className={playBtn}
               onClick={togglePlay}
               disabled={reduced}
               aria-keyshortcuts="Space"
@@ -669,10 +674,10 @@ function Player({
             <input
               type="range"
               min={0}
-              max={duration}
-              step="any"
-              value={time}
-              onChange={(e) => seekTime(Number(e.target.value))}
+              max={Math.ceil(duration * SCRUB_UNITS)}
+              step={1}
+              value={Math.round(time * SCRUB_UNITS)}
+              onChange={(e) => seekTime(Number(e.target.value) / SCRUB_UNITS)}
               aria-label={t.controls.scrubber}
               aria-valuetext={clock}
               data-testid="sim-scrubber"
