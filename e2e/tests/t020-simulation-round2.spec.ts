@@ -161,6 +161,9 @@ test.describe('T020 round 2: persistence (server since T023)', () => {
       );
       await paste(page);
       await saved(page);
+      // The corrupt value must not survive (T020 intent: the bad value is replaced or removed).
+      const stored = await page.evaluate((k) => sessionStorage.getItem(k), KEY);
+      expect(stored).not.toBe(bad);
       await page.reload();
       await expect.poll(() => hasValue(page, 'Çekmece önü')).toBe(true);
       expect(problems).toEqual([]);
