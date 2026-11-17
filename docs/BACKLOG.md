@@ -1,242 +1,841 @@
-# NittCam Backlog
+# NittCam Backlog (v3 plan, 2026-11-17)
 
 Statuses: `todo` · `doing` · `review` · `done` · `blocked`. Format and definition of done: `.claude/skills/task-workflow`.
-Order inside a milestone is the order of work. Agents run sequentially.
+Order inside a milestone is the order of work. Agents run sequentially. Plan rationale: D-032…D-036, spec §1 "v3 değişiklikleri", §12.1.
+
+## How to work this backlog (D-036)
+- **Small tasks:** one task ≈ one focused dev session (≈ 300–500 changed lines, one screen or one engine piece).
+- **Batches:** the PO hands the dev one batch (2–4 related tasks). One branch and one PR per batch: `feat/B07-cutlist-grid`, PR title `feat(cutlist): grid v2, row actions, import (T118–T120)`. The dev commits and pushes after each task and appends a checkpoint line per task to the PR description. The tester tests the batch; the PO squash-merges the batch.
+- **Every task** has spec refs, dependencies, testable acceptance criteria and a **Tester focus** line. Tester focus is the minimum the tester must check, not the maximum.
+- **Visual standard (from B1 on):** every new or changed screen is built from `packages/ui` components and design tokens, works in light and dark, at 1440 and 390 px, with no serious/critical axe violation. These checks are implied in every UI task's acceptance even when not repeated.
+- **Spec sections** refer to the v3 spec. Old milestone names in older decisions map as listed in spec §12.1.
+
+## Summary
+
+| Milestone | Tasks | Batches | Exit |
+| --- | --- | --- | --- |
+| M0 Temel | T001–T009 | – | done |
+| M1 İnce dilim | T010–T024 | – | done (2026-11-17) |
+| M2 Tasarım sistemi ve uygulama kabuğu | T100–T111 (12) | B1–B4 | every existing screen in the new design, visual + axe checks in CI |
+| M3 Kesim listesi, malzeme, damar kadranı | T112–T123 (12) | B5–B8 | free-angle grain respected from cut list to G-code; cut list editable without Excel |
+| M4 Çizim tahtası I: editör | T124–T137 (14) | B9–B13 | a drawn freeform part with fillets is nested and gives checked G-code |
+| M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
+| M6 3D önizleme | T152–T161 (10) | B19–B21 | 360° preview + cutting playback, 300 parts within the perf budget, 2D fallback |
+| M7 Dizilim yükseltmeleri | T162–T171 (10) | B22–B24 | 3 modes, true-shape with rotation, offcuts, edge-band deduction |
+| M8 Export, etiket, proje yönetimi | T172–T183 (12) | B25–B28 | NC + DXF + PDF + labels from the server; projects/home/settings complete |
+| M9 Cila ve saha hazırlığı | T184–T193 (10) | B29–B31 | **~90 % line: field-test ready** (owner sign-off) |
+| Saha 1 (owner) | – | – | air cut + test cut incl. holes, pockets, arcs on both machines |
+| M10 Hesap ve çok şirket | T200+ (outline) | – | after field test |
+| M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
+| M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
+
+**Before the field test: 94 tasks in 31 batches.** The "~90 % / field-test ready" line is the end of M9 (T193).
 
 ---
 
-## M0: Temel (exit: CI green; offset decision recorded in DECISIONS.md)
+## Done: M0 Temel (T001–T009) and M1 İnce dilim (T010–T024)
 
-### T001 Monorepo skeleton   [status: done]
-Spec: §8.3, §10.1 · Depends: none · Owner: dev
-Acceptance:
-- [ ] pnpm workspace with `apps/web` (Next.js App Router, React, Tailwind), `packages/core`, `packages/db`, `packages/ui`, `packages/machines`, `e2e/`
-- [ ] TypeScript strict across the repo; shared `tsconfig.base.json`; `packages/core` cannot import from `apps/*` (enforced by lint rule or TS project refs)
-- [ ] ESLint + Prettier; root scripts `dev`, `build`, `test`, `lint`, `typecheck`, `e2e`, `team`
-- [ ] Vitest runs in core with one sample test; Playwright set up with one smoke test (home page renders a Turkish title)
-- [ ] `apps/web` home page shows "NittCam" with Turkish text from `messages/tr.json`
-- [ ] `.gitignore` covers node_modules, .next, coverage, graphify-out, .env*, playwright reports
-- [ ] `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm build` all pass locally
+All done and merged (last: T024, #31; M1 exit met 2026-11-17). Details: git history, PRs #1–#32 and DECISIONS D-001…D-031.
+- M0: monorepo + CI + licence check (T001–T002), Claude Code setup (T003), project schema v1 (T004), command layer (T005), bulge polyline geometry (T006), own arc-preserving offset (T007, D-013), db on PGlite (T008), M1 backlog (T009).
+- M1: machine/tool profile + versions (T010), cut list table + Excel/CSV paste (T011) + per-edge band (T011b), MaxRects min-waste placer (T012), 2D layout view with drag/lock (T013), toolpath outer contour/multi-pass/leads (T014), tabs (T015), cut order (T016), declarative post + generic/Mach3 + golden files (T017), G-code reader (T018), automatic checks (T019), 2D simulation (T020), NC export (T021), air-cut test program + verification (T022), project save + wizard (T023), end-to-end flow (T024).
 
-### T002 CI + branch protection + licence check   [status: done]
-Spec: §10.5, §8.3 · Depends: T001 · Owner: dev (PO sets branch protection)
-Acceptance:
-- [ ] `.github/workflows/ci.yml` on PRs and pushes to main: install (frozen lockfile), lint, typecheck, unit tests, build, Playwright (chromium)
-- [ ] Licence check fails the build on GPL/AGPL dependencies (allow MIT, BSD, Apache-2.0, BSL-1.0, ISC, 0BSD, CC0)
-- [ ] Golden-file guard: PRs touching `packages/machines/**/golden/**` get label `needs-human`
-- [ ] Node version pinned (`.nvmrc` / `engines`), pnpm via `packageManager` field
-- [ ] ~~Branch protection~~ not available on the free plan for private repos (D-006); local deny rules + PO merge discipline instead
-
-### T003 Claude Code setup: CLAUDE.md, skills, agents, permissions   [status: done]
-Spec: §10.2–10.4, §10.6 · Depends: none · Owner: PO
-Acceptance:
-- [x] `CLAUDE.md` (short; team model, resume protocol, rules, human gates)
-- [x] 10 skills in `.claude/skills/` (task-workflow … ai-chat)
-- [x] `.claude/agents/dev.md`, `.claude/agents/tester.md` (tester also does the §7.2 safety review)
-- [x] `.claude/settings.json` permissions
-- [x] team status CLI `tools/team/status.mjs` + dashboard `tools/team-dashboard/`
-- [ ] merged via PR after T001/T002 so CI validates it
-
-### T004 Project JSON schema v1 (Zod) + example projects   [status: done]
-Spec: §9.2, §6.1, §8.2 · Depends: T001 · Owner: dev
-Acceptance:
-- [ ] `packages/core/schema`: Zod schema matching §9.2 (schemaVersion, machine, stock, parts, nesting, layout, cutting); all lengths in mm
-- [ ] parametric parts: `params` is the source and `outline` is derived; freeform parts: `outline` is the source
-- [ ] migration registry `migrate(json) → latest` with a v1 no-op and a test
-- [ ] 3 example projects in `packages/core/schema/__fixtures__/` (cabinet doors, shelf set, mixed with holes) that validate
-- [ ] invalid examples are rejected with readable errors (tests)
-
-### T005 Command layer skeleton + first 5 commands   [status: done]
-Spec: §5.1 · Depends: T004 · Owner: dev
-Acceptance:
-- [ ] registry with apply / undo / redo / log (who, when, command); pure apply via Immer patches
-- [ ] commands: setMachine, setMaterial, setThickness, setSheetSize, addPart
-- [ ] validation hook runs after each command and returns a warning list
-- [ ] property test: apply then undo restores the project exactly, for random command sequences
-- [ ] the command schemas export as JSON Schema (future AI tool definitions)
-- [ ] validation rule: blind pocket depth < thickness (§4.5)
-
-### T006 Geometry core: bulge polyline   [status: done]
-Spec: §6.1 · Depends: T001 · Owner: dev
-Acceptance:
-- [ ] types `Vertex {x,y,bulge}`, `Polyline {vertices, closed}`; constants EPS=0.001, JOIN_TOL=0.05
-- [ ] functions: signedArea, orientation/normalize (outer CCW, inner CW), bbox (arc-aware), length (arc-aware), transform (translate, rotate 90° steps, mirror)
-- [ ] fast-check: area invariant under translation and rotation; bbox contains every sampled point; orientation round-trips
-
-### T007 Offset spike: CavalierContours (WASM) vs Clipper2 + arc fitting   [status: done]
-Spec: §8.3, §14.1 · Depends: T006 · Owner: dev
-Acceptance:
-- [ ] both candidates evaluated on the same fixtures (rect, rounded rect, inner contour, small radius below the tool radius, self-intersecting result)
-- [ ] criteria scored: arc preservation, correctness (distance property test), browser + Node support, bundle size, licence, maintenance
-- [ ] decision written to `docs/DECISIONS.md`; the chosen one wrapped behind `offset(polyline, d)` in core with property tests
-
-### T008 Database: schema v1 + local dev without Docker   [status: done]
-Spec: §8.5, §9.1, §8.6 · Depends: T001 · Owner: dev
-Acceptance:
-- [x] `packages/db` Drizzle schema for the §9.1 tables; every table has `company_id` (except companies); migrations generated
-- [x] local dev and tests use PGlite (embedded Postgres) by default (D-004); `DATABASE_URL` switches to a real Postgres; `docker-compose.yml` kept for later
-- [x] storage adapter interface with a local-filesystem implementation (S3/MinIO later)
-- [x] tenant-scoped query helper + test: company A cannot read company B's rows
-
-### T009 Detailed M1 backlog   [status: done]
-Spec: §12.2 · Depends: T001–T008 · Owner: PO
-Acceptance:
-- [x] T010–T024 written with acceptance criteria and dependencies
-- [x] owner approved (2026-11-16)
+### Deferred notes (carried into v3)
+- validate "pocket depth too close to thickness" (§4.5): T140
+- AI: flat w/h/r adapter for `addPart`: M11
+- db defence in depth (triggers on version tables, Postgres RLS on company_id): M10, before multi-company login
+- owner: identify the second machine's controller and collect 2–3 working NC files from each machine (§12.3), needed before Saha 1
+- project status "üretildi" after export: T179; export of air-cut/test files as records: T191
 
 ---
 
-## M1: İnce dilim (exit: a file downloaded from the browser passes every automatic check; then field test 1) — **exit met 2026-11-17 (T024, #31); field test 1 pending (owner)**
+## M2: Tasarım sistemi ve uygulama kabuğu (exit: every existing screen in the new design; visual + axe checks run in CI)
 
-Goal: cut list → nesting → toolpath → G-code → air cut on a real machine, as early as possible (spec §12, v2 change table). Single user, rectangular parts, outer contour only. Order = dependency order.
+Goal: a modern, corporate, professional look before any new screen is built (D-032). Stack: Tailwind v4 tokens + Radix primitives in shadcn-style components owned in `packages/ui`, lucide icons, cmdk, sonner, next-themes, Inter via `next/font`.
 
-### T010 Machine & tool profile: schema, versions, form   [status: done]
-Spec: §7.1, §6.4, §3.4, §3.6 · Depends: T008 · Owner: dev
+### Batch B1: T100–T102 (design foundation)
+
+### T100 Design tokens, theme and `packages/ui` setup   [status: todo]
+Spec: §3.7, §8.3 · Depends: none
 Acceptance:
-- [ ] core Zod `MachineProfile`:
-  - identity; work envelope X/Y/Z; table size
-  - **origin corner + axis directions**
-  - **Z-zero reference (table | material top) + spoilboard allowance**
-  - spindle (min/max rpm, warm-up dwell)
-  - tool changer (auto/manual/none, capacity, G43 yes/no)
-  - hold-down (vacuum M codes)
-  - constraints (file-name length, file size, arcs, line numbers, drill cycle)
-- [ ] tool table (number, type, diameter, flute length, flutes) and material parameter sets per material + thickness (feed, plunge, rpm, pass depth)
-- [ ] saving a profile creates a new immutable `machine_profile_versions` row; verification resets to "re-verification needed" when the profile, tool set or post version changes (§7.3)
-- [ ] Makineler page: list + create/edit form (Turkish, validation messages, empty/loading/error states); seed profile "Genel düz G-code router"
-- [ ] validate rule: tool diameter vs groove width / hole diameter (deferred from T005)
-- [ ] tests: schema bounds, version increment, re-verification trigger, form e2e (create → appears in list)
+- [ ] tokens as CSS variables in one file (`packages/ui/src/tokens.css`) mapped to Tailwind v4 `@theme`: colour scales (neutral, brand, success, warning, danger, info), semantic roles (bg, surface, border, text, muted, accent, focus), radius, spacing, shadow/elevation, typography scale, motion durations; light and dark values
+- [ ] `next-themes` provider: system / light / dark, no flash on load (class strategy), choice persisted
+- [ ] Inter (or Geist) via `next/font`, tabular numbers for measurements
+- [ ] `packages/ui` exports `cn()` (clsx + tailwind-merge) and `cva` variants; Radix, lucide-react, cmdk, sonner, next-themes added; licence check green
+- [ ] `ui-conventions` skill updated with token names and usage rules
+Tester focus: licence check output; theme switch without flash (reload in dark); token contrast pairs text/bg ≥ 4.5:1 in both themes (script or axe).
 
-### T011 Cut list table + Excel/CSV paste   [status: done]
-Spec: §4.1, §5.1 · Depends: T005 · Owner: dev
+### T101 Core primitive components   [status: todo]
+Spec: §3.7 · Depends: T100
 Acceptance:
-- [ ] cut list grid (name, width, height, qty, grain lock, edge band) bound to commands; new commands `importCutList`, `updatePart`, `removePart`, `duplicatePart` with undo
-- [ ] paste from Excel/CSV (tab, semicolon, comma; Turkish decimal comma) with auto column mapping and a confirmation step; ambiguous unit (mm/cm) → ask
-- [ ] invalid rows highlighted with Turkish messages; nothing applied until confirmed
-- [ ] tests: parser property tests (generated tables round-trip, decimal comma), command undo, e2e paste flow
+- [ ] Button (primary/secondary/ghost/destructive/outline; sm/md/lg; loading), IconButton (required aria-label), Input, Textarea, **NumberInput** (mm unit suffix, Turkish decimal comma, min/max, step with arrows, invalid state), Select, Checkbox, Switch, RadioGroup, Label, FormField (label + hint + error)
+- [ ] Tooltip, Popover, DropdownMenu, Dialog, AlertDialog, Sheet (side drawer), Tabs, Badge, Card, Separator, Skeleton, Kbd
+- [ ] all keyboard operable with visible focus ring; respect reduced motion
+- [ ] unit tests for NumberInput parsing (`"12,5"` → 12.5, `"1.200,5"` → 1200.5, invalid → error)
+Tester focus: keyboard-only pass over every component; NumberInput edge cases; focus visible in light and dark.
 
-### T011b Edge band: one column per edge   [status: done]
-Spec: §4.1, §4.8 · Depends: T011 · Owner: dev · Owner decision Q002 (2026-11-17) · Decision: D-024
+### T102 UI gallery route + visual QA harness   [status: todo]
+Spec: §11 · Depends: T101
 Acceptance:
-- [ ] parser recognises named edge columns (Üst/Alt/Sol/Sağ bant, Top/Bottom/Left/Right; case- and diacritic-insensitive, "Sag" too) and maps each to its edge
-- [ ] parser recognises the long/short convention (Uzun1/Uzun 1/U1, Uzun2/U2, Kısa1/K1, Kısa2/K2) and maps it by orientation: w ≥ h → U1 bottom, U2 top, K1 left, K2 right; w < h → U1 left, U2 right, K1 bottom, K2 top (square: w is the long side)
-- [ ] the single "Bant/Kenar bandı/Edge" column still applies to all 4 edges; with per-edge columns present, per-edge wins and a warning is shown
-- [ ] per-edge values are numbers (mm, "0,8" / "1" / "2"); empty, "-", "–" and "yok" → 0; other text → row error with a Turkish message
-- [ ] grid: 4 compact columns (Üst / Alt / Sol / Sağ, mm) bound to `updatePart`, one undo step per edit, no-op rule kept; usable at 390 px with no page-level horizontal scroll
-- [ ] paste preview mapping dropdowns include the new targets
-- [ ] all strings in `tr.json`
-- [ ] tests: parser unit tests (named edges, U1/U2/K1/K2 for landscape/portrait/square, single + per-edge conflict, invalid values); fast-check round trip with per-edge columns; e2e: paste with Uzun1/Kısa2 → correct edges in the grid, edit one edge → one undo step, 390 px no overflow
+- [ ] dev-only route `/dev/ui` shows every component in every variant and state (hidden in production build)
+- [ ] Playwright project `visual`: viewports 1440×900 and 390×844, light and dark; helper `snap(page, name)` writing to `e2e/__screenshots__/`; `toHaveScreenshot` baselines generated in CI (Linux) only, artefacts uploaded
+- [ ] `@axe-core/playwright` helper `expectNoA11yViolations(page)` (serious + critical fail); dev-only licence exception MPL-2.0 per D-032
+- [ ] `pnpm e2e:visual` script; CI job runs it
+Tester focus: run the visual suite twice → zero diff (deterministic: fonts loaded, animations off); axe helper catches a planted violation.
 
-### T012 Rectangle placer: min-waste mode   [status: done]
-Spec: §6.2 · Depends: T006 · Owner: dev
+### Batch B2: T103–T105 (app shell)
+
+### T103 App shell: sidebar, top bar, mobile drawer   [status: todo]
+Spec: §3.3, §3.7 · Depends: T101
 Acceptance:
-- [ ] MaxRects + guillotine heuristics, several orderings, lowest objective wins; **deterministic**
-- [ ] tool diameter, gap and sheet margin respected; multi-sheet when parts do not fit; sheet count and waste % reported
-- [ ] grain rule: grain-locked parts rotate only 0°/180°
-- [ ] `runNesting` command writes `layout`; locked placements kept
-- [ ] validate: part-larger-than-sheet subtracts `nesting.margin` (deferred from T005)
-- [ ] fast-check: no overlap, inside sheet minus margin, gap kept, grain rule, same input → same output; benchmark set in `__bench__` with utilisation %
-- [ ] runs in a Web Worker in the browser
+- [ ] left sidebar: logo + company name (default company), operator name placeholder, nav (Ana sayfa, Projeler, Makineler, Şablonlar, Ayarlar) with lucide icons and active state, prominent "+ Yeni proje"; collapsible to icons (state remembered)
+- [ ] top bar: breadcrumb, page title, slot for page actions, save status, theme toggle
+- [ ] < 768 px: sidebar becomes a Sheet opened by a menu button; no horizontal page scroll at 390 px
+- [ ] all existing pages render inside the shell; nav works with keyboard; skip-to-content link
+Tester focus: screenshots of shell at 1440/390 × light/dark; keyboard nav order; collapsed state persists after reload.
 
-### T013 Layout view (2D canvas)   [status: done]
-Spec: §3.6, §6.5 · Depends: T012 · Owner: dev
+### T104 Command palette + keyboard shortcuts   [status: todo]
+Spec: §3.7 · Depends: T103
 Acceptance:
-- [ ] react-konva: sheet, numbered parts, grain arrow, waste area, sheet tabs; zoom/pan
-- [ ] drag + lock a part (`lockPlacement`); re-nest keeps locked parts
-- [ ] waste summary; Turkish labels; reduced motion respected
-- [ ] e2e: nest the shelf-set fixture → N parts and waste % shown
-- [ ] validate `LOCKED_PLACEMENT_INVALID` (error): a locked part in the margin, off the sheet, or closer than tool diameter + gap to another placed part; the drag-and-drop UI never commits an invalid drop (PO, from the T012 tester notes)
+- [ ] `Ctrl/Cmd+K` palette (cmdk): go to page, new project, recent projects (from API), toggle theme, open shortcuts help; fuzzy search with Turkish characters (ı/i, ş/s folding)
+- [ ] shortcut registry (single source) used by palette, menus and the "?" help dialog; shortcuts ignored while typing in inputs
+- [ ] Turkish labels in `tr.json`
+Tester focus: e2e open palette → search "makine" → navigates; "?" dialog lists shortcuts; shortcuts do not fire inside inputs.
 
-### T014 Toolpath model: outer contour, multi-pass, lead-in/out   [status: done]
-Spec: §6.3 · Depends: T007, T010, T012 · Owner: dev
+### T105 Feedback states: toasts, empty, error, loading   [status: todo]
+Spec: §3.7 · Depends: T101
 Acceptance:
-- [ ] machine-independent model: rapid, plunge, linear and arc moves with tool, feed, rpm in the sheet frame
-- [ ] outer contour via `offset(+toolRadius)` (D-013); multi-pass by pass depth; through-cut depth = thickness + spoilboard allowance
-- [ ] lead-in/out (arc or line), ramped or straight plunge, climb/conventional
-- [ ] D-013: `ARC_COLLAPSED` → user warning; `SPLIT` on an inner contour → export-blocking error
-- [ ] properties: no cutting move below target depth; every cutting move at tool radius from the part (± EPS)
+- [ ] sonner toasts (success/error/info, action button, themed); helper `notify.*`
+- [ ] `EmptyState` (icon, title, text, action), `ErrorState` (retry), page skeletons
+- [ ] Turkish `not-found` and `error` pages in the shell; React error boundary around canvases
+- [ ] existing ad-hoc messages (save errors, export errors) switched to toasts
+Tester focus: force API error (route mock) → toast + retry; empty project list shows EmptyState; screenshots of the 404 page.
 
-### T015 Tabs + small-part auto tabs   [status: done]
-Spec: §6.3, §2.4 · Depends: T014 · Owner: dev
+### Batch B3: T106–T108 (redesign: home, machines, verification)
+
+### T106 Ana sayfa redesign   [status: todo]
+Spec: §3.4 · Depends: T103, T105
 Acceptance:
-- [ ] tabs: count, width, height; never on corners or arcs; evenly spaced
-- [ ] parts below an area threshold get tabs automatically (thin-skin option is M3)
-- [ ] properties: tabs lie on the contour; tab height kept on the final pass
+- [ ] cards: recent projects (with status badge), machines needing verification, quick actions (Yeni proje, Makine ekle, Kesim listesi yapıştır); waste summary placeholder card (real data in T180)
+- [ ] EmptyState when there is no project/machine
+Tester focus: visual 1440/390 light/dark; empty vs filled state (seed); links work.
 
-### T016 Cut order + rapid ordering   [status: done]
-Spec: §6.3 · Depends: T014 · Owner: dev
+### T107 Makineler list + profile form redesign   [status: todo]
+Spec: §3.4, §7.1 · Depends: T103, T105
 Acceptance:
-- [ ] holes/pockets → inner contours → outer contours; small parts before large ones
-- [ ] same-tool operations grouped; nearest-neighbour rapids; deterministic
-- [ ] property: ordering constraints hold for random layouts
+- [ ] list as cards/table with verification badge (Taslak / Air cut onaylandı / Test kesimi onaylandı / Doğrulanmış / Yeniden doğrulama gerekli)
+- [ ] form split into sections with a side index (Kimlik, Çalışma alanı, Orijin, Z sıfır, Spindle, Takım değiştirici, Tutma, Kısıtlar, Takımlar, Malzeme parametreleri); sticky save bar with dirty state; NumberInput everywhere; leave-page guard when dirty
+- [ ] origin corner picker as a visual sheet diagram (click a corner)
+- [ ] existing machine e2e still passes (selectors updated)
+Tester focus: create/edit profile e2e; version increments on save; dirty-guard; visual + axe.
 
-### T017 Post processor + "Genel düz G-code" + golden files   [status: done]
-Spec: §6.4, §7.2 · Depends: T014 · Owner: dev · **Human gate: golden files need the owner's approval (`needs-human`)**
+### T108 Doğrulama (verification) page redesign   [status: todo]
+Spec: §7.3 · Depends: T107
 Acceptance:
-- [ ] declarative, versioned post config (Zod) covering every item of §6.4; one generator interprets it
-- [ ] all 10 rules of §7.2 enforced in the generator
-- [ ] machine-origin and Z-zero conversion happen only here
-- [ ] **two post configs:** "Genel düz G-code" and "Mach3" (D-015); the Mach3 dialect from Mach3 documentation, then checked against real Mach3 NC files from the owner's machine when they arrive
-- [ ] golden NC files for 3 fixtures in `packages/machines/generic/v1/golden/`, byte-for-byte test
+- [ ] stage stepper (draft → air cut → test cut → verified) with current stage; download cards for air-cut and test-part programs with the acceptance checkbox (rule 10)
+- [ ] measurement form in the new FormField style with inline tolerance result and suggestion card
+Tester focus: full verification e2e still green; rule-10 acceptance cannot be bypassed (download disabled until checked); visual + axe.
 
-### T018 G-code reader   [status: done]
-Spec: §6.5 · Depends: none (independent of T017 on purpose) · Owner: dev
+### Batch B4: T109–T111 (redesign: wizard, layout, simulation, export, projects)
+
+### T109 Wizard shell redesign   [status: todo]
+Spec: §3.6 · Depends: T103
 Acceptance:
-- [ ] G0/G1/G2/G3 (I/J and R), G17/G20/G21/G90/G91/G54, F/S/T, M3/M5/M6, comments, line numbers, modal state
-- [ ] **must not import the generator** (lint rule)
-- [ ] tests: hand-written NC samples, both arc forms, modal carry-over
+- [ ] stepper header (5 steps, done/current/blocked states), left panel for fields, right panel for preview, sticky footer with Geri / İleri and autosave indicator (Kaydedildi / Kaydediliyor / Kaydedilemedi)
+- [ ] step 1 (machine & sheet) restyled; validation warnings panel as a collapsible side card with severity icons
+- [ ] browser back/forward between steps still works (D-030)
+Tester focus: wizard e2e (T024 flow) green; 390 px: panels stack, footer stays reachable; visual all steps.
 
-### T019 Automatic checks + safety scenarios   [status: done]
-Spec: §6.5, §7.2, §11 · Depends: T017, T018 · Owner: dev (tester does the safety review)
+### T110 Layout view + simulation screens restyle   [status: todo]
+Spec: §3.6, §6.5 · Depends: T109
 Acceptance:
-- [ ] checks on the read path: sheet/table/axis/Z limits, rapid inside material, cutting with the spindle off or no feed, tool-change order, read path ≈ toolpath model, part count/positions = layout
-- [ ] **one deliberately broken G-code test per §7.2 rule**, each caught
-- [ ] any failed check blocks the download
+- [ ] canvas palette from tokens (light and dark: sheet, parts, waste, selection, rapids, cuts, depth colours); toolbars as icon buttons with tooltips; sheet tabs as Tabs
+- [ ] simulation controls (play/pause, speed, scrubber) as one control bar; G-code panel in monospace with current-line highlight; summary as stat cards
+- [ ] banner "Simülasyon air cut'ın yerine geçmez" kept and visible in both themes
+Tester focus: layout drag/lock e2e and simulation-to-end e2e green; dark-mode canvas readability (screenshot review); reduced motion.
 
-### T020 Simulation screen (2D)   [status: done]
-Spec: §6.5 · Depends: T018, T013 · Owner: dev
+### T111 Export step + Projeler list restyle; screen baselines   [status: todo]
+Spec: §3.4, §6.6 · Depends: T109
 Acceptance:
-- [x] drawn from the **read G-code**: sheet, parts, tool-centre path, tool circle, dashed rapids, arrows, cut-order numbers, Z depth colour
-- [x] play/pause, speed, scrubber, highlight of the current G-code line
-- [x] summary: estimated time, cut length, tool changes; banner "Simülasyon air cut'ın yerine geçmez"
-- [x] e2e: simulate a fixture to the end
+- [ ] export step: checklist as a card list, unverified warning as a danger callout, file list with hash, history table in the new Table component
+- [ ] Projeler list in the new Table/Card style (data features come in T178)
+- [ ] visual baselines + axe for every route (Ana sayfa, Projeler, Makineler, form, doğrulama, wizard 1–5) in CI; old unused styles removed
+Tester focus: complete screenshot review of all routes 1440/390 × light/dark; zero serious axe violations; export e2e green.
 
-### T021 NC export   [status: done]
-Spec: §6.6, §7.2 · Depends: T019 · Owner: dev
+---
+
+## M3: Kesim listesi, malzeme kütüphanesi, damar kadranı (exit: a free-angle grain set on sheet and part is respected in nesting, preview and G-code; the cut list is fully editable in the app)
+
+### Batch B5: T112–T114 (grain angle engine)
+
+### T112 Grain angle model: schema v2, migration, commands   [status: todo]
+Spec: §6.2, §9.2 · Depends: none · Decision: D-034
 Acceptance:
-- [ ] the server regenerates the file from the saved project revision; stores file + record (revision, profile version, post version, hash) in `exports`
-- [ ] header comment (project, revision, post version, verification status); unverified profile → "DOĞRULANMADI, önce air cut" + an accept step
-- [ ] pre-export checklist (origin, tool, air cut); same input → same file (hash test)
+- [ ] schema v2: `stock.sheet.grain` = angle in degrees [0, 180) (or `null` = no grain); part `grain: { mode: 'free' | 'fixed', angle }` (angle in the part frame, [0, 180)); placement `rot` = any degrees [0, 360) (number, 3 decimals)
+- [ ] migration v1 → v2: sheet `grain` 0/90 kept; `grainLock: true` → `{ mode: 'fixed', angle: sheet grain }`, `false` → `{ mode: 'free', angle: 0 }`; placements unchanged; v1 fixtures migrate and validate
+- [ ] commands `setGrain(angle|null)` (sheet), `setPartGrain(id, {mode, angle})`, undoable; `updatePart` keeps accepting `grainLock` as an alias for one release
+- [ ] pure `allowedRotations(part, sheet, policy)`: fixed → {g, g+180} with g = sheetGrain − partGrain (mod 360); free → {0, 90, 180, 270} (+ policy steps later, T166)
+- [ ] fast-check: for every fixed part and every rotation from `allowedRotations`, (partGrain + rot) ≡ sheetGrain (mod 180)
+Tester focus: migration on every existing fixture + saved projects in PGlite; undo round-trip; property test review.
 
-### T022 Air-cut test program + test part   [status: done]
-Spec: §7.3 · Depends: T017, T019 · Owner: dev
+### T113 Arbitrary-angle rotation through geometry, toolpath, post and checks   [status: todo]
+Spec: §6.1, §6.3, §6.5, §7.2 · Depends: T112
 Acceptance:
-- [ ] air-cut program (Z up or spindle off): tool change, spindle start, safe XY/Z moves, small geometry, stop, end
-- [ ] test part 200×200 with a 100 mm hole and one blind pocket; measurement form → tolerance check → suggests a tool-diameter or Z correction
-- [ ] verification states (draft → air cut approved → test cut approved → verified) per profile version
+- [ ] geometry `transform` supports any angle (bulges unchanged, vertices rotated); arc-aware bbox of rotated outlines
+- [ ] toolpath, cut order, tabs and the G-code checks (part positions vs layout) work for non-90° placements; post unchanged
+- [ ] all existing golden files byte-identical
+- [ ] properties: for random angles every cutting move stays at tool radius from the rotated part (± EPS); area invariant under rotation
+Tester focus: **G-code safety**: a 30°-rotated part through post + reader + checks; §7.2 rule tests still pass; golden diff = none.
 
-### T023 Simple project save + wizard skeleton   [status: done]
-Spec: §3.6, §8.2 · Depends: T008, T011, T013 · Owner: dev
+### T114 Placer: grain-aware rotations with rotated footprints   [status: todo]
+Spec: §6.2 · Depends: T113
 Acceptance:
-- [ ] single user (no login yet): create/open/save via route handlers + `forCompany` with a default company; revision conflict shown in the UI
-- [ ] wizard: machine & sheet → parts → layout → preview/simulation → export; step indicator, back/next, autosaved draft
-- [ ] validation warnings panel fed by the command layer
+- [ ] the min-waste placer takes rotations from `allowedRotations`; an axis-aligned angle uses the rectangle as today; a non-axis angle places the **axis-aligned bbox of the rotated outline** (interim until true-shape, T165–T167) and reports `GRAIN_ROTATED_BBOX` info with the extra waste
+- [ ] `PART_LARGER_THAN_SHEET` respects the forced rotation
+- [ ] fast-check: no overlap (exact rotated rectangles), inside margin, gap kept, grain rule holds, deterministic
+- [ ] benchmark set gains a grain-30° case
+Tester focus: property tests for the grain rule; a fixed 30° part never appears at another angle; deterministic re-run.
 
-### T024 End-to-end flow   [status: done]
-Spec: §11 · Depends: T010–T023 · Owner: tester (dev assists)
+### Batch B6: T115–T117 (grain dial UI)
+
+### T115 GrainDial component   [status: todo]
+Spec: §3.6, §3.7 · Depends: T101
 Acceptance:
-- [ ] cut-list paste → nesting → simulation → NC download; the downloaded file passes every automatic check (= M1 exit)
-- [ ] runs in CI
+- [ ] circular dial like an angle wheel: drag the handle around the circle, click on the ring to jump, numeric input next to it (°, decimal comma), quick buttons 0° / 45° / 90° / 135°
+- [ ] snaps to multiples of 45° within ±3° while dragging (hold Alt to disable); grain lines inside the dial rotate live
+- [ ] keyboard: role `slider`, arrows ±1°, Shift+arrows ±15°, Home = 0°; aria-valuetext "30 derece"
+- [ ] angle normalised to [0, 180) with a visible note that 30° and 210° are the same grain; `disabled` and "no grain" states
+- [ ] in `/dev/ui` gallery; unit tests for angle maths (pointer → angle, snap, normalise)
+Tester focus: drag interaction e2e (mouse + touch emulation), keyboard steps, snap behaviour, axe, screenshots both themes.
 
-### Field test 1 (owner)   [status: todo]
-Spec: §12.1, §12.3 · Depends: T024
-- [ ] owner collects the machine info (§12.3) into `docs/machines/<machine>/`, starting with 2–3 NC files that work today
+### T116 Grain in the UI: sheet, parts, layout and simulation   [status: todo]
+Spec: §3.6, §4.1, §6.5 · Depends: T114, T115
+Acceptance:
+- [ ] wizard step 1: GrainDial for the sheet (only for wood/veneered materials; "damar yok" otherwise)
+- [ ] cut list: grain column shows a mini arrow + angle and fixed/free toggle; editing opens a popover with the GrainDial; bulk edit sets the same grain
+- [ ] layout view + simulation: sheet grain texture lines at the sheet angle; each part shows a grain arrow at its effective angle (part grain + rot); rotated parts drawn rotated
+Tester focus: visual check that arrows match angles (screenshot at 0/30/90°); editing grain is one undo step; free parts show no arrow.
+
+### T117 Grain end-to-end test   [status: todo]
+Spec: §11 · Depends: T116
+Acceptance:
+- [ ] e2e: sheet grain 0°, part A fixed 0°, part B fixed 90°, part C fixed 30° → nesting places A at 0/180, B at 90/270, C at −30/150; simulation and NC download pass every check
+- [ ] core test: the read G-code of C's outer contour matches the 30°-rotated outline within tolerance
+Tester focus: run the e2e; inspect the NC file contour direction for C; G-code safety review of the rotated case.
+
+### Batch B7: T118–T120 (cut list UX)
+
+### T118 Cut list grid v2   [status: todo]
+Spec: §4.1 · Depends: T111
+Acceptance:
+- [ ] TanStack Table + virtual rows: name, W, H, qty, grain, edge Üst/Alt/Sol/Sağ, material note; sticky header; column resize
+- [ ] spreadsheet-like inline editing: click/Enter to edit, Tab/Shift+Tab, arrows, Esc cancels, Enter commits and moves down; Turkish decimal comma; per-cell validation with tooltip
+- [ ] "+ Satır ekle" and Enter on the last row add a part; each commit = one command, one undo step
+- [ ] 1 000 rows: scroll ≥ 50 fps, edit commit < 50 ms
+- [ ] 390 px: card list mode instead of the grid
+Tester focus: keyboard-only edit flow e2e; perf trace with 1 000 rows; undo/redo after a series of edits; visual both widths.
+
+### T119 Row actions, multi-select and bulk edit   [status: todo]
+Spec: §4.1, §5.1 · Depends: T118
+Acceptance:
+- [ ] row menu: duplicate, delete, move up/down; Ctrl/Shift multi-select; Ctrl+D duplicate, Delete removes (with undo toast)
+- [ ] bulk edit Sheet for the selection: qty, grain, edge bands, name prefix; new command `updateParts` = one undo step
+- [ ] footer summary: rows, total pieces, total area m², estimated sheets (area / usable sheet area)
+Tester focus: bulk edit of 50 rows → one undo restores all; summary numbers checked against a hand calculation.
+
+### T120 Import and export: CSV/XLSX file, paste dialog, CSV out   [status: todo]
+Spec: §4.1 · Depends: T118
+Acceptance:
+- [ ] "İçe aktar" dialog: drop/select `.csv`, `.xlsx` (MIT/Apache reader, licence-checked), or paste; reuses the T011/T011b parser and mapping preview; size limit and type check (§8.6)
+- [ ] "Dışa aktar" CSV (semicolon, Turkish decimal comma, UTF-8 BOM) that re-imports to the same parts
+- [ ] round-trip property test (export → import = same parts)
+Tester focus: real Excel files (merged header row, empty rows, Turkish chars); oversized file rejected; round trip.
+
+### Batch B8: T121–T123 (materials, cabinets, organisation)
+
+### T121 Material & stock library   [status: todo]
+Spec: §3.4, §3.6, §9.1 · Depends: T111
+Acceptance:
+- [ ] Ayarlar → Malzemeler page: CRUD of materials (type, name, thickness list, colour/texture key, default grain angle, stock sheet sizes, linked parameter set per machine), company-scoped `materials` table + migration
+- [ ] wizard step 1 picks material → thickness → sheet size from the library (custom size still possible); seed: MDF 18, Kontrplak 18, Melamin 18, Akrilik 5 with 2800×2070, 2440×1220
+- [ ] tenancy test for the new table
+Tester focus: CRUD e2e; wizard uses library values; company isolation test; visual + axe.
+
+### T122 Parametric cabinet box generator   [status: todo]
+Spec: §4.7 (v3 note) · Depends: T119
+Acceptance:
+- [ ] pure core `cabinetParts(params)`: W, H, D, thickness, back panel (none/inset/overlay, thickness), fixed shelves count, doors (0/1/2, gap), plinth height → named rect parts with grain (sides vertical) and edge band defaults; no joinery
+- [ ] "Dolap ekle" dialog with live mini preview (2D front view) → `importCutList` as one undo step; parts tagged with a group name
+- [ ] unit + property tests (dimensions add up, all parts positive, door gaps)
+Tester focus: generated dimensions vs hand calculation for 3 cabinets; undo removes the whole cabinet; dialog keyboard flow.
+
+### T123 Cut list organisation: groups, search, sort, filter   [status: todo]
+Spec: §4.1 · Depends: T119
+Acceptance:
+- [ ] group column (cabinet/tag) with collapsible groups; search box (Turkish folding); sort by any column; filter "hatalı satırlar"
+- [ ] sorting/filtering never changes part order in the project (view only)
+Tester focus: e2e search + sort + group collapse; project JSON order unchanged after sorting.
+
+---
+
+## M4: Çizim tahtası I: editör (exit: a freeform part drawn with lines, arcs and fillets is nested and gives checked G-code)
+
+Konva stays the 2D engine (§8.3). Every edit is a command (§5.1). Snap/geometry logic is pure core code with property tests.
+
+### Batch B9: T124–T126 (canvas foundation)
+
+### T124 Editor canvas foundation   [status: todo]
+Spec: §4.2 · Depends: T110
+Acceptance:
+- [ ] "Çizim" view in the Parts step (tabs: Liste / Çizim, same data, §3.6); Konva stage in mm, Y up, pan (space-drag, middle mouse, two-finger), zoom to cursor (wheel, pinch), fit-to-content
+- [ ] adaptive mm grid (1/10/100), rulers, cursor coordinates, scale bar; theme colours
+- [ ] editor store: tool, selection, hover, viewport; project data only through commands
+Tester focus: pan/zoom with mouse + touch emulation; coordinates correct at 3 zoom levels; visual both themes.
+
+### T125 Selection, move, clipboard, mirror, rotate   [status: todo]
+Spec: §4.2, §4.4 · Depends: T124
+Acceptance:
+- [ ] click / Shift-click / box select; move by drag and arrows (1 mm, Shift 10 mm); Delete; Ctrl+C/V/D; mirror H/V; rotate 90°
+- [ ] all through commands (`movePart` in the drawing frame, `mirrorPart`, `rotatePart`) with undo; Ctrl+Z / Ctrl+Y
+Tester focus: e2e select-move-undo; clipboard paste offsets; mirror keeps outline orientation rules (outer CCW).
+
+### T126 Snap engine (core)   [status: todo]
+Spec: §4.4 · Depends: T124
+Acceptance:
+- [ ] pure `snap(point, context)`: endpoint, midpoint, centre, intersection, grid, perpendicular, 45°/90° angle lock; priority order and screen-space tolerance; returns kind + point
+- [ ] snap glyphs in the editor; toggle per kind; hold Alt to disable
+- [ ] fast-check: a snapped point equals the target within EPS; no snap outside tolerance
+Tester focus: property tests; e2e drawing a line onto an endpoint ends exactly there (read from properties panel).
+
+### Batch B10: T127–T129 (drawing tools)
+
+### T127 Rectangle and circle tools   [status: todo]
+Spec: §4.3, §4.4 · Depends: T125, T126
+Acceptance:
+- [ ] rectangle: drag or click + typed "W;H" → parametric rect part (corner radius in properties); circle: centre + radius → freeform round part (bulge arcs)
+- [ ] live dimension labels while drawing; Esc cancels
+Tester focus: typed sizes exact; new parts appear in the cut list; undo.
+
+### T128 Line / polyline tool with typed length   [status: todo]
+Spec: §4.4, §6.1 · Depends: T126
+Acceptance:
+- [ ] click-click polyline; type a length + Enter for the current segment, Tab to type the angle; 45°/90° lock with Shift
+- [ ] ends within JOIN_TOL close the contour → freeform part (`addSegment`, CCW normalised); open shape shows "Kesilemez, kapalı değil"
+Tester focus: e2e drawing an L-shape by typed lengths → exact outline; open shape blocked from nesting with the Turkish warning.
+
+### T129 Arc tool and segment bulge   [status: todo]
+Spec: §4.4, §6.1 · Depends: T128
+Acceptance:
+- [ ] 3-point arc and "drag segment middle to bend" (`setSegmentBulge`); typed radius
+- [ ] arcs survive save/load and produce G2/G3 (checked through the pipeline)
+Tester focus: arc radius from properties = typed radius; G-code contains G2/G3 for the arc; reader check passes.
+
+### Batch B11: T130–T132 (properties and corner tools)
+
+### T130 Properties panel   [status: todo]
+Spec: §4.4 · Depends: T127
+Acceptance:
+- [ ] part: name, qty, W/H/R (parametric), grain (GrainDial), operation summary; segment: length, angle, radius; vertex: X/Y
+- [ ] `setSegmentLength` rule: end vertex moves along the segment, the neighbour follows (§4.4), no solver; `moveVertex`
+- [ ] edits are commands, one undo step each; invalid values rejected with Turkish errors
+Tester focus: segment-length rule on 3 shapes (hand-checked coordinates); undo granularity; keyboard use of the panel.
+
+### T131 Fillet, inner-corner rule, convert to freeform   [status: todo]
+Spec: §4.3, §4.4 · Depends: T130
+Acceptance:
+- [ ] `filletCorners(part, corners, r)` in core: radius clamped to neighbour lengths with a warning
+- [ ] concave corners below tool radius: warning with "otomatik düzelt" (fillet to tool radius)
+- [ ] `convertToFreeform` for parametric parts
+- [ ] property tests: fillet keeps the contour closed, orientation kept, area decreases
+Tester focus: property tests; clamp warning visible; auto-fix result checked against the tool radius of the selected machine.
+
+### T132 Dogbone / T-bone   [status: todo]
+Spec: §4.4 · Depends: T131
+Acceptance:
+- [ ] `addDogbone(part, corner, style)` in core: overcut circle of tool radius at concave corners (dogbone along the bisector, T-bone along a chosen edge)
+- [ ] editor action on selected corners; tests: the tool can reach the corner point (toolpath reaches within EPS)
+Tester focus: toolpath test that the corner point is cut; visual check of both styles.
+
+### Batch B12: T133–T135 (dimensions, cutouts, sync)
+
+### T133 Dimension labels and annotations   [status: todo]
+Spec: §4.2, §4.4 · Depends: T130
+Acceptance:
+- [ ] on-canvas length labels for selected segments and parts (always readable size); dimension tool for persistent linear dimensions (stored as non-cut annotations, ignored by nesting/toolpath)
+Tester focus: annotations never reach the toolpath (core test); labels readable at all zoom levels (screenshots).
+
+### T134 Inner contours (cutouts)   [status: todo]
+Spec: §4.3, §6.1 · Depends: T128
+Acceptance:
+- [ ] drawing a closed shape inside a part asks "iç kesim olarak ekle?" → added to `inners` (CW normalised)
+- [ ] validation: inner inside outer, inners not overlapping, inner larger than tool diameter
+Tester focus: validation cases; the inner contour survives nesting rotation (moves with the part).
+
+### T135 Cut list ↔ editor sync   [status: todo]
+Spec: §3.6, §4.1 · Depends: T127, T118
+Acceptance:
+- [ ] parts sidebar in the editor (search, select); selection syncs between Liste and Çizim; freeform parts show "Serbest" with bbox W/H read-only in the grid
+- [ ] drawing arranges parts in a non-overlapping drawing area (drawing positions are not nesting positions)
+Tester focus: e2e create in grid → visible in editor and back; freeform W/H not editable in grid.
+
+### Batch B13: T136–T137 (editor polish and tests)
+
+### T136 First-use tour and hints   [status: todo]
+Spec: §4.2 · Depends: T135
+Acceptance:
+- [ ] short tour (5 steps, skippable, remembered) for the editor; contextual hint bar per tool ("Uzunluk yazıp Enter'a bas")
+- [ ] shortcut sheet for editor tools (from the T104 registry)
+Tester focus: tour once only; keyboard-only completion; reduced motion.
+
+### T137 Editor e2e suite and performance budget   [status: todo]
+Spec: §11 · Depends: T136
+Acceptance:
+- [ ] e2e: draw L-shape with arc and fillet → nest → simulate → NC download passes checks (= M4 exit)
+- [ ] perf: 500 entities, pan/zoom ≥ 50 fps, selection < 50 ms (trace in CI artefact)
+Tester focus: run suite; review perf numbers; G-code safety review of the drawn part's NC.
+
+---
+
+## M5: Çizim tahtası II: delik, cep, şablon, DXF (exit: a hinge-door project built with a template and a DXF sign job both give checked G-code)
+
+### Batch B14: T138–T140 (hole object and its toolpaths)
+
+### T138 Hole object, commands and hole tool   [status: todo]
+Spec: §4.5, §5.1 · Depends: T130
+Acceptance:
+- [ ] `addHole`, `updateHole`, `removeHole` (type pocket / through / groove, d, cx, cy, depth, groove width, tool); holes move/rotate with the part
+- [ ] hole tool in the editor: click centre, diameter grows live, properties with the "İçini boşalt" / "Sadece çember (kanal)" toggle
+- [ ] validation: d ≥ tool diameter, blind depth < thickness, groove width ≥ tool diameter, hole inside the part
+Tester focus: each validation case; a rotated part keeps holes in the right place (core test + screenshot).
+
+### T139 Toolpath: drilling and through holes   [status: todo]
+Spec: §4.5, §6.3, §6.4 · Depends: T138 · **Human gate: new golden files (`needs-human`)**
+Acceptance:
+- [ ] d = tool → single plunge or drill cycle (G81/G83 when the profile supports it, else explicit moves); d > tool → helical/spiral entry + circular path; through depth = thickness + spoilboard allowance
+- [ ] cut order holes → inner → outer kept; tabs considered for big through holes
+- [ ] reader supports G81/G83 for checks; new golden fixtures for both posts
+Tester focus: **G-code safety** (§7.2 rules incl. drill cycle retract plane); failing-input test for a drill below Z limit; golden review list for the owner.
+
+### T140 Toolpath: blind pocket and ring groove   [status: todo]
+Spec: §4.5, §6.3 · Depends: T139
+Acceptance:
+- [ ] circular pocket clearing (spiral, stepover from the tool) to depth in passes; groove single/multi pass by width
+- [ ] validation "cep derinliği kalınlığa çok yakın" (warning, < 1 mm skin by default)
+- [ ] properties: no move below target depth; pocket wall at d/2 ± EPS
+Tester focus: safety review; pocket depth vs Z reference both modes (table / material top).
+
+### Batch B15: T141–T143 (more operations)
+
+### T141 Toolpath: inner contours   [status: todo]
+Spec: §6.3, D-013 · Depends: T134, T139
+Acceptance:
+- [ ] inside offset for inners (SPLIT → export-blocking error, ARC_COLLAPSED warning), lead-in inside the waste side, multi-pass, tabs optional
+- [ ] cut order verified with drawn parts having holes + inners
+Tester focus: safety review; SPLIT case blocks the export in the UI; cut-order property test with inners.
+
+### T142 On-line operation and per-contour operations   [status: todo]
+Spec: §4.6, §6.3 · Depends: T141
+Acceptance:
+- [ ] `setOperation(contour, 'outside' | 'inside' | 'online' | 'none', depth)`; on-line = tool centre on the line at depth (open contours allowed)
+- [ ] properties panel shows the operation per contour; layer mapping (T145) feeds the same field
+Tester focus: on-line open path G-code passes checks; depth never below thickness + allowance.
+
+### T143 Thin-skin option for small parts   [status: todo]
+Spec: §2.4, §6.3 · Depends: T141
+Acceptance:
+- [ ] option "son pasoda ince tabaka bırak" (skin thickness): small parts keep a skin, a final cleanup pass after all parts removes it; tabs and skin are alternatives per project
+Tester focus: safety review of the cleanup pass order (last); depth properties.
+
+### Batch B16: T144–T146 (DXF import)
+
+### T144 DXF reader wrapper and entity conversion   [status: todo]
+Spec: §4.6, §8.3 · Depends: T128
+Acceptance:
+- [ ] `dxf-parser` (licence verified, MIT) wrapped in core-compatible pure conversion: LINE, ARC, CIRCLE, LWPOLYLINE (bulge), POLYLINE, one-level INSERT; SPLINE/ELLIPSE approximated within tolerance; TEXT/MTEXT/DIMENSION/HATCH counted and ignored
+- [ ] units from `$INSUNITS`; suspicious size → `UNIT_UNCERTAIN`
+- [ ] fixtures incl. real messy files (`dxf-io` skill)
+Tester focus: fixture report counts; arc direction preserved (bulge sign); spline deviation within tolerance.
+
+### T145 DXF join, part recognition and layer mapping   [status: todo]
+Spec: §4.6 · Depends: T144
+Acceptance:
+- [ ] join ends within 0.05 mm into closed contours; unclosed ones flagged; outermost closed = part, inside = inner or hole (circles → hole object optional)
+- [ ] layer → operation mapping, saved as a company setting; `importDxf` command (one undo step)
+Tester focus: property test (random segment soup of a known shape rejoins); mapping persists per company.
+
+### T146 DXF import dialog   [status: todo]
+Spec: §4.6 · Depends: T145
+Acceptance:
+- [ ] upload → preview canvas + report (supported / converted / ignored counts, open contours) → unit question when needed → layer mapping table → confirm
+- [ ] DWG file → Turkish message "DXF olarak kaydedin"
+- [ ] e2e: sign-letter DXF → nest → NC passes checks (half of the M5 exit)
+Tester focus: e2e; size/type limits; visual + axe of the dialog.
+
+### Batch B17: T147–T149 (templates core)
+
+### T147 Template model and "save as template"   [status: todo]
+Spec: §4.7, §9.1 · Depends: T138
+Acceptance:
+- [ ] `templates` / `template_versions` tables (company-scoped, immutable versions); template = parametric group of holes/lines/grooves with params (diameter, edge distance, count, spacing)
+- [ ] `saveAsTemplate` from the selection (admin role later; single user now)
+Tester focus: tenancy test; version immutability; params validation.
+
+### T148 Place template: ghost, snap, mirror, repeat   [status: todo]
+Spec: §4.7 · Depends: T147
+Acceptance:
+- [ ] "Şablon ekle" → ghost preview, snaps to edges/corners, typed edge distance, mirror (left/right door), rotate, equal-spaced repeat; `addTemplate`, `updateTemplateInstance`; the project stores a copy + version + overrides
+Tester focus: e2e hinge on a door at 22.5 mm from the edge; mirrored door; undo.
+
+### T149 Template update flow   [status: todo]
+Spec: §4.7 · Depends: T148
+Acceptance:
+- [ ] opening a project whose template has a newer version asks "Kullanılan … şablonu değişti. Güncellensin mi?"; yes = update (undoable), no = keep; overridden fields show a conflict warning
+Tester focus: both answers; override conflict case; undo after update.
+
+### Batch B18: T150–T151 (template library)
+
+### T150 Ready template library   [status: todo]
+Spec: §4.7, §14.2 · Depends: T148
+Acceptance:
+- [ ] seed: hinge cup Ø35 (2 and 3 hinges by door height), handle holes (96/128/160 mm), drawer rail holes; values marked "üretici verisiyle doğrulanacak" (open item §14.2)
+- [ ] e2e: hinge-door project with template → nest → NC passes checks (other half of the M5 exit)
+Tester focus: e2e; G-code safety review of pockets near the edge.
+
+### T151 Şablonlar page   [status: todo]
+Spec: §3.4 · Depends: T150
+Acceptance:
+- [ ] list (company + ready library), preview thumbnail, edit params, version history, duplicate, archive
+Tester focus: visual + axe; edit creates a new version; old projects unchanged.
+
+---
+
+## M6: 3D önizleme (exit: 360° preview with cutting playback; 300 parts within the perf budget; 2D fallback on weak devices)
+
+three + @react-three/fiber + @react-three/drei (MIT), lazy-loaded, in `apps/web` only (core stays pure). Decision D-033.
+
+### Batch B19: T152–T154 (3D foundation)
+
+### T152 3D foundation, controls and fallback   [status: todo]
+Spec: §3.8 · Depends: T110
+Acceptance:
+- [ ] `Preview3D` lazy chunk (not in the initial bundle); WebGL2 capability check → fallback to the 2D view with a Turkish note
+- [ ] orbit 360°, zoom, pan; view presets (Üst, İzometrik, Ön), reset; damping off with reduced motion; render on demand (no idle GPU use)
+- [ ] table + sheet with real dimensions and thickness, shadows/lighting tasteful, works in light and dark UI
+Tester focus: fallback with WebGL disabled (Chromium flag); bundle analysis shows the 3D chunk is lazy; controls with mouse/touch.
+
+### T153 Part geometry: extrusion, cutouts, holes, pockets   [status: todo]
+Spec: §3.8, §4.5 · Depends: T152
+Acceptance:
+- [ ] pure builder (web) from the project + layout: outlines extruded to thickness (arcs tessellated), inners and through holes as shape holes, blind pockets/grooves as recessed geometry (no CSG), cached per part shape
+- [ ] identical parts share geometry (instancing); 300 parts ≤ 300 draw calls
+- [ ] unit tests: vertex counts, hole count, bounding box = part bbox × thickness
+Tester focus: compare 3D top view screenshot with the 2D layout (positions/rotations match); a 30°-rotated part.
+
+### T154 Materials and grain texture   [status: todo]
+Spec: §3.6, §3.8 · Depends: T153
+Acceptance:
+- [ ] procedural textures generated in code (MDF, plywood, melamine colours, acrylic): no image downloads; grain stripes oriented by the sheet grain angle and each part's effective grain angle; edge bands coloured on banded edges
+- [ ] "Basit mod": flat colours, no shadows
+Tester focus: screenshots at grain 0/30/90°; edge band visible; simple mode visibly cheaper (draw calls/fps).
+
+### Batch B20: T155–T157 (interaction and playback)
+
+### T155 Interaction: move sheet, select, explode, camera transition   [status: todo]
+Spec: §3.6, §3.8 · Depends: T154
+Acceptance:
+- [ ] drag the sheet on the table plane (view-only; never changes the layout or machine offset), snap back button
+- [ ] hover/click a part → highlight + info card (number, name, size, grain); "ayır/kaldır" slider lifts parts from the sheet; hide waste toggle
+- [ ] wizard "İleri" → smooth camera transition to top view (§3.6), skipped with reduced motion
+Tester focus: moving the sheet does not change project JSON (assert); selection matches 2D numbering; reduced motion.
+
+### T156 Toolpath overlay in 3D   [status: todo]
+Spec: §6.5, §3.8 · Depends: T153
+Acceptance:
+- [ ] overlay from the **read G-code** (same data as 2D simulation): rapids dashed above the sheet, cuts coloured by depth; toggle; 50k-segment program renders within budget
+Tester focus: overlay comes from the reader (not the toolpath model) — code review; visual match with 2D simulation.
+
+### T157 Cutting playback synced with simulation   [status: todo]
+Spec: §6.5, §3.8 · Depends: T156
+Acceptance:
+- [ ] shared player store (time, speed, line) drives both 2D simulation and 3D: tool + spindle model moves along the read path, cut kerf revealed progressively, parts lift slightly when their outer contour ends
+- [ ] banner "Simülasyon air cut'ın yerine geçmez" also in 3D
+Tester focus: scrubbing in 2D moves 3D to the same line; play to the end; perf during playback.
+
+### Batch B21: T158–T161 (cabinet view, perf, integration)
+
+### T158 Assembled cabinet preview   [status: todo]
+Spec: §3.8 (v3) · Depends: T122, T154
+Acceptance:
+- [ ] for parts generated by the cabinet generator: "Montaj görünümü" places them in box positions (sides, top, bottom, shelves, back, doors) using the generator's own layout data; non-cabinet parts are not shown
+Tester focus: screenshot review of 2 cabinets; dimensions match the generator.
+
+### T159 Performance budget and simple mode   [status: todo]
+Spec: §3.6, §3.8 · Depends: T157
+Acceptance:
+- [ ] budget on the CI reference (mid laptop profile): 300 parts ≥ 45 fps orbiting, first frame ≤ 1.5 s after chunk load, GPU memory stable over 2 min
+- [ ] automatic simple mode when fps < 30 for 3 s or no WebGL2; manual setting; DPR capped at 2
+Tester focus: perf run with 300 and 600 parts; forced low-fps triggers simple mode; memory over time.
+
+### T160 3D in the wizard and PNG export   [status: todo]
+Spec: §3.6 · Depends: T155
+Acceptance:
+- [ ] wizard right panel: 2D / 3D toggle in sheet, parts and layout steps (live update after commands); "Görüntü kaydet" PNG
+Tester focus: switching steps keeps camera; live update after an edit; visual both themes.
+
+### T161 3D test suite   [status: todo]
+Spec: §11 · Depends: T159, T160
+Acceptance:
+- [ ] Playwright with SwiftShader: 3D screenshots of fixtures (top + iso), fallback path, playback to end; axe on the 3D controls
+Tester focus: run suite twice → stable screenshots; review all images.
+
+---
+
+## M7: Dizilim yükseltmeleri (exit: 3 modes, true-shape nesting with rotation, offcuts, edge-band deduction)
+
+### Batch B22: T162–T164 (modes and options)
+
+### T162 Nesting modes and objective weights   [status: todo]
+Spec: §6.2 · Depends: T114
+Acceptance:
+- [ ] `setNestingMode`: minWaste / fastest (cut length λ) / minToolChanges (μ); one objective function with weights per mode; cut length estimated from the toolpath model
+- [ ] benchmarks per mode in `__bench__`; deterministic
+Tester focus: each mode wins its own metric on the benchmark set; property tests unchanged.
+
+### T163 Nesting options UI, worker progress and cancel   [status: todo]
+Spec: §3.6, §6.2 · Depends: T162
+Acceptance:
+- [ ] layout step panel: mode cards, gap, margin, offcut use, rotation policy; run in worker with progress and "İptal"; results kept per option set
+Tester focus: cancel leaves the old layout intact; UI never freezes (long task < 50 ms) with 500 parts.
+
+### T164 Multiple stock sheet sizes   [status: todo]
+Spec: §6.2 · Depends: T121, T162
+Acceptance:
+- [ ] stock = list of sheet sizes with quantity limits (from the material library); placer picks sizes to minimise the objective; report per size
+Tester focus: quantity limit respected; property tests across mixed sizes.
+
+### Batch B23: T165–T167 (true-shape nesting)
+
+### T165 True-shape engine I: footprints and collision   [status: todo]
+Spec: §6.2 (v3) · Depends: T113 · Decision: D-034
+Acceptance:
+- [ ] footprint = outline offset by tool radius + gap/2 (own offset), arcs discretised for collision only (cutting geometry stays exact)
+- [ ] deterministic bottom-left placement over candidate positions with exact polygon overlap tests (spatial index); inside sheet minus margin
+- [ ] fast-check: no overlap of footprints, inside the sheet, deterministic
+Tester focus: property tests; exact overlap re-check with a different algorithm in the test.
+
+### T166 True-shape engine II: rotations and part-in-hole   [status: todo]
+Spec: §6.2 · Depends: T165
+Acceptance:
+- [ ] rotation candidates from `allowedRotations` (grain) plus a free-part step policy (90° default, 45°/15° options); optional small parts inside large inner cutouts
+- [ ] grain rule property: fixed parts only at grain-aligned angles
+Tester focus: grain property tests; part-in-hole never overlaps the hole's toolpath zone.
+
+### T167 Engine selection and utilisation benchmark   [status: todo]
+Spec: §6.2 · Depends: T166
+Acceptance:
+- [ ] rectangles at axis angles → MaxRects; freeform or non-axis grain parts → true-shape (mixed jobs: true-shape for all); time budget 300 parts ≤ 10 s in the worker
+- [ ] benchmark: utilisation gain vs the rotated-bbox fallback reported in the PR
+Tester focus: time budget; utilisation numbers; deterministic re-run.
+
+### Batch B24: T168–T171 (offcuts, edge band, layout editing)
+
+### T168 Offcut stock   [status: todo]
+Spec: §2.4, §3.4, §6.2, §9.1 · Depends: T164
+Acceptance:
+- [ ] after nesting, rectangular leftovers ≥ 300×300 (setting) proposed; user confirms → `offcuts` row (material, thickness, size, grain, source project); next nesting of the same material/thickness tries offcuts first; "Artık parçalar" tab under Projeler
+Tester focus: offcut used first in the next project; status changes to used; tenancy test.
+
+### T169 Edge band deduction   [status: todo]
+Spec: §4.8 · Depends: T119
+Acceptance:
+- [ ] project setting "girilen ölçü bitmiş ölçü": cut size = finish − band thickness per edge; shown in the grid (finish and cut size) and used by nesting/toolpath
+Tester focus: dimensions hand-checked for all edge combinations; toggle is undoable.
+
+### T170 Layout editing upgrades   [status: todo]
+Spec: §6.2 · Depends: T166
+Acceptance:
+- [ ] rotate a dragged part through its allowed angles (R key), snap to neighbours at gap distance, multi-select lock/unlock, "kilitsizleri yeniden diz"
+- [ ] invalid drops still never committed (`LOCKED_PLACEMENT_INVALID`)
+Tester focus: a fixed-grain part cannot be rotated off-grain by the UI; drag e2e.
+
+### T171 Layout view polish: numbers, stats, legend   [status: todo]
+Spec: §2.4, §6.5 · Depends: T170
+Acceptance:
+- [ ] part numbers consistent with PDF/labels, per-sheet stats (parts, utilisation, cut length), legend, minimap for many sheets
+Tester focus: numbering consistent across layout, simulation, 3D; visual.
+
+---
+
+## M8: Export, etiket, proje yönetimi (exit: NC, DXF, PDF and labels from the server; projects, home and settings complete)
+
+### Batch B25: T172–T174 (PDF)
+
+### T172 PDF engine and layout pages   [status: todo]
+Spec: §6.6, §8.3 · Depends: T171
+Acceptance:
+- [ ] pdf-lib + embedded Turkish-capable font (OFL); A4/A3 landscape sheet pages with numbered parts, grain arrows, dimensions; generated on the server from the saved revision; deterministic bytes (fixed metadata dates)
+Tester focus: Turkish characters (ğüşıöç İ) render; same input → same hash; page count = sheets.
+
+### T173 PDF part list, edge bands, waste report   [status: todo]
+Spec: §6.6, §4.8 · Depends: T172
+Acceptance:
+- [ ] numbered part list (name, finish/cut size, qty, grain, banded edges marked), waste % and area, sheet count, estimated cut time
+Tester focus: numbers vs layout data; banded edge marks for all 4 edges.
+
+### T174 Part labels   [status: todo]
+Spec: §2.4, §6.6 · Depends: T172
+Acceptance:
+- [ ] label sheet presets (A4 3×8, 2×7, custom mm grid); label: project, part number, name, size, grain arrow, edge band glyph, sheet number; print offset calibration setting
+Tester focus: label count = total pieces; print preview screenshot; long names truncated, not overflowing.
+
+### Batch B26: T175–T177 (DXF export, export step, report)
+
+### T175 DXF writer   [status: todo]
+Spec: §6.6, §4.6 · Depends: T145
+Acceptance:
+- [ ] own writer: layout (sheets side by side) and single parts; layers per operation (DIS_KESIM, IC_KESIM, CEP, DELIK, CIZGI); arcs as bulges; round-trip test with our importer (= same contours within EPS)
+Tester focus: round trip; opens in a free viewer (LibreCAD) without errors (manual screenshot).
+
+### T176 Export step: all formats, records, history   [status: todo]
+Spec: §6.6 · Depends: T173, T174, T175
+Acceptance:
+- [ ] export step offers NC, DXF, PDF, labels; each regenerated on the server and stored in `exports` with type, hash, revision; history shows all types; NC rules unchanged (checks, acceptance)
+Tester focus: NC gate cannot be bypassed by the new UI; hashes stable; history entries per type.
+
+### T177 Project report card   [status: todo]
+Spec: §6.6 · Depends: T176
+Acceptance:
+- [ ] report summary (waste %, area, sheets, estimated time, part count) on the project page and as data for the home page
+Tester focus: values equal the PDF report values.
+
+### Batch B27: T178–T180 (projects and home)
+
+### T178 Projeler page: search, filter, copy, delete   [status: todo]
+Spec: §3.4 · Depends: T111
+Acceptance:
+- [ ] table with name, status, machine, material, date; search (Turkish folding), filters (status, machine, material), sort, pagination; copy project (new id, revision 1, exports not copied); soft delete with undo toast
+Tester focus: e2e search/filter/copy; deleted project hidden but restorable; tenancy unchanged.
+
+### T179 Project status flow and re-export   [status: todo]
+Spec: §3.4, §6.6 · Depends: T176, T178
+Acceptance:
+- [ ] taslak → üretildi (after a successful NC export) → tamamlandı (manual); re-export from history regenerates from that revision
+Tester focus: status transitions; re-export of an old revision gives the same hash as before.
+
+### T180 Ana sayfa with real data   [status: todo]
+Spec: §3.4 · Depends: T177, T178
+Acceptance:
+- [ ] recent projects, machines needing verification, waste summary chart (last 30 days, accessible colours), quick actions
+Tester focus: numbers match seeded data; chart readable in dark mode; axe.
+
+### Batch B28: T181–T183 (machines and settings)
+
+### T181 Machine maintenance and controller library   [status: todo]
+Spec: §3.4, §7.1 · Depends: T107
+Acceptance:
+- [ ] manual maintenance log (last date, interval days, note) with reminder badge on Makineler and Ana sayfa; controller-family library pre-fills a new profile (generic, Mach3)
+Tester focus: reminder appears when overdue (fixed clock in test); pre-fill values match the post configs.
+
+### T182 Ayarlar: company, defaults, layer mapping   [status: todo]
+Spec: §3.4 · Depends: T121, T145
+Acceptance:
+- [ ] company name + logo upload (size/type limits), defaults (gap, margin, tabs, lead-in, edge-band mode), DXF layer mapping editor, material defaults link
+Tester focus: defaults used by a new project; upload limits; axe.
+
+### T183 Ayarlar: appearance and preferences   [status: todo]
+Spec: §3.7 · Depends: T182
+Acceptance:
+- [ ] theme, density (comfortable/compact), 3D simple mode, reduced motion override, shortcuts list
+Tester focus: preferences persist and apply on reload; compact density screenshots.
+
+---
+
+## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
+
+### Batch B29: T184–T186 (onboarding, accessibility, performance)
+
+### T184 Onboarding and sample project   [status: todo]
+Spec: §4.2 · Depends: T180
+Acceptance:
+- [ ] first run: welcome dialog, sample project (cabinet + hinge doors), guided tour of the 5 wizard steps; can be reopened from Ayarlar
+Tester focus: first-run only; sample project exports a valid NC.
+
+### T185 Accessibility sweep   [status: todo]
+Spec: §3.7, §11 · Depends: T184
+Acceptance:
+- [ ] keyboard-only completion of the whole flow (cut list → nest → 3D/simulation → export); AA contrast in both themes; landmarks, labels; zero serious/critical axe violations on all routes
+Tester focus: keyboard-only e2e; axe report for every route; screen-reader spot check of the GrainDial and cut list.
+
+### T186 Performance sweep   [status: todo]
+Spec: §8.2 · Depends: T184
+Acceptance:
+- [ ] budgets: initial JS ≤ 250 kB gzip per route (3D/editor lazy), LCP ≤ 2.5 s on the local prod build, 2 000-row cut list usable, nesting 300 parts ≤ 10 s without UI freeze
+Tester focus: bundle report; Lighthouse CI numbers; long-task count during nesting.
+
+### Batch B30: T187–T189 (resilience, responsive, G-code regression)
+
+### T187 Error handling and resilience   [status: todo]
+Spec: §8.2 · Depends: T105
+Acceptance:
+- [ ] offline/save-failure banner with the unsent queue count, retry; revision conflict dialog (reload / keep mine as copy); client errors logged to a local server log
+Tester focus: kill the server mid-edit → queue → recover without loss; conflict dialog e2e.
+
+### T188 Responsive and touch pass   [status: todo]
+Spec: §3.7 · Depends: T185
+Acceptance:
+- [ ] 390 / 768 / 1024 / 1440 layouts for every route; touch for editor pan/zoom/select and 3D orbit; tablet workshop use (large hit targets ≥ 40 px)
+Tester focus: screenshot matrix of all routes at 4 widths; touch emulation e2e.
+
+### T189 G-code regression set for the new operations   [status: todo]
+Spec: §7.2, §11 · Depends: T143, T167 · **Human gate: golden files (`needs-human`)**
+Acceptance:
+- [ ] golden fixtures for both posts: holes + pockets + grooves, inner contours, arcs, rotated grain parts, true-shape layout, thin skin
+- [ ] one broken-G-code test per §7.2 rule for each new operation type
+Tester focus: full safety review; golden list prepared for the owner's approval.
+
+### Batch B31: T190–T193 (final e2e and field-test readiness)
+
+### T190 Full regression e2e scenarios   [status: todo]
+Spec: §11 · Depends: T189
+Acceptance:
+- [ ] 5 scenarios in CI: cabinet + hinge doors, DXF sign letters, grain-rotated panels, mixed holes/pockets, offcut reuse; each: input → nest → 3D → simulation → NC + PDF + DXF + labels; all checks pass
+Tester focus: run the suite; review every NC with the safety checklist.
+
+### T191 Field-test kit   [status: todo]
+Spec: §7.3, §12.3 · Depends: T190
+Acceptance:
+- [ ] extended test program (holes, pocket, groove, arcs, inner contour) + measurement form fields; printable field checklist PDF (origin, Z zero, tool, air cut first); `docs/machines/_template/` for the info collection; air-cut/test exports recorded
+Tester focus: safety review of the extended test program; air-cut floor (D-031) holds for the new operations.
+
+### T192 In-app help and "Yenilikler"   [status: todo]
+Spec: §8.2 · Depends: T190
+Acceptance:
+- [ ] Turkish help pages (getting started, cut list, drawing, grain, 3D, export, air cut) linked from the palette; "Yenilikler" dialog per release
+Tester focus: links work; text in `tr.json`; axe.
+
+### T193 Field-test readiness review   [status: todo]
+Spec: §12.1 · Depends: T191, T192 · Owner: PO + tester · **Human gate: owner sign-off**
+Acceptance:
+- [ ] checklist: all M2–M9 exits met, known issues list, open spec items (§14.2) that affect the test, machine info (§12.3) collected; question to the owner via the dashboard
+Tester focus: final full run (unit, property, golden, e2e, visual, axe, perf) with one summary report.
+
+---
+
+## Field test 1 (owner)   [status: todo]
+Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
+- [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine
 - [ ] post config adapted to the real controller (new post version + golden files, owner approval)
-- [ ] air cut, then a test cut on scrap; "NittCam test etti" record
+- [ ] air cut, then test cut on scrap: outer contour, holes, pocket, groove, arcs, rotated grain part; measurements in tolerance; "NittCam test etti" record
+- [ ] every field bug first becomes a failing test (§11)
 
-### Deferred notes
-- validate "pocket depth too close to thickness" (§4.5): M3 with the hole object
-- AI: flat w/h/r adapter for `addPart`: M5
-- command log: persist undo/redo events: done in T023 (D-029)
-- db defence in depth (tester note on T008): DB triggers that block UPDATE on version tables; Postgres RLS on company_id: M2 (before multi-company login)
-- owner: identify the second machine's controller (brand, model, software version) and collect 2–3 working NC files from each machine (§12.3)
+---
+
+## After the field test (outline; detailed tasks written before each milestone starts)
+
+### M10: Hesap ve çok şirket (T200+)
+Better Auth verification; login screen with the intro animation (§3.2); companies, users, roles (Yönetici / Operatör) checked on the server; replace the default company/user; Postgres RLS on company_id and triggers on version tables; quick user switch for shared workshop PCs; hosting decision (§8.5).
+
+### M11: AI sohbet (T220+), behind Q001
+Chat panel, command proposals with Uygula/İptal, warning badge, template update question, messy order reading, quota (§5). Not part of the ~90 % line (D-035).
+
+### M12–M14: Pilot, Ticari, Büyüme
+As spec §12.1.
