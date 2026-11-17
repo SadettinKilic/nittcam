@@ -9,9 +9,30 @@ import {
   type MaterialParams,
   type Tool,
 } from '@nittcam/core';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
+  Button,
+  Card,
+  IconButton,
+  cn,
+  type NumberParseError,
+} from '@nittcam/ui';
+import { CircleAlert, Info, Plus, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { focusRing } from '../../components/page/page-header';
 import type { ApiError, MachineDetail } from '../../lib/machines-api';
+import { FORM_SECTIONS, isDirty, parseErrorText, type FormSection } from '../../lib/machine-form';
 import type { Messages } from '../../lib/messages';
+import { CornerPicker } from './corner-picker';
 import { CheckField, fieldId, NumberField, SelectField, TextField } from './fields';
 import { fieldErrors, type FieldErrors } from './issues';
 
@@ -21,22 +42,49 @@ export interface MachineFormProps {
   t: Text;
   /** `null` for a new machine. */
   machineId: string | null;
+  /** Latest profile version of an existing machine. */
+  version?: number | undefined;
   initial: MachineProfile;
   onSaved: (detail: MachineDetail) => void;
   onCancel: () => void;
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  id,
+  title,
+  hint,
+  children,
+  wide = false,
+}: {
+  id: FormSection;
+  title: string;
+  hint: string;
+  children: ReactNode;
+  /** Tables: the body is not a field grid. */
+  wide?: boolean;
+}) {
   return (
-    <fieldset className="min-w-0 rounded-card border border-border p-4">
-      <legend className="px-1 text-base font-semibold text-fg">{title}</legend>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
-    </fieldset>
+    <Card
+      id={`sec-${id}`}
+      data-section={id}
+      role="group"
+      aria-labelledby={`sec-${id}-title`}
+      className="scroll-mt-20 p-5 sm:p-6"
+    >
+      <div className="mb-5 flex flex-col gap-1">
+        <h3 id={`sec-${id}-title`} className="text-base font-semibold tracking-tight text-fg">
+          {title}
+        </h3>
+        <p className="text-sm text-fg-muted">{hint}</p>
+      </div>
+      {wide ? (
+        children
+      ) : (
+        <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">{children}</div>
+      )}
+    </Card>
   );
 }
-
-const buttonClass =
-  'rounded-lg px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60';
 
 /** Stable React keys for table rows, so a removed row does not shift the inputs below it. */
 function useRowKeys(count: number) {
@@ -49,25 +97,89 @@ function useRowKeys(count: number) {
   };
 }
 
-export function MachineForm({ t, machineId, initial, onSaved, onCancel }: MachineFormProps) {
+/** The section in view, for the side index (the last section whose top passed the bar). */
+function useActiveSection(): FormSection {
+  const [active, setActive] = useState<FormSection>(FORM_SECTIONS[0]);
+  useEffect(() => {
+    const onScroll = () => {
+      let current: FormSection = FORM_SECTIONS[0];
+      for (const id of FORM_SECTIONS) {
+        const el = document.getElementById(`sec-${id}`);
+        if (el && el.getBoundingClientRect().top < 140) current = id;
+      }
+      setActive(current);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  return active;
+}
+
+export function MachineForm({
+  t,
+  machineId,
+  version,
+  initial,
+  onSaved,
+  onCancel,
+}: MachineFormProps) {
   const f = t.form.fields;
   const o = t.form.options;
+  const u = t.form.units;
+  const router = useRouter();
   const [profile, setProfile] = useState<MachineProfile>(initial);
   const [submitted, setSubmitted] = useState(false);
   const [serverIssues, setServerIssues] = useState<MachineProfileIssue[]>([]);
+  const [parseErrors, setParseErrors] = useState<Record<string, NumberParseError>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  // Where to go when the user confirms leaving with unsaved changes (href, or the list).
+  const [leaving, setLeaving] = useState<{ href: string | null } | null>(null);
   const toolRows = useRowKeys(initial.tools.length);
   const materialRows = useRowKeys(initial.materials.length);
+  const active = useActiveSection();
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const dirty = isDirty(initial, profile) || Object.keys(parseErrors).length > 0;
+
+  // Leave-page guard: browser reload/close and in-app links while there are unsaved changes.
+  useEffect(() => {
+    if (!dirty || saving) return;
+    const beforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const a = (e.target as Element | null)?.closest?.('a[href]');
+      if (!(a instanceof HTMLAnchorElement) || a.target === '_blank' || a.hasAttribute('download'))
+        return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setLeaving({ href: url.pathname + url.search + url.hash });
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('beforeunload', beforeUnload);
+      document.removeEventListener('click', onClick, true);
+    };
+  }, [dirty, saving]);
 
   // Client-side check with the same core schema the server uses; shown after the first submit.
   const errors: FieldErrors = useMemo(() => {
-    if (!submitted) return {};
+    const out: FieldErrors = {};
+    for (const [path, code] of Object.entries(parseErrors))
+      out[path] = parseErrorText(code, t.errors);
+    if (!submitted) return out;
     const r = parseMachineProfile(profile);
     const issues = r.ok ? serverIssues : [...r.issues, ...serverIssues];
-    return fieldErrors(issues, t.errors);
-  }, [submitted, profile, serverIssues, t.errors]);
-  const hasErrors = Object.keys(errors).length > 0;
+    return { ...fieldErrors(issues, t.errors), ...out };
+  }, [submitted, profile, serverIssues, parseErrors, t.errors]);
+  const errorCount = Object.keys(errors).length;
+  const hasErrors = submitted && errorCount > 0;
   // Shipped posts (spec §6.4, T017); an unknown id from an older profile stays selectable.
   const postOptions: Record<string, string> = Object.fromEntries(
     KNOWN_POSTS.map((k) => [k.id, `${k.name} (${k.id} ${k.version})`]),
@@ -86,14 +198,30 @@ export function MachineForm({ t, machineId, initial, onSaved, onCancel }: Machin
     });
   }
 
+  function onParseError(path: string, error: NumberParseError | null) {
+    setParseErrors((prev) => {
+      if ((prev[path] ?? null) === error) return prev;
+      const next = Object.fromEntries(Object.entries(prev).filter(([k]) => k !== path));
+      if (error) next[path] = error;
+      return next;
+    });
+  }
+
+  /** Focus the first invalid control in page order once the errors are rendered. */
+  function focusFirstInvalid() {
+    requestAnimationFrame(() => {
+      const el = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      el?.focus();
+    });
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitted(true);
     setSaveError(false);
     const parsed = parseMachineProfile(profile);
-    if (!parsed.ok) {
-      const first = parsed.issues[0];
-      if (first) document.getElementById(fieldId(first.path))?.focus();
+    if (!parsed.ok || Object.keys(parseErrors).length > 0) {
+      focusFirstInvalid();
       return;
     }
     setSaving(true);
@@ -108,8 +236,10 @@ export function MachineForm({ t, machineId, initial, onSaved, onCancel }: Machin
         return;
       }
       const body = (await res.json().catch(() => null)) as ApiError | null;
-      if (body?.error === 'invalid_profile') setServerIssues(body.issues);
-      else setSaveError(true);
+      if (body?.error === 'invalid_profile') {
+        setServerIssues(body.issues);
+        focusFirstInvalid();
+      } else setSaveError(true);
     } catch {
       setSaveError(true);
     } finally {
@@ -117,546 +247,663 @@ export function MachineForm({ t, machineId, initial, onSaved, onCancel }: Machin
     }
   }
 
+  function cancel() {
+    if (dirty) setLeaving({ href: null });
+    else onCancel();
+  }
+
+  function confirmLeave() {
+    const target = leaving;
+    setLeaving(null);
+    if (!target) return;
+    if (target.href === null) onCancel();
+    else router.push(target.href);
+  }
+
   const e = (path: string) => errors[path];
+  const num = (
+    path: string,
+    label: string,
+    value: number,
+    set: (p: MachineProfile, v: number) => void,
+    unit?: string,
+    help?: string,
+  ) => (
+    <NumberField
+      path={path}
+      label={label}
+      help={help}
+      unit={unit}
+      value={value}
+      error={e(path)}
+      onParseError={onParseError}
+      onChange={(v) => update((p) => set(p, v))}
+    />
+  );
+  const s = t.form.sections;
+  const h = t.form.sectionHints;
 
   return (
     <form
+      ref={formRef}
       noValidate
       onSubmit={(ev) => void submit(ev)}
       className="flex flex-col gap-6"
       aria-labelledby="machine-form-title"
+      data-testid="machine-form"
     >
-      <div className="flex flex-col gap-2">
-        <h2 id="machine-form-title" className="text-2xl font-semibold">
-          {machineId ? t.form.editTitle : t.form.createTitle}
-        </h2>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2
+            id="machine-form-title"
+            tabIndex={-1}
+            className="text-xl font-semibold tracking-tight"
+          >
+            {machineId ? t.form.editTitle : t.form.createTitle}
+          </h2>
+          {version !== undefined ? (
+            <Badge>{t.form.versionBadge.replace('{version}', String(version))}</Badge>
+          ) : null}
+          {profile.example ? <Badge variant="warning">{t.example}</Badge> : null}
+        </div>
         {profile.example ? (
-          <p className="rounded-lg bg-warn-bg p-3 text-sm text-warn">{t.form.exampleNote}</p>
+          <p className="flex gap-2 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text">
+            <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+            {t.form.exampleNote}
+          </p>
         ) : null}
-        <p className="text-sm text-fg-muted">{t.form.versionNote}</p>
+        <p className="flex gap-2 text-sm text-fg-muted">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t.form.versionNote}
+        </p>
       </div>
 
-      <Section title={t.form.sections.identity}>
-        <TextField
-          path="identity.name"
-          label={f.name}
-          value={profile.identity.name}
-          error={e('identity.name')}
-          onChange={(v) => update((p) => void (p.identity.name = v))}
-        />
-        <TextField
-          path="identity.brand"
-          label={f.brand}
-          value={profile.identity.brand}
-          error={e('identity.brand')}
-          onChange={(v) => update((p) => void (p.identity.brand = v))}
-        />
-        <TextField
-          path="identity.model"
-          label={f.model}
-          value={profile.identity.model}
-          error={e('identity.model')}
-          onChange={(v) => update((p) => void (p.identity.model = v))}
-        />
-        <TextField
-          path="identity.controller.family"
-          label={f.controllerFamily}
-          value={profile.identity.controller.family}
-          error={e('identity.controller.family')}
-          onChange={(v) => update((p) => void (p.identity.controller.family = v))}
-        />
-        <TextField
-          path="identity.controller.version"
-          label={f.controllerVersion}
-          value={profile.identity.controller.version}
-          error={e('identity.controller.version')}
-          onChange={(v) => update((p) => void (p.identity.controller.version = v))}
-        />
-        <TextField
-          path="identity.notes"
-          label={f.notes}
-          multiline
-          value={profile.identity.notes}
-          error={e('identity.notes')}
-          onChange={(v) => update((p) => void (p.identity.notes = v))}
-        />
-      </Section>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-8">
+        <nav aria-label={t.form.sectionsIndex} className="hidden lg:block">
+          <ol className="sticky top-20 flex flex-col gap-0.5 border-l border-border">
+            {FORM_SECTIONS.map((id) => (
+              <li key={id}>
+                <a
+                  href={`#sec-${id}`}
+                  aria-current={active === id ? 'location' : undefined}
+                  onClick={(ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    document.getElementById(`sec-${id}`)?.scrollIntoView({ block: 'start' });
+                  }}
+                  className={cn(
+                    '-ml-px block border-l-2 py-1.5 pl-3 text-sm transition-colors duration-(--duration-fast)',
+                    focusRing,
+                    active === id
+                      ? 'border-accent font-medium text-fg'
+                      : 'border-transparent text-fg-muted hover:text-fg',
+                  )}
+                >
+                  {s[id]}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
 
-      <Section title={t.form.sections.envelope}>
-        <NumberField
-          path="workEnvelope.x"
-          label={f.envelopeX}
-          value={profile.workEnvelope.x}
-          error={e('workEnvelope.x')}
-          onChange={(v) => update((p) => void (p.workEnvelope.x = v))}
-        />
-        <NumberField
-          path="workEnvelope.y"
-          label={f.envelopeY}
-          value={profile.workEnvelope.y}
-          error={e('workEnvelope.y')}
-          onChange={(v) => update((p) => void (p.workEnvelope.y = v))}
-        />
-        <NumberField
-          path="workEnvelope.z"
-          label={f.envelopeZ}
-          value={profile.workEnvelope.z}
-          error={e('workEnvelope.z')}
-          onChange={(v) => update((p) => void (p.workEnvelope.z = v))}
-        />
-        <NumberField
-          path="table.width"
-          label={f.tableWidth}
-          value={profile.table.width}
-          error={e('table.width')}
-          onChange={(v) => update((p) => void (p.table.width = v))}
-        />
-        <NumberField
-          path="table.depth"
-          label={f.tableDepth}
-          value={profile.table.depth}
-          error={e('table.depth')}
-          onChange={(v) => update((p) => void (p.table.depth = v))}
-        />
-        <NumberField
-          path="safeZ"
-          label={f.safeZ}
-          value={profile.safeZ}
-          error={e('safeZ')}
-          onChange={(v) => update((p) => void (p.safeZ = v))}
-        />
-        <NumberField
-          path="rapidFeed"
-          label={f.rapidFeed}
-          help={f.rapidFeedHelp}
-          value={profile.rapidFeed ?? TOOLPATH_DEFAULTS.rapidFeed}
-          error={e('rapidFeed')}
-          onChange={(v) => update((p) => void (p.rapidFeed = v))}
-        />
-      </Section>
-
-      <Section title={t.form.sections.origin}>
-        <SelectField
-          path="origin.corner"
-          label={f.corner}
-          value={profile.origin.corner}
-          options={o.corner}
-          error={e('origin.corner')}
-          onChange={(v) => update((p) => void (p.origin.corner = v))}
-        />
-        <SelectField
-          path="origin.xPositive"
-          label={f.xPositive}
-          value={profile.origin.xPositive}
-          options={o.xPositive}
-          error={e('origin.xPositive')}
-          onChange={(v) => update((p) => void (p.origin.xPositive = v))}
-        />
-        <SelectField
-          path="origin.yPositive"
-          label={f.yPositive}
-          value={profile.origin.yPositive}
-          options={o.yPositive}
-          error={e('origin.yPositive')}
-          onChange={(v) => update((p) => void (p.origin.yPositive = v))}
-        />
-        <NumberField
-          path="origin.sheetOffset.x"
-          label={f.sheetOffsetX}
-          value={profile.origin.sheetOffset.x}
-          error={e('origin.sheetOffset.x')}
-          onChange={(v) => update((p) => void (p.origin.sheetOffset.x = v))}
-        />
-        <NumberField
-          path="origin.sheetOffset.y"
-          label={f.sheetOffsetY}
-          value={profile.origin.sheetOffset.y}
-          error={e('origin.sheetOffset.y')}
-          onChange={(v) => update((p) => void (p.origin.sheetOffset.y = v))}
-        />
-      </Section>
-
-      <Section title={t.form.sections.zZero}>
-        <SelectField
-          path="zZero.reference"
-          label={f.zReference}
-          value={profile.zZero.reference}
-          options={o.zReference}
-          error={e('zZero.reference')}
-          onChange={(v) => update((p) => void (p.zZero.reference = v))}
-        />
-        <NumberField
-          path="zZero.spoilboardAllowance"
-          label={f.spoilboard}
-          help={f.spoilboardHelp}
-          value={profile.zZero.spoilboardAllowance}
-          error={e('zZero.spoilboardAllowance')}
-          onChange={(v) => update((p) => void (p.zZero.spoilboardAllowance = v))}
-        />
-      </Section>
-
-      <Section title={t.form.sections.spindle}>
-        <NumberField
-          path="spindle.powerKw"
-          label={f.powerKw}
-          value={profile.spindle.powerKw}
-          error={e('spindle.powerKw')}
-          onChange={(v) => update((p) => void (p.spindle.powerKw = v))}
-        />
-        <NumberField
-          path="spindle.minRpm"
-          label={f.minRpm}
-          value={profile.spindle.minRpm}
-          error={e('spindle.minRpm')}
-          onChange={(v) => update((p) => void (p.spindle.minRpm = v))}
-        />
-        <NumberField
-          path="spindle.maxRpm"
-          label={f.maxRpm}
-          value={profile.spindle.maxRpm}
-          error={e('spindle.maxRpm')}
-          onChange={(v) => update((p) => void (p.spindle.maxRpm = v))}
-        />
-        <NumberField
-          path="spindle.warmupSeconds"
-          label={f.warmup}
-          value={profile.spindle.warmupSeconds}
-          error={e('spindle.warmupSeconds')}
-          onChange={(v) => update((p) => void (p.spindle.warmupSeconds = v))}
-        />
-      </Section>
-
-      <Section title={t.form.sections.toolChanger}>
-        <SelectField
-          path="toolChanger.type"
-          label={f.changerType}
-          value={profile.toolChanger.type}
-          options={o.changerType}
-          error={e('toolChanger.type')}
-          onChange={(v) => update((p) => void (p.toolChanger.type = v))}
-        />
-        <NumberField
-          path="toolChanger.capacity"
-          label={f.capacity}
-          value={profile.toolChanger.capacity}
-          error={e('toolChanger.capacity')}
-          onChange={(v) => update((p) => void (p.toolChanger.capacity = v))}
-        />
-        <CheckField
-          path="toolChanger.lengthCompensation"
-          label={f.g43}
-          checked={profile.toolChanger.lengthCompensation}
-          onChange={(v) => update((p) => void (p.toolChanger.lengthCompensation = v))}
-        />
-      </Section>
-
-      <Section title={t.form.sections.holdDown}>
-        <SelectField
-          path="holdDown.type"
-          label={f.holdDownType}
-          value={profile.holdDown.type}
-          options={o.holdDownType}
-          error={e('holdDown.type')}
-          onChange={(v) => update((p) => void (p.holdDown.type = v))}
-        />
-        <TextField
-          path="holdDown.vacuumOn"
-          label={f.vacuumOn}
-          help={f.mCodeHelp}
-          value={profile.holdDown.vacuumOn}
-          error={e('holdDown.vacuumOn')}
-          onChange={(v) => update((p) => void (p.holdDown.vacuumOn = v))}
-        />
-        <TextField
-          path="holdDown.vacuumOff"
-          label={f.vacuumOff}
-          help={f.mCodeHelp}
-          value={profile.holdDown.vacuumOff}
-          error={e('holdDown.vacuumOff')}
-          onChange={(v) => update((p) => void (p.holdDown.vacuumOff = v))}
-        />
-      </Section>
-
-      <Section title={t.form.sections.post}>
-        <SelectField
-          path="post.id"
-          label={f.postId}
-          help={f.postHelp}
-          value={profile.post.id}
-          options={postOptions}
-          error={e('post.id') ?? e('post.version')}
-          onChange={(v) =>
-            update((p) => {
-              const known = KNOWN_POSTS.find((k) => k.id === v);
-              if (known) p.post = { id: known.id, version: known.version };
-            })
-          }
-        />
-      </Section>
-
-      <Section title={t.form.sections.constraints}>
-        <NumberField
-          path="constraints.maxFileNameLength"
-          label={f.maxFileName}
-          value={profile.constraints.maxFileNameLength}
-          error={e('constraints.maxFileNameLength')}
-          onChange={(v) => update((p) => void (p.constraints.maxFileNameLength = v))}
-        />
-        <NumberField
-          path="constraints.maxFileSizeMb"
-          label={f.maxFileSize}
-          value={profile.constraints.maxFileSizeMb}
-          error={e('constraints.maxFileSizeMb')}
-          onChange={(v) => update((p) => void (p.constraints.maxFileSizeMb = v))}
-        />
-        <div className="flex flex-col">
-          <CheckField
-            path="constraints.arcs"
-            label={f.arcs}
-            checked={profile.constraints.arcs}
-            onChange={(v) => update((p) => void (p.constraints.arcs = v))}
-          />
-          <CheckField
-            path="constraints.lineNumbers"
-            label={f.lineNumbers}
-            checked={profile.constraints.lineNumbers}
-            onChange={(v) => update((p) => void (p.constraints.lineNumbers = v))}
-          />
-          <CheckField
-            path="constraints.drillCycles"
-            label={f.drillCycles}
-            checked={profile.constraints.drillCycles}
-            onChange={(v) => update((p) => void (p.constraints.drillCycles = v))}
-          />
-        </div>
-      </Section>
-
-      <RowTable
-        title={t.form.sections.tools}
-        headers={[f.toolNumber, f.toolType, f.toolDiameter, f.fluteLength, f.flutes]}
-        addLabel={t.form.add}
-        removeLabel={t.form.remove}
-        error={e('tools')}
-        keys={toolRows.keys}
-        onAdd={() => {
-          toolRows.add();
-          update((p) => {
-            const number = Math.min(99, Math.max(0, ...p.tools.map((x) => x.number)) + 1);
-            p.tools.push({ number, type: 'flatEndMill', diameter: 6, fluteLength: 22, flutes: 2 });
-          });
-        }}
-        onRemove={(i) => {
-          toolRows.remove(i);
-          update((p) => void p.tools.splice(i, 1));
-        }}
-        renderRow={(i) => {
-          const tool = profile.tools[i] as Tool;
-          const path = (k: keyof Tool) => `tools[${i}].${k}`;
-          const set = (fn: (x: Tool) => void) => update((p) => fn(p.tools[i] as Tool));
-          return [
-            <NumberField
-              key="n"
-              compact
-              path={path('number')}
-              label={f.toolNumber}
-              value={tool.number}
-              error={e(path('number'))}
-              onChange={(v) => set((x) => void (x.number = v))}
-            />,
-            <SelectField
-              key="t"
-              compact
-              path={path('type')}
-              label={f.toolType}
-              value={tool.type}
-              options={o.toolType}
-              error={e(path('type'))}
-              onChange={(v) => set((x) => void (x.type = v))}
-            />,
-            <NumberField
-              key="d"
-              compact
-              path={path('diameter')}
-              label={f.toolDiameter}
-              value={tool.diameter}
-              error={e(path('diameter'))}
-              onChange={(v) => set((x) => void (x.diameter = v))}
-            />,
-            <NumberField
-              key="l"
-              compact
-              path={path('fluteLength')}
-              label={f.fluteLength}
-              value={tool.fluteLength}
-              error={e(path('fluteLength'))}
-              onChange={(v) => set((x) => void (x.fluteLength = v))}
-            />,
-            <NumberField
-              key="f"
-              compact
-              path={path('flutes')}
-              label={f.flutes}
-              value={tool.flutes}
-              error={e(path('flutes'))}
-              onChange={(v) => set((x) => void (x.flutes = v))}
-            />,
-          ];
-        }}
-      />
-
-      <RowTable
-        title={t.form.sections.materials}
-        headers={[f.material, f.thickness, f.feed, f.plungeFeed, f.rpm, f.stepDown, f.materialTool]}
-        addLabel={t.form.add}
-        removeLabel={t.form.remove}
-        error={e('materials')}
-        keys={materialRows.keys}
-        onAdd={() => {
-          materialRows.add();
-          update(
-            (p) =>
-              void p.materials.push({
-                material: 'mdf',
-                thickness: 18,
-                feed: 5000,
-                plungeFeed: 1500,
-                rpm: Math.min(Math.max(18000, p.spindle.minRpm), p.spindle.maxRpm),
-                stepDown: 6,
-                tool: p.tools[0]?.number ?? 1,
-              }),
-          );
-        }}
-        onRemove={(i) => {
-          materialRows.remove(i);
-          update((p) => void p.materials.splice(i, 1));
-        }}
-        renderRow={(i) => {
-          const m = profile.materials[i] as MaterialParams;
-          const path = (k: keyof MaterialParams) => `materials[${i}].${k}`;
-          const set = (fn: (x: MaterialParams) => void) =>
-            update((p) => fn(p.materials[i] as MaterialParams));
-          const num = (k: 'thickness' | 'feed' | 'plungeFeed' | 'rpm' | 'stepDown' | 'tool') => (
-            <NumberField
-              key={k}
-              compact
-              path={path(k)}
-              label={
-                {
-                  thickness: f.thickness,
-                  feed: f.feed,
-                  plungeFeed: f.plungeFeed,
-                  rpm: f.rpm,
-                  stepDown: f.stepDown,
-                  tool: f.materialTool,
-                }[k]
-              }
-              value={m[k]}
-              error={e(path(k))}
-              onChange={(v) => set((x) => void (x[k] = v))}
+        <div className="flex min-w-0 flex-col gap-5">
+          <Section id="identity" title={s.identity} hint={h.identity}>
+            <TextField
+              path="identity.name"
+              label={f.name}
+              value={profile.identity.name}
+              error={e('identity.name')}
+              onChange={(v) => update((p) => void (p.identity.name = v))}
             />
-          );
-          return [
-            <SelectField
-              key="m"
-              compact
-              path={path('material')}
-              label={f.material}
-              value={m.material}
-              options={o.material}
-              error={e(path('material'))}
-              onChange={(v) => set((x) => void (x.material = v))}
-            />,
-            num('thickness'),
-            num('feed'),
-            num('plungeFeed'),
-            num('rpm'),
-            num('stepDown'),
-            num('tool'),
-          ];
-        }}
-      />
+            <TextField
+              path="identity.brand"
+              label={f.brand}
+              value={profile.identity.brand}
+              error={e('identity.brand')}
+              onChange={(v) => update((p) => void (p.identity.brand = v))}
+            />
+            <TextField
+              path="identity.model"
+              label={f.model}
+              value={profile.identity.model}
+              error={e('identity.model')}
+              onChange={(v) => update((p) => void (p.identity.model = v))}
+            />
+            <TextField
+              path="identity.controller.family"
+              label={f.controllerFamily}
+              value={profile.identity.controller.family}
+              error={e('identity.controller.family')}
+              onChange={(v) => update((p) => void (p.identity.controller.family = v))}
+            />
+            <TextField
+              path="identity.controller.version"
+              label={f.controllerVersion}
+              value={profile.identity.controller.version}
+              error={e('identity.controller.version')}
+              onChange={(v) => update((p) => void (p.identity.controller.version = v))}
+            />
+            <TextField
+              path="identity.notes"
+              label={f.notes}
+              multiline
+              value={profile.identity.notes}
+              error={e('identity.notes')}
+              onChange={(v) => update((p) => void (p.identity.notes = v))}
+            />
+          </Section>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-        <button
-          type="submit"
-          disabled={saving}
-          className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
-        >
-          {saving ? t.form.saving : t.form.save}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className={`${buttonClass} border border-border bg-bg text-fg hover:bg-sidebar`}
-        >
-          {t.form.cancel}
-        </button>
-        <div aria-live="polite" className="text-sm">
-          {hasErrors ? <span className="font-medium text-danger">{t.form.hasErrors}</span> : null}
-          {saveError ? <span className="font-medium text-danger">{t.form.saveError}</span> : null}
+          <Section id="envelope" title={s.envelope} hint={h.envelope}>
+            {num(
+              'workEnvelope.x',
+              f.envelopeX,
+              profile.workEnvelope.x,
+              (p, v) => void (p.workEnvelope.x = v),
+              u.mm,
+            )}
+            {num(
+              'workEnvelope.y',
+              f.envelopeY,
+              profile.workEnvelope.y,
+              (p, v) => void (p.workEnvelope.y = v),
+              u.mm,
+            )}
+            {num(
+              'workEnvelope.z',
+              f.envelopeZ,
+              profile.workEnvelope.z,
+              (p, v) => void (p.workEnvelope.z = v),
+              u.mm,
+            )}
+            {num('safeZ', f.safeZ, profile.safeZ, (p, v) => void (p.safeZ = v), u.mm)}
+            {num(
+              'table.width',
+              f.tableWidth,
+              profile.table.width,
+              (p, v) => void (p.table.width = v),
+              u.mm,
+            )}
+            {num(
+              'table.depth',
+              f.tableDepth,
+              profile.table.depth,
+              (p, v) => void (p.table.depth = v),
+              u.mm,
+            )}
+            {num(
+              'rapidFeed',
+              f.rapidFeed,
+              profile.rapidFeed ?? TOOLPATH_DEFAULTS.rapidFeed,
+              (p, v) => void (p.rapidFeed = v),
+              u.feed,
+              f.rapidFeedHelp,
+            )}
+          </Section>
+
+          <Section id="origin" title={s.origin} hint={h.origin}>
+            <CornerPicker
+              id={fieldId('origin.corner')}
+              label={f.corner}
+              hint={t.form.corner.hint}
+              front={t.form.corner.front}
+              back={t.form.corner.back}
+              value={profile.origin.corner}
+              options={o.corner}
+              onChange={(v) => update((p) => void (p.origin.corner = v))}
+            />
+            <SelectField
+              path="origin.xPositive"
+              label={f.xPositive}
+              value={profile.origin.xPositive}
+              options={o.xPositive}
+              error={e('origin.xPositive')}
+              onChange={(v) => update((p) => void (p.origin.xPositive = v))}
+            />
+            <SelectField
+              path="origin.yPositive"
+              label={f.yPositive}
+              value={profile.origin.yPositive}
+              options={o.yPositive}
+              error={e('origin.yPositive')}
+              onChange={(v) => update((p) => void (p.origin.yPositive = v))}
+            />
+            {num(
+              'origin.sheetOffset.x',
+              f.sheetOffsetX,
+              profile.origin.sheetOffset.x,
+              (p, v) => void (p.origin.sheetOffset.x = v),
+              u.mm,
+            )}
+            {num(
+              'origin.sheetOffset.y',
+              f.sheetOffsetY,
+              profile.origin.sheetOffset.y,
+              (p, v) => void (p.origin.sheetOffset.y = v),
+              u.mm,
+            )}
+          </Section>
+
+          <Section id="zZero" title={s.zZero} hint={h.zZero}>
+            <SelectField
+              path="zZero.reference"
+              label={f.zReference}
+              value={profile.zZero.reference}
+              options={o.zReference}
+              error={e('zZero.reference')}
+              onChange={(v) => update((p) => void (p.zZero.reference = v))}
+            />
+            {num(
+              'zZero.spoilboardAllowance',
+              f.spoilboard,
+              profile.zZero.spoilboardAllowance,
+              (p, v) => void (p.zZero.spoilboardAllowance = v),
+              u.mm,
+              f.spoilboardHelp,
+            )}
+          </Section>
+
+          <Section id="spindle" title={s.spindle} hint={h.spindle}>
+            {num(
+              'spindle.powerKw',
+              f.powerKw,
+              profile.spindle.powerKw,
+              (p, v) => void (p.spindle.powerKw = v),
+              u.kw,
+            )}
+            {num(
+              'spindle.warmupSeconds',
+              f.warmup,
+              profile.spindle.warmupSeconds,
+              (p, v) => void (p.spindle.warmupSeconds = v),
+              u.s,
+            )}
+            {num(
+              'spindle.minRpm',
+              f.minRpm,
+              profile.spindle.minRpm,
+              (p, v) => void (p.spindle.minRpm = v),
+              u.rpm,
+            )}
+            {num(
+              'spindle.maxRpm',
+              f.maxRpm,
+              profile.spindle.maxRpm,
+              (p, v) => void (p.spindle.maxRpm = v),
+              u.rpm,
+            )}
+          </Section>
+
+          <Section id="toolChanger" title={s.toolChanger} hint={h.toolChanger}>
+            <SelectField
+              path="toolChanger.type"
+              label={f.changerType}
+              value={profile.toolChanger.type}
+              options={o.changerType}
+              error={e('toolChanger.type')}
+              onChange={(v) => update((p) => void (p.toolChanger.type = v))}
+            />
+            {num(
+              'toolChanger.capacity',
+              f.capacity,
+              profile.toolChanger.capacity,
+              (p, v) => void (p.toolChanger.capacity = v),
+            )}
+            <div className="sm:col-span-2">
+              <CheckField
+                path="toolChanger.lengthCompensation"
+                label={f.g43}
+                checked={profile.toolChanger.lengthCompensation}
+                onChange={(v) => update((p) => void (p.toolChanger.lengthCompensation = v))}
+              />
+            </div>
+          </Section>
+
+          <Section id="holdDown" title={s.holdDown} hint={h.holdDown}>
+            <SelectField
+              path="holdDown.type"
+              label={f.holdDownType}
+              value={profile.holdDown.type}
+              options={o.holdDownType}
+              error={e('holdDown.type')}
+              onChange={(v) => update((p) => void (p.holdDown.type = v))}
+            />
+            <div className="hidden sm:block" />
+            <TextField
+              path="holdDown.vacuumOn"
+              label={f.vacuumOn}
+              help={f.mCodeHelp}
+              value={profile.holdDown.vacuumOn}
+              error={e('holdDown.vacuumOn')}
+              onChange={(v) => update((p) => void (p.holdDown.vacuumOn = v))}
+            />
+            <TextField
+              path="holdDown.vacuumOff"
+              label={f.vacuumOff}
+              help={f.mCodeHelp}
+              value={profile.holdDown.vacuumOff}
+              error={e('holdDown.vacuumOff')}
+              onChange={(v) => update((p) => void (p.holdDown.vacuumOff = v))}
+            />
+          </Section>
+
+          <Section id="post" title={s.post} hint={h.post}>
+            <SelectField
+              path="post.id"
+              label={f.postId}
+              help={f.postHelp}
+              value={profile.post.id}
+              options={postOptions}
+              error={e('post.id') ?? e('post.version')}
+              onChange={(v) =>
+                update((p) => {
+                  const known = KNOWN_POSTS.find((k) => k.id === v);
+                  if (known) p.post = { id: known.id, version: known.version };
+                })
+              }
+            />
+          </Section>
+
+          <Section id="constraints" title={s.constraints} hint={h.constraints}>
+            {num(
+              'constraints.maxFileNameLength',
+              f.maxFileName,
+              profile.constraints.maxFileNameLength,
+              (p, v) => void (p.constraints.maxFileNameLength = v),
+              u.chars,
+            )}
+            {num(
+              'constraints.maxFileSizeMb',
+              f.maxFileSize,
+              profile.constraints.maxFileSizeMb,
+              (p, v) => void (p.constraints.maxFileSizeMb = v),
+              u.mb,
+            )}
+            <div className="flex flex-col gap-1 sm:col-span-2">
+              <CheckField
+                path="constraints.arcs"
+                label={f.arcs}
+                checked={profile.constraints.arcs}
+                onChange={(v) => update((p) => void (p.constraints.arcs = v))}
+              />
+              <CheckField
+                path="constraints.lineNumbers"
+                label={f.lineNumbers}
+                checked={profile.constraints.lineNumbers}
+                onChange={(v) => update((p) => void (p.constraints.lineNumbers = v))}
+              />
+              <CheckField
+                path="constraints.drillCycles"
+                label={f.drillCycles}
+                checked={profile.constraints.drillCycles}
+                onChange={(v) => update((p) => void (p.constraints.drillCycles = v))}
+              />
+            </div>
+          </Section>
+
+          <Section id="tools" title={s.tools} hint={h.tools} wide>
+            <RowTable
+              headers={[f.toolNumber, f.toolType, f.toolDiameter, f.fluteLength, f.flutes]}
+              addLabel={t.form.add}
+              removeLabel={t.form.remove}
+              error={e('tools')}
+              keys={toolRows.keys}
+              testId="tools-table"
+              onAdd={() => {
+                toolRows.add();
+                update((p) => {
+                  const number = Math.min(99, Math.max(0, ...p.tools.map((x) => x.number)) + 1);
+                  p.tools.push({
+                    number,
+                    type: 'flatEndMill',
+                    diameter: 6,
+                    fluteLength: 22,
+                    flutes: 2,
+                  });
+                });
+              }}
+              onRemove={(i) => {
+                toolRows.remove(i);
+                update((p) => void p.tools.splice(i, 1));
+              }}
+              renderRow={(i) => {
+                const tool = profile.tools[i] as Tool;
+                const path = (k: keyof Tool) => `tools[${i}].${k}`;
+                const set = (fn: (x: Tool) => void) => update((p) => fn(p.tools[i] as Tool));
+                const cell = (
+                  k: 'number' | 'diameter' | 'fluteLength' | 'flutes',
+                  label: string,
+                  unit?: string,
+                ) => (
+                  <NumberField
+                    key={k}
+                    compact
+                    path={path(k)}
+                    label={label}
+                    unit={unit}
+                    value={tool[k]}
+                    error={e(path(k))}
+                    onParseError={onParseError}
+                    onChange={(v) => set((x) => void (x[k] = v))}
+                  />
+                );
+                return [
+                  cell('number', f.toolNumber),
+                  <SelectField
+                    key="t"
+                    compact
+                    path={path('type')}
+                    label={f.toolType}
+                    value={tool.type}
+                    options={o.toolType}
+                    error={e(path('type'))}
+                    onChange={(v) => set((x) => void (x.type = v))}
+                  />,
+                  cell('diameter', f.toolDiameter, u.mm),
+                  cell('fluteLength', f.fluteLength, u.mm),
+                  cell('flutes', f.flutes),
+                ];
+              }}
+            />
+          </Section>
+
+          <Section id="materials" title={s.materials} hint={h.materials} wide>
+            <RowTable
+              headers={[
+                f.material,
+                f.thickness,
+                f.feed,
+                f.plungeFeed,
+                f.rpm,
+                f.stepDown,
+                f.materialTool,
+              ]}
+              addLabel={t.form.add}
+              removeLabel={t.form.remove}
+              error={e('materials')}
+              keys={materialRows.keys}
+              testId="materials-table"
+              onAdd={() => {
+                materialRows.add();
+                update(
+                  (p) =>
+                    void p.materials.push({
+                      material: 'mdf',
+                      thickness: 18,
+                      feed: 5000,
+                      plungeFeed: 1500,
+                      rpm: Math.min(Math.max(18000, p.spindle.minRpm), p.spindle.maxRpm),
+                      stepDown: 6,
+                      tool: p.tools[0]?.number ?? 1,
+                    }),
+                );
+              }}
+              onRemove={(i) => {
+                materialRows.remove(i);
+                update((p) => void p.materials.splice(i, 1));
+              }}
+              renderRow={(i) => {
+                const m = profile.materials[i] as MaterialParams;
+                const path = (k: keyof MaterialParams) => `materials[${i}].${k}`;
+                const set = (fn: (x: MaterialParams) => void) =>
+                  update((p) => fn(p.materials[i] as MaterialParams));
+                const cell = (
+                  k: 'thickness' | 'feed' | 'plungeFeed' | 'rpm' | 'stepDown' | 'tool',
+                  label: string,
+                  unit?: string,
+                ) => (
+                  <NumberField
+                    key={k}
+                    compact
+                    path={path(k)}
+                    label={label}
+                    unit={unit}
+                    value={m[k]}
+                    error={e(path(k))}
+                    onParseError={onParseError}
+                    onChange={(v) => set((x) => void (x[k] = v))}
+                  />
+                );
+                return [
+                  <SelectField
+                    key="m"
+                    compact
+                    path={path('material')}
+                    label={f.material}
+                    value={m.material}
+                    options={o.material}
+                    error={e(path('material'))}
+                    onChange={(v) => set((x) => void (x.material = v))}
+                  />,
+                  cell('thickness', f.thickness, u.mm),
+                  cell('feed', f.feed, u.feed),
+                  cell('plungeFeed', f.plungeFeed, u.feed),
+                  cell('rpm', f.rpm, u.rpm),
+                  cell('stepDown', f.stepDown, u.mm),
+                  cell('tool', f.materialTool),
+                ];
+              }}
+            />
+          </Section>
         </div>
       </div>
+
+      {/* Sticky save bar: unsaved-changes state, errors and the actions, always in reach. */}
+      <div
+        data-testid="machine-save-bar"
+        className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-surface/95 px-4 py-3 shadow-sm backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div aria-live="polite" className="flex min-w-0 items-center gap-2 text-sm">
+            {saveError ? (
+              <span className="font-medium text-danger-text">{t.form.saveError}</span>
+            ) : hasErrors ? (
+              <span className="flex items-center gap-1.5 font-medium text-danger-text">
+                <CircleAlert aria-hidden className="size-4" />
+                {t.form.hasErrors}
+              </span>
+            ) : saving ? (
+              <span className="text-fg-muted">{t.form.saving}</span>
+            ) : dirty ? (
+              <span data-testid="machine-dirty" className="flex items-center gap-2 text-fg-muted">
+                <span aria-hidden className="size-2 rounded-full bg-warning" />
+                {t.form.status.dirty}
+              </span>
+            ) : (
+              <span className="text-fg-muted">{t.form.status.clean}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="ghost" onClick={cancel}>
+              {t.form.cancel}
+            </Button>
+            <Button type="submit" loading={saving}>
+              {saving ? t.form.saving : t.form.save}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <AlertDialog open={leaving !== null} onOpenChange={(open) => !open && setLeaving(null)}>
+        <AlertDialogContent data-testid="machine-leave-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.form.leave.title}</AlertDialogTitle>
+            <AlertDialogDescription>{t.form.leave.text}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.form.leave.stay}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmLeave}>
+              {t.form.leave.discard}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }
 
 function RowTable(props: {
-  title: string;
   headers: string[];
   addLabel: string;
   removeLabel: string;
   error: string | undefined;
   keys: number[];
+  testId: string;
   onAdd: () => void;
   onRemove: (index: number) => void;
   renderRow: (index: number) => ReactNode[];
 }) {
-  const { title, headers, addLabel, removeLabel, error, keys, onAdd, onRemove, renderRow } = props;
+  const { headers, addLabel, removeLabel, error, keys, testId, onAdd, onRemove, renderRow } = props;
   return (
-    <fieldset className="min-w-0 rounded-card border border-border p-4">
-      <legend className="px-1 text-base font-semibold text-fg">{title}</legend>
-      <div className="relative max-w-full overflow-x-auto">
-        <table className="w-full border-separate border-spacing-x-2 border-spacing-y-1 text-sm">
-          <thead>
+    <div className="flex flex-col gap-3">
+      <div className="relative max-w-full overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-sm" data-testid={testId}>
+          <thead className="bg-surface-subtle">
             <tr>
               {headers.map((h) => (
-                <th key={h} scope="col" className="text-left font-medium text-fg-muted">
+                <th
+                  key={h}
+                  scope="col"
+                  className="px-3 py-2 text-left text-xs font-medium whitespace-nowrap text-fg-muted"
+                >
                   {h}
                 </th>
               ))}
-              <th scope="col" className="sr-only">
-                {removeLabel}
+              <th scope="col" className="w-12 px-3 py-2">
+                <span className="sr-only">{removeLabel}</span>
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border-subtle">
             {keys.map((key, i) => (
               <tr key={key} className="align-top">
                 {renderRow(i).map((cell, c) => (
-                  <td key={c}>{cell}</td>
+                  <td key={c} className="px-3 py-2">
+                    {cell}
+                  </td>
                 ))}
-                <td>
-                  <button
+                <td className="px-2 py-2 text-right">
+                  <IconButton
                     type="button"
+                    size="sm"
+                    aria-label={`${removeLabel} (${i + 1})`}
                     onClick={() => onRemove(i)}
-                    className={`${buttonClass} text-danger hover:bg-danger-bg`}
+                    className="hover:text-danger-text"
                   >
-                    {removeLabel}
-                  </button>
+                    <Trash2 aria-hidden />
+                  </IconButton>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {error ? <p className="mt-2 text-xs font-medium text-danger">{error}</p> : null}
-      <button
-        type="button"
-        onClick={onAdd}
-        className={`${buttonClass} mt-2 border border-border bg-bg text-fg hover:bg-sidebar`}
-      >
-        {addLabel}
-      </button>
-    </fieldset>
+      {error ? <p className="text-xs font-medium text-danger-text">{error}</p> : null}
+      <div>
+        <Button type="button" variant="outline" size="sm" onClick={onAdd}>
+          <Plus aria-hidden />
+          {addLabel}
+        </Button>
+      </div>
+    </div>
   );
 }

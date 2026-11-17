@@ -30,6 +30,20 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoA11yViolations(page);
         await snap(page, `t106-home-empty-${vp}-${theme}`);
       });
+
+      test('machines: list and profile form (T107)', async ({ page }) => {
+        await page.goto('/makineler');
+        await expect(page.getByTestId('machine-list')).toBeVisible();
+        await expectNoA11yViolations(page);
+        await snap(page, `t107-machines-${vp}-${theme}`);
+        await page
+          .getByRole('button', { name: new RegExp(`^${tr.machines.edit}:`) })
+          .first()
+          .click();
+        await expect(page.getByTestId('machine-form')).toBeVisible();
+        await expectNoA11yViolations(page);
+        await snap(page, `t107-form-${vp}-${theme}`, { fullPage: false });
+      });
     });
   }
 }

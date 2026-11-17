@@ -24,7 +24,7 @@ test.describe('T010 Makineler', () => {
     // Seeded example profile (D-016).
     const seeded = row(page, 'Örnek router (Mach3)');
     await expect(seeded).toBeVisible();
-    await expect(seeded.getByText(t.example)).toBeVisible();
+    await expect(seeded.getByText(t.example, { exact: true })).toBeVisible();
     await expect(seeded.getByTestId('machine-state')).toHaveText(t.state.draft);
     await expect(seeded).toContainText('3.050 × 2.150 mm');
 
@@ -79,7 +79,9 @@ test.describe('T010 Makineler', () => {
     // Fixing the fields clears the messages; cancel returns to the list without saving.
     await page.getByLabel(f.envelopeX).fill('2500');
     await expect(page.getByText(t.errors.number)).toHaveCount(0);
+    // The form has unsaved changes: cancel asks first (T107 leave guard).
     await page.getByRole('button', { name: t.form.cancel }).click();
+    await page.getByRole('button', { name: t.form.leave.discard }).click();
     await expect(page.getByRole('button', { name: t.add })).toBeVisible();
   });
 });
