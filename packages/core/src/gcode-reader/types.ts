@@ -139,8 +139,9 @@ export type GcodeIssueCode =
   | 'ARC_INVALID'
   | 'ARC_RADIUS_MISMATCH'
   | 'ARC_FROM_UNKNOWN_POSITION'
-  // warnings
+  /** Error in strict mode (default), warning with `strict: false`. */
   | 'UNKNOWN_WORD'
+  // warnings
   | 'IGNORED_WORD'
   | 'INCH_UNITS'
   | 'BLOCK_DELETE'
@@ -172,8 +173,15 @@ export interface GcodeReadOptions {
   blockDelete?: 'skip' | 'execute';
   /** Assumed position before the program sets an axis. Default 0, 0, 0 (flagged in `assumedAxes`). */
   initialPosition?: GcodePoint;
-  /** M codes that are reported as `mcode` events instead of `UNKNOWN_WORD` warnings. */
+  /** M codes reported as `mcode` events instead of `UNKNOWN_WORD` (error in strict mode). */
   extraMCodes?: readonly number[];
+  /**
+   * Strict mode (default true): any G or M code the reader does not model and any letter it does
+   * not understand (A, B, C, E, U, V, W, …) is an `UNKNOWN_WORD` **error** and the line is not
+   * run. `false` downgrades them to warnings and ignores the word, for reading foreign sample
+   * files (for example the owner's Mach3 programs at field test). Never use `false` for export.
+   */
+  strict?: boolean;
   /** Record `lines` (one state snapshot per line). Default true. */
   snapshots?: boolean;
 }

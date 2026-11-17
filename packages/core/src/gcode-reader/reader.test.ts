@@ -400,7 +400,8 @@ describe('modal state', () => {
     expect(r.events[5]).toMatchObject({ optional: true });
     expect(r.events[6]).toMatchObject({ code: 10 });
     expect(r.events[7]).toMatchObject({ code: 'M2' });
-    expect(codes(r, 'warnings')).toEqual(['UNKNOWN_WORD']);
+    // M11 is not listed in extraMCodes: an error in strict mode (the default).
+    expect(r.errors).toMatchObject([{ code: 'UNKNOWN_WORD', line: 8, severity: 'error' }]);
   });
 
   it('M6 without a T warns; tool is null on later moves', () => {
@@ -501,11 +502,55 @@ describe('errors and warnings', () => {
     },
   );
 
-  it('unknown words warn and are ignored', () => {
-    const r = readGcode('G21 G90 G64 G80 G94\nG0 X1 Y1 Z1 A30\nG61.1\nM30 E5\n');
+  it('modelled no-op codes (G40 G49 G61 G64 G80 G94) and O are accepted in strict mode', () => {
+    // G61 and G64 share a modal group, so they go on separate lines.
+    const r = readGcode('O100\nG21 G90 G40 G49 G61 G80 G94\nG64\nG0 Z1\nM30\n');
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it.each([
+    'G0 X1 Y1 Z1 A30',
+    'G0 X1 B5',
+    'G0 X1 C5',
+    'G1 X1 E5 F100',
+    'G0 U1',
+    'G0 V1',
+    'G0 W1',
+    'G0 X1 Q2',
+    'G0 X1 L2',
+    'G0 X1 H2',
+    'G61.1',
+    'G7',
+    'M10',
+    'M50',
+  ])('strict (default): %s → UNKNOWN_WORD error, line not run', (line) => {
+    const r = readGcode(`G21 G90\nG0 X0 Y0 Z0\n${line}\nM30\n`);
+    expect(r.ok).toBe(false);
+    expect(r.errors).toMatchObject([{ code: 'UNKNOWN_WORD', severity: 'error', line: 3 }]);
+    expect(r.lines[2]!.skipped).toBe(true);
+    expect(r.moves).toHaveLength(1);
+  });
+
+  it('strict: false downgrades unknown words to warnings and ignores only the word', () => {
+    const text = 'G21 G90 G64 G80 G94\nG0 X1 Y1 Z1 A30\nG61.1\nM10\nM30 E5\n';
+    const r = readGcode(text, { strict: false });
     expect(r.ok).toBe(true);
-    expect(codes(r, 'warnings')).toEqual(['UNKNOWN_WORD', 'UNKNOWN_WORD', 'UNKNOWN_WORD']);
+    expect(r.warnings).toMatchObject([
+      { code: 'UNKNOWN_WORD', severity: 'warning', line: 2 },
+      { code: 'UNKNOWN_WORD', severity: 'warning', line: 3 },
+      { code: 'UNKNOWN_WORD', severity: 'warning', line: 4 },
+      { code: 'UNKNOWN_WORD', severity: 'warning', line: 5 },
+    ]);
     expect(r.moves[0]!.to).toEqual({ x: 1, y: 1, z: 1 });
+    expect(r.finalState.ended).toBe(true);
+    // The same text in strict mode: four errors.
+    expect(codes(readGcode(text))).toEqual(Array(4).fill('UNKNOWN_WORD'));
+  });
+
+  it('strict: false does not relax the other errors (unsupported codes, plane, exponents)', () => {
+    const r = readGcode('G21 G90\nG28\nG18\nG0 X1e2\nM30\n', { strict: false });
+    expect(codes(r)).toEqual(['UNSUPPORTED_CODE', 'UNSUPPORTED_PLANE', 'EXPONENT_NUMBER']);
   });
 
   it('ignored words: K, P outside G4, I/J on G1, N not first', () => {
@@ -530,14 +575,11 @@ describe('errors and warnings', () => {
       initialPosition: { x: Number.POSITIVE_INFINITY, y: 0, z: 0 },
       extraMCodes: [1.5],
       // @ts-expect-error -- deliberately invalid
+      strict: 'no',
+      // @ts-expect-error -- deliberately invalid
       dwellUnit: 'min',
     });
-    expect(codes(r)).toEqual([
-      'INVALID_OPTION',
-      'INVALID_OPTION',
-      'INVALID_OPTION',
-      'INVALID_OPTION',
-    ]);
+    expect(codes(r)).toEqual(Array(5).fill('INVALID_OPTION'));
   });
 
   it('snapshots can be turned off', () => {

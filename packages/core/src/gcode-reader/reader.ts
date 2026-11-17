@@ -200,10 +200,15 @@ const ERROR_CODES = new Set<GcodeIssueCode>([
   'ARC_INVALID',
   'ARC_RADIUS_MISMATCH',
   'ARC_FROM_UNKNOWN_POSITION',
+  'UNKNOWN_WORD',
 ]);
 
-/** Severity of an issue code (errors make `ok` false). */
-export function gcodeIssueSeverity(code: GcodeIssueCode): 'error' | 'warning' {
+/**
+ * Severity of an issue code (errors make `ok` false). `UNKNOWN_WORD` is an error in strict mode
+ * (the default) and a warning with `strict: false`.
+ */
+export function gcodeIssueSeverity(code: GcodeIssueCode, strict = true): 'error' | 'warning' {
+  if (code === 'UNKNOWN_WORD' && !strict) return 'warning';
   return ERROR_CODES.has(code) ? 'error' : 'warning';
 }
 
@@ -215,8 +220,13 @@ function finitePoint(p: GcodePoint | undefined): boolean {
 export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeReadResult {
   const errors: GcodeIssue[] = [];
   const warnings: GcodeIssue[] = [];
+  function issue0(message: string): void {
+    errors.push({ code: 'INVALID_OPTION', severity: 'error', line: 0, message });
+  }
+  const strict = options.strict ?? true;
+  if (typeof strict !== 'boolean') issue0('strict must be a boolean');
   const issue = (code: GcodeIssueCode, line: number, message: string): void => {
-    const severity = gcodeIssueSeverity(code);
+    const severity = gcodeIssueSeverity(code, strict !== false);
     (severity === 'error' ? errors : warnings).push({ code, severity, line, message });
   };
 
@@ -340,6 +350,12 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
       issue(code, lineNo, message);
       bad = true;
     };
+    // Strict (default): a word the reader does not model is an error and the line is not run.
+    const unknown = (what: string): void => {
+      if (strict !== false)
+        fail('UNKNOWN_WORD', `${what} is not modelled by the reader (strict mode)`);
+      else issue('UNKNOWN_WORD', lineNo, `${what} ignored (strict: false)`);
+    };
     const gGroups = new Map<string, number>();
     const mGroups = new Map<string, number>();
 
@@ -361,7 +377,7 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
         }
         const group = G_GROUP[key];
         if (group === undefined) {
-          issue('UNKNOWN_WORD', lineNo, `Unknown G code ${w.raw} ignored`);
+          unknown(`Unknown G code ${w.raw}`);
           return;
         }
         const prev = gGroups.get(group);
@@ -386,7 +402,7 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
         }
         const group = M_GROUP[code] ?? (extraM.has(code) ? `extra${code}` : undefined);
         if (group === undefined) {
-          issue('UNKNOWN_WORD', lineNo, `Unknown M code ${w.raw} ignored`);
+          unknown(`Unknown M code ${w.raw}`);
           return;
         }
         const prev = mGroups.get(group);
@@ -399,7 +415,7 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
         return;
       }
       if (!VALUE_LETTERS.has(w.letter)) {
-        issue('UNKNOWN_WORD', lineNo, `Unknown word ${w.raw} ignored`);
+        unknown(`Unknown word ${w.raw}`);
         return;
       }
       if (w.letter === 'N' && wi !== 0) {
