@@ -66,8 +66,8 @@ test.describe('B3 sidebar spans the full height when the page scrolls', () => {
         await page.waitForTimeout(200);
         const probe = await page.evaluate(() => {
           const sb = document
-            .querySelector('[data-testid="shell-sidebar"]') as Element
-            .getBoundingClientRect();
+            .querySelector('[data-testid="shell-sidebar"]')
+            ?.getBoundingClientRect() ?? { top: 1, bottom: 0 };
           // pixel just below the sidebar's first viewport: what element is at the sidebar's x, bottom of viewport
           const el = document.elementFromPoint(40, window.innerHeight - 4);
           return {
