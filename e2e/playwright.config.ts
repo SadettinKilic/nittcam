@@ -19,12 +19,34 @@ export default defineConfig({
     locale: 'tr-TR',
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Visual baselines (T102, D-032): compared only on Linux (CI) because font rendering differs
+  // on Windows/macOS. Missing baselines are written on the CI run and uploaded as an artefact;
+  // the PO commits them to e2e/visual-baselines/ to lock them in.
+  snapshotPathTemplate: '{testDir}/../visual-baselines/{arg}{ext}',
+  updateSnapshots: 'missing',
+  expect: {
+    toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css', maxDiffPixels: 0 },
+  },
+  projects: [
+    {
+      name: 'chromium',
+      testIgnore: ['visual/**'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      // pnpm e2e:visual: /dev/ui (and later every screen) at 1440 and 390 px, light and dark,
+      // screenshots + axe. Reduced motion keeps captures deterministic.
+      name: 'visual',
+      testMatch: ['visual/**/*.spec.ts'],
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'reduce' },
+    },
+  ],
   webServer: {
     command: `pnpm --filter @nittcam/web start --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    env: { PGLITE_DIR },
+    // NITTCAM_UI_GALLERY: the dev-only /dev/ui gallery is served by the production build here.
+    env: { PGLITE_DIR, NITTCAM_UI_GALLERY: '1' },
   },
 });
