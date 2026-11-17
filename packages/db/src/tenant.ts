@@ -250,6 +250,10 @@ export interface NewProject {
   status?: ProjectRow['status'];
   /** Raw project JSON; validated (and migrated) with core `parseProject`. */
   data: unknown;
+  /** Commands that produced `data` from an empty draft; stored under revision 1 (D-029). */
+  commands?: readonly CommandLogEntry[];
+  /** User who created it (same company); stored on the command rows. */
+  userId?: string;
 }
 
 export interface SaveProject {
@@ -268,6 +272,29 @@ function projectsRepo(db: Db, companyId: string) {
   const base = reader(db, companyId, projectsTable);
   const scope = (id: string) =>
     and(eq(projectsTable.id, id), eq(projectsTable.companyId, companyId));
+  /** Appends the command log rows of one save (`seq` = order within the save). */
+  async function insertCommands(
+    tx: Pick<Db, 'insert'>,
+    projectId: string,
+    revision: number,
+    commands: readonly CommandLogEntry[],
+    userId: string | undefined,
+  ): Promise<void> {
+    if (commands.length === 0) return;
+    await tx.insert(projectCommands).values(
+      commands.map((c, seq) => ({
+        companyId,
+        projectId,
+        revision,
+        seq,
+        command: c.command,
+        params: c.params,
+        actor: c.actor,
+        at: new Date(c.at),
+        userId: userId ?? null,
+      })),
+    );
+  }
   return {
     ...base,
     async list() {
@@ -279,17 +306,21 @@ function projectsRepo(db: Db, companyId: string) {
     },
     async create(values: NewProject): Promise<ProjectRow> {
       const data = validProject(values.data);
-      const rows = await db
-        .insert(projectsTable)
-        .values({
-          companyId,
-          name: values.name,
-          ...(values.status ? { status: values.status } : {}),
-          data,
-          revision: 1,
-        })
-        .returning();
-      return rows[0] as ProjectRow;
+      return db.transaction(async (tx) => {
+        const rows = await tx
+          .insert(projectsTable)
+          .values({
+            companyId,
+            name: values.name,
+            ...(values.status ? { status: values.status } : {}),
+            data,
+            revision: 1,
+          })
+          .returning();
+        const created = rows[0] as ProjectRow;
+        await insertCommands(tx, created.id, 1, values.commands ?? [], values.userId);
+        return created;
+      });
     },
     /**
      * Optimistic save: succeeds only if the stored revision equals `input.revision`, then
@@ -319,22 +350,7 @@ function projectsRepo(db: Db, companyId: string) {
           if (!found) throw new NotFound('project', id);
           throw new RevisionConflict(id, input.revision, found.revision);
         }
-        const commands = input.commands ?? [];
-        if (commands.length > 0) {
-          await tx.insert(projectCommands).values(
-            commands.map((c, seq) => ({
-              companyId,
-              projectId: id,
-              revision: saved.revision,
-              seq,
-              command: c.command,
-              params: c.params,
-              actor: c.actor,
-              at: new Date(c.at),
-              userId: input.userId ?? null,
-            })),
-          );
-        }
+        await insertCommands(tx, id, saved.revision, input.commands ?? [], input.userId);
         return saved;
       });
     },

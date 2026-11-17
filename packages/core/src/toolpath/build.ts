@@ -8,7 +8,7 @@ import { offset } from '../geometry/offset';
 import { bbox, contour, normalize, reverse, signedArea } from '../geometry/polyline';
 import { rotate, translate } from '../geometry/transform';
 import type { BBox, Point, Polyline } from '../geometry/types';
-import { findTool, type MachineProfile } from '../machine';
+import { findMaterialParams, findTool, type MachineProfile } from '../machine';
 import type { Part, Placement, Project } from '../schema';
 import { deriveOutline } from '../schema/outline';
 import { passDepths, throughCutTarget } from './depth';
@@ -494,11 +494,8 @@ export function buildToolpath(
   };
 
   // Cutting parameters: material parameter set of the stock, overridden by options.cutting.
-  const set = machine.materials.find(
-    (m) =>
-      m.material === project.stock.material &&
-      Math.abs(m.thickness - project.stock.thickness) <= EPS,
-  );
+  // The stock material id is mapped to the profile's material kinds (D-029).
+  const set = findMaterialParams(machine, project.stock);
   const o = options.cutting ?? {};
   const toolNo = o.tool ?? set?.tool;
   const feed = o.feed ?? set?.feed;

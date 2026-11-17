@@ -1,6 +1,7 @@
 import type { MachineWithProfile } from '@nittcam/db';
 import { InvalidMachineProfile, NotFound } from '@nittcam/db';
 import { NextResponse } from 'next/server';
+import { isRepoError } from './errors';
 import type { ApiError, MachineDetail, MachineListItem } from '../machines-api';
 
 export function toListItem(m: MachineWithProfile): MachineListItem {
@@ -37,10 +38,10 @@ export async function readProfile(request: Request): Promise<unknown> {
 
 /** Maps repository errors to HTTP responses. */
 export function handleError(err: unknown): NextResponse<ApiError> {
-  if (err instanceof InvalidMachineProfile) {
+  if (isRepoError(err, InvalidMachineProfile, 'InvalidMachineProfile')) {
     return apiError({ error: 'invalid_profile', issues: err.issues }, 400);
   }
-  if (err instanceof NotFound) return apiError({ error: 'not_found' }, 404);
+  if (isRepoError(err, NotFound, 'NotFound')) return apiError({ error: 'not_found' }, 404);
   console.error(err);
   return apiError({ error: 'server_error' }, 500);
 }

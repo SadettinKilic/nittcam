@@ -160,6 +160,7 @@ describe('T005 tester: AI tool definitions', () => {
         'removePart',
         'setMachine',
         'setMaterial',
+        'setGrain',
         'setSheetSize',
         'setThickness',
         'updatePart',

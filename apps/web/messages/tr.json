@@ -4,9 +4,17 @@
     "description": "CNC router için web tabanlı kesim programı"
   },
   "home": {
-    "title": "NittCam",
-    "subtitle": "Kesim listesinden G-code'a, tek ekranda.",
-    "status": "Kurulum aşamasında. Yakında burada projelerinizi göreceksiniz."
+    "title": "Ana sayfa",
+    "subtitle": "Son projeleriniz ve doğrulama bekleyen makineler.",
+    "newProject": "+ Yeni proje",
+    "recent": "Son projeler",
+    "recentEmpty": "Henüz proje yok. “+ Yeni proje” ile ilkini oluşturun.",
+    "allProjects": "Tüm projeler →",
+    "machines": "Doğrulama bekleyen makineler",
+    "machinesEmpty": "Bütün makineler doğrulanmış.",
+    "allMachines": "Makineler →",
+    "example": "örnek profil",
+    "error": "Veriler yüklenemedi. Sayfayı yenileyin."
   },
   "nav": {
     "label": "Ana menü",
@@ -341,7 +349,7 @@
       "run": "Diz",
       "running": "Diziliyor…",
       "help": "Parçaları plakalara yerleştirir (en az fire). Parça arası boşluk {gap} mm, kenar payı {margin} mm, takım çapı {tool} mm.",
-      "toolNote": "Takım çapı örnek makine profilinden gelir; proje sihirbazında seçilen makine kullanılacak.",
+      "toolNote": "Takım çapı, seçilen makinenin bu malzeme ve kalınlık için önerdiği takımdan gelir.",
       "none": "Henüz dizilim yok. \"Diz\" ile başlatın.",
       "sheets": "Plaka sayısı",
       "waste": "Toplam fire",
@@ -563,7 +571,7 @@
       "checksOk": "Tüm kontroller geçti",
       "checksFail": "{count} kontrol geçmedi",
       "warnings": "{count} uyarı",
-      "noDownloadHere": "İndirme, kontrol listesiyle birlikte Export adımında yapılır."
+      "noDownloadHere": "İndirme, kontrol listesiyle birlikte Dışa aktar adımında yapılır."
     },
     "time": {
       "hours": "{h} sa {m} dk",
@@ -630,6 +638,200 @@
       "depthTop": "0 mm (malzeme üstü)",
       "depthBottom": "{z} mm (son derinlik)",
       "tabMarker": "Köprü (tab): sarı bant ve nokta"
+    }
+  },
+  "projects": {
+    "title": "Projeler",
+    "subtitle": "Kayıtlı projeleriniz. Bir projeyi açıp kaldığınız yerden devam edin.",
+    "newProject": "+ Yeni proje",
+    "search": "Projelerde ara",
+    "searchPlaceholder": "Ad, makine veya malzeme",
+    "loading": "Projeler yükleniyor…",
+    "error": "Projeler yüklenemedi.",
+    "retry": "Tekrar dene",
+    "empty": "Henüz proje yok.",
+    "emptyAction": "İlk projeyi oluştur",
+    "noMatch": "“{q}” ile eşleşen proje yok.",
+    "count": "{count} proje",
+    "columns": {
+      "name": "Ad",
+      "status": "Durum",
+      "machine": "Makine",
+      "material": "Malzeme",
+      "updated": "Güncellendi",
+      "actions": "İşlem"
+    },
+    "status": {
+      "draft": "Taslak",
+      "produced": "Üretildi",
+      "completed": "Tamamlandı"
+    },
+    "open": "Aç",
+    "copy": "Kopyala",
+    "copying": "Kopyalanıyor…",
+    "copyName": "{name} (kopya)",
+    "copied": "“{name}” oluşturuldu.",
+    "copyFailed": "Proje kopyalanamadı. Tekrar deneyin.",
+    "noMachine": "Makine seçilmedi",
+    "material": "{material} · {thickness} mm",
+    "pieces": "{count} parça",
+    "rowAction": "{action}: {name}"
+  },
+  "materials": {
+    "mdf": "MDF",
+    "plywood": "Kontrplak",
+    "melamine": "Melamin kaplı sunta",
+    "solidWood": "Masif ahşap",
+    "acrylic": "Akrilik",
+    "pvc": "PVC",
+    "groupWood": "Ahşap",
+    "groupPlastic": "Plastik",
+    "stone": "Mermer / taş (yakında)",
+    "unknown": "{id} (tanınmayan malzeme)"
+  },
+  "wizard": {
+    "titleNew": "Yeni proje",
+    "nameLabel": "Proje adı",
+    "defaultName": "Proje {date}",
+    "loading": "Proje yükleniyor…",
+    "loadError": "Proje yüklenemedi.",
+    "notFound": "Proje bulunamadı.",
+    "backToList": "Projelere dön",
+    "retry": "Tekrar dene",
+    "machinesError": "Makineler yüklenemedi.",
+    "noMachines": "Kayıtlı makine yok. Proje için önce bir makine ekleyin.",
+    "machinesLink": "Makineler sayfası",
+    "steps": {
+      "label": "Sihirbaz adımları",
+      "makine": "Makine ve plaka",
+      "parcalar": "Parçalar",
+      "dizilim": "Dizilim",
+      "simulasyon": "Önizleme / simülasyon",
+      "export": "Dışa aktar",
+      "stepOf": "Adım {n} / {total}"
+    },
+    "back": "← Geri",
+    "next": "İleri →",
+    "save": {
+      "label": "Kayıt durumu",
+      "new": "Henüz kaydedilmedi",
+      "saved": "Kaydedildi",
+      "saving": "Kaydediliyor…",
+      "error": "Kaydedilemedi",
+      "retrying": "Kaydedilemedi, yeniden denenecek",
+      "revision": "revizyon {n}"
+    },
+    "conflict": {
+      "title": "Proje başka bir yerde değişti",
+      "body": "Bu proje başka bir sekmede ya da cihazda kaydedildi. Buradaki son değişiklikleriniz kaydedilmedi.",
+      "reload": "Sunucudaki son hali yükle",
+      "keepCopy": "Benimkini kopya olarak sakla",
+      "copyName": "{name} (benim kopyam)",
+      "copying": "Kopya oluşturuluyor…",
+      "copyFailed": "Kopya oluşturulamadı. Tekrar deneyin."
+    },
+    "restored": "Kaydedilmemiş {count} değişiklik geri yüklendi.",
+    "machine": {
+      "title": "Makine ve plaka",
+      "help": "Makine; tabla ölçüsünü, takımları ve G-code biçimini belirler. Malzeme ve kalınlık kesim ayarlarını seçer.",
+      "machine": "Makine",
+      "option": "{name} · sürüm {version}",
+      "table": "Tabla {w} × {d} mm · post {post}",
+      "unverified": "Bu makine profili doğrulanmadı: G-code'un ilk satırı \"DOĞRULANMADI, önce air cut\" uyarısıdır.",
+      "profileNewer": "Makine profili güncellendi: proje sürüm {old} ile kaydedildi, son sürüm {latest}. Hesaplar son sürümle yapılır.",
+      "useLatest": "Son sürüme geç",
+      "unknownMachine": "Projenin makinesi bulunamadı. Listeden bir makine seçin.",
+      "choose": "Makine seçin",
+      "material": "Malzeme",
+      "thickness": "Kalınlık (mm)",
+      "thicknessHint": "Bu makinede kesim ayarı olan kalınlıklar: {list} mm",
+      "thicknessNone": "Bu makinede bu malzeme için kesim ayarı yok.",
+      "sheet": "Plaka ölçüsü",
+      "preset": "{a} × {b} mm",
+      "custom": "Özel ölçü",
+      "width": "En, X yönü (mm)",
+      "height": "Boy, Y yönü (mm)",
+      "grain": "Damar yönü",
+      "grain0": "0° (X boyunca)",
+      "grain90": "90° (Y boyunca)",
+      "grainNone": "Plastik malzemede damar yönü yoktur.",
+      "tableWarning": "Plaka tablaya sığmıyor: {w} × {h} mm plaka, {tw} × {td} mm tabla. Export kontrolü bu plakayı durdurur.",
+      "noParams": "Bu makinede {material} {thickness} mm için kesim ayarı (besleme, devir, paso) yok. Makineler sayfasında bu malzemeyi ekleyin ya da başka bir kalınlık seçin.",
+      "paramsOk": "Kesim ayarı: T{tool} takım, {feed} mm/dk besleme, {rpm} dev/dk, {step} mm paso.",
+      "preview": "Önizleme",
+      "previewLabel": "Tabla {tw} × {td} mm, üzerinde {w} × {h} mm plaka",
+      "legendTable": "Tabla",
+      "legendSheet": "Plaka",
+      "errors": {
+        "number": "Sayı girin (ör. 18).",
+        "positive": "Sıfırdan büyük olmalı.",
+        "rejected": "Bu değer kabul edilmedi."
+      }
+    },
+    "parts": {
+      "summary": "Özet",
+      "sheetLine": "Plaka: {material} {thickness} mm, {w} × {h} mm"
+    },
+    "layout": {
+      "options": "Dizilim ayarları",
+      "mode": "Mod",
+      "modes": {
+        "minWaste": "En az fire",
+        "fastest": "En hızlı",
+        "minToolChanges": "En az takım değişimi"
+      },
+      "modeNote": "Şimdilik üç mod da en az fireye göre diziyor; süre ve takım değişimi ölçüldükçe ayrışacak.",
+      "gap": "Parça arası boşluk (mm)",
+      "margin": "Kenar payı (mm)",
+      "offcuts": "Artık parça kullanımı (yakında)",
+      "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
+      "noParts": "Önce Parçalar adımında parça ekleyin."
+    },
+    "simulation": {
+      "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında “Diz” ile parçaları yerleştirin.",
+      "toLayout": "Dizilim adımına git",
+      "noMachine": "Simülasyon için önce Makine ve plaka adımında bir makine seçin."
+    },
+    "export": {
+      "title": "Dışa aktar",
+      "checks": "Kontrol durumu",
+      "checking": "Kontroller çalışıyor…",
+      "passed": "Tüm kontroller geçti",
+      "failed": "{count} kontrol geçmedi. Bu dosya indirilemez; ayrıntılar Önizleme / simülasyon adımında.",
+      "files": "{files} dosya · {sheets} plaka",
+      "noLayout": "Önce Dizilim adımında parçaları yerleştirin.",
+      "noMachine": "Önce bir makine seçin.",
+      "download": "NC dosyasını indir",
+      "pending": "İndirme T021'de: dosya sunucuda kayıtlı revizyondan yeniden üretilecek ve kontrol listesiyle indirilecek.",
+      "revision": "Kayıtlı revizyon: {n}",
+      "unsaved": "Son değişiklikler henüz kaydedilmedi.",
+      "failedRun": "Kontroller çalıştırılamadı: {error}"
+    },
+    "issues": {
+      "title": "Uyarılar",
+      "none": "Sorun bulunmadı.",
+      "errors": "Hata ({count})",
+      "warnings": "Uyarı ({count})",
+      "groups": {
+        "stock": "Makine ve plaka",
+        "parts": "Parçalar",
+        "layout": "Dizilim",
+        "other": "Diğer"
+      },
+      "row": "Satır {n}",
+      "rowNamed": "Satır {n} · {name}",
+      "sheet": "Plaka {n}",
+      "codes": {
+        "PART_LARGER_THAN_SHEET": "Parça plakaya sığmıyor (kenar payı dahil).",
+        "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Delik derinliği plaka kalınlığından az olmalı.",
+        "TOOL_NOT_IN_PROFILE": "Seçilen takım bu makinede yok.",
+        "HOLE_SMALLER_THAN_TOOL": "Delik, takımdan küçük.",
+        "GROOVE_NARROWER_THAN_TOOL": "Kanal, takımdan dar.",
+        "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde (plaka dışında, kenar payında ya da başka parçaya çok yakın).",
+        "NO_CUTTING_PARAMS": "Makinede bu malzeme ve kalınlık için kesim ayarı yok.",
+        "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor."
+      },
+      "other": "Kontrol {code}"
     }
   }
 }

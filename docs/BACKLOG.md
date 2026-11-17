@@ -237,6 +237,6 @@ Spec: §12.1, §12.3 · Depends: T024
 ### Deferred notes
 - validate "pocket depth too close to thickness" (§4.5): M3 with the hole object
 - AI: flat w/h/r adapter for `addPart`: M5
-- command log: persist undo/redo events: with T023 if cheap, else M2
+- command log: persist undo/redo events: done in T023 (D-029)
 - db defence in depth (tester note on T008): DB triggers that block UPDATE on version tables; Postgres RLS on company_id: M2 (before multi-company login)
 - owner: identify the second machine's controller (brand, model, software version) and collect 2–3 working NC files from each machine (§12.3)

@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { chooseMachine, goStep, nest, wizardReady } from './wizard-helpers';
 
 /**
  * T020: simulation screen drawn from the read G-code (spec §6.5). The kitchen sample is nested on
@@ -10,6 +11,7 @@ import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 
 const t = tr.cutList;
 const s = tr.simulation;
+/** Old URLs: they redirect into the wizard (T023). */
 const PARTS = '/projeler/yeni/parcalar';
 const SIM = '/projeler/yeni/simulasyon';
 /** The seeded example machine (D-028). */
@@ -78,18 +80,21 @@ async function paste(page: Page, text: string, count: number) {
   await expect(page.getByLabel(t.paste.textLabel)).toHaveCount(0);
 }
 
-/** Kitchen sample → nest → "Simülasyona geç" → choose the machine. */
+/** Wizard: (machine in step 1) → kitchen sample → Diz → step 4 simulation (T023). */
 async function openSimulation(page: Page, machine?: string, text = KITCHEN, count = 5) {
   await page.goto(PARTS);
+  await wizardReady(page, 'parcalar');
+  if (machine) {
+    await goStep(page, 'makine');
+    await chooseMachine(page, machine);
+    await goStep(page, 'parcalar');
+  }
   await paste(page, text, count);
-  await page.getByRole('button', { name: t.nesting.run, exact: true }).click();
+  await nest(page);
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
-  await page.getByTestId('open-simulation').click();
-  await expect(page).toHaveURL(SIM);
+  await goStep(page, 'simulasyon');
   await expect(page.getByTestId('sim-banner')).toContainText(s.banner);
-  if (machine) await page.getByTestId('sim-machine').selectOption({ label: machine });
-  else
-    await expect(page.getByTestId('sim-machine').locator('option:checked')).toContainText(SEEDED);
+  await expect(page.getByTestId('sim-machine-name')).toContainText(machine ?? SEEDED);
 }
 
 async function readyCanvas(page: Page) {
@@ -281,18 +286,19 @@ test.describe('T020 simulation', () => {
   test('without a layout the page shows the empty state', async ({ page }) => {
     const problems = watchConsole(page);
     await page.goto(SIM);
-    await expect(page.getByTestId('sim-empty')).toContainText(s.empty.title);
+    await wizardReady(page, 'simulasyon');
+    await expect(page.getByTestId('sim-empty')).toContainText(tr.wizard.simulation.empty);
     await expect(page.getByTestId('sim-banner')).toBeVisible();
-    await page.getByRole('link', { name: s.empty.action }).click();
-    await expect(page).toHaveURL(PARTS);
+    await page.getByRole('button', { name: tr.wizard.simulation.toLayout }).click();
+    await wizardReady(page, 'dizilim');
     expect(problems).toEqual([]);
   });
 
-  test('back to the parts page keeps the cut list and the layout', async ({ page }) => {
+  test('back to the layout step keeps the cut list and the layout', async ({ page }) => {
     await openSimulation(page);
     await readyCanvas(page);
-    await page.getByRole('link', { name: s.back }).click();
-    await expect(page).toHaveURL(PARTS);
+    await page.getByTestId('wizard-back').click();
+    await wizardReady(page, 'dizilim');
     await expect(page.getByTestId('layout-canvas')).toBeVisible();
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
   });

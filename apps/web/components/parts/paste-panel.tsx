@@ -14,8 +14,8 @@ import {
   type LongShortField,
 } from '@nittcam/core';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { fill, newPartId } from '../../../../lib/draft-project';
-import type { Messages } from '../../../../lib/messages';
+import { fill, newPartId } from '../../lib/draft-project';
+import type { Messages } from '../../lib/messages';
 import { buttonClass } from './ui';
 
 type Text = Messages['cutList']['paste'];

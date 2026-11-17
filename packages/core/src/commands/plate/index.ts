@@ -49,3 +49,15 @@ export const setSheetSize = defineCommand({
     draft.stock.sheet.height = params.height;
   },
 });
+
+export const setGrain = defineCommand({
+  name: 'setGrain',
+  area: 'plate',
+  description:
+    'Set the sheet grain direction: 0 = along the sheet width (X), 90 = along the height (Y).',
+  aiTool: true,
+  params: stockSchema.shape.sheet.pick({ grain: true }),
+  apply: (draft, params) => {
+    draft.stock.sheet.grain = params.grain;
+  },
+});

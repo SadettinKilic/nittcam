@@ -1,26 +1,19 @@
 'use client';
 
 import {
-  CommandStack,
   parseCutListNumber,
   type CutListPartInput,
   type Project,
   type Part,
   type ValidationIssue,
 } from '@nittcam/core';
-import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { draftProject, draftToolDiameter, fill, newPartId } from '../../../../lib/draft-project';
-import { saveDraft, useHydrated, useStoredDraft } from '../../../../lib/draft-store';
-import type { Messages } from '../../../../lib/messages';
-import { useNestingWorker } from '../../../../lib/use-nesting-worker';
-import { LayoutView, type LockRequest } from '../../../../components/layout-view/layout-view';
-import { NestingPanel } from './nesting-panel';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { fill, newPartId } from '../../lib/draft-project';
+import type { Messages } from '../../lib/messages';
 import { PastePanel } from './paste-panel';
 import { buttonClass } from './ui';
 
 type Text = Messages['cutList'];
-type LayoutText = Messages['layout'];
 type EdgeKey = 'top' | 'right' | 'bottom' | 'left';
 
 /** Grid order of the edge band columns: Üst, Alt, Sol, Sağ (T011b). */
@@ -176,7 +169,7 @@ function band(t: Text) {
   };
 }
 
-type Run = (name: string, params: unknown) => boolean;
+export type Run = (name: string, params: unknown) => boolean;
 
 function PartRow({
   t,
@@ -294,108 +287,26 @@ function PartRow({
   );
 }
 
-function isTextField(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true;
-  return (
-    target instanceof HTMLInputElement && target.type !== 'checkbox' && target.type !== 'radio'
-  );
-}
-
 /**
- * The parts step with the draft restored from the shared store (T020): coming back from the
- * simulation, or reloading the tab, keeps the cut list and the layout. The store is read only in
- * the browser, so the first render matches the server; a stored draft then remounts the editor.
+ * The cut-list editor of the wizard's Parçalar step (T011, T011b; spec §3.6 step 2, §4.1): the
+ * Excel/CSV paste and the editable grid. It never changes the project itself: every edit runs a
+ * command through `run` (command layer), so undo/redo, autosave and validation see it.
  */
-export function DraftCutListEditor(props: {
-  t: Text;
-  layoutText: LayoutText;
-  simulateText: string;
-}) {
-  const stored = useStoredDraft();
-  const hydrated = useHydrated();
-  // Before hydration the stored draft is unknown: that editor must not save (it would overwrite
-  // the stored draft with an empty one). After hydration a stored draft remounts the editor.
-  return (
-    <CutListEditor
-      key={stored ? 'stored' : 'fresh'}
-      initial={stored}
-      persist={hydrated}
-      {...props}
-    />
-  );
-}
-
 export function CutListEditor({
   t,
-  layoutText,
-  simulateText,
-  initial = null,
-  persist = true,
+  project,
+  issues,
+  run,
 }: {
   t: Text;
-  layoutText: LayoutText;
-  simulateText: string;
-  initial?: Project | null;
-  /** Save every change to the shared draft store (false until the store was read). */
-  persist?: boolean;
+  project: Project;
+  issues: readonly ValidationIssue[];
+  run: Run;
 }) {
-  // The validation context carries the nesting tool diameter, so LOCKED_PLACEMENT_INVALID checks
-  // the same spacing the placer keeps (D-020).
-  const [stack] = useState(() => {
-    const start = initial ?? draftProject();
-    return new CommandStack(start, { toolDiameter: draftToolDiameter(start) });
-  });
-  const [version, setVersion] = useState(0);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const focusNext = useRef<string | null>(null);
-  const runNesting = useNestingWorker();
-  const [nesting, setNesting] = useState(false);
-  const [nestMessage, setNestMessage] = useState<{ kind: 'error' | 'info'; text: string } | null>(
-    null,
-  );
   const pasteButton = useRef<HTMLButtonElement>(null);
-
-  const refresh = useCallback(() => setVersion((v) => v + 1), []);
-
-  // Share the draft with the simulation step after every change (undo/redo included).
-  useEffect(() => {
-    if (persist) saveDraft(stack.project);
-  }, [stack, version, persist]);
-
-  const run: Run = useCallback(
-    (name, params) => {
-      const result = stack.execute(name, params, { actor: 'user', at: new Date().toISOString() });
-      if (result.ok) refresh();
-      return result.ok;
-    },
-    [stack, refresh],
-  );
-
-  const undo = useCallback(() => {
-    if (stack.undo()) refresh();
-  }, [stack, refresh]);
-  const redo = useCallback(() => {
-    if (stack.redo()) refresh();
-  }, [stack, refresh]);
-
-  useEffect(() => {
-    function onKey(e: globalThis.KeyboardEvent) {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey || isTextField(e.target)) return;
-      const key = e.key.toLowerCase();
-      if (key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
-        e.preventDefault();
-        redo();
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [undo, redo]);
 
   useEffect(() => {
     if (focusNext.current) {
@@ -404,7 +315,6 @@ export function CutListEditor({
     }
   });
 
-  const project = stack.project;
   const parts = project.parts;
   const pieces = parts.reduce((sum, p) => sum + p.qty, 0);
 
@@ -428,52 +338,11 @@ export function CutListEditor({
     return ok;
   }
 
-  async function nest() {
-    const base = stack.project;
-    setNesting(true);
-    setNestMessage(null);
-    try {
-      const res = await runNesting(base, draftToolDiameter(base));
-      if (!res.ok) {
-        if (res.error !== 'terminated') {
-          setNestMessage({ kind: 'error', text: fill(t.nesting.failed, { error: res.error }) });
-        }
-        return;
-      }
-      const result = stack.executeApplied(
-        'runNesting',
-        res.applied,
-        { actor: 'user', at: new Date().toISOString() },
-        base,
-      );
-      if (!result.ok) {
-        setNestMessage(
-          result.error.code === 'STALE_BASE'
-            ? { kind: 'error', text: t.nesting.stale }
-            : { kind: 'error', text: fill(t.nesting.failed, { error: result.error.message }) },
-        );
-      } else if (!result.changed) {
-        setNestMessage({ kind: 'info', text: t.nesting.unchanged });
-      }
-      refresh();
-    } finally {
-      setNesting(false);
-    }
-  }
-
   const issuesOf = (index: number) =>
-    stack.issues.filter(
-      (i) => i.path === `parts[${index}]` || i.path.startsWith(`parts[${index}].`),
-    );
+    issues.filter((i) => i.path === `parts[${index}]` || i.path.startsWith(`parts[${index}].`));
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-semibold tracking-tight">{t.title}</h1>
-        <p className="text-fg-muted">{t.subtitle}</p>
-        <p className="text-sm text-fg-muted">{t.draftNote}</p>
-      </header>
-
+    <div className="flex min-w-0 flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <button
           ref={pasteButton}
@@ -494,25 +363,6 @@ export function CutListEditor({
           className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
         >
           {t.addRow}
-        </button>
-        <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
-        <button
-          type="button"
-          onClick={undo}
-          disabled={!stack.canUndo}
-          aria-keyshortcuts="Control+Z"
-          className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-        >
-          {t.undo}
-        </button>
-        <button
-          type="button"
-          onClick={redo}
-          disabled={!stack.canRedo}
-          aria-keyshortcuts="Control+Y"
-          className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-        >
-          {t.redo}
         </button>
       </div>
 
@@ -605,39 +455,6 @@ export function CutListEditor({
         )}
         <p className="text-xs text-fg-muted">{t.shortcuts}</p>
       </section>
-
-      <NestingPanel
-        t={t.nesting}
-        project={project}
-        toolDiameter={draftToolDiameter(project)}
-        running={nesting}
-        message={nestMessage}
-        onRun={() => void nest()}
-      />
-
-      {project.layout.sheets.length > 0 ? (
-        <LayoutView
-          t={layoutText}
-          project={project}
-          toolDiameter={draftToolDiameter(project)}
-          issues={stack.issues}
-          onLock={(req: LockRequest) => run('lockPlacement', req)}
-          onRenest={() => void nest()}
-          renesting={nesting}
-        />
-      ) : null}
-
-      {project.layout.sheets.length > 0 ? (
-        <div className="flex justify-end">
-          <Link
-            href="/projeler/yeni/simulasyon"
-            data-testid="open-simulation"
-            className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
-          >
-            {simulateText}
-          </Link>
-        </div>
-      ) : null}
-    </main>
+    </div>
   );
 }

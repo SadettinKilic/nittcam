@@ -6,13 +6,33 @@ import type { Messages } from '../lib/messages';
 
 type NavText = Messages['nav'];
 
-/** Menu of spec §3.3. Ana sayfa, Makineler and Oluştur (parts step) work so far; the rest are placeholders. */
-const ITEMS: { key: keyof NavText; href?: string; match?: string }[] = [
+const NEW = '/projeler/yeni';
+
+/** Is the current page under this menu item? Oluştur owns the new-project wizard. */
+function isActive(key: keyof NavText, pathname: string): boolean {
+  switch (key) {
+    case 'home':
+      return pathname === '/';
+    case 'machines':
+      return pathname.startsWith('/makineler');
+    case 'projects':
+      return (
+        pathname === '/projeler' || (pathname.startsWith('/projeler/') && !pathname.startsWith(NEW))
+      );
+    case 'create':
+      return pathname.startsWith(NEW);
+    default:
+      return false;
+  }
+}
+
+/** Menu of spec §3.3. Şablonlar and Ayarlar are placeholders ("yakında"). */
+const ITEMS: { key: keyof NavText; href?: string }[] = [
   { key: 'home', href: '/' },
   { key: 'machines', href: '/makineler' },
-  { key: 'projects' },
+  { key: 'projects', href: '/projeler' },
   { key: 'templates' },
-  { key: 'create', href: '/projeler/yeni/parcalar', match: '/projeler/yeni' },
+  { key: 'create', href: NEW },
   { key: 'settings' },
 ];
 
@@ -27,15 +47,15 @@ export function SideNav({ t }: { t: NavText }) {
       className="flex w-full shrink-0 flex-col gap-4 border-b border-border bg-sidebar p-4 md:min-h-screen md:w-56 md:border-r md:border-b-0"
     >
       <p className="px-3 text-lg font-semibold tracking-tight">NittCam</p>
-      <span
-        aria-disabled="true"
-        title={t.soon}
-        className="rounded-lg border border-dashed border-accent px-3 py-2 text-center text-sm font-medium text-accent"
+      <Link
+        href={NEW}
+        data-testid="nav-new-project"
+        className="rounded-lg bg-accent px-3 py-2 text-center text-sm font-semibold text-accent-fg shadow-sm hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {t.newProject}
-      </span>
+      </Link>
       <ul className="flex flex-row flex-wrap gap-1 md:flex-col">
-        {ITEMS.map(({ key, href, match }) => {
+        {ITEMS.map(({ key, href }) => {
           if (!href) {
             return (
               <li key={key}>
@@ -45,7 +65,7 @@ export function SideNav({ t }: { t: NavText }) {
               </li>
             );
           }
-          const active = href === '/' ? pathname === '/' : pathname.startsWith(match ?? href);
+          const active = isActive(key, pathname);
           return (
             <li key={key}>
               <Link

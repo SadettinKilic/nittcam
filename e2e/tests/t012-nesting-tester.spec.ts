@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { goStep, nest } from './wizard-helpers';
 
 /** T012 tester: edit-after-nest, undo of a second run, responsiveness during a big nest. */
 
@@ -50,15 +51,18 @@ test.describe('T012 nesting (tester)', () => {
     const problems = watchConsole(page);
     await page.goto(URL);
     await paste(page, KITCHEN, 5);
+    await goStep(page, 'dizilim');
     const run = page.getByRole('button', { name: n.run, exact: true });
     await run.click();
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
     const first = await summary(page);
 
     // Grow the quantity of the first part a lot; the stored layout no longer covers every copy.
+    await goStep(page, 'parcalar');
     const qty = cell(page, 1, t.columns.qty);
     await qty.fill('60');
     await qty.press('Enter');
+    await goStep(page, 'dizilim');
     await expect(page.getByTestId('nesting-unplaced')).toBeVisible();
 
     await run.click();
@@ -81,8 +85,9 @@ test.describe('T012 nesting (tester)', () => {
       ['Ad\tEn\tBoy\tAdet', 'Raf\t800\t300\t2', 'Dev\t3000\t2500\t1'].join('\n'),
       2,
     );
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await nest(page);
     await expect(page.getByTestId('nesting-unplaced')).toHaveText(fill(n.unplaced, { count: 1 }));
+    await goStep(page, 'parcalar');
     await expect(page.getByText(t.issues.PART_LARGER_THAN_SHEET)).toBeVisible();
   });
 
@@ -112,12 +117,13 @@ test.describe('T012 nesting (tester)', () => {
     });
 
     const worker = page.waitForEvent('worker');
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await nest(page);
     await worker;
-    // While running, a button is clickable: add a row (this changes the base -> stale result).
-    const add = page.getByRole('button', { name: t.addRow });
-    await add.click({ timeout: 5_000 });
-    await expect(cell(page, 61, t.columns.name)).toBeVisible();
+    // While running, a field is editable: change the margin (this changes the base -> stale result).
+    const margin = page.getByLabel(tr.wizard.layout.margin);
+    await margin.fill('12', { timeout: 5_000 });
+    await margin.press('Enter');
+    await expect(margin).toHaveValue('12');
     const stale = page.getByText(n.stale);
     const done = page.getByTestId('nesting-sheets');
     await expect(stale.or(done)).toBeVisible({ timeout: 60_000 });
@@ -126,7 +132,7 @@ test.describe('T012 nesting (tester)', () => {
     expect(gap).toBeLessThan(1000);
 
     // A clean re-run now succeeds.
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await nest(page);
     await expect(done).toBeVisible({ timeout: 60_000 });
     await expect(stale).toHaveCount(0);
     expect(problems).toEqual([]);
@@ -139,7 +145,7 @@ test.describe('T012 nesting (tester)', () => {
     for (let i = 0; i < 60; i++)
       rows.push(`P${i}\t${60 + ((i * 37) % 400)}\t${50 + ((i * 53) % 500)}\t5`);
     await paste(page, rows.join('\n'), 60);
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await nest(page);
     await expect(page.getByTestId('nesting-sheets')).toBeVisible({ timeout: 60_000 });
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

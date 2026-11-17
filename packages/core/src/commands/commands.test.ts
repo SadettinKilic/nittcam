@@ -49,6 +49,17 @@ describe('plate commands: apply → expected JSON', () => {
     expect(next.stock.sheet).toEqual({ width: 3660, height: 1830, grain: start.stock.sheet.grain });
   });
 
+  it('setGrain changes only the sheet grain', () => {
+    const start = load();
+    const grain = start.stock.sheet.grain === 0 ? 90 : 0;
+    const next = applied(start, 'setGrain', { grain });
+    expect(next).toEqual({
+      ...start,
+      stock: { ...start.stock, sheet: { ...start.stock.sheet, grain } },
+    });
+    expect(applyCommand(start, 'setGrain', { grain: 45 }).ok).toBe(false);
+  });
+
   it('rejects invalid params with readable paths and leaves the project untouched', () => {
     const start = load();
     const before = JSON.stringify(start);
@@ -278,6 +289,7 @@ describe('commandToolDefinitions (future AI tools)', () => {
         'removePart',
         'setMachine',
         'setMaterial',
+        'setGrain',
         'setSheetSize',
         'setThickness',
         'updatePart',

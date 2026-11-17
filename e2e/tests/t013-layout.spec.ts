@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { nest } from './wizard-helpers';
 
 /** T013: layout view (react-konva) under the cut list: drawing, drag + lock, keyboard, tabs. */
 
 const t = tr.cutList;
-const n = t.nesting;
 const p = t.paste;
 const l = tr.layout;
 const URL = '/projeler/yeni/parcalar';
@@ -53,7 +53,7 @@ async function paste(page: Page, text: string, count: number) {
 async function nestShelfSet(page: Page) {
   await page.goto(URL);
   await paste(page, SHELF_SET, 3);
-  await page.getByRole('button', { name: n.run, exact: true }).click();
+  await nest(page);
   await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-part-count', '8');
   await expect(page.locator('[data-testid=layout-canvas] canvas').first()).toBeVisible();
 }
@@ -280,7 +280,7 @@ test.describe('T013 layout view', () => {
     const problems = watchConsole(page);
     await page.goto(URL);
     await paste(page, KITCHEN, 5);
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await nest(page);
     const tabs = page.getByRole('tab');
     await expect(tabs).toHaveCount(3);
     const counts: number[] = [];
@@ -335,7 +335,7 @@ test.describe('T013 layout view', () => {
     const rows = ['Ad\tEn\tBoy\tAdet'];
     for (let i = 0; i < 30; i += 1) rows.push(`P${i + 1}\t${120 + 7 * i}\t${90 + 5 * i}\t10`);
     await paste(page, rows.join('\n'), 30);
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await nest(page);
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
     const tabs = await page.getByRole('tab').count();
     let total = 0;

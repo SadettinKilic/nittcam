@@ -4,7 +4,7 @@
  * place (stock + part, tool table + hole) live here. Pure: same project, same list.
  */
 import { EPS } from '../geometry';
-import { findTool, type MachineProfile } from '../machine';
+import { findMaterialParams, findTool, type MachineProfile } from '../machine';
 import { fitsUsable, partBoxSize, usableSize } from '../nesting/fit';
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
@@ -19,7 +19,9 @@ export type ValidationCode =
   | 'TOOL_NOT_IN_PROFILE'
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
-  | 'LOCKED_PLACEMENT_INVALID';
+  | 'LOCKED_PLACEMENT_INVALID'
+  | 'NO_CUTTING_PARAMS'
+  | 'SHEET_LARGER_THAN_TABLE';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -203,12 +205,56 @@ export const lockedPlacementInvalid: ValidationRule = (project, context) => {
   return issues;
 };
 
+/**
+ * (e) The selected machine has no cutting parameter set for the stock (spec §3.6 "Malzeme =
+ * parametre seti", D-029): the toolpath cannot be built (`NO_CUTTING_PARAMS`, D-021), so it is
+ * an error the user sees in the wizard before nesting. The stock material id is mapped to the
+ * profile's material kinds (`findMaterialParams`). Skipped without a profile.
+ */
+export const noCuttingParams: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || findMaterialParams(machine, project.stock)) return [];
+  return [
+    {
+      code: 'NO_CUTTING_PARAMS',
+      severity: 'error',
+      path: 'stock.material',
+      message: `the machine has no cutting parameters for ${project.stock.material} ${mm(project.stock.thickness)} mm`,
+    },
+  ];
+};
+
+/**
+ * (f) The sheet does not fit the machine table at its place (`origin.sheetOffset`), spec §3.6
+ * "Plaka tablaya sığmıyorsa uyarı". A warning here; the automatic G-code check blocks the export
+ * (`SHEET_OUTSIDE_TABLE`, D-027). EPS slack. Skipped without a profile.
+ */
+export const sheetLargerThanTable: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine) return [];
+  const { width, height } = project.stock.sheet;
+  const off = machine.origin.sheetOffset;
+  const fits =
+    off.x + width <= machine.table.width + EPS && off.y + height <= machine.table.depth + EPS;
+  if (fits) return [];
+  return [
+    {
+      code: 'SHEET_LARGER_THAN_TABLE',
+      severity: 'warning',
+      path: 'stock.sheet',
+      message: `the ${mm(width)} × ${mm(height)} mm sheet does not fit the ${mm(machine.table.width)} × ${mm(machine.table.depth)} mm table`,
+    },
+  ];
+};
+
 /** Rules run after every command, in this order. */
 export const VALIDATION_RULES: readonly ValidationRule[] = [
   partLargerThanSheet,
   holeDepthBelowThickness,
   holeVsTool,
   lockedPlacementInvalid,
+  noCuttingParams,
+  sheetLargerThanTable,
 ];
 
 /** Runs every rule and returns the combined list (errors and warnings, in rule order). */

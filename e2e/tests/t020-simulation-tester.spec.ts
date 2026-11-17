@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { chooseMachine, goStep, nest, saved, wizardReady } from './wizard-helpers';
 
 /**
  * T020 tester: the simulation screen as a user sees it. Complements the dev spec: line/playhead
@@ -9,7 +10,6 @@ import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 const t = tr.cutList;
 const s = tr.simulation;
 const PARTS = '/projeler/yeni/parcalar';
-const SIM = '/projeler/yeni/simulasyon';
 const SEEDED = 'Örnek router (Mach3)';
 
 const fill = (text: string, v: Record<string, string | number>) =>
@@ -33,16 +33,21 @@ function watch(page: Page): string[] {
   return p;
 }
 
-async function toSimulation(page: Page, text = KITCHEN, count = 5) {
+async function toSimulation(page: Page, text = KITCHEN, count = 5, machine?: string) {
   await page.goto(PARTS);
+  await wizardReady(page, 'parcalar');
+  if (machine) {
+    await goStep(page, 'makine');
+    await chooseMachine(page, machine);
+    await goStep(page, 'parcalar');
+  }
   await page.getByRole('button', { name: t.pasteOpen }).click();
   await page.getByLabel(t.paste.textLabel).fill(text);
   await page.getByRole('button', { name: fill(t.paste.applyCount, { count }) }).click();
   await expect(page.getByLabel(t.paste.textLabel)).toHaveCount(0);
-  await page.getByRole('button', { name: t.nesting.run, exact: true }).click();
+  await nest(page);
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
-  await page.getByTestId('open-simulation').click();
-  await expect(page).toHaveURL(SIM);
+  await goStep(page, 'simulasyon');
 }
 
 async function ready(page: Page) {
@@ -214,10 +219,7 @@ test.describe('T020 tester: simulation UX', () => {
     profile.workEnvelope = { x: 800, y: 600, z: 150 };
     profile.table = { width: 800, depth: 600 };
     expect((await request.post('/api/machines', { data: { profile } })).status()).toBe(201);
-    await toSimulation(page);
-    await page
-      .getByTestId('sim-machine')
-      .selectOption({ label: fill(s.machine.option, { name, version: 1 }) });
+    await toSimulation(page, KITCHEN, 5, name);
     const blocked = page.getByTestId('sim-blocked');
     await expect(blocked).toBeVisible({ timeout: 30_000 });
     const groups = blocked.locator('[data-testid=violation-group]');
@@ -234,20 +236,22 @@ test.describe('T020 tester: simulation UX', () => {
   test('draft survives a reload of the simulation page, and going back', async ({ page }) => {
     await toSimulation(page);
     await ready(page);
+    await saved(page);
     await page.reload();
     await ready(page);
     await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true');
-    await page.getByRole('link', { name: s.back }).click();
-    await expect(page).toHaveURL(PARTS);
+    await page.getByTestId('wizard-back').click();
+    await wizardReady(page, 'dizilim');
     await expect(page.getByTestId('layout-canvas')).toBeVisible();
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
   });
 
   // Was a known bug in round 1 (an empty editor saved over the stored draft); fixed (D-028).
-  test('draft survives a reload of the parts page (sessionStorage)', async ({ page }) => {
+  test('the project survives a reload of the layout step (server, T023)', async ({ page }) => {
     await toSimulation(page);
     await ready(page);
-    await page.getByRole('link', { name: s.back }).click();
+    await saved(page);
+    await page.getByTestId('wizard-back').click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible();
     await page.reload();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 8_000 });

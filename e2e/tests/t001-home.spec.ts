@@ -13,7 +13,7 @@ test.describe('T001 home page', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'tr');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(tr.home.title);
     await expect(page.getByText(tr.home.subtitle)).toBeVisible();
-    await expect(page.getByText(tr.home.status)).toBeVisible();
+    await expect(page.getByRole('heading', { name: tr.home.recent })).toBeVisible();
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       'content',
       tr.meta.description,
@@ -24,7 +24,7 @@ test.describe('T001 home page', () => {
   });
 
   test('home page text keys all exist and are non-empty in tr.json', () => {
-    for (const key of ['title', 'subtitle', 'status'] as const) {
+    for (const key of ['title', 'subtitle', 'recent'] as const) {
       expect(tr.home[key].trim().length).toBeGreaterThan(0);
     }
     expect(tr.meta.title.trim().length).toBeGreaterThan(0);
