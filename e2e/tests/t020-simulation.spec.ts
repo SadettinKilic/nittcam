@@ -3,16 +3,17 @@ import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 
 /**
  * T020: simulation screen drawn from the read G-code (spec §6.5). The kitchen sample is nested on
- * the parts page, then simulated on a machine of the default company. The seeded example machine
- * cannot export the draft sheet (generic post with a manual changer, 2500 × 1300 travel; see
- * D-028), so the tests create machines through the API from the seeded profile: a large Mach3
- * machine (passes) and a tiny one (fails, rule 6).
+ * the parts page, then simulated on the default company's seeded example machine "Örnek router
+ * (Mach3)" (preselected, D-028). The failing case creates a tiny machine through the API from the
+ * seeded profile (rule 6, out of the envelope).
  */
 
 const t = tr.cutList;
 const s = tr.simulation;
 const PARTS = '/projeler/yeni/parcalar';
 const SIM = '/projeler/yeni/simulasyon';
+/** The seeded example machine (D-028). */
+const SEEDED = 'Örnek router (Mach3)';
 
 const fill = (text: string, values: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? String(values[k]) : m));
@@ -43,7 +44,7 @@ async function seededProfile(request: APIRequestContext): Promise<Profile> {
     id: string;
     name: string;
   }[];
-  const seeded = list.find((m) => m.name === 'Genel düz G-code router') ?? list[0];
+  const seeded = list.find((m) => m.name === SEEDED) ?? list[0];
   if (!seeded) throw new Error('no seeded machine');
   const detail = (await (await request.get(`/api/machines/${seeded.id}`)).json()) as {
     profile: Profile;
@@ -51,19 +52,13 @@ async function seededProfile(request: APIRequestContext): Promise<Profile> {
   return detail.profile;
 }
 
-/** Creates a machine from the seeded profile; returns its select label. */
-async function createMachine(request: APIRequestContext, kind: 'large' | 'tiny'): Promise<string> {
+/** Creates a tiny machine (800 × 600 travel) from the seeded profile; returns its select label. */
+async function createTinyMachine(request: APIRequestContext): Promise<string> {
   const profile = await seededProfile(request);
-  const name = `T020 ${kind === 'large' ? 'büyük' : 'küçük'} ${Math.random().toString(36).slice(2, 8)}`;
+  const name = `T020 küçük ${Math.random().toString(36).slice(2, 8)}`;
   profile.identity = { ...profile.identity, name };
-  profile.post = { id: 'mach3', version: '1.0.0' };
-  if (kind === 'large') {
-    profile.workEnvelope = { x: 3100, y: 2200, z: 150 };
-    profile.table = { width: 3050, depth: 2150 };
-  } else {
-    profile.workEnvelope = { x: 800, y: 600, z: 150 };
-    profile.table = { width: 800, depth: 600 };
-  }
+  profile.workEnvelope = { x: 800, y: 600, z: 150 };
+  profile.table = { width: 800, depth: 600 };
   const res = await request.post('/api/machines', { data: { profile } });
   expect(res.status()).toBe(201);
   return fill(s.machine.option, { name, version: 1 });
@@ -84,7 +79,7 @@ async function paste(page: Page, text: string, count: number) {
 }
 
 /** Kitchen sample → nest → "Simülasyona geç" → choose the machine. */
-async function openSimulation(page: Page, machine: string, text = KITCHEN, count = 5) {
+async function openSimulation(page: Page, machine?: string, text = KITCHEN, count = 5) {
   await page.goto(PARTS);
   await paste(page, text, count);
   await page.getByRole('button', { name: t.nesting.run, exact: true }).click();
@@ -92,7 +87,9 @@ async function openSimulation(page: Page, machine: string, text = KITCHEN, count
   await page.getByTestId('open-simulation').click();
   await expect(page).toHaveURL(SIM);
   await expect(page.getByTestId('sim-banner')).toContainText(s.banner);
-  await page.getByTestId('sim-machine').selectOption({ label: machine });
+  if (machine) await page.getByTestId('sim-machine').selectOption({ label: machine });
+  else
+    await expect(page.getByTestId('sim-machine').locator('option:checked')).toContainText(SEEDED);
 }
 
 async function readyCanvas(page: Page) {
@@ -108,11 +105,9 @@ const num = async (page: Page, attr: string) =>
 test.describe('T020 simulation', () => {
   test('kitchen sample: summary, green check status, every move drawn at the end', async ({
     page,
-    request,
   }) => {
     const problems = watchConsole(page);
-    const machine = await createMachine(request, 'large');
-    await openSimulation(page, machine);
+    await openSimulation(page);
     await readyCanvas(page);
     const summary = page.getByTestId('sim-summary');
     await expect(summary).toBeVisible();
@@ -145,13 +140,9 @@ test.describe('T020 simulation', () => {
     expect(problems).toEqual([]);
   });
 
-  test('play advances the scrubber; a G-code line click jumps the playhead', async ({
-    page,
-    request,
-  }) => {
+  test('play advances the scrubber; a G-code line click jumps the playhead', async ({ page }) => {
     const problems = watchConsole(page);
-    const machine = await createMachine(request, 'large');
-    await openSimulation(page, machine);
+    await openSimulation(page);
     await readyCanvas(page);
     await page.getByRole('button', { name: s.controls.speedMax }).click();
     await page.getByTestId('sim-play').click();
@@ -186,10 +177,9 @@ test.describe('T020 simulation', () => {
     expect(problems).toEqual([]);
   });
 
-  test('keyboard: →/← step, Home/End, Space plays and pauses', async ({ page, request }) => {
+  test('keyboard: →/← step, Home/End, Space plays and pauses', async ({ page }) => {
     const problems = watchConsole(page);
-    const machine = await createMachine(request, 'large');
-    await openSimulation(page, machine);
+    await openSimulation(page);
     const canvas = await readyCanvas(page);
     await canvas.focus();
     await page.keyboard.press('ArrowRight');
@@ -219,7 +209,7 @@ test.describe('T020 simulation', () => {
     request,
   }) => {
     const problems = watchConsole(page);
-    const machine = await createMachine(request, 'tiny');
+    const machine = await createTinyMachine(request);
     await openSimulation(page, machine);
     const blocked = page.getByTestId('sim-blocked');
     await expect(blocked).toBeVisible({ timeout: 30_000 });
@@ -250,9 +240,8 @@ test.describe('T020 simulation', () => {
     expect(problems).toEqual([]);
   });
 
-  test('back to the parts page keeps the cut list and the layout', async ({ page, request }) => {
-    const machine = await createMachine(request, 'large');
-    await openSimulation(page, machine);
+  test('back to the parts page keeps the cut list and the layout', async ({ page }) => {
+    await openSimulation(page);
     await readyCanvas(page);
     await page.getByRole('link', { name: s.back }).click();
     await expect(page).toHaveURL(PARTS);
@@ -260,14 +249,10 @@ test.describe('T020 simulation', () => {
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
   });
 
-  test('390 px: canvas fits, panels stack, no horizontal page scroll', async ({
-    page,
-    request,
-  }) => {
+  test('390 px: canvas fits, panels stack, no horizontal page scroll', async ({ page }) => {
     const problems = watchConsole(page);
-    const machine = await createMachine(request, 'large');
     await page.setViewportSize({ width: 390, height: 844 });
-    await openSimulation(page, machine);
+    await openSimulation(page);
     const canvas = await readyCanvas(page);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -284,11 +269,10 @@ test.describe('T020 simulation', () => {
     expect(problems).toEqual([]);
   });
 
-  test('reduced motion: no playback animation, steps jump instantly', async ({ page, request }) => {
+  test('reduced motion: no playback animation, steps jump instantly', async ({ page }) => {
     const problems = watchConsole(page);
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    const machine = await createMachine(request, 'large');
-    await openSimulation(page, machine);
+    await openSimulation(page);
     const canvas = await readyCanvas(page);
     await expect(page.getByTestId('sim-reduced-note')).toBeVisible();
     await expect(page.getByTestId('sim-play')).toBeDisabled();
@@ -305,13 +289,12 @@ test.describe('T020 simulation', () => {
     expect(problems).toEqual([]);
   });
 
-  test('300 parts simulate and scrub smoothly', async ({ page, request }) => {
+  test('300 parts simulate and scrub smoothly', async ({ page }) => {
     test.setTimeout(90_000);
     const problems = watchConsole(page);
-    const machine = await createMachine(request, 'large');
     const rows = ['Ad\tEn\tBoy\tAdet'];
     for (let i = 0; i < 30; i += 1) rows.push(`P${i + 1}\t${120 + 7 * i}\t${90 + 5 * i}\t10`);
-    await openSimulation(page, machine, rows.join('\n'), 30);
+    await openSimulation(page, undefined, rows.join('\n'), 30);
     const canvas = await readyCanvas(page);
     await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true');
     const scrubber = page.getByTestId('sim-scrubber');

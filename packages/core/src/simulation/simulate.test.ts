@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { golden, postConfig, type PostId } from '../gcode-check/check.testing';
 import { readGcode } from '../gcode-reader';
-import { defaultMachineProfile } from '../machine';
+import { defaultMachineProfile, exampleMachineProfile } from '../machine';
 import { nestProject } from '../nesting';
 import { goldenProfile } from '../post/golden.testing';
 import { parseProject, type Project } from '../schema';
@@ -206,4 +206,53 @@ it('300 parts simulate in reasonable time', () => {
   expect(r.ok).toBe(true);
   expect(r.sheets.reduce((n, s) => n + s.contours.length, 0)).toBe(300);
   expect(ms).toBeLessThan(15_000);
+});
+
+it('the seeded example profile (Mach3) simulates the kitchen sample on the draft sheet', () => {
+  const rows = [
+    ['Yan', 560, 720, 8, true],
+    ['Taban', 564, 560, 4, false],
+    ['Kapak', 596, 716, 6, true],
+    ['Raf', 564, 520, 8, false],
+    ['Çekmece önü', 596, 176, 4, true],
+  ] as const;
+  const parsed = parseProject({
+    schemaVersion: 1,
+    machine: { machineId: 'm', profileVersion: 1 },
+    stock: {
+      material: 'mdf',
+      thickness: 18,
+      sheet: { width: 2800, height: 2070, grain: 0 },
+      useOffcuts: false,
+    },
+    parts: rows.map((r, i) => ({
+      id: `k${i}`,
+      name: r[0],
+      qty: r[3],
+      grainLock: r[4],
+      kind: 'rect',
+      params: { w: r[1], h: r[2], r: 0 },
+      inners: [],
+      holes: [],
+      edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+      templates: [],
+    })),
+    nesting: { mode: 'minWaste', gap: 8, margin: 10 },
+    layout: { sheets: [] },
+    cutting: { tabs: { auto: true }, leadIn: 'arc', direction: 'climb' },
+    settings: { dimensionMode: 'cut' },
+  });
+  if (!parsed.ok) throw new Error(JSON.stringify(parsed.issues));
+  const project: Project = {
+    ...parsed.project,
+    layout: nestProject(parsed.project, { toolDiameter: 8 }).layout,
+  };
+  const r = simulateProject(
+    project,
+    { profile: exampleMachineProfile(), version: 1, verification: 'draft' },
+    postConfig('mach3'),
+  );
+  expect(r.ok).toBe(true);
+  expect(r.sheets).toHaveLength(3);
+  expect(r.sheets.reduce((n, sh) => n + sh.contours.length, 0)).toBe(30);
 });

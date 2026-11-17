@@ -62,7 +62,70 @@ const DEFAULT_PROFILE_INPUT = {
   ],
 } as const;
 
-/** A fresh copy of the example profile (validated, so a bad edit here fails the tests). */
+/**
+ * A fresh copy of the generic example profile (validated, so a bad edit here fails the tests).
+ * It was the seeded example until T020 and stays **frozen**: the golden files, many tests and the
+ * legacy-seed detection (`isLegacyExampleProfile`) depend on it. Its generic post writes
+ * automatic `T M6` while its changer is manual, so it cannot export (D-028).
+ */
 export function defaultMachineProfile(): MachineProfile {
   return machineProfileSchema.parse(JSON.parse(JSON.stringify(DEFAULT_PROFILE_INPUT)));
+}
+
+/** Name of the seeded example machine since T020 (data, shown as is). */
+export const EXAMPLE_PROFILE_NAME = 'Örnek router (Mach3)';
+
+/**
+ * The example machine seeded for every new company since T020 (D-016, D-028): a Mach3 router
+ * with a manual tool change, 3100 × 2200 × 200 mm travel and a 3050 × 2150 table, so the draft
+ * sheet (2800 × 2070) and the example post export end to end. Same tools (6 and 8 mm) and MDF
+ * 18 parameters as the generic profile. Still an unverified example (`example: true`).
+ */
+export function exampleMachineProfile(): MachineProfile {
+  const p = defaultMachineProfile();
+  p.identity = {
+    ...p.identity,
+    name: EXAMPLE_PROFILE_NAME,
+    controller: { family: 'Mach3', version: '' },
+  };
+  p.workEnvelope = { x: 3100, y: 2200, z: 200 };
+  p.table = { width: 3050, depth: 2150 };
+  p.origin = {
+    corner: 'frontLeft',
+    xPositive: 'right',
+    yPositive: 'back',
+    sheetOffset: { x: 0, y: 0 },
+  };
+  p.zZero = { reference: 'materialTop', spoilboardAllowance: 0.5 };
+  p.rapidFeed = 10000;
+  p.toolChanger = { type: 'manual', capacity: 1, lengthCompensation: false };
+  p.post = { id: 'mach3', version: '1.0.0' };
+  return machineProfileSchema.parse(p);
+}
+
+/**
+ * True when `profile` is exactly the old seeded example (`defaultMachineProfile`), as seeded
+ * before T020: with or without `rapidFeed` (added in T017). Used to upgrade untouched seeds.
+ */
+export function isLegacyExampleProfile(profile: MachineProfile): boolean {
+  const strip = (p: MachineProfile) => {
+    const copy = JSON.parse(JSON.stringify(p)) as Record<string, unknown>;
+    delete copy.rapidFeed;
+    return JSON.stringify(sortKeys(copy));
+  };
+  const legacy = defaultMachineProfile();
+  if (profile.rapidFeed !== undefined && profile.rapidFeed !== legacy.rapidFeed) return false;
+  return strip(profile) === strip(legacy);
+}
+
+function sortKeys(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(sortKeys);
+  if (v && typeof v === 'object') {
+    return Object.fromEntries(
+      Object.keys(v as Record<string, unknown>)
+        .sort()
+        .map((k) => [k, sortKeys((v as Record<string, unknown>)[k])]),
+    );
+  }
+  return v;
 }
