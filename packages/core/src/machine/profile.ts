@@ -33,6 +33,8 @@ export const PROFILE_BOUNDS = {
   materialThickness: { max: 200 },
   feed: { min: 100, max: 60_000 },
   plungeFeed: { min: 50, max: 30_000 },
+  /** Rapid traverse rate (G0), mm/min. */
+  rapidFeed: { min: 500, max: 200_000 },
   stepDown: { max: 50 },
   tabCount: { min: 1, max: 20 },
   tabWidth: { max: 200 },
@@ -254,6 +256,11 @@ export const machineProfileSchema = z
     zZero: zZeroSchema,
     /** Safe Z height above Z zero for rapids, mm (§7.2 rule 2). */
     safeZ: lengthUpTo(PROFILE_BOUNDS.axisZ.max),
+    /**
+     * Rapid traverse rate (G0), mm/min, for the time estimate (T017; optional so older profiles
+     * stay valid, the toolpath default is used without it).
+     */
+    rapidFeed: num().min(PROFILE_BOUNDS.rapidFeed.min).max(PROFILE_BOUNDS.rapidFeed.max).optional(),
     spindle: spindleSchema,
     toolChanger: toolChangerSchema,
     holdDown: holdDownSchema,

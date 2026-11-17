@@ -593,7 +593,7 @@ export function buildToolpath(
       return fail(clearanceZ);
     }
   }
-  const rapidFeed = options.rapidFeed ?? TOOLPATH_DEFAULTS.rapidFeed;
+  const rapidFeed = options.rapidFeed ?? machine.rapidFeed ?? TOOLPATH_DEFAULTS.rapidFeed;
   if (!positive(rapidFeed)) {
     errors.push(issue('INVALID_OPTION', 'error', null, 'Rapid feed must be positive.'));
     return fail(clearanceZ);

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "mach3",
+  "name": "Mach3",
+  "version": "1.0.0",
+  "status": "unverified",
+  "notes": "Written from the Mach3 G-code documentation (D-015, D-025). Unverified until checked against real NC files from the owner's Mach3 machine and field test 1. G4 P is in seconds only while Mach3's 'G04 dwell in ms' setting is off (default): verify on the machine. G64 (constant velocity) is not written: it can round corners; the machine's own CV setting applies.",
+  "program": {
+    "prefix": [],
+    "start": [],
+    "end": ["M30"],
+    "suffix": []
+  },
+  "comments": { "style": "paren", "asciiOnly": true, "maxLength": 120 },
+  "lineNumbers": { "enabled": false, "start": 10, "increment": 10, "max": 99999 },
+  "modal": { "words": ["G21", "G90", "G91.1", "G17", "G40", "G49", "G54"] },
+  "toolChange": { "mode": "manual", "manualStop": "M0", "lengthOffset": false },
+  "spindle": { "on": "M3", "off": "M5", "speedPosition": "after", "rpmDecimals": 0 },
+  "dwell": { "word": "P", "unit": "s", "decimals": 1 },
+  "motion": {
+    "rapid": "G0",
+    "linear": "G1",
+    "cw": "G2",
+    "ccw": "G3",
+    "suppressRepeatedCode": false,
+    "suppressUnchangedAxes": true
+  },
+  "decimals": { "xy": 4, "z": 4, "arc": 4, "feed": 0 },
+  "arcs": {
+    "enabled": true,
+    "mode": "ijIncremental",
+    "distanceModeWord": "G91.1",
+    "fullCircle": false,
+    "helical": true,
+    "maxSweepDeg": 180,
+    "chordTolerance": 0.01
+  },
+  "drill": { "cycles": "none" },
+  "vacuum": { "enabled": true },
+  "file": {
+    "extension": "tap",
+    "maxNameLength": 64,
+    "lineEnding": "crlf",
+    "maxSizeBytes": 10485760,
+    "onOversize": "split"
+  }
+}

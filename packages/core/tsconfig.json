@@ -1,4 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // core is pure: Node types only where a file opts in with /// <reference types="node" />
+    // (the golden-file test and update script).
+    "types": []
+  },
   "include": ["src"]
 }
