@@ -278,18 +278,22 @@ describe('direction, leads and plunge options', () => {
       });
     const shortened = buildToolpath(sandwich(2), machine, { leadLength: 3 });
     expect(shortened.ok).toBe(true);
-    expect(t014(shortened.warnings).filter((w) => w.partId === 'a').map((w) => w.code)).toEqual([
-      'LEAD_SHORTENED',
-    ]);
+    expect(
+      t014(shortened.warnings)
+        .filter((w) => w.partId === 'a')
+        .map((w) => w.code),
+    ).toEqual(['LEAD_SHORTENED']);
     expect(
       toolpathViolations(sandwich(2), shortened, { ...handCheck, direction: 'climb' }),
     ).toEqual([]);
 
     const removed = buildToolpath(sandwich(0), machine, { leadLength: 3 });
     expect(removed.ok).toBe(true);
-    expect(t014(removed.warnings).filter((w) => w.partId === 'a').map((w) => w.code)).toEqual([
-      'LEAD_REMOVED',
-    ]);
+    expect(
+      t014(removed.warnings)
+        .filter((w) => w.partId === 'a')
+        .map((w) => w.code),
+    ).toEqual(['LEAD_REMOVED']);
     const a = removed.toolpath.operations.find((o) => o.partId === 'a')!;
     expect(a.segments.some((s) => s.role === 'leadIn')).toBe(false);
     expect(toolpathViolations(sandwich(0), removed, { ...handCheck, direction: 'climb' })).toEqual(
