@@ -445,7 +445,8 @@ function Player({
     let last = performance.now();
     const rate = playbackRate(speed, duration);
     const tick = (now: number) => {
-      const dt = Math.min(0.25, (now - last) / 1000);
+      // The frame timestamp can predate the effect start: never step backwards.
+      const dt = Math.min(0.25, Math.max(0, (now - last) / 1000));
       last = now;
       const next = Math.min(duration, timeRef.current + dt * rate);
       timeRef.current = next;

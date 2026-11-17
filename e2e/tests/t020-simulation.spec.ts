@@ -176,7 +176,9 @@ test.describe('T020 simulation', () => {
       .nth(3);
     const line = await row.getAttribute('data-line');
     await row.click();
-    await expect(row).toHaveAttribute('aria-current', 'true');
+    // The panel may scroll to centre the line: find the row again by its line number.
+    const picked = panel.locator(`button[data-file="0"][data-line="${line}"]`);
+    await expect(picked).toHaveAttribute('aria-current', 'true');
     await expect(panel).toHaveAttribute('data-current-line', line ?? '');
     expect(await num(page, 'data-done')).toBeGreaterThan(0);
     expect(await num(page, 'data-time')).toBeGreaterThan(0);
@@ -205,6 +207,7 @@ test.describe('T020 simulation', () => {
     await expect(canvas).toHaveAttribute('data-time', '0');
     await page.keyboard.press(' ');
     await expect(canvas).toHaveAttribute('data-playing', 'true');
+    await expect.poll(() => num(page, 'data-time')).toBeGreaterThan(0);
     await page.keyboard.press(' ');
     await expect(canvas).toHaveAttribute('data-playing', 'false');
     expect(await num(page, 'data-time')).toBeGreaterThan(0);
