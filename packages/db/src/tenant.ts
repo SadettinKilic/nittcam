@@ -12,6 +12,7 @@ import {
   type MachineProfile,
   type MachineProfileIssue,
   type Project,
+  type VerificationStage,
   type VerificationState,
 } from '@nittcam/core';
 import { and, asc, desc, eq, max, sql } from 'drizzle-orm';
@@ -236,6 +237,7 @@ export type ProjectCommandRow = typeof projectCommands.$inferSelect;
 export type MachineRow = typeof machinesTable.$inferSelect;
 export type MachineProfileVersionRow = typeof machineProfileVersions.$inferSelect;
 export type TemplateVersionRow = typeof templateVersions.$inferSelect;
+export type ValidationRow = typeof validations.$inferSelect;
 
 /**
  * Converts a stored command row back to the core log shape. `at` is returned as UTC ISO 8601
@@ -654,6 +656,63 @@ function machinesRepo(db: Db, companyId: string) {
         });
       }
       return { machine, version, profile: parsed.profile, state };
+    },
+    /**
+     * Records a verification step (§7.3, T022) against a profile version of this machine: the
+     * stage, the tool-set snapshot and post version of that version, the measurement form and
+     * who approved it. Append-only; the machine's state is derived from the latest record.
+     * Throws `NotFound` when the version does not belong to the machine.
+     */
+    async recordVerification(
+      machineId: string,
+      values: {
+        profileVersionId: string;
+        stage: VerificationStage;
+        measurements?: Record<string, unknown>;
+        approvedBy?: string | null;
+      },
+    ): Promise<ValidationRow> {
+      const versions = await db
+        .select()
+        .from(machineProfileVersions)
+        .where(and(versionsOf(machineId), eq(machineProfileVersions.id, values.profileVersionId)));
+      const version = versions[0];
+      if (!version) throw new NotFound('machine profile version', values.profileVersionId);
+      const parsed = parseMachineProfile(version.profile);
+      const rows = await db
+        .insert(validations)
+        .values({
+          companyId,
+          machineProfileVersionId: version.id,
+          toolSet: parsed.ok ? (parsed.profile.tools as unknown[]) : [],
+          postVersion: version.postVersion,
+          stage: values.stage,
+          level: 'user_approved',
+          measurements: values.measurements ?? {},
+          approvedBy: values.approvedBy ?? null,
+        })
+        .returning();
+      return rows[0] as ValidationRow;
+    },
+    /** Every recorded verification step of the machine, newest first, with its version number. */
+    async verificationHistory(
+      machineId: string,
+    ): Promise<{ validation: ValidationRow; version: number }[]> {
+      const rows = await db
+        .select({ validation: validations, version: machineProfileVersions.version })
+        .from(validations)
+        .innerJoin(
+          machineProfileVersions,
+          and(
+            eq(validations.machineProfileVersionId, machineProfileVersions.id),
+            eq(validations.companyId, machineProfileVersions.companyId),
+          ),
+        )
+        .where(
+          and(eq(validations.companyId, companyId), eq(machineProfileVersions.machineId, machineId)),
+        )
+        .orderBy(desc(validations.createdAt));
+      return rows;
     },
     /** A machine with its latest profile version and verification state; `null` if not found. */
     async getWithProfile(machineId: string): Promise<MachineWithProfile | null> {
