@@ -132,7 +132,12 @@ export function reversePath(segs: readonly PathSeg[]): PathSeg[] {
  * Feed moves along a path. Z goes linearly with the path length from `z0` (at the start) to `z1`
  * (at the end), so a constant `z0 = z1` gives a flat pass and `z1 < z0` a ramp.
  */
-export function pathMoves(segs: readonly PathSeg[], z0: number, z1: number, feed: number): FeedMove[] {
+export function pathMoves(
+  segs: readonly PathSeg[],
+  z0: number,
+  z1: number,
+  feed: number,
+): FeedMove[] {
   const total = pathLength(segs);
   let walked = 0;
   return segs.map((s, i) => {

@@ -141,7 +141,8 @@ export function innerContourPath(inner: Polyline, toolRadius: number): ContourPa
     issues.push({
       code: 'INNER_SPLIT',
       severity: 'error',
-      message: 'The tool cannot pass a narrow neck of an inner contour; the part would stay attached.',
+      message:
+        'The tool cannot pass a narrow neck of an inner contour; the part would stay attached.',
     });
     return { ok: false, paths: res.polylines, issues };
   }
@@ -194,8 +195,9 @@ interface OperationContext {
   placement: Placement;
   sheetIndex: number;
   outline: Polyline;
-  /** Every outline on the sheet (own one included). */
-  obstacles: readonly Obstacle[];
+  /** The own outline and every other outline on the sheet. */
+  own: Obstacle;
+  neighbours: readonly Obstacle[];
 }
 
 function buildOuterOperation(
@@ -235,7 +237,7 @@ function buildOuterOperation(
     let chosen: number | null = null;
     for (const f of LEAD_FALLBACK) {
       const cand = leadSegments(start, tIn, tOut, p.travel, p.lead, p.leadLength * f);
-      if (leadsClear(cand, ctx.obstacles, toolRadius, bounds)) {
+      if (leadsClear(cand, ctx.own, ctx.neighbours, toolRadius, bounds)) {
         leads = cand;
         chosen = f;
         break;
@@ -243,7 +245,13 @@ function buildOuterOperation(
     }
     if (chosen === null) {
       warnings.push(
-        issue('LEAD_REMOVED', 'warning', partId, 'No room for a lead-in/out; the tool enters on the contour.', where),
+        issue(
+          'LEAD_REMOVED',
+          'warning',
+          partId,
+          'No room for a lead-in/out; the tool enters on the contour.',
+          where,
+        ),
       );
     } else if (chosen < 1) {
       warnings.push(
@@ -280,7 +288,13 @@ function buildOuterOperation(
     if (rampLeg > perimeter) {
       rampLeg = perimeter;
       warnings.push(
-        issue('RAMP_STEEPER', 'warning', partId, 'The contour is shorter than the ramp; the ramp is steeper.', where),
+        issue(
+          'RAMP_STEEPER',
+          'warning',
+          partId,
+          'The contour is shorter than the ramp; the ramp is steeper.',
+          where,
+        ),
       );
     }
   }
@@ -309,7 +323,10 @@ function buildOuterOperation(
   });
 
   if (leads.leadOut) {
-    segments.push({ role: 'leadOut', moves: pathMoves([leads.leadOut], p.target, p.target, p.feed) });
+    segments.push({
+      role: 'leadOut',
+      moves: pathMoves([leads.leadOut], p.target, p.target, p.feed),
+    });
   }
   segments.push({ role: 'retract', moves: [rapid(exit, p.safeZ)] });
 
@@ -369,7 +386,9 @@ export function buildToolpath(
 
   // Cutting parameters: material parameter set of the stock, overridden by options.cutting.
   const set = machine.materials.find(
-    (m) => m.material === project.stock.material && Math.abs(m.thickness - project.stock.thickness) <= EPS,
+    (m) =>
+      m.material === project.stock.material &&
+      Math.abs(m.thickness - project.stock.thickness) <= EPS,
   );
   const o = options.cutting ?? {};
   const toolNo = o.tool ?? set?.tool;
@@ -395,12 +414,21 @@ export function buildToolpath(
     return fail();
   }
   if (!positive(feed) || !positive(plungeFeed) || !positive(rpm) || !positive(passDepth)) {
-    errors.push(issue('INVALID_OPTION', 'error', null, 'Feed, plunge feed, rpm and pass depth must be positive.'));
+    errors.push(
+      issue(
+        'INVALID_OPTION',
+        'error',
+        null,
+        'Feed, plunge feed, rpm and pass depth must be positive.',
+      ),
+    );
     return fail();
   }
   const tool = findTool(machine, toolNo);
   if (!tool) {
-    errors.push(issue('TOOL_NOT_IN_PROFILE', 'error', null, `Tool T${toolNo} is not in the machine profile.`));
+    errors.push(
+      issue('TOOL_NOT_IN_PROFILE', 'error', null, `Tool T${toolNo} is not in the machine profile.`),
+    );
     return fail();
   }
   if (-target > tool.fluteLength + EPS) {
@@ -417,11 +445,20 @@ export function buildToolpath(
 
   let clearanceZ = options.clearance ?? TOOLPATH_DEFAULTS.clearance;
   if (!positive(clearanceZ)) {
-    errors.push(issue('INVALID_OPTION', 'error', null, 'Clearance must be a positive height above the material.'));
+    errors.push(
+      issue(
+        'INVALID_OPTION',
+        'error',
+        null,
+        'Clearance must be a positive height above the material.',
+      ),
+    );
     return fail();
   }
   if (clearanceZ > safeZ) {
-    warnings.push(issue('CLEARANCE_CLAMPED', 'warning', null, `Clearance lowered to safe Z (${safeZ} mm).`));
+    warnings.push(
+      issue('CLEARANCE_CLAMPED', 'warning', null, `Clearance lowered to safe Z (${safeZ} mm).`),
+    );
     clearanceZ = safeZ;
   }
   const leadLength = options.leadLength ?? tool.diameter / 2;
@@ -436,7 +473,14 @@ export function buildToolpath(
       !(Number.isFinite(plunge.angleDeg) && plunge.angleDeg > 0 && plunge.angleDeg < 90);
     const badLength = plunge.length !== undefined && !positive(plunge.length);
     if (badAngle || badLength) {
-      errors.push(issue('INVALID_OPTION', 'error', null, 'Ramp angle must be in (0°, 90°) and ramp length positive.'));
+      errors.push(
+        issue(
+          'INVALID_OPTION',
+          'error',
+          null,
+          'Ramp angle must be in (0°, 90°) and ramp length positive.',
+        ),
+      );
       return fail(clearanceZ);
     }
   }
@@ -470,28 +514,50 @@ export function buildToolpath(
   for (const part of project.parts) {
     if (part.inners.length > 0) {
       errors.push(
-        issue('INNER_CONTOURS_NOT_SUPPORTED', 'error', part.id, 'Inner contours are not cut yet (M1: outer contours only).'),
+        issue(
+          'INNER_CONTOURS_NOT_SUPPORTED',
+          'error',
+          part.id,
+          'Inner contours are not cut yet (M1: outer contours only).',
+        ),
       );
       for (const inner of part.inners) {
         for (const it of innerContourPath(contour(inner), toolRadius).issues) {
-          (it.severity === 'error' ? errors : warnings).push(issue(it.code, it.severity, part.id, it.message));
+          (it.severity === 'error' ? errors : warnings).push(
+            issue(it.code, it.severity, part.id, it.message),
+          );
         }
       }
     }
     if (part.holes.length > 0) {
-      errors.push(issue('HOLES_NOT_SUPPORTED', 'error', part.id, 'Holes are not cut yet (M1: outer contours only).'));
+      errors.push(
+        issue(
+          'HOLES_NOT_SUPPORTED',
+          'error',
+          part.id,
+          'Holes are not cut yet (M1: outer contours only).',
+        ),
+      );
     }
   }
 
   // Copies without a placement are not cut.
   const placedCount = new Map<string, number>();
   for (const sheet of project.layout.sheets) {
-    for (const pl of sheet.placements) placedCount.set(pl.partId, (placedCount.get(pl.partId) ?? 0) + 1);
+    for (const pl of sheet.placements)
+      placedCount.set(pl.partId, (placedCount.get(pl.partId) ?? 0) + 1);
   }
   for (const part of project.parts) {
     const missing = part.qty - (placedCount.get(part.id) ?? 0);
     if (missing > 0) {
-      warnings.push(issue('UNPLACED_COPIES', 'warning', part.id, `${missing} cop${missing === 1 ? 'y is' : 'ies are'} not placed and not cut.`));
+      warnings.push(
+        issue(
+          'UNPLACED_COPIES',
+          'warning',
+          part.id,
+          `${missing} cop${missing === 1 ? 'y is' : 'ies are'} not placed and not cut.`,
+        ),
+      );
     }
   }
 
@@ -503,10 +569,17 @@ export function buildToolpath(
       return part ? [{ part, placement, outline: placedOutline(part, placement) }] : [];
     });
     const obstacles = placed.map((x) => obstacle(x.outline));
-    for (const x of placed) {
-      const op = buildOuterOperation({ ...x, sheetIndex, obstacles }, params, warnings, errors);
+    placed.forEach((x, i) => {
+      const own = obstacles[i] as Obstacle;
+      const neighbours = obstacles.filter((_, j) => j !== i);
+      const op = buildOuterOperation(
+        { ...x, sheetIndex, own, neighbours },
+        params,
+        warnings,
+        errors,
+      );
       if (op) operations.push(op);
-    }
+    });
   });
   if (operations.length === 0 && errors.length === 0) {
     errors.push(issue('NO_PLACEMENTS', 'error', null, 'Nothing to cut: no placed parts.'));

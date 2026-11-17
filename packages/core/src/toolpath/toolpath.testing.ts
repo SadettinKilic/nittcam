@@ -116,7 +116,10 @@ export function machineOf(spec: MachineSpec = {}): MachineProfile {
  * symmetric under quarter turns, so the rotated part is the outline of the swapped size moved
  * to (x, y).
  */
-export function sheetOutline(project: Project, op: Pick<Operation, 'partId' | 'copy' | 'sheet'>): Polyline {
+export function sheetOutline(
+  project: Project,
+  op: Pick<Operation, 'partId' | 'copy' | 'sheet'>,
+): Polyline {
   const part = project.parts.find((p) => p.id === op.partId);
   const pl = project.layout.sheets[op.sheet]?.placements.find(
     (p) => p.partId === op.partId && p.index === op.copy,
@@ -125,18 +128,30 @@ export function sheetOutline(project: Project, op: Pick<Operation, 'partId' | 'c
   const turned = pl.rot === 90 || pl.rot === 270;
   const { w, h, r } = part.params;
   const vs = rectOutline({ w: turned ? h : w, h: turned ? w : h, r });
-  return { closed: true, vertices: vs.map((v) => ({ x: v.x + pl.x, y: v.y + pl.y, bulge: v.bulge })) };
+  return {
+    closed: true,
+    vertices: vs.map((v) => ({ x: v.x + pl.x, y: v.y + pl.y, bulge: v.bulge })),
+  };
 }
 
+/** Strictly inside a (rounded) rectangle outline: closer than r to the rectangle shrunk by r. */
 function insideRectOutline(p: Point, outline: Polyline): boolean {
   const xs = outline.vertices.map((v) => v.x);
   const ys = outline.vertices.map((v) => v.y);
-  return (
-    p.x > Math.min(...xs) + EPS &&
-    p.x < Math.max(...xs) - EPS &&
-    p.y > Math.min(...ys) + EPS &&
-    p.y < Math.max(...ys) - EPS
-  );
+  const n = outline.vertices.length;
+  let r = 0;
+  outline.vertices.forEach((v, i) => {
+    const arc = arcOf(v, outline.vertices[(i + 1) % n] as Vertex, v.bulge);
+    if (arc) r = arc.radius;
+  });
+  const x0 = Math.min(...xs) + r;
+  const x1 = Math.max(...xs) - r;
+  const y0 = Math.min(...ys) + r;
+  const y1 = Math.max(...ys) - r;
+  const dx = Math.max(x0 - p.x, 0, p.x - x1);
+  const dy = Math.max(y0 - p.y, 0, p.y - y1);
+  if (r === 0) return p.x > x0 + EPS && p.x < x1 - EPS && p.y > y0 + EPS && p.y < y1 - EPS;
+  return Math.hypot(dx, dy) < r - EPS;
 }
 
 /** XY sample points of a move starting at `from` (9 on lines, 33 on arcs). */
@@ -187,7 +202,11 @@ export interface CheckOptions {
  * Every invariant of the toolpath as a list of violations (empty = fine). Written without the
  * builder's helpers.
  */
-export function toolpathViolations(project: Project, res: ToolpathResult, c: CheckOptions): string[] {
+export function toolpathViolations(
+  project: Project,
+  res: ToolpathResult,
+  c: CheckOptions,
+): string[] {
   const out: string[] = [];
   const tr = c.toolDiameter / 2;
   const target = -(c.thickness + c.spoilboard);
@@ -202,12 +221,14 @@ export function toolpathViolations(project: Project, res: ToolpathResult, c: Che
       .filter((o) => o.sheet === op.sheet && o.id !== op.id)
       .map((o) => sheetOutline(project, o));
     // pass depths
-    if (op.passDepths.length !== nExpected) out.push(`${op.id}: ${op.passDepths.length} passes, want ${nExpected}`);
+    if (op.passDepths.length !== nExpected)
+      out.push(`${op.id}: ${op.passDepths.length} passes, want ${nExpected}`);
     op.passDepths.forEach((z, i) => {
       const want = (-total * (i + 1)) / nExpected;
       if (Math.abs(z - want) > 1e-9) out.push(`${op.id}: pass ${i} at ${z}, want ${want}`);
     });
-    if (op.passDepths[op.passDepths.length - 1] !== target) out.push(`${op.id}: last pass not exactly the target`);
+    if (op.passDepths[op.passDepths.length - 1] !== target)
+      out.push(`${op.id}: last pass not exactly the target`);
     const step = total / nExpected;
     if (step > c.passDepth + EPS) out.push(`${op.id}: pass step ${step} > ${c.passDepth}`);
 
@@ -226,31 +247,44 @@ export function toolpathViolations(project: Project, res: ToolpathResult, c: Che
         const where = `${op.id} ${seg.role}${seg.pass ?? ''}[${mi}]`;
         const first = Number.isNaN(prev.x);
         if (first) {
-          if (m.kind !== 'rapid' || Math.abs(m.z - c.safeZ) > EPS) out.push(`${where}: first move not a rapid at safe Z`);
+          if (m.kind !== 'rapid' || Math.abs(m.z - c.safeZ) > EPS)
+            out.push(`${where}: first move not a rapid at safe Z`);
           prev = { x: m.x, y: m.y, z: c.safeZ };
         }
         if (m.z < target - EPS) out.push(`${where}: below target (${m.z})`);
         const xy = Math.hypot(m.x - prev.x, m.y - prev.y) > EPS;
         if (m.kind === 'rapid') {
-          if (xy && (Math.abs(prev.z - c.safeZ) > EPS || Math.abs(m.z - c.safeZ) > EPS)) out.push(`${where}: XY rapid not at safe Z`);
+          if (xy && (Math.abs(prev.z - c.safeZ) > EPS || Math.abs(m.z - c.safeZ) > EPS))
+            out.push(`${where}: XY rapid not at safe Z`);
           if (m.z <= 0) out.push(`${where}: rapid into the material`);
         } else {
-          if (m.kind === 'plunge' && m.feed !== c.plungeFeed) out.push(`${where}: plunge feed ${m.feed}`);
-          if (m.z < prev.z - EPS && m.feed !== c.plungeFeed) out.push(`${where}: descends at ${m.feed}`);
-          if ((m.kind === 'linear' || m.kind === 'arc') && m.z > EPS) out.push(`${where}: cutting move above Z 0`);
+          if (m.kind === 'plunge' && m.feed !== c.plungeFeed)
+            out.push(`${where}: plunge feed ${m.feed}`);
+          if (m.z < prev.z - EPS && m.feed !== c.plungeFeed)
+            out.push(`${where}: descends at ${m.feed}`);
+          if ((m.kind === 'linear' || m.kind === 'arc') && m.z > EPS)
+            out.push(`${where}: cutting move above Z 0`);
           const pts = sampleMove(prev, m);
           if (seg.role === 'pass') {
             for (const q of pts) {
               const d = distanceTo(q, outline);
-              if (Math.abs(d - tr) > EPS) out.push(`${where}: point ${d} from the part, want ${tr}`);
+              if (Math.abs(d - tr) > EPS)
+                out.push(`${where}: point ${d} from the part, want ${tr}`);
             }
           } else if (seg.role === 'leadIn' || seg.role === 'leadOut' || seg.role === 'approach') {
             for (const q of pts) {
-              if (insideRectOutline(q, outline) || distanceTo(q, outline) < tr - EPS) out.push(`${where}: lead touches the part`);
+              if (insideRectOutline(q, outline) || distanceTo(q, outline) < tr - EPS)
+                out.push(`${where}: lead touches the part`);
               for (const nb of neighbours) {
-                if (insideRectOutline(q, nb) || distanceTo(q, nb) < tr - EPS) out.push(`${where}: lead touches a neighbour`);
+                if (insideRectOutline(q, nb) || distanceTo(q, nb) < tr - EPS)
+                  out.push(`${where}: lead touches a neighbour`);
               }
-              if (q.x < bounds.minX - EPS || q.x > bounds.maxX + EPS || q.y < bounds.minY - EPS || q.y > bounds.maxY + EPS) {
+              if (
+                q.x < bounds.minX - EPS ||
+                q.x > bounds.maxX + EPS ||
+                q.y < bounds.minY - EPS ||
+                q.y > bounds.maxY + EPS
+              ) {
                 out.push(`${where}: lead leaves the sheet`);
               }
             }
@@ -266,4 +300,9 @@ export function toolpathViolations(project: Project, res: ToolpathResult, c: Che
     if (got !== want) out.push(`${op.id}: travels ${got}, want ${want}`);
   }
   return out;
+}
+
+/** Deep copy of JSON data (core has no DOM/Node lib, so no structuredClone). */
+export function clone<T>(x: T): T {
+  return JSON.parse(JSON.stringify(x)) as T;
 }

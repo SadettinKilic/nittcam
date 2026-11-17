@@ -50,7 +50,8 @@ export function toolpathSafetyViolations(tp: Toolpath): string[] {
       if (m.z < targetDepth - EPS) out.push(`${where}: below the target depth (${m.z})`);
       const xyMoved = Math.hypot(m.x - prev.x, m.y - prev.y) > EPS;
       if (m.kind === 'rapid') {
-        if (xyMoved && !(atSafe(prev.z) && atSafe(m.z))) out.push(`${where}: XY rapid below safe Z`);
+        if (xyMoved && !(atSafe(prev.z) && atSafe(m.z)))
+          out.push(`${where}: XY rapid below safe Z`);
         if (m.z < clearanceZ - EPS) out.push(`${where}: rapid ends below the clearance height`);
       } else {
         if (!finite(m.feed) || m.feed <= 0) out.push(`${where}: feed not positive`);
@@ -59,7 +60,8 @@ export function toolpathSafetyViolations(tp: Toolpath): string[] {
         }
         if (m.kind === 'plunge') {
           if (xyMoved) out.push(`${where}: plunge moves in XY`);
-          if (Math.abs(m.feed - op.plungeFeed) > EPS) out.push(`${where}: plunge not at plunge feed`);
+          if (Math.abs(m.feed - op.plungeFeed) > EPS)
+            out.push(`${where}: plunge not at plunge feed`);
         }
         if (m.kind === 'arc') {
           if (!finite(m.cx, m.cy, m.bulge)) out.push(`${where}: non-finite arc`);

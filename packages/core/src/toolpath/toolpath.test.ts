@@ -9,7 +9,14 @@ import { parseProject, type Project } from '../schema';
 import { buildToolpath, innerContourPath, outerContourPath, placedOutline } from './build';
 import { passDepths, throughCutTarget } from './depth';
 import { operationMoves, toolpathSafetyViolations } from './safety';
-import { machineOf, passLoop, projectOf, toolpathViolations, type ProjectSpec } from './toolpath.testing';
+import {
+  clone,
+  machineOf,
+  passLoop,
+  projectOf,
+  toolpathViolations,
+  type ProjectSpec,
+} from './toolpath.testing';
 import type { ArcMove, Move, ToolpathResult } from './types';
 
 const Q = sweepToBulge(Math.PI / 2);
@@ -72,7 +79,13 @@ describe('hand-computed example: 100 × 50, tool 6, 18 + 0.3, pass 6.1', () => {
     expect(res.warnings).toEqual([]);
     expect(res.ok).toBe(true);
     expect(res.toolpath.operations).toHaveLength(1);
-    expect(op).toMatchObject({ tool: 1, toolDiameter: 6, rpm: 18000, feed: 6000, plungeFeed: 1500 });
+    expect(op).toMatchObject({
+      tool: 1,
+      toolDiameter: 6,
+      rpm: 18000,
+      feed: 6000,
+      plungeFeed: 1500,
+    });
     expect(res.toolpath).toMatchObject({ units: 'mm', frame: 'sheet', safeZ: 20, clearanceZ: 2 });
     expect(res.toolpath.targetDepth).toBeCloseTo(-18.3, 12);
   });
@@ -158,13 +171,16 @@ describe('direction, leads and plunge options', () => {
 
   it('climb travels CW, conventional CCW (outer contour, CW spindle)', () => {
     const climb = buildToolpath(project, machine, { direction: 'climb' }).toolpath.operations[0]!;
-    const conv = buildToolpath(project, machine, { direction: 'conventional' }).toolpath.operations[0]!;
+    const conv = buildToolpath(project, machine, { direction: 'conventional' }).toolpath
+      .operations[0]!;
     expect(climb.travel).toBe('cw');
     expect(conv.travel).toBe('ccw');
     expect(orientation(passLoop(climb, 2))).toBe('cw');
     expect(orientation(passLoop(conv, 2))).toBe('ccw');
     const res = buildToolpath(project, machine, { direction: 'conventional' });
-    expect(toolpathViolations(project, res, { ...handCheck, direction: 'conventional' })).toEqual([]);
+    expect(toolpathViolations(project, res, { ...handCheck, direction: 'conventional' })).toEqual(
+      [],
+    );
   });
 
   it('the project setting is the default direction and lead type', () => {
@@ -212,7 +228,13 @@ describe('direction, leads and plunge options', () => {
     let prev = moves[0]!;
     let rampXY = 0;
     for (const m of moves.slice(1)) {
-      if (m.kind !== 'rapid' && m.kind !== 'plunge' && m.z < prev.z - 1e-12 && prev.z <= 0 && m.z >= -6.1 - 1e-9) {
+      if (
+        m.kind !== 'rapid' &&
+        m.kind !== 'plunge' &&
+        m.z < prev.z - 1e-12 &&
+        prev.z <= 0 &&
+        m.z >= -6.1 - 1e-9
+      ) {
         rampXY += Math.hypot(m.x - prev.x, m.y - prev.y); // straight edge: chord = length
       }
       prev = m;
@@ -248,15 +270,23 @@ describe('direction, leads and plunge options', () => {
       });
     const shortened = buildToolpath(sandwich(2), machine, { leadLength: 3 });
     expect(shortened.ok).toBe(true);
-    expect(shortened.warnings.filter((w) => w.partId === 'a').map((w) => w.code)).toEqual(['LEAD_SHORTENED']);
-    expect(toolpathViolations(sandwich(2), shortened, { ...handCheck, direction: 'climb' })).toEqual([]);
+    expect(shortened.warnings.filter((w) => w.partId === 'a').map((w) => w.code)).toEqual([
+      'LEAD_SHORTENED',
+    ]);
+    expect(
+      toolpathViolations(sandwich(2), shortened, { ...handCheck, direction: 'climb' }),
+    ).toEqual([]);
 
     const removed = buildToolpath(sandwich(0), machine, { leadLength: 3 });
     expect(removed.ok).toBe(true);
-    expect(removed.warnings.filter((w) => w.partId === 'a').map((w) => w.code)).toEqual(['LEAD_REMOVED']);
+    expect(removed.warnings.filter((w) => w.partId === 'a').map((w) => w.code)).toEqual([
+      'LEAD_REMOVED',
+    ]);
     const a = removed.toolpath.operations.find((o) => o.partId === 'a')!;
     expect(a.segments.some((s) => s.role === 'leadIn')).toBe(false);
-    expect(toolpathViolations(sandwich(0), removed, { ...handCheck, direction: 'climb' })).toEqual([]);
+    expect(toolpathViolations(sandwich(0), removed, { ...handCheck, direction: 'climb' })).toEqual(
+      [],
+    );
   });
 
   it('clearance above safe Z is clamped with a warning; invalid options are errors', () => {
@@ -306,9 +336,9 @@ describe('D-013 offset results', () => {
     const res = buildToolpath(project, machineOf({ toolDiameter: 6 }));
     expect(res.ok).toBe(true);
     expect(codes(res, 'warnings')).not.toContain('ARC_COLLAPSED');
-    const arcs = res.toolpath.operations[0]!.segments
-      .find((s) => s.final)!
-      .moves.filter((m): m is ArcMove => m.kind === 'arc');
+    const arcs = res.toolpath.operations[0]!.segments.find((s) => s.final)!.moves.filter(
+      (m): m is ArcMove => m.kind === 'arc',
+    );
     for (const a of arcs) expect(Math.hypot(a.x - a.cx, a.y - a.cy)).toBeCloseTo(5, 9);
   });
 
@@ -323,7 +353,9 @@ describe('D-013 offset results', () => {
       { x: 50, y: 50, bulge: 0 },
       { x: 0, y: 50, bulge: 0 },
     ];
-    expect(outerContourPath(contour(outline), 3).issues.map((i) => i.code)).toEqual(['ARC_COLLAPSED']);
+    expect(outerContourPath(contour(outline), 3).issues.map((i) => i.code)).toEqual([
+      'ARC_COLLAPSED',
+    ]);
     const base = projectOf({ parts: [{ id: 'a', w: 100, h: 50 }] });
     const parsed = parseProject({
       ...JSON.parse(JSON.stringify(base)),
@@ -341,13 +373,23 @@ describe('D-013 offset results', () => {
           templates: [],
         },
       ],
-      layout: { sheets: [{ placements: [{ partId: 'l', index: 0, x: 100, y: 100, rot: 0, locked: false }] }] },
+      layout: {
+        sheets: [
+          { placements: [{ partId: 'l', index: 0, x: 100, y: 100, rot: 0, locked: false }] },
+        ],
+      },
     });
     if (!parsed.ok) throw new Error('fixture');
     const res = buildToolpath(parsed.project, machineOf({ toolDiameter: 6 }));
     expect(res.ok).toBe(true);
     expect(res.warnings).toEqual([
-      expect.objectContaining({ code: 'ARC_COLLAPSED', severity: 'warning', partId: 'l', copy: 0, sheet: 0 }),
+      expect.objectContaining({
+        code: 'ARC_COLLAPSED',
+        severity: 'warning',
+        partId: 'l',
+        copy: 0,
+        sheet: 0,
+      }),
     ]);
   });
 
@@ -368,7 +410,9 @@ describe('D-013 offset results', () => {
     ]);
     const split = innerContourPath(dumbbell, 3);
     expect(split.ok).toBe(false);
-    expect(split.issues).toEqual([expect.objectContaining({ code: 'INNER_SPLIT', severity: 'error' })]);
+    expect(split.issues).toEqual([
+      expect.objectContaining({ code: 'INNER_SPLIT', severity: 'error' }),
+    ]);
     const tiny = contour([
       { x: 0, y: 0, bulge: 0 },
       { x: 4, y: 0, bulge: 0 },
@@ -424,7 +468,10 @@ describe('project-level errors and warnings', () => {
 
   it('missing cutting parameters, unknown tool, too short flutes', () => {
     const { project } = handExample();
-    const plywood = parseProject({ ...JSON.parse(JSON.stringify(project)), stock: { ...project.stock, material: 'plywood' } });
+    const plywood = parseProject({
+      ...JSON.parse(JSON.stringify(project)),
+      stock: { ...project.stock, material: 'plywood' },
+    });
     if (!plywood.ok) throw new Error('fixture');
     const machine = machineOf();
     const none = buildToolpath(plywood.project, machine);
@@ -434,9 +481,15 @@ describe('project-level errors and warnings', () => {
       cutting: { tool: 1, feed: 5000, plungeFeed: 1000, rpm: 16000, passDepth: 6.1 },
     });
     expect(overridden.ok).toBe(true);
-    expect(overridden.toolpath.operations[0]).toMatchObject({ feed: 5000, plungeFeed: 1000, rpm: 16000 });
+    expect(overridden.toolpath.operations[0]).toMatchObject({
+      feed: 5000,
+      plungeFeed: 1000,
+      rpm: 16000,
+    });
 
-    expect(codes(buildToolpath(project, machine, { cutting: { tool: 9 } }), 'errors')).toEqual(['TOOL_NOT_IN_PROFILE']);
+    expect(codes(buildToolpath(project, machine, { cutting: { tool: 9 } }), 'errors')).toEqual([
+      'TOOL_NOT_IN_PROFILE',
+    ]);
     const short = buildToolpath(project, machineOf({ fluteLength: 15 }));
     expect(codes(short, 'errors')).toEqual(['DEPTH_EXCEEDS_FLUTE_LENGTH']);
   });
@@ -469,13 +522,17 @@ describe('project-level errors and warnings', () => {
       ],
     });
     const res = buildToolpath(project, machineOf());
-    expect(res.toolpath.operations.map((o) => `${o.sheet}:${o.id}`)).toEqual(['0:b#1', '0:a#0', '1:b#0']);
+    expect(res.toolpath.operations.map((o) => `${o.sheet}:${o.id}`)).toEqual([
+      '0:b#1',
+      '0:a#0',
+      '1:b#0',
+    ]);
   });
 });
 
 describe('defence in depth: the safety checker catches broken toolpaths', () => {
   const { project, machine } = handExample();
-  const fresh = () => structuredClone(buildToolpath(project, machine).toolpath);
+  const fresh = () => clone(buildToolpath(project, machine).toolpath);
 
   it('XY rapid below safe Z', () => {
     const tp = fresh();

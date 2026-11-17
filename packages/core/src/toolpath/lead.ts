@@ -11,7 +11,13 @@
  */
 import { EPS } from '../geometry/constants';
 import { forEachSegment } from '../geometry/polyline';
-import { arcOf, sampleSegment, segmentBBox, sweepToBulge } from '../geometry/segment';
+import {
+  arcOf,
+  sampleSegment,
+  segmentBBox,
+  segmentLength,
+  sweepToBulge,
+} from '../geometry/segment';
 import type { BBox, Point, Polyline } from '../geometry/types';
 import type { PathSeg } from './path';
 import type { LeadType } from './types';
@@ -138,37 +144,48 @@ export function clearOf(p: Point, o: Obstacle, toolRadius: number): boolean {
   return distanceToOutline(p, o.outline) >= toolRadius - EPS;
 }
 
-/** Sample points of a segment (17 on lines and arcs) for the clearance check. */
+/** Spacing of the lead samples, mm. */
+export const LEAD_SAMPLE_STEP = 0.05;
+
+/** Points along a segment, at most LEAD_SAMPLE_STEP apart (both ends included). */
 export function samplePath(s: PathSeg): Point[] {
-  if (arcOf(s.p0, s.p1, s.bulge)) return sampleSegment(s.p0, s.p1, s.bulge, 16);
-  return Array.from({ length: 17 }, (_, i) => ({
-    x: s.p0.x + ((s.p1.x - s.p0.x) * i) / 16,
-    y: s.p0.y + ((s.p1.y - s.p0.y) * i) / 16,
+  const n = Math.max(1, Math.ceil(segmentLength(s.p0, s.p1, s.bulge) / LEAD_SAMPLE_STEP));
+  if (arcOf(s.p0, s.p1, s.bulge)) return sampleSegment(s.p0, s.p1, s.bulge, n);
+  return Array.from({ length: n + 1 }, (_, i) => ({
+    x: s.p0.x + ((s.p1.x - s.p0.x) * i) / n,
+    y: s.p0.y + ((s.p1.y - s.p0.y) * i) / n,
   }));
 }
 
 /**
- * True when every sampled tool-centre point of the leads is inside `bounds` and clear of all
- * obstacles (the own part and its neighbours on the sheet).
+ * True when the leads stay inside `bounds` (exact, arc-aware box) and clear of the parts.
+ * Neighbours: the distance to an outline is 1-Lipschitz, so with samples at most h apart every
+ * point between two samples is at least (sample distance − h/2) away; requiring
+ * toolRadius + h/2 at the samples makes the check hold for the whole lead, not only the samples.
+ * Own part: the lead ends on the contour at exactly the tool radius, so the margin cannot be
+ * added there; the own part is checked at the samples (tool radius − EPS).
  */
 export function leadsClear(
   leads: Leads,
-  obstacles: readonly Obstacle[],
+  own: Obstacle,
+  neighbours: readonly Obstacle[],
   toolRadius: number,
   bounds: BBox,
 ): boolean {
   for (const seg of [leads.leadIn, leads.leadOut]) {
     if (!seg) continue;
+    const box = segmentBBox(seg.p0, seg.p1, seg.bulge);
+    if (
+      box.minX < bounds.minX - EPS ||
+      box.maxX > bounds.maxX + EPS ||
+      box.minY < bounds.minY - EPS ||
+      box.maxY > bounds.maxY + EPS
+    ) {
+      return false;
+    }
     for (const q of samplePath(seg)) {
-      if (
-        q.x < bounds.minX - EPS ||
-        q.x > bounds.maxX + EPS ||
-        q.y < bounds.minY - EPS ||
-        q.y > bounds.maxY + EPS
-      ) {
-        return false;
-      }
-      if (!obstacles.every((o) => clearOf(q, o, toolRadius))) return false;
+      if (!clearOf(q, own, toolRadius)) return false;
+      if (!neighbours.every((o) => clearOf(q, o, toolRadius + LEAD_SAMPLE_STEP / 2))) return false;
     }
   }
   return true;
