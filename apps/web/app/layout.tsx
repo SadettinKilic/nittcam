@@ -9,6 +9,12 @@ import { SIDEBAR_INIT_SCRIPT } from '../lib/sidebar-state';
 import './globals.css';
 
 const messages = getMessages();
+const shellText = {
+  nav: messages.nav,
+  shell: messages.shell,
+  palette: messages.palette,
+  shortcuts: messages.shortcuts,
+};
 
 // Inter (OFL-1.1, D-032), downloaded and self-hosted at build time by next/font.
 const inter = Inter({ subsets: ['latin', 'latin-ext'], display: 'swap', variable: '--font-inter' });
@@ -28,7 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <ThemeProvider>
-          <AppShell t={{ nav: messages.nav, shell: messages.shell }} company={DEFAULT_COMPANY_NAME}>
+          <AppShell t={shellText} company={DEFAULT_COMPANY_NAME}>
             {children}
           </AppShell>
         </ThemeProvider>

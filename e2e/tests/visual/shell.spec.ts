@@ -39,6 +39,24 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await snap(page, `t103-shell-${vp}-${theme}`, { fullPage: false });
       });
 
+      test('command palette and shortcut help (T104)', async ({ page }) => {
+        await page.route('**/api/projects', (route) => route.fulfill({ json: [] }));
+        await page.goto('/');
+        await expect(page.getByTestId('shell-topbar')).toBeVisible();
+        await page.keyboard.press('Control+k');
+        const palette = page.getByTestId('command-palette');
+        await expect(palette).toBeVisible();
+        await expectNoA11yViolations(page, { include: '[data-testid="command-palette"]' });
+        await snap(page, `t104-palette-${vp}-${theme}`, { fullPage: false });
+        await page.keyboard.press('Escape');
+        await expect(palette).toHaveCount(0);
+        await page.keyboard.press('Shift+?');
+        const help = page.getByTestId('shortcuts-dialog');
+        await expect(help).toBeVisible();
+        await expectNoA11yViolations(page, { include: '[data-testid="shortcuts-dialog"]' });
+        await snap(page, `t104-shortcuts-${vp}-${theme}`, { fullPage: false });
+      });
+
       if (vp === 'mobile') {
         test('drawer menu', async ({ page }) => {
           await page.goto('/');

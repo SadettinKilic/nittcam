@@ -1,10 +1,36 @@
 'use client';
 
-import { Sheet, SheetContent, SheetDescription, SheetTitle, TooltipProvider } from '@nittcam/ui';
-import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  Toaster,
+  TooltipProvider,
+  useTheme,
+} from '@nittcam/ui';
+import { SunMoon } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+import { NEW_PROJECT_HREF } from '../../lib/shell-nav';
+import { SHORTCUTS, createShortcutMatcher, isTypingTarget } from '../../lib/shortcuts';
 import { isSidebarCollapsed, setSidebarCollapsed, subscribeSidebar } from '../../lib/sidebar-state';
+import { CommandMenu, type CommandActions } from './command-menu';
+import { ShortcutKeys, useIsMac } from './keys';
 import { ShellProvider } from './shell-context';
+import { ShortcutsDialog } from './shortcuts-dialog';
+import { SearchButton } from './search-button';
 import { Sidebar, SidebarContent, type ShellText } from './sidebar';
 import { TopBar } from './top-bar';
 
@@ -29,6 +55,76 @@ export function AppShell({ t, company, children }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const toggleSidebar = useCallback(() => setSidebarCollapsed(!isSidebarCollapsed()), []);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const router = useRouter();
+  const { resolvedTheme, setTheme } = useTheme();
+  const isMac = useIsMac();
+  const bare = isBare(pathname);
+
+  const actions = useMemo<CommandActions>(
+    () => ({
+      navigate: (href) => router.push(href),
+      setTheme,
+      toggleTheme: () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark'),
+      toggleSidebar,
+      // After the palette has closed and given focus back, so the dialogs do not fight over it.
+      openHelp: () => window.setTimeout(() => setHelpOpen(true), 0),
+    }),
+    [router, setTheme, resolvedTheme, toggleSidebar],
+  );
+
+  // Global shortcuts from the registry (T104); ignored while typing, except the palette.
+  const actionsRef = useRef(actions);
+  useEffect(() => {
+    actionsRef.current = actions;
+  }, [actions]);
+  useEffect(() => {
+    if (bare) return;
+    const match = createShortcutMatcher(SHORTCUTS, isMac);
+    function onKey(e: KeyboardEvent) {
+      if (e.defaultPrevented || e.isComposing || e.repeat) return;
+      const hit = match(e, isTypingTarget(e.target as Element | null), e.timeStamp);
+      if (!hit) return;
+      // Inside an open dialog (palette, help, forms) only the palette toggle works.
+      const inDialog = (e.target as Element | null)?.closest?.(
+        '[role="dialog"],[role="alertdialog"]',
+      );
+      if (inDialog && hit.id !== 'palette') return;
+      e.preventDefault();
+      const a = actionsRef.current;
+      switch (hit.id) {
+        case 'palette':
+          setPaletteOpen((o) => !o);
+          break;
+        case 'help':
+          setHelpOpen(true);
+          break;
+        case 'toggleTheme':
+          a.toggleTheme();
+          break;
+        case 'toggleSidebar':
+          a.toggleSidebar();
+          break;
+        case 'goHome':
+          a.navigate('/');
+          break;
+        case 'goProjects':
+          a.navigate('/projeler');
+          break;
+        case 'goMachines':
+          a.navigate('/makineler');
+          break;
+        case 'newProject':
+          a.navigate(NEW_PROJECT_HREF);
+          break;
+        default:
+          break;
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [bare, isMac]);
 
   // The drawer belongs to narrow screens: close it when the window grows past 768 px.
   useEffect(() => {
@@ -40,7 +136,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
     return () => wide.removeEventListener('change', onChange);
   }, []);
 
-  if (isBare(pathname)) return <>{children}</>;
+  if (bare) return <>{children}</>;
 
   return (
     <ShellProvider>
@@ -52,7 +148,13 @@ export function AppShell({ t, company, children }: AppShellProps) {
           {t.shell.skipToContent}
         </a>
         <div className="flex min-h-dvh">
-          <Sidebar t={t} company={company} collapsed={collapsed} onToggle={toggleSidebar} />
+          <Sidebar
+            t={t}
+            company={company}
+            collapsed={collapsed}
+            onToggle={toggleSidebar}
+            toggleHint={<ShortcutKeys id="toggleSidebar" />}
+          />
           <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
             <SheetContent
               side="left"
@@ -66,12 +168,36 @@ export function AppShell({ t, company, children }: AppShellProps) {
             </SheetContent>
           </Sheet>
           <div className="flex min-w-0 flex-1 flex-col">
-            <TopBar t={t} onOpenMenu={() => setDrawerOpen(true)} />
+            <TopBar
+              t={t}
+              onOpenMenu={() => setDrawerOpen(true)}
+              search={<SearchButton t={t.shell} onOpen={() => setPaletteOpen(true)} />}
+              themeExtra={
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={actions.toggleTheme}>
+                    <SunMoon aria-hidden />
+                    {t.shortcuts.items.toggleTheme}
+                    <DropdownMenuShortcut>
+                      <ShortcutKeys id="toggleTheme" />
+                    </DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </>
+              }
+            />
             <div id="content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
               {children}
             </div>
           </div>
         </div>
+        <CommandMenu
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+          t={{ palette: t.palette, nav: t.nav, shortcuts: t.shortcuts }}
+          actions={actions}
+        />
+        <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} t={t.shortcuts} />
+        <Toaster />
       </TooltipProvider>
     </ShellProvider>
   );

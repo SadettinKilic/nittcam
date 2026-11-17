@@ -8,6 +8,7 @@ export {
   type NumberParseError,
   type NumberParseResult,
 } from './lib/number';
+export { foldTr, fuzzyScore } from './lib/search';
 export { ThemeProvider, useTheme, THEMES, THEME_STORAGE_KEY, type ThemeChoice } from './theme';
 export { PageTitle } from './page-title';
 export type { PageTitleProps } from './page-title';
@@ -110,3 +111,17 @@ export {
   toast,
   type ThemeSwitcherProps,
 } from './components/theme-switcher';
+export {
+  COMMAND_ID_SEPARATOR,
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandLoading,
+  CommandSeparator,
+  CommandShortcut,
+  type CommandDialogProps,
+} from './components/command';

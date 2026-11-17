@@ -19,7 +19,12 @@ import type { ReactNode } from 'react';
 import type { Messages } from '../../lib/messages';
 import { NAV_ITEMS, NEW_PROJECT_HREF, isNavActive, type NavKey } from '../../lib/shell-nav';
 
-export type ShellText = { nav: Messages['nav']; shell: Messages['shell'] };
+export type ShellText = {
+  nav: Messages['nav'];
+  shell: Messages['shell'];
+  palette: Messages['palette'];
+  shortcuts: Messages['shortcuts'];
+};
 
 const ICONS: Record<NavKey, LucideIcon> = {
   home: House,

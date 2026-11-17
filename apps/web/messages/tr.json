@@ -49,6 +49,61 @@
       "system": "Sistem",
       "light": "Açık",
       "dark": "Koyu"
+    },
+    "search": "Ara veya komut yaz…",
+    "searchShort": "Ara"
+  },
+  "palette": {
+    "title": "Komut paleti",
+    "description": "Bir sayfaya gidin, proje açın veya bir komut çalıştırın.",
+    "label": "Komutlar",
+    "placeholder": "Sayfa, proje veya komut ara…",
+    "empty": "Sonuç bulunamadı.",
+    "groups": {
+      "pages": "Sayfalar",
+      "actions": "Eylemler",
+      "recent": "Son projeler",
+      "theme": "Tema"
+    },
+    "recentLoading": "Son projeler yükleniyor…",
+    "recentError": "Son projeler yüklenemedi.",
+    "themeLight": "Açık temaya geç",
+    "themeDark": "Koyu temaya geç",
+    "themeSystem": "Sistem temasını kullan",
+    "hintNavigate": "gezin",
+    "hintSelect": "seç",
+    "hintClose": "kapat",
+    "keywords": {
+      "home": "başlangıç pano özet",
+      "machines": "makine cnc router tezgah doğrulama",
+      "projects": "proje liste iş",
+      "newProject": "oluştur yeni proje sihirbaz",
+      "theme": "tema karanlık aydınlık koyu açık görünüm",
+      "sidebar": "menü kenar çubuğu daralt genişlet",
+      "help": "kısayol klavye yardım"
+    }
+  },
+  "shortcuts": {
+    "title": "Klavye kısayolları",
+    "description": "Metin kutusuna yazarken kısayollar çalışmaz (komut paleti hariç).",
+    "then": "sonra",
+    "close": "Kapat",
+    "groups": {
+      "general": "Genel",
+      "navigation": "Gezinme",
+      "project": "Proje"
+    },
+    "items": {
+      "palette": "Komut paletini aç",
+      "help": "Kısayol listesini aç",
+      "toggleTheme": "Temayı değiştir (açık / koyu)",
+      "toggleSidebar": "Menüyü daralt / genişlet",
+      "goHome": "Ana sayfaya git",
+      "goProjects": "Projelere git",
+      "goMachines": "Makinelere git",
+      "newProject": "Yeni proje",
+      "undo": "Geri al",
+      "redo": "Yinele"
     }
   },
   "machines": {

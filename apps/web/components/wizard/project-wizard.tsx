@@ -17,6 +17,7 @@ import { MachineFields, SheetPreview } from './machine-step';
 import { ValidationPanel } from './validation-panel';
 import { STEPS, toStep, type StepKey } from '../../lib/wizard-steps';
 import { Badge } from '@nittcam/ui';
+import { ariaKeyShortcuts, shortcutById } from '../../lib/shortcuts';
 import { ShellStatus, useShellTitle } from '../shell/shell-context';
 
 const NEW_PATH = '/projeler/yeni';
@@ -533,7 +534,7 @@ function WizardSession({
             type="button"
             onClick={session.undo}
             disabled={!session.canUndo}
-            aria-keyshortcuts="Control+Z"
+            aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
             className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
           >
             {messages.cutList.undo}
@@ -542,7 +543,7 @@ function WizardSession({
             type="button"
             onClick={session.redo}
             disabled={!session.canRedo}
-            aria-keyshortcuts="Control+Y"
+            aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
             className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
           >
             {messages.cutList.redo}
