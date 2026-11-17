@@ -19,4 +19,5 @@ export * from './machine';
 export * from './cutlist';
 export * from './nesting';
 export * from './toolpath';
+export * from './post';
 export * from './gcode-reader';

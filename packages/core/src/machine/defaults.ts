@@ -32,6 +32,7 @@ const DEFAULT_PROFILE_INPUT = {
   },
   zZero: { reference: 'materialTop', spoilboardAllowance: 0.5 },
   safeZ: 20,
+  rapidFeed: 10000,
   spindle: { powerKw: 3, minRpm: 6000, maxRpm: 24000, warmupSeconds: 5 },
   toolChanger: { type: 'manual', capacity: 1, lengthCompensation: false },
   holdDown: { type: 'vacuum', vacuumOn: 'M7', vacuumOff: 'M9' },
