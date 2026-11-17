@@ -176,7 +176,7 @@ interface TabParams {
   count: number;
   width: number;
   height: number;
-  /** target + height. */
+  /** −(thickness − height). */
   top: number;
   smallPartArea: number;
   smallPartMinSide: number;
@@ -330,8 +330,8 @@ function buildOuterOperation(
         ),
       );
     }
-    const autoSmall = small && !p.tabs.all;
-    const count = autoSmall ? Math.max(p.tabs.count, TAB_DEFAULTS.smallPartMinCount) : p.tabs.count;
+    // Small parts (tabs on or off) need at least 2 tabs; one tab lets the part pivot.
+    const count = small ? Math.max(p.tabs.count, TAB_DEFAULTS.smallPartMinCount) : p.tabs.count;
     const leadIn = leads.leadIn ? leadReach(leads.leadIn) : 0;
     const leadOut = leads.leadOut ? leadReach(leads.leadOut) : 0;
     tabs = placeTabs(segs, {
@@ -340,16 +340,27 @@ function buildOuterOperation(
       toolDiameter: p.toolDiameter,
       keepFwd: Math.max(leadOut, rampLeg) + toolRadius,
       keepBack: leadIn + toolRadius,
-      minCount: autoSmall ? TAB_DEFAULTS.smallPartMinCount : 1,
+      minCount: small ? TAB_DEFAULTS.smallPartMinCount : 1,
       z: p.tabs.top,
     });
-    if (tabs.length === 0) {
+    if (tabs.length === 0 && small) {
+      // No thin-skin fallback in M1 (§2.4: M3): an unheld small part can fly off the vacuum.
+      errors.push(
+        issue(
+          'SMALL_PART_UNSECURED',
+          'error',
+          partId,
+          `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free.`,
+          where,
+        ),
+      );
+    } else if (tabs.length === 0) {
       warnings.push(
         issue(
           'TABS_NOT_PLACED',
           'warning',
           partId,
-          `No room for ${autoSmall ? `${TAB_DEFAULTS.smallPartMinCount} tabs` : 'a tab'} away from corners, arcs and the lead; the part is cut free.`,
+          'No room for a tab away from corners, arcs and the lead; the part is cut free.',
           where,
         ),
       );
@@ -577,11 +588,9 @@ export function buildToolpath(
   const to = options.tabs ?? {};
   const pt = project.cutting.tabs;
   const thickness = project.stock.thickness;
-  const spoil = machine.zZero.spoilboardAllowance;
   const tabCount = to.count ?? pt.count ?? set?.tabs?.count ?? TAB_DEFAULTS.count;
   const tabWidth = to.width ?? pt.width ?? set?.tabs?.width ?? TAB_DEFAULTS.width;
-  const tabHeight =
-    to.height ?? pt.height ?? set?.tabs?.height ?? defaultTabHeight(thickness, spoil);
+  const tabHeight = to.height ?? pt.height ?? set?.tabs?.height ?? defaultTabHeight(thickness);
   const smallPartArea = to.smallPartArea ?? TAB_DEFAULTS.smallPartArea;
   const smallPartMinSide = to.smallPartMinSide ?? TAB_DEFAULTS.smallPartMinSide;
   if (!(Number.isInteger(tabCount) && tabCount >= 1) || !positive(tabWidth)) {
@@ -590,13 +599,13 @@ export function buildToolpath(
     );
     return fail(clearanceZ);
   }
-  if (!positive(tabHeight) || tabHeight >= thickness - EPS || tabHeight <= spoil + EPS) {
+  if (!positive(tabHeight) || tabHeight >= thickness - EPS) {
     errors.push(
       issue(
         'INVALID_TAB',
         'error',
         null,
-        `Tab height ${tabHeight} mm must be less than the thickness (${thickness} mm) and more than the spoilboard allowance (${spoil} mm), or the tab is not in the material.`,
+        `Tab height ${tabHeight} mm (material left in the bridge) must be > 0 and less than the thickness (${thickness} mm).`,
       ),
     );
     return fail(clearanceZ);
@@ -632,7 +641,9 @@ export function buildToolpath(
       count: tabCount,
       width: tabWidth,
       height: tabHeight,
-      top: target + tabHeight,
+      // height = material left in the bridge (D-022): the tab top is measured from the material
+      // bottom, whatever the spoilboard allowance
+      top: 0 - (thickness - tabHeight),
       smallPartArea,
       smallPartMinSide,
     },

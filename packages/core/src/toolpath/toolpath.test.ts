@@ -252,7 +252,15 @@ describe('direction, leads and plunge options', () => {
   });
 
   it('ramp longer than the contour is clamped with a RAMP_STEEPER warning', () => {
-    const res = buildToolpath(project, machine, { plunge: { type: 'ramp', length: 5000 } });
+    // T015: the ramp now covers the whole loop, so the small 100 × 50 part has no room for tabs:
+    // SMALL_PART_UNSECURED (export-blocking, D-022). With the small-part rule off it is ok.
+    const blocked = buildToolpath(project, machine, { plunge: { type: 'ramp', length: 5000 } });
+    expect(codes(blocked, 'warnings')).toContain('RAMP_STEEPER');
+    expect(codes(blocked, 'errors')).toEqual(['SMALL_PART_UNSECURED']);
+    const res = buildToolpath(project, machine, {
+      plunge: { type: 'ramp', length: 5000 },
+      tabs: { smallPartArea: 0, smallPartMinSide: 0 },
+    });
     expect(res.ok).toBe(true);
     expect(codes(res, 'warnings')).toContain('RAMP_STEEPER');
     expect(toolpathViolations(project, res, { ...handCheck, direction: 'climb' })).toEqual([]);

@@ -159,7 +159,7 @@ const caseArb = fc.record({
   auto: fc.boolean(),
   count: fc.integer({ min: 1, max: 8 }),
   width: fc.double({ min: 1, max: 40, noNaN: true }),
-  /** height = spoilboard + frac · (thickness − spoilboard), strictly inside. */
+  /** height (material left) = frac · thickness, strictly inside (0, thickness). */
   heightFrac: fc.double({ min: 0.05, max: 0.95, noNaN: true }),
 });
 type Case = typeof caseArb extends fc.Arbitrary<infer T> ? T : never;
@@ -179,7 +179,7 @@ function setUp(c: Case) {
     passDepth: c.passDepth,
     thickness: c.thickness,
   });
-  const height = c.spoilboard + c.heightFrac * (c.thickness - c.spoilboard);
+  const height = c.heightFrac * c.thickness;
   const options: ToolpathOptions = {
     lead: c.lead,
     plunge: c.plunge,
@@ -212,12 +212,12 @@ function small(project: Project, op: Operation): boolean {
 function tabViolations(project: Project, res: ToolpathResult, c: Case, height: number): string[] {
   const out: string[] = [];
   const target = -(c.thickness + c.spoilboard);
-  const tabTop = target + height;
+  const tabTop = -(c.thickness - height);
   for (const op of res.toolpath.operations) {
     const tr = op.toolDiameter / 2;
     const { edges, total } = loopEdges(project, op);
     const isSmall = small(project, op);
-    const want = c.auto ? c.count : isSmall ? Math.max(c.count, 2) : 0;
+    const want = isSmall ? Math.max(c.count, 2) : c.auto ? c.count : 0;
     const n = op.tabs.length;
     const warned = res.warnings.some(
       (w) =>
@@ -228,8 +228,19 @@ function tabViolations(project: Project, res: ToolpathResult, c: Case, height: n
     );
     // count: as requested, or reduced with a warning (auto small parts never below 2)
     if (n > want) out.push(`${op.id}: ${n} tabs > ${want}`);
-    if (n < want && !warned) out.push(`${op.id}: ${n} of ${want} tabs without a warning`);
-    if (!c.auto && isSmall && n === 1) out.push(`${op.id}: auto small part with one tab`);
+    const unsecured = res.errors.some(
+      (e) =>
+        e.code === 'SMALL_PART_UNSECURED' &&
+        e.partId === op.partId &&
+        e.copy === op.copy &&
+        e.sheet === op.sheet,
+    );
+    // a small part without tabs is an export-blocking error; a normal one only a warning
+    if (isSmall && n === 0 && !unsecured) out.push(`${op.id}: small part without tabs, no error`);
+    if (unsecured && !(isSmall && n === 0)) out.push(`${op.id}: SMALL_PART_UNSECURED wrongly`);
+    if (n > 0 && n < want && !warned) out.push(`${op.id}: ${n} of ${want} tabs without a warning`);
+    if (!isSmall && n === 0 && want > 0 && !warned) out.push(`${op.id}: no tabs, no warning`);
+    if (isSmall && n === 1) out.push(`${op.id}: small part with one tab`);
     if (want === 0 && n === 0) continue;
     // evenly spaced by arc length
     for (let k = 1; k < n; k++) {
@@ -300,7 +311,9 @@ describe('tabs (fast-check)', () => {
         const { project, machine, options, check, height, placed } = setUp(c);
         fc.pre(placed);
         const res = buildToolpath(project, machine, options);
-        expect(res.errors).toEqual([]);
+        // the only possible error: a small part with no room for 2 tabs (checked per op below)
+        expect(res.errors.filter((e) => e.code !== 'SMALL_PART_UNSECURED')).toEqual([]);
+        expect(res.ok).toBe(res.errors.length === 0);
         expect(tabViolations(project, res, c, height)).toEqual([]);
         // the T014 invariants still hold with tabs (incl. descending moves at the plunge feed)
         expect(toolpathViolations(project, res, check)).toEqual([]);
@@ -405,9 +418,10 @@ describe('hand-computed', () => {
    * Tab 1: centre 608.333 − (300 + 1.5π) = 303.621 up the left edge from y 100: (97, 403.621).
    * Tab 2: centre 1113.046 − (300 + 400 + 3π) = 403.621 along the top edge from x 100: (503.621, 503).
    * Tab 3: right edge going down, y = 500 − 303.621 = 196.379.
-   * Z = −18.3 + 3 = −15.3 on every tab; passes −6.1 / −12.2 above the tab top get none.
+   * Height = material left (D-022): Z = −(18 − 3) = −15.0 on every tab (spoilboard plays no part).
+   * Passes −6.1 / −12.2 are above −15.0 and get none; only −18.3 flies the tabs.
    */
-  it('600 × 400, 4 tabs w 10 h 3: one tab per side at the computed positions, Z −15.3', () => {
+  it('600 × 400, 4 tabs w 10 h 3: one tab per side at the computed positions, Z −15.0', () => {
     const project = projectOf({ parts: [{ id: 'a', w: 600, h: 400 }], placements: at('a') });
     const res = buildToolpath(project, machineOf(), {
       tabs: { auto: true, count: 4, width: 10, height: 3 },
@@ -427,8 +441,8 @@ describe('hand-computed', () => {
     centres.forEach((c, i) => {
       expect(c.x).toBeCloseTo(want[i]!.x, 9);
       expect(c.y).toBeCloseTo(want[i]!.y, 9);
-      expect(c.z).toBe(-18.3 + 3);
-      expect(c.z).toBeCloseTo(-15.3, 12);
+      expect(c.z).toBe(-(18 - 3));
+      expect(c.z).toBe(-15);
     });
     expect(want[0]!.x).toBeCloseTo(296.379, 3);
     expect(want[1]!.y).toBeCloseTo(403.621, 3);
@@ -438,13 +452,13 @@ describe('hand-computed', () => {
     // raised span of 16 mm on the bottom edge (CW: from x 304.379 to 288.379)
     expect(op.tabs[0]!.x0).toBeCloseTo(400 - phase + 8, 9);
     expect(op.tabs[0]!.x1).toBeCloseTo(400 - phase - 8, 9);
-    // only the last pass (−18.3) is below the tab top −15.3
+    // only the last pass (−18.3) is below the tab top −15.0; −12.2 is above it
     expect(raisedSpans(op, 0)).toHaveLength(0);
     expect(raisedSpans(op, 1)).toHaveLength(0);
     expect(raisedSpans(op, 2)).toHaveLength(4);
   });
 
-  it('80 × 80 with tabs off: auto tabs (default count 4, z = −18.3 + 0.3 + 3) and a warning', () => {
+  it('80 × 80 with tabs off: auto tabs (default count 4, height min(3, 18/2) → z −15) and a warning', () => {
     const project = projectOf({ parts: [{ id: 's', w: 80, h: 80 }], placements: at('s') });
     expect(project.cutting.tabs.auto).toBe(false);
     const res = buildToolpath(project, machineOf());
@@ -452,7 +466,7 @@ describe('hand-computed', () => {
     expect(res.warnings.map((w) => [w.code, w.partId])).toEqual([['SMALL_PART_AUTO_TABS', 's']]);
     const op = res.toolpath.operations[0]!;
     expect(op.tabs).toHaveLength(4);
-    for (const t of op.tabs) expect(t.z).toBe(-18.3 + (0.3 + 3));
+    for (const t of op.tabs) expect(t.z).toBe(-15);
   });
 
   it('a large part with tabs off gets none; the threshold is configurable', () => {
@@ -493,26 +507,26 @@ describe('hand-computed', () => {
     project.cutting.tabs = { auto: true };
     let op = buildToolpath(project, machine).toolpath.operations[0]!;
     expect(op.tabs).toHaveLength(2);
-    expect(op.tabs[0]!.z).toBe(-18.3 + 5);
+    expect(op.tabs[0]!.z).toBe(-13);
     expect(
       Math.hypot(op.tabs[0]!.x1 - op.tabs[0]!.x0, op.tabs[0]!.y1 - op.tabs[0]!.y0),
     ).toBeCloseTo(26, 9);
     project.cutting.tabs = { auto: true, count: 3, width: 12, height: 4 };
     op = buildToolpath(project, machine).toolpath.operations[0]!;
     expect(op.tabs).toHaveLength(3);
-    expect(op.tabs[0]!.z).toBe(-18.3 + 4);
+    expect(op.tabs[0]!.z).toBe(-14);
     // options win over the project
     op = buildToolpath(project, machine, { tabs: { count: 5 } }).toolpath.operations[0]!;
     expect(op.tabs).toHaveLength(5);
   });
 
   it('a tab taller than the deeper passes: every pass below the tab top flies the tabs', () => {
-    // 18 + 0.3, passes −6.1 / −12.2 / −18.3, height 10 → tab top −8.3: passes 1 and 2 get tabs
+    // 18 + 0.3, passes −6.1 / −12.2 / −18.3, height 10 → tab top −8: passes 1 and 2 get tabs
     const project = projectOf({ parts: [{ id: 'a', w: 600, h: 400 }], placements: at('a') });
     const res = buildToolpath(project, machineOf(), { tabs: { auto: true, height: 10 } });
     expect(res.ok).toBe(true);
     const op = res.toolpath.operations[0]!;
-    expect(op.tabs[0]!.z).toBeCloseTo(-8.3, 12);
+    expect(op.tabs[0]!.z).toBe(-8);
     expect(raisedSpans(op, 0)).toHaveLength(0);
     expect(raisedSpans(op, 1)).toHaveLength(4);
     expect(raisedSpans(op, 2)).toHaveLength(4);
@@ -537,7 +551,7 @@ describe('hand-computed', () => {
     for (const t of res.toolpath.operations[0]!.tabs) expect(t.start).toBeGreaterThan(250 + 3);
   });
 
-  it('too small for the count: reduced with TABS_REDUCED, or none with TABS_NOT_PLACED', () => {
+  it('too small: TABS_REDUCED / TABS_NOT_PLACED warnings, SMALL_PART_UNSECURED error', () => {
     const project = projectOf({ parts: [{ id: 'a', w: 200, h: 120 }], placements: at('a') });
     const reduced = buildToolpath(project, machineOf(), {
       tabs: { auto: true, count: 20, width: 30 },
@@ -549,11 +563,21 @@ describe('hand-computed', () => {
     expect(reduced.warnings.map((w) => w.code)).toEqual(['TABS_REDUCED']);
     // 40 × 40 with 40 mm bridges: the 34-mm-free edges cannot hold a 46 mm raised span
     const tiny = projectOf({ parts: [{ id: 't', w: 40, h: 40 }], placements: at('t') });
-    const none = buildToolpath(tiny, machineOf(), { tabs: { width: 40 } });
-    expect(none.ok).toBe(true);
-    expect(none.toolpath.operations[0]!.tabs).toEqual([]);
-    expect(none.warnings.map((w) => w.code)).toEqual(['SMALL_PART_AUTO_TABS', 'TABS_NOT_PLACED']);
-    // auto small parts never get a single tab: count 1 is raised to 2
+    for (const auto of [false, true]) {
+      const none = buildToolpath(tiny, machineOf(), { tabs: { auto, width: 40 } });
+      expect(none.ok).toBe(false);
+      expect(none.errors.map((e) => [e.code, e.partId, e.copy, e.sheet])).toEqual([
+        ['SMALL_PART_UNSECURED', 't', 0, 0],
+      ]);
+      expect(none.toolpath.operations[0]!.tabs).toEqual([]);
+      expect(none.warnings.map((w) => w.code)).toEqual(auto ? [] : ['SMALL_PART_AUTO_TABS']);
+    }
+    // a normal part where no tab fits: only a warning
+    const long = projectOf({ parts: [{ id: 'l', w: 600, h: 400 }], placements: at('l') });
+    const nf = buildToolpath(long, machineOf(), { tabs: { auto: true, count: 1, width: 700 } });
+    expect(nf.ok).toBe(true);
+    expect(nf.warnings.map((w) => w.code)).toEqual(['TABS_NOT_PLACED']);
+    // small parts never get a single tab: count 1 is raised to 2
     const one = buildToolpath(tiny, machineOf(), { tabs: { count: 1 } });
     expect(one.toolpath.operations[0]!.tabs).toHaveLength(2);
   });
@@ -563,8 +587,8 @@ describe('hand-computed', () => {
     const bad: TabOptions[] = [
       { height: 18 },
       { height: 25 },
-      { height: 0.3 },
-      { height: 0.1 },
+      { height: 0 },
+      { height: -1 },
       { height: Number.NaN },
       { count: 0 },
       { count: 2.5 },
@@ -580,6 +604,10 @@ describe('hand-computed', () => {
       expect(res.toolpath.operations).toEqual([]);
     }
     expect(buildToolpath(project, machineOf(), { tabs: { height: 17.9 } }).ok).toBe(true);
+    // below the spoilboard allowance is fine now: height is material left (top −17.8)
+    const thin = buildToolpath(project, machineOf(), { tabs: { auto: true, height: 0.2 } });
+    expect(thin.ok).toBe(true);
+    expect(thin.toolpath.operations[0]!.tabs[0]!.z).toBeCloseTo(-17.8, 12);
   });
 });
 
@@ -623,7 +651,7 @@ describe('safety checker with tabs', () => {
 });
 
 describe('schemas (backward compatible)', () => {
-  it('machine profile: tabs optional; height checked against thickness and spoilboard', () => {
+  it('machine profile: tabs optional; height checked against the thickness', () => {
     const m = defaultMachineProfile();
     expect(parseMachineProfile(m).ok).toBe(true);
     const withTabs = clone(m);
@@ -635,9 +663,8 @@ describe('schemas (backward compatible)', () => {
     const r1 = parseMachineProfile(tall);
     expect(!r1.ok && r1.issues.map((i) => i.key)).toContain('tabHeightAboveThickness');
     const low = clone(withTabs);
-    low.materials[0]!.tabs!.height = low.zZero.spoilboardAllowance;
-    const r2 = parseMachineProfile(low);
-    expect(!r2.ok && r2.issues.map((i) => i.key)).toContain('tabHeightNotAboveSpoilboard');
+    low.materials[0]!.tabs!.height = 0.1;
+    expect(parseMachineProfile(low).ok).toBe(true);
     const zero = clone(withTabs);
     zero.materials[0]!.tabs!.count = 0;
     expect(parseMachineProfile(zero).ok).toBe(false);

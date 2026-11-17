@@ -103,8 +103,10 @@ describe('toolpath invariants (fast-check)', () => {
         const { project, machine, options, check, placed } = setUp(c);
         fc.pre(placed);
         const res = buildToolpath(project, machine, options);
-        expect(res.errors).toEqual([]);
-        expect(res.ok).toBe(true);
+        // T015: a small part with no room for 2 tabs is an export-blocking error (D-022); the
+        // operation is still built and checked
+        expect(res.errors.filter((e) => e.code !== 'SMALL_PART_UNSECURED')).toEqual([]);
+        expect(res.ok).toBe(res.errors.length === 0);
         expect(res.toolpath.operations.length).toBe(
           project.layout.sheets.reduce((n, s) => n + s.placements.length, 0),
         );

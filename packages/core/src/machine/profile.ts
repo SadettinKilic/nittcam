@@ -208,7 +208,7 @@ export const tabParamsSchema = z.strictObject({
   count: int().min(PROFILE_BOUNDS.tabCount.min).max(PROFILE_BOUNDS.tabCount.max),
   /** Bridge width along the contour, mm. */
   width: lengthUpTo(PROFILE_BOUNDS.tabWidth.max),
-  /** Tab height above the through-cut bottom (target depth), mm; tab top = target + height. */
+  /** Material left in the bridge, mm (tab top = −(thickness − height)); must be < thickness. */
   height: lengthUpTo(PROFILE_BOUNDS.tabHeight.max),
 });
 
@@ -328,14 +328,6 @@ export const machineProfileSchema = z
           ['materials', i, 'tabs', 'height'],
           'tabHeightAboveThickness',
           'tab height must be less than the material thickness',
-        );
-      }
-      if (m.tabs && m.tabs.height <= p.zZero.spoilboardAllowance) {
-        crossIssue(
-          ctx,
-          ['materials', i, 'tabs', 'height'],
-          'tabHeightNotAboveSpoilboard',
-          'tab height must exceed the spoilboard allowance, or the tab leaves no material',
         );
       }
       if (m.rpm < p.spindle.minRpm || m.rpm > p.spindle.maxRpm) {

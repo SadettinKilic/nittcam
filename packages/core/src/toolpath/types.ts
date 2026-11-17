@@ -76,7 +76,7 @@ export interface MoveSegment {
 /**
  * One tab (T015, D-022) on the passes below the tab top. Positions are arc lengths along the
  * tool-centre loop from the start point in the travel direction; the raised span [start, end] is
- * flown at `z` (= target + tab height) and is `width + tool diameter` long.
+ * flown at `z` (= −(thickness − tab height)) and is `width + tool diameter` long.
  */
 export interface Tab {
   centre: number;
@@ -152,6 +152,7 @@ export type ToolpathCode =
   | 'NO_PLACEMENTS'
   | 'SAFETY_VIOLATION'
   | 'INVALID_TAB'
+  | 'SMALL_PART_UNSECURED'
   // warnings
   | 'ARC_COLLAPSED'
   | 'LEAD_SHORTENED'
@@ -203,7 +204,7 @@ export interface TabOptions {
   count?: number;
   /** Bridge width along the contour, mm. */
   width?: number;
-  /** Height above the through-cut bottom, mm; tab top = target + height. */
+  /** Material left in the bridge, mm; tab top = −(thickness − height). */
   height?: number;
   /** Small-part area threshold, mm² (default 50 000 = 0.05 m²). */
   smallPartArea?: number;

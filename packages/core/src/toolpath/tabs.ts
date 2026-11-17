@@ -7,7 +7,8 @@
  * - **raised span**: the part of the tool-centre path flown at the tab top. It is `w + D` long
  *   (D = tool diameter): a tool centre at the target depth cuts everything within the tool radius,
  *   so the narrowest part of the bridge (the kerf middle) is the raised span minus D = w.
- * - **tab top**: `target + height` (height measured up from the through-cut bottom).
+ * - **height**: the material left in the bridge (what the user types stays, as in VCarve); the
+ *   **tab top** is `−(thickness − height)`, independent of the spoilboard allowance.
  */
 import { EPS } from '../geometry/constants';
 import { bbox, signedArea } from '../geometry/polyline';
@@ -20,7 +21,7 @@ export const TAB_DEFAULTS = {
   count: 4,
   /** Bridge width, mm. */
   width: 10,
-  /** Material the built-in default leaves at most, mm (height = spoilboard + min(this, t / 2)). */
+  /** Built-in default height (material left) at most, mm: height = min(this, t / 2). */
   materialLeft: 3,
   /** Small-part threshold: outline area below this gets auto tabs, mm² (0.05 m²). */
   smallPartArea: 50_000,
@@ -30,9 +31,9 @@ export const TAB_DEFAULTS = {
   smallPartMinCount: 2,
 } as const;
 
-/** Built-in default height: leaves min(3, t / 2) mm of material above the spoilboard allowance. */
-export function defaultTabHeight(thickness: number, spoilboardAllowance: number): number {
-  return spoilboardAllowance + Math.min(TAB_DEFAULTS.materialLeft, thickness / 2);
+/** Built-in default height (material left in the bridge): min(3, t / 2) mm. */
+export function defaultTabHeight(thickness: number): number {
+  return Math.min(TAB_DEFAULTS.materialLeft, thickness / 2);
 }
 
 /**
