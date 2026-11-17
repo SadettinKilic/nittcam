@@ -1,0 +1,77 @@
+// App shell navigation model (T103, spec §3.3): menu items, active state and breadcrumbs.
+// Pure: no React, no Next; the shell components map keys to icons and text.
+
+/** Menu keys of spec §3.3, in menu order. Text lives under `nav` in tr.json. */
+export type NavKey = 'home' | 'machines' | 'projects' | 'templates' | 'create' | 'settings';
+
+export interface NavItem {
+  key: NavKey;
+  /** Missing = not built yet: shown with "yakında", not a link. */
+  href?: string;
+}
+
+export const NEW_PROJECT_HREF = '/projeler/yeni';
+
+export const NAV_ITEMS: readonly NavItem[] = [
+  { key: 'home', href: '/' },
+  { key: 'machines', href: '/makineler' },
+  { key: 'projects', href: '/projeler' },
+  { key: 'templates' },
+  { key: 'create', href: NEW_PROJECT_HREF },
+  { key: 'settings' },
+];
+
+/** Is the current page under this menu item? Oluştur owns the new-project wizard. */
+export function isNavActive(key: NavKey, pathname: string): boolean {
+  switch (key) {
+    case 'home':
+      return pathname === '/';
+    case 'machines':
+      return pathname === '/makineler' || pathname.startsWith('/makineler/');
+    case 'projects':
+      return (
+        pathname === '/projeler' ||
+        (pathname.startsWith('/projeler/') && !isUnder(pathname, NEW_PROJECT_HREF))
+      );
+    case 'create':
+      return isUnder(pathname, NEW_PROJECT_HREF);
+    default:
+      return false;
+  }
+}
+
+function isUnder(pathname: string, base: string): boolean {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
+/** Label keys of a crumb; the shell turns them into Turkish text. */
+export type CrumbKey = NavKey | 'newProject' | 'project' | 'verification' | 'notFound';
+
+export interface Crumb {
+  key: CrumbKey;
+  /** Link target; the last crumb (current page) has none. */
+  href?: string;
+}
+
+/**
+ * Breadcrumb trail for a path. The last crumb is the current page (the top-bar title).
+ * Unknown paths give a single "notFound" crumb.
+ */
+export function breadcrumbs(pathname: string): Crumb[] {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  if (path === '/' || path === '') return [{ key: 'home' }];
+  const parts = path.split('/').filter(Boolean);
+  const [first, second, third] = parts;
+  if (first === 'makineler') {
+    if (parts.length === 1) return [{ key: 'machines' }];
+    if (parts.length === 3 && third === 'dogrulama') {
+      return [{ key: 'machines', href: '/makineler' }, { key: 'verification' }];
+    }
+  }
+  if (first === 'projeler') {
+    if (parts.length === 1) return [{ key: 'projects' }];
+    if (second === 'yeni') return [{ key: 'projects', href: '/projeler' }, { key: 'newProject' }];
+    if (parts.length === 2) return [{ key: 'projects', href: '/projeler' }, { key: 'project' }];
+  }
+  return [{ key: 'notFound' }];
+}

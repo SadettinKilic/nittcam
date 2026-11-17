@@ -24,8 +24,113 @@
     "templates": "Şablonlar",
     "create": "Oluştur",
     "settings": "Ayarlar",
-    "newProject": "+ Yeni proje",
+    "newProject": "Yeni proje",
     "soon": "yakında"
+  },
+  "shell": {
+    "skipToContent": "İçeriğe geç",
+    "operator": "Operatör",
+    "workspace": "Çalışma alanı",
+    "breadcrumb": "Sayfa yolu",
+    "openMenu": "Menüyü aç",
+    "menuTitle": "Menü",
+    "closeMenu": "Menüyü kapat",
+    "collapse": "Menüyü daralt",
+    "expand": "Menüyü genişlet",
+    "pageActions": "Sayfa eylemleri",
+    "crumbs": {
+      "newProject": "Yeni proje",
+      "project": "Proje",
+      "verification": "Doğrulama",
+      "notFound": "Sayfa bulunamadı"
+    },
+    "theme": {
+      "label": "Tema",
+      "system": "Sistem",
+      "light": "Açık",
+      "dark": "Koyu"
+    },
+    "search": "Ara veya komut yaz…",
+    "searchShort": "Ara"
+  },
+  "palette": {
+    "title": "Komut paleti",
+    "description": "Bir sayfaya gidin, proje açın veya bir komut çalıştırın.",
+    "label": "Komutlar",
+    "placeholder": "Sayfa, proje veya komut ara…",
+    "empty": "Sonuç bulunamadı.",
+    "groups": {
+      "pages": "Sayfalar",
+      "actions": "Eylemler",
+      "recent": "Son projeler",
+      "theme": "Tema"
+    },
+    "recentLoading": "Son projeler yükleniyor…",
+    "recentError": "Son projeler yüklenemedi.",
+    "themeLight": "Açık temaya geç",
+    "themeDark": "Koyu temaya geç",
+    "themeSystem": "Sistem temasını kullan",
+    "hintNavigate": "gezin",
+    "hintSelect": "seç",
+    "hintClose": "kapat",
+    "keywords": {
+      "home": "başlangıç pano özet",
+      "machines": "makine cnc router tezgah doğrulama",
+      "projects": "proje liste iş",
+      "newProject": "oluştur yeni proje sihirbaz",
+      "theme": "tema karanlık aydınlık koyu açık görünüm",
+      "sidebar": "menü kenar çubuğu daralt genişlet",
+      "help": "kısayol klavye yardım"
+    }
+  },
+  "shortcuts": {
+    "title": "Klavye kısayolları",
+    "description": "Metin kutusuna yazarken kısayollar çalışmaz (komut paleti hariç).",
+    "then": "sonra",
+    "close": "Kapat",
+    "groups": {
+      "general": "Genel",
+      "navigation": "Gezinme",
+      "project": "Proje"
+    },
+    "items": {
+      "palette": "Komut paletini aç",
+      "help": "Kısayol listesini aç",
+      "toggleTheme": "Temayı değiştir (açık / koyu)",
+      "toggleSidebar": "Menüyü daralt / genişlet",
+      "goHome": "Ana sayfaya git",
+      "goProjects": "Projelere git",
+      "goMachines": "Makinelere git",
+      "newProject": "Yeni proje",
+      "undo": "Geri al",
+      "redo": "Yinele"
+    }
+  },
+  "feedback": {
+    "loading": "Sayfa yükleniyor…",
+    "notFound": {
+      "code": "404",
+      "title": "Sayfa bulunamadı",
+      "text": "Aradığınız sayfa taşınmış ya da hiç var olmamış olabilir.",
+      "home": "Ana sayfaya dön",
+      "projects": "Projeler",
+      "hint": "İpucu: istediğiniz sayfayı {keys} ile arayabilirsiniz."
+    },
+    "error": {
+      "title": "Bir şeyler ters gitti",
+      "text": "Sayfa açılırken beklenmeyen bir hata oldu. Tekrar deneyin; sorun sürerse sayfayı yenileyin.",
+      "retry": "Tekrar dene",
+      "home": "Ana sayfaya dön",
+      "reference": "Hata kodu: {digest}"
+    },
+    "canvas": {
+      "title": "Önizleme gösterilemedi",
+      "text": "Çizim alanında bir hata oldu. Projeniz kaydedildi; önizlemeyi yeniden deneyebilirsiniz.",
+      "retry": "Önizlemeyi yeniden yükle"
+    },
+    "saveError": "Proje kaydedilemedi",
+    "saveErrorText": "Bağlantı geri gelince otomatik olarak yeniden denenecek.",
+    "exportError": "Dışa aktarma başarısız"
   },
   "machines": {
     "title": "Makineler",
@@ -689,7 +794,8 @@
     "rowAction": "{action}: {name}",
     "lastExport": "Rev. {revision} · {date}",
     "noExport": "Henüz yok",
-    "downloadLast": "İndir: {name}"
+    "downloadLast": "İndir: {name}",
+    "emptyText": "Kesim listesini yapıştırın, plakaya dizin ve G-code alın. İlk projeniz birkaç dakika sürer."
   },
   "materials": {
     "mdf": "MDF",
@@ -1021,7 +1127,9 @@
       "tabs": "Sekmeler",
       "badges": "Rozetler",
       "cards": "Kartlar",
-      "feedback": "Yükleme ve kısayollar"
+      "feedback": "Yükleme ve kısayollar",
+      "states": "Boş, hata ve bildirim",
+      "command": "Komut listesi"
     },
     "colorGroups": {
       "surfaces": "Zemin ve yüzey",
@@ -1158,6 +1266,28 @@
     "feedback": {
       "loading": "Yükleniyor",
       "shortcut": "Komut paleti"
+    },
+    "feedbackStates": {
+      "emptyTitle": "Henüz proje yok",
+      "emptyText": "Kesim listesini yapıştırarak ilk projenizi oluşturun.",
+      "emptyAction": "Yeni proje",
+      "errorTitle": "Projeler yüklenemedi",
+      "errorText": "Bağlantıyı kontrol edip tekrar deneyin.",
+      "retry": "Tekrar dene",
+      "notifySuccess": "Başarı bildirimi",
+      "notifyError": "Hata bildirimi",
+      "notifyInfo": "Bilgi bildirimi",
+      "successTitle": "Proje kaydedildi",
+      "errorToastTitle": "Dışa aktarma başarısız",
+      "infoTitle": "Yeni sürüm hazır",
+      "undo": "Geri al"
+    },
+    "command": {
+      "label": "Örnek komutlar",
+      "placeholder": "Komut ara…",
+      "empty": "Sonuç yok.",
+      "group": "Sayfalar",
+      "items": ["Ana sayfa", "Projeler", "Makineler", "Şablonlar"]
     }
   }
 }

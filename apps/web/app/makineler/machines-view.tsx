@@ -1,5 +1,6 @@
 'use client';
 
+import { notify } from '@nittcam/ui';
 import { defaultMachineProfile, type MachineProfile, type VerificationState } from '@nittcam/core';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -42,7 +43,6 @@ function newProfile(): MachineProfile {
 export function MachinesView({ t }: { t: Text }) {
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
-  const [notice, setNotice] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0);
 
   const loadList = useCallback(async () => {
@@ -63,7 +63,6 @@ export function MachinesView({ t }: { t: Text }) {
   }, [loadList]);
 
   async function openEdit(machineId: string) {
-    setNotice(null);
     setMode({ kind: 'loading', machineId });
     try {
       const res = await fetch(`/api/machines/${machineId}`, { cache: 'no-store' });
@@ -77,14 +76,13 @@ export function MachinesView({ t }: { t: Text }) {
   }
 
   function openNew() {
-    setNotice(null);
     setFormKey((k) => k + 1);
     setMode({ kind: 'form', machineId: null, initial: newProfile(), key: formKey + 1 });
   }
 
   function onSaved(detail: MachineDetail) {
     setMode({ kind: 'list' });
-    setNotice(t.form.saved.replace('{version}', String(detail.version)));
+    notify.success(t.form.saved.replace('{version}', String(detail.version)));
     void loadList();
   }
 
@@ -105,14 +103,6 @@ export function MachinesView({ t }: { t: Text }) {
           </button>
         ) : null}
       </header>
-
-      <div aria-live="polite">
-        {notice ? (
-          <p role="status" className="rounded-lg bg-ok-bg p-3 text-sm text-ok">
-            {notice}
-          </p>
-        ) : null}
-      </div>
 
       {mode.kind === 'form' ? (
         <MachineForm

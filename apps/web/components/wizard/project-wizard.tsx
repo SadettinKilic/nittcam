@@ -16,6 +16,10 @@ import { LayoutStep } from './layout-step';
 import { MachineFields, SheetPreview } from './machine-step';
 import { ValidationPanel } from './validation-panel';
 import { STEPS, toStep, type StepKey } from '../../lib/wizard-steps';
+import { Badge, Button, ErrorState, notify } from '@nittcam/ui';
+import { ariaKeyShortcuts, shortcutById } from '../../lib/shortcuts';
+import { PageSkeleton } from '../feedback/page-skeleton';
+import { ShellStatus, useShellTitle } from '../shell/shell-context';
 
 const NEW_PATH = '/projeler/yeni';
 
@@ -160,49 +164,23 @@ export function ProjectWizard({
   }, []);
 
   if (loaded.status === 'loading') {
-    return (
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-8 sm:px-6">
-        <p
-          role="status"
-          data-testid="wizard-loading"
-          className="flex items-center gap-3 text-fg-muted"
-        >
-          <span
-            aria-hidden="true"
-            className="size-5 animate-spin rounded-full border-2 border-border border-t-accent"
-          />
-          {t.loading}
-        </p>
-      </main>
-    );
+    return <PageSkeleton label={t.loading} variant="split" testId="wizard-loading" />;
   }
   if (loaded.status !== 'ready') {
     return (
       <main className="mx-auto flex w-full max-w-7xl flex-col items-start gap-4 px-4 py-8 sm:px-6">
-        <p
-          role="alert"
+        <ErrorState
           data-testid="wizard-error"
-          className="rounded-lg bg-danger-bg p-3 text-sm text-danger"
-        >
-          {loaded.status === 'notFound' ? t.notFound : t.loadError}
-        </p>
-        <div className="flex gap-2">
-          {loaded.status === 'error' ? (
-            <button
-              type="button"
-              onClick={reload}
-              className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-            >
-              {t.retry}
-            </button>
-          ) : null}
-          <Link
-            href="/projeler"
-            className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-          >
-            {t.backToList}
-          </Link>
-        </div>
+          className="w-full"
+          title={loaded.status === 'notFound' ? t.notFound : t.loadError}
+          retryLabel={t.retry}
+          {...(loaded.status === 'error' ? { onRetry: reload } : {})}
+          action={
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/projeler">{t.backToList}</Link>
+            </Button>
+          }
+        />
       </main>
     );
   }
@@ -290,6 +268,17 @@ function WizardSession({
     onCreated: created,
   });
   const project = session.project;
+  // Save failures are announced once as a toast (T105); autosave keeps retrying.
+  const saveFailed = session.saveState === 'error';
+  useEffect(() => {
+    if (!saveFailed) return;
+    notify.error(messages.feedback.saveError, {
+      id: 'save-error',
+      description: messages.feedback.saveErrorText,
+    });
+  }, [saveFailed, messages.feedback.saveError, messages.feedback.saveErrorText]);
+  // Top-bar title (T103): the project name once it is saved, "Yeni proje" before.
+  useShellTitle(session.projectId ? session.name : null);
   if (project.machine.machineId !== machineId) setMachineId(project.machine.machineId);
 
   const known = machines.some((m) => m.id === machineId);
@@ -505,21 +494,31 @@ function WizardSession({
       <header className="flex flex-wrap items-start justify-between gap-3">
         <NameField label={t.nameLabel} value={session.name} onCommit={session.rename} />
         <div className="flex flex-wrap items-center gap-2">
-          <p
-            aria-live="polite"
-            title={t.save.label}
-            data-testid="save-status"
-            data-state={session.saveState}
-            data-revision={session.revision}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${session.saveState === 'error' || session.saveState === 'conflict' ? 'bg-danger-bg text-danger' : session.saveState === 'saved' || (session.saveState === 'idle' && session.projectId) ? 'bg-ok-bg text-ok' : 'bg-sidebar text-fg-muted'}`}
-          >
-            {saveText}
-          </p>
+          <ShellStatus>
+            <Badge
+              dot
+              variant={
+                session.saveState === 'error' || session.saveState === 'conflict'
+                  ? 'danger'
+                  : session.saveState === 'saved' ||
+                      (session.saveState === 'idle' && session.projectId)
+                    ? 'success'
+                    : 'neutral'
+              }
+              aria-live="polite"
+              title={t.save.label}
+              data-testid="save-status"
+              data-state={session.saveState}
+              data-revision={session.revision}
+            >
+              {saveText}
+            </Badge>
+          </ShellStatus>
           <button
             type="button"
             onClick={session.undo}
             disabled={!session.canUndo}
-            aria-keyshortcuts="Control+Z"
+            aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
             className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
           >
             {messages.cutList.undo}
@@ -528,7 +527,7 @@ function WizardSession({
             type="button"
             onClick={session.redo}
             disabled={!session.canRedo}
-            aria-keyshortcuts="Control+Y"
+            aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
             className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
           >
             {messages.cutList.redo}

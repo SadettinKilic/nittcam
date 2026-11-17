@@ -6,6 +6,7 @@
  * example machine on first use. Auth (T023) replaces `companyScope()` with the session's company.
  */
 import { join } from 'node:path';
+import { DEFAULT_COMPANY_NAME } from '../company-defaults';
 import {
   companies,
   createDb,
@@ -22,7 +23,6 @@ import {
 
 /** Fixed id of the single-user company until T023. */
 export const DEFAULT_COMPANY_ID = '00000000-0000-4000-8000-000000000001';
-const DEFAULT_COMPANY_NAME = 'Atölyem';
 
 const cache = globalThis as typeof globalThis & {
   nittcamDb?: Promise<DbHandle>;

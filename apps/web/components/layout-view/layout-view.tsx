@@ -1,5 +1,6 @@
 'use client';
 
+import { CanvasBoundary } from '../feedback/canvas-boundary';
 import {
   checkPlacement,
   placementIsValid,
@@ -407,23 +408,25 @@ export function LayoutView({
           style={{ height: height || undefined, minHeight: 220 }}
         >
           {width > 0 && view && colors ? (
-            <LayoutCanvas
-              width={width}
-              height={height}
-              sheet={stock}
-              margin={project.nesting.margin}
-              parts={parts}
-              view={view}
-              colors={colors}
-              grid={grid}
-              selected={current?.key ?? null}
-              conflicts={conflicts}
-              pending={pending}
-              onViewChange={(v) => setView({ ...v, scale: clampScale(v.scale) })}
-              onSelect={onSelect}
-              onDragMove={editable ? onDragMove : noopMove}
-              onDrop={editable ? onDrop : noopDrop}
-            />
+            <CanvasBoundary>
+              <LayoutCanvas
+                width={width}
+                height={height}
+                sheet={stock}
+                margin={project.nesting.margin}
+                parts={parts}
+                view={view}
+                colors={colors}
+                grid={grid}
+                selected={current?.key ?? null}
+                conflicts={conflicts}
+                pending={pending}
+                onViewChange={(v) => setView({ ...v, scale: clampScale(v.scale) })}
+                onSelect={onSelect}
+                onDragMove={editable ? onDragMove : noopMove}
+                onDrop={editable ? onDrop : noopDrop}
+              />
+            </CanvasBoundary>
           ) : null}
         </div>
 

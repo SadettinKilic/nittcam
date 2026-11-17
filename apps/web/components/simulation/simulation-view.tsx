@@ -1,5 +1,6 @@
 'use client';
 
+import { CanvasBoundary } from '../feedback/canvas-boundary';
 import {
   clampSimTime,
   lineAt,
@@ -511,20 +512,22 @@ function Player({
             <span className="sr-only sm:hidden">{t.legend.grain}</span>
           </span>
           {width > 0 && view && colors ? (
-            <SimulationCanvas
-              width={width}
-              height={height}
-              sim={sim}
-              sheet={stock}
-              margin={project.nesting.margin}
-              parts={parts}
-              machine={machine}
-              view={view}
-              colors={colors}
-              time={time}
-              onViewChange={(v) => setView(clampView(v, stock, width, height))}
-              clampPan={(x, y, scale) => clampView({ x, y, scale }, stock, width, height)}
-            />
+            <CanvasBoundary>
+              <SimulationCanvas
+                width={width}
+                height={height}
+                sim={sim}
+                sheet={stock}
+                margin={project.nesting.margin}
+                parts={parts}
+                machine={machine}
+                view={view}
+                colors={colors}
+                time={time}
+                onViewChange={(v) => setView(clampView(v, stock, width, height))}
+                clampPan={(x, y, scale) => clampView({ x, y, scale }, stock, width, height)}
+              />
+            </CanvasBoundary>
           ) : null}
         </div>
 

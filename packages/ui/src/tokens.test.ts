@@ -72,6 +72,9 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['accent-text', 'accent-subtle'],
   ['fg', 'accent-subtle'],
   ['danger-fg', 'danger-hover'],
+  // ErrorState (T105): title and text on the danger tint
+  ['fg', 'danger-subtle'],
+  ['fg-muted', 'danger-subtle'],
   ...['success', 'warning', 'danger', 'info'].flatMap((k): Array<[string, string]> => [
     [`${k}-fg`, k],
     [`${k}-text`, 'surface'],
