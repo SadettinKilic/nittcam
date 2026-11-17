@@ -249,7 +249,7 @@ export interface ToolpathOptions {
   direction?: 'climb' | 'conventional';
   /** Height above the material top the rapid descends to before plunging, mm. Default 2. */
   clearance?: number;
-  /** Rapid rate for the time estimate only, mm/min. Default 10 000. */
+  /** Rapid rate for the time estimate only, mm/min. Default: the profile's `rapidFeed`, else 10 000. */
   rapidFeed?: number;
   cutting?: CuttingParamsOverride;
 }

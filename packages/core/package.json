@@ -10,9 +10,11 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "bench:nesting": "vitest run --config vitest.bench.config.ts src/nesting/__bench__",
-    "bench:order": "vitest run --config vitest.bench.config.ts src/toolpath/__bench__"
+    "bench:order": "vitest run --config vitest.bench.config.ts src/toolpath/__bench__",
+    "golden:update": "vitest run --config vitest.golden.config.ts"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
     "cavalier-contours-js": "0.1.1",
     "fast-check": "4.10.2",
     "typescript": "6.0.3",
