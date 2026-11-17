@@ -79,6 +79,8 @@ export interface CommentFormat {
  * non-ASCII characters dropped when `asciiOnly`, spaces collapsed, cut to `maxLength`.
  */
 export function sanitizeComment(text: string, format: CommentFormat): string {
+  // Control characters (incl. CR/LF and DEL) would break the line or the controller's parser.
+  // eslint-disable-next-line no-control-regex -- matching control characters is the point
   let s = text.replace(/[\u0000-\u001F\u007F]/g, ' ');
   if (format.style === 'paren') s = s.replace(/[()]/g, '');
   if (format.asciiOnly) {
