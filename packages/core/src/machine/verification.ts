@@ -107,3 +107,22 @@ export function currentVerificationState(
     current,
   ).state;
 }
+
+/** What the user records in the verification flow (T022, D-031). */
+export type VerificationStep = 'airCut' | 'testCut';
+
+/**
+ * May `step` be recorded for a profile version in `state` (§7.3 order: draft → air cut approved →
+ * test cut approved → verified)? An air cut may always be (re)approved: it starts the flow, and
+ * after a change (`reverify_needed`) the flow starts again from it. The test cut needs an approved
+ * air cut on this very profile version (or a later stage, to measure again).
+ */
+export function canRecordVerification(state: VerificationState, step: VerificationStep): boolean {
+  if (step === 'airCut') return true;
+  return state === 'air_cut_approved' || state === 'test_cut_approved' || state === 'verified';
+}
+
+/** Stage a recorded test cut gives: measured and in tolerance → verified (§7.3 stages 3 and 4). */
+export function testCutStage(inTolerance: boolean): VerificationStage {
+  return inTolerance ? 'verified' : 'test_cut_approved';
+}
