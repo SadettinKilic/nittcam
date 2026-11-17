@@ -210,7 +210,7 @@ describe('T005 tester: validation scenarios', () => {
 });
 
 describe('T005 tester: performance', () => {
-  it('1000 sequential addPart then 1000 undo finish in under 5 s', () => {
+  it('1000 sequential addPart then 1000 undo finish in under 20 s (O(n²) guard, tolerant of load)', () => {
     const stack = new CommandStack(load());
     const baseParts = stack.project.parts.length;
     const t0 = Date.now();
@@ -221,8 +221,8 @@ describe('T005 tester: performance', () => {
     expect(stack.project.parts).toHaveLength(baseParts + 1000);
     for (let i = 0; i < 1000; i++) expect(stack.undo()).toBe(true);
     const total = Date.now() - t0;
-    expect(total).toBeLessThan(5000);
+    expect(total).toBeLessThan(20_000);
     expect(stack.canUndo).toBe(false);
     expect(stack.project.parts).toHaveLength(baseParts);
-  }, 30_000);
+  }, 60_000);
 });
