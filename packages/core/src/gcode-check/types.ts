@@ -67,7 +67,8 @@ export interface GcodeCheckViolation {
 export interface GcodeCheckPostExpectations {
   status?: 'unverified' | 'verified';
   dwell?: { unit: 's' | 'ms' };
-  arcs?: { distanceModeWord: 'G90.1' | 'G91.1' | null };
+  /** Arc distance word the post writes; chord tolerance when arcs are written as lines. */
+  arcs?: { distanceModeWord: 'G90.1' | 'G91.1' | null; chordTolerance?: number };
   toolChange?: { mode: 'auto' | 'manual' | 'none'; pauseForFirstTool?: boolean };
   vacuum?: { enabled: boolean };
   /** Decimals of the written numbers: they set the comparison tolerances. */

@@ -13,8 +13,8 @@ export const CHECK_TOLERANCE = {
   feed: 0.5,
   /** Part centre against the layout, mm. */
   layout: 0.05,
-  /** Envelope and table limits, mm (the written numbers are already rounded). */
-  limit: 1e-6,
+  /** Envelope and table limits, mm, when the post decimals are unknown: half a unit of 3 decimals. */
+  limit: 0.0005 + 1e-9,
 } as const;
 
 export interface Derived {
@@ -28,6 +28,8 @@ export interface Derived {
   target: number;
   posTol: number;
   feedTol: number;
+  /** Limits (envelope, table, sheet): half a unit of the written decimals (rounding). */
+  limitTol: number;
   layoutTol: number;
   toolMode: 'auto' | 'manual' | 'none';
   /** Vacuum codes as numbers, null when the program is not expected to switch vacuum. */
@@ -111,6 +113,7 @@ export function derive(
       target: toolpath.targetDepth,
       posTol,
       feedTol,
+      limitTol: minDec === null ? CHECK_TOLERANCE.limit : 0.5 * 10 ** -minDec + 1e-9,
       layoutTol: ctx.tolerance?.layout ?? CHECK_TOLERANCE.layout,
       toolMode,
       vacuum,

@@ -48,6 +48,9 @@ function describeRead(r: SheetMove): string {
   return `feed to ${end} F${String(r.raw.feed)}`;
 }
 
+/** Chord tolerance when the post does not declare one, mm. */
+const CHORD_TOLERANCE = 0.01;
+
 type Try = { ok: true; next: number } | { ok: false; at: number; why: string };
 
 /**
@@ -62,6 +65,7 @@ export function matchModel(
   push: Push,
 ): MatchOutcome {
   const tol = d.posTol;
+  const chordTol = d.ctx.post?.arcs?.chordTolerance ?? CHORD_TOLERANCE;
   const isExtra = (r: SheetMove): boolean =>
     r.kind === 'rapid' &&
     Math.abs(r.to.x - r.from.x) <= tol &&
@@ -102,6 +106,10 @@ export function matchModel(
       }
       if (r.arc && Math.abs(r.arc.sweep - (p - prev)) > 2 * angTol + 1e-9) {
         return { ok: false, at: j, why: 'arc piece sweeps a different angle' };
+      }
+      // A chord (arcs written as lines) may leave the arc by at most the chord tolerance.
+      if (!r.arc && R * (1 - Math.cos((p - prev) / 2)) > chordTol + tol) {
+        return { ok: false, at: j, why: 'chord leaves the model arc by more than the chord tolerance' };
       }
       const zWant = from.z + ((mv.z - from.z) * Math.min(p, sweep)) / sweep;
       if (Math.abs(r.to.z - zWant) > tol) return { ok: false, at: j, why: 'helix height differs' };

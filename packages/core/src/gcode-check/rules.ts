@@ -6,7 +6,6 @@
 import type { GcodeEvent, GcodeIssueCode, GcodeReadResult } from '../gcode-reader';
 import type { Operation } from '../toolpath';
 import type { Derived } from './derive';
-import { CHECK_TOLERANCE } from './derive';
 import { aboveTable, intoTable } from './frame';
 import { arcExtremes, fmt, type SheetMove } from './path';
 import type { GcodeCheckRule, GcodeCheckViolation } from './types';
@@ -159,13 +158,15 @@ export function motionRules(
 ): void {
   const { profile, stock } = d.ctx;
   const tol = d.posTol;
-  const lim = CHECK_TOLERANCE.limit;
+  const lim = d.limitTol;
   const warmup = profile.spindle.warmupSeconds;
   const toolRadius = Math.max(...d.ops.map((o) => o.toolDiameter / 2));
   const st: MotionState = { spindle: 'off', dwell: 0, vacuumOn: false, vacuumEverOn: false };
   const events = read.events;
   let ei = 0;
   let afterRapid = true;
+  // After a tool change or pause the machine's Z is not known: safe Z is written again first.
+  let needSafeZ: GcodeEvent | null = null;
   const posBefore = (i: number) => (i > 0 ? sm[i - 1] : undefined);
 
   const isVacuum = (e: GcodeEvent, which: 'on' | 'off'): boolean => {
@@ -208,6 +209,7 @@ export function motionRules(
         return;
       case 'toolChange':
       case 'pause':
+        needSafeZ = e;
         if (!prev || prev.toAssumed.includes('z') || prev.to.z < d.safeZ - tol) {
           push(
             'R2',
@@ -291,6 +293,17 @@ export function motionRules(
       if (m.kind !== 'rapid' || !zOnly || m.toAssumed.includes('z') || m.to.z < d.safeZ - tol) {
         push('R2', 'FIRST_MOVE_NOT_SAFE_Z', m.line, `The first move must be a Z-only rapid up to safe Z ${d.safeZ}.`);
       }
+    }
+    if (needSafeZ) {
+      const zOnlyUp =
+        m.kind === 'rapid' &&
+        Math.abs(m.to.x - m.from.x) <= tol &&
+        Math.abs(m.to.y - m.from.y) <= tol &&
+        m.to.z >= d.safeZ - tol;
+      if (!zOnlyUp) {
+        push('R2', 'NO_SAFE_Z_AFTER_TOOL_CHANGE', m.line, `The first move after the ${needSafeZ.kind === 'pause' ? 'pause' : 'tool change'} on line ${needSafeZ.line} must be a Z-only rapid to safe Z ${d.safeZ}.`);
+      }
+      needSafeZ = null;
     }
     const xyChange =
       m.fromAssumed.includes('x') !== m.toAssumed.includes('x') ||
