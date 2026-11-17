@@ -1,7 +1,9 @@
 'use client';
 
 import {
+  KNOWN_POSTS,
   parseMachineProfile,
+  TOOLPATH_DEFAULTS,
   type MachineProfile,
   type MachineProfileIssue,
   type MaterialParams,
@@ -66,6 +68,13 @@ export function MachineForm({ t, machineId, initial, onSaved, onCancel }: Machin
     return fieldErrors(issues, t.errors);
   }, [submitted, profile, serverIssues, t.errors]);
   const hasErrors = Object.keys(errors).length > 0;
+  // Shipped posts (spec §6.4, T017); an unknown id from an older profile stays selectable.
+  const postOptions: Record<string, string> = Object.fromEntries(
+    KNOWN_POSTS.map((k) => [k.id, `${k.name} (${k.id} ${k.version})`]),
+  );
+  if (!(profile.post.id in postOptions)) {
+    postOptions[profile.post.id] = `${f.postUnknown}: ${profile.post.id} ${profile.post.version}`;
+  }
 
   function update(mutate: (draft: MachineProfile) => void) {
     setServerIssues([]);
@@ -216,6 +225,14 @@ export function MachineForm({ t, machineId, initial, onSaved, onCancel }: Machin
           error={e('safeZ')}
           onChange={(v) => update((p) => void (p.safeZ = v))}
         />
+        <NumberField
+          path="rapidFeed"
+          label={f.rapidFeed}
+          help={f.rapidFeedHelp}
+          value={profile.rapidFeed ?? TOOLPATH_DEFAULTS.rapidFeed}
+          error={e('rapidFeed')}
+          onChange={(v) => update((p) => void (p.rapidFeed = v))}
+        />
       </Section>
 
       <Section title={t.form.sections.origin}>
@@ -361,20 +378,19 @@ export function MachineForm({ t, machineId, initial, onSaved, onCancel }: Machin
       </Section>
 
       <Section title={t.form.sections.post}>
-        <TextField
+        <SelectField
           path="post.id"
           label={f.postId}
           help={f.postHelp}
           value={profile.post.id}
-          error={e('post.id')}
-          onChange={(v) => update((p) => void (p.post.id = v))}
-        />
-        <TextField
-          path="post.version"
-          label={f.postVersion}
-          value={profile.post.version}
-          error={e('post.version')}
-          onChange={(v) => update((p) => void (p.post.version = v))}
+          options={postOptions}
+          error={e('post.id') ?? e('post.version')}
+          onChange={(v) =>
+            update((p) => {
+              const known = KNOWN_POSTS.find((k) => k.id === v);
+              if (known) p.post = { id: known.id, version: known.version };
+            })
+          }
         />
       </Section>
 
