@@ -1,5 +1,6 @@
 /** Shapes of the `/api/projects` route handlers, shared by server and client (T023, D-029). */
 import type { CommandLogEntry, Project } from '@nittcam/core';
+import type { ExportRecord } from './exports-api';
 
 export type ProjectStatus = 'draft' | 'produced' | 'completed';
 
@@ -17,6 +18,8 @@ export interface ProjectListItem {
   sheet: { width: number; height: number };
   /** Total part count (sum of quantities). */
   pieces: number;
+  /** The newest NC export of the project (T021), or null. */
+  lastExport: ExportRecord | null;
 }
 
 export interface ProjectDetail {
@@ -36,6 +39,8 @@ export type LogEntry = CommandLogEntry;
 
 /** POST /api/projects */
 export interface CreateRequest {
+  /** Client-generated UUID (D-030): a repeated create with the same id returns the stored project. */
+  id?: string;
   name: string;
   project: Project;
   commands?: LogEntry[];
@@ -69,5 +74,6 @@ export type ProjectApiError =
   | { error: 'invalid_project'; issues: { path: string; message: string }[] }
   | { error: 'invalid_commands'; detail: string }
   | { error: 'not_found' }
+  | { error: 'id_taken' }
   | { error: 'bad_request' }
   | { error: 'server_error' };

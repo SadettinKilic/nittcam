@@ -1,12 +1,15 @@
 /** Helpers of the `/api/projects` route handlers (T023, D-029). */
 import { parseCommandLog, type CommandLogEntry } from '@nittcam/core';
 import {
+  IdTaken,
   InvalidProject,
   NotFound,
   RevisionConflict,
   type CompanyScope,
+  type ExportRow,
   type ProjectRow,
 } from '@nittcam/db';
+import { toRecord } from './exports';
 import { NextResponse } from 'next/server';
 import { isRepoError } from './errors';
 import type { ProjectApiError, ProjectDetail, ProjectListItem } from '../projects-api';
@@ -30,7 +33,10 @@ export function toDetail(row: ProjectRow): ProjectDetail {
 export function toListItem(
   row: ProjectRow,
   machineNames: ReadonlyMap<string, string>,
+  lastExports: ReadonlyMap<string, ExportRow> = new Map(),
+  versions: ReadonlyMap<string, number> = new Map(),
 ): ProjectListItem {
+  const last = lastExports.get(row.id);
   const p = row.data;
   return {
     id: row.id,
@@ -43,6 +49,7 @@ export function toListItem(
     thickness: p.stock.thickness,
     sheet: { width: p.stock.sheet.width, height: p.stock.sheet.height },
     pieces: p.parts.reduce((sum, part) => sum + part.qty, 0),
+    lastExport: last ? toRecord(last, versions.get(last.machineProfileVersionId) ?? null) : null,
   };
 }
 
@@ -96,6 +103,7 @@ export function handleError(err: unknown): NextResponse<ProjectApiError> {
   if (isRepoError(err, RevisionConflict, 'RevisionConflict')) {
     return apiError({ error: 'conflict', currentRevision: err.actualRevision }, 409);
   }
+  if (isRepoError(err, IdTaken, 'IdTaken')) return apiError({ error: 'id_taken' }, 409);
   if (isRepoError(err, InvalidProject, 'InvalidProject')) {
     return apiError({ error: 'invalid_project', issues: err.issues }, 400);
   }

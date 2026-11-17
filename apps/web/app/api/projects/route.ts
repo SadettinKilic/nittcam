@@ -9,7 +9,9 @@ import {
   readName,
   toDetail,
   toListItem,
+  UUID,
 } from '../../../lib/server/projects';
+import { versionNumbers } from '../../../lib/server/exports';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,31 +20,43 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const scope = await companyScope();
-    const [rows, names] = await Promise.all([scope.projects.list(), machineNames(scope)]);
-    return NextResponse.json(rows.map((r) => toListItem(r, names)));
+    const [rows, names, latest, versions] = await Promise.all([
+      scope.projects.list(),
+      machineNames(scope),
+      scope.exports.latestPerProject(),
+      versionNumbers(scope),
+    ]);
+    const last = new Map(latest.map((e) => [e.projectId, e]));
+    return NextResponse.json(rows.map((r) => toListItem(r, names, last, versions)));
   } catch (err) {
     return handleError(err);
   }
 }
 
 /**
- * POST /api/projects `{ name, project, commands? }` → creates the project at revision 1 (status
- * taslak) with the commands that produced it (201, the project detail).
+ * POST /api/projects `{ id?, name, project, commands? }` → creates the project at revision 1 (status
+ * taslak) with the commands that produced it (201, the project detail). With a client-generated
+ * `id` (UUID, D-030) the create is idempotent: a repeat returns the stored project (200).
  */
 export async function POST(request: Request) {
   const body = await readBody(request);
   const name = readName(body?.['name']);
+  const id = body?.['id'];
   if (!body || !name || body['project'] === undefined)
     return apiError({ error: 'bad_request' }, 400);
+  if (id !== undefined && (typeof id !== 'string' || !UUID.test(id))) {
+    return apiError({ error: 'bad_request' }, 400);
+  }
   const commands = readCommands(body['commands']);
   if (!commands.ok) return commands.response;
   try {
     const scope = await companyScope();
-    const row = await scope.projects.create({
-      name,
-      data: body['project'],
-      commands: commands.entries,
-    });
+    const values = { name, data: body['project'], commands: commands.entries };
+    if (typeof id === 'string') {
+      const res = await scope.projects.createOnce({ ...values, id: id.toLowerCase() });
+      return NextResponse.json(toDetail(res.row), { status: res.created ? 201 : 200 });
+    }
+    const row = await scope.projects.create(values);
     return NextResponse.json(toDetail(row), { status: 201 });
   } catch (err) {
     return handleError(err);

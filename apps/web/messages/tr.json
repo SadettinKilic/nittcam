@@ -211,7 +211,6 @@
   "cutList": {
     "title": "Parçalar",
     "subtitle": "Kesim listesini tabloya girin ya da Excel'den yapıştırın. Ölçüler milimetredir.",
-    "draftNote": "Taslak: değişiklikler bu sekmede tutulur; sayfa yenilense de kalır, sekme kapanınca kaybolur. Kalıcı kayıt yakında.",
     "tableLabel": "Kesim listesi",
     "empty": "Henüz parça yok. Excel'den yapıştırın ya da yeni satır ekleyin.",
     "addRow": "+ Satır ekle",
@@ -555,7 +554,10 @@
       "UNPLACED_COPIES": "Bazı parçalar plakaya yerleşmedi ve kesilmeyecek.",
       "CLEARANCE_CLAMPED": "Yaklaşma yüksekliği güvenli Z ile sınırlandı.",
       "RAMP_STEEPER": "Rampa açısı istenenden dik.",
-      "ARC_COLLAPSED": "Çok küçük bir yay düz çizgiye çevrildi."
+      "ARC_COLLAPSED": "Çok küçük bir yay düz çizgiye çevrildi.",
+      "MACHINE_NOT_FOUND": "Projenin makinesi bulunamadı. Makine ve plaka adımında bir makine seçin.",
+      "PROFILE_VERSION_NOT_FOUND": "Projenin kaydedildiği makine profili sürümü bulunamadı. Makine ve plaka adımında \"Son sürüme geç\" deyin.",
+      "UNKNOWN_POST": "Makine profilindeki post işlemci yüklü değil."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
