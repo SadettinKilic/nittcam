@@ -4,6 +4,7 @@ import { ErrorState } from '@nittcam/ui';
 import { ImageOff } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { getMessages } from '../../lib/messages';
+import { ThrowProbe } from './throw-probe';
 
 export interface CanvasBoundaryProps {
   /** Defaults to the Turkish texts of `feedback.canvas`. */
@@ -30,7 +31,13 @@ export class CanvasBoundary extends Component<CanvasBoundaryProps, { failed: boo
 
   override render(): ReactNode {
     const { t = getMessages().feedback.canvas, children, testId = 'canvas-error' } = this.props;
-    if (!this.state.failed) return children;
+    if (!this.state.failed)
+      return (
+        <>
+          {children}
+          <ThrowProbe target="canvas" />
+        </>
+      );
     return (
       <ErrorState
         data-testid={testId}

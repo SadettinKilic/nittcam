@@ -3,6 +3,7 @@ import { PageTitle } from '@nittcam/ui';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PageSkeleton } from '../components/feedback/page-skeleton';
+import { ThrowProbe } from '../components/feedback/throw-probe';
 import { buttonClass } from '../components/parts/ui';
 import { fill } from '../lib/draft-project';
 import { getMessages } from '../lib/messages';
@@ -45,6 +46,8 @@ export default function HomePage() {
   return (
     <Suspense fallback={<PageSkeleton label={getMessages().feedback.loading} />}>
       <Dashboard />
+      {/* Test-only crash for the app error page e2e (inert in production). */}
+      <ThrowProbe target="page" />
     </Suspense>
   );
 }
