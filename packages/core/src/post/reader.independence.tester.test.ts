@@ -37,9 +37,9 @@ describe('gcode-reader lint boundary (tester probe)', { timeout: 60_000 }, () =>
     ).toBe(0);
   });
 
-  // BUG (T018 review): a "./" prefix in front of ".." slips past the regex `^\.\.(/...)?$` and past
-  // independence.test.ts (which allows every specifier starting with "./"). Remove `.fails` once fixed.
-  it.fails('rejects ./../post/generate (dot-slash bypass)', async () => {
+  // Fixed after the T018 review (was `it.fails`): a "./" prefix in front of ".." used to slip past
+  // the regex and past independence.test.ts (which allowed every specifier starting with "./").
+  it('rejects ./../post/generate (dot-slash bypass)', async () => {
     expect(
       await lintErrors("import x from './../post/generate';\nexport default x;"),
     ).toBeGreaterThan(0);

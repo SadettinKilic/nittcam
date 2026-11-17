@@ -151,7 +151,11 @@ export type GcodeIssueCode =
   | 'TOOL_CHANGE_WITHOUT_T'
   | 'CODE_AFTER_END'
   | 'CONTENT_AFTER_END_MARKER'
-  | 'NO_PROGRAM_END';
+  | 'NO_PROGRAM_END'
+  | 'PERCENT_MID_PROGRAM'
+  | 'SPINDLE_NO_RPM'
+  /** Informational: a leading UTF-8 BOM was removed. */
+  | 'BOM_STRIPPED';
 
 export interface GcodeIssue {
   code: GcodeIssueCode;

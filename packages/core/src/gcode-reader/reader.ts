@@ -264,8 +264,14 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
   const events: GcodeEvent[] = [];
   const lines: GcodeLine[] = [];
 
-  const lineEnding = detectLineEnding(text);
-  const rawLines = text.split(/\r\n|\n|\r/);
+  // A UTF-8 byte order mark is stripped, never silently: a BOM anywhere else is an error.
+  let body = text;
+  if (body.charCodeAt(0) === 0xfeff) {
+    body = body.slice(1);
+    issue('BOM_STRIPPED', 1, 'UTF-8 byte order mark at the start of the file stripped');
+  }
+  const lineEnding = detectLineEnding(body);
+  const rawLines = body.split(/\r\n|\n|\r/);
   if (rawLines.length > 1 && rawLines[rawLines.length - 1] === '') rawLines.pop();
 
   let percentCount = 0;
@@ -274,6 +280,19 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
   let afterEndWarned = false;
   let anyWords = false;
   let inchWarned = false;
+  /** A lone "%" after code and before the end (some controllers stop there). */
+  let midPercentLine: number | null = null;
+  let midPercentWarned = false;
+  const checkMidPercent = (): void => {
+    if (midPercentLine !== null && !midPercentWarned) {
+      issue(
+        'PERCENT_MID_PROGRAM',
+        midPercentLine,
+        'A "%" marker in the middle of the program, followed by code (some controllers stop there)',
+      );
+      midPercentWarned = true;
+    }
+  };
 
   for (let idx = 0; idx < rawLines.length; idx++) {
     const lineNo = idx + 1;
@@ -288,6 +307,7 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
     };
 
     if (afterEndMarker) {
+      if (lex.words.length > 0) checkMidPercent();
       if ((lex.words.length > 0 || lex.error) && !afterEndMarkerWarned) {
         issue('CONTENT_AFTER_END_MARKER', lineNo, 'Text after the closing "%" is ignored');
         afterEndMarkerWarned = true;
@@ -297,6 +317,15 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
       continue;
     }
     if (lex.percent) {
+      if (
+        anyWords &&
+        !st.ended &&
+        lex.words.length === 0 &&
+        !lex.error &&
+        midPercentLine === null
+      ) {
+        midPercentLine = lineNo;
+      }
       percentCount++;
       if (percentCount >= 2) afterEndMarker = true;
     }
@@ -311,6 +340,7 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
       continue;
     }
     anyWords = true;
+    checkMidPercent();
     if (lex.percent) {
       issue('IGNORED_WORD', lineNo, 'Words on a "%" marker line are ignored');
       skipped = true;
@@ -510,6 +540,9 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
     const spindleM = mGroups.get('spindle');
     if (spindleM !== undefined) {
       st.spindle = spindleM === 3 ? 'cw' : spindleM === 4 ? 'ccw' : 'off';
+      if (st.spindle !== 'off' && st.rpm === null) {
+        issue('SPINDLE_NO_RPM', lineNo, `M${spindleM} with no spindle speed (no S word yet)`);
+      }
       events.push({
         kind: 'spindle',
         state: st.spindle,

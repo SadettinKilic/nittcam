@@ -45,7 +45,7 @@ function isLetter(c: number): boolean {
 }
 
 function isSpace(c: number): boolean {
-  return c === C_SPACE || c === C_TAB || c === 0x0c || c === 0x0b || c === 0xa0 || c === 0xfeff;
+  return c === C_SPACE || c === C_TAB || c === 0x0c || c === 0x0b || c === 0xa0;
 }
 
 /** The letter and the run of word-like characters after it, for error messages (`XNAN`). */

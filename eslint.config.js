@@ -81,15 +81,52 @@ export default tseslint.config(
           patterns: [
             ...CORE_PURE_PATTERNS,
             {
-              regex: '^\\.\\.(/(?!geometry/constants$).*)?$',
+              // Any `..` segment anywhere ('../x', './../x', './a/../../x', '..\x'), except
+              // exactly '../geometry/constants'. The folder has no subfolders, so every `..`
+              // leaves it; a roundabout spelling of the allowed file is rejected too.
+              regex: '^(?!\\.\\./geometry/constants$)(?:.*[/\\\\])?\\.\\.(?:[/\\\\]|$)',
               message:
                 'gcode-reader must stay independent of the generator (spec §6.5): only ../geometry/constants may be imported from outside the folder.',
+            },
+            {
+              regex: '^(?:[/\\\\]|[A-Za-z]:|file:)',
+              message: 'gcode-reader must not import by absolute path (spec §6.5 independence).',
             },
             {
               regex: '^@nittcam/',
               message: 'gcode-reader must not import workspace packages (spec §6.5 independence).',
             },
+            {
+              group: ['module', 'node:module'],
+              message: 'gcode-reader must not build its own require (spec §6.5 independence).',
+            },
           ],
+        },
+      ],
+      // Imports that no-restricted-imports cannot see: dynamic import(), require(),
+      // `import x = require()` and `typeof import()` types. The reader needs none of them.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportExpression',
+          message:
+            'gcode-reader: no dynamic import() (spec §6.5 independence, static imports only).',
+        },
+        {
+          selector: "CallExpression[callee.name='require']",
+          message: 'gcode-reader: no require() (spec §6.5 independence, static imports only).',
+        },
+        {
+          selector: "CallExpression[callee.property.name='require']",
+          message: 'gcode-reader: no require() (spec §6.5 independence, static imports only).',
+        },
+        {
+          selector: 'TSImportEqualsDeclaration',
+          message: 'gcode-reader: no `import x = require()` (spec §6.5 independence).',
+        },
+        {
+          selector: 'TSImportType',
+          message: 'gcode-reader: no `import()` types (spec §6.5 independence).',
         },
       ],
     },

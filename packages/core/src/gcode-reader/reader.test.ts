@@ -441,6 +441,45 @@ describe('modal state', () => {
     expect(codes(exec, 'warnings')).toEqual(['BLOCK_DELETE']);
   });
 
+  it('a lone % in the middle of the program, followed by code, warns PERCENT_MID_PROGRAM', () => {
+    const mid = readGcode('G21 G90\nG0 Z5\n%\nG0 Z6\nM30\n');
+    expect(mid.warnings).toMatchObject([{ code: 'PERCENT_MID_PROGRAM', line: 3 }]);
+    expect(mid.moves).toHaveLength(2);
+    // Second % mid-program: also the closing marker, code after it is ignored.
+    const second = readGcode('%\nG21 G90\nG0 Z5\n%\nG0 Z6\nM30\n');
+    expect(second.warnings.map((w) => w.code)).toEqual([
+      'PERCENT_MID_PROGRAM',
+      'CONTENT_AFTER_END_MARKER',
+      'NO_PROGRAM_END',
+    ]);
+    // Leading and closing markers, and a % after M30 with nothing after it, are fine.
+    expect(readGcode('%\nG0 Z5\nM30\n%\n').warnings).toEqual([]);
+    expect(readGcode('G0 Z5\nM30\n%\n').warnings).toEqual([]);
+    expect(readGcode('G0 Z5\nM30\n%\n(comment)\n\n').warnings).toEqual([]);
+    // Comments and blank lines between the % and the next code do not hide it.
+    expect(codes(readGcode('G0 Z5\n%\n(comment)\n\nM30\n'), 'warnings')).toEqual([
+      'PERCENT_MID_PROGRAM',
+    ]);
+  });
+
+  it('M3/M4 with no S ever set warns SPINDLE_NO_RPM; S before or on the line does not', () => {
+    expect(readGcode('M3\nG0 Z5\nM30\n').warnings).toMatchObject([
+      { code: 'SPINDLE_NO_RPM', line: 1 },
+    ]);
+    expect(codes(readGcode('M4\nM30\n'), 'warnings')).toEqual(['SPINDLE_NO_RPM']);
+    expect(readGcode('M3 S1000\nM30\n').warnings).toEqual([]);
+    expect(readGcode('S1000\nM3\nM5\nM3\nM30\n').warnings).toEqual([]);
+    expect(readGcode('M5\nM30\n').warnings).toEqual([]);
+  });
+
+  it('a leading UTF-8 BOM is stripped with BOM_STRIPPED; a BOM elsewhere is an error', () => {
+    const r = readGcode('﻿G0 Z5\nM30\n');
+    expect(r.ok).toBe(true);
+    expect(r.warnings).toMatchObject([{ code: 'BOM_STRIPPED', line: 1, severity: 'warning' }]);
+    expect(r.moves[0]!.to.z).toBe(5);
+    expect(codes(readGcode('G0 Z5\n﻿G0 Z6\nM30\n'))).toEqual(['UNEXPECTED_CHARACTER']);
+  });
+
   it('no end code warns', () => {
     expect(codes(readGcode('G0 Z5\n'), 'warnings')).toEqual(['NO_PROGRAM_END']);
   });
