@@ -11,6 +11,7 @@ export type { PostConfig, PostConfigInput, ParsePostConfigResult, KnownPostId } 
 export {
   formatFixed,
   formatFixedCeil,
+  formatFixedUp,
   sanitizeComment,
   formatComment,
   transliterateTurkish,

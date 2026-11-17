@@ -28,7 +28,7 @@ export interface Derived {
   target: number;
   posTol: number;
   feedTol: number;
-  /** Limits (envelope, table, sheet): half a unit of the written decimals (rounding). */
+  /** XY limits (envelope, table): half a unit of the written decimals (rounding). Z limits have none. */
   limitTol: number;
   layoutTol: number;
   toolMode: 'auto' | 'manual' | 'none';

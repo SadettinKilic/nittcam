@@ -15,6 +15,7 @@ import {
   formatComment,
   formatFixed,
   formatFixedCeil,
+  formatFixedUp,
   PostFormatError,
   sanitizeComment,
   type CommentFormat,
@@ -159,6 +160,16 @@ class Writer {
     }
   }
 
+  /** Z words: rounded toward +Z, never deeper than the model (D-025). */
+  private numZ(v: number, d: number): string {
+    try {
+      return formatFixedUp(v, d);
+    } catch (e) {
+      if (e instanceof PostFormatError) this.fail('NUMBER_INVALID', `Z: ${e.message}`, 8);
+      throw e;
+    }
+  }
+
   private checkEnvelope(p: Point3): void {
     const why = envelopeViolation(this.c.frame, p);
     if (why) this.fail('OUT_OF_ENVELOPE', `Outside the work envelope (${why}).`, 6);
@@ -182,7 +193,7 @@ class Writer {
     const sup = this.c.cfg.motion.suppressUnchangedAxes;
     const xs = this.num(m.x, d.xy, 'X');
     const ys = this.num(m.y, d.xy, 'Y');
-    const zs = this.num(m.z, d.z, 'Z');
+    const zs = this.numZ(m.z, d.z);
     let any = false;
     if (forceXY || !sup || xs !== this.wx) {
       out.push(`X${xs}`);
@@ -216,7 +227,7 @@ class Writer {
     const why = zEnvelopeViolation(this.c.frame, z);
     if (why) this.fail('OUT_OF_ENVELOPE', `Safe Z outside the work envelope (${why}).`, 6);
     const zm = z + this.c.frame.zOffset;
-    const zs = this.num(zm, this.c.cfg.decimals.z, 'Z');
+    const zs = this.numZ(zm, this.c.cfg.decimals.z);
     const words: string[] = [];
     // Always written in full: this is the rule-2 first move and the rule-7 end move.
     words.push(this.c.cfg.motion.rapid, `Z${zs}`);

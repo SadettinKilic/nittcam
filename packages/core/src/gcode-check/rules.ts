@@ -18,6 +18,9 @@ export type Push = (
   severity?: 'error' | 'warning',
 ) => void;
 
+/** Float noise of the inverse frame (mm): the only slack of the Z limits. */
+const Z_FLOAT_NOISE = 1e-9;
+
 /** Rule 10 marker, compared after folding Turkish letters and case. */
 const UNVERIFIED_MARKERS = ['DOGRULANMADI', 'AIR CUT'] as const;
 
@@ -159,6 +162,8 @@ export function motionRules(
   const { profile, stock } = d.ctx;
   const tol = d.posTol;
   const lim = d.limitTol;
+  // Z limits: no rounding tolerance (the post rounds Z toward +Z, D-025); only float noise.
+  const zLim = Z_FLOAT_NOISE;
   const warmup = profile.spindle.warmupSeconds;
   const toolRadius = Math.max(...d.ops.map((o) => o.toolDiameter / 2));
   const st: MotionState = { spindle: 'off', dwell: 0, vacuumOn: false, vacuumEverOn: false };
@@ -292,7 +297,7 @@ export function motionRules(
       );
     }
     const h = aboveTable(f, z, stock.thickness);
-    if (h < -profile.zZero.spoilboardAllowance - lim) {
+    if (h < -profile.zZero.spoilboardAllowance - zLim) {
       push(
         'R6',
         'BELOW_SPOILBOARD_ALLOWANCE',
@@ -300,7 +305,7 @@ export function motionRules(
         `Z ${z} is ${(-h).toFixed(4)} mm below the table surface, allowance ${profile.zZero.spoilboardAllowance}.`,
       );
     }
-    if (h > profile.workEnvelope.z + lim) {
+    if (h > profile.workEnvelope.z + zLim) {
       push(
         'R6',
         'OUT_OF_ENVELOPE',
