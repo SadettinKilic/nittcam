@@ -193,6 +193,21 @@ test.describe('T020 round 2: zoom and pan', () => {
       for (const sp of spots) {
         await page.getByRole('button', { name: s.controls.fit }).click();
         await canvas.scrollIntoViewIfNeeded();
+        // Let the fit settle (and the page stop scrolling) before measuring: two equal reads.
+        let prev = '';
+        await expect
+          .poll(
+            async () => {
+              const v = await view(canvas);
+              const b = await canvas.boundingBox();
+              const cur = JSON.stringify([v.x, v.y, v.scale, b?.x, b?.y]);
+              const same = cur === prev;
+              prev = cur;
+              return same;
+            },
+            { timeout: 3000, intervals: [100] },
+          )
+          .toBe(true);
         const box = await canvas.boundingBox();
         if (!box) throw new Error('no box');
         const before = await view(canvas);
