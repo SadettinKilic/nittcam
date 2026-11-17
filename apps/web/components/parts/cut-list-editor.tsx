@@ -11,7 +11,16 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { fill, newPartId } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import { PastePanel } from './paste-panel';
-import { buttonClass } from './ui';
+import { Button, IconButton, Tooltip } from '@nittcam/ui';
+import {
+  CircleCheck,
+  ClipboardPaste,
+  Copy,
+  Plus,
+  Rows3,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react';
 
 type Text = Messages['cutList'];
 type EdgeKey = 'top' | 'right' | 'bottom' | 'left';
@@ -19,8 +28,9 @@ type EdgeKey = 'top' | 'right' | 'bottom' | 'left';
 /** Grid order of the edge band columns: Üst, Alt, Sol, Sağ (T011b). */
 const EDGES: readonly EdgeKey[] = ['top', 'bottom', 'left', 'right'];
 
+/** Spreadsheet-like cell input: quiet until hover or focus (T109 restyle; full grid UX is M3). */
 const inputClass =
-  'w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger-bg';
+  'h-control-sm w-full rounded-md border border-transparent bg-transparent px-2 text-sm text-fg transition-colors duration-(--duration-fast) outline-none hover:border-border-strong focus-visible:outline-solid focus-visible:border-focus focus-visible:bg-surface focus-visible:outline-3 focus-visible:outline-offset-0 focus-visible:outline-focus/25 aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger-subtle';
 
 /** Numbers in inputs: Turkish decimal comma, no grouping. */
 function formatInput(v: number): string {
@@ -135,7 +145,7 @@ function Cell<T>({
         onKeyDown={onKeyDown}
       />
       {error ? (
-        <p id={`${id}-error`} className="text-xs font-medium text-danger">
+        <p id={`${id}-error`} className="px-2 text-xs font-medium text-danger-text">
           {error}
         </p>
       ) : null}
@@ -190,8 +200,8 @@ function PartRow({
   const rect = part.kind === 'rect' ? part : null;
   const cellProps = { row: index, rejected: t.errors.rejected };
   return (
-    <tr className="align-top">
-      <td className="px-2 py-2 text-right text-fg-muted tabular-nums">{n}</td>
+    <tr className="align-top transition-colors duration-(--duration-fast) hover:bg-surface-subtle">
+      <td className="px-3 py-2.5 text-right text-xs text-fg-subtle tabular-nums">{n}</td>
       <td className="min-w-40 px-1 py-1">
         <Cell
           {...cellProps}
@@ -203,7 +213,11 @@ function PartRow({
           onCommit={(name) => update({ name })}
         />
         {issues.map((issue) => (
-          <p key={`${issue.code}-${issue.path}`} className="mt-1 text-xs font-medium text-warn">
+          <p
+            key={`${issue.code}-${issue.path}`}
+            className="mt-1 flex items-center gap-1 px-2 text-xs font-medium text-warning-text"
+          >
+            <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
             {issue.code in t.issues ? t.issues[issue.code as keyof Text['issues']] : t.issues.other}
           </p>
         ))}
@@ -243,7 +257,7 @@ function PartRow({
           id={cellId(index, 'grain')}
           type="checkbox"
           aria-label={label(t.columns.grain)}
-          className="mt-2 size-4 accent-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="mt-2 size-4 accent-(--color-accent) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           checked={part.grainLock}
           onChange={(e) => void update({ grainLock: e.target.checked })}
         />
@@ -264,23 +278,26 @@ function PartRow({
         </td>
       ))}
       <td className="px-1 py-1">
-        <div className="flex gap-1">
-          <button
-            type="button"
-            aria-label={fill(t.rowAction, { action: t.duplicate, n })}
-            className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-            onClick={() => void run('duplicatePart', { id: part.id, newId: newPartId() })}
-          >
-            {t.duplicate}
-          </button>
-          <button
-            type="button"
-            aria-label={fill(t.rowAction, { action: t.remove, n })}
-            className={`${buttonClass} border border-border bg-bg text-danger hover:bg-danger-bg`}
-            onClick={() => void run('removePart', { id: part.id })}
-          >
-            {t.remove}
-          </button>
+        <div className="flex justify-end gap-0.5">
+          <Tooltip content={t.duplicate}>
+            <IconButton
+              size="sm"
+              aria-label={fill(t.rowAction, { action: t.duplicate, n })}
+              onClick={() => void run('duplicatePart', { id: part.id, newId: newPartId() })}
+            >
+              <Copy aria-hidden />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content={t.remove}>
+            <IconButton
+              size="sm"
+              aria-label={fill(t.rowAction, { action: t.remove, n })}
+              className="hover:bg-danger-subtle hover:text-danger-text"
+              onClick={() => void run('removePart', { id: part.id })}
+            >
+              <Trash2 aria-hidden />
+            </IconButton>
+          </Tooltip>
         </div>
       </td>
     </tr>
@@ -343,32 +360,13 @@ export function CutListEditor({
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          ref={pasteButton}
-          type="button"
-          aria-expanded={pasteOpen}
-          aria-controls="paste-panel"
-          onClick={() => {
-            setNotice(null);
-            setPasteOpen((o) => !o);
-          }}
-          className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
-        >
-          {t.pasteOpen}
-        </button>
-        <button
-          type="button"
-          onClick={addRow}
-          className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-        >
-          {t.addRow}
-        </button>
-      </div>
-
       <div aria-live="polite">
         {notice ? (
-          <p role="status" className="rounded-lg bg-ok-bg p-3 text-sm text-ok">
+          <p
+            role="status"
+            className="flex items-center gap-2 rounded-lg border border-success-border bg-success-subtle px-3 py-2.5 text-sm text-success-text"
+          >
+            <CircleCheck aria-hidden className="size-4 shrink-0" />
             {notice}
           </p>
         ) : null}
@@ -378,50 +376,101 @@ export function CutListEditor({
         <PastePanel t={t.paste} onApply={applyPaste} onCancel={() => setPasteOpen(false)} />
       ) : null}
 
-      <section aria-labelledby="cut-list-title" className="flex min-w-0 flex-col gap-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="cut-list-title" className="text-xl font-semibold">
-            {t.tableLabel}
-          </h2>
-          <p className="text-sm text-fg-muted" data-testid="cut-list-count">
-            {fill(t.count, { rows: parts.length, pieces })}
-          </p>
+      <section
+        aria-labelledby="cut-list-title"
+        className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-xs"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h2 id="cut-list-title" className="text-base font-semibold tracking-tight text-fg">
+              {t.tableLabel}
+            </h2>
+            <p className="text-sm text-fg-muted tabular-nums" data-testid="cut-list-count">
+              {fill(t.count, { rows: parts.length, pieces })}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={addRow}>
+              <Plus aria-hidden />
+              {t.addRow}
+            </Button>
+            <Button
+              ref={pasteButton}
+              size="sm"
+              aria-expanded={pasteOpen}
+              aria-controls="paste-panel"
+              onClick={() => {
+                setNotice(null);
+                setPasteOpen((o) => !o);
+              }}
+            >
+              <ClipboardPaste aria-hidden />
+              {t.pasteOpen}
+            </Button>
+          </div>
         </div>
         {parts.length === 0 ? (
-          <p className="rounded-card border border-dashed border-border p-6 text-center text-fg-muted">
-            {t.empty}
-          </p>
+          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+            <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface-subtle text-fg-muted">
+              <Rows3 aria-hidden className="size-5" />
+            </span>
+            <p className="max-w-sm text-sm text-fg-muted">{t.empty}</p>
+          </div>
         ) : (
-          <div className="relative max-w-full overflow-x-auto rounded-card border border-border">
+          <div className="relative max-w-full overflow-x-auto">
             <table className="w-full text-left text-sm" aria-labelledby="cut-list-title">
-              <thead className="bg-sidebar text-fg-muted">
+              <thead className="border-b border-border bg-surface-subtle text-fg-muted">
                 <tr>
-                  <th scope="col" rowSpan={2} className="px-2 py-2 text-right font-medium">
+                  <th
+                    scope="col"
+                    rowSpan={2}
+                    className="px-3 py-2.5 text-xs font-medium text-right"
+                  >
                     {t.columns.index}
                   </th>
-                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
+                  <th scope="col" rowSpan={2} className="px-3 py-2.5 text-xs font-medium">
                     {t.columns.name}
                   </th>
-                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
+                  <th
+                    scope="col"
+                    rowSpan={2}
+                    className="px-3 py-2.5 text-xs font-medium text-right"
+                  >
                     {t.columns.w}
                   </th>
-                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
+                  <th
+                    scope="col"
+                    rowSpan={2}
+                    className="px-3 py-2.5 text-xs font-medium text-right"
+                  >
                     {t.columns.h}
                   </th>
-                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
+                  <th
+                    scope="col"
+                    rowSpan={2}
+                    className="px-3 py-2.5 text-xs font-medium text-right"
+                  >
                     {t.columns.qty}
                   </th>
-                  <th scope="col" rowSpan={2} className="px-2 py-2 text-center font-medium">
+                  <th
+                    scope="col"
+                    rowSpan={2}
+                    className="px-3 py-2.5 text-xs font-medium text-center"
+                  >
                     {t.columns.grain}
                   </th>
                   <th
                     scope="colgroup"
                     colSpan={EDGES.length}
-                    className="px-1 pt-2 pb-0.5 text-center font-medium whitespace-nowrap"
+                    className="px-1 pt-2.5 pb-0.5 text-center text-xs font-medium whitespace-nowrap"
                   >
                     {t.columns.edgeGroup}
                   </th>
-                  <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
+                  <th
+                    scope="col"
+                    rowSpan={2}
+                    className="px-3 py-2.5 text-xs font-medium text-right"
+                  >
                     {t.columns.actions}
                   </th>
                 </tr>
@@ -430,7 +479,7 @@ export function CutListEditor({
                     <th
                       key={e}
                       scope="col"
-                      className="px-0.5 pb-2 text-center text-xs font-normal"
+                      className="px-0.5 pb-2 text-center text-2xs font-normal text-fg-subtle"
                       data-testid={`edge-col-${e}`}
                     >
                       {t.edge[e]}
@@ -438,7 +487,7 @@ export function CutListEditor({
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border-subtle">
                 {parts.map((part, index) => (
                   <PartRow
                     key={part.id}
@@ -453,7 +502,9 @@ export function CutListEditor({
             </table>
           </div>
         )}
-        <p className="text-xs text-fg-muted">{t.shortcuts}</p>
+        <p className="border-t border-border-subtle px-4 py-2.5 text-xs text-fg-subtle sm:px-5">
+          {t.shortcuts}
+        </p>
       </section>
     </div>
   );

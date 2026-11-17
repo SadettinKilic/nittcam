@@ -1,10 +1,11 @@
 'use client';
 
 import { parseCutListNumber } from '@nittcam/core';
+import { cn, fieldBase, fieldFocus } from '@nittcam/ui';
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
 
-export const inputClass =
-  'w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger-bg';
+/** Native inputs and selects of the wizard, in the @nittcam/ui field look (T109). */
+export const inputClass = cn(fieldBase, fieldFocus, 'h-control-md px-3');
 
 /** Numbers in inputs: Turkish decimal comma, no grouping. */
 export function formatInput(v: number): string {
@@ -23,6 +24,7 @@ export function NumberField({
   testId,
   min = 0,
   list,
+  unit = null,
 }: {
   label: string;
   value: number;
@@ -33,6 +35,8 @@ export function NumberField({
   /** Values must be greater than this. */
   min?: number;
   list?: string | undefined;
+  /** Unit suffix inside the field; null for none. */
+  unit?: string | null;
 }) {
   const id = useId();
   const [text, setTextState] = useState<string | null>(null);
@@ -76,30 +80,40 @@ export function NumberField({
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm font-medium text-fg">
         {label}
       </label>
-      <input
-        id={id}
-        type="text"
-        inputMode="decimal"
-        autoComplete="off"
-        list={list}
-        data-testid={testId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={`${inputClass} text-right tabular-nums`}
-        value={text ?? formatInput(value)}
-        onChange={(e) => {
-          setText(e.target.value);
-          setError(null);
-        }}
-        onBlur={() => void commit()}
-        onKeyDown={onKeyDown}
-      />
+      <div className="relative">
+        <input
+          id={id}
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          list={list}
+          data-testid={testId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className={cn(inputClass, 'text-right tabular-nums', unit && 'pr-10')}
+          value={text ?? formatInput(value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            setError(null);
+          }}
+          onBlur={() => void commit()}
+          onKeyDown={onKeyDown}
+        />
+        {unit ? (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-fg-subtle"
+          >
+            {unit}
+          </span>
+        ) : null}
+      </div>
       {error ? (
-        <p id={`${id}-error`} className="text-xs font-medium text-danger">
+        <p id={`${id}-error`} className="text-xs font-medium text-danger-text">
           {error}
         </p>
       ) : null}

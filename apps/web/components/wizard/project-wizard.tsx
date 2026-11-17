@@ -9,14 +9,40 @@ import type { Messages } from '../../lib/messages';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
 import type { ProjectDetail } from '../../lib/projects-api';
 import { CutListEditor } from '../parts/cut-list-editor';
-import { buttonClass } from '../parts/ui';
 import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
 import { MachineFields, SheetPreview } from './machine-step';
 import { ValidationPanel } from './validation-panel';
-import { STEPS, toStep, type StepKey } from '../../lib/wizard-steps';
-import { Badge, Button, ErrorState, notify } from '@nittcam/ui';
+import {
+  STEPS,
+  saveIndicator,
+  stepBlocker,
+  toStep,
+  wizardStepStatuses,
+  type SaveIndicator,
+  type StepKey,
+  type WizardProgress,
+  type WizardStepStatus,
+} from '../../lib/wizard-steps';
+import { Callout, Panel, canvasWellClass, panelClass } from './panels';
+import { focusRing } from '../page/page-header';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CircleAlert,
+  Cloud,
+  CloudAlert,
+  CloudCheck,
+  Info,
+  Loader2,
+  Lock,
+  Redo2,
+  TriangleAlert,
+  Undo2,
+} from 'lucide-react';
+import { Badge, Button, ErrorState, IconButton, Tooltip, notify } from '@nittcam/ui';
 import { ariaKeyShortcuts, shortcutById } from '../../lib/shortcuts';
 import { PageSkeleton } from '../feedback/page-skeleton';
 import { ShellStatus, useShellTitle } from '../shell/shell-context';
@@ -217,6 +243,15 @@ const GRID: Record<StepKey, string> = {
   export: 'lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]',
 };
 
+/** On narrow screens the main work area comes first; warnings follow it. */
+const LEFT_ORDER: Record<StepKey, string> = {
+  makine: '',
+  parcalar: 'order-last xl:order-none',
+  dizilim: '',
+  simulasyon: 'order-last 2xl:order-none',
+  export: '',
+};
+
 function WizardSession({
   messages,
   initialStep,
@@ -378,40 +413,44 @@ function WizardSession({
   }, [undo, redo]);
 
   const index = STEPS.indexOf(step);
+  const progress = { partCount: project.parts.length, sheetCount: project.layout.sheets.length };
   const validation = <ValidationPanel t={t.issues} project={project} issues={session.issues} />;
 
   let left: ReactNode = null;
   let right: ReactNode = null;
   let both: ReactNode = null;
   if (step === 'makine') {
-    left =
-      machines.length === 0 ? (
-        <p role="alert" className="rounded-lg bg-warn-bg p-3 text-sm text-warn">
-          {t.noMachines}{' '}
-          <Link href="/makineler" className="font-medium underline">
-            {t.machinesLink}
-          </Link>
-        </p>
-      ) : (
-        <MachineFields
-          t={t.machine}
-          materials={messages.materials}
-          machinesLink={t.machinesLink}
-          project={project}
-          machines={machines}
-          detail={detail}
-          issues={session.issues}
-          run={session.run}
-        />
-      );
+    left = (
+      <div className="flex min-w-0 flex-col gap-4">
+        {machines.length === 0 ? (
+          <Callout tone="warning" role="alert" icon={<TriangleAlert aria-hidden />}>
+            <p>
+              {t.noMachines}{' '}
+              <Link href="/makineler" className={`font-medium underline ${focusRing}`}>
+                {t.machinesLink}
+              </Link>
+            </p>
+          </Callout>
+        ) : (
+          <Panel>
+            <MachineFields
+              t={t.machine}
+              materials={messages.materials}
+              machinesLink={t.machinesLink}
+              project={project}
+              machines={machines}
+              detail={detail}
+              issues={session.issues}
+              run={session.run}
+            />
+          </Panel>
+        )}
+        {validation}
+      </div>
+    );
     right = <SheetPreview t={t.machine} project={project} profile={profile} />;
   } else if (step === 'parcalar') {
-    left = (
-      <aside className="flex min-w-0 flex-col gap-3">
-        <p className="text-sm text-fg-muted">{messages.cutList.subtitle}</p>
-        {validation}
-      </aside>
-    );
+    left = <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-20">{validation}</aside>;
     right = (
       <CutListEditor
         t={messages.cutList}
@@ -430,7 +469,9 @@ function WizardSession({
       />
     );
   } else if (step === 'simulasyon') {
-    left = <aside className="flex min-w-0 flex-col gap-3">{validation}</aside>;
+    left = (
+      <aside className="flex min-w-0 flex-col gap-4 2xl:sticky 2xl:top-20">{validation}</aside>
+    );
     right = (
       <SimulationView
         t={messages.simulation}
@@ -440,22 +481,19 @@ function WizardSession({
           noLayout: (
             <section
               data-testid="sim-empty"
-              className="flex flex-col items-start gap-3 rounded-card border border-dashed border-border p-6"
+              className={`${canvasWellClass} flex flex-col items-start gap-4 border-dashed p-6 sm:p-8`}
             >
-              <p className="text-fg-muted">{t.simulation.empty}</p>
-              <button
-                type="button"
-                onClick={() => go('dizilim')}
-                className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
-              >
+              <p className="max-w-prose text-sm text-fg-muted">{t.simulation.empty}</p>
+              <Button onClick={() => go('dizilim')}>
                 {t.simulation.toLayout}
-              </button>
+                <ArrowRight aria-hidden />
+              </Button>
             </section>
           ),
           noMachine: (
-            <p role="alert" className="rounded-lg bg-warn-bg p-3 text-sm text-warn">
-              {detailError ? t.machinesError : t.simulation.noMachine}
-            </p>
+            <Callout tone="warning" role="alert" icon={<TriangleAlert aria-hidden />}>
+              <p>{detailError ? t.machinesError : t.simulation.noMachine}</p>
+            </Callout>
           ),
         }}
       />
@@ -488,12 +526,14 @@ function WizardSession({
           : session.saveState === 'conflict'
             ? t.save.error
             : t.save.saving;
+  const indicator = saveIndicator(session.saveState, session.projectId !== null);
+  const nextKey = STEPS[index + 1];
 
   return (
-    <main className="mx-auto flex w-full max-w-[96rem] min-w-0 flex-col gap-4 px-4 py-6 sm:px-6">
+    <main className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-[96rem] min-w-0 flex-col gap-5 px-4 pt-5 sm:px-6 lg:px-8">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <NameField label={t.nameLabel} value={session.name} onCommit={session.rename} />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1">
           <ShellStatus>
             <Badge
               dot
@@ -514,26 +554,38 @@ function WizardSession({
               {saveText}
             </Badge>
           </ShellStatus>
-          <button
-            type="button"
-            onClick={session.undo}
-            disabled={!session.canUndo}
-            aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
-            className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-          >
-            {messages.cutList.undo}
-          </button>
-          <button
-            type="button"
-            onClick={session.redo}
-            disabled={!session.canRedo}
-            aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
-            className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-          >
-            {messages.cutList.redo}
-          </button>
+          <Tooltip content={messages.cutList.undo}>
+            <IconButton
+              aria-label={messages.cutList.undo}
+              variant="ghost"
+              onClick={session.undo}
+              disabled={!session.canUndo}
+              aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
+            >
+              <Undo2 aria-hidden />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content={messages.cutList.redo}>
+            <IconButton
+              aria-label={messages.cutList.redo}
+              variant="ghost"
+              onClick={session.redo}
+              disabled={!session.canRedo}
+              aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
+            >
+              <Redo2 aria-hidden />
+            </IconButton>
+          </Tooltip>
         </div>
       </header>
+
+      <StepIndicator
+        t={t.steps}
+        current={step}
+        statuses={wizardStepStatuses(step, progress)}
+        progress={progress}
+        onGo={go}
+      />
 
       {session.saveState === 'conflict' ? (
         <ConflictNotice
@@ -552,27 +604,28 @@ function WizardSession({
         />
       ) : null}
       {session.restoredCount > 0 ? (
-        <p role="status" className="rounded-lg bg-info-bg p-3 text-sm text-info">
-          {fill(t.restored, { count: session.restoredCount })}
-        </p>
+        <Callout tone="info" role="status" icon={<Info aria-hidden />}>
+          <p>{fill(t.restored, { count: session.restoredCount })}</p>
+        </Callout>
       ) : null}
-
-      <StepIndicator t={t.steps} current={step} onGo={go} />
 
       <h1
         ref={heading}
         tabIndex={-1}
         data-testid="wizard-step-title"
         data-step={step}
-        className="text-2xl font-semibold tracking-tight focus:outline-none"
+        className="text-xl font-semibold tracking-tight text-fg focus:outline-none sm:text-2xl"
       >
         {t.steps[step]}
       </h1>
+      {step === 'parcalar' ? (
+        <p className="-mt-3 max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
+      ) : null}
 
-      <div className={`grid min-w-0 gap-5 ${GRID[step]}`}>
+      <div className={`grid min-w-0 items-start gap-5 ${GRID[step]}`}>
         {both ?? (
           <>
-            <div className="min-w-0">{left}</div>
+            <div className={`min-w-0 ${LEFT_ORDER[step]}`}>{left}</div>
             <div className="min-w-0">{right}</div>
           </>
         )}
@@ -580,68 +633,140 @@ function WizardSession({
 
       <nav
         aria-label={t.steps.label}
-        className="flex flex-wrap justify-between gap-2 border-t border-border pt-4"
+        data-testid="wizard-footer"
+        className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
       >
-        <button
-          type="button"
-          data-testid="wizard-back"
-          disabled={index === 0}
-          onClick={() => go(STEPS[index - 1] ?? 'makine')}
-          className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-        >
-          {t.back}
-        </button>
-        {index < STEPS.length - 1 ? (
-          <button
-            type="button"
-            data-testid="wizard-next"
-            onClick={() => go(STEPS[index + 1] ?? 'export')}
-            className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            variant="outline"
+            data-testid="wizard-back"
+            disabled={index === 0}
+            onClick={() => go(STEPS[index - 1] ?? 'makine')}
           >
-            {t.next}
-          </button>
-        ) : null}
+            <ArrowLeft aria-hidden />
+            {t.back}
+          </Button>
+          <div className="flex min-w-0 items-center gap-3 text-sm">
+            <span aria-hidden className="hidden text-fg-muted tabular-nums sm:inline">
+              {fill(t.steps.counter, { n: index + 1, total: STEPS.length })}
+            </span>
+            <span aria-hidden className="hidden h-4 w-px bg-border sm:inline-block" />
+            <AutosaveIndicator t={t.save.short} state={indicator} />
+          </div>
+          {nextKey ? (
+            <Button
+              data-testid="wizard-next"
+              onClick={() => go(nextKey)}
+              title={fill(t.steps.nextStep, { name: t.steps[nextKey] })}
+            >
+              {t.next}
+              <ArrowRight aria-hidden />
+            </Button>
+          ) : (
+            <span aria-hidden className="w-20" />
+          )}
+        </div>
       </nav>
     </main>
+  );
+}
+
+/** Footer autosave state: icon + short word (the live announcement is the top-bar badge). */
+function AutosaveIndicator({
+  t,
+  state,
+}: {
+  t: Messages['wizard']['save']['short'];
+  state: SaveIndicator;
+}) {
+  const icon = {
+    saved: <CloudCheck aria-hidden className="size-4 text-success-text" />,
+    saving: <Loader2 aria-hidden className="size-4 animate-spin text-fg-muted" />,
+    error: <CloudAlert aria-hidden className="size-4 text-danger-text" />,
+    new: <Cloud aria-hidden className="size-4 text-fg-subtle" />,
+  }[state];
+  return (
+    <span
+      data-testid="autosave-indicator"
+      data-state={state}
+      className={`flex items-center gap-1.5 whitespace-nowrap ${state === 'error' ? 'font-medium text-danger-text' : 'text-fg-muted'}`}
+    >
+      {icon}
+      {t[state]}
+    </span>
   );
 }
 
 function StepIndicator({
   t,
   current,
+  statuses,
+  progress,
   onGo,
 }: {
   t: Messages['wizard']['steps'];
   current: StepKey;
+  statuses: readonly WizardStepStatus[];
+  progress: WizardProgress;
   onGo: (step: StepKey) => void;
 }) {
   const index = STEPS.indexOf(current);
   return (
-    <nav aria-label={t.label}>
-      <p className="mb-2 text-xs text-fg-muted sm:hidden">
-        {fill(t.stepOf, { n: index + 1, total: STEPS.length })}
+    <nav aria-label={t.label} className={`${panelClass} px-3 py-2.5 sm:px-4`}>
+      <p className="mb-2 text-xs font-medium text-fg-muted sm:hidden">
+        {fill(t.stepOf, { n: index + 1, total: STEPS.length })} · {t[current]}
       </p>
-      <ol className="flex flex-wrap gap-1.5" data-testid="wizard-steps">
+      <ol className="flex items-center gap-1" data-testid="wizard-steps">
         {STEPS.map((s, i) => {
-          const active = s === current;
-          const done = i < index;
+          const status = statuses[i] ?? 'upcoming';
+          const active = status === 'current';
+          const blocker = stepBlocker(s, progress);
           return (
-            <li key={s}>
+            <li key={s} className="flex min-w-0 flex-1 items-center gap-1 last:flex-none">
               <button
                 type="button"
                 aria-current={active ? 'step' : undefined}
                 data-testid={`wizard-step-${s}`}
+                data-status={status}
+                title={blocker && !active ? t.blocked[blocker] : undefined}
                 onClick={() => onGo(s)}
-                className={`flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${active ? 'border-accent bg-accent text-accent-fg' : done ? 'border-accent/40 bg-bg text-fg hover:bg-sidebar' : 'border-border bg-bg text-fg-muted hover:bg-sidebar'}`}
+                className={`group flex min-h-10 ${active ? 'min-w-0' : 'shrink-0'} items-center gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:px-2 ${focusRing}`}
               >
                 <span
                   aria-hidden="true"
-                  className={`flex size-5 items-center justify-center rounded-full text-xs font-semibold ${active ? 'bg-accent-fg text-accent' : 'bg-sidebar text-fg'}`}
+                  className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums ${
+                    active
+                      ? 'border-accent bg-accent text-accent-fg shadow-xs'
+                      : status === 'done'
+                        ? 'border-accent-border bg-accent-subtle text-accent-text'
+                        : status === 'blocked'
+                          ? 'border-dashed border-border-strong bg-surface text-fg-subtle'
+                          : 'border-border-strong bg-surface text-fg-muted'
+                  }`}
                 >
-                  {i + 1}
+                  {status === 'done' ? (
+                    <Check className="size-3.5" strokeWidth={2.5} />
+                  ) : status === 'blocked' ? (
+                    <Lock className="size-3" />
+                  ) : (
+                    i + 1
+                  )}
                 </span>
-                <span className={active ? '' : 'sr-only md:not-sr-only'}>{t[s]}</span>
+                <span
+                  className={`${active ? 'font-semibold text-fg' : status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} ${active ? 'hidden truncate sm:inline' : 'sr-only whitespace-nowrap lg:not-sr-only'}`}
+                >
+                  {t[s]}
+                </span>
+                <span className="sr-only">
+                  {` (${t.status[status]}${blocker && !active ? `: ${t.blocked[blocker]}` : ''})`}
+                </span>
               </button>
+              {i < STEPS.length - 1 ? (
+                <span
+                  aria-hidden="true"
+                  className={`h-px min-w-3 flex-1 ${i < index ? 'bg-accent-border' : 'bg-border'}`}
+                />
+              ) : null}
             </li>
           );
         })}
@@ -667,8 +792,8 @@ function NameField({
     if (name !== '' && name !== value) onCommit(name.slice(0, 120));
   }
   return (
-    <label className="flex min-w-64 flex-1 flex-col gap-1">
-      <span className="text-xs text-fg-muted">{label}</span>
+    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:min-w-64">
+      <span className="px-2 text-xs font-medium text-fg-subtle">{label}</span>
       <input
         type="text"
         data-testid="project-name"
@@ -682,7 +807,7 @@ function NameField({
             commit();
           } else if (e.key === 'Escape') setText(null);
         }}
-        className="w-full max-w-xl rounded-md border border-transparent bg-transparent px-1 py-0.5 text-lg font-semibold hover:border-border focus-visible:border-border focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+        className="h-10 w-full max-w-xl rounded-md border border-transparent bg-transparent px-2 text-lg font-semibold tracking-tight text-fg transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid hover:border-border focus-visible:border-border-strong focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus sm:text-xl"
       />
     </label>
   );
@@ -724,33 +849,18 @@ function ConflictNotice({
     }
   }
   return (
-    <section
-      role="alert"
-      data-testid="conflict"
-      className="flex flex-col gap-3 rounded-card border border-danger/40 bg-danger-bg p-4 text-danger"
-    >
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-semibold">{t.title}</h2>
-        <p className="text-sm">{t.body}</p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onReload}
-          className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
-        >
+    <Callout tone="danger" role="alert" data-testid="conflict" icon={<CircleAlert aria-hidden />}>
+      <h2 className="font-semibold">{t.title}</h2>
+      <p>{t.body}</p>
+      <div className="mt-1 flex flex-wrap gap-2">
+        <Button size="sm" onClick={onReload}>
           {t.reload}
-        </button>
-        <button
-          type="button"
-          onClick={() => void keepCopy()}
-          disabled={busy}
-          className={`${buttonClass} border border-border bg-bg text-fg hover:bg-sidebar`}
-        >
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => void keepCopy()} loading={busy}>
           {busy ? t.copying : t.keepCopy}
-        </button>
+        </Button>
       </div>
-      {failed ? <p className="text-sm font-medium">{t.copyFailed}</p> : null}
-    </section>
+      {failed ? <p className="font-medium">{t.copyFailed}</p> : null}
+    </Callout>
   );
 }

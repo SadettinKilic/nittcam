@@ -407,7 +407,7 @@
     "subtitle": "Kesim listesini tabloya girin ya da Excel'den yapıştırın. Ölçüler milimetredir.",
     "tableLabel": "Kesim listesi",
     "empty": "Henüz parça yok. Excel'den yapıştırın ya da yeni satır ekleyin.",
-    "addRow": "+ Satır ekle",
+    "addRow": "Satır ekle",
     "pasteOpen": "Excel'den yapıştır",
     "undo": "Geri al",
     "redo": "Yinele",
@@ -916,10 +916,22 @@
       "dizilim": "Dizilim",
       "simulasyon": "Önizleme / simülasyon",
       "export": "Dışa aktar",
-      "stepOf": "Adım {n} / {total}"
+      "stepOf": "Adım {n} / {total}",
+      "status": {
+        "done": "tamamlandı",
+        "current": "şu anki adım",
+        "upcoming": "sıradaki",
+        "blocked": "henüz hazır değil"
+      },
+      "blocked": {
+        "noParts": "Önce Parçalar adımında parça ekleyin.",
+        "noLayout": "Önce Dizilim adımında parçaları dizin."
+      },
+      "nextStep": "Sonraki: {name}",
+      "counter": "{n} / {total}"
     },
-    "back": "← Geri",
-    "next": "İleri →",
+    "back": "Geri",
+    "next": "İleri",
     "save": {
       "label": "Kayıt durumu",
       "new": "Henüz kaydedilmedi",
@@ -927,7 +939,13 @@
       "saving": "Kaydediliyor…",
       "error": "Kaydedilemedi",
       "retrying": "Kaydedilemedi, yeniden denenecek",
-      "revision": "revizyon {n}"
+      "revision": "revizyon {n}",
+      "short": {
+        "saved": "Kaydedildi",
+        "saving": "Kaydediliyor",
+        "error": "Kaydedilemedi",
+        "new": "Taslak"
+      }
     },
     "conflict": {
       "title": "Proje başka bir yerde değişti",

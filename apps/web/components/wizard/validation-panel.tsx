@@ -1,6 +1,8 @@
 'use client';
 
 import type { Project, ValidationIssue } from '@nittcam/core';
+import { ChevronDown, CircleAlert, CircleCheck, TriangleAlert } from 'lucide-react';
+import { useId, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 
@@ -37,7 +39,7 @@ export function issueText(t: Text, code: string): string {
 /**
  * Warnings panel of the wizard (T023, spec §5.1 "her komuttan sonra kural doğrulaması"): the
  * command layer's `validateProject` result with the selected machine, errors first, grouped by
- * where they are (plate, parts, layout).
+ * where they are (plate, parts, layout). T109: a collapsible side card with severity icons.
  */
 export function ValidationPanel({
   t,
@@ -50,57 +52,103 @@ export function ValidationPanel({
 }) {
   const errors = issues.filter((i) => i.severity === 'error');
   const warnings = issues.filter((i) => i.severity === 'warning');
+  const [open, setOpen] = useState(true);
+  const bodyId = useId();
   return (
     <section
       aria-labelledby="validation-title"
       data-testid="validation-panel"
       data-errors={errors.length}
       data-warnings={warnings.length}
-      className="flex flex-col gap-2 rounded-card border border-border p-3"
+      className="flex min-w-0 flex-col rounded-xl border border-border bg-surface shadow-xs"
     >
       <h2 id="validation-title" className="text-sm font-semibold">
-        {t.title}
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => setOpen((o) => !o)}
+          className="flex min-h-11 w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left outline-none hover:bg-surface-hover focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+        >
+          <span className="flex-1 text-fg">{t.title}</span>
+          {errors.length > 0 ? (
+            <span className="flex items-center gap-1 text-xs font-medium text-danger-text tabular-nums">
+              <CircleAlert aria-hidden className="size-3.5" />
+              {errors.length}
+            </span>
+          ) : null}
+          {warnings.length > 0 ? (
+            <span className="flex items-center gap-1 text-xs font-medium text-warning-text tabular-nums">
+              <TriangleAlert aria-hidden className="size-3.5" />
+              {warnings.length}
+            </span>
+          ) : null}
+          {issues.length === 0 ? (
+            <CircleCheck aria-hidden className="size-4 text-success-text" />
+          ) : null}
+          <ChevronDown
+            aria-hidden
+            className={`size-4 text-fg-subtle transition-transform duration-(--duration-fast) ${open ? 'rotate-180' : ''}`}
+          />
+        </button>
       </h2>
-      {issues.length === 0 ? (
-        <p className="text-sm text-ok">{t.none}</p>
-      ) : (
-        [
-          { list: errors, label: t.errors, tone: 'text-danger', bg: 'bg-danger-bg' },
-          { list: warnings, label: t.warnings, tone: 'text-warn', bg: 'bg-warn-bg' },
-        ]
-          .filter((s) => s.list.length > 0)
-          .map((s) => (
-            <div key={s.label} className={`flex flex-col gap-1.5 rounded-lg p-2 ${s.bg}`}>
-              <p className={`text-xs font-semibold ${s.tone}`}>
-                {fill(s.label, { count: s.list.length })}
-              </p>
-              {GROUPS.map((g) => {
-                const inGroup = s.list.filter((i) => groupOf(i.path) === g);
-                if (inGroup.length === 0) return null;
-                return (
-                  <div key={g} className="flex flex-col gap-0.5">
-                    <p className="text-xs text-fg-muted">{t.groups[g]}</p>
-                    <ul className="flex flex-col gap-0.5">
-                      {inGroup.map((i) => {
-                        const place = placeOf(t, project, i.path);
-                        return (
-                          <li
-                            key={`${i.code}-${i.path}`}
-                            className={`text-sm ${s.tone}`}
-                            data-code={i.code}
-                          >
-                            {place ? <span className="font-medium">{place}: </span> : null}
-                            {issueText(t, i.code)}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-          ))
-      )}
+      <div id={bodyId} hidden={!open} className="border-t border-border-subtle px-4 pt-3 pb-4">
+        {issues.length === 0 ? (
+          <p className="text-sm text-success-text">{t.none}</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {[
+              {
+                list: errors,
+                label: t.errors,
+                tone: 'text-danger-text',
+                icon: <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />,
+              },
+              {
+                list: warnings,
+                label: t.warnings,
+                tone: 'text-warning-text',
+                icon: <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />,
+              },
+            ]
+              .filter((s) => s.list.length > 0)
+              .map((s) => (
+                <div key={s.label} className="flex flex-col gap-2">
+                  <p className={`text-xs font-semibold ${s.tone}`}>
+                    {fill(s.label, { count: s.list.length })}
+                  </p>
+                  {GROUPS.map((g) => {
+                    const inGroup = s.list.filter((i) => groupOf(i.path) === g);
+                    if (inGroup.length === 0) return null;
+                    return (
+                      <div key={g} className="flex flex-col gap-1">
+                        <p className="text-xs text-fg-subtle">{t.groups[g]}</p>
+                        <ul className="flex flex-col gap-1.5">
+                          {inGroup.map((i) => {
+                            const place = placeOf(t, project, i.path);
+                            return (
+                              <li
+                                key={`${i.code}-${i.path}`}
+                                className={`flex gap-2 text-sm ${s.tone}`}
+                                data-code={i.code}
+                              >
+                                {s.icon}
+                                <span className="min-w-0">
+                                  {place ? <span className="font-medium">{place}: </span> : null}
+                                  {issueText(t, i.code)}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

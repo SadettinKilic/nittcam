@@ -16,7 +16,7 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { fill, newPartId } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
-import { buttonClass } from './ui';
+import { Button, fieldBase, fieldFocus } from '@nittcam/ui';
 
 type Text = Messages['cutList']['paste'];
 type DelimiterChoice = 'auto' | 'tab' | 'semicolon' | 'comma';
@@ -28,8 +28,7 @@ const DELIMITERS: Record<Exclude<DelimiterChoice, 'auto'>, CutListDelimiter> = {
   comma: ',',
 };
 
-const selectClass =
-  'w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent';
+const selectClass = `${fieldBase} ${fieldFocus} h-control-md px-3`;
 
 const numberFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
 
@@ -113,10 +112,10 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
     <section
       id="paste-panel"
       aria-labelledby={`${uid}-title`}
-      className="flex min-w-0 flex-col gap-4 rounded-card border border-border bg-bg p-4 shadow-sm"
+      className="flex min-w-0 flex-col gap-5 rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-5"
     >
       <div className="flex flex-col gap-1">
-        <h2 id={`${uid}-title`} className="text-xl font-semibold">
+        <h2 id={`${uid}-title`} className="text-base font-semibold tracking-tight text-fg">
           {t.title}
         </h2>
         <p id={`${uid}-help`} className="text-sm text-fg-muted">
@@ -136,7 +135,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
           spellCheck={false}
           aria-describedby={`${uid}-help`}
           placeholder={t.placeholder}
-          className="w-full rounded-lg border border-border bg-bg p-2 font-mono text-sm text-fg [tab-size:12] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+          className={`${fieldBase} ${fieldFocus} p-3 font-mono text-sm [tab-size:12]`}
           value={text}
           onChange={(e) => {
             setText(e.target.value);
@@ -188,7 +187,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
             <label className="flex items-center gap-2 py-2 text-sm">
               <input
                 type="checkbox"
-                className="size-4 accent-accent focus-visible:outline-2 focus-visible:outline-accent"
+                className="size-4 accent-(--color-accent) focus-visible:outline-2 focus-visible:outline-focus"
                 checked={result.hasHeader}
                 onChange={(e) => {
                   setHeader(e.target.checked);
@@ -200,7 +199,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
           </fieldset>
 
           {result.warnings.length > 0 ? (
-            <ul className="flex flex-col gap-1 rounded-lg bg-warn-bg p-3 text-sm text-warn">
+            <ul className="flex flex-col gap-1 rounded-lg border border-warning-border bg-warning-subtle px-3 py-2.5 text-sm text-warning-text">
               {result.warnings.map((w) => (
                 <li key={w.code}>{t.warnings[w.code]}</li>
               ))}
@@ -218,9 +217,9 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                 {t.edgeHelp}
               </p>
             ) : null}
-            <div className="relative max-h-96 max-w-full overflow-auto rounded-card border border-border">
+            <div className="relative max-h-96 max-w-full overflow-auto rounded-lg border border-border">
               <table className="w-full text-left text-sm" aria-label={t.preview}>
-                <thead className="sticky top-0 bg-sidebar text-fg-muted">
+                <thead className="sticky top-0 bg-surface-subtle text-xs text-fg-muted">
                   <tr>
                     <th scope="col" className="px-2 py-2 align-bottom font-medium">
                       {t.line}
@@ -264,7 +263,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                       <tr
                         key={row.line}
                         data-invalid={bad ? 'true' : undefined}
-                        className={bad ? 'bg-danger-bg' : undefined}
+                        className={bad ? 'bg-danger-subtle' : undefined}
                       >
                         <td className="px-2 py-1.5 text-fg-muted tabular-nums">{row.line}</td>
                         {row.cells.map((cell, i) => {
@@ -274,7 +273,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                               key={i}
                               className={`px-2 py-1.5 whitespace-pre-wrap ${
                                 badCols.has(i)
-                                  ? 'font-semibold text-danger'
+                                  ? 'font-semibold text-danger-text'
                                   : ignored
                                     ? 'text-fg-muted'
                                     : ''
@@ -286,13 +285,13 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                         })}
                         <td className="px-2 py-1.5">
                           {bad ? (
-                            <ul className="text-danger">
+                            <ul className="text-danger-text">
                               {row.errors.map((e, k) => (
                                 <li key={k}>{errorText(t, e)}</li>
                               ))}
                             </ul>
                           ) : (
-                            <span className="text-ok">
+                            <span className="text-success-text">
                               {t.ok}
                               {row.values.w !== null && row.values.h !== null
                                 ? ` · ${numberFormat.format(row.values.w)} × ${numberFormat.format(row.values.h)} × ${row.values.qty ?? 1}`
@@ -310,11 +309,13 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
 
           {result.unitAmbiguous ? (
             <fieldset
-              className="flex min-w-0 flex-col gap-2 rounded-lg border border-warn bg-warn-bg p-3"
+              className="flex min-w-0 flex-col gap-2 rounded-lg border border-warning-border bg-warning-subtle p-3"
               aria-describedby={`${uid}-unit-help`}
             >
-              <legend className="px-1 text-sm font-semibold text-warn">{t.unit.question}</legend>
-              <p id={`${uid}-unit-help`} className="text-sm text-warn">
+              <legend className="px-1 text-sm font-semibold text-warning-text">
+                {t.unit.question}
+              </legend>
+              <p id={`${uid}-unit-help`} className="text-sm text-warning-text">
                 {result.headerUnit === 'cm' ? t.unit.helpHeader : t.unit.help} {t.unit.convert}
               </p>
               <div className="flex flex-wrap gap-4">
@@ -325,7 +326,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                       name={`${uid}-unit`}
                       value={u}
                       checked={unit === u}
-                      className="size-4 accent-accent focus-visible:outline-2 focus-visible:outline-accent"
+                      className="size-4 accent-(--color-accent) focus-visible:outline-2 focus-visible:outline-focus"
                       onChange={() => {
                         setUnit(u);
                       }}
@@ -335,7 +336,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                 ))}
               </div>
               {needsUnit ? (
-                <p id={`${uid}-unit-required`} className="text-sm font-medium text-danger">
+                <p id={`${uid}-unit-required`} className="text-sm font-medium text-danger-text">
                   {t.unit.required}
                 </p>
               ) : null}
@@ -350,7 +351,10 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                 : fill(t.summaryAllValid, { valid: validCount })}
           </p>
           {applyError ? (
-            <p role="alert" className="rounded-lg bg-danger-bg p-3 text-sm text-danger">
+            <p
+              role="alert"
+              className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
+            >
               {t.applyError}
             </p>
           ) : null}
@@ -358,22 +362,16 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
+        <Button
           onClick={apply}
           disabled={!canApply}
           aria-describedby={needsUnit && validCount > 0 ? `${uid}-unit-required` : undefined}
-          className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
         >
           {validCount > 0 ? fill(t.applyCount, { count: validCount }) : t.apply}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-        >
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>
           {t.cancel}
-        </button>
+        </Button>
       </div>
     </section>
   );
