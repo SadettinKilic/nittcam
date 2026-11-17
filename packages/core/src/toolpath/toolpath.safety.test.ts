@@ -381,7 +381,11 @@ describe('independent §7.2 review: random projects', () => {
       fc.property(caseArb, (c) => {
         const { project, res, params, placed } = run(c);
         fc.pre(placed);
-        expect(res.errors.map((e) => e.code)).toEqual([]);
+        // T015 (D-022): SMALL_PART_UNSECURED (a small part with no room for 2 tabs) is the only
+        // legitimate error on random projects; its operation is still walked below
+        expect(res.errors.map((e) => e.code).filter((c) => c !== 'SMALL_PART_UNSECURED')).toEqual(
+          [],
+        );
         expect(review(project, res, params)).toEqual([]);
       }),
       { numRuns: RUNS },

@@ -158,3 +158,31 @@ export function pathMoves(
     };
   });
 }
+
+/**
+ * The part of a path between arc lengths `from` and `to` (0 ≤ from ≤ to ≤ length). Segments that
+ * fall inside are kept as they are; the two cut segments are split exactly (lines and arcs).
+ */
+export function slicePath(segs: readonly PathSeg[], from: number, to: number): PathSeg[] {
+  const out: PathSeg[] = [];
+  let s0 = 0;
+  for (const s of segs) {
+    const l = segLength(s);
+    const s1 = s0 + l;
+    const a = Math.max(from, s0);
+    const b = Math.min(to, s1);
+    if (b - a > EPS / 100 && l > 0) {
+      let piece = s;
+      // cut the end first (fractions refer to the whole segment), then the start
+      if (b < s1 - EPS / 100) piece = splitSeg(piece, (b - s0) / l).first;
+      if (a > s0 + EPS / 100) {
+        const pl = segLength(piece);
+        piece = splitSeg(piece, (a - s0) / pl).second;
+      }
+      out.push(piece);
+    }
+    s0 = s1;
+    if (s0 >= to) break;
+  }
+  return out;
+}

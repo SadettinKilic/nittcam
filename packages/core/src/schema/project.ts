@@ -224,7 +224,22 @@ export const layoutSchema = z.strictObject({
 });
 
 export const cuttingSchema = z.strictObject({
-  tabs: z.strictObject({ auto: z.boolean({ error: 'must be true or false' }) }),
+  /**
+   * Tabs (§6.3, D-022). `auto: true` = tabs on every part, placed automatically; `false` = tabs only
+   * on small parts (small-part safety, always on). count/width/height override the material
+   * parameter set's tab defaults (optional; added in T015, older projects stay valid).
+   */
+  tabs: z.strictObject({
+    auto: z.boolean({ error: 'must be true or false' }),
+    count: z
+      .number({ error: 'must be a number' })
+      .int({ error: 'must be an integer' })
+      .min(1, { error: 'must be at least 1' })
+      .max(20, { error: 'must be at most 20' })
+      .optional(),
+    width: z.number({ error: 'must be a number' }).positive({ error: 'must be > 0' }).optional(),
+    height: z.number({ error: 'must be a number' }).positive({ error: 'must be > 0' }).optional(),
+  }),
   leadIn: z.enum(['arc', 'line'], { error: 'leadIn must be "arc" or "line"' }),
   direction: z.enum(['climb', 'conventional'], {
     error: 'direction must be "climb" or "conventional"',

@@ -45,6 +45,14 @@ function codes(r: ToolpathResult, kind: 'errors' | 'warnings'): string[] {
   return r[kind].map((i) => i.code);
 }
 
+/**
+ * Warnings without SMALL_PART_AUTO_TABS (T015): the small parts of these T014 cases now get tabs
+ * automatically; that warning is tested in tabs.test.ts.
+ */
+function t014(ws: ToolpathResult['warnings']): ToolpathResult['warnings'] {
+  return ws.filter((w) => w.code !== 'SMALL_PART_AUTO_TABS');
+}
+
 describe('depth', () => {
   it('through-cut target = −(thickness + spoilboard allowance)', () => {
     expect(throughCutTarget(18, 0.3)).toBeCloseTo(-18.3, 12);
@@ -76,7 +84,7 @@ describe('hand-computed example: 100 × 50, tool 6, 18 + 0.3, pass 6.1', () => {
 
   it('is ok, one operation with tool, rpm and feeds from the material set', () => {
     expect(res.errors).toEqual([]);
-    expect(res.warnings).toEqual([]);
+    expect(t014(res.warnings)).toEqual([]);
     expect(res.ok).toBe(true);
     expect(res.toolpath.operations).toHaveLength(1);
     expect(op).toMatchObject({
@@ -209,7 +217,7 @@ describe('direction, leads and plunge options', () => {
     const res = buildToolpath(project, machine, { lead: 'none' });
     const op = res.toolpath.operations[0]!;
     expect(op.segments.map((s) => s.role)).toEqual(['approach', 'pass', 'pass', 'pass', 'retract']);
-    expect(res.warnings).toEqual([]);
+    expect(t014(res.warnings)).toEqual([]);
     expect(toolpathViolations(project, res, { ...handCheck, direction: 'climb' })).toEqual([]);
   });
 
@@ -244,7 +252,15 @@ describe('direction, leads and plunge options', () => {
   });
 
   it('ramp longer than the contour is clamped with a RAMP_STEEPER warning', () => {
-    const res = buildToolpath(project, machine, { plunge: { type: 'ramp', length: 5000 } });
+    // T015: the ramp now covers the whole loop, so the small 100 × 50 part has no room for tabs:
+    // SMALL_PART_UNSECURED (export-blocking, D-022). With the small-part rule off it is ok.
+    const blocked = buildToolpath(project, machine, { plunge: { type: 'ramp', length: 5000 } });
+    expect(codes(blocked, 'warnings')).toContain('RAMP_STEEPER');
+    expect(codes(blocked, 'errors')).toEqual(['SMALL_PART_UNSECURED']);
+    const res = buildToolpath(project, machine, {
+      plunge: { type: 'ramp', length: 5000 },
+      tabs: { smallPartArea: 0, smallPartMinSide: 0 },
+    });
     expect(res.ok).toBe(true);
     expect(codes(res, 'warnings')).toContain('RAMP_STEEPER');
     expect(toolpathViolations(project, res, { ...handCheck, direction: 'climb' })).toEqual([]);
@@ -270,18 +286,22 @@ describe('direction, leads and plunge options', () => {
       });
     const shortened = buildToolpath(sandwich(2), machine, { leadLength: 3 });
     expect(shortened.ok).toBe(true);
-    expect(shortened.warnings.filter((w) => w.partId === 'a').map((w) => w.code)).toEqual([
-      'LEAD_SHORTENED',
-    ]);
+    expect(
+      t014(shortened.warnings)
+        .filter((w) => w.partId === 'a')
+        .map((w) => w.code),
+    ).toEqual(['LEAD_SHORTENED']);
     expect(
       toolpathViolations(sandwich(2), shortened, { ...handCheck, direction: 'climb' }),
     ).toEqual([]);
 
     const removed = buildToolpath(sandwich(0), machine, { leadLength: 3 });
     expect(removed.ok).toBe(true);
-    expect(removed.warnings.filter((w) => w.partId === 'a').map((w) => w.code)).toEqual([
-      'LEAD_REMOVED',
-    ]);
+    expect(
+      t014(removed.warnings)
+        .filter((w) => w.partId === 'a')
+        .map((w) => w.code),
+    ).toEqual(['LEAD_REMOVED']);
     const a = removed.toolpath.operations.find((o) => o.partId === 'a')!;
     expect(a.segments.some((s) => s.role === 'leadIn')).toBe(false);
     expect(toolpathViolations(sandwich(0), removed, { ...handCheck, direction: 'climb' })).toEqual(
@@ -291,7 +311,7 @@ describe('direction, leads and plunge options', () => {
 
   it('clearance above safe Z is clamped with a warning; invalid options are errors', () => {
     const clamped = buildToolpath(project, machine, { clearance: 50 });
-    expect(codes(clamped, 'warnings')).toEqual(['CLEARANCE_CLAMPED']);
+    expect(t014(clamped.warnings).map((w) => w.code)).toEqual(['CLEARANCE_CLAMPED']);
     expect(clamped.toolpath.clearanceZ).toBe(20);
     expect(clamped.ok).toBe(true);
     expect(toolpathSafetyViolations(clamped.toolpath)).toEqual([]);
@@ -382,7 +402,7 @@ describe('D-013 offset results', () => {
     if (!parsed.ok) throw new Error('fixture');
     const res = buildToolpath(parsed.project, machineOf({ toolDiameter: 6 }));
     expect(res.ok).toBe(true);
-    expect(res.warnings).toEqual([
+    expect(t014(res.warnings)).toEqual([
       expect.objectContaining({
         code: 'ARC_COLLAPSED',
         severity: 'warning',
@@ -501,7 +521,7 @@ describe('project-level errors and warnings', () => {
     });
     const res = buildToolpath(project, machineOf());
     expect(res.ok).toBe(true);
-    expect(codes(res, 'warnings')).toEqual(['UNPLACED_COPIES']);
+    expect(t014(res.warnings).map((w) => w.code)).toEqual(['UNPLACED_COPIES']);
     const empty = buildToolpath(projectOf({ parts: [{ id: 'a', w: 100, h: 50 }] }), machineOf());
     expect(empty.ok).toBe(false);
     expect(codes(empty, 'errors')).toEqual(['NO_PLACEMENTS']);
