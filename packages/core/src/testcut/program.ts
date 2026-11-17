@@ -44,7 +44,11 @@ export const TEST_PART = {
   stepoverFraction: 0.4,
 } as const;
 
-/** The lowest point of the air-cut program is this far above the material top, mm (D-031). */
+/**
+ * The lowest point of the air-cut program is this far above the material top, mm (D-031). It is
+ * also the floor: `airCutToolpath` refuses a smaller gap, and the automatic checks of the air-cut
+ * file refuse any move below it (`zFloor`, `R3/AIR_CUT_BELOW_FLOOR`).
+ */
 export const AIR_CUT_GAP = 20;
 
 /** The largest tool the test part allows: the pocket must be at least twice the tool, mm. */
@@ -349,8 +353,14 @@ export function testPartToolpath(
  * deepest point is `gap` mm above the material top. Same XY, same order, same feeds: the operator
  * sees exactly the motions of the test cut, in the air. The target depth stays the stock's (the
  * post and the checks compare it with the thickness); nothing goes below `gap`.
+ *
+ * Throws a `RangeError` for a gap below `AIR_CUT_GAP` (or not a finite number): the air cut must
+ * never come closer to the material than the floor (D-031).
  */
 export function airCutToolpath(toolpath: Toolpath, gap: number = AIR_CUT_GAP): Toolpath {
+  if (typeof gap !== 'number' || !Number.isFinite(gap) || gap < AIR_CUT_GAP) {
+    throw new RangeError(`Air-cut gap ${String(gap)} mm is below the ${AIR_CUT_GAP} mm floor.`);
+  }
   let lowest = 0;
   for (const op of toolpath.operations) {
     for (const s of op.segments) for (const m of s.moves) lowest = Math.min(lowest, m.z);
@@ -430,6 +440,8 @@ export function testProgram(
       sheetHeight: TEST_PART.sheet.height,
     },
     layout: kind === 'testCut' ? new Map([[0, tp.layout]]) : null,
+    // The air cut never comes below the gap: the checks refuse the file otherwise (D-031).
+    ...(kind === 'airCut' ? { zFloor: AIR_CUT_GAP } : {}),
   });
   return { ...r, kind, issues: [], info: tp.info };
 }

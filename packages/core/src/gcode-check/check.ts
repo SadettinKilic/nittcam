@@ -7,7 +7,15 @@ import { readGcode, type GcodeReadResult } from '../gcode-reader';
 import { derive, type Derived } from './derive';
 import { cutLoops, matchLayout, matchModel, type CutLoop } from './match';
 import { toSheetMoves } from './path';
-import { headerRule, modalRule, motionRules, readerFindings, toolRules, type Push } from './rules';
+import {
+  floorRule,
+  headerRule,
+  modalRule,
+  motionRules,
+  readerFindings,
+  toolRules,
+  type Push,
+} from './rules';
 import type {
   ExpectedPart,
   GcodeCheckContext,
@@ -79,6 +87,7 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
   modalRule(r, d, push);
   const sm = toSheetMoves(r.moves, d.frame);
   motionRules(r, sm, d, push);
+  floorRule(sm, d, push);
   const m = matchModel(sm, d.ops, d, prefix, push);
   const rawLines = text.split(/\r\n|\r|\n/);
   toolRules(r, rawLines, m.ok ? d.ops.slice(0, m.consumed) : d.ops, d, push);

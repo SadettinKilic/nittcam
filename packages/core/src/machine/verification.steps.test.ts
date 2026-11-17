@@ -11,8 +11,16 @@ const ALL: VerificationState[] = [
 ];
 
 describe('canRecordVerification', () => {
-  it('an air cut can always be (re)approved', () => {
-    for (const s of ALL) expect(canRecordVerification(s, 'airCut')).toBe(true);
+  it('an air cut starts the flow: draft, again on an approved air cut, after a change', () => {
+    expect(ALL.filter((s) => canRecordVerification(s, 'airCut'))).toEqual([
+      'draft',
+      'air_cut_approved',
+      'reverify_needed',
+    ]);
+  });
+  it('no air-cut re-record once the version has a test cut (no silent downgrade, D-031)', () => {
+    expect(canRecordVerification('test_cut_approved', 'airCut')).toBe(false);
+    expect(canRecordVerification('verified', 'airCut')).toBe(false);
   });
   it('a test cut needs an approved air cut on this profile version', () => {
     expect(ALL.filter((s) => canRecordVerification(s, 'testCut'))).toEqual([

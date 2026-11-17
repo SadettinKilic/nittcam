@@ -2,10 +2,13 @@
  * T022: air-cut and test-cut programs through the real post processors and the automatic checks.
  */
 import { describe, expect, it } from 'vitest';
+import { postAndCheck } from '../export/export';
+import { canDownload, checkGcode } from '../gcode-check';
 import { readGcode } from '../gcode-reader';
 import { goldenProfile, GOLDEN_POSTS } from '../post/golden.testing';
 import type { MachineProfile, VerificationState } from '../machine';
-import { operationMoves, throughCutTarget } from '../toolpath';
+import { parsePostConfig } from '../post';
+import { operationMoves, throughCutTarget, type Toolpath } from '../toolpath';
 import {
   AIR_CUT_GAP,
   TEST_PART,
@@ -193,11 +196,11 @@ describe('airCutToolpath', () => {
   it('raises every Z by the same shift and keeps XY, feeds and order', () => {
     const tp = testPartToolpath(goldenProfile('generic')).toolpath;
     if (!tp) throw new Error('fixture');
-    const air = airCutToolpath(tp, 15);
+    const air = airCutToolpath(tp, 25);
     const a = air.operations.flatMap(operationMoves);
     const b = tp.operations.flatMap(operationMoves);
     expect(a).toHaveLength(b.length);
-    const shift = 15 - Math.min(...b.map((m) => m.z));
+    const shift = 25 - Math.min(...b.map((m) => m.z));
     a.forEach((m, i) => {
       const o = b[i];
       expect(m.x).toBe(o?.x);
@@ -205,8 +208,139 @@ describe('airCutToolpath', () => {
       expect(m.z).toBeCloseTo((o?.z ?? 0) + shift, 9);
       expect(m.kind).toBe(o?.kind);
     });
-    expect(Math.min(...a.map((m) => m.z))).toBeCloseTo(15, 9);
+    expect(Math.min(...a.map((m) => m.z))).toBeCloseTo(25, 9);
     expect(air.safeZ).toBeCloseTo(tp.safeZ + shift, 9);
     expect(air.targetDepth).toBe(tp.targetDepth);
+  });
+});
+
+/**
+ * PO hardening (T022, D-031): the air-cut floor is enforced twice, independently of the constant
+ * gap the builder uses today. Failing inputs: a gap below the floor, and a program whose moves go
+ * below "stock top + AIR_CUT_GAP" (the checks must refuse it, so `canDownload` blocks the file).
+ */
+describe('air-cut floor guard', () => {
+  const testTp = () => {
+    const tp = testPartToolpath(goldenProfile('generic')).toolpath;
+    if (!tp) throw new Error('fixture');
+    return tp;
+  };
+
+  it.each([AIR_CUT_GAP - 0.001, 19, 10, 0, -5, Number.NaN, Number.NEGATIVE_INFINITY])(
+    'airCutToolpath refuses gap %s',
+    (gap) => {
+      expect(() => airCutToolpath(testTp(), gap)).toThrow(RangeError);
+    },
+  );
+  it('airCutToolpath accepts the floor itself and more', () => {
+    for (const gap of [AIR_CUT_GAP, AIR_CUT_GAP + 10]) {
+      const moves = airCutToolpath(testTp(), gap).operations.flatMap(operationMoves);
+      expect(Math.min(...moves.map((m) => m.z))).toBeCloseTo(gap, 9);
+    }
+  });
+
+  function postOf(
+    post: 'generic' | 'mach3',
+    toolpath: Toolpath,
+    zFloor: number | undefined,
+    edit: (p: MachineProfile) => void = () => undefined,
+  ) {
+    const profile = goldenProfile(post);
+    edit(profile);
+    const config = GOLDEN_POSTS.find((p) => p.id === post)?.config;
+    return postAndCheck(toolpath, [], { profile, version: 1, verification: 'draft' }, config, {
+      projectName: 'FLOOR',
+      revision: 0,
+      fileStem: 'FLOOR',
+      stock: { material: 'MDF', thickness: 18, sheetWidth: 300, sheetHeight: 300 },
+      layout: null,
+      ...(zFloor !== undefined ? { zFloor } : {}),
+    });
+  }
+  const codes = (r: ReturnType<typeof postOf>) =>
+    (r.check?.violations ?? []).map((v) => `${v.rule}/${v.code}`);
+
+  describe.each(['generic', 'mach3'] as const)('%s post', (post) => {
+    it('a program that passes every other check is refused when it goes below the floor', () => {
+      // The test-cut toolpath is a valid program; as an "air cut" it reaches into the material.
+      const plain = postOf(post, testTp(), undefined);
+      expect(plain.ok).toBe(true);
+      const floored = postOf(post, testTp(), AIR_CUT_GAP);
+      expect(floored.ok).toBe(false);
+      expect(floored.stage).toBe('check');
+      expect(floored.files).toEqual([]);
+      expect(codes(floored)).toContain('R3/AIR_CUT_BELOW_FLOOR');
+      expect(floored.check ? canDownload(floored.check) : true).toBe(false);
+    });
+    it('a raised program only slightly too low (gap 19.9 mm, guard bypassed) is refused', () => {
+      const air = airCutToolpath(testTp(), AIR_CUT_GAP);
+      const low: Toolpath = {
+        ...air,
+        operations: air.operations.map((op) => ({
+          ...op,
+          segments: op.segments.map((s) => ({
+            ...s,
+            moves: s.moves.map((m) => (m.z <= AIR_CUT_GAP + 1e-9 ? { ...m, z: m.z - 0.1 } : m)),
+          })),
+        })),
+      };
+      const r = postOf(post, low, AIR_CUT_GAP);
+      expect(r.ok).toBe(false);
+      expect(codes(r)).toContain('R3/AIR_CUT_BELOW_FLOOR');
+    });
+    it('the real air cut passes the floor (top and table zero)', () => {
+      const r = run('airCut', post);
+      expect(r.ok).toBe(true);
+      expect(codes(r)).not.toContain('R3/AIR_CUT_BELOW_FLOOR');
+      const t = run('airCut', post, (p) => {
+        p.zZero = { reference: 'table', spoilboardAllowance: 0.5 };
+        p.workEnvelope = { ...p.workEnvelope, z: 300 };
+      });
+      expect(t.ok, JSON.stringify(t.check?.violations)).toBe(true);
+    });
+    it('table zero: the floor is measured from the material top, not the table', () => {
+      const edit = (p: MachineProfile) => {
+        p.zZero = { reference: 'table', spoilboardAllowance: 0.5 };
+        p.workEnvelope = { ...p.workEnvelope, z: 300 };
+      };
+      // Gap 20 above the top passes; a floor of 20 + thickness would wrongly need 38 above it.
+      expect(postOf(post, airCutToolpath(testTp(), AIR_CUT_GAP), AIR_CUT_GAP, edit).ok).toBe(true);
+      expect(postOf(post, testTp(), AIR_CUT_GAP, edit).ok).toBe(false);
+    });
+  });
+
+  it.each(['airCut', 'testCut'] as const)(
+    'text mutations below the floor are refused by the %s-agnostic floor rule',
+    (kind) => {
+      const r = run('airCut', 'generic');
+      const text = r.files[0]?.content ?? '';
+      const lines = text.split('\r\n');
+      // End park, tool change and leads are all G0 Z lines: drop one of them to Z 5 (above the
+      // clearance of a normal program, below the air-cut floor).
+      const last = lines.map((l, i) => [l, i] as const).filter(([l]) => /^G0 Z/.test(l));
+      const target = kind === 'airCut' ? last.at(-1) : last[0];
+      if (!target) throw new Error('anchor');
+      lines[target[1]] = 'G0 Z5.000';
+      const tp = airCutToolpath(testTp());
+      const parsed = parsePostConfig(GOLDEN_POSTS.find((p) => p.id === 'generic')?.config);
+      if (!parsed.ok) throw new Error('post');
+      const res = checkGcode(lines.join('\r\n'), {
+        profile: goldenProfile('generic'),
+        verification: 'draft',
+        post: parsed.config,
+        toolpath: tp,
+        stock: { thickness: 18, sheetWidth: 300, sheetHeight: 300 },
+        sheet: 0,
+        zFloor: AIR_CUT_GAP,
+      });
+      expect(canDownload(res)).toBe(false);
+      expect(res.violations.map((v) => `${v.rule}/${v.code}`)).toContain('R3/AIR_CUT_BELOW_FLOOR');
+    },
+  );
+
+  it('an invalid floor is an INPUT failure, never a pass', () => {
+    const r = postOf('generic', airCutToolpath(testTp()), Number.NaN);
+    expect(r.ok).toBe(false);
+    expect(codes(r)).toContain('INPUT/Z_FLOOR_INVALID');
   });
 });

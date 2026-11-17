@@ -2,7 +2,14 @@ import { canRecordVerification } from '@nittcam/core';
 import { NextResponse } from 'next/server';
 import { companyScope, defaultUser } from '../../../../../lib/server/company';
 import { UUID } from '../../../../../lib/server/projects';
-import { apiError, evaluate, loadMachine, overview } from '../../../../../lib/server/verification';
+import { getMessages } from '../../../../../lib/messages';
+import {
+  apiError,
+  evaluate,
+  loadMachine,
+  overview,
+  programPasses,
+} from '../../../../../lib/server/verification';
 import {
   AIR_CUT_CHECKS,
   type VerificationRequest,
@@ -48,7 +55,9 @@ function parseRequest(body: unknown): VerificationRequest | null {
  * POST /api/machines/:id/verification records one step for the latest profile version:
  * `airCut` (every checklist item ticked) → "Air cut onaylandı"; `testCut` (measurement form, only
  * after an approved air cut) → "Doğrulanmış" when every value is within tolerance, else "Test
- * kesimi onaylandı" with correction suggestions. A stale profile version → 409.
+ * kesimi onaylandı" with correction suggestions. A stale profile version → 409; a step whose
+ * program does not generate or fails its automatic checks for this version → 422 `program_failed`
+ * (nothing is approved for a program the user cannot download, D-031).
  */
 export async function POST(request: Request, ctx: RouteContext<'/api/machines/[id]/verification'>) {
   const { id } = await ctx.params;
@@ -70,6 +79,12 @@ export async function POST(request: Request, ctx: RouteContext<'/api/machines/[i
     const state = m.machine.state;
     if (!canRecordVerification(state, req.step)) {
       return apiError({ error: 'not_allowed', state }, 409);
+    }
+    if (!programPasses(m, req.step)) {
+      return apiError(
+        { error: 'program_failed', message: getMessages().verification.programFailedSave },
+        422,
+      );
     }
     const user = await defaultUser();
     if (req.step === 'airCut') {

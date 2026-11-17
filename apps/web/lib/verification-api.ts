@@ -88,7 +88,7 @@ export type VerificationApiError =
   | { error: 'not_allowed'; state: VerificationState }
   | { error: 'checks_required' }
   | { error: 'invalid_measurements'; issues: MeasurementIssue[] }
-  | { error: 'program_failed' }
+  | { error: 'program_failed'; message?: string }
   | { error: 'acceptance_required' }
   | { error: 'server_error' };
 

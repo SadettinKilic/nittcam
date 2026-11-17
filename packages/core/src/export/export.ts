@@ -90,6 +90,8 @@ export function exportNc(
 export interface PostAndCheckMeta extends PostMeta {
   /** Expected parts per sheet; null = the layout check is skipped (no through cuts expected). */
   layout: ReadonlyMap<number, readonly ExpectedPart[]> | null;
+  /** Lowest Z any move may reach, sheet frame (the air-cut floor, D-031); omitted = none. */
+  zFloor?: number;
 }
 
 /**
@@ -109,7 +111,7 @@ export function postAndCheck(
   const cfg = parsePostConfig(post);
   // An invalid config is refused by the generator itself; the checks only need its declarations.
   const expectations: GcodeCheckPostExpectations | undefined = cfg.ok ? cfg.config : undefined;
-  const { layout, ...postMeta } = meta;
+  const { layout, zFloor, ...postMeta } = meta;
   const stock = {
     thickness: meta.stock.thickness,
     sheetWidth: meta.stock.sheetWidth,
@@ -122,6 +124,7 @@ export function postAndCheck(
     toolpath,
     stock,
     ...(layout ? { layout } : {}),
+    ...(zFloor !== undefined ? { zFloor } : {}),
   };
   let checked: { files: readonly PostFile[]; result: GcodeCheckFilesResult } | null = null;
   const run = (files: readonly PostFile[]) => {

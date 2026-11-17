@@ -109,6 +109,12 @@ export interface GcodeCheckContext {
   operations?: readonly Operation[];
   /** Parts expected on the sheet (`expectedLayout`). Omitted or null = the layout check is skipped. */
   layout?: readonly ExpectedPart[] | null;
+  /**
+   * Lowest Z the program may ever reach, sheet frame (0 = material top), mm. Set for the air-cut
+   * program (D-031): every move (rapids, leads, tool change, end park) must stay at or above it,
+   * else `R3/AIR_CUT_BELOW_FLOOR`. Omitted = no floor (normal cutting programs).
+   */
+  zFloor?: number;
   tolerance?: GcodeCheckTolerance;
 }
 

@@ -333,6 +333,7 @@ function errorText(t: Text, e: VerificationApiError | null): string {
   if (e?.error === 'stale_version') return t.stale;
   if (e?.error === 'not_allowed') return t.notAllowed;
   if (e?.error === 'checks_required') return t.needChecks;
+  if (e?.error === 'program_failed') return t.programFailedSave;
   return t.saveError;
 }
 
@@ -354,6 +355,8 @@ function AirCutStep({
   const [save, setSave] = useState<Save>({ status: 'idle' });
   const all = AIR_CUT_CHECKS.every((k) => checks[k]);
   const program = data.programs.airCut;
+  // A version with a test cut keeps it: no air-cut re-approval (D-031), a new version restarts.
+  const airDone = data.state === 'test_cut_approved' || data.state === 'verified';
 
   async function approve() {
     setSave({ status: 'busy' });
@@ -384,7 +387,12 @@ function AirCutStep({
         testId="air-cut"
         needsAccept={data.unverifiedReasons.length > 0}
       />
-      {program.ok ? (
+      {program.ok && airDone ? (
+        <p data-testid="air-done" className="text-sm text-fg-muted">
+          {t.airDone}
+        </p>
+      ) : null}
+      {program.ok && !airDone ? (
         <fieldset className="flex flex-col gap-2 rounded-lg border border-border p-3">
           <legend className="px-1 text-sm font-semibold">{t.checksTitle}</legend>
           {AIR_CUT_CHECKS.map((k) => (

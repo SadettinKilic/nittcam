@@ -72,6 +72,9 @@ export function derive(
       `Toolpath target depth ${toolpath.targetDepth} differs from −(thickness + allowance) = ${expectedTarget}.`,
     );
   }
+  if (ctx.zFloor !== undefined && !fin(ctx.zFloor)) {
+    input('Z_FLOOR_INVALID', 'The Z floor must be a finite number.');
+  }
   const ops = ctx.operations ?? toolpath.operations.filter((o) => o.sheet === ctx.sheet);
   if (ops.length === 0) input('NO_OPERATIONS', `No expected operations for sheet ${ctx.sheet}.`);
   if (ops.some((o) => o.sheet !== ctx.sheet)) {

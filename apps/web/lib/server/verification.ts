@@ -75,6 +75,16 @@ export function programAllowed(ctx: MachineContext, kind: TestProgramKind): bool
   return kind === 'airCut' || canRecordVerification(ctx.machine.state, 'testCut');
 }
 
+/**
+ * Does the program of this kind generate for the latest profile version and pass every automatic
+ * check (rule 9)? A step may only be approved for a program the user could actually download.
+ */
+export function programPasses(ctx: MachineContext, kind: TestProgramKind): boolean {
+  if (ctx.post === null) return false;
+  const r = runProgram(ctx, kind);
+  return r.ok && r.check !== null && r.check.ok && r.files.length > 0;
+}
+
 function preview(ctx: MachineContext, kind: TestProgramKind): TestProgramPreview {
   const r = runProgram(ctx, kind);
   const ok = r.ok && r.check !== null && r.check.ok && r.files.length > 0;
