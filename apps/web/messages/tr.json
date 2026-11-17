@@ -349,7 +349,7 @@
       "run": "Diz",
       "running": "Diziliyor…",
       "help": "Parçaları plakalara yerleştirir (en az fire). Parça arası boşluk {gap} mm, kenar payı {margin} mm, takım çapı {tool} mm.",
-      "toolNote": "Takım çapı örnek makine profilinden gelir; proje sihirbazında seçilen makine kullanılacak.",
+      "toolNote": "Takım çapı, seçilen makinenin bu malzeme ve kalınlık için önerdiği takımdan gelir.",
       "none": "Henüz dizilim yok. \"Diz\" ile başlatın.",
       "sheets": "Plaka sayısı",
       "waste": "Toplam fire",
@@ -571,7 +571,7 @@
       "checksOk": "Tüm kontroller geçti",
       "checksFail": "{count} kontrol geçmedi",
       "warnings": "{count} uyarı",
-      "noDownloadHere": "İndirme, kontrol listesiyle birlikte Export adımında yapılır."
+      "noDownloadHere": "İndirme, kontrol listesiyle birlikte Dışa aktar adımında yapılır."
     },
     "time": {
       "hours": "{h} sa {m} dk",

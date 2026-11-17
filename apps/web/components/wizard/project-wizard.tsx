@@ -15,15 +15,7 @@ import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
 import { MachineFields, SheetPreview } from './machine-step';
 import { ValidationPanel } from './validation-panel';
-
-/** Wizard steps (spec §3.6), also the `?adim=` values of the URL. */
-export const STEPS = ['makine', 'parcalar', 'dizilim', 'simulasyon', 'export'] as const;
-export type StepKey = (typeof STEPS)[number];
-
-export function toStep(v: string | string[] | undefined): StepKey {
-  const s = Array.isArray(v) ? v[0] : v;
-  return (STEPS as readonly string[]).includes(s ?? '') ? (s as StepKey) : 'makine';
-}
+import { STEPS, type StepKey } from '../../lib/wizard-steps';
 
 const NEW_PATH = '/projeler/yeni';
 
@@ -429,8 +421,8 @@ function WizardSession({
         <NameField label={t.nameLabel} value={session.name} onCommit={session.rename} />
         <div className="flex flex-wrap items-center gap-2">
           <p
-            role="status"
-            aria-label={t.save.label}
+            aria-live="polite"
+            title={t.save.label}
             data-testid="save-status"
             data-state={session.saveState}
             data-revision={session.revision}

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { goStep, nest } from './wizard-helpers';
 
 /** T012: "Diz" on the parts page runs the placer in a Web Worker and shows sheets + waste %. */
 
@@ -41,9 +42,12 @@ test.describe('T012 nesting', () => {
   test('Diz runs in a Web Worker, shows sheet count and waste %, undo/redo', async ({ page }) => {
     const problems = watchConsole(page);
     await page.goto(URL);
+    await goStep(page, 'dizilim');
     const run = page.getByRole('button', { name: n.run, exact: true });
     await expect(run).toBeDisabled();
+    await goStep(page, 'parcalar');
     await paste(page, KITCHEN, 5);
+    await goStep(page, 'dizilim');
     await expect(page.getByText(n.none)).toBeVisible();
 
     const worker = page.waitForEvent('worker');
@@ -81,7 +85,7 @@ test.describe('T012 nesting', () => {
       2,
     );
     await expect(page.getByText(t.issues.PART_LARGER_THAN_SHEET)).toBeVisible();
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await nest(page);
     await expect(page.getByTestId('nesting-sheets')).toHaveText('1');
     await expect(page.getByTestId('nesting-unplaced')).toHaveText(fill(n.unplaced, { count: 1 }));
     await page.screenshot({ path: '__screenshots__/t012-sigmayan-parca.png', fullPage: true });
@@ -92,13 +96,15 @@ test.describe('T012 nesting', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(URL);
     await paste(page, KITCHEN, 5);
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await nest(page);
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    await page.getByRole('heading', { name: n.title }).scrollIntoViewIfNeeded();
+    await page
+      .getByRole('heading', { name: n.title, level: 2, exact: true })
+      .scrollIntoViewIfNeeded();
     await page.screenshot({ path: '__screenshots__/t012-mobil-dizilim.png' });
   });
 });

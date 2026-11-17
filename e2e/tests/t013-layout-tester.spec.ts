@@ -2,11 +2,11 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { nest as runDiz } from './wizard-helpers';
 
 /** T013 tester: margin edge, refusals, undo/redo, keyboard, locks, tabs, zoom mapping, mobile. */
 
 const t = tr.cutList;
-const n = t.nesting;
 const p = t.paste;
 const l = tr.layout;
 const URL = '/projeler/yeni/parcalar';
@@ -52,7 +52,7 @@ async function paste(page: Page, text: string, count: number) {
 async function nest(page: Page, text: string, count: number, parts: string) {
   await page.goto(URL);
   await paste(page, text, count);
-  await page.getByRole('button', { name: n.run, exact: true }).click();
+  await runDiz(page);
   await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-part-count', parts);
   await expect(page.locator('[data-testid=layout-canvas] canvas').first()).toBeVisible();
 }
@@ -293,7 +293,7 @@ test.describe('T013 tester: sheet tabs', () => {
     const problems = watchConsole(page);
     await page.goto(URL);
     await paste(page, KITCHEN, 5);
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await runDiz(page);
     const tabs = page.getByRole('tab');
     await expect(tabs).toHaveCount(3);
     const sums: number[] = [];

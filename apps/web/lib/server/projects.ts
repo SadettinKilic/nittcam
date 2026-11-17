@@ -8,6 +8,7 @@ import {
   type ProjectRow,
 } from '@nittcam/db';
 import { NextResponse } from 'next/server';
+import { isRepoError } from './errors';
 import type { ProjectApiError, ProjectDetail, ProjectListItem } from '../projects-api';
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -92,13 +93,13 @@ export function readCommands(
 
 /** Maps repository errors to HTTP responses (409 for a stale revision, spec §8.2). */
 export function handleError(err: unknown): NextResponse<ProjectApiError> {
-  if (err instanceof RevisionConflict) {
+  if (isRepoError(err, RevisionConflict, 'RevisionConflict')) {
     return apiError({ error: 'conflict', currentRevision: err.actualRevision }, 409);
   }
-  if (err instanceof InvalidProject) {
+  if (isRepoError(err, InvalidProject, 'InvalidProject')) {
     return apiError({ error: 'invalid_project', issues: err.issues }, 400);
   }
-  if (err instanceof NotFound) return apiError({ error: 'not_found' }, 404);
+  if (isRepoError(err, NotFound, 'NotFound')) return apiError({ error: 'not_found' }, 404);
   console.error(err);
   return apiError({ error: 'server_error' }, 500);
 }

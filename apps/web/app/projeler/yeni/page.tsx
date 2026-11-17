@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { ProjectWizard, toStep } from '../../../components/wizard/project-wizard';
+import { ProjectWizard } from '../../../components/wizard/project-wizard';
+import { toStep } from '../../../lib/wizard-steps';
 import { getMessages } from '../../../lib/messages';
 
 const messages = getMessages();

@@ -1,15 +1,17 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { goStep, nest, openNewProject, saved, wizardReady } from './wizard-helpers';
 
 /**
- * T020 tester, round 2: draft persistence under reloads, cursor-anchored zoom, pan clamp,
- * 320 px label/banner layout and tab markers (D-028).
+ * T020 tester, round 2: persistence under reloads, cursor-anchored zoom, pan clamp, 320 px
+ * label/banner layout and tab markers (D-028). Since T023 the project lives on the server and the
+ * simulation is step 4 of the wizard; only unsent commands stay in sessionStorage (D-029).
  */
 const t = tr.cutList;
 const s = tr.simulation;
-const PARTS = '/projeler/yeni/parcalar';
-const SIM = '/projeler/yeni/simulasyon';
-const KEY = 'nittcam.draftProject.v1';
+const PARTS = '/projeler/yeni?adim=parcalar';
+/** The unsent-command queue of a project that is not created yet (D-029). */
+const KEY = 'nittcam.unsent.new';
 
 const fill = (text: string, v: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? String(v[k]) : m));
@@ -40,12 +42,11 @@ async function paste(page: Page, text = KITCHEN, count = 5) {
 }
 
 async function toSimulation(page: Page) {
-  await page.goto(PARTS);
+  await openNewProject(page, 'parcalar');
   await paste(page);
-  await page.getByRole('button', { name: t.nesting.run, exact: true }).click();
+  await nest(page);
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
-  await page.getByTestId('open-simulation').click();
-  await expect(page).toHaveURL(SIM);
+  await goStep(page, 'simulasyon');
 }
 
 async function ready(page: Page) {
@@ -81,60 +82,62 @@ const hasValue = (page: Page, v: string) =>
     .locator('input')
     .evaluateAll((els, x) => els.some((e) => (e as HTMLInputElement).value === x), v);
 
-async function reloadParts(page: Page) {
+async function reloadLayout(page: Page) {
   await page.reload();
+  await wizardReady(page, 'dizilim');
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 8_000 });
   await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
 }
 
-test.describe('T020 round 2: draft persistence', () => {
-  test('parts page: five F5 reloads in a row keep the draft and the layout', async ({ page }) => {
+test.describe('T020 round 2: persistence (server since T023)', () => {
+  test('Dizilim step: five F5 reloads in a row keep the project and the layout', async ({
+    page,
+  }) => {
     const problems = watch(page);
     await toSimulation(page);
     await ready(page);
-    await page.getByRole('link', { name: s.back }).click();
+    await saved(page);
+    await goStep(page, 'dizilim');
     await expect(page.getByTestId('layout-canvas')).toBeVisible();
     for (let i = 0; i < 5; i += 1) {
       await page.keyboard.press('F5');
       await page.waitForLoadState('load');
+      await wizardReady(page, 'dizilim');
       await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 8_000 });
       await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
     }
     expect(problems).toEqual([]);
   });
 
-  test('parts reload, simulation reload, back and forth keep everything', async ({ page }) => {
+  test('layout reload, simulation reload, back and forth keep everything', async ({ page }) => {
     const problems = watch(page);
     await toSimulation(page);
     await ready(page);
+    await saved(page);
     for (let i = 0; i < 3; i += 1) {
       await page.reload();
+      await wizardReady(page, 'simulasyon');
       await ready(page);
-      await page.getByRole('link', { name: s.back }).click();
-      await expect(page).toHaveURL(PARTS);
-      await reloadParts(page);
-      await page.getByTestId('open-simulation').click();
-      await expect(page).toHaveURL(SIM);
+      await goStep(page, 'dizilim');
+      await reloadLayout(page);
+      await goStep(page, 'simulasyon');
       await ready(page);
       await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true');
     }
-    await page.goBack();
-    await expect(page).toHaveURL(PARTS);
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
-    await page.goForward();
-    await ready(page);
     expect(problems).toEqual([]);
   });
 
-  test('parts page in a fresh tab starts empty without crashing', async ({ page, context }) => {
+  test('a new project in a fresh tab starts empty without crashing', async ({ page, context }) => {
     await toSimulation(page);
     await ready(page);
     const fresh = await context.newPage();
     const problems = watch(fresh);
     await fresh.goto(PARTS);
     await expect(fresh.getByRole('button', { name: t.pasteOpen })).toBeVisible();
-    await expect(fresh.getByTestId('layout-canvas')).toHaveCount(0);
-    await fresh.goto(SIM);
+    await expect(fresh.getByTestId('cut-list-count')).toHaveText(
+      fill(t.count, { rows: 0, pieces: 0 }),
+    );
+    await goStep(fresh, 'simulasyon');
     await expect(fresh.getByTestId('sim-empty')).toBeVisible();
     expect(problems).toEqual([]);
     // The first tab is untouched.
@@ -143,26 +146,21 @@ test.describe('T020 round 2: draft persistence', () => {
   });
 
   for (const bad of ['{not json', '{"a":1}', 'null', '[]', '"x"']) {
-    test(`corrupted sessionStorage ${bad}: empty state, no crash, value replaced`, async ({
+    test(`corrupted unsent queue ${bad}: empty state, no crash, value replaced`, async ({
       page,
     }) => {
       const problems = watch(page);
       await page.goto(PARTS);
+      await wizardReady(page, 'parcalar');
       await page.evaluate(([k, v]) => sessionStorage.setItem(k as string, v as string), [KEY, bad]);
       await page.reload();
+      await wizardReady(page, 'parcalar');
       await expect(page.getByRole('button', { name: t.pasteOpen })).toBeVisible();
-      await expect(page.getByTestId('layout-canvas')).toHaveCount(0);
-      await page.goto(SIM);
-      await expect(page.getByTestId('sim-empty')).toBeVisible();
-      await page.goto(PARTS);
-      const afterLoad = await page.evaluate((k) => sessionStorage.getItem(k), KEY);
-      console.log(
-        `corrupt ${bad}: after an empty load the key is ${JSON.stringify(afterLoad)?.slice(0, 40)}`,
+      await expect(page.getByTestId('cut-list-count')).toHaveText(
+        fill(t.count, { rows: 0, pieces: 0 }),
       );
       await paste(page);
-      const stored = await page.evaluate((k) => sessionStorage.getItem(k), KEY);
-      expect(stored).not.toBe(bad);
-      expect(() => JSON.parse(stored ?? '')).not.toThrow();
+      await saved(page);
       await page.reload();
       await expect.poll(() => hasValue(page, 'Çekmece önü')).toBe(true);
       expect(problems).toEqual([]);
@@ -171,14 +169,12 @@ test.describe('T020 round 2: draft persistence', () => {
 
   test('quick edit then immediate reload keeps the last edit', async ({ page }) => {
     await page.goto(PARTS);
+    await wizardReady(page, 'parcalar');
     await paste(page);
     await page.reload();
     await expect.poll(() => hasValue(page, 'Çekmece önü')).toBe(true);
-    const stored = await page.evaluate((k) => sessionStorage.getItem(k), KEY);
-    expect(stored).toContain('Çekmece önü');
   });
 });
-
 test.describe('T020 round 2: zoom and pan', () => {
   for (const w of [1280, 390]) {
     test(`${w} px: wheel zoom keeps the point under the cursor, clamp, fit`, async ({ page }) => {
