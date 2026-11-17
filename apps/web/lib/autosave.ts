@@ -137,12 +137,14 @@ export class AutosaveQueue {
   private current: SaveState = 'idle';
   private disposed = false;
   private readonly deps: AutosaveDeps;
+  private createdListener: ((id: string) => void) | undefined;
 
   constructor(
     deps: AutosaveDeps,
     init: { id: string | null; revision: number; name: string; project: Project },
   ) {
     this.deps = deps;
+    this.createdListener = deps.onCreated;
     this.id = init.id;
     this.revision = init.revision;
     this.name = init.name;
@@ -192,6 +194,11 @@ export class AutosaveQueue {
     this.savedGeneration = this.generation;
     this.removeStored(queueKey(this.id));
     this.setState('idle');
+  }
+
+  /** Replaces the callback for the first save that created the project (UI wiring). */
+  setOnCreated(fn: ((id: string) => void) | undefined): void {
+    this.createdListener = fn;
   }
 
   dispose(): void {
@@ -249,7 +256,7 @@ export class AutosaveQueue {
       this.attempt = 0;
       if (wasNew) {
         this.removeStored(oldKey);
-        this.deps.onCreated?.(result.id);
+        this.createdListener?.(result.id);
       }
       this.persist();
       if (this.dirty) {

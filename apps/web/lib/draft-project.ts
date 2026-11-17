@@ -1,17 +1,35 @@
-import { exampleMachineProfile, nestingToolDiameter, type Project } from '@nittcam/core';
+import {
+  findMaterialParams,
+  nestingToolDiameter,
+  type MachineProfile,
+  type Project,
+} from '@nittcam/core';
+
+/** The sheet a new project starts with: a common 2070 × 2800 mm board, long side along X. */
+export const DEFAULT_SHEET = { width: 2800, height: 2070 } as const;
+
+/** Tool diameter (mm) when the machine is unknown: the example machine's 8 mm end mill. */
+export const FALLBACK_TOOL_DIAMETER = 8;
 
 /**
- * Empty project for the parts step until the wizard (T023) creates and saves real projects.
- * The machine reference is a placeholder; the plate is a common 2800 × 2070 mm 18 mm MDF sheet.
+ * A new project (T023): the given machine profile version, its first material set (else MDF
+ * 18 mm) and the default sheet. Nothing is stored until the first change (D-029).
  */
-export function draftProject(): Project {
+export function newProject(machine?: {
+  id: string;
+  version: number;
+  profile: MachineProfile;
+}): Project {
+  const set = machine?.profile.materials[0];
   return {
     schemaVersion: 1,
-    machine: { machineId: 'draft', profileVersion: 1 },
+    machine: machine
+      ? { machineId: machine.id, profileVersion: machine.version }
+      : { machineId: 'draft', profileVersion: 1 },
     stock: {
-      material: 'mdf',
-      thickness: 18,
-      sheet: { width: 2800, height: 2070, grain: 0 },
+      material: set?.material ?? 'mdf',
+      thickness: set?.thickness ?? 18,
+      sheet: { ...DEFAULT_SHEET, grain: 0 },
       useOffcuts: false,
     },
     parts: [],
@@ -23,11 +41,16 @@ export function draftProject(): Project {
 }
 
 /**
- * Tool diameter for nesting on the draft page: the seeded example machine profile's tool for the draft's
- * material and thickness (MDF 18 → T2, 8 mm). The wizard (T023) passes the selected machine instead.
+ * Tool diameter for nesting and the locked-placement rule (D-019, D-020): the selected machine's
+ * tool for the stock (material mapped to the profile sets, D-029), else the fallback.
  */
-export function draftToolDiameter(project: Project): number {
-  return nestingToolDiameter(exampleMachineProfile(), project.stock) ?? 8;
+export function toolDiameterFor(project: Project, profile: MachineProfile | null): number {
+  return (profile && nestingToolDiameter(profile, project.stock)) ?? FALLBACK_TOOL_DIAMETER;
+}
+
+/** Does the machine have cutting parameters for the project's stock? */
+export function hasCuttingParams(project: Project, profile: MachineProfile | null): boolean {
+  return profile !== null && findMaterialParams(profile, project.stock) !== undefined;
 }
 
 let counter = 0;

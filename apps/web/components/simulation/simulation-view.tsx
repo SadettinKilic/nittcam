@@ -15,11 +15,8 @@ import {
   type SimSheet,
 } from '@nittcam/core';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { fill } from '../../lib/draft-project';
-import { useStoredDraft } from '../../lib/draft-store';
-import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { SimulationResponse } from '../../lib/simulation-messages';
 import { useSimulationWorker } from '../../lib/use-simulation-worker';
 import { canvasHeight, drawnParts, type ViewState } from '../layout-view/model';
@@ -51,7 +48,6 @@ type Speed = (typeof SPEEDS)[number];
 const playBtn =
   'inline-flex min-w-28 items-center justify-center gap-1.5 rounded-lg border border-accent bg-accent px-3 py-2 text-sm font-semibold text-accent-fg hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50';
 
-const MACHINE_KEY = 'nittcam.simulation.machine';
 /** Scrubber resolution: tenths of a second. */
 const SCRUB_UNITS = 10;
 
@@ -72,21 +68,6 @@ function useReducedMotion(): boolean {
   );
 }
 
-function readStoredMachine(): string | null {
-  try {
-    return window.localStorage.getItem(MACHINE_KEY);
-  } catch {
-    return null;
-  }
-}
-function storeMachine(id: string): void {
-  try {
-    window.localStorage.setItem(MACHINE_KEY, id);
-  } catch {
-    // Remembering the choice is a convenience only.
-  }
-}
-
 /** Is the key event aimed at a control that handles it itself? */
 function ownsKey(target: EventTarget | null, key: string): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -99,89 +80,52 @@ function ownsKey(target: EventTarget | null, key: string): boolean {
   }
   return false;
 }
-
-type MachinesState =
-  { status: 'loading' } | { status: 'error' } | { status: 'ready'; list: MachineListItem[] };
-
 interface Run {
   project: Project;
   machineKey: string;
   response: SimulationResponse;
 }
 
+/** The selected machine's profile version, as the wizard loaded it. */
+export interface SimMachine {
+  id: string;
+  pv: PostProfileVersion;
+}
+
 /**
- * Simulation screen (T020, spec §6.5, §3.6 step 4). Reads the draft project of the parts step,
- * lets the user pick a machine of the company, runs the export pipeline + reader in a Web Worker
- * and plays the read program back on the sheet.
+ * Önizleme / simülasyon step (T020, spec §6.5, §3.6 step 4; wizard since T023). Runs the export
+ * pipeline + reader for the wizard's project on its selected machine in a Web Worker and plays
+ * the read program back on the sheet.
  */
-export function SimulationView({ t }: { t: SimText }) {
-  const project = useStoredDraft();
+export function SimulationView({
+  t,
+  project,
+  machine,
+  empty,
+}: {
+  t: SimText;
+  project: Project;
+  machine: SimMachine | null;
+  /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
+  empty: { noLayout: React.ReactNode; noMachine: React.ReactNode };
+}) {
   const runSimulation = useSimulationWorker();
-  const [machines, setMachines] = useState<MachinesState>({ status: 'loading' });
-  const [chosen, setChosen] = useState<string | null>(null);
-  const [detail, setDetail] = useState<{ id: string; pv: PostProfileVersion } | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
 
-  useEffect(() => {
-    let live = true;
-    fetch('/api/machines')
-      .then(async (res) => {
-        if (!res.ok) throw new Error(String(res.status));
-        const list = (await res.json()) as MachineListItem[];
-        if (live) setMachines({ status: 'ready', list });
-      })
-      .catch(() => {
-        if (live) setMachines({ status: 'error' });
-      });
-    return () => {
-      live = false;
-    };
-  }, []);
-
-  const list = useMemo(() => (machines.status === 'ready' ? machines.list : []), [machines]);
-  const machineId = useMemo(() => {
-    if (list.length === 0) return null;
-    const want = chosen ?? readStoredMachine();
-    return list.some((m) => m.id === want) ? want : (list[0]?.id ?? null);
-  }, [list, chosen]);
+  const machineKey = machine ? `${machine.id}@${machine.pv.version}` : null;
+  const hasLayout = project.layout.sheets.length > 0;
 
   useEffect(() => {
-    if (!machineId) return;
+    if (!hasLayout || !machine || !machineKey) return;
     let live = true;
-    fetch(`/api/machines/${encodeURIComponent(machineId)}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(String(res.status));
-        const d = (await res.json()) as MachineDetail;
-        if (live) {
-          setDetail({
-            id: d.id,
-            pv: { profile: d.profile, version: d.version, verification: d.state },
-          });
-        }
-      })
-      .catch(() => {
-        if (live) setMachines({ status: 'error' });
-      });
-    return () => {
-      live = false;
-    };
-  }, [machineId]);
-
-  const current = detail && detail.id === machineId ? detail : null;
-  const machineKey = current ? `${current.id}@${current.pv.version}` : null;
-  const hasLayout = project !== null && project.layout.sheets.length > 0;
-
-  useEffect(() => {
-    if (!project || !hasLayout || !current || !machineKey) return;
-    let live = true;
-    void runSimulation(project, current.pv).then((response) => {
+    void runSimulation(project, machine.pv).then((response) => {
       if (live) setRun({ project, machineKey, response });
     });
     return () => {
       live = false;
     };
-  }, [project, hasLayout, current, machineKey, runSimulation]);
+  }, [project, hasLayout, machine, machineKey, runSimulation]);
 
   const fresh = run && run.project === project && run.machineKey === machineKey ? run : null;
   const response = fresh?.response ?? null;
@@ -195,37 +139,10 @@ export function SimulationView({ t }: { t: SimText }) {
   const warnings = useMemo(() => all.filter((f) => f.severity === 'warning'), [all]);
 
   let body: React.ReactNode;
-  if (project === null || !hasLayout) {
-    body = (
-      <section
-        data-testid="sim-empty"
-        className="flex flex-col items-start gap-3 rounded-card border border-dashed border-border p-6"
-      >
-        <h2 className="text-xl font-semibold">{t.empty.title}</h2>
-        <p className="text-fg-muted">{t.empty.body}</p>
-        <Link
-          href="/projeler/yeni/parcalar"
-          className="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-fg hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          {t.empty.action}
-        </Link>
-      </section>
-    );
-  } else if (machines.status === 'error') {
-    body = (
-      <p role="alert" className="rounded-lg bg-danger-bg p-3 text-sm text-danger">
-        {t.machine.error}
-      </p>
-    );
-  } else if (machines.status === 'ready' && list.length === 0) {
-    body = (
-      <p className="rounded-lg bg-sidebar p-3 text-sm">
-        {t.machine.none}{' '}
-        <Link href="/makineler" className="font-medium text-accent underline">
-          {t.machine.link}
-        </Link>
-      </p>
-    );
+  if (!hasLayout) {
+    body = empty.noLayout;
+  } else if (!machine) {
+    body = empty.noMachine;
   } else if (!response) {
     body = (
       <div
@@ -297,23 +214,12 @@ export function SimulationView({ t }: { t: SimText }) {
     );
   }
 
-  const profile = current?.pv.profile;
+  const profile = machine?.pv.profile;
   const unverified =
-    current !== null && (current.pv.verification !== 'verified' || current.pv.profile.example);
+    machine !== null && (machine.pv.verification !== 'verified' || machine.pv.profile.example);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <header className="flex flex-col gap-1">
-        <Link
-          href="/projeler/yeni/parcalar"
-          className="w-fit text-sm text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          {t.back}
-        </Link>
-        <h1 className="text-3xl font-semibold tracking-tight">{t.title}</h1>
-        <p className="text-fg-muted">{t.subtitle}</p>
-      </header>
-
+    <div className="flex w-full min-w-0 flex-col gap-4">
       <p
         role="note"
         data-testid="sim-banner"
@@ -326,46 +232,27 @@ export function SimulationView({ t }: { t: SimText }) {
         <span className="hidden sm:inline">{t.bannerDetail}</span>
       </p>
 
-      {hasLayout ? (
+      {hasLayout && machine && profile ? (
         <div className="flex flex-col gap-1">
-          <label className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-3">
-            <span className="font-medium">{t.machine.label}</span>
-            <select
-              data-testid="sim-machine"
-              value={machineId ?? ''}
-              disabled={list.length === 0}
-              onChange={(e) => {
-                setChosen(e.target.value);
-                storeMachine(e.target.value);
-                setSheetIndex(0);
-              }}
-              className="w-full max-w-md rounded-md border border-border bg-bg px-2 py-1.5"
-            >
-              {machines.status === 'loading' ? <option value="">{t.machine.loading}</option> : null}
-              {list.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {fill(t.machine.option, { name: m.name, version: m.version })}
-                </option>
-              ))}
-            </select>
-          </label>
-          {profile ? (
-            <p className="text-xs text-fg-muted">
-              {fill(t.machine.envelope, {
-                x: formatMm(profile.workEnvelope.x),
-                y: formatMm(profile.workEnvelope.y),
-                w: formatMm(profile.table.width),
-                d: formatMm(profile.table.depth),
-                post: `${profile.post.id} ${profile.post.version}`,
-              })}
-            </p>
-          ) : null}
+          <p className="text-sm" data-testid="sim-machine-name">
+            <span className="font-medium">{t.machine.label}: </span>
+            {fill(t.machine.option, { name: profile.identity.name, version: machine.pv.version })}
+          </p>
+          <p className="text-xs text-fg-muted">
+            {fill(t.machine.envelope, {
+              x: formatMm(profile.workEnvelope.x),
+              y: formatMm(profile.workEnvelope.y),
+              w: formatMm(profile.table.width),
+              d: formatMm(profile.table.depth),
+              post: `${profile.post.id} ${profile.post.version}`,
+            })}
+          </p>
           {unverified ? <p className="text-xs text-warn">{t.machine.unverified}</p> : null}
         </div>
       ) : null}
 
       {body}
-    </main>
+    </div>
   );
 }
 

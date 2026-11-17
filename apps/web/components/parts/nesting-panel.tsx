@@ -1,8 +1,8 @@
 'use client';
 
 import { summarizeLayout, type Project } from '@nittcam/core';
-import { fill } from '../../../../lib/draft-project';
-import type { Messages } from '../../../../lib/messages';
+import { fill } from '../../lib/draft-project';
+import type { Messages } from '../../lib/messages';
 import { buttonClass } from './ui';
 
 type Text = Messages['cutList']['nesting'];

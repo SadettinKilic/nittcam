@@ -1,24 +1,6 @@
-import type { Metadata } from 'next';
-import { getMessages } from '../../../../lib/messages';
-import { DraftCutListEditor } from './cut-list-editor';
+import { redirect } from 'next/navigation';
 
-const messages = getMessages();
-
-export const metadata: Metadata = {
-  title: `${messages.cutList.title} · ${messages.meta.title}`,
-};
-
-/**
- * Oluştur → Parçalar (spec §3.6 step 2, §4.1): the cut-list table and Excel/CSV paste,
- * nesting and the layout view (T013).
- * A standalone page until the wizard (T023) wraps it and saves the project.
- */
+/** Old standalone parts page (T011–T013): now step 2 of the wizard (T023). */
 export default function PartsPage() {
-  return (
-    <DraftCutListEditor
-      t={messages.cutList}
-      layoutText={messages.layout}
-      simulateText={messages.simulation.open}
-    />
-  );
+  redirect('/projeler/yeni?adim=parcalar');
 }

@@ -123,16 +123,16 @@ describe('AutosaveQueue: debounce', () => {
   });
 
   it('changes made while a save runs go out in the next save on the new revision', async () => {
-    let release: (() => void) | null = null;
+    const gate = { release: () => {} };
     const { q, c, sent } = setup(async (req, n) => {
-      if (n === 1) await new Promise<void>((r) => (release = r));
+      if (n === 1) await new Promise<void>((r) => (gate.release = r));
       return okRev(req);
     });
     q.push({ entries: [e('a')], project: P(1) });
     await c.advance(1000);
     expect(q.state).toBe('saving');
     q.push({ entries: [e('b')], project: P(2) });
-    release!();
+    gate.release();
     await settle();
     expect(q.state).toBe('pending');
     expect(q.pending.map((x) => x.command)).toEqual(['b']);
