@@ -453,9 +453,10 @@ function positive(x: number | undefined): x is number {
 }
 
 /**
- * Builds the toolpath of a project on a machine (spec §6.3). Order (simple, deterministic; the real
- * cut order is T016): by sheet, then placement order. `ok` is false when any error is present; an
- * erroneous toolpath must never be exported.
+ * Builds the toolpath of a project on a machine (spec §6.3). Operations follow the cut order
+ * (T016, D-023: by sheet; holes → inner → outer per part; small parts first; tools grouped;
+ * nearest-neighbour rapids with 2-opt and start-edge choice). `ok` is false when any error is
+ * present; an erroneous toolpath must never be exported.
  */
 export function buildToolpath(
   project: Project,
