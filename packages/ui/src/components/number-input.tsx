@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, type ComponentProps, type KeyboardEvent } from 'react';
 import { cn } from '../lib/cn';
 import { formatNumberTr, parseNumberTr, stepNumber, type NumberParseError } from '../lib/number';
-import { fieldBase } from '../lib/styles';
+import { fieldBase, fieldFocus } from '../lib/styles';
 import { useFieldControlProps } from './form-field';
 
 export interface NumberInputProps extends Omit<
@@ -120,18 +120,13 @@ export function NumberInput({
   const isInvalid = invalid || error !== null || field['aria-invalid'] === true;
   const showStepper = incrementLabel !== undefined && decrementLabel !== undefined;
 
+  // The input itself is the field box (border, focus halo), so keyboard focus is visible on the
+  // focused element; unit and stepper sit on top of its right padding.
+  const stepperWidth = showStepper ? '1.75rem' : '0px';
+  const unitWidth = unit ? `calc(${unit.length}ch + 0.5rem)` : '0px';
+
   return (
-    <div
-      className={cn(
-        fieldBase,
-        'group/num flex items-stretch overflow-hidden',
-        'focus-within:border-focus focus-within:ring-3 focus-within:ring-focus/25',
-        isInvalid && 'border-danger focus-within:border-danger focus-within:ring-danger/25',
-        disabled && 'cursor-not-allowed bg-surface-subtle text-fg-disabled shadow-none',
-        heights[inputSize],
-        className,
-      )}
-    >
+    <div className={cn('relative flex', heights[inputSize], className)}>
       <input
         {...props}
         {...field}
@@ -157,22 +152,28 @@ export function NumberInput({
           onBlur?.(e);
         }}
         onKeyDown={handleKeyDown}
+        style={{ paddingRight: `calc(0.75rem + ${unitWidth} + ${stepperWidth})` }}
         className={cn(
-          'numeric min-w-0 flex-1 bg-transparent px-3 text-right outline-none',
-          'placeholder:text-fg-subtle disabled:cursor-not-allowed',
+          fieldBase,
+          fieldFocus,
+          'numeric peer h-full min-w-0 pl-3 text-right',
+          isInvalid && 'border-danger focus-visible:border-danger',
           inputSize === 'lg' && 'text-base',
         )}
       />
       {unit ? (
         <span
           aria-hidden
-          className="flex items-center pr-3 text-sm text-fg-subtle select-none group-focus-within/num:text-fg-muted"
+          className={cn(
+            'pointer-events-none absolute inset-y-0 flex items-center text-sm text-fg-subtle select-none peer-focus:text-fg-muted',
+            showStepper ? 'right-10' : 'right-3',
+          )}
         >
           {unit}
         </span>
       ) : null}
       {showStepper ? (
-        <div className="flex w-7 flex-col border-l border-border">
+        <div className="absolute inset-y-px right-px flex w-7 flex-col overflow-hidden rounded-r-[calc(var(--radius-md)-1px)] border-l border-border">
           <button
             type="button"
             tabIndex={-1}

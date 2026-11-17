@@ -52,11 +52,16 @@ test.describe('T102 /dev/ui gallery', () => {
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
 
-    // Visible focus ring: a non-zero outline on keyboard focus.
+    // Visible focus ring: a solid, non-zero, non-transparent outline on keyboard focus.
     await page.keyboard.press('Tab');
     await page.keyboard.press('Shift+Tab');
-    const outline = await trigger.evaluate((el) => getComputedStyle(el).outlineWidth);
-    expect(outline).not.toBe('0px');
+    const ring = await trigger.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { style: cs.outlineStyle, width: cs.outlineWidth, color: cs.outlineColor };
+    });
+    expect(ring.style).not.toBe('none');
+    expect(parseFloat(ring.width)).toBeGreaterThan(0);
+    expect(ring.color).not.toMatch(/rgba(0, 0, 0, 0)|transparent/);
 
     // Menu with arrows.
     await page.getByRole('button', { name: t.overlays.menuTrigger }).focus();

@@ -126,40 +126,36 @@ test.describe('B1 tester: keyboard-only overlays and theme', () => {
     await expect(page.locator('html')).toHaveClass(/\blight\b/);
   });
 
-  // KNOWN BUG (B1 tester round 1): Tailwind v4 `outline-none` + `focus-visible:outline-2` leaves
-  // outline-style: none, so buttons/tabs show no focus ring. test.fail flips red once dev fixes
-  // focusRing in packages/ui/src/lib/styles.ts; then remove the test.fail line.
-  test.fail(
-    'a user can reach every interactive control with Tab alone and focus is visible',
-    async ({ page }) => {
-      await page.goto('/dev/ui');
-      const seen = new Set<string>();
-      const missing = new Set<string>();
-      for (let i = 0; i < 120; i++) {
-        await page.keyboard.press('Tab');
-        const info = await page.evaluate(() => {
-          const el = document.activeElement as HTMLElement | null;
-          if (!el || el === document.body) return null;
-          const cs = getComputedStyle(el);
-          const ring = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0;
-          const textEntry =
-            (el.tagName === 'INPUT' &&
-              !['checkbox', 'radio'].includes((el as HTMLInputElement).type)) ||
-            el.tagName === 'TEXTAREA';
-          const halo = /rgba?\((?!0, 0, 0, 0\))[^)]*\)\s+0px 0px 0px [1-9]/.test(cs.boxShadow);
-          return {
-            tag: el.tagName,
-            ok: textEntry ? halo || ring : ring,
-            text: (el.textContent ?? '').slice(0, 20),
-          };
-        });
-        if (info) {
-          seen.add(info.tag);
-          if (!info.ok) missing.add(`${info.tag} "${info.text}"`);
-        }
+  test('a user can reach every interactive control with Tab alone and focus is visible', async ({
+    page,
+  }) => {
+    await page.goto('/dev/ui');
+    const seen = new Set<string>();
+    const missing = new Set<string>();
+    for (let i = 0; i < 120; i++) {
+      await page.keyboard.press('Tab');
+      const info = await page.evaluate(() => {
+        const el = document.activeElement as HTMLElement | null;
+        if (!el || el === document.body) return null;
+        const cs = getComputedStyle(el);
+        const ring = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0;
+        const textEntry =
+          (el.tagName === 'INPUT' &&
+            !['checkbox', 'radio'].includes((el as HTMLInputElement).type)) ||
+          el.tagName === 'TEXTAREA';
+        const halo = /rgba?\((?!0, 0, 0, 0\))[^)]*\)\s+0px 0px 0px [1-9]/.test(cs.boxShadow);
+        return {
+          tag: el.tagName,
+          ok: textEntry ? halo || ring : ring,
+          text: (el.textContent ?? '').slice(0, 20),
+        };
+      });
+      if (info) {
+        seen.add(info.tag);
+        if (!info.ok) missing.add(`${info.tag} "${info.text}"`);
       }
-      expect([...missing], 'controls with no visible focus indicator').toEqual([]);
-      expect(seen.size).toBeGreaterThan(2);
-    },
-  );
+    }
+    expect([...missing], 'controls with no visible focus indicator').toEqual([]);
+    expect(seen.size).toBeGreaterThan(2);
+  });
 });

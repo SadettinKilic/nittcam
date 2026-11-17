@@ -1,19 +1,27 @@
 // Shared class fragments for primitives (T101). Tokens only; see tokens.css.
 
-/** Visible keyboard focus: a 2 px focus-colour outline with offset (buttons, toggles, tabs). */
+/**
+ * Visible keyboard focus: a 2 px solid focus-colour outline with offset (buttons, toggles, tabs).
+ * Tailwind v4: `outline-none` sets --tw-outline-style: none and `outline-2` reuses that variable,
+ * so the style must be set back to solid explicitly on focus-visible.
+ */
 export const focusRing =
-  'outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
+  'outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
-/** Text-entry focus: accent border plus a soft halo (inputs, selects, textareas). */
+/**
+ * Text-entry focus: accent border plus a soft 3 px halo (inputs, selects, textareas, number inputs).
+ * Drawn as an outline (follows border-radius) so it appears instantly, without the box-shadow transition.
+ */
 export const fieldFocus =
-  'outline-none focus-visible:border-focus focus-visible:ring-3 focus-visible:ring-focus/25';
+  'outline-none focus-visible:border-focus focus-visible:outline-solid focus-visible:outline-3 ' +
+  'focus-visible:outline-offset-0 focus-visible:outline-focus/25';
 
 /** Base look of every text-entry control. */
 export const fieldBase =
   'w-full rounded-md border border-border-strong bg-surface text-sm text-fg shadow-xs ' +
   'transition-[border-color,box-shadow] duration-(--duration-fast) ease-out ' +
   'placeholder:text-fg-subtle hover:border-fg-subtle/60 ' +
-  'aria-invalid:border-danger aria-invalid:focus-visible:ring-danger/25 ' +
+  'aria-invalid:border-danger aria-invalid:focus-visible:outline-danger/25 ' +
   'disabled:cursor-not-allowed disabled:bg-surface-subtle disabled:text-fg-disabled disabled:shadow-none';
 
 /** Floating layers: popover, menu, select list. */
