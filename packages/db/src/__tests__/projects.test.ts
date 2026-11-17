@@ -127,3 +127,33 @@ describe('project_commands', () => {
     expect(replay.project).toEqual(saved.data);
   });
 });
+
+describe('create with commands (T023)', () => {
+  it('stores the commands of a new project under revision 1, in the same transaction', async () => {
+    const p = await scope.projects.create({
+      name: 'new',
+      data: loadFixture('mixed'),
+      commands: [
+        { command: 'setThickness', params: { thickness: 18 }, actor: 'user', at: AT },
+        { command: 'undo', params: {}, actor: 'user', at: AT },
+      ],
+    });
+    const rows = await scope.projects.listCommands(p.id);
+    expect(rows.map((r) => [r.revision, r.seq, r.command])).toEqual([
+      [1, 0, 'setThickness'],
+      [1, 1, 'undo'],
+    ]);
+  });
+
+  it('writes nothing when the project is invalid', async () => {
+    const before = (await scope.projects.list()).length;
+    await expect(
+      scope.projects.create({
+        name: 'bad',
+        data: { nope: 1 },
+        commands: [{ command: 'setThickness', params: { thickness: 18 }, actor: 'user', at: AT }],
+      }),
+    ).rejects.toBeInstanceOf(InvalidProject);
+    expect(await scope.projects.list()).toHaveLength(before);
+  });
+});
