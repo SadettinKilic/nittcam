@@ -5,7 +5,7 @@
  */
 import { EPS } from '../geometry/constants';
 import { offset } from '../geometry/offset';
-import { bbox, contour, normalize, reverse } from '../geometry/polyline';
+import { bbox, contour, normalize, reverse, signedArea } from '../geometry/polyline';
 import { rotate, translate } from '../geometry/transform';
 import type { BBox, Point, Polyline } from '../geometry/types';
 import { findTool, type MachineProfile } from '../machine';
@@ -18,13 +18,17 @@ import {
   pathLength,
   pathMoves,
   reversePath,
-  startAtLongestLine,
+  edgeMidpoint,
+  startAtEdge,
+  startEdgeCandidates,
   subpath,
   tangent,
   type PathSeg,
 } from './path';
 import { toolpathSafetyViolations } from './safety';
 import { summarizeToolpath } from './stats';
+import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
+
 import { TAB_DEFAULTS, defaultTabHeight, isSmallPart, passMovesWithTabs, placeTabs } from './tabs';
 import type {
   LeadType,
@@ -38,6 +42,7 @@ import type {
   ToolpathIssue,
   ToolpathOptions,
   ToolpathResult,
+  CutOrderSummary,
   ToolpathSeverity,
 } from './types';
 
@@ -50,6 +55,12 @@ export const TOOLPATH_DEFAULTS = {
   /** Ramp angle of each zig-zag leg against the XY plane, degrees. */
   rampAngleDeg: 3,
 } as const;
+
+/**
+ * `fastest` mode: any straight edge at least this fraction of the longest one may hold the start
+ * point (more choice, shorter rapids). The other modes keep the longest edges only (D-023).
+ */
+export const FASTEST_START_EDGE_FRACTION = 0.5;
 
 /** Lead lengths tried in order, as fractions of the requested length (then: no lead). */
 const LEAD_FALLBACK = [1, 0.5, 0.25] as const;
@@ -211,6 +222,10 @@ interface OperationContext {
   placement: Placement;
   sheetIndex: number;
   outline: Polyline;
+  /** Tool-centre loop (CCW, as offset returns it). */
+  raw: Polyline;
+  /** Straight segment of `raw` whose midpoint is the start point (D-023); −1 = start vertex. */
+  startEdge: number;
   /** The own outline and every other outline on the sheet. */
   own: Obstacle;
   neighbours: readonly Obstacle[];
@@ -222,21 +237,14 @@ function buildOuterOperation(
   warnings: ToolpathIssue[],
   errors: ToolpathIssue[],
   smallWarned: Set<string>,
-): Operation | null {
+): Operation {
   const where = { copy: ctx.placement.index, sheet: ctx.sheetIndex };
   const partId = ctx.part.id;
   const toolRadius = p.toolDiameter / 2;
-  const contourRes = outerContourPath(ctx.outline, toolRadius);
-  for (const it of contourRes.issues) {
-    (it.severity === 'error' ? errors : warnings).push(
-      issue(it.code, it.severity, partId, it.message, where),
-    );
-  }
-  const raw = contourRes.paths[0];
-  if (!contourRes.ok || !raw) return null;
 
-  // Start on the longest straight edge, then set the travel direction (CCW as offset returns it).
-  let loop = startAtLongestLine(raw);
+  // Start at the midpoint of the chosen straight edge (cut order, D-023), then set the travel
+  // direction (CCW as offset returns it). Leads and tabs below are computed for this start.
+  let loop = startAtEdge(ctx.raw, ctx.startEdge);
   if (p.travel === 'cw') loop = reverse(loop);
   const segs = loopSegments(loop);
   const firstSeg = segs[0] as PathSeg;
@@ -474,6 +482,13 @@ export function buildToolpath(
       warnings,
       errors,
       summary: summarizeToolpath(toolpath, TOOLPATH_DEFAULTS.rapidFeed),
+      order: {
+        mode: options.order?.mode ?? project.nesting.mode,
+        placementRapid: 0,
+        naiveRapid: 0,
+        rapid: 0,
+        toolChanges: 0,
+      },
     };
   };
 
@@ -583,6 +598,18 @@ export function buildToolpath(
     return fail(clearanceZ);
   }
   const direction = options.direction ?? project.cutting.direction;
+  // Cut order (D-023): the nesting mode picks the ordering preset; nesting itself is unchanged.
+  const orderMode: CutOrderMode = options.order?.mode ?? project.nesting.mode;
+  const maxEvaluations = options.order?.maxEvaluations;
+  if (
+    maxEvaluations !== undefined &&
+    !(Number.isInteger(maxEvaluations) && maxEvaluations >= 0)
+  ) {
+    errors.push(
+      issue('INVALID_OPTION', 'error', null, 'Cut order evaluation budget must be a whole number ≥ 0.'),
+    );
+    return fail(clearanceZ);
+  }
 
   // Tabs (D-022): options > project.cutting.tabs > material set > built-in defaults.
   const to = options.tabs ?? {};
@@ -702,8 +729,22 @@ export function buildToolpath(
   }
 
   const partsById = new Map(project.parts.map((p) => [p.id, p]));
-  const operations: Operation[] = [];
-  const smallWarned = new Set<string>();
+  // Area of each part's outline (rotation-free, so identical copies tie exactly; D-023).
+  const partArea = new Map(
+    project.parts.map((p) => [
+      p.id,
+      Math.abs(signedArea(normalize(contour(deriveOutline(p)), 'outer'))),
+    ]),
+  );
+
+  // 1. Tool-centre loops and start candidates in placement order (sheet, then placement).
+  const startFraction = orderMode === 'fastest' ? FASTEST_START_EDGE_FRACTION : 1;
+  const prepared: (OperationContext & { warnings: ToolpathIssue[]; errors: ToolpathIssue[] })[] =
+    [];
+  const items: OrderItem[] = [];
+  /** Index into `prepared` of each order item. */
+  const itemCtx: number[] = [];
+  const edges: number[][] = [];
   project.layout.sheets.forEach((sheet, sheetIndex) => {
     const placed = sheet.placements.flatMap((placement) => {
       const part = partsById.get(placement.partId);
@@ -711,18 +752,71 @@ export function buildToolpath(
     });
     const obstacles = placed.map((x) => obstacle(x.outline));
     placed.forEach((x, i) => {
+      const where = { copy: x.placement.index, sheet: sheetIndex };
       const own = obstacles[i] as Obstacle;
       const neighbours = obstacles.filter((_, j) => j !== i);
-      const op = buildOuterOperation(
-        { ...x, sheetIndex, own, neighbours },
-        params,
-        warnings,
-        errors,
-        smallWarned,
-      );
-      if (op) operations.push(op);
+      const opWarnings: ToolpathIssue[] = [];
+      const opErrors: ToolpathIssue[] = [];
+      const contourRes = outerContourPath(x.outline, toolRadius);
+      for (const it of contourRes.issues) {
+        (it.severity === 'error' ? opErrors : opWarnings).push(
+          issue(it.code, it.severity, x.part.id, it.message, where),
+        );
+      }
+      const raw = contourRes.paths[0];
+      const ctx = {
+        ...x,
+        sheetIndex,
+        own,
+        neighbours,
+        raw: raw ?? { closed: true, vertices: [] },
+        startEdge: -1,
+        warnings: opWarnings,
+        errors: opErrors,
+      };
+      prepared.push(ctx);
+      if (!contourRes.ok || !raw) {
+        edges.push([]);
+        return;
+      }
+      const cand = startEdgeCandidates(raw, startFraction);
+      edges.push(cand);
+      items.push({
+        sheet: sheetIndex,
+        part: `${x.part.id}#${x.placement.index}`,
+        cls: 'outer',
+        tool: params.tool,
+        area: partArea.get(x.part.id) ?? 0,
+        starts:
+          cand.length > 0
+            ? cand.map((e) => edgeMidpoint(raw, e))
+            : [{ x: raw.vertices[0]?.x ?? 0, y: raw.vertices[0]?.y ?? 0 }],
+      });
+      itemCtx.push(prepared.length - 1);
     });
   });
+
+  // 2. Cut order (T016, D-023): holes → inner → outer per part, small parts first, tools grouped,
+  //    nearest-neighbour rapids + 2-opt, start edge per contour.
+  const order = cutOrder(items, {
+    mode: orderMode,
+    ...(maxEvaluations === undefined ? {} : { maxEvaluations }),
+  });
+
+  // 3. Operations in cut order, built for the chosen start (leads and tabs follow it).
+  const operations: Operation[] = [];
+  const smallWarned = new Set<string>();
+  for (const o of order.sequence) {
+    const k = itemCtx[o.item] as number;
+    const ctx = prepared[k] as (typeof prepared)[number];
+    ctx.startEdge = (edges[k] as number[])[o.start] ?? -1;
+    operations.push(buildOuterOperation(ctx, params, ctx.warnings, ctx.errors, smallWarned));
+  }
+  // Issues stay in placement order whatever the cut order.
+  for (const ctx of prepared) {
+    warnings.push(...ctx.warnings);
+    errors.push(...ctx.errors);
+  }
   if (operations.length === 0 && errors.length === 0) {
     errors.push(issue('NO_PLACEMENTS', 'error', null, 'Nothing to cut: no placed parts.'));
   }
@@ -744,5 +838,16 @@ export function buildToolpath(
     warnings,
     errors,
     summary: summarizeToolpath(toolpath, rapidFeed),
+    order: orderSummary(order),
+  };
+}
+
+function orderSummary(o: CutOrderResult): CutOrderSummary {
+  return {
+    mode: o.mode,
+    placementRapid: o.placementRapid,
+    naiveRapid: o.naiveRapid,
+    rapid: o.rapid,
+    toolChanges: o.toolChanges,
   };
 }
