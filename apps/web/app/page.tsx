@@ -1,6 +1,8 @@
 import { materialKindOf } from '@nittcam/core';
 import { PageTitle } from '@nittcam/ui';
 import Link from 'next/link';
+import { Suspense } from 'react';
+import { PageSkeleton } from '../components/feedback/page-skeleton';
 import { buttonClass } from '../components/parts/ui';
 import { fill } from '../lib/draft-project';
 import { getMessages } from '../lib/messages';
@@ -38,7 +40,16 @@ async function loadDashboard(): Promise<
 }
 
 /** Ana sayfa (spec §3.4): latest projects and the machines waiting for verification. */
-export default async function HomePage() {
+export default function HomePage() {
+  // Streams the skeleton first while the dashboard reads the database (T105).
+  return (
+    <Suspense fallback={<PageSkeleton label={getMessages().feedback.loading} />}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
+async function Dashboard() {
   const messages = getMessages();
   const t = messages.home;
   const data = await loadDashboard();

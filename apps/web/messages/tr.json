@@ -106,6 +106,32 @@
       "redo": "Yinele"
     }
   },
+  "feedback": {
+    "loading": "Sayfa yükleniyor…",
+    "notFound": {
+      "code": "404",
+      "title": "Sayfa bulunamadı",
+      "text": "Aradığınız sayfa taşınmış ya da hiç var olmamış olabilir.",
+      "home": "Ana sayfaya dön",
+      "projects": "Projeler",
+      "hint": "İpucu: istediğiniz sayfayı {keys} ile arayabilirsiniz."
+    },
+    "error": {
+      "title": "Bir şeyler ters gitti",
+      "text": "Sayfa açılırken beklenmeyen bir hata oldu. Tekrar deneyin; sorun sürerse sayfayı yenileyin.",
+      "retry": "Tekrar dene",
+      "home": "Ana sayfaya dön",
+      "reference": "Hata kodu: {digest}"
+    },
+    "canvas": {
+      "title": "Önizleme gösterilemedi",
+      "text": "Çizim alanında bir hata oldu. Projeniz kaydedildi; önizlemeyi yeniden deneyebilirsiniz.",
+      "retry": "Önizlemeyi yeniden yükle"
+    },
+    "saveError": "Proje kaydedilemedi",
+    "saveErrorText": "Bağlantı geri gelince otomatik olarak yeniden denenecek.",
+    "exportError": "Dışa aktarma başarısız"
+  },
   "machines": {
     "title": "Makineler",
     "subtitle": "Makinenizin ölçülerini, takımlarını ve G-code biçimini burada tanımlayın.",
@@ -768,7 +794,8 @@
     "rowAction": "{action}: {name}",
     "lastExport": "Rev. {revision} · {date}",
     "noExport": "Henüz yok",
-    "downloadLast": "İndir: {name}"
+    "downloadLast": "İndir: {name}",
+    "emptyText": "Kesim listesini yapıştırın, plakaya dizin ve G-code alın. İlk projeniz birkaç dakika sürer."
   },
   "materials": {
     "mdf": "MDF",
@@ -1100,7 +1127,9 @@
       "tabs": "Sekmeler",
       "badges": "Rozetler",
       "cards": "Kartlar",
-      "feedback": "Yükleme ve kısayollar"
+      "feedback": "Yükleme ve kısayollar",
+      "states": "Boş, hata ve bildirim",
+      "command": "Komut listesi"
     },
     "colorGroups": {
       "surfaces": "Zemin ve yüzey",
@@ -1237,6 +1266,28 @@
     "feedback": {
       "loading": "Yükleniyor",
       "shortcut": "Komut paleti"
+    },
+    "feedbackStates": {
+      "emptyTitle": "Henüz proje yok",
+      "emptyText": "Kesim listesini yapıştırarak ilk projenizi oluşturun.",
+      "emptyAction": "Yeni proje",
+      "errorTitle": "Projeler yüklenemedi",
+      "errorText": "Bağlantıyı kontrol edip tekrar deneyin.",
+      "retry": "Tekrar dene",
+      "notifySuccess": "Başarı bildirimi",
+      "notifyError": "Hata bildirimi",
+      "notifyInfo": "Bilgi bildirimi",
+      "successTitle": "Proje kaydedildi",
+      "errorToastTitle": "Dışa aktarma başarısız",
+      "infoTitle": "Yeni sürüm hazır",
+      "undo": "Geri al"
+    },
+    "command": {
+      "label": "Örnek komutlar",
+      "placeholder": "Komut ara…",
+      "empty": "Sonuç yok.",
+      "group": "Sayfalar",
+      "items": ["Ana sayfa", "Projeler", "Makineler", "Şablonlar"]
     }
   }
 }

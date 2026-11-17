@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import type { Project } from '@nittcam/core';
-import { useEffect, useState } from 'react';
+import { notify } from '@nittcam/ui';
+import { useEffect, useRef, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import {
   downloadBlocker,
@@ -201,7 +202,18 @@ export function ExportStep({
       download = { status: 'error' };
     }
     setForm({ ...f, download });
+    // Network/server failures are a toast with a retry (T105); validation failures stay inline.
+    if (download.status === 'error') {
+      notify.error(t.exportError, {
+        id: 'export-error',
+        action: { label: t.retry, onClick: () => void exportRef.current() },
+      });
+    }
   }
+  const exportRef = useRef(doExport);
+  useEffect(() => {
+    exportRef.current = doExport;
+  });
 
   let status: React.ReactNode;
   if (!machine) status = <p className="text-sm text-fg-muted">{t.noMachine}</p>;
@@ -505,13 +517,6 @@ function DownloadResult({ t, state }: { t: Text; state: DownloadState }) {
     return (
       <p role="alert" className="text-sm text-danger">
         {fill(t.exportFailed, { count: state.count })}
-      </p>
-    );
-  }
-  if (state.status === 'error') {
-    return (
-      <p role="alert" className="text-sm text-danger">
-        {t.exportError}
       </p>
     );
   }

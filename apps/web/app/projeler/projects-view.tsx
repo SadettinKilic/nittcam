@@ -1,6 +1,8 @@
 'use client';
 
 import { materialKindOf } from '@nittcam/core';
+import { Button, EmptyState, ErrorState, Skeleton, notify } from '@nittcam/ui';
+import { FolderPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { buttonClass } from '../../components/parts/ui';
@@ -42,7 +44,6 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [query, setQuery] = useState('');
   const [copying, setCopying] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
   const load = useCallback(async () => {
     setList({ status: 'loading' });
@@ -63,7 +64,6 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
 
   async function copy(item: ProjectListItem) {
     setCopying(item.id);
-    setNotice(null);
     const name = fill(t.copyName, { name: item.name }).slice(0, 120);
     try {
       const res = await fetch(`/api/projects/${item.id}/copy`, {
@@ -74,9 +74,9 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
       if (!res.ok) throw new Error(String(res.status));
       const created = (await res.json()) as ProjectDetail;
       await load();
-      setNotice({ kind: 'ok', text: fill(t.copied, { name: created.name }) });
+      notify.success(fill(t.copied, { name: created.name }));
     } catch {
-      setNotice({ kind: 'error', text: t.copyFailed });
+      notify.error(t.copyFailed);
     } finally {
       setCopying(null);
     }
@@ -130,55 +130,32 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
         />
       </div>
 
-      <div aria-live="polite">
-        {notice ? (
-          <p
-            role={notice.kind === 'error' ? 'alert' : 'status'}
-            className={`rounded-lg p-3 text-sm ${notice.kind === 'error' ? 'bg-danger-bg text-danger' : 'bg-ok-bg text-ok'}`}
-          >
-            {notice.text}
-          </p>
-        ) : null}
-      </div>
-
       {list.status === 'loading' ? (
-        <p
-          role="status"
-          data-testid="projects-loading"
-          className="flex items-center gap-3 text-fg-muted"
-        >
-          <span
-            aria-hidden="true"
-            className="size-5 animate-spin rounded-full border-2 border-border border-t-accent"
-          />
-          {t.loading}
-        </p>
+        <div role="status" data-testid="projects-loading" className="flex flex-col gap-2">
+          <span className="sr-only">{t.loading}</span>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
+        </div>
       ) : list.status === 'error' ? (
-        <div className="flex flex-col items-start gap-2">
-          <p role="alert" className="rounded-lg bg-danger-bg p-3 text-sm text-danger">
-            {t.error}
-          </p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className={`${buttonClass} border border-border bg-bg hover:bg-sidebar`}
-          >
-            {t.retry}
-          </button>
-        </div>
+        <ErrorState
+          data-testid="projects-error"
+          title={t.error}
+          retryLabel={t.retry}
+          onRetry={() => void load()}
+        />
       ) : items.length === 0 ? (
-        <div
+        <EmptyState
           data-testid="projects-empty"
-          className="flex flex-col items-start gap-3 rounded-card border border-dashed border-border p-6"
-        >
-          <p className="text-fg-muted">{t.empty}</p>
-          <Link
-            href="/projeler/yeni"
-            className={`${buttonClass} bg-accent text-accent-fg hover:brightness-110`}
-          >
-            {t.emptyAction}
-          </Link>
-        </div>
+          icon={<FolderPlus />}
+          title={t.empty}
+          description={t.emptyText}
+          action={
+            <Button asChild>
+              <Link href="/projeler/yeni">{t.emptyAction}</Link>
+            </Button>
+          }
+        />
       ) : (
         <section className="flex min-w-0 flex-col gap-2" aria-labelledby="projects-table">
           <p id="projects-table" className="text-sm text-fg-muted" data-testid="projects-count">

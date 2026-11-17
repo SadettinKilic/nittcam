@@ -72,12 +72,21 @@ import {
   Textarea,
   ThemeSwitcher,
   Toaster,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  EmptyState,
+  ErrorState,
+  notify,
   Tooltip,
   TooltipProvider,
   toast,
   type NumberParseError,
 } from '@nittcam/ui';
-import { Copy, MoreHorizontal, Pencil, Plus, Settings, Trash2 } from 'lucide-react';
+import { Copy, FolderPlus, MoreHorizontal, Pencil, Plus, Settings, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import type { Messages } from '../../lib/messages';
 
@@ -585,6 +594,77 @@ export function UiGallery({ t }: { t: T }) {
               <Kbd>?</Kbd>
             </div>
           </div>
+        </Section>
+
+        <Section id="states" title={t.sections.states}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <EmptyState
+              icon={<FolderPlus />}
+              title={t.feedbackStates.emptyTitle}
+              description={t.feedbackStates.emptyText}
+              action={
+                <Button size="sm">
+                  <Plus aria-hidden />
+                  {t.feedbackStates.emptyAction}
+                </Button>
+              }
+            />
+            <ErrorState
+              title={t.feedbackStates.errorTitle}
+              description={t.feedbackStates.errorText}
+              retryLabel={t.feedbackStates.retry}
+              onRetry={() => undefined}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              onClick={() =>
+                notify.success(t.feedbackStates.successTitle, {
+                  action: { label: t.feedbackStates.undo, onClick: () => undefined },
+                })
+              }
+            >
+              {t.feedbackStates.notifySuccess}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                notify.error(t.feedbackStates.errorToastTitle, {
+                  description: t.feedbackStates.errorText,
+                  action: { label: t.feedbackStates.retry, onClick: () => undefined },
+                })
+              }
+            >
+              {t.feedbackStates.notifyError}
+            </Button>
+            <Button variant="secondary" onClick={() => notify.info(t.feedbackStates.infoTitle)}>
+              {t.feedbackStates.notifyInfo}
+            </Button>
+          </div>
+        </Section>
+
+        <Section id="command" title={t.sections.command}>
+          <Command
+            label={t.command.label}
+            className="max-w-md rounded-xl border border-border bg-surface-raised shadow-md"
+          >
+            <CommandInput
+              placeholder={t.command.placeholder}
+              aria-label={t.command.placeholder}
+              className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus focus-visible:outline-solid"
+            />
+            <CommandList>
+              <CommandEmpty>{t.command.empty}</CommandEmpty>
+              <CommandGroup heading={t.command.group}>
+                {t.command.items.map((item) => (
+                  <CommandItem key={item} value={item}>
+                    {item}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
         </Section>
       </main>
       <Toaster />
