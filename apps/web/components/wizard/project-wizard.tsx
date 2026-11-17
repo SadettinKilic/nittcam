@@ -16,6 +16,8 @@ import { LayoutStep } from './layout-step';
 import { MachineFields, SheetPreview } from './machine-step';
 import { ValidationPanel } from './validation-panel';
 import { STEPS, toStep, type StepKey } from '../../lib/wizard-steps';
+import { Badge } from '@nittcam/ui';
+import { ShellStatus, useShellTitle } from '../shell/shell-context';
 
 const NEW_PATH = '/projeler/yeni';
 
@@ -290,6 +292,8 @@ function WizardSession({
     onCreated: created,
   });
   const project = session.project;
+  // Top-bar title (T103): the project name once it is saved, "Yeni proje" before.
+  useShellTitle(session.projectId ? session.name : null);
   if (project.machine.machineId !== machineId) setMachineId(project.machine.machineId);
 
   const known = machines.some((m) => m.id === machineId);
@@ -505,16 +509,26 @@ function WizardSession({
       <header className="flex flex-wrap items-start justify-between gap-3">
         <NameField label={t.nameLabel} value={session.name} onCommit={session.rename} />
         <div className="flex flex-wrap items-center gap-2">
-          <p
-            aria-live="polite"
-            title={t.save.label}
-            data-testid="save-status"
-            data-state={session.saveState}
-            data-revision={session.revision}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${session.saveState === 'error' || session.saveState === 'conflict' ? 'bg-danger-bg text-danger' : session.saveState === 'saved' || (session.saveState === 'idle' && session.projectId) ? 'bg-ok-bg text-ok' : 'bg-sidebar text-fg-muted'}`}
-          >
-            {saveText}
-          </p>
+          <ShellStatus>
+            <Badge
+              dot
+              variant={
+                session.saveState === 'error' || session.saveState === 'conflict'
+                  ? 'danger'
+                  : session.saveState === 'saved' ||
+                      (session.saveState === 'idle' && session.projectId)
+                    ? 'success'
+                    : 'neutral'
+              }
+              aria-live="polite"
+              title={t.save.label}
+              data-testid="save-status"
+              data-state={session.saveState}
+              data-revision={session.revision}
+            >
+              {saveText}
+            </Badge>
+          </ShellStatus>
           <button
             type="button"
             onClick={session.undo}

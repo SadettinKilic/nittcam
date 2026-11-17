@@ -24,8 +24,32 @@
     "templates": "Şablonlar",
     "create": "Oluştur",
     "settings": "Ayarlar",
-    "newProject": "+ Yeni proje",
+    "newProject": "Yeni proje",
     "soon": "yakında"
+  },
+  "shell": {
+    "skipToContent": "İçeriğe geç",
+    "operator": "Operatör",
+    "workspace": "Çalışma alanı",
+    "breadcrumb": "Sayfa yolu",
+    "openMenu": "Menüyü aç",
+    "menuTitle": "Menü",
+    "closeMenu": "Menüyü kapat",
+    "collapse": "Menüyü daralt",
+    "expand": "Menüyü genişlet",
+    "pageActions": "Sayfa eylemleri",
+    "crumbs": {
+      "newProject": "Yeni proje",
+      "project": "Proje",
+      "verification": "Doğrulama",
+      "notFound": "Sayfa bulunamadı"
+    },
+    "theme": {
+      "label": "Tema",
+      "system": "Sistem",
+      "light": "Açık",
+      "dark": "Koyu"
+    }
   },
   "machines": {
     "title": "Makineler",
