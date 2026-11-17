@@ -6,6 +6,7 @@
 //   node tools/team/status.mjs limit on "<19:40>" | limit off
 //   (the status line writes .team/limits.json; it is merged into state.json on every write)
 //   node tools/team/status.mjs ask "<question>" ["option" ...]  |  answered <Qxxx> "<answer>"
+//   node tools/team/status.mjs alert "<message>" | alert off   ("PC'ye bak" popup)
 //   node tools/team/status.mjs print
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -73,6 +74,16 @@ if (AGENTS.includes(cmd)) {
   const q = (s.questions || []).find((x) => x.id === id);
   if (!q) die('unknown question ' + id);
   Object.assign(q, { status: 'answered', answer, answeredAt: now });
+} else if (cmd === 'alert') {
+  // alert "<message>" -> "PC'ye bak" popup on the dashboard  |  alert off
+  const [msg = ''] = rest;
+  if (!msg) die('usage: alert "<message>" | alert off');
+  if (msg === 'off') { delete s.alert; }
+  else {
+    s.alert = { msg, since: now };
+    s.log.unshift({ t: now, who: 'po', state: 'blocked', task: '', msg: "PC'ye bak: " + msg.slice(0, 80) });
+    s.log = s.log.slice(0, 60);
+  }
 } else if (cmd === 'milestone') {
   s.milestone = rest[0] || s.milestone;
 } else if (cmd === 'print') {

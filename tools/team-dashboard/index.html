@@ -144,8 +144,35 @@ body.limited .st .sprite{animation:none!important;filter:grayscale(.6) brightnes
 .empty{color:var(--muted);font-size:13px}
 .foot{color:var(--muted);font-size:12px;font-family:var(--f-mono)}
 :focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* "PC'ye bak" alarm popup */
+.alarm{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(8,9,18,.78);backdrop-filter:blur(2px)}
+.alarm .box{width:min(460px,100%);background:var(--panel);border:3px solid var(--red);box-shadow:0 0 0 4px #3a1520,0 0 40px rgba(255,100,115,.45);padding:18px 18px 14px;display:grid;gap:12px;animation:alarmIn .25s steps(4)}
+.alarm .head{display:flex;align-items:center;gap:14px}
+.alarm .pc{width:64px;height:56px;flex:none;image-rendering:pixelated}
+.alarm .pc .scr{animation:scr .6s steps(2) infinite}
+.alarm h3{font-family:var(--f-display);font-size:30px;margin:0;color:var(--red);line-height:1;animation:blink 1s steps(2) infinite}
+.alarm .sub{color:var(--muted);font-size:13px;margin:4px 0 0}
+.alarm ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.alarm li{background:#140f1c;border:1px solid #5a2433;padding:7px 10px;font-size:13.5px}
+.alarm li b{font-family:var(--f-mono);color:var(--amber);font-weight:500;margin-right:6px}
+.alarm .btns{display:flex;justify-content:flex-end;gap:8px}
+.alarm button{font-family:var(--f-display);font-size:15px;background:var(--red);color:#191c30;border:0;padding:7px 14px;cursor:pointer}
+@keyframes alarmIn{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+@keyframes blink{50%{opacity:.35}}
+@keyframes scr{0%{fill:var(--red)}100%{fill:var(--amber)}}
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style>
+
+<div class="alarm" id="alarm" role="alertdialog" aria-modal="true" aria-labelledby="alarmTitle" hidden>
+  <div class="box">
+    <div class="head">
+      <svg class="pc" viewBox="0 0 16 14" aria-hidden="true"><rect x="0" y="0" width="16" height="11" fill="#343b63"/><rect class="scr" x="1" y="1" width="14" height="8" fill="#ff6473"/><rect x="7" y="2" width="2" height="4" fill="#191c30"/><rect x="7" y="7" width="2" height="1" fill="#191c30"/><rect x="5" y="11" width="6" height="1" fill="#343b63"/><rect x="3" y="12" width="10" height="2" fill="#272d4d"/></svg>
+      <div><h3 id="alarmTitle">PC'YE BAK!</h3><p class="sub">Ekip seni bekliyor. Terminale göz at.</p></div>
+    </div>
+    <ul id="alarmList"></ul>
+    <div class="btns"><button type="button" id="alarmOk">Gördüm</button></div>
+  </div>
+</div>
 
 <div class="wrap">
   <header class="top">
@@ -434,7 +461,31 @@ body.limited .st .sprite{animation:none!important;filter:grayscale(.6) brightnes
     drawQuota();
     drawAsks();
     drawSheet();
+    drawAlarm(L);
   }
+
+  // ---------- "PC'ye bak" popup: blocked agent, open question, limit, or PO alert ----------
+  let alarmSeen = ''; try{ alarmSeen = localStorage.getItem('nittcam-alarm-seen')||''; }catch(e){}
+  let alarmKey = '';
+  function alarmReasons(L){
+    const r = [];
+    if(S.alert && S.alert.msg) r.push({k:'alert:'+S.alert.since, tag:'PO', msg:S.alert.msg});
+    CREW.forEach(c=>{ const a=(S.agents||{})[c.key]; if(a && a.state==='blocked') r.push({k:'blk:'+c.key+':'+a.updated, tag:c.name, msg:(a.task?a.task+' · ':'')+(a.message||'Takıldı')}); });
+    openQs().forEach(q=>r.push({k:'q:'+q.id, tag:q.id, msg:'Sana soru: '+q.text}));
+    if(L.blocked) r.push({k:'lim:'+(L.reset||''), tag:'LİMİT', msg:'Model limiti doldu'+(L.reset?', '+L.reset+"'de sıfırlanır":'')+'.'});
+    return r;
+  }
+  function beep(){ try{ const A=new (window.AudioContext||window.webkitAudioContext)(); [0,.18,.36].forEach(t=>{ const o=A.createOscillator(), g=A.createGain(); o.type='square'; o.frequency.value=880; g.gain.value=.06; o.connect(g); g.connect(A.destination); o.start(A.currentTime+t); o.stop(A.currentTime+t+.1); }); }catch(e){} }
+  function drawAlarm(L){
+    const r = alarmReasons(L); alarmKey = r.map(x=>x.k).join('|');
+    const box = document.getElementById('alarm');
+    const show = r.length>0 && alarmKey!==alarmSeen;
+    document.getElementById('alarmList').innerHTML = r.map(x=>`<li><b>${esc(x.tag)}</b>${esc(x.msg)}</li>`).join('');
+    if(show && box.hidden){ box.hidden=false; beep(); document.getElementById('alarmOk').focus(); }
+    if(!show) box.hidden = true;
+    document.title = r.length ? '⚠ PC\'ye bak · NittCam Atölye' : 'NittCam Atölye';
+  }
+  document.getElementById('alarmOk').addEventListener('click', ()=>{ alarmSeen = alarmKey; try{ localStorage.setItem('nittcam-alarm-seen', alarmSeen); }catch(e){} document.getElementById('alarm').hidden = true; });
 
   // ---------- animation loop (4 fps sprites, smoother gantry) ----------
   const ARMSET = {idle:['rest','rest'],planning:['point','rest'],coding:['typeA','typeB'],testing:['typeA','point'],reviewing:['point','point'],blocked:['up','rest'],done:['up','up']};
