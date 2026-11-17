@@ -11,7 +11,7 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { draftProject, draftToolDiameter, fill, newPartId } from '../../../../lib/draft-project';
-import { saveDraft, useStoredDraft } from '../../../../lib/draft-store';
+import { saveDraft, useHydrated, useStoredDraft } from '../../../../lib/draft-store';
 import type { Messages } from '../../../../lib/messages';
 import { useNestingWorker } from '../../../../lib/use-nesting-worker';
 import { LayoutView, type LockRequest } from '../../../../components/layout-view/layout-view';
@@ -314,7 +314,17 @@ export function DraftCutListEditor(props: {
   simulateText: string;
 }) {
   const stored = useStoredDraft();
-  return <CutListEditor key={stored ? 'stored' : 'fresh'} initial={stored} {...props} />;
+  const hydrated = useHydrated();
+  // Before hydration the stored draft is unknown: that editor must not save (it would overwrite
+  // the stored draft with an empty one). After hydration a stored draft remounts the editor.
+  return (
+    <CutListEditor
+      key={stored ? 'stored' : 'fresh'}
+      initial={stored}
+      persist={hydrated}
+      {...props}
+    />
+  );
 }
 
 export function CutListEditor({
@@ -322,11 +332,14 @@ export function CutListEditor({
   layoutText,
   simulateText,
   initial = null,
+  persist = true,
 }: {
   t: Text;
   layoutText: LayoutText;
   simulateText: string;
   initial?: Project | null;
+  /** Save every change to the shared draft store (false until the store was read). */
+  persist?: boolean;
 }) {
   // The validation context carries the nesting tool diameter, so LOCKED_PLACEMENT_INVALID checks
   // the same spacing the placer keeps (D-020).
@@ -349,8 +362,8 @@ export function CutListEditor({
 
   // Share the draft with the simulation step after every change (undo/redo included).
   useEffect(() => {
-    saveDraft(stack.project);
-  }, [stack, version]);
+    if (persist) saveDraft(stack.project);
+  }, [stack, version, persist]);
 
   const run: Run = useCallback(
     (name, params) => {

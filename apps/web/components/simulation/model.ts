@@ -18,6 +18,7 @@ export interface SimColors {
   table: string;
   envelope: string;
   zero: string;
+  tab: string;
   badge: string;
   badgeFg: string;
   text: string;
@@ -36,6 +37,7 @@ const TOKENS: Record<keyof SimColors, string> = {
   table: '--color-sim-table',
   envelope: '--color-sim-envelope',
   zero: '--color-sim-zero',
+  tab: '--color-sim-tab',
   badge: '--color-sim-badge',
   badgeFg: '--color-sim-badge-fg',
   text: '--color-fg',

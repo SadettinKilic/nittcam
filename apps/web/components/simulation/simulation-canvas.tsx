@@ -31,7 +31,8 @@ export interface SimulationCanvasProps {
   /** Playhead, s. */
   time: number;
   onViewChange: (view: ViewState) => void;
-  grainLabel: string;
+  /** Keeps a dragged pan inside the allowed range (the sheet stays partly visible). */
+  clampPan: (x: number, y: number, scale: number) => { x: number; y: number };
 }
 
 const StaticLayer = memo(function StaticLayer({
@@ -41,11 +42,7 @@ const StaticLayer = memo(function StaticLayer({
   machine,
   colors,
   scale,
-  grainLabel,
-}: Pick<
-  SimulationCanvasProps,
-  'sheet' | 'margin' | 'parts' | 'machine' | 'colors' | 'grainLabel'
-> & {
+}: Pick<SimulationCanvasProps, 'sheet' | 'margin' | 'parts' | 'machine' | 'colors'> & {
   scale: number;
 }) {
   const { width: W, height: H } = sheet;
@@ -58,8 +55,6 @@ const StaticLayer = memo(function StaticLayer({
   });
   const zero = machine ? { x: machine.zero.x, y: H - machine.zero.y } : null;
   const axis = 60 * px;
-  const chipH = 22 * px;
-  const chipW = (44 + grainLabel.length * 6.2) * px;
   return (
     <Layer listening={false}>
       {machine ? (
@@ -112,41 +107,6 @@ const StaticLayer = memo(function StaticLayer({
         strokeWidth={2 * px}
         perfectDrawEnabled={false}
       />
-      {/* Sheet grain: a chip in the sheet's top-right corner (arrow along the grain + label). */}
-      <Group x={W - chipW - 8 * px} y={8 * px}>
-        <Rect
-          width={chipW}
-          height={chipH}
-          fill={colors.badgeFg}
-          opacity={0.9}
-          cornerRadius={4 * px}
-          stroke={colors.edge}
-          strokeWidth={px}
-          perfectDrawEnabled={false}
-        />
-        <Arrow
-          points={
-            sheet.grain === 0
-              ? [6 * px, chipH / 2, 30 * px, chipH / 2]
-              : [18 * px, chipH - 4 * px, 18 * px, 4 * px]
-          }
-          stroke={colors.text}
-          fill={colors.text}
-          strokeWidth={1.5 * px}
-          pointerLength={5 * px}
-          pointerWidth={5 * px}
-          pointerAtBeginning
-          perfectDrawEnabled={false}
-        />
-        <Text
-          text={grainLabel}
-          x={36 * px}
-          y={chipH / 2 - 5.5 * px}
-          fontSize={11 * px}
-          fill={colors.text}
-          perfectDrawEnabled={false}
-        />
-      </Group>
       {zero ? (
         <Group x={zero.x} y={zero.y}>
           <Arrow
@@ -322,6 +282,30 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
     }
     if (level >= 0) ctx.stroke();
 
+    // Tabs: a contrasting band over the bridge plus a round marker that stays visible when the
+    // bridge is only a few pixels long (fit to screen).
+    ctx.strokeStyle = colors.tab;
+    ctx.lineWidth = 5 * px;
+    ctx.beginPath();
+    for (let i = 0; i <= last; i += 1) {
+      if (steps[i]?.tab) add(i);
+    }
+    ctx.stroke();
+    for (let i = 0; i < ph.done; i += 1) {
+      const s = steps[i];
+      if (!s?.tab) continue;
+      const k = Math.floor((s.p0 + s.p1) / 2);
+      const mx = s.p1 - s.p0 === 1 ? ((x[s.p0] ?? 0) + (x[s.p1] ?? 0)) / 2 : (x[k] ?? 0);
+      const my = s.p1 - s.p0 === 1 ? ((y[s.p0] ?? 0) + (y[s.p1] ?? 0)) / 2 : (y[k] ?? 0);
+      ctx.beginPath();
+      ctx.arc(mx, my, 3.5 * px, 0, 2 * Math.PI);
+      ctx.fillStyle = colors.tab;
+      ctx.fill();
+      ctx.lineWidth = px;
+      ctx.strokeStyle = colors.badge;
+      ctx.stroke();
+    }
+
     // Direction arrows on the straight final-depth cuts that are long enough on screen.
     ctx.fillStyle = colors.depthBottom;
     const arrow = 7 * px;
@@ -409,6 +393,7 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
       x={view.x}
       y={view.y}
       draggable
+      dragBoundFunc={(pos) => props.clampPan(pos.x, pos.y, view.scale)}
       onDragEnd={(e) => {
         if (e.target === e.target.getStage()) {
           onViewChange({ scale: view.scale, x: e.target.x(), y: e.target.y() });
@@ -447,7 +432,6 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
         machine={props.machine}
         colors={colors}
         scale={view.scale}
-        grainLabel={props.grainLabel}
       />
       <Layer listening={false}>
         <Shape ref={pathShape} listening={false} perfectDrawEnabled={false} sceneFunc={drawPath} />

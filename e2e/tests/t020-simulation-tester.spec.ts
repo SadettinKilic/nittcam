@@ -88,7 +88,7 @@ test.describe('T020 tester: simulation UX', () => {
     expect(await summaryNum(page, 'passes')).toBeGreaterThan(0);
     await expect(page.getByText(s.legend.cut, { exact: true })).toBeVisible();
     await expect(page.getByText(s.legend.depthTop)).toBeVisible();
-    await expect(page.getByText(s.legend.tabs)).toBeVisible();
+    await expect(page.getByText(s.legend.tabMarker)).toBeVisible();
     await expect(page.getByTestId('z-strip')).toBeVisible();
     expect(problems).toEqual([]);
   });
@@ -243,11 +243,8 @@ test.describe('T020 tester: simulation UX', () => {
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
   });
 
-  // KNOWN BUG (reported on PR #26): a full reload of the PARTS page starts an empty editor whose
-  // first effect saves the empty draft over sessionStorage (draft-store saveDraft marks the
-  // store loaded without reading it). Expected to fail until dev fixes it; then remove test.fail.
+  // Was a known bug in round 1 (an empty editor saved over the stored draft); fixed (D-028).
   test('draft survives a reload of the parts page (sessionStorage)', async ({ page }) => {
-    test.fail();
     await toSimulation(page);
     await ready(page);
     await page.getByRole('link', { name: s.back }).click();

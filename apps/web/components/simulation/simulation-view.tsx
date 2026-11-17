@@ -317,9 +317,12 @@ export function SimulationView({ t }: { t: SimText }) {
       <p
         role="note"
         data-testid="sim-banner"
-        className="sticky top-0 z-10 flex flex-col gap-0.5 rounded-lg border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn shadow-sm sm:flex-row sm:items-baseline sm:gap-2"
+        className="sticky top-0 z-20 flex items-baseline gap-2 rounded-lg border border-warn/30 bg-warn-bg px-3 py-1.5 text-xs text-warn shadow-sm sm:px-4 sm:py-3 sm:text-sm"
       >
-        <strong className="font-semibold">⚠ {t.banner}</strong>
+        <strong className="truncate font-semibold sm:overflow-visible sm:whitespace-normal">
+          <span aria-hidden="true">⚠ </span>
+          {t.banner}
+        </strong>
         <span className="hidden sm:inline">{t.bannerDetail}</span>
       </p>
 
@@ -364,6 +367,27 @@ export function SimulationView({ t }: { t: SimText }) {
       {body}
     </main>
   );
+}
+
+/**
+ * Keeps the sheet at least partly on screen: at least `keep` pixels of it (or all of it when it
+ * is smaller) stay inside the canvas on both axes, whatever the zoom or pan.
+ */
+export function clampView(
+  v: ViewState,
+  sheet: { width: number; height: number },
+  width: number,
+  height: number,
+): ViewState {
+  const scale = clampScale(v.scale);
+  const w = sheet.width * scale;
+  const h = sheet.height * scale;
+  const keepX = Math.min(48, w, width / 2);
+  const keepY = Math.min(48, h, height / 2);
+  // Sheet on screen: x in [v.x, v.x + w], y in [v.y, v.y + h] (canvas y 0..H is the sheet).
+  const x = Math.min(width - keepX, Math.max(keepX - w, v.x));
+  const y = Math.min(height - keepY, Math.max(keepY - h, v.y));
+  return { scale, x, y };
 }
 
 /** Scale and pan that show `b` (sheet frame, mm) centred in the canvas. */
@@ -534,7 +558,8 @@ function Player({
 
   function zoomButton(factor: number) {
     if (!view || width <= 0) return;
-    setView(zoomAt(view, factor, width / 2, height / 2));
+    // Zoom around the centre of the canvas, then keep the sheet in view.
+    setView(clampView(zoomAt(view, factor, width / 2, height / 2), stock, width, height));
   }
 
   return (
@@ -569,9 +594,35 @@ function Player({
           data-done={ph.done}
           data-contours={sim.contours.length}
           data-playing={active}
+          data-scale={view?.scale}
+          data-x={view?.x}
+          data-y={view?.y}
+          data-sheet-width={stock.width}
+          data-sheet-height={stock.height}
           className="relative w-full min-w-0 touch-none overflow-hidden rounded-lg border border-border bg-sidebar focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           style={{ height: height || undefined, minHeight: 220 }}
         >
+          <span
+            data-testid="sim-grain"
+            data-grain={stock.grain}
+            className="pointer-events-none absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-bg/90 px-2 py-1 text-xs text-fg shadow-sm"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="size-4"
+              style={{ transform: `rotate(${-stock.grain}deg)` }}
+              aria-hidden="true"
+            >
+              <path
+                d="M3 12h18M16 7l5 5-5 5M8 7l-5 5 5 5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+            </svg>
+            <span className="hidden sm:inline">{t.legend.grain}</span>
+            <span className="sr-only sm:hidden">{t.legend.grain}</span>
+          </span>
           {width > 0 && view && colors ? (
             <SimulationCanvas
               width={width}
@@ -584,8 +635,8 @@ function Player({
               view={view}
               colors={colors}
               time={time}
-              onViewChange={(v) => setView({ ...v, scale: clampScale(v.scale) })}
-              grainLabel={t.legend.grain}
+              onViewChange={(v) => setView(clampView(v, stock, width, height))}
+              clampPan={(x, y, scale) => clampView({ x, y, scale }, stock, width, height)}
             />
           ) : null}
         </div>
@@ -760,7 +811,6 @@ function Legend({
           }}
         />
         <span>{fill(l.depthBottom, { z: formatMm(zBottom) })}</span>
-        <span>· {l.tabs}</span>
       </div>
       <ul aria-label={l.title} className="flex flex-wrap gap-x-4 gap-y-1">
         <li className="flex items-center gap-1.5">
@@ -784,6 +834,13 @@ function Legend({
           {l.order}
         </li>
         <li>{l.arrows}</li>
+        <li className="flex items-center gap-1.5">
+          <span
+            className="inline-block size-2.5 rounded-full border border-sim-badge bg-sim-tab"
+            aria-hidden="true"
+          />
+          {l.tabMarker}
+        </li>
         <li className="flex items-center gap-1.5">
           <span className={`${swatch} border-sim-part-stroke bg-sim-part`} aria-hidden="true" />
           {l.part}

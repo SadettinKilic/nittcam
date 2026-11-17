@@ -26,6 +26,7 @@ function step(p: Partial<SimStep> & Pick<SimStep, 't0' | 't1' | 'line' | 'p0' | 
     contour: 1,
     known: true,
     tool: 2,
+    tab: false,
     ...p,
   };
 }

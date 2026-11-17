@@ -203,7 +203,7 @@
   "cutList": {
     "title": "Parçalar",
     "subtitle": "Kesim listesini tabloya girin ya da Excel'den yapıştırın. Ölçüler milimetredir.",
-    "draftNote": "Taslak: değişiklikler henüz kaydedilmiyor; sayfa yenilenince kaybolur.",
+    "draftNote": "Taslak: değişiklikler bu sekmede tutulur; sayfa yenilense de kalır, sekme kapanınca kaybolur. Kalıcı kayıt yakında.",
     "tableLabel": "Kesim listesi",
     "empty": "Henüz parça yok. Excel'den yapıştırın ya da yeni satır ekleyin.",
     "addRow": "+ Satır ekle",
@@ -629,7 +629,7 @@
       "arrows": "Ok: kesim yönü",
       "depthTop": "0 mm (malzeme üstü)",
       "depthBottom": "{z} mm (son derinlik)",
-      "tabs": "Açık renkli kısa bantlar: köprüler (tab)"
+      "tabMarker": "Köprü (tab): sarı bant ve nokta"
     }
   }
 }

@@ -53,6 +53,33 @@ function promptTool(lines: readonly string[], line: number): number | null {
   return null;
 }
 
+/** Z tolerance for "level" moves and "above the final depth", mm. */
+const Z_EPS = 1e-3;
+
+/**
+ * Marks tab steps: after a contour has reached the final depth, a level cut (no Z change) above
+ * it and below the material top is the tool passing over a bridge.
+ */
+function markTabs(steps: SimStep[], points: readonly number[], zBottom: number): void {
+  if (zBottom >= -Z_EPS) return;
+  let contour = 0;
+  let reached = false;
+  for (const s of steps) {
+    if (s.kind !== 'cut') continue;
+    if (s.contour !== contour) {
+      contour = s.contour;
+      reached = false;
+    }
+    const z0 = points[3 * s.p0 + 2] ?? 0;
+    const z1 = points[3 * s.p1 + 2] ?? 0;
+    if (Math.min(z0, z1) <= zBottom + Z_EPS) {
+      reached = true;
+      continue;
+    }
+    if (reached && Math.abs(z1 - z0) <= Z_EPS && z1 < -Z_EPS) s.tab = true;
+  }
+}
+
 export function buildSimSheet(input: SimSheetInput): SimSheet {
   const { frame, rapidFeed } = input;
   const files: SimFile[] = [];
@@ -156,11 +183,14 @@ export function buildSimSheet(input: SimSheetInput): SimSheet {
         contour: n,
         known,
         tool,
+        tab: false,
       });
     });
     // A dwell after the last move still takes time.
     t += dwellBefore.get(moves.length) ?? 0;
   });
+
+  markTabs(steps, points, zBottom);
 
   return {
     sheet: input.sheet,

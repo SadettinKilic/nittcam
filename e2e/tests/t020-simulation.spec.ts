@@ -177,6 +177,54 @@ test.describe('T020 simulation', () => {
     expect(problems).toEqual([]);
   });
 
+  test('zoom: + four times and wheel zoom keep the sheet in view', async ({ page }) => {
+    const problems = watchConsole(page);
+    await openSimulation(page);
+    const canvas = await readyCanvas(page);
+    /** Visible part of the sheet on screen (px) per axis. */
+    const visible = async () => {
+      const box = await canvas.boundingBox();
+      const a = async (k: string) => Number(await canvas.getAttribute(k));
+      const [scale, x, y, w, h] = await Promise.all([
+        a('data-scale'),
+        a('data-x'),
+        a('data-y'),
+        a('data-sheet-width'),
+        a('data-sheet-height'),
+      ]);
+      const cw = box?.width ?? 0;
+      const ch = box?.height ?? 0;
+      return {
+        scale,
+        x: Math.min(cw, x + w * scale) - Math.max(0, x),
+        y: Math.min(ch, y + h * scale) - Math.max(0, y),
+      };
+    };
+    const before = await visible();
+    for (let i = 0; i < 4; i += 1) {
+      await page.getByRole('button', { name: s.controls.zoomIn }).click();
+    }
+    const zoomed = await visible();
+    expect(zoomed.scale).toBeGreaterThan(before.scale * 2);
+    expect(zoomed.x).toBeGreaterThan(40);
+    expect(zoomed.y).toBeGreaterThan(40);
+    // Wheel zoom at a corner, then drag far away: the sheet never leaves the canvas.
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('no canvas box');
+    await page.mouse.move(box.x + 10, box.y + 10);
+    for (let i = 0; i < 6; i += 1) await page.mouse.wheel(0, -200);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 3, box.y + box.height * 3, { steps: 5 });
+    await page.mouse.up();
+    const after = await visible();
+    expect(after.x).toBeGreaterThan(20);
+    expect(after.y).toBeGreaterThan(20);
+    await page.getByRole('button', { name: s.controls.fit }).click();
+    expect((await visible()).scale).toBeCloseTo(before.scale, 6);
+    expect(problems).toEqual([]);
+  });
+
   test('keyboard: →/← step, Home/End, Space plays and pauses', async ({ page }) => {
     const problems = watchConsole(page);
     await openSimulation(page);

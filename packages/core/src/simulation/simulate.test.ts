@@ -60,6 +60,15 @@ describe.each(['generic', 'mach3'] as const)('%s', (post) => {
       g.toolpath.operations.reduce((n, op) => n + op.passDepths.length, 0),
     );
     expect(r.summary.tabs).toBe(g.toolpath.operations.reduce((n, op) => n + op.tabs.length, 0));
+    // Tab steps: every model tab shows up as at least one level cut above the final depth.
+    const tabSteps = sheet.steps.filter((s) => s.tab);
+    expect(tabSteps.length).toBeGreaterThanOrEqual(r.summary.tabs);
+    if (r.summary.tabs === 0) expect(tabSteps).toHaveLength(0);
+    for (const s of tabSteps) {
+      expect(s.kind).toBe('cut');
+      expect(s.zMin).toBeGreaterThan(sheet.zBottom + 1e-3);
+      expect(s.zMin).toBeLessThan(0);
+    }
     // Seeking to the last move line shows every step done.
     const last = sheet.steps[sheet.steps.length - 1];
     if (!last) throw new Error('no steps');

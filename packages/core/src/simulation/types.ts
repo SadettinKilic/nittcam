@@ -32,6 +32,11 @@ export interface SimStep {
   known: boolean;
   /** Tool number the program has in the spindle (M6 or the manual change prompt); null = unknown. */
   tool: number | null;
+  /**
+   * A tab (bridge): a level cut above the final depth after its contour has reached the final
+   * depth (the tool rises over the bridge and plunges back, D-022). Drawn with a marker.
+   */
+  tab: boolean;
 }
 
 /** Start of a contour (a run of cuts between two rapids): its cut-order number and position. */

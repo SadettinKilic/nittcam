@@ -29,9 +29,12 @@ function load(): Project | null {
   return current;
 }
 
-/** Stores the draft (the parts step calls this after every change). */
+/**
+ * Stores the draft (the parts step calls this after every change, once it has hydrated from the
+ * store). The stored value is read first, so the store is only ever marked loaded by `load`.
+ */
 export function saveDraft(project: Project): void {
-  loaded = true;
+  load();
   if (project === current) return;
   current = project;
   try {
@@ -44,6 +47,22 @@ export function saveDraft(project: Project): void {
 /** The stored draft, or null. Browser only; the server never has one. */
 export function getDraft(): Project | null {
   return typeof window === 'undefined' ? null : load();
+}
+
+function subscribeNever(): () => void {
+  return () => {};
+}
+
+/**
+ * False on the server and during hydration, true afterwards. The parts step saves only after
+ * hydration, so a first render without the stored draft can never overwrite it.
+ */
+export function useHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
 }
 
 function subscribe(): () => void {
