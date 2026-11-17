@@ -73,6 +73,17 @@ export class InvalidMachineProfile extends Error {
   }
 }
 
+/** A client-chosen project id is already used by another company (D-030); nothing was written. */
+export class IdTaken extends Error {
+  override readonly name = 'IdTaken';
+  constructor(
+    readonly entity: string,
+    readonly id: string,
+  ) {
+    super(`${entity} ${id}: id already taken`);
+  }
+}
+
 /** The project JSON failed core `parseProject`; nothing was written. */
 export class InvalidProject extends Error {
   override readonly name = 'InvalidProject';
@@ -246,6 +257,8 @@ function validProject(data: unknown): Project {
 }
 
 export interface NewProject {
+  /** Client-generated id (D-030); the database generates one when it is missing. */
+  id?: string;
   name: string;
   status?: ProjectRow['status'];
   /** Raw project JSON; validated (and migrated) with core `parseProject`. */
@@ -320,6 +333,40 @@ function projectsRepo(db: Db, companyId: string) {
         const created = rows[0] as ProjectRow;
         await insertCommands(tx, created.id, 1, values.commands ?? [], values.userId);
         return created;
+      });
+    },
+    /**
+     * Idempotent create on a client-generated id (D-030): a second create with the same id returns
+     * the stored project (`created: false`) and writes nothing, so a reload during the very first
+     * save cannot create a duplicate. An id used by another company throws `IdTaken` (its row
+     * stays invisible).
+     */
+    async createOnce(
+      values: NewProject & { id: string },
+    ): Promise<{ row: ProjectRow; created: boolean }> {
+      const data = validProject(values.data);
+      return db.transaction(async (tx) => {
+        const rows = await tx
+          .insert(projectsTable)
+          .values({
+            id: values.id,
+            companyId,
+            name: values.name,
+            ...(values.status ? { status: values.status } : {}),
+            data,
+            revision: 1,
+          })
+          .onConflictDoNothing({ target: projectsTable.id })
+          .returning();
+        const created = rows[0];
+        if (created) {
+          await insertCommands(tx, created.id, 1, values.commands ?? [], values.userId);
+          return { row: created, created: true };
+        }
+        const existing = await tx.select().from(projectsTable).where(scope(values.id));
+        const row = existing[0];
+        if (!row) throw new IdTaken('project', values.id);
+        return { row, created: false };
       });
     },
     /**
@@ -569,6 +616,45 @@ function machinesRepo(db: Db, companyId: string) {
       if (!result) throw new NotFound('machine', machineId);
       return result;
     },
+    /**
+     * One specific profile version of a machine (by version number or row id) with its derived
+     * verification state (§7.3: the last recorded verification compared with *this* version), for
+     * exports bound to the version a project was built with (D-030). `null` if not found or the
+     * stored profile no longer parses.
+     */
+    async getProfileVersion(
+      machineId: string,
+      which: { version: number } | { id: string },
+    ): Promise<MachineWithProfile | null> {
+      const rows = await db.select().from(machinesTable).where(ownedMachine(machineId));
+      const machine = rows[0];
+      if (!machine) return null;
+      const versions = await db
+        .select()
+        .from(machineProfileVersions)
+        .where(
+          and(
+            versionsOf(machineId),
+            'id' in which
+              ? eq(machineProfileVersions.id, which.id)
+              : eq(machineProfileVersions.version, which.version),
+          ),
+        );
+      const version = versions[0];
+      if (!version) return null;
+      const parsed = parseMachineProfile(version.profile);
+      if (!parsed.ok) return null;
+      const last = await lastVerification(machineId);
+      let state: VerificationState = 'draft';
+      if (last && last.profile === null) state = 'reverify_needed';
+      else if (last && last.profile) {
+        state = currentVerificationState(parsed.profile, {
+          stage: last.stage,
+          profile: last.profile,
+        });
+      }
+      return { machine, version, profile: parsed.profile, state };
+    },
     /** A machine with its latest profile version and verification state; `null` if not found. */
     async getWithProfile(machineId: string): Promise<MachineWithProfile | null> {
       const rows = await db.select().from(machinesTable).where(ownedMachine(machineId));
@@ -648,6 +734,113 @@ function templatesRepo(db: Db, companyId: string) {
   };
 }
 
+export type ExportRow = typeof exportsTable.$inferSelect;
+export type NewExport = NewRow<typeof exportsTable> & { id?: string };
+
+/** The fields that make two exports the same (D-030 idempotency). */
+export type ExportKey = Pick<
+  ExportRow,
+  | 'projectId'
+  | 'projectRevision'
+  | 'machineProfileVersionId'
+  | 'postId'
+  | 'postVersion'
+  | 'kind'
+  | 'sha256'
+>;
+
+function exportsRepo(db: Db, companyId: string) {
+  const sameKey = (k: ExportKey) =>
+    and(
+      eq(exportsTable.companyId, companyId),
+      eq(exportsTable.projectId, k.projectId),
+      eq(exportsTable.projectRevision, k.projectRevision),
+      eq(exportsTable.machineProfileVersionId, k.machineProfileVersionId),
+      eq(exportsTable.postId, k.postId),
+      eq(exportsTable.postVersion, k.postVersion),
+      eq(exportsTable.kind, k.kind),
+      eq(exportsTable.sha256, k.sha256),
+    );
+  async function findSame(key: ExportKey): Promise<ExportRow | null> {
+    const rows = await db.select().from(exportsTable).where(sameKey(key));
+    return rows[0] ?? null;
+  }
+  return {
+    ...appendOnly(db, companyId, exportsTable),
+    /** The export with the same key, or null. */
+    findSame,
+    /**
+     * Inserts the export once (append-only, no update path). When an export with the same key
+     * already exists (an earlier or a concurrent request), nothing is written and the existing row
+     * comes back with `created: false`.
+     */
+    async createOnce(values: NewExport): Promise<{ row: ExportRow; created: boolean }> {
+      const { id, ...rest } = values;
+      const rows = await db
+        .insert(exportsTable)
+        .values({
+          ...(stripOwned(rest) as NewRow<typeof exportsTable>),
+          ...(id ? { id } : {}),
+          companyId,
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (rows[0]) return { row: rows[0], created: true };
+      const existing = await findSame(values);
+      if (!existing) throw new Error('export insert conflicted but no matching export was found');
+      return { row: existing, created: false };
+    },
+    /** Exports of a project, newest first. Empty for another company's project. */
+    async listForProject(projectId: string): Promise<ExportRow[]> {
+      return db
+        .select()
+        .from(exportsTable)
+        .where(and(eq(exportsTable.companyId, companyId), eq(exportsTable.projectId, projectId)))
+        .orderBy(desc(exportsTable.createdAt), desc(exportsTable.id));
+    },
+    /** The newest export of every project of the company (Projeler list). */
+    async latestPerProject(): Promise<ExportRow[]> {
+      return db
+        .selectDistinctOn([exportsTable.projectId])
+        .from(exportsTable)
+        .where(eq(exportsTable.companyId, companyId))
+        .orderBy(exportsTable.projectId, desc(exportsTable.createdAt), desc(exportsTable.id));
+    },
+  };
+}
+
+export type UserRow = typeof users.$inferSelect;
+
+function usersRepo(db: Db, companyId: string) {
+  const first = async (): Promise<UserRow | null> =>
+    (
+      await db
+        .select()
+        .from(users)
+        .where(eq(users.companyId, companyId))
+        .orderBy(asc(users.createdAt), asc(users.id))
+        .limit(1)
+    )[0] ?? null;
+  return {
+    ...mutable(db, companyId, users),
+    /**
+     * Single-user mode (D-016, D-030): the company's first user, created on first use with the
+     * given e-mail. Until auth exists every recorded action belongs to this user.
+     */
+    async ensureDefault(values: { email: string; name: string }): Promise<UserRow> {
+      const found = await first();
+      if (found) return found;
+      await db
+        .insert(users)
+        .values({ companyId, email: values.email, name: values.name, role: 'admin' })
+        .onConflictDoNothing();
+      const created = await first();
+      if (!created) throw new Error('default user could not be created');
+      return created;
+    },
+  };
+}
+
 export type AiUsageRow = typeof aiUsage.$inferSelect;
 
 function aiUsageRepo(db: Db, companyId: string) {
@@ -706,7 +899,7 @@ export function forCompany(db: Db, companyId: string) {
         return rows[0] ?? null;
       },
     },
-    users: mutable(db, companyId, users),
+    users: usersRepo(db, companyId),
     machines: machinesRepo(db, companyId),
     machineProfileVersions: reader(db, companyId, machineProfileVersions),
     tools: mutable(db, companyId, tools),
@@ -715,7 +908,7 @@ export function forCompany(db: Db, companyId: string) {
     templateVersions: reader(db, companyId, templateVersions),
     projects: projectsRepo(db, companyId),
     projectCommands: reader(db, companyId, projectCommands),
-    exports: appendOnly(db, companyId, exportsTable),
+    exports: exportsRepo(db, companyId),
     validations: appendOnly(db, companyId, validations),
     offcuts: mutable(db, companyId, offcuts),
     chatMessages: appendOnly(db, companyId, chatMessages),
