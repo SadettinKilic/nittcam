@@ -317,7 +317,7 @@
         "NOT_POSITIVE": "{field} sıfırdan büyük olmalı.",
         "INVALID_QTY": "Adet 1 veya daha büyük tam sayı olmalı.",
         "INVALID_GRAIN": "Damar kilidi evet/hayır (1/0, x) olmalı.",
-        "INVALID_EDGE_BAND": "{field}: bant kalınlığı mm cinsinden sayı olmalı (ör. 0,8); boş = bant yok."
+        "INVALID_EDGE_BAND": "{field}: bant kalınlığı mm cinsinden sayı olmalı (ör. 0,8). Bant yoksa boş bırakın, - veya yok yazın."
       },
       "warnings": {
         "EMPTY": "Yapıştırılan metinde satır yok.",

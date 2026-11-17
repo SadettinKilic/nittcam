@@ -459,7 +459,9 @@ function parseGrain(cell: string): boolean | null {
   return null;
 }
 
-const EDGE_NONE = new Set(['', '-', 'yok', 'no', 'none', 'hayir']);
+const EDGE_NONE = new Set(['', '-', '–', 'yok', 'no', 'none', 'hayir']);
+/** Per-edge cells (D-024): only these unambiguous "no band" marks besides numbers. */
+const PER_EDGE_NONE = new Set(['', '-', '–', 'yok']);
 
 // ---------------------------------------------------------------------------
 // Column mapping
@@ -711,10 +713,10 @@ export function parseCutList(text: string, options: ParseCutListOptions = {}): C
         else edgeBand.top = edgeBand.right = edgeBand.bottom = edgeBand.left = n;
       }
     }
-    // Per-edge cells (D-024): numbers only (mm); empty = 0; anything else is a row error.
+    // Per-edge cells (D-024): numbers (mm); empty, "-", "–" and "yok" = 0; else a row error.
     const thickness = (col: number, field: Exclude<CutListField, 'ignore'>): number => {
       const raw = cell(col);
-      if (raw === '') return 0;
+      if (PER_EDGE_NONE.has(fold(raw))) return 0;
       const n = parseCutListNumber(raw, decimal);
       if (n === null || n < 0) {
         errors.push(error(col, field, 'INVALID_EDGE_BAND'));

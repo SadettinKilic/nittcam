@@ -74,6 +74,11 @@ function nameArbFor(delimiter: string): fc.Arbitrary<string> {
 const mmArb = fc.integer({ min: 1, max: 300_000 }).map((n) => n / 100);
 
 const bandArb = fc.constantFrom(0, 0.4, 0.8, 1, 2);
+const perEdgeCellArb: fc.Arbitrary<number | string> = fc.oneof(
+  bandArb,
+  fc.constantFrom('', '-', '–', 'yok', 'Yok'),
+);
+const numberOf = (v: number | string): number => (typeof v === 'string' ? 0 : v);
 
 type PerEdgeField = Exclude<Field, 'name' | 'w' | 'h' | 'qty' | 'grain' | 'edge'>;
 const NAMED_EDGES = {
@@ -96,16 +101,16 @@ function rowArbFor(delimiter: string) {
     qty: fc.option(fc.integer({ min: 1, max: 50 }), { nil: null }),
     grainLock: fc.boolean(),
     edgeBand: bandArb,
-    // One value per per-edge column; null = empty cell (→ 0).
+    // One value per per-edge column; a string is a no-band mark ("", "-", "–", "yok") → 0 (D-024).
     edges: fc.record({
-      edgeTop: fc.option(bandArb, { nil: null }),
-      edgeBottom: fc.option(bandArb, { nil: null }),
-      edgeLeft: fc.option(bandArb, { nil: null }),
-      edgeRight: fc.option(bandArb, { nil: null }),
-      edgeLong1: fc.option(bandArb, { nil: null }),
-      edgeLong2: fc.option(bandArb, { nil: null }),
-      edgeShort1: fc.option(bandArb, { nil: null }),
-      edgeShort2: fc.option(bandArb, { nil: null }),
+      edgeTop: perEdgeCellArb,
+      edgeBottom: perEdgeCellArb,
+      edgeLeft: perEdgeCellArb,
+      edgeRight: perEdgeCellArb,
+      edgeLong1: perEdgeCellArb,
+      edgeLong2: perEdgeCellArb,
+      edgeShort1: perEdgeCellArb,
+      edgeShort2: perEdgeCellArb,
     }),
   });
 }
@@ -165,7 +170,7 @@ function cellOf(field: Field, row: GenRow, f: Format, grainWords: [string, strin
       return formatNumber(row.edgeBand, f);
     default: {
       const v = row.edges[field];
-      return v === null ? '' : formatNumber(v, f);
+      return typeof v === 'string' ? v : formatNumber(v, f);
     }
   }
 }
@@ -188,7 +193,7 @@ function expected(row: GenRow, fields: readonly Field[]): CutListRowValues {
 /** Independent statement of D-024: per-edge columns win; U/K follow the orientation. */
 function expectedBand(row: GenRow, fields: readonly Field[]): CutListRowValues['edgeBand'] {
   const perEdge = fields.some((f) => (PER_EDGE as readonly Field[]).includes(f));
-  const single = fields.includes('edge') && !perEdge ? row.edgeBand : 0;
+  const single: number = fields.includes('edge') && !perEdge ? row.edgeBand : 0;
   const out = { top: single, right: single, bottom: single, left: single };
   const landscape = row.w >= row.h; // a square counts w as the long side
   const longShort = {
@@ -197,9 +202,9 @@ function expectedBand(row: GenRow, fields: readonly Field[]): CutListRowValues['
     edgeShort1: landscape ? 'left' : 'bottom',
     edgeShort2: landscape ? 'right' : 'top',
   } as const;
-  for (const f of LONG_SHORT) if (fields.includes(f)) out[longShort[f]] = row.edges[f] ?? 0;
+  for (const f of LONG_SHORT) if (fields.includes(f)) out[longShort[f]] = numberOf(row.edges[f]);
   for (const [f, side] of Object.entries(NAMED_EDGES) as [keyof typeof NAMED_EDGES, 'top'][]) {
-    if (fields.includes(f)) out[side] = row.edges[f] ?? 0;
+    if (fields.includes(f)) out[side] = numberOf(row.edges[f]);
   }
   return out;
 }

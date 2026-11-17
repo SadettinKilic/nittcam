@@ -121,7 +121,7 @@ Acceptance:
 - [ ] parser recognises named edge columns (Üst/Alt/Sol/Sağ bant, Top/Bottom/Left/Right; case- and diacritic-insensitive, "Sag" too) and maps each to its edge
 - [ ] parser recognises the long/short convention (Uzun1/Uzun 1/U1, Uzun2/U2, Kısa1/K1, Kısa2/K2) and maps it by orientation: w ≥ h → U1 bottom, U2 top, K1 left, K2 right; w < h → U1 left, U2 right, K1 bottom, K2 top (square: w is the long side)
 - [ ] the single "Bant/Kenar bandı/Edge" column still applies to all 4 edges; with per-edge columns present, per-edge wins and a warning is shown
-- [ ] per-edge values are numeric only (mm, "0,8" / "1" / "2"); empty → 0; non-numeric → row error with a Turkish message
+- [ ] per-edge values are numbers (mm, "0,8" / "1" / "2"); empty, "-", "–" and "yok" → 0; other text → row error with a Turkish message
 - [ ] grid: 4 compact columns (Üst / Alt / Sol / Sağ, mm) bound to `updatePart`, one undo step per edit, no-op rule kept; usable at 390 px with no page-level horizontal scroll
 - [ ] paste preview mapping dropdowns include the new targets
 - [ ] all strings in `tr.json`

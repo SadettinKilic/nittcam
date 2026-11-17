@@ -201,8 +201,8 @@ describe('single column and per-edge columns together', () => {
 });
 
 describe('invalid per-edge values', () => {
-  it.each(['x', 'var', 'yok', '-', 'evet', '1mm', '-1'])(
-    '"%s" is a row error (numbers only)',
+  it.each(['x', 'var', 'evet', 'hayır', 'no', '1mm', '-1', '--'])(
+    '"%s" is a row error (numbers and no-band marks only)',
     (value) => {
       const r = parseCutList(`Ad;En;Boy;Üst;U1\nA;700;400;${value};1`);
       const row = r.rows[0];
@@ -226,6 +226,16 @@ describe('invalid per-edge values', () => {
     expect(parts).toHaveLength(1);
     expect(parts[0]?.edgeBand).toEqual(band(0, 0, 0, 1));
   });
+
+  it.each(['-', '–', 'yok', 'YOK', 'Yok', ' - '])(
+    '"%s" means no band (0), like the single column',
+    (mark) => {
+      const r = parseCutList(`Ad;En;Boy;Üst;U1
+A;700;400;${mark};1`);
+      expect(r.rows[0]?.errors).toEqual([]);
+      expect(bands(r.rows)).toEqual([band(0, 0, 1, 0)]);
+    },
+  );
 
   it('accepts "0,8", "1", "2", "0" and grouped forms; empty is 0', () => {
     const r = parseCutList('En;Boy;Üst;Alt;Sol;Sağ\n700;400;0,8;1;2;\n700;400;0;;;0,4');
