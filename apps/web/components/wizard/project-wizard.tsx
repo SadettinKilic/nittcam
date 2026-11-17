@@ -447,10 +447,14 @@ function WizardSession({
     both = (
       <ExportStep
         t={t.export}
+        corners={messages.machines.form.options.corner}
+        states={messages.machines.state}
         project={project}
         machine={simMachine}
+        projectId={session.projectId}
         revision={session.revision}
         saved={!session.dirty}
+        saveState={session.saveState}
       />
     );
   }

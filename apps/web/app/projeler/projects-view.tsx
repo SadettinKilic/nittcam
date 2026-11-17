@@ -236,6 +236,34 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
                           </time>
                         </dd>
                       </div>
+                      <div className="flex gap-1" data-testid="project-last-export">
+                        <dt>{t.columns.lastExport}:</dt>
+                        <dd className="flex flex-wrap gap-x-2">
+                          {item.lastExport ? (
+                            <>
+                              <time dateTime={item.lastExport.createdAt}>
+                                {fill(t.lastExport, {
+                                  revision: item.lastExport.revision,
+                                  date: dateFormat.format(new Date(item.lastExport.createdAt)),
+                                })}
+                              </time>
+                              {item.lastExport.files.map((file) => (
+                                <a
+                                  key={file.name}
+                                  href={file.downloadUrl}
+                                  download={file.name}
+                                  title={file.hash}
+                                  className="text-accent underline"
+                                >
+                                  {fill(t.downloadLast, { name: file.name })}
+                                </a>
+                              ))}
+                            </>
+                          ) : (
+                            t.noExport
+                          )}
+                        </dd>
+                      </div>
                     </dl>
                   </div>
                   <div className="flex shrink-0 gap-2">
