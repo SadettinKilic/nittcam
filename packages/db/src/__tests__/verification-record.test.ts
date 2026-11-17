@@ -31,7 +31,10 @@ describe('recordVerification', () => {
     const m = await scope.machines.createWithProfile(fresh());
     const id = m.machine.id;
     const pv = m.version.id;
-    await scope.machines.recordVerification(id, { profileVersionId: pv, stage: 'air_cut_approved' });
+    await scope.machines.recordVerification(id, {
+      profileVersionId: pv,
+      stage: 'air_cut_approved',
+    });
     expect((await scope.machines.getWithProfile(id))?.state).toBe('air_cut_approved');
     const row = await scope.machines.recordVerification(id, {
       profileVersionId: pv,

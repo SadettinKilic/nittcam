@@ -1,5 +1,5 @@
 /** Shapes of the NC export routes (T021, D-030), shared by server and client. */
-import type { OriginCorner, VerificationState } from '@nittcam/core';
+import type { OriginCorner, UnverifiedReason, VerificationState } from '@nittcam/core';
 
 /** Where the export stopped: the machine profile lookup, then `exportNc`'s stages. */
 export type ExportStage = 'profile' | 'toolpath' | 'post' | 'check' | 'done';
@@ -67,6 +67,8 @@ export interface ExportPreview {
   files: ExportFileInfo[];
   /** The files say "DOĞRULANMADI, önce air cut": the download needs the acceptance (§7.2 rule 10). */
   needsAcceptance: boolean;
+  /** Why (T022): the profile version is not verified, is the example, or the post is unverified. */
+  unverifiedReasons: UnverifiedReason[];
   profile: ExportProfileInfo | null;
   post: ExportPostInfo | null;
   checklist: ExportChecklistInfo | null;

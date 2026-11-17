@@ -1,6 +1,7 @@
 'use client';
 
 import { defaultMachineProfile, type MachineProfile, type VerificationState } from '@nittcam/core';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
@@ -236,7 +237,15 @@ function MachineList({
                   {t.state[m.state]}
                 </span>
               </td>
-              <td className="px-4 py-3 text-right">
+              <td className="flex justify-end gap-2 px-4 py-3 text-right">
+                <Link
+                  href={`/makineler/${m.id}/dogrulama`}
+                  aria-label={`${t.verify}: ${m.name}`}
+                  data-testid="machine-verify"
+                  className={`${buttonClass} border border-border bg-bg whitespace-nowrap hover:bg-sidebar`}
+                >
+                  {t.verify}
+                </Link>
                 <button
                   type="button"
                   onClick={() => onEdit(m.id)}

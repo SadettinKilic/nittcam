@@ -206,7 +206,8 @@
       "unknownTool": "Bu numarada takım yok.",
       "plungeAboveFeed": "Dalma hızı beslemeden büyük olamaz.",
       "rpmOutsideSpindle": "Devir, spindle aralığının dışında."
-    }
+    },
+    "verify": "Doğrula"
   },
   "cutList": {
     "title": "Parçalar",
@@ -557,7 +558,12 @@
       "ARC_COLLAPSED": "Çok küçük bir yay düz çizgiye çevrildi.",
       "MACHINE_NOT_FOUND": "Projenin makinesi bulunamadı. Makine ve plaka adımında bir makine seçin.",
       "PROFILE_VERSION_NOT_FOUND": "Projenin kaydedildiği makine profili sürümü bulunamadı. Makine ve plaka adımında \"Son sürüme geç\" deyin.",
-      "UNKNOWN_POST": "Makine profilindeki post işlemci yüklü değil."
+      "UNKNOWN_POST": "Makine profilindeki post işlemci yüklü değil.",
+      "NO_MATERIAL_SET": "Makine profilinde malzeme parametresi yok: test parçası için en az bir malzeme ve kalınlık ekleyin.",
+      "TEST_TOOL_MISSING": "Malzeme parametresindeki takım bu makinede yok.",
+      "TEST_TOOL_TOO_LARGE": "Takım test parçası için çok büyük: çapı en fazla 20 mm olmalı (cebin yarısı).",
+      "TEST_STOCK_TOO_THIN": "Malzeme test parçası için çok ince: ölçülebilir bir cep açılamıyor.",
+      "SAFETY_VIOLATION": "Takım yolu güvenlik kontrolünden geçmedi."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -854,7 +860,13 @@
       "historyRevision": "Rev. {n}",
       "historyProfile": "Sürüm {n}",
       "historyAccepted": "air cut kabul edildi",
-      "redownload": "Tekrar indir: {name}"
+      "redownload": "Tekrar indir: {name}",
+      "unverifiedLink": "Makine doğrulama: air cut ve test kesimi",
+      "reasons": {
+        "profile": "Bu makine profili sürümü doğrulanmadı (air cut + test kesimi gerekli).",
+        "example": "Bu bir örnek profil: kendi makineniz için yeni bir makine profili oluşturup doğrulayın.",
+        "post": "Post işlemci henüz gerçek makinede test edilmedi; dosyalar bu yüzden uyarıyı taşır."
+      }
     },
     "issues": {
       "title": "Uyarılar",
@@ -882,5 +894,107 @@
       },
       "other": "Kontrol {code}"
     }
+  },
+  "verification": {
+    "title": "Makine doğrulama",
+    "subtitle": "{machine} · profil sürüm {version}",
+    "back": "Makinelere dön",
+    "loading": "Doğrulama bilgileri yükleniyor…",
+    "loadError": "Doğrulama bilgileri yüklenemedi.",
+    "notFound": "Makine bulunamadı.",
+    "retry": "Tekrar dene",
+    "stateLabel": "Durum: {state}",
+    "stepsTitle": "Doğrulama adımları",
+    "steps": {
+      "draft": "Taslak: profil oluşturuldu, test yok.",
+      "air_cut_approved": "Air cut onaylandı: program malzemesiz çalıştı; eksenler, spindle ve güvenli Z doğru.",
+      "test_cut_approved": "Test kesimi onaylandı: fire plakada kesildi, ölçüler girildi.",
+      "verified": "Doğrulanmış: ölçüler tolerans içinde."
+    },
+    "reverifyNote": "Profil, takım seti veya post sürümü değişti: doğrulama air cut'tan yeniden başlar.",
+    "stillWarned": "Dosyalarda hâlâ \"DOĞRULANMADI, önce air cut\" uyarısı olacak:",
+    "noWarning": "Bu profil sürümüyle üretilen dosyalarda doğrulanmadı uyarısı yok.",
+    "label": "Etiket: \"Kullanıcı onaylı\". Platform makineyi göremez; doğrulama sizin ölçümünüze dayanır.",
+    "testPartTitle": "Test parçası",
+    "testPart": "200 × 200 mm kare, ortada Ø100 mm delik, Ø40 mm × {depth} mm kör cep. Malzeme {material} {thickness} mm, takım T{tool} Ø{diameter} mm.",
+    "scrap": "Fire plaka en az {w} × {h} mm olmalı ve plaka sıfır noktasına göre profildeki yerde ({x} / {y} mm) durmalı.",
+    "airTitle": "Adım 1 · Air cut (malzemesiz)",
+    "airBody": "Program, test parçasının bütün hareketlerini {gap} mm yukarıda yapar: takım değiştirme, spindle başlatma, güvenli X/Y ve Z hareketleri, küçük test geometrisi, spindle durdurma, program sonu. Malzemeye temas yoktur.",
+    "airSafety": "İlk çalıştırmada elinizi acil stop düğmesinin yanında tutun ve ilerleme hızını (feed override) düşük başlatın.",
+    "acceptDownload": "Bu dosya \"DOĞRULANMADI, önce air cut\" uyarısı taşıyor; dikkatle ve gözetim altında çalıştıracağım",
+    "download": "İndir: {name}",
+    "programFailed": "Program üretilemedi veya kontrolleri geçmedi:",
+    "checksTitle": "Air cut sırasında gördükleriniz",
+    "checks": {
+      "axes": "Eksenler doğru yönde hareket etti (X, Y, Z yönleri doğru).",
+      "spindle": "Spindle döndü ve ısınma beklemesinden sonra harekete başladı.",
+      "safeZ": "Takım güvenli Z'de hareket etti; X/Y boşta geçişleri yukarıdan yapıldı.",
+      "noContact": "Takım malzemeye ve tablaya hiç değmedi."
+    },
+    "approveAir": "Air cut'ı onayla",
+    "approving": "Kaydediliyor…",
+    "approvedAir": "Air cut onaylandı. Şimdi test parçasını fire plakada kesin.",
+    "needChecks": "Onaylamak için bütün maddeleri işaretleyin.",
+    "cutTitle": "Adım 2 · Test kesimi (fire plakada)",
+    "cutBody": "Test parçasını fire plakada kesin, köprüleri temizleyin ve kumpasla ölçün. Kenarları köprü olmayan yerden ölçün.",
+    "cutLocked": "Test kesimi için önce air cut'ı onaylayın.",
+    "formTitle": "Ölçümler (mm)",
+    "fields": {
+      "edgeX": "Kenar X (önden bakınca soldan sağa)",
+      "edgeY": "Kenar Y (önden arkaya)",
+      "diagonal": "Köşegen (köşeden köşeye)",
+      "holeDiameter": "Delik çapı",
+      "pocketDepth": "Cep derinliği (üst yüzeyden)",
+      "thickness": "Plaka kalınlığı (ölçülen)"
+    },
+    "thicknessHelp": "Z sıfırı tabla olduğu için cep derinliği gerçek kalınlığa bağlı: plakayı da ölçün.",
+    "nominal": "beklenen {value} mm",
+    "issues": {
+      "MISSING": "Bu alanı doldurun.",
+      "NOT_A_NUMBER": "Sayı girin (ör. 199,8).",
+      "IMPLAUSIBLE": "Bu değer ölçü olamaz; kontrol edin."
+    },
+    "submit": "Ölçümleri kaydet",
+    "resultTitle": "Sonuç",
+    "columns": {
+      "item": "Ölçü",
+      "nominal": "Beklenen",
+      "measured": "Ölçülen",
+      "deviation": "Fark",
+      "tolerance": "Tolerans",
+      "result": "Sonuç"
+    },
+    "itemNames": {
+      "edgeX": "Kenar X",
+      "edgeY": "Kenar Y",
+      "diagonal": "Köşegen",
+      "holeDiameter": "Delik çapı",
+      "pocketDepth": "Cep derinliği"
+    },
+    "inTol": "Tolerans içinde",
+    "outTol": "Tolerans dışında",
+    "verified": "Bütün ölçüler tolerans içinde: bu profil sürümü doğrulandı.",
+    "notVerified": "Bazı ölçüler tolerans dışında. Önerileri uygulayıp profili kaydedin; yeni sürüm air cut'tan yeniden doğrulanır.",
+    "suggestionsTitle": "Öneriler",
+    "suggestions": {
+      "toolDiameter": "Takım T{tool} çapını profilde {from} mm yerine {to} mm yapın (kenarlar ve delik aynı farkı gösteriyor).",
+      "zZeroUp": "Cep {amount} mm fazla derin: Z sıfırını {amount} mm yukarı alın (Z sıfırlama yöntemini kontrol edin).",
+      "zZeroDown": "Cep {amount} mm sığ: Z sıfırını {amount} mm aşağı alın (Z sıfırlama yöntemini kontrol edin).",
+      "axisScale": "Ölçüler takım çapıyla açıklanamıyor (X {x} mm, Y {y} mm, delik {hole} mm): eksen adım ayarını (steps/mm) ve boşlukları kontrol edin.",
+      "squareness": "Köşegen kenarlara uymuyor ({deviation} mm): X ve Y eksenleri birbirine dik olmayabilir."
+    },
+    "saveError": "Kaydedilemedi. Tekrar deneyin.",
+    "stale": "Profil bu arada değişti. Sayfayı yenileyin.",
+    "notAllowed": "Bu adım şu durumda kaydedilemez.",
+    "historyTitle": "Doğrulama geçmişi",
+    "historyEmpty": "Henüz kayıt yok.",
+    "historyColumns": {
+      "date": "Tarih",
+      "version": "Profil sürümü",
+      "stage": "Aşama",
+      "result": "Ölçüm"
+    },
+    "historyVersion": "Sürüm {n}",
+    "editProfile": "Profili düzenle"
   }
 }

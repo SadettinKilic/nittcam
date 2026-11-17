@@ -709,7 +709,10 @@ function machinesRepo(db: Db, companyId: string) {
           ),
         )
         .where(
-          and(eq(validations.companyId, companyId), eq(machineProfileVersions.machineId, machineId)),
+          and(
+            eq(validations.companyId, companyId),
+            eq(machineProfileVersions.machineId, machineId),
+          ),
         )
         .orderBy(desc(validations.createdAt));
       return rows;
