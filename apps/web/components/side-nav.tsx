@@ -7,12 +7,12 @@ import type { Messages } from '../lib/messages';
 type NavText = Messages['nav'];
 
 /** Menu of spec §3.3. Ana sayfa, Makineler and Oluştur (parts step) work so far; the rest are placeholders. */
-const ITEMS: { key: keyof NavText; href?: string }[] = [
+const ITEMS: { key: keyof NavText; href?: string; match?: string }[] = [
   { key: 'home', href: '/' },
   { key: 'machines', href: '/makineler' },
   { key: 'projects' },
   { key: 'templates' },
-  { key: 'create', href: '/projeler/yeni/parcalar' },
+  { key: 'create', href: '/projeler/yeni/parcalar', match: '/projeler/yeni' },
   { key: 'settings' },
 ];
 
@@ -35,7 +35,7 @@ export function SideNav({ t }: { t: NavText }) {
         {t.newProject}
       </span>
       <ul className="flex flex-row flex-wrap gap-1 md:flex-col">
-        {ITEMS.map(({ key, href }) => {
+        {ITEMS.map(({ key, href, match }) => {
           if (!href) {
             return (
               <li key={key}>
@@ -45,7 +45,7 @@ export function SideNav({ t }: { t: NavText }) {
               </li>
             );
           }
-          const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+          const active = href === '/' ? pathname === '/' : pathname.startsWith(match ?? href);
           return (
             <li key={key}>
               <Link

@@ -12,6 +12,7 @@
   "dependencies": {
     "@nittcam/core": "workspace:*",
     "@nittcam/db": "workspace:*",
+    "@nittcam/machines": "workspace:*",
     "@nittcam/ui": "workspace:*",
     "konva": "10.9.1",
     "next": "16.4.5",

@@ -28,6 +28,19 @@
   --color-part-locked: #c9dbef;
   --color-part-locked-stroke: #2f4f7a;
   --color-grid: #e2dccd;
+  /* Simulation (T020): depth ramp from the material top (light) to the final depth (dark),
+     rapids, tool, table/travel outlines, machine zero, light parts. */
+  --color-sim-depth-top: #9ec5ea;
+  --color-sim-depth-bottom: #0f2f57;
+  --color-sim-rapid: #b4531f;
+  --color-sim-tool: #b4531f;
+  --color-sim-table: #2f4f7a;
+  --color-sim-envelope: #8a8371;
+  --color-sim-zero: #a8261b;
+  --color-sim-part: #f8ecdb;
+  --color-sim-part-stroke: #c9b79c;
+  --color-sim-badge: #1c1c1a;
+  --color-sim-badge-fg: #ffffff;
   --radius-card: 0.75rem;
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }

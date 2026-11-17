@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getMessages } from '../../../../lib/messages';
-import { CutListEditor } from './cut-list-editor';
+import { DraftCutListEditor } from './cut-list-editor';
 
 const messages = getMessages();
 
@@ -14,5 +14,11 @@ export const metadata: Metadata = {
  * A standalone page until the wizard (T023) wraps it and saves the project.
  */
 export default function PartsPage() {
-  return <CutListEditor t={messages.cutList} layoutText={messages.layout} />;
+  return (
+    <DraftCutListEditor
+      t={messages.cutList}
+      layoutText={messages.layout}
+      simulateText={messages.simulation.open}
+    />
+  );
 }
