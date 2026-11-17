@@ -601,12 +601,14 @@ export function buildToolpath(
   // Cut order (D-023): the nesting mode picks the ordering preset; nesting itself is unchanged.
   const orderMode: CutOrderMode = options.order?.mode ?? project.nesting.mode;
   const maxEvaluations = options.order?.maxEvaluations;
-  if (
-    maxEvaluations !== undefined &&
-    !(Number.isInteger(maxEvaluations) && maxEvaluations >= 0)
-  ) {
+  if (maxEvaluations !== undefined && !(Number.isInteger(maxEvaluations) && maxEvaluations >= 0)) {
     errors.push(
-      issue('INVALID_OPTION', 'error', null, 'Cut order evaluation budget must be a whole number ≥ 0.'),
+      issue(
+        'INVALID_OPTION',
+        'error',
+        null,
+        'Cut order evaluation budget must be a whole number ≥ 0.',
+      ),
     );
     return fail(clearanceZ);
   }

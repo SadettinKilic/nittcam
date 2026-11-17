@@ -156,7 +156,14 @@ function schedule(
   const succ: number[][] = idx.map(() => []);
   for (let a = 0; a < n; a++) {
     for (let b = 0; b < n; b++) {
-      if (a !== b && mustPrecede(items[idx[a] as number]!, items[idx[b] as number]!, mode)) {
+      if (
+        a !== b &&
+        mustPrecede(
+          items[idx[a] as number] as OrderItem,
+          items[idx[b] as number] as OrderItem,
+          mode,
+        )
+      ) {
         (succ[a] as number[]).push(b);
         preds[b] = (preds[b] as number) + 1;
       }

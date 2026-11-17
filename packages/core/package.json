@@ -9,7 +9,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "bench:nesting": "vitest run --config vitest.bench.config.ts"
+    "bench:nesting": "vitest run --config vitest.bench.config.ts src/nesting/__bench__",
+    "bench:order": "vitest run --config vitest.bench.config.ts src/toolpath/__bench__"
   },
   "devDependencies": {
     "cavalier-contours-js": "0.1.1",
