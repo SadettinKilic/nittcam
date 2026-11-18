@@ -17,6 +17,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M0 Temel | T001–T009 | – | done |
 | M1 İnce dilim | T010–T024 | – | done (2026-11-17) |
 | M2 Tasarım sistemi ve uygulama kabuğu | T100–T111 (12) | B1–B4 | every existing screen in the new design, visual + axe checks in CI |
+| M2.5 Marka ve çalışma alanı cilası (Fable review #1) | T194–T199, T194a (7) | B4a–B4b | brand mark in the shell, mono numerics, canvas-first workspace on steps 3–4, calmer notices |
 | M3 Kesim listesi, malzeme, damar kadranı | T112–T123 (12) | B5–B8 | free-angle grain respected from cut list to G-code; cut list editable without Excel |
 | M4 Çizim tahtası I: editör | T124–T137 (14) | B9–B13 | a drawn freeform part with fillets is nested and gives checked G-code |
 | M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
@@ -29,7 +30,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
 | M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
 
-**Before the field test: 94 tasks in 31 batches.** The "~90 % / field-test ready" line is the end of M9 (T193).
+**Before the field test: 101 tasks in 33 batches** (94 + 7 from Fable design review #1, `docs/reviews/2026-11-18-fable-design-review-1.md`). The "~90 % / field-test ready" line is the end of M9 (T193).
 
 ---
 
@@ -163,6 +164,82 @@ Tester focus: complete screenshot review of all routes 1440/390 × light/dark; z
 
 ---
 
+## M2.5: Marka ve çalışma alanı cilası (exit: the product has a recognisable identity and a canvas-first workspace before new screens are built on it)
+
+Source: Fable design review #1 (`docs/reviews/2026-11-18-fable-design-review-1.md`, 2026-11-18). These are foundational: every M3–M6 screen inherits them, so they run **before B5**. Scores at review time: corporate image 5/10, modernity 7/10, usability 6.5/10, readiness for M3–M6 6/10. Owner questions FQ1–FQ6 are listed at the end of the review; T194 waits for FQ1 (logo direction) and FQ2 (logo placement), the rest can start.
+
+### Batch B4a: T194, T194a, T195 (brand, shell, type)
+
+### T194 Brand identity: mark, wordmark, favicon, shell placement   [status: todo]
+Spec: §3.7 · Depends: T103 · Decision: D-032 · Owner: FQ1, FQ2
+Acceptance:
+- [ ] `Logo` component in `packages/ui` (inline SVG, `currentColor` + accent token, no image download): **mark** (monogram "N" drawn as a toolpath: lead-in, two plunges, one diagonal pass, a tool dot at the end) and **wordmark** "NittCam" (Inter 600, tight tracking, "Cam" in `accent-text`); sizes 20/24/32 px; mark-only variant for the collapsed sidebar
+- [ ] sidebar header shows the NittCam logo (top-left, links to Ana sayfa); the company tile ("Atölyem / Operatör") moves to the **bottom** of the sidebar as the account/workspace row (above "Menüyü daralt"); mobile drawer and the 390 px top bar show the mark
+- [ ] favicon + app icons (`app/icon.svg`, `apple-icon`, 32/180/512 px, light and dark variants), `theme-color` meta for both themes, page titles "<Sayfa> · NittCam"
+- [ ] brand section in `/dev/ui` (mark, wordmark, clear space, on light/dark/accent backgrounds); `ui-conventions` skill gains a short "Brand" paragraph (where the logo may appear, never recoloured outside tokens)
+Tester focus: logo crisp at 1× and 2× in both themes; collapsed sidebar shows the mark only; favicon visible in the tab; axe (logo link has an accessible name "NittCam, ana sayfa"); shell baselines updated on purpose.
+
+### T194a Shell and home declutter, domain icons   [status: todo]
+Spec: §3.4, §3.7 · Depends: T194 · Owner: FQ4 ("Oluştur" removal only)
+Acceptance:
+- [ ] one primary "Yeni proje" per screen: the sidebar button stays; the Ana sayfa header button is removed while the sidebar is visible (kept below 768 px, where the sidebar is a drawer); the empty state keeps its own CTA
+- [ ] nav: "Oluştur" is removed as a separate item (it opens the same wizard as "Yeni proje"; a new unsaved project highlights "Projeler"); items that are not built yet (Şablonlar, Ayarlar) move to a muted "Yakında" group at the bottom instead of sitting between live items with badges
+- [ ] Ana sayfa: the placeholder KPI "Ortalama fire / Yakında" is hidden until it has data (3 KPI cards, or 4 once T180 lands); with zero projects the KPI row is replaced by a 3-step start strip ("1 Makine · 2 Kesim listesi · 3 G-code") with a line illustration built from canvas tokens
+- [ ] 6 domain icons as SVG components in `packages/ui` (24 px grid, 1.5 px stroke, lucide-compatible): router/spindle (replaces the generic chip for machines), sheet/plaka, grain/damar, nesting/dizilim, toolpath/takım yolu, air cut; used in nav, machine rows, quick actions and wizard steps
+- [ ] wording: "export" in UI text becomes "dışa aktarma" everywhere ("Bu hafta dışa aktarma", "Henüz dışa aktarma yok"); new projects are named "Adsız proje" + counter instead of a date-time string, and the name field is focused and selected on the first wizard step
+Tester focus: exactly one accent-filled "Yeni proje" on Ana sayfa at 1440; nav item count and active state through a new-project flow; no "export" word left in `tr.json` values (grep); icons readable at 16/20/24 px in both themes.
+
+### T195 Typography: mono numerics, type scale tune   [status: todo]
+Spec: §3.7 · Depends: T100 · Decision: D-032 (OFL fonts allowed)
+Acceptance:
+- [ ] a mono family via `next/font` (Geist Mono or JetBrains Mono, OFL-1.1, Turkish glyphs İ ı Ş ğ checked) as `--font-mono`; used for G-code, file names/hashes, canvas dimension labels and the coordinate read-outs; no fallback to Consolas/Courier on Windows
+- [ ] page titles drop one step (30 → 24 px on desktop, 20 px on phones) and the wizard step title is merged with the stepper's active label (no second H1 under the stepper); KPI numbers use `text-3xl` tabular figures with the unit in `fg-muted`
+- [ ] `Measure` text component (value + unit, Turkish formatting, tabular, mono optional) replaces hand-formatted measurement strings on Makineler, wizard summaries and the simulation "Özet"
+- [ ] a `data-density="compact"` scope in tokens (control height 32 px, table row 36 px, panel padding 12 px) usable by a container; **not** a user setting yet (that stays in T183)
+Tester focus: font files are self-hosted (no request to a font CDN); Turkish capital İ renders in mono; gallery shows both densities; contrast test still green; baselines updated on purpose.
+
+### Batch B4b: T196–T199 (canvas language, workspace layout, notices)
+
+### T196 Canvas visual language v1 (layout, simulation, sheet preview)   [status: todo]
+Spec: §2.4, §3.6, §6.5 · Depends: T110, T195
+Acceptance:
+- [ ] part label = number + **name** and "W × H" in mono when the part is large enough on screen; falls back to the number only, then to nothing (no overflowing text); the same rule in layout and simulation
+- [ ] sheet shows its real size: dimension labels on the top and left edges ("2.800" / "2.070"), an origin marker, a scale bar; step 1 "Önizleme" shows the sheet with margin, dimensions, the table outline with a label and the grain as a fine line texture instead of one large arrow
+- [ ] dark theme: `sim-part` / `sim-part-stroke` / `sheet` / `canvas` re-tuned so a part is clearly separable from the sheet and the sheet from the well (non-text contrast ≥ 3:1 between adjacent fills or their strokes); added to `tokens.test.ts`
+- [ ] simulation at t = 0 shows the whole toolpath as a faint ghost (cut = accent 35 %, rapid = dashed) and the cut-order numbers, so the screen is never an empty sheet; played moves draw at full strength over the ghost
+- [ ] "Diz" result: parts fade/settle in (≤ 240 ms total, staggered, off with reduced motion); utilisation shown as a thin bar per plate tab (accent fill, `warning` under 50 %)
+Tester focus: screenshots layout + simulation, light/dark, 1440/390; label fallback at 3 zoom levels; contrast test; reduced-motion run has no animation; golden files untouched (UI only).
+
+### T197 Workspace layout for Dizilim and Simülasyon (desktop)   [status: todo]
+Spec: §3.6 · Depends: T109, T195
+Acceptance:
+- [ ] `WorkspaceLayout` in `apps/web/components/wizard/`: left settings panel (300 px, collapsible, compact density), centre canvas that **fills the remaining viewport height** (no page scroll at ≥ 1024 px on steps 3 and 4; panels scroll inside themselves), right inspector (280 px, collapsible) for the selected part / G-code
+- [ ] canvas toolbar floats on the canvas (top-left: plate tabs; top-right: zoom/fit/grid; bottom-left: legend as a popover; bottom-right: cursor/scale), replacing the rows of controls above and below it; "Parça seç" select and the text summary move into the inspector
+- [ ] simulation: transport bar docks at the bottom of the canvas, the depth strip sits directly above it; G-code panel is the right inspector with the current line highlighted
+- [ ] the wizard header is one row (project name + stepper + undo/redo) on ≥ 1280 px so the canvas gets ≥ 620 px of height at 1440 × 900
+- [ ] this layout is the base the drawing board (T124) and 3D preview (T152, T160) plug into: exported with slots `left`, `canvas`, `right`, `canvasOverlay`
+Tester focus: at 1440 × 900 and 1024 × 768 the whole sheet is visible without scrolling on steps 3 and 4; panels collapse/expand with keyboard; existing layout/simulation e2e (drag, lock, play) stay green; axe.
+
+### T198 Workspace on phone and tablet: canvas first   [status: todo]
+Spec: §3.7 · Depends: T197
+Acceptance:
+- [ ] below 1024 px steps 3 and 4 show the **canvas first** (≥ 55 % of the viewport height), with settings and inspector as bottom sheets opened from a two-button bar ("Ayarlar", "Parça / G-code"); "Diz" stays reachable without scrolling
+- [ ] the sticky wizard footer respects `env(safe-area-inset-bottom)` and never covers the last control of a panel (content gets matching bottom padding)
+- [ ] pinch zoom and two-finger pan on the canvas do not scroll the page; one-finger drag on empty canvas scrolls the page only when the canvas is not zoomed
+- [ ] 768 px (tablet, landscape and portrait) checked as a first-class size: left panel collapses to an icon rail
+Tester focus: touch emulation at 390 × 844 and 768 × 1024: nest, select a part, play the simulation without scrolling past settings; nothing hidden behind the footer; visual both themes.
+
+### T199 Notice hierarchy: fewer, calmer warnings   [status: todo]
+Spec: §7.4, §8.2 · Depends: T105, T108 · Owner: FQ3
+Acceptance:
+- [ ] one rule, documented in `ui-conventions`: **danger** = blocks the action or risks the machine now; **warning** = needs the operator's confirmation once; **info** = context. At most one Callout per screen region; repeats become a status chip that opens the detail in a popover
+- [ ] "profil doğrulanmadı" is shown as one persistent `warning` chip in the wizard header (all steps) with the reasons in a popover; the separate callouts on step 1 and the red line in the simulation machine card are replaced by it. The export step keeps its full notice and the mandatory acknowledgement checkbox (unchanged behaviour and text); only its tone changes from danger to warning if the owner agrees (FQ3)
+- [ ] verification page: the right-hand reasons panel and the in-step warning are merged; the acknowledgement checkbox row is a plain row, not a second yellow box
+- [ ] no safety text is removed: every sentence that exists today is still reachable in one click, and the G-code header warning is unchanged
+Tester focus: **safety**: an unverified profile still cannot be downloaded without the acknowledgement; every previous warning sentence is found in the UI (string list from `tr.json`); callouts per screen region ≤ 1; axe (popover reachable by keyboard).
+
+---
+
 ## M3: Kesim listesi, malzeme kütüphanesi, damar kadranı (exit: a free-angle grain set on sheet and part is respected in nesting, preview and G-code; the cut list is fully editable in the app)
 
 ### Batch B5: T112–T114 (grain angle engine)
@@ -201,6 +278,7 @@ Tester focus: property tests for the grain rule; a fixed 30° part never appears
 Spec: §3.6, §3.7 · Depends: T101
 Acceptance:
 - [ ] circular dial like an angle wheel: drag the handle around the circle, click on the ring to jump, numeric input next to it (°, decimal comma), quick buttons 0° / 45° / 90° / 135°
+- [ ] look (Fable review #1): 120 px dial (72 px variant for popovers and table cells); outer ring with ticks every 15° and longer ticks + labels at 0/45/90/135; the **handle is a diameter line with a grip at both ends** (a grain has no direction, so both ends drag and "30° = 210°" is seen, not explained); the disc is filled with fine grain lines clipped to the circle; the angle read-out sits in the centre in mono ("30°"); the tick under a snap lights up in accent while snapped
 - [ ] snaps to multiples of 45° within ±3° while dragging (hold Alt to disable); grain lines inside the dial rotate live
 - [ ] keyboard: role `slider`, arrows ±1°, Shift+arrows ±15°, Home = 0°; aria-valuetext "30 derece"
 - [ ] angle normalised to [0, 180) with a visible note that 30° and 210° are the same grain; `disabled` and "no grain" states
@@ -210,7 +288,7 @@ Tester focus: drag interaction e2e (mouse + touch emulation), keyboard steps, sn
 ### T116 Grain in the UI: sheet, parts, layout and simulation   [status: todo]
 Spec: §3.6, §4.1, §6.5 · Depends: T114, T115
 Acceptance:
-- [ ] wizard step 1: GrainDial for the sheet (only for wood/veneered materials; "damar yok" otherwise)
+- [ ] wizard step 1: GrainDial for the sheet (only for wood/veneered materials; "damar yok" otherwise); the sheet preview (T196) redraws its grain texture live while the dial is dragged
 - [ ] cut list: grain column shows a mini arrow + angle and fixed/free toggle; editing opens a popover with the GrainDial; bulk edit sets the same grain
 - [ ] layout view + simulation: sheet grain texture lines at the sheet angle; each part shows a grain arrow at its effective angle (part grain + rot); rotated parts drawn rotated
 Tester focus: visual check that arrows match angles (screenshot at 0/30/90°); editing grain is one undo step; free parts show no arrow.
@@ -232,6 +310,7 @@ Acceptance:
 - [ ] "+ Satır ekle" and Enter on the last row add a part; each commit = one command, one undo step
 - [ ] 1 000 rows: scroll ≥ 50 fps, edit commit < 50 ms
 - [ ] 390 px: card list mode instead of the grid
+- [ ] compact density (T195): 36 px rows, numbers right-aligned in tabular figures, the four edge-band columns collapsed into one "Bant" cell with a 4-side glyph (click opens the four inputs), so name/W/H/qty/grain fit without horizontal scroll at 1024 px
 Tester focus: keyboard-only edit flow e2e; perf trace with 1 000 rows; undo/redo after a series of edits; visual both widths.
 
 ### T119 Row actions, multi-select and bulk edit   [status: todo]
@@ -287,6 +366,7 @@ Konva stays the 2D engine (§8.3). Every edit is a command (§5.1). Snap/geometr
 Spec: §4.2 · Depends: T110
 Acceptance:
 - [ ] "Çizim" view in the Parts step (tabs: Liste / Çizim, same data, §3.6); Konva stage in mm, Y up, pan (space-drag, middle mouse, two-finger), zoom to cursor (wheel, pinch), fit-to-content
+- [ ] built on `WorkspaceLayout` (T197): vertical tool rail on the left edge of the canvas (40 px buttons, tooltip + shortcut letter), compact inspector on the right, a status bar under the canvas (cursor X/Y in mono, snap toggles, zoom %, units); dot grid rather than lines at the finest level; canvas language from T196 (dimension labels in mono, accent selection, `info` colour for snap guides)
 - [ ] adaptive mm grid (1/10/100), rulers, cursor coordinates, scale bar; theme colours
 - [ ] editor store: tool, selection, hover, viewport; project data only through commands
 Tester focus: pan/zoom with mouse + touch emulation; coordinates correct at 3 zoom levels; visual both themes.
@@ -335,6 +415,7 @@ Tester focus: arc radius from properties = typed radius; G-code contains G2/G3 f
 Spec: §4.4 · Depends: T127
 Acceptance:
 - [ ] part: name, qty, W/H/R (parametric), grain (GrainDial), operation summary; segment: length, angle, radius; vertex: X/Y
+- [ ] the panel is the right inspector of `WorkspaceLayout` (T197) in compact density (32 px controls, label left / value right rows, collapsible groups)
 - [ ] `setSegmentLength` rule: end vertex moves along the segment, the neighbour follows (§4.4), no solver; `moveVertex`
 - [ ] edits are commands, one undo step each; invalid values rejected with Turkish errors
 Tester focus: segment-length rule on 3 shapes (hand-checked coordinates); undo granularity; keyboard use of the panel.
@@ -520,6 +601,8 @@ Acceptance:
 - [ ] `Preview3D` lazy chunk (not in the initial bundle); WebGL2 capability check → fallback to the 2D view with a Turkish note
 - [ ] orbit 360°, zoom, pan; view presets (Üst, İzometrik, Ön), reset; damping off with reduced motion; render on demand (no idle GPU use)
 - [ ] table + sheet with real dimensions and thickness, shadows/lighting tasteful, works in light and dark UI
+- [ ] studio look (Fable review #1): soft vertical gradient background from tokens (never pure black/white), ground grid that fades with distance, contact shadow under the sheet, neutral tone mapping, thin edge lines on parts for a technical-drawing feel; a **view cube** (Üst/Ön/Sağ + corners) in the top-right corner drives the presets; the first open eases from top view to isometric (≤ 400 ms, off with reduced motion)
+- [ ] rendered inside the `canvas` slot of `WorkspaceLayout` (T197) with the same floating toolbar positions as the 2D views; a 2D/3D segmented switch in the canvas toolbar
 Tester focus: fallback with WebGL disabled (Chromium flag); bundle analysis shows the 3D chunk is lazy; controls with mouse/touch.
 
 ### T153 Part geometry: extrusion, cutouts, holes, pockets   [status: todo]
@@ -535,6 +618,7 @@ Spec: §3.6, §3.8 · Depends: T153
 Acceptance:
 - [ ] procedural textures generated in code (MDF, plywood, melamine colours, acrylic): no image downloads; grain stripes oriented by the sheet grain angle and each part's effective grain angle; edge bands coloured on banded edges
 - [ ] "Basit mod": flat colours, no shadows
+- [ ] materials are matte and slightly desaturated (no glossy "game" look); the tool and toolpath use the `sim-tool` / `sim-rapid` tokens so 2D and 3D share one colour language
 Tester focus: screenshots at grain 0/30/90°; edge band visible; simple mode visibly cheaper (draw calls/fps).
 
 ### Batch B20: T155–T157 (interaction and playback)
@@ -660,7 +744,7 @@ Tester focus: a fixed-grain part cannot be rotated off-grain by the UI; drag e2e
 ### T171 Layout view polish: numbers, stats, legend   [status: todo]
 Spec: §2.4, §6.5 · Depends: T170
 Acceptance:
-- [ ] part numbers consistent with PDF/labels, per-sheet stats (parts, utilisation, cut length), legend, minimap for many sheets
+- [ ] part numbers consistent with PDF/labels, per-sheet stats (parts, utilisation, cut length), legend, minimap for many sheets (labels, dimensions and the utilisation bar already come from T196; this task adds the rest)
 Tester focus: numbering consistent across layout, simulation, 3D; visual.
 
 ---
@@ -725,6 +809,7 @@ Tester focus: status transitions; re-export of an old revision gives the same ha
 Spec: §3.4 · Depends: T177, T178
 Acceptance:
 - [ ] recent projects, machines needing verification, waste summary chart (last 30 days, accessible colours), quick actions
+- [ ] project cards use a larger layout thumbnail (16:10, sheet with material tint and part outlines, plate count as stacked sheets) or the 3D PNG from T160 when one exists
 Tester focus: numbers match seeded data; chart readable in dark mode; axe.
 
 ### Batch B28: T181–T183 (machines and settings)
@@ -744,7 +829,7 @@ Tester focus: defaults used by a new project; upload limits; axe.
 ### T183 Ayarlar: appearance and preferences   [status: todo]
 Spec: §3.7 · Depends: T182
 Acceptance:
-- [ ] theme, density (comfortable/compact), 3D simple mode, reduced motion override, shortcuts list
+- [ ] theme, density (comfortable/compact; the compact tokens exist since T195, this adds the user setting), 3D simple mode, reduced motion override, shortcuts list
 Tester focus: preferences persist and apply on reload; compact density screenshots.
 
 ---
@@ -782,7 +867,7 @@ Tester focus: kill the server mid-edit → queue → recover without loss; confl
 ### T188 Responsive and touch pass   [status: todo]
 Spec: §3.7 · Depends: T185
 Acceptance:
-- [ ] 390 / 768 / 1024 / 1440 layouts for every route; touch for editor pan/zoom/select and 3D orbit; tablet workshop use (large hit targets ≥ 40 px)
+- [ ] 390 / 768 / 1024 / 1440 layouts for every route; touch for editor pan/zoom/select and 3D orbit; tablet workshop use (large hit targets ≥ 40 px). The canvas-first rule for steps 3–4 is already done in T198; this pass covers the remaining routes and the editor
 Tester focus: screenshot matrix of all routes at 4 widths; touch emulation e2e.
 
 ### T189 G-code regression set for the new operations   [status: todo]
