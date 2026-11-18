@@ -60,6 +60,7 @@ import {
 import { claimPageKeys } from '../../lib/shortcuts';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
+import { miniBarRailClear } from '../../lib/editor/mini-bar';
 import {
   SNAP_TOGGLES,
   editorReducer,
@@ -101,6 +102,8 @@ const PASTE_OFFSET = 20;
 const BAND_PX = 48;
 /** Phone mini-toolbar over the selection (5 × 32 px buttons, separator, padding). */
 const MINI_BAR = { w: 186, h: 38 };
+/** Left edge of the floating tool rail inside the canvas, px. */
+const RAIL_LEFT = RULER_PX + 8;
 /** Snap capture distance on screen, px. */
 const SNAP_PX = 10;
 /** Pointer movement that turns a click into a drag, px. */
@@ -163,6 +166,21 @@ export function DrawingBoard({
 }) {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  // Tool rail's rendered size: the phone mini-toolbar is kept clear of it (B10a).
+  const [railEl, setRailEl] = useState<HTMLDivElement | null>(null);
+  const [railSize, setRailSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!railEl) return;
+    const measure = () => {
+      const w = railEl.offsetWidth;
+      const h = railEl.offsetHeight;
+      setRailSize((r) => (r.w === w && r.h === h ? r : { w, h }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(railEl);
+    return () => ro.disconnect();
+  }, [railEl]);
   const [colors, setColors] = useState<EditorColors | null>(null);
   const [cursor, setCursor] = useState<Pt | null>(null);
   const [marquee, setMarquee] = useState<Box | null>(null);
@@ -863,7 +881,16 @@ export function DrawingBoard({
     let top = tl.y - h - 8;
     if (top < minTop) top = br.y + 8;
     top = Math.min(Math.max(top, minTop), Math.max(minTop, maxTop));
-    const left = Math.min(Math.max((tl.x + br.x) / 2 - w / 2, RULER_PX + 4), size.w - w - 4);
+    const maxLeft = size.w - w - 4;
+    let left = Math.min(Math.max((tl.x + br.x) / 2 - w / 2, RULER_PX + 4), maxLeft);
+    // Never cover the tool rail (its tools stay tappable): shift right of it, else below it.
+    const rail = miniBarRailClear(
+      { left, top, w, h },
+      { left: RAIL_LEFT, top: minTop, w: railSize.w, h: railSize.h },
+      { maxLeft, maxTop },
+    );
+    left = rail.left;
+    top = rail.top;
     miniBar = (
       <div
         className={`${floating} absolute z-20 p-0.5`}
@@ -887,7 +914,9 @@ export function DrawingBoard({
         aria-label={t.tools.label}
         aria-orientation="vertical"
         className={`${floating} absolute z-10 flex flex-col gap-0.5 p-0.5`}
-        style={{ top: RULER_PX + 8 + (viewSwitch ? BAND_PX : 0), left: RULER_PX + 8 }}
+        style={{ top: RULER_PX + 8 + (viewSwitch ? BAND_PX : 0), left: RAIL_LEFT }}
+        ref={setRailEl}
+        data-testid="editor-tool-rail"
       >
         {railTool('select', t.tools.select, 'V', <MousePointer2 aria-hidden />)}
         {railTool('pan', t.tools.pan, 'H', <Hand aria-hidden />)}

@@ -386,8 +386,9 @@ function WizardSession({
       description: messages.feedback.saveErrorText,
     });
   }, [saveFailed, messages.feedback.saveError, messages.feedback.saveErrorText]);
-  // Top-bar title (T103): the project name once it is saved, "Yeni proje" before.
-  useShellTitle(session.projectId ? session.name : null);
+  // Top-bar title (T103): the project name once it is saved, "Yeni proje" before (phones show
+  // "Adsız proje" until the first save, B10a).
+  useShellTitle(session.projectId ? session.name : null, t.defaultName);
   if (project.machine.machineId !== machineId) setMachineId(project.machine.machineId);
 
   const known = machines.some((m) => m.id === machineId);
@@ -1086,6 +1087,7 @@ function CompactStepper({
         align="start"
         className="w-[min(18rem,calc(100vw-2rem))] p-1.5"
         data-testid="wizard-steps-popover"
+        aria-label={t.label}
         onCloseAutoFocus={(e) => {
           // A chosen step moves focus to its heading (go), not back to the trigger.
           if (chosen.current) {

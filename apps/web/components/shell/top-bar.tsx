@@ -112,13 +112,13 @@ export function TopBar({ t, onOpenMenu, search, themeExtra }: TopBarProps) {
       {/* Phones (< 640 px): no breadcrumb, the page shows its own title (B4b); a page title set
           by the page (the project name, T240) stays visible here. */}
       <div className="flex min-w-0 flex-1 sm:hidden">
-        {slots?.title ? (
+        {slots?.title || slots?.placeholder ? (
           <span
             data-testid="shell-title-mobile"
-            title={slots.title}
+            title={slots.title ?? slots.placeholder ?? undefined}
             className="truncate px-1 text-sm font-semibold text-fg"
           >
-            {slots.title}
+            {slots.title ?? slots.placeholder}
           </span>
         ) : null}
       </div>

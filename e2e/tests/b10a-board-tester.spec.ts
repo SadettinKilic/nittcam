@@ -351,10 +351,6 @@ test.describe('B10a tester T242 inspector actions', () => {
   test('390: mini-toolbar mirror acts and the selection stays; tap targets ≥ 32 px', async ({
     page,
   }) => {
-    test.fail(
-      true,
-      'B10a-BUG3: the phone mini-toolbar covers the tool rail (rect/line tools); remove test.fail once fixed',
-    );
     const canvas = await openBoard(page, 390, 844);
     const sheet = await openWorkspacePanel(page, 'left');
     await sheet.getByTestId('editor-part-list').getByRole('button').last().click();
@@ -388,10 +384,6 @@ test.describe('B10a tester T242 inspector actions', () => {
     test(`axe: board with a selection and the shortcuts dialog, 1440 ${scheme}`, async ({
       page,
     }) => {
-      test.fail(
-        true,
-        'B10a-BUG1: shortcuts dialog list (.max-h-[60vh]) overflows and is not keyboard-focusable (axe scrollable-region-focusable); remove test.fail once fixed',
-      );
       await page.emulateMedia({ colorScheme: scheme });
       await openBoard(page, 1440, 900);
       await axeClean(page); // summary state
@@ -405,10 +397,6 @@ test.describe('B10a tester T242 inspector actions', () => {
     });
 
     test(`axe: phone board with mini-toolbar and step popover, 390 ${scheme}`, async ({ page }) => {
-      test.fail(
-        true,
-        'B10a-BUG2: phone step popover dialog has no accessible name (axe aria-dialog-name); remove test.fail once fixed',
-      );
       await page.emulateMedia({ colorScheme: scheme });
       await openBoard(page, 390, 844);
       const sheet = await openWorkspacePanel(page, 'left');
