@@ -445,7 +445,7 @@ test.describe('B10a tester T243 reference frame', () => {
         ).data;
         const sx = Math.round((p.x - r.left) * k);
         const sy = Math.round((p.y - r.top) * k);
-        const size = Math.round(30 * k);
+        const size = Math.round(34 * k);
         const d = ctx.getImageData(sx, sy - size, size, size).data;
         let ink = 0;
         for (let i = 0; i < d.length; i += 4) {
@@ -477,9 +477,10 @@ test.describe('B10a tester T243 reference frame', () => {
     // Origin in page coordinates (data-view is relative to the canvas element).
     const ox = cb.x + v.x;
     const oy = cb.y + v.y;
-    const ink = await inkAround(page, canvas, ox + 2, oy - 2);
+    const ink = await inkAround(page, canvas, ox - 4, oy + 4);
     test.info().annotations.push({ type: 'origin-ink', description: String(ink) });
-    expect(ink).toBeGreaterThan(20);
+    // Two 24 px arms (≥ 48 px of stroke) plus arrow heads and labels.
+    expect(ink).toBeGreaterThan(40);
   });
 
   test('fit with parts: the parts fill the canvas (scale well above the sheet fit)', async ({
