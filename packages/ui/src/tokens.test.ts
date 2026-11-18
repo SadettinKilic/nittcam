@@ -80,11 +80,7 @@ const TEXT_PAIRS: Array<[string, string]> = [
     [`${k}-text`, 'surface'],
     [`${k}-text`, 'bg'],
     [`${k}-text`, `${k}-subtle`],
-    // legacy aliases used by M1 screens
   ]),
-  ['ok', 'ok-bg'],
-  ['warn', 'warn-bg'],
-  ['danger-text', 'danger-bg'],
 ];
 
 /** Non-text UI pairs (focus ring, solid controls) that must reach 3:1 (WCAG 1.4.11). */

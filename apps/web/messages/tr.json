@@ -846,7 +846,7 @@
   "projects": {
     "title": "Projeler",
     "subtitle": "Kayıtlı projeleriniz. Bir projeyi açıp kaldığınız yerden devam edin.",
-    "newProject": "+ Yeni proje",
+    "newProject": "Yeni proje",
     "search": "Projelerde ara",
     "searchPlaceholder": "Ad, makine veya malzeme",
     "loading": "Projeler yükleniyor…",
@@ -872,7 +872,6 @@
     },
     "open": "Aç",
     "copy": "Kopyala",
-    "copying": "Kopyalanıyor…",
     "copyName": "{name} (kopya)",
     "copied": "“{name}” oluşturuldu.",
     "copyFailed": "Proje kopyalanamadı. Tekrar deneyin.",
@@ -1410,7 +1409,12 @@
       "placeholder": "Komut ara…",
       "empty": "Sonuç yok.",
       "group": "Sayfalar",
-      "items": ["Ana sayfa", "Projeler", "Makineler", "Şablonlar"]
+      "items": [
+        "Ana sayfa",
+        "Projeler",
+        "Makineler",
+        "Şablonlar"
+      ]
     }
   }
 }

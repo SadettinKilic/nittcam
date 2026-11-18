@@ -150,17 +150,8 @@
   --color-info-subtle: var(--color-info-50);
   --color-info-border: var(--color-info-200);
 
-  /* Legacy names used by the M1 screens; they alias the roles until B3/B4 migrate them. */
-  --color-sidebar: var(--color-surface-subtle);
-  --color-ok: var(--color-success-text);
-  --color-ok-bg: var(--color-success-subtle);
-  --color-warn: var(--color-warning-text);
-  --color-warn-bg: var(--color-warning-subtle);
-  --color-danger-bg: var(--color-danger-subtle);
-  --color-info-bg: var(--color-info-subtle);
-
   /* ---- Canvas: wizard preview, layout view and simulation (T013, T020, T110) ------------- */
-  /* Konva reads these at runtime and re-reads them when the theme changes (useCanvasColors). */
+  /* Konva reads these at runtime and re-reads them when the theme changes (onThemeChange). */
   --color-canvas: #eceff3;
   --color-sheet: #f6f8fb;
   --color-sheet-waste: #e6eaf0;
@@ -193,7 +184,6 @@
   --radius-lg: 0.625rem;
   --radius-xl: 0.875rem;
   --radius-2xl: 1.125rem;
-  --radius-card: 0.75rem;
 
   /* ---- Spacing: 4 px base; control heights keep touch targets ≥ 40 px at md (spec §3.7). -- */
   --spacing: 0.25rem;

@@ -4,6 +4,13 @@ import type { ExportRecord } from './exports-api';
 
 export type ProjectStatus = 'draft' | 'produced' | 'completed';
 
+/** Badge tone of a project status (Ana sayfa, Projeler). */
+export const PROJECT_STATUS_TONE: Record<ProjectStatus, 'neutral' | 'info' | 'success'> = {
+  draft: 'neutral',
+  produced: 'info',
+  completed: 'success',
+};
+
 export interface ProjectListItem {
   id: string;
   name: string;
