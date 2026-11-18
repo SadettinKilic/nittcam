@@ -1279,6 +1279,7 @@
       "status": "Durum"
     },
     "brand": {
+      "wordmark": "Yazı logosu (uygulama kabuğu): NittCAM ve kısa NC",
       "full": "İşaret ve yazı markası",
       "sizes": "Boyutlar (20 / 24 / 32 px) ve yalnız işaret",
       "variants": "İşaret biçimleri: karo, sade, tek renk",

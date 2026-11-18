@@ -121,3 +121,51 @@ export function Logo({
     </span>
   );
 }
+
+const WORDMARK_SIZE: Record<LogoSize, string> = {
+  20: 'text-base',
+  24: 'text-lg',
+  32: 'text-2xl',
+};
+
+export interface WordmarkProps {
+  /** Cap height class step: 20 / 24 / 32 match the old mark sizes. */
+  size?: LogoSize;
+  /** `full` = "NittCAM", `short` = "NC" (collapsed rail, very narrow top bar). */
+  variant?: 'full' | 'short';
+  /** `brand`: "CAM" in `accent-text`; `mono`: one colour (`currentColor`). */
+  tone?: 'brand' | 'mono';
+  /** Text parts from the caller (default "Nitt" + "CAM"). */
+  name?: readonly [string, string];
+  className?: string;
+}
+
+/**
+ * Text logo (T194b): "NittCAM" in the brand font (Inter 800), tight tracking and a subtle
+ * italic skew, "CAM" in `accent-text`. Decorative: the accessible name sits on the link.
+ */
+export function Wordmark({
+  size = 24,
+  variant = 'full',
+  tone = 'brand',
+  name = ['Nitt', 'CAM'],
+  className,
+}: WordmarkProps) {
+  const [a, b] = variant === 'short' ? [name[0].charAt(0), name[1].charAt(0)] : name;
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="brand-wordmark"
+      data-variant={variant}
+      className={cn(
+        'inline-block -skew-x-8 px-0.5 leading-none font-extrabold tracking-[-0.04em] whitespace-nowrap select-none',
+        WORDMARK_SIZE[size],
+        tone === 'mono' ? 'text-current' : 'text-fg',
+        className,
+      )}
+    >
+      {a}
+      <span className={tone === 'mono' ? undefined : 'text-accent-text'}>{b}</span>
+    </span>
+  );
+}

@@ -141,6 +141,8 @@ export {
   type LogoMarkProps,
   type LogoProps,
   type LogoSize,
+  Wordmark,
+  type WordmarkProps,
 } from './components/logo';
 export {
   AirCutIcon,

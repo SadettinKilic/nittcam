@@ -35,11 +35,11 @@ test.describe('app shell', () => {
     expect(rowY).toBeLessThan(await top(page.getByTestId('sidebar-toggle')));
     await brand.click();
     await expect(page).toHaveURL(/\/$/);
-    // Collapsed rail: mark only.
+    // Collapsed rail: short wordmark "NC" only (T194b).
     await page.getByTestId('sidebar-toggle').click();
-    await expect(sidebar.getByTestId('brand-logo').first()).toBeHidden();
-    await expect(sidebar.locator('[data-testid=brand-logo]:visible')).toHaveCount(1);
-    await expect(sidebar.locator('[data-testid=brand-logo]:visible')).not.toContainText('Nitt');
+    await expect(sidebar.getByTestId('brand-wordmark').first()).toBeHidden();
+    await expect(sidebar.locator('[data-testid=brand-wordmark]:visible')).toHaveCount(1);
+    await expect(sidebar.locator('[data-testid=brand-wordmark]:visible')).not.toContainText('Nitt');
     await page.getByTestId('sidebar-toggle').click();
   });
 
@@ -156,6 +156,7 @@ test.describe('app shell', () => {
       await page.goto('/');
       await expect(page.getByTestId('shell-sidebar')).toBeHidden();
       await expect(page.getByTestId('shell-brand-mobile')).toBeVisible();
+      await expect(page.getByTestId('shell-brand-mobile')).toContainText('NittCAM');
       // Below 768 px the sidebar is a drawer, so the page keeps its own "Yeni proje".
       await expect(page.getByTestId('home-new-project').filter({ visible: true })).toBeVisible();
       await page.getByRole('button', { name: tr.shell.openMenu }).click();

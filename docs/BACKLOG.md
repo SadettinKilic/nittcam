@@ -202,7 +202,7 @@ Tester focus: font files are self-hosted (no request to a font CDN); Turkish cap
 
 ### Batch B4b: T194b, T196–T199 (wordmark, canvas language, workspace layout, notices)
 
-### T194b Wordmark: bold, slightly italic "NittCAM" text logo   [status: todo]
+### T194b Wordmark: bold, slightly italic "NittCAM" text logo   [status: done]
 Spec: §3.7 · Depends: T194 · Owner: request 2026-11-18
 Acceptance:
 - [ ] the shell logo is a text wordmark "NittCAM" ("CAM" in capitals) in the brand font, bold (700–800) with a subtle italic skew; tokens only, works in light and dark
