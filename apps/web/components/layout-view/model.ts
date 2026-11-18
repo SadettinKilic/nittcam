@@ -122,10 +122,12 @@ export function fitView(
   width: number,
   height: number,
   pad = 30,
+  /** Extra vertical room (px, top and bottom alike) for floating toolbars, T244. */
+  band = 0,
 ): ViewState {
   const scale = Math.max(
     0.0001,
-    Math.min((width - 2 * pad) / sheet.width, (height - 2 * pad) / sheet.height),
+    Math.min((width - 2 * pad) / sheet.width, (height - 2 * (pad + band)) / sheet.height),
   );
   return {
     scale,

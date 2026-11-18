@@ -304,8 +304,13 @@ test.describe('T013 tester: sheet tabs', () => {
       await expect(tab).toHaveAttribute('aria-selected', 'true');
       const tabText = await tab.innerText();
       const tabWaste = /fire %([\d.,]+)/.exec(tabText)?.[1];
-      const summary = await page.getByTestId('layout-summary').innerText();
-      const m = new RegExp(`Plaka ${i + 1}: (\\d+) parça.*\\(%([\\d.,]+)\\)`).exec(summary);
+      // T244: the per-plate summary lives once, in the left list.
+      const summary = await page
+        .getByTestId('nesting-sheet-lines')
+        .getByRole('listitem')
+        .nth(i)
+        .innerText();
+      const m = new RegExp(`Plaka ${i + 1}: (\\d+) parça, fire %([\\d.,]+)`).exec(summary);
       expect(m, summary).not.toBeNull();
       expect(tabWaste).toBe(m?.[2]);
       expect(await page.getByTestId('layout-canvas').getAttribute('data-part-count')).toBe(m?.[1]);

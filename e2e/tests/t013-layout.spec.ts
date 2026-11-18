@@ -155,8 +155,8 @@ test.describe('T013 layout view', () => {
     await expect(
       page.getByRole('tab', { name: new RegExp(fill(l.sheetTab, { n: 1 })) }),
     ).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('layout-summary')).toContainText('Plaka 1: 8 parça');
-    await expect(page.getByTestId('layout-summary')).toContainText(/Toplam: 1 plaka, fire %[\d,]+/);
+    await expect(page.getByTestId('nesting-sheet-lines')).toContainText('Plaka 1: 8 parça');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('1');
     await expect(page.getByTestId('nesting-waste')).toHaveText(/^%\d+(,\d)?$/);
     // T197: the legend is a popover on the canvas (bottom-left).
     await page.getByTestId('layout-legend-button').click();
@@ -301,7 +301,9 @@ test.describe('T013 layout view', () => {
       'data-part-count',
       String(counts[1]),
     );
-    await expect(page.getByTestId('layout-summary')).toContainText(`Plaka 2: ${counts[1]} parça`);
+    await expect(page.getByTestId('nesting-sheet-lines')).toContainText(
+      `Plaka 2: ${counts[1]} parça`,
+    );
     await page.getByRole('tab', { name: new RegExp(`^${fill(l.sheetTab, { n: 3 })}`) }).click();
     await expect(page.getByTestId('layout-canvas')).toHaveAttribute(
       'data-part-count',
