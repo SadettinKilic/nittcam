@@ -46,6 +46,8 @@ export interface EditorCanvasProps {
   draftLabel?: string | null;
   /** Canvas words of the drawing tools: the close glyph and the open-shape chip. */
   drawText?: { close: string; open: string };
+  /** Bend handles of the selected part (segment middles), board mm (T129). */
+  handles?: readonly Pt[];
 }
 
 type Ctx = CanvasRenderingContext2D;
@@ -295,6 +297,21 @@ function drawSnap(ctx: Ctx, p: EditorCanvasProps) {
   ctx.stroke();
 }
 
+/** Bend handles: round nodes (distinct from the square vertex nodes) at segment middles. */
+function drawHandles(ctx: Ctx, p: EditorCanvasProps) {
+  if (!p.handles || p.handles.length === 0) return;
+  ctx.lineWidth = 1.5;
+  for (const h of p.handles) {
+    const s = toScreen(p.view, h);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 4.5, 0, 2 * Math.PI);
+    ctx.fillStyle = p.colors.ruler;
+    ctx.fill();
+    ctx.strokeStyle = p.colors.selection;
+    ctx.stroke();
+  }
+}
+
 /** Adds one bulge segment a → b (screen space, Y flipped) to the current path. */
 function traceSegment(ctx: Ctx, a: Pt, b: Pt, bulge: number, v: Viewport) {
   const arc = arcOf(a, b, bulge);
@@ -495,6 +512,7 @@ export default function EditorCanvas(props: EditorCanvasProps) {
             drawLabels(ctx, props);
             drawSelection(ctx, props);
             drawMarquee(ctx, props);
+            drawHandles(ctx, props);
             drawDraft(ctx, props);
             drawSnap(ctx, props);
             drawRulers(ctx, props);

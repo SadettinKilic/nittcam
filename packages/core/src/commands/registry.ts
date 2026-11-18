@@ -9,6 +9,7 @@ import { validateProject, type ValidationContext, type ValidationIssue } from '.
 import {
   addPart,
   drawPart,
+  setSegmentBulge,
   duplicatePart,
   importCutList,
   mirrorPart,
@@ -42,6 +43,7 @@ export const COMMANDS = {
   setGrain,
   addPart,
   drawPart,
+  setSegmentBulge,
   updatePart,
   removePart,
   duplicatePart,

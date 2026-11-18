@@ -4,15 +4,22 @@
  */
 import { z } from 'zod';
 import { placeOutline, tidy } from '../../editor/draw';
+import { contour, normalize, orientation } from '../../geometry/polyline';
 import {
   contourSchema,
   rectParamsSchema,
+  deriveOutline,
   rectPartSchema,
+  type FreeformPart,
   type Part,
   type Project,
+  type RectPart,
 } from '../../schema';
 import { defineCommand } from '../types';
 import { freezeBoard } from './board';
+
+/** Largest bulge a bend may set (a 3° gap short of a full circle on one segment). */
+export const MAX_BULGE = 50;
 
 const coord = z.number({ error: 'must be a finite number (mm)' });
 
@@ -76,5 +83,57 @@ export const drawPart = defineCommand({
       };
     }
     draft.parts.push(part);
+  },
+});
+
+/**
+ * Bends one outline segment into an arc (T129, spec §4.4 "çizgiye eğim verme"): segment `index`
+ * runs from outline vertex `index` to the next one; `bulge` = tan(θ/4), 0 = straight again. A
+ * parametric rectangle becomes a freeform part first ("serbest şekle dönüştür"); the outline is
+ * re-normalised CCW. The board position stays.
+ */
+export const setSegmentBulge = defineCommand({
+  name: 'setSegmentBulge',
+  area: 'part',
+  description:
+    'Bend one segment of a part outline into an arc: bulge = tan(sweep/4) of the arc from vertex ' +
+    'index to the next vertex (0 = straight line). Rectangles become freeform parts.',
+  aiTool: false,
+  params: z.strictObject({
+    id: rectPartSchema.shape.id,
+    index: z.number().int({ error: 'segment index must be an integer' }).min(0),
+    bulge: z
+      .number({ error: 'bulge must be a finite number' })
+      .min(-MAX_BULGE, { error: `bulge must be between -${MAX_BULGE} and ${MAX_BULGE}` })
+      .max(MAX_BULGE, { error: `bulge must be between -${MAX_BULGE} and ${MAX_BULGE}` }),
+  }),
+  check: (project, params) => {
+    const part = project.parts.find((p) => p.id === params.id);
+    if (!part) return `no part with id "${params.id}"`;
+    const n = deriveOutline(part).length;
+    if (params.index >= n) return `segment index ${params.index} is out of range (0–${n - 1})`;
+    const vs = deriveOutline(part).map((v, i) =>
+      i === params.index ? { ...v, bulge: params.bulge } : v,
+    );
+    if (orientation(contour(vs)) === 'none') return 'the bent outline has no area';
+    return undefined;
+  },
+  apply: (draft, params) => {
+    freezeBoard(draft);
+    const at = draft.parts.findIndex((p) => p.id === params.id);
+    const part = draft.parts[at];
+    if (!part) return;
+    const vs = deriveOutline(part as Part).map((v, i) =>
+      i === params.index ? { x: v.x, y: v.y, bulge: params.bulge } : { ...v },
+    );
+    const outline = normalize(contour(vs), 'outer').vertices;
+    if (part.kind === 'freeform') {
+      part.outline = outline;
+      return;
+    }
+    // Rectangle → freeform: same fields, the outline is now the source.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- dropped rect-only fields
+    const { params: _rect, outline: _cache, kind: _kind, ...rest } = part as RectPart;
+    draft.parts[at] = { ...rest, kind: 'freeform', outline } as FreeformPart;
   },
 });

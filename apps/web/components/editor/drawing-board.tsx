@@ -3,8 +3,12 @@
 import {
   boardBox,
   boardParts,
+  arcOf,
+  bulgeFromSagitta,
   nextPartName,
+  segmentMidpoint,
   snap,
+  tidy,
   type Part,
   type Project,
   type SnapKind,
@@ -17,6 +21,7 @@ import {
   Maximize,
   MousePointer2,
   PenLine,
+  Spline,
   Square,
   ZoomIn,
   ZoomOut,
@@ -44,6 +49,7 @@ import {
   isDrawTool,
   parseTyped,
   preview,
+  type DraftView,
   type DrawDraft,
   type DrawStep,
   type DrawTool,
@@ -109,7 +115,9 @@ type Gesture =
   | { kind: 'press'; id: string; start: Pt; startScreen: Pt; additive: boolean }
   | { kind: 'move'; ids: string[]; start: Pt; anchor: Pt }
   /** Drawing-tool press; `before` is the draft to restore if a pinch takes over. */
-  | { kind: 'draw'; startScreen: Pt; placed: boolean; before: DrawDraft | null };
+  | { kind: 'draw'; startScreen: Pt; placed: boolean; before: DrawDraft | null }
+  /** Dragging a segment's bend handle (T129). */
+  | { kind: 'bend'; id: string; index: number; p0: Pt; p1: Pt; bulge: number };
 
 /** Board moves are kept to 0.01 mm (no float dust in the project). */
 function round(v: number): number {
@@ -201,9 +209,53 @@ export function DrawingBoard({
     ? null
     : draft?.kind === 'rect' && draftView.live.w !== undefined && draftView.live.h !== undefined
       ? sizeText(draftView.live.w, draftView.live.h)
-      : draftView.live.r !== undefined && draftView.live.r > 0
+      : draft?.kind === 'circle' && draftView.live.r !== undefined && draftView.live.r > 0
         ? `R ${formatMm(draftView.live.r)}`
         : null;
+
+  const selected = useMemo(() => parts.filter((p) => selection.has(p.id)), [parts, selection]);
+
+  // Bend handles (T129): with one part selected in Seç, a round node at every segment middle
+  // (on the arc for arcs); dragging it bends the segment (`setSegmentBulge`, one undo step).
+  const [bend, setBend] = useState<{ id: string; index: number; bulge: number; at: Pt } | null>(
+    null,
+  );
+  const bendHandles = useMemo(() => {
+    const part = selected.length === 1 ? selected[0] : undefined;
+    if (state.tool !== 'select' || !part || drag) return [];
+    const vs = part.outline;
+    return vs.map((a, i) => {
+      const b = vs[(i + 1) % vs.length] ?? a;
+      return {
+        id: part.id,
+        index: i,
+        p0: { x: a.x, y: a.y },
+        p1: { x: b.x, y: b.y },
+        bulge: a.bulge,
+        at: segmentMidpoint(a, b, a.bulge),
+      };
+    });
+  }, [state.tool, selected, drag]);
+  /** Live preview while bending: the outline with the new bulge, arc centre and radius. */
+  const bendView = useMemo((): DraftView | null => {
+    if (!bend) return null;
+    const part = parts.find((x) => x.id === bend.id);
+    if (!part) return null;
+    const vs = part.outline.map((v, i) => (i === bend.index ? { ...v, bulge: bend.bulge } : v));
+    const a = vs[bend.index];
+    const b = vs[(bend.index + 1) % vs.length];
+    const arc = a && b ? arcOf(a, b, bend.bulge) : undefined;
+    return {
+      vertices: vs,
+      closed: true,
+      rubber: null,
+      nodes: [],
+      closing: false,
+      open: false,
+      centre: arc?.center ?? null,
+      live: { r: arc ? tidy(arc.radius) : 0 },
+    };
+  }, [bend, parts]);
 
   // Selected ids that disappear (removed, undone) leave the selection.
   const ids = useMemo(() => project.parts.map((p) => p.id), [project.parts]);
@@ -389,6 +441,7 @@ export function DrawingBoard({
       else if (k === 'r' && !e.shiftKey) setTool('rect');
       else if (k === 'c' && !e.shiftKey) setTool('circle');
       else if (k === 'l' && !e.shiftKey) setTool('line');
+      else if (k === 'a' && !e.shiftKey) setTool('arc');
       else if (k === 'f') fit();
       else if (k === '+' || k === '=') zoomBy(1.25);
       else if (k === '-') zoomBy(1 / 1.25);
@@ -452,6 +505,14 @@ export function DrawingBoard({
         placed = true;
       }
       gesture.current = { kind: 'draw', startScreen: s, placed, before };
+      return;
+    }
+    // Bend handle of the selected part: ≥ 24 px hit area (44 px on touch).
+    const reach = e.pointerType === 'touch' ? 22 : 12;
+    const handle = bendHandles.find((h) => dist(toScreen(view, h.at), s) <= reach);
+    if (handle) {
+      gesture.current = { kind: 'bend', ...handle };
+      setBend({ id: handle.id, index: handle.index, bulge: handle.bulge, at: w });
       return;
     }
     const hit = hitPart(parts, w, 4 / view.scale);
@@ -554,6 +615,8 @@ export function DrawingBoard({
       const move = { kind: 'move' as const, ids, start: g.start, anchor: anchorOf(g.id, g.start) };
       gesture.current = move;
       setDrag(snapMove(move, w, e.altKey));
+    } else if (g.kind === 'bend') {
+      setBend({ id: g.id, index: g.index, bulge: bulgeFromSagitta(g.p0, g.p1, w), at: w });
     } else if (g.kind === 'move') {
       setDrag(snapMove(g, w, e.altKey));
     } else if (g.kind === 'marquee') {
@@ -583,6 +646,18 @@ export function DrawingBoard({
       applyStep(clickAt(drawTool, draft, point, typedValues, e.shiftKey));
       return;
     }
+    if (g.kind === 'bend') {
+      const b = bend;
+      setBend(null);
+      if (b && Math.abs(b.bulge - g.bulge) > 1e-9) {
+        run('setSegmentBulge', {
+          id: g.id,
+          index: g.index,
+          bulge: Math.round(b.bulge * 1e6) / 1e6,
+        });
+      }
+      return;
+    }
     if (g.kind === 'press') {
       dispatch(g.additive ? { type: 'toggle', id: g.id } : { type: 'select', ids: [g.id] });
     } else if (g.kind === 'move') {
@@ -602,8 +677,6 @@ export function DrawingBoard({
       setMarquee(null);
     }
   }
-
-  const selected = useMemo(() => parts.filter((p) => selection.has(p.id)), [parts, selection]);
 
   // Edit actions (T125): every change is a command with undo (Ctrl+Z / Ctrl+Y in the wizard).
   const actions = useMemo(() => {
@@ -732,6 +805,7 @@ export function DrawingBoard({
         {railTool('rect', t.tools.rect, 'R', <Square aria-hidden />)}
         {railTool('circle', t.tools.circle, 'C', <Circle aria-hidden />)}
         {railTool('line', t.tools.line, 'L', <PenLine aria-hidden />)}
+        {railTool('arc', t.tools.arc, 'A', <Spline aria-hidden />)}
       </div>
       <div
         className={`${floating} absolute right-2 z-10 flex items-center gap-0.5 p-0.5`}
@@ -782,6 +856,22 @@ export function DrawingBoard({
           </IconButton>
         </Tooltip>
       </div>
+      {bend && bendView && view ? (
+        <DynamicInput
+          t={t.draw}
+          fields={['r']}
+          values={[]}
+          active={0}
+          live={bendView.live}
+          at={toScreen(view, bend.at)}
+          docked={false}
+          canvas={size}
+          onChange={() => undefined}
+          onFocusField={() => undefined}
+          onCommit={() => undefined}
+          onCancel={() => undefined}
+        />
+      ) : null}
       {drawTool ? (
         <DynamicInput
           t={t.draw}
@@ -871,8 +961,9 @@ export function DrawingBoard({
             snap={snapMark}
             grid={state.grid}
             colors={colors}
-            draft={draftView}
-            draftLabel={draftLabel}
+            draft={bendView ?? draftView}
+            draftLabel={bendView ? null : draftLabel}
+            handles={bendHandles.map((h) => h.at)}
             drawText={{ close: t.draw.close, open: t.draw.open }}
           />
         </CanvasBoundary>
@@ -917,7 +1008,13 @@ export function DrawingBoard({
           scale={view?.scale ?? 1}
           snap={state.snap}
           onSnap={(kind, on) => dispatch({ type: 'snap', kind, on })}
-          hint={drawTool ? t.draw.hints[hintFor(drawTool, draft, draftView)] : null}
+          hint={
+            bend
+              ? t.draw.hints.bend
+              : drawTool
+                ? t.draw.hints[hintFor(drawTool, draft, draftView)]
+                : null
+          }
           snapName={draftView?.closing ? t.draw.close : snapMark ? t.snap[snapMark.kind] : null}
         />
       }
