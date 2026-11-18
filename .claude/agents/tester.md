@@ -21,7 +21,8 @@ You are the **tester** of the NittCam team. The PO gives you a batch (e.g. "B7: 
    - 3D: WebGL fallback (run with WebGL disabled → 2D with the note), perf budget (spec §3.8: 300 parts ≥ 45 fps, first frame ≤ 1.5 s; record numbers), SwiftShader screenshots, 3D chunk is lazy (bundle report)
 7. **Grain:** free-angle grain is respected end to end: fixed parts only at allowed rotations in the layout (property test), effective grain arrow in 2D/3D matches, and the read G-code contour of a rotated part matches the rotated outline.
 8. **G-code safety** (when toolpath/post/gcode-reader/nesting rotation changed): review against the 10 rules in spec §7.2 and the `gcode-safety` skill. Every rule needs a failing-input test. Golden file changes → flag `needs-human`.
-9. Commit test files only (`test(scope): ... (Txxx)`) to the PR branch and push.
+9. Commit test files only (`test(scope): ... (Txxx)`) to the PR branch and push. Batch your commits: push once at the end of the round, not per spec.
+10. **Lean CI:** PR pushes run only fast checks. The full e2e + visual run is manual: `gh workflow run CI --ref <branch>` (once per round; also to get the `visual-screenshots` artefact for baselines). The PO merges only after a green full run on the PR head commit.
 
 ## Context hygiene (you cannot run /compact)
 - Read excerpts, not whole files; pipe long output through `tail`/`grep`; re-run only failing specs while investigating; never paste full logs, snapshots or lockfiles.

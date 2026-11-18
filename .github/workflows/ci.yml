@@ -2,13 +2,23 @@
 # merges only after this workflow is green.
 name: CI
 
+#
+# Lean CI (owner, 2026-11-18; Actions minutes): every PR push runs only the fast `checks` job
+# (and the db job). The slow `e2e` job (chromium e2e + visual + axe, ~15 min) runs only
+#   - after every merge (push to main), and
+#   - on demand before a merge: `gh workflow run CI --ref <branch>` (the PO merges only when
+#     this full run is green on the PR head commit; the tester uses it for visual baselines).
+# Docs-only changes run nothing.
 on:
   pull_request:
+    paths-ignore: ['docs/**', '**/*.md', '.team/**', 'tools/team-dashboard/**']
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '**/*.md', '.team/**', 'tools/team-dashboard/**']
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -16,9 +26,9 @@ permissions:
 
 jobs:
   build:
-    name: lint · typecheck · test · build · licences · e2e
+    name: lint · typecheck · test · build · licences
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
@@ -48,6 +58,28 @@ jobs:
       - name: Licence check (D-009)
         run: pnpm licenses:check
 
+  # Slow job: only on push to main (after a merge) and on manual dispatch (before a merge).
+  e2e:
+    name: e2e · visual · axe
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
       - name: Install Playwright chromium
         run: pnpm --filter @nittcam/e2e exec playwright install --with-deps chromium
 
@@ -72,7 +104,7 @@ jobs:
           path: |
             e2e/__screenshots__/t1*.png
             e2e/visual-baselines/
-          retention-days: 14
+          retention-days: 3
           if-no-files-found: ignore
 
       - name: Upload Playwright report
@@ -83,7 +115,7 @@ jobs:
           path: |
             e2e/playwright-report/
             e2e/test-results/
-          retention-days: 14
+          retention-days: 3
           if-no-files-found: ignore
 
   # T008 / D-014: the main job tests the db package on PGlite. This job runs the migrations and
