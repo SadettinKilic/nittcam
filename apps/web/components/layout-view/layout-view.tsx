@@ -10,17 +10,29 @@ import {
   type ValidationIssue,
 } from '@nittcam/core';
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import {
   Button,
+  Checkbox,
   IconButton,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   Tooltip,
-  fieldBase,
-  fieldFocus,
 } from '@nittcam/ui';
 import { Lock, LockOpen, Maximize, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { onThemeChange } from '../../lib/canvas-theme';
@@ -72,6 +84,8 @@ const m2Format = new Intl.NumberFormat('tr-TR', {
   maximumFractionDigits: 2,
 });
 
+/** Radix Select items cannot use an empty value; this stands for "no part". */
+const NONE = '__none__';
 const LOCKED_PATH = /^layout\.sheets\[(\d+)\]\.placements\[(\d+)\]$/;
 
 /**
@@ -91,6 +105,8 @@ export function LayoutView({
   onRenest,
   renesting = false,
 }: LayoutViewProps) {
+  const gridId = useId();
+  const selectId = useId();
   const count = project.layout.sheets.length;
   const [sheetState, setSheet] = useState(0);
   const sheet = Math.min(sheetState, Math.max(0, count - 1));
@@ -341,36 +357,42 @@ export function LayoutView({
         onValueChange={(v) => selectSheet(Number(v))}
         className="flex min-w-0 flex-col gap-3"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <TabsList
-            variant="segmented"
-            aria-label={t.sheetTabs}
-            className="h-auto max-w-full flex-wrap justify-start"
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            className="-mx-1 min-w-0 overflow-x-auto px-1 pb-1 sm:pb-0"
+            data-testid="sheet-tabs-scroll"
           >
-            {project.layout.sheets.map((_, i) => {
-              const st = summary.sheets[i];
-              return (
-                <TabsTrigger key={i} value={String(i)} className="h-8 gap-1.5 px-2.5">
-                  {fill(t.sheetTab, { n: i + 1 })}
-                  {st ? (
-                    <span className="text-xs font-normal text-fg-subtle tabular-nums">
-                      {fill(t.sheetTabWaste, { waste: pctFormat.format(st.wastePercent) })}
-                    </span>
-                  ) : null}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-          <div className="flex items-center gap-1">
-            <label className="mr-2 flex min-h-10 cursor-pointer items-center gap-2 text-sm text-fg-muted">
-              <input
-                type="checkbox"
-                checked={grid}
-                onChange={(e) => setGrid(e.target.checked)}
-                className="size-4 accent-(--color-accent)"
-              />
-              {t.grid}
-            </label>
+            <TabsList
+              variant="segmented"
+              aria-label={t.sheetTabs}
+              className="h-auto w-max flex-nowrap justify-start"
+            >
+              {project.layout.sheets.map((_, i) => {
+                const st = summary.sheets[i];
+                return (
+                  <TabsTrigger
+                    key={i}
+                    value={String(i)}
+                    className="h-8 shrink-0 gap-1.5 px-2.5 whitespace-nowrap"
+                  >
+                    {fill(t.sheetTab, { n: i + 1 })}
+                    {st ? (
+                      <span className="text-xs font-normal text-fg-subtle tabular-nums">
+                        {fill(t.sheetTabWaste, { waste: pctFormat.format(st.wastePercent) })}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-1 sm:justify-end">
+            <div className="mr-2 flex min-h-10 items-center gap-2 text-sm text-fg-muted">
+              <Checkbox id={gridId} checked={grid} onCheckedChange={(v) => setGrid(v === true)} />
+              <label htmlFor={gridId} className="cursor-pointer">
+                {t.grid}
+              </label>
+            </div>
             <div className="flex items-center rounded-lg border border-border bg-surface p-0.5 shadow-xs">
               <Tooltip content={t.zoomOut}>
                 <IconButton
@@ -475,22 +497,32 @@ export function LayoutView({
             id="layout-info"
             className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 text-sm shadow-xs"
           >
-            <label className="flex flex-col gap-1.5">
-              <span className="font-medium text-fg">{t.select}</span>
-              <select
-                data-testid="layout-select"
-                value={current?.key ?? ''}
-                onChange={(e) => onSelect(e.target.value || null)}
-                className={`${fieldBase} ${fieldFocus} h-control-md max-w-md px-3`}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={selectId} className="font-medium text-fg">
+                {t.select}
+              </label>
+              <Select
+                value={current?.key ?? NONE}
+                onValueChange={(v) => onSelect(v === NONE ? null : v)}
               >
-                <option value="">{t.selectNone}</option>
-                {parts.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {fill(t.option, { label: p.label, name: p.name || t.unnamed })}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <SelectTrigger
+                  id={selectId}
+                  data-testid="layout-select"
+                  data-value={current?.key ?? ''}
+                  className="max-w-md"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>{t.selectNone}</SelectItem>
+                  {parts.map((p) => (
+                    <SelectItem key={p.key} value={p.key}>
+                      {fill(t.option, { label: p.label, name: p.name || t.unnamed })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {current ? (
               <PartInfo
                 t={t}

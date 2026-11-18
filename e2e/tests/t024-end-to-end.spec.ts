@@ -14,6 +14,7 @@ import {
 } from '../../packages/core/src/index';
 import {
   chooseMachine,
+  pickOption,
   fill,
   openNewProject,
   paste,
@@ -128,7 +129,7 @@ async function runFlow(page: Page, mobile: boolean) {
   // --- Step 1: machine, material, sheet, project name ---------------------------------------
   await openNewProject(page, 'makine');
   await chooseMachine(page, machineName);
-  await page.getByTestId('wizard-material').selectOption('mdf');
+  await pickOption(page.getByTestId('wizard-material'), tr.materials.mdf);
   const thickness = page.getByTestId('wizard-thickness');
   await thickness.fill('18');
   await thickness.press('Enter');
@@ -159,7 +160,7 @@ async function runFlow(page: Page, mobile: boolean) {
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   const sheets = Number(await page.getByTestId('nesting-sheets').innerText());
   expect(sheets).toBeGreaterThanOrEqual(1);
-  await page.getByTestId('layout-select').selectOption({ index: 1 });
+  await pickOption(page.getByTestId('layout-select'), { index: 1 });
   await page.getByRole('button', { name: tr.layout.info.lock }).click();
   await expect(page.getByTestId('layout-info-locked')).toHaveText(tr.layout.info.lockedYes);
   await saved(page);

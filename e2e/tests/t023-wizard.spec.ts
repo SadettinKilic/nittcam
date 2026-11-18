@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import {
   chooseMachine,
+  pickOption,
   fill,
   goStep,
   KITCHEN,
@@ -85,7 +86,7 @@ test.describe('T023 wizard', () => {
 
     // Step 1: the example machine, MDF 18, 2070 × 2800.
     await chooseMachine(page, SEEDED);
-    await page.getByTestId('wizard-material').selectOption('mdf');
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.mdf);
     const thickness = page.getByTestId('wizard-thickness');
     await thickness.fill('18');
     await thickness.press('Enter');
@@ -378,11 +379,11 @@ test.describe('T023 wizard', () => {
   test('NO_CUTTING_PARAMS and the sheet-table warning are shown in step 1', async ({ page }) => {
     const problems = watchConsole(page);
     await openNewProject(page, 'makine');
-    await page.getByTestId('wizard-material').selectOption('pvc');
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.pvc);
     await expect(page.getByTestId('no-cutting-params')).toContainText(tr.materials.pvc);
     // Plastic: no grain direction.
     await expect(page.getByText(w.machine.grainNone)).toBeVisible();
-    await page.getByTestId('wizard-material').selectOption('mdf');
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.mdf);
     await expect(page.getByTestId('no-cutting-params')).toHaveCount(0);
     await page.getByLabel(w.machine.custom).check();
     const width = page.getByTestId('wizard-sheet-width');
@@ -392,7 +393,7 @@ test.describe('T023 wizard', () => {
     await expect(page.getByTestId('sheet-preview')).toHaveAttribute('data-fits', 'false');
     await page.screenshot({ path: `${SHOTS}/t023-uyari.png`, fullPage: true });
     // The warnings panel lists both in steps 2–4.
-    await page.getByTestId('wizard-material').selectOption('pvc');
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.pvc);
     await goStep(page, 'parcalar');
     const panel = page.getByTestId('validation-panel');
     await expect(panel.locator('[data-code=NO_CUTTING_PARAMS]')).toHaveText(

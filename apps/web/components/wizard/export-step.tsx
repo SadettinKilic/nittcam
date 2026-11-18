@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { Project } from '@nittcam/core';
-import { Button, Card, notify } from '@nittcam/ui';
+import { Button, Card, Checkbox, notify } from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
 import {
   CircleAlert,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { focusRing } from '../page/page-header';
 import { Callout } from './panels';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import {
   downloadBlocker,
@@ -101,6 +101,7 @@ export function ExportStep({
   saved: boolean;
   saveState: SaveState;
 }) {
+  const acceptId = useId();
   const hasLayout = project.layout.sheets.length > 0;
   const busySaving = !saved || saveState === 'pending' || saveState === 'saving';
   const canRun = machine !== null && hasLayout && projectId !== null && !busySaving;
@@ -410,16 +411,18 @@ export function ExportStep({
                 {t.unverifiedLink}
               </Link>
             ) : null}
-            <label className="mt-1 flex cursor-pointer items-start gap-2.5 rounded-lg border border-danger-border bg-surface px-3 py-2.5 font-medium text-fg">
-              <input
-                type="checkbox"
+            <div className="mt-1 flex items-start gap-2.5 rounded-lg border border-danger-border bg-surface px-3 py-2.5 font-medium text-fg">
+              <Checkbox
+                id={acceptId}
                 data-testid="export-accept"
                 checked={f.accepted}
-                onChange={(e) => update({ accepted: e.target.checked })}
-                className="mt-0.5 size-4 shrink-0 accent-(--color-danger)"
+                onCheckedChange={(v) => update({ accepted: v === true })}
+                className="mt-0.5 data-[state=checked]:border-danger data-[state=checked]:bg-danger data-[state=checked]:text-danger-fg"
               />
-              {t.accept}
-            </label>
+              <label htmlFor={acceptId} className="cursor-pointer">
+                {t.accept}
+              </label>
+            </div>
           </Callout>
         ) : null}
 
@@ -505,20 +508,23 @@ function ChecklistItem({
   onChange: (v: boolean) => void;
   label: string;
 }) {
+  const id = useId();
   return (
-    <label
-      className={`flex min-h-12 cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${checked ? 'border-success-border bg-success-subtle text-fg' : 'border-border bg-surface text-fg hover:bg-surface-hover'}`}
+    <div
+      className={`relative flex min-h-12 items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${checked ? 'border-success-border bg-success-subtle text-fg' : 'border-border bg-surface text-fg hover:bg-surface-hover'}`}
     >
-      <input
-        type="checkbox"
+      <Checkbox
+        id={id}
         data-testid={testId}
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-4 shrink-0 accent-(--color-success)"
+        onCheckedChange={(v) => onChange(v === true)}
+        className="relative z-10 mt-0.5 data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-fg"
       />
-      <span className="min-w-0 flex-1">{label}</span>
+      <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer after:absolute after:inset-0">
+        {label}
+      </label>
       {checked ? <CircleCheck aria-hidden className="size-4 shrink-0 text-success-text" /> : null}
-    </label>
+    </div>
   );
 }
 

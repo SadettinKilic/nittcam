@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { fill, newPartId } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import { PastePanel } from './paste-panel';
-import { Button, IconButton, Tooltip } from '@nittcam/ui';
+import { Button, Checkbox, IconButton, Tooltip } from '@nittcam/ui';
 import {
   CircleCheck,
   ClipboardPaste,
@@ -253,13 +253,12 @@ function PartRow({
         />
       </td>
       <td className="px-1 py-1 text-center">
-        <input
+        <Checkbox
           id={cellId(index, 'grain')}
-          type="checkbox"
           aria-label={label(t.columns.grain)}
-          className="mt-2 size-4 accent-(--color-accent) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          className="mt-2"
           checked={part.grainLock}
-          onChange={(e) => void update({ grainLock: e.target.checked })}
+          onCheckedChange={(v) => void update({ grainLock: v === true })}
         />
       </td>
       {EDGES.map((edge) => (

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { pickOption } from './wizard-helpers';
 
 /** T011 tester: extra UI scenarios (320 px, keyboard-only, edit commit/revert, big paste). */
 
@@ -101,8 +102,8 @@ test.describe('T011 cut list (tester)', () => {
     await page.goto(URL);
     await page.getByRole('button', { name: t.pasteOpen }).click();
     await page.getByLabel(p.textLabel).fill('Kapak\t500\t700\t2\nRaf\t600\t800\t1');
-    await page.getByLabel(fill(p.columnSelect, { n: 2 })).selectOption('h');
-    await page.getByLabel(fill(p.columnSelect, { n: 3 })).selectOption('w');
+    await pickOption(page.getByLabel(fill(p.columnSelect, { n: 2 })), p.fields.h);
+    await pickOption(page.getByLabel(fill(p.columnSelect, { n: 3 })), p.fields.w);
     await page.getByRole('button', { name: fill(p.applyCount, { count: 2 }) }).click();
     await expect(cell(page, 1, t.columns.w)).toHaveValue('700');
     await expect(cell(page, 1, t.columns.h)).toHaveValue('500');

@@ -17,7 +17,18 @@ import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { TriangleAlert } from 'lucide-react';
 import { focusRing } from '../page/page-header';
-import { NumberField, inputClass } from './number-field';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from '@nittcam/ui';
+import { NumberField } from './number-field';
+
 import { Callout, canvasWellClass } from './panels';
 
 type Text = Messages['wizard']['machine'];
@@ -89,23 +100,24 @@ export function MachineFields({
         <label htmlFor={ids.machine} className="text-sm font-medium text-fg">
           {t.machine}
         </label>
-        <select
-          id={ids.machine}
-          data-testid="wizard-machine"
-          className={inputClass}
-          value={known ? project.machine.machineId : ''}
-          onChange={(e) => {
-            const m = machines.find((x) => x.id === e.target.value);
+        <Select
+          value={known ? project.machine.machineId : undefined}
+          onValueChange={(v) => {
+            const m = machines.find((x) => x.id === v);
             if (m) run('setMachine', { machineId: m.id, profileVersion: m.version });
           }}
         >
-          {known ? null : <option value="">{t.choose}</option>}
-          {machines.map((m) => (
-            <option key={m.id} value={m.id}>
-              {fill(t.option, { name: m.name, version: m.version })}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger id={ids.machine} data-testid="wizard-machine">
+            <SelectValue placeholder={t.choose} />
+          </SelectTrigger>
+          <SelectContent>
+            {machines.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {fill(t.option, { name: m.name, version: m.version })}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {!known ? <p className="text-xs text-warning-text">{t.unknownMachine}</p> : null}
         {profile ? (
           <p className="text-xs text-fg-muted">
@@ -146,36 +158,45 @@ export function MachineFields({
         <label htmlFor={ids.material} className="text-sm font-medium text-fg">
           {t.material}
         </label>
-        <select
-          id={ids.material}
-          data-testid="wizard-material"
-          className={inputClass}
+        <Select
           value={kind ?? stock.material}
-          onChange={(e) => run('setMaterial', { material: e.target.value })}
+          onValueChange={(v) => run('setMaterial', { material: v })}
         >
-          {kind === null ? (
-            <option value={stock.material}>
-              {fill(materials.unknown, { id: stock.material })}
-            </option>
-          ) : null}
-          <optgroup label={materials.groupWood}>
-            {WOOD.map((k) => (
-              <option key={k} value={k}>
-                {materialName(k)}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label={materials.groupPlastic}>
-            {PLASTIC.map((k) => (
-              <option key={k} value={k}>
-                {materialName(k)}
-              </option>
-            ))}
-          </optgroup>
-          <option value="" disabled>
-            {materials.stone}
-          </option>
-        </select>
+          <SelectTrigger
+            id={ids.material}
+            data-testid="wizard-material"
+            data-value={kind ?? stock.material}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {kind === null ? (
+              <SelectItem value={stock.material}>
+                {fill(materials.unknown, { id: stock.material })}
+              </SelectItem>
+            ) : null}
+            <SelectGroup>
+              <SelectLabel>{materials.groupWood}</SelectLabel>
+              {WOOD.map((k) => (
+                <SelectItem key={k} value={k}>
+                  {materialName(k)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>{materials.groupPlastic}</SelectLabel>
+              {PLASTIC.map((k) => (
+                <SelectItem key={k} value={k}>
+                  {materialName(k)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectSeparator />
+            <SelectItem value="__stone" disabled>
+              {materials.stone}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-2">

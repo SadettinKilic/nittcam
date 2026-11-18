@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { nest } from './wizard-helpers';
+import { nest, pickOption, optionLabels as selectLabels } from './wizard-helpers';
 
 /** T013: layout view (react-konva) under the cut list: drawing, drag + lock, keyboard, tabs. */
 
@@ -70,7 +70,7 @@ interface Box {
 
 /** Selects a part by its option label and reads its position, size and lock state. */
 async function info(page: Page, label: string): Promise<Box & { locked: boolean }> {
-  await page.getByTestId('layout-select').selectOption({ label });
+  await pickOption(page.getByTestId('layout-select'), label);
   const pos = await page.getByTestId('layout-info-position').innerText();
   const size = await page.getByTestId('layout-info-size').innerText();
   const m = /X ([\d.,-]+) · Y ([\d.,-]+) mm/.exec(pos);
@@ -81,7 +81,7 @@ async function info(page: Page, label: string): Promise<Box & { locked: boolean 
 }
 
 async function optionLabels(page: Page): Promise<string[]> {
-  const all = await page.getByTestId('layout-select').locator('option').allInnerTexts();
+  const all = await selectLabels(page.getByTestId('layout-select'));
   return all.filter((o) => o !== l.selectNone);
 }
 
@@ -159,7 +159,7 @@ test.describe('T013 layout view', () => {
     await expect(page.getByTestId('layout-summary')).toContainText(/Toplam: 1 plaka, fire %[\d,]+/);
     await expect(page.getByTestId('nesting-waste')).toHaveText(/^%\d+(,\d)?$/);
     await expect(page.getByText(l.legend.waste)).toBeVisible();
-    await page.getByTestId('layout-select').selectOption({ label: '1.1 · Yan dikme' });
+    await pickOption(page.getByTestId('layout-select'), '1.1 · Yan dikme');
     await expect(page.getByTestId('layout-info-grain')).toHaveText(l.info.grainYes);
     await expect(page.getByTestId('layout-info-size')).toHaveText('300 × 1.800 mm');
     await page.getByTestId('layout-canvas').scrollIntoViewIfNeeded();
@@ -236,7 +236,7 @@ test.describe('T013 layout view', () => {
 
   test('lock/unlock toggle is one undo step each', async ({ page }) => {
     await nestShelfSet(page);
-    await page.getByTestId('layout-select').selectOption({ label: TOP });
+    await pickOption(page.getByTestId('layout-select'), TOP);
     await page.getByRole('button', { name: l.info.lock }).click();
     await expect(page.getByTestId('layout-info-locked')).toHaveText(l.info.lockedYes);
     await page.getByRole('button', { name: l.info.unlock }).click();

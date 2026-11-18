@@ -71,7 +71,7 @@ test('wizard 390 px: no horizontal scroll on steps 1-5', async ({ page }) => {
 
 // PO finding 2: the design system Select must replace native <select> in the wizard.
 // BUG (reported): machine-step.tsx:92,149, layout-step.tsx:87, layout-view.tsx:480, paste-panel.tsx.
-test.fail('no native <select> in the wizard steps (design-system Select)', async ({ page }) => {
+test('no native <select> in the wizard steps (design-system Select)', async ({ page }) => {
   await openNewProject(page, 'makine');
   expect(await page.locator('main select:visible').count()).toBe(0);
   await goStep(page, 'parcalar');
@@ -84,7 +84,7 @@ test.fail('no native <select> in the wizard steps (design-system Select)', async
 
 // Layout step at 390 px: plate tabs must not overlap the grid checkbox row.
 // BUG (reported): layout-view.tsx:339-363, "Plaka 3" wraps over "Milimetre ızgarası".
-test.fail('layout 390 px: plate tabs do not overlap the grid toggle', async ({ page }) => {
+test('layout 390 px: plate tabs do not overlap the grid toggle', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openNewProject(page, 'parcalar');
   await paste(page, KITCHEN, 5);
@@ -93,11 +93,11 @@ test.fail('layout 390 px: plate tabs do not overlap the grid toggle', async ({ p
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   const tabs = await page.getByRole('tab').last().boundingBox();
   const grid = await page.getByRole('checkbox').first().boundingBox();
-  expect(tabs && grid).toBeTruthy();
+  if (!tabs || !grid) throw new Error('tab or grid checkbox has no box');
   const overlap =
-    tabs!.x < grid!.x + grid!.width &&
-    grid!.x < tabs!.x + tabs!.width &&
-    tabs!.y < grid!.y + grid!.height &&
-    grid!.y < tabs!.y + tabs!.height;
+    tabs.x < grid.x + grid.width &&
+    grid.x < tabs.x + tabs.width &&
+    tabs.y < grid.y + grid.height &&
+    grid.y < tabs.y + tabs.height;
   expect(overlap).toBe(false);
 });

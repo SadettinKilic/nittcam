@@ -16,7 +16,17 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { fill, newPartId } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
-import { Button, fieldBase, fieldFocus } from '@nittcam/ui';
+import {
+  Button,
+  Checkbox,
+  fieldBase,
+  fieldFocus,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@nittcam/ui';
 
 type Text = Messages['cutList']['paste'];
 type DelimiterChoice = 'auto' | 'tab' | 'semicolon' | 'comma';
@@ -27,8 +37,6 @@ const DELIMITERS: Record<Exclude<DelimiterChoice, 'auto'>, CutListDelimiter> = {
   semicolon: ';',
   comma: ',',
 };
-
-const selectClass = `${fieldBase} ${fieldFocus} h-control-md px-3`;
 
 const numberFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
 
@@ -149,53 +157,62 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
         <>
           <fieldset className="flex min-w-0 flex-wrap items-end gap-4">
             <legend className="sr-only">{t.options}</legend>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              {t.delimiter}
-              <select
-                className={selectClass}
+            <div className="flex flex-col gap-1 text-sm font-medium">
+              <label htmlFor={`${uid}-delimiter`}>{t.delimiter}</label>
+              <Select
                 value={delimiter}
-                onChange={(e) => {
-                  setDelimiter(e.target.value as DelimiterChoice);
+                onValueChange={(v) => {
+                  setDelimiter(v as DelimiterChoice);
                   setHeader(null);
                   resetDerived();
                 }}
               >
-                {(Object.keys(t.delimiterOptions) as DelimiterChoice[]).map((k) => (
-                  <option key={k} value={k}>
-                    {t.delimiterOptions[k]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              {t.decimal}
-              <select
-                className={selectClass}
+                <SelectTrigger id={`${uid}-delimiter`} className="min-w-40 font-normal">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(t.delimiterOptions) as DelimiterChoice[]).map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {t.delimiterOptions[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1 text-sm font-medium">
+              <label htmlFor={`${uid}-decimal`}>{t.decimal}</label>
+              <Select
                 value={decimal}
-                onChange={(e) => {
-                  setDecimal(e.target.value as DecimalChoice);
+                onValueChange={(v) => {
+                  setDecimal(v as DecimalChoice);
                   resetDerived();
                 }}
               >
-                {(Object.keys(t.decimalOptions) as DecimalChoice[]).map((k) => (
-                  <option key={k} value={k}>
-                    {t.decimalOptions[k]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2 py-2 text-sm">
-              <input
-                type="checkbox"
-                className="size-4 accent-(--color-accent) focus-visible:outline-2 focus-visible:outline-focus"
+                <SelectTrigger id={`${uid}-decimal`} className="min-w-40 font-normal">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(t.decimalOptions) as DecimalChoice[]).map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {t.decimalOptions[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex min-h-10 items-center gap-2 text-sm">
+              <Checkbox
+                id={`${uid}-header`}
                 checked={result.hasHeader}
-                onChange={(e) => {
-                  setHeader(e.target.checked);
+                onCheckedChange={(v) => {
+                  setHeader(v === true);
                   resetDerived();
                 }}
               />
-              {t.header}
-            </label>
+              <label htmlFor={`${uid}-header`} className="cursor-pointer">
+                {t.header}
+              </label>
+            </div>
           </fieldset>
 
           {result.warnings.length > 0 ? (
@@ -234,19 +251,27 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
                           <label htmlFor={selectId} className="sr-only">
                             {fill(t.columnSelect, { n: i + 1 })}
                           </label>
-                          <select
-                            id={selectId}
-                            data-testid={`map-${i}`}
-                            className={selectClass}
+                          <Select
                             value={field}
-                            onChange={(e) => setField(i, e.target.value as CutListField)}
+                            onValueChange={(v) => setField(i, v as CutListField)}
                           >
-                            {CUT_LIST_FIELDS.map((f) => (
-                              <option key={f} value={f}>
-                                {t.fields[f]}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger
+                              id={selectId}
+                              data-testid={`map-${i}`}
+                              data-value={field}
+                              size="sm"
+                              className="font-normal"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CUT_LIST_FIELDS.map((f) => (
+                                <SelectItem key={f} value={f}>
+                                  {t.fields[f]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </th>
                       );
                     })}

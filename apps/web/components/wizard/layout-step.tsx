@@ -9,7 +9,8 @@ import { useNestingWorker } from '../../lib/use-nesting-worker';
 import { LayoutView, type LockRequest } from '../layout-view/layout-view';
 import { NestingPanel } from '../parts/nesting-panel';
 import { LayoutGrid } from 'lucide-react';
-import { NumberField, inputClass } from './number-field';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nittcam/ui';
+import { NumberField } from './number-field';
 
 const MODES: readonly NestingMode[] = ['minWaste', 'fastest', 'minToolChanges'];
 
@@ -84,18 +85,25 @@ export function LayoutStep({
             <label htmlFor={modeId} className="text-sm font-medium text-fg">
               {t.mode}
             </label>
-            <select
-              id={modeId}
-              className={inputClass}
+            <Select
               value={project.nesting.mode}
-              onChange={(e) => run('setNestingOptions', { mode: e.target.value })}
+              onValueChange={(v) => run('setNestingOptions', { mode: v })}
             >
-              {MODES.map((m) => (
-                <option key={m} value={m}>
-                  {t.modes[m]}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                id={modeId}
+                data-testid="layout-mode"
+                data-value={project.nesting.mode}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MODES.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {t.modes[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-fg-muted">{t.modeNote}</p>
           </div>
           <div className="grid grid-cols-2 items-end gap-3">
