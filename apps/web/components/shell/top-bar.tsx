@@ -109,7 +109,9 @@ export function TopBar({ t, onOpenMenu, search, themeExtra }: TopBarProps) {
         <Wordmark size={20} variant="short" className="min-[400px]:hidden" />
       </Link>
 
-      <nav aria-label={t.shell.breadcrumb} className="min-w-0 flex-1">
+      {/* Phones (< 640 px): no breadcrumb, the page shows its own title (B4b). */}
+      <div aria-hidden="true" className="flex-1 sm:hidden" />
+      <nav aria-label={t.shell.breadcrumb} className="hidden min-w-0 flex-1 sm:block">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm">
           {crumbs.map((crumb, i) => {
             const last = i === lastIndex;

@@ -595,13 +595,13 @@ function WizardSession({
                       : 'neutral'
                 }
                 aria-live="polite"
-                title={t.save.label}
+                title={`${t.save.label}: ${saveText}`}
                 data-testid="save-status"
                 data-state={session.saveState}
                 data-revision={session.revision}
                 className="max-w-full min-w-0 shrink"
               >
-                <span className="truncate">{saveText}</span>
+                <span className="truncate max-[399px]:sr-only">{saveText}</span>
               </Badge>
             </ShellStatus>
             <Tooltip content={messages.cutList.undo}>
@@ -812,7 +812,10 @@ function StepIndicator({
             const active = status === 'current';
             const blocker = stepBlocker(s, progress);
             return (
-              <li key={s} className="flex min-w-0 flex-1 items-center gap-1 last:flex-none">
+              <li
+                key={s}
+                className="flex min-w-10 flex-1 items-center gap-1 last:flex-none sm:min-w-15"
+              >
                 <button
                   type="button"
                   aria-current={active ? 'step' : undefined}
@@ -820,7 +823,7 @@ function StepIndicator({
                   data-status={status}
                   title={blocker && !active ? `${t[s]}: ${t.blocked[blocker]}` : t[s]}
                   onClick={() => onGo(s)}
-                  className={`group flex min-h-10 min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:px-2 ${focusRing}`}
+                  className={`group flex min-h-10 min-w-8 items-center gap-2 rounded-lg px-0.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:min-w-11 sm:px-2 ${focusRing}`}
                 >
                   <span
                     aria-hidden="true"
@@ -858,7 +861,7 @@ function StepIndicator({
                 {i < STEPS.length - 1 ? (
                   <span
                     aria-hidden="true"
-                    className={`h-px min-w-3 flex-1 ${i < index ? 'bg-accent-border' : 'bg-border'}`}
+                    className={`h-px min-w-1 flex-1 sm:min-w-3 ${i < index ? 'bg-accent-border' : 'bg-border'}`}
                   />
                 ) : null}
               </li>

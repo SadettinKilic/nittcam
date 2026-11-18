@@ -39,11 +39,13 @@ export function ProfileStatusChip({
     <Popover>
       <PopoverTrigger
         data-testid="profile-status-chip"
-        className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-warning-border bg-warning-subtle px-2.5 text-xs font-medium text-warning-text ${focusRing}`}
+        aria-label={t.chip}
+        className={`inline-flex size-8 shrink-0 items-center justify-center gap-1.5 rounded-full border border-warning-border bg-warning-subtle text-xs font-medium text-warning-text sm:w-auto sm:px-2.5 ${focusRing}`}
       >
         <TriangleAlert aria-hidden className="size-3.5" />
-        <span className="whitespace-nowrap">{t.chip}</span>
-        <ChevronDown aria-hidden className="size-3.5" />
+        {/* Phones (< 640 px): icon only, so the project name keeps the row (B4b). */}
+        <span className="sr-only whitespace-nowrap sm:not-sr-only">{t.chip}</span>
+        <ChevronDown aria-hidden className="hidden size-3.5 sm:block" />
       </PopoverTrigger>
       <PopoverContent
         align="end"
