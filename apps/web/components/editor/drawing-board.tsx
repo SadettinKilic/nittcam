@@ -10,7 +10,17 @@ import {
   type SnapKind,
 } from '@nittcam/core';
 import { Button, Checkbox, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
-import { Circle, Hand, List, Maximize, MousePointer2, Square, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  Circle,
+  Hand,
+  List,
+  Maximize,
+  MousePointer2,
+  PenLine,
+  Square,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import {
   useCallback,
@@ -378,6 +388,7 @@ export function DrawingBoard({
       else if (k === 'h') setTool('pan');
       else if (k === 'r' && !e.shiftKey) setTool('rect');
       else if (k === 'c' && !e.shiftKey) setTool('circle');
+      else if (k === 'l' && !e.shiftKey) setTool('line');
       else if (k === 'f') fit();
       else if (k === '+' || k === '=') zoomBy(1.25);
       else if (k === '-') zoomBy(1 / 1.25);
@@ -720,6 +731,7 @@ export function DrawingBoard({
         <span aria-hidden className="mx-2 my-0.5 h-px bg-border" />
         {railTool('rect', t.tools.rect, 'R', <Square aria-hidden />)}
         {railTool('circle', t.tools.circle, 'C', <Circle aria-hidden />)}
+        {railTool('line', t.tools.line, 'L', <PenLine aria-hidden />)}
       </div>
       <div
         className={`${floating} absolute right-2 z-10 flex items-center gap-0.5 p-0.5`}
