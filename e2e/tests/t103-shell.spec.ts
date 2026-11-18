@@ -157,7 +157,7 @@ test.describe('app shell', () => {
       await expect(page.getByTestId('shell-sidebar')).toBeHidden();
       await expect(page.getByTestId('shell-brand-mobile')).toBeVisible();
       // Below 768 px the sidebar is a drawer, so the page keeps its own "Yeni proje".
-      await expect(page.getByTestId('home-new-project')).toBeVisible();
+      await expect(page.getByTestId('home-new-project').filter({ visible: true })).toBeVisible();
       await page.getByRole('button', { name: tr.shell.openMenu }).click();
       const drawer = page.getByTestId('shell-drawer');
       await expect(drawer).toBeVisible();

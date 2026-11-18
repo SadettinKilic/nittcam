@@ -103,7 +103,7 @@ export function TopBar({ t, onOpenMenu, search, themeExtra }: TopBarProps) {
         href="/"
         aria-label={t.shell.brandHome}
         data-testid="shell-brand-mobile"
-        className="flex shrink-0 items-center rounded-md p-1 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus md:hidden"
+        className="hidden shrink-0 items-center rounded-md p-1 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus min-[360px]:flex md:hidden"
       >
         <LogoMark size={24} />
       </Link>
