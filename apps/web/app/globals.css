@@ -6,3 +6,10 @@
 
 /* App shell (T103): the desktop sidebar collapsed to icons (<html data-sidebar="collapsed">). */
 @custom-variant rail-collapsed (&:where([data-sidebar='collapsed'] [data-rail], [data-sidebar='collapsed'] [data-rail] *));
+
+/* Wizard (T109): scrolling an element into view (focus, scrollIntoView) keeps it clear of the
+   sticky top bar and the sticky step footer. */
+html:has([data-wizard-footer]) {
+  scroll-padding-top: 4.5rem;
+  scroll-padding-bottom: 5.5rem;
+}

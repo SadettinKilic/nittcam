@@ -1,4 +1,4 @@
-import type { Part, Project, VerificationState } from '@nittcam/core';
+import { summarizeLayout, type Part, type Project, type VerificationState } from '@nittcam/core';
 import { describe, expect, it } from 'vitest';
 import { THUMB_MAX_PARTS, dashboardStats, layoutThumb, machinesByUrgency } from './dashboard';
 import { newProject } from './draft-project';
@@ -129,7 +129,10 @@ describe('layoutThumb', () => {
         { x: 700, y: 10, w: 400, h: 600 },
         { x: 10, y: 500, w: 100, h: 300 },
       ],
+      utilisation: summarizeLayout(withLayout()).utilisationPercent,
     });
+    expect(thumb?.utilisation).toBeGreaterThan(0);
+    expect(thumb?.utilisation).toBeLessThanOrEqual(100);
   });
 
   it('caps the number of parts', () => {

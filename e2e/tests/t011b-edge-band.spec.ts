@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { optionLabels } from './wizard-helpers';
 
 /** T011b: edge band per edge (named + long/short columns), grid columns Üst/Alt/Sol/Sağ. */
 
@@ -49,9 +50,12 @@ test.describe('T011b edge band per edge', () => {
     // Auto mapping from the header; the dropdowns offer every per-edge target.
     const expected = ['name', 'w', 'h', 'qty', 'edgeLong1', 'edgeShort2'];
     for (const [i, field] of expected.entries()) {
-      await expect(page.getByLabel(fill(p.columnSelect, { n: i + 1 }))).toHaveValue(field);
+      await expect(page.getByLabel(fill(p.columnSelect, { n: i + 1 }))).toHaveAttribute(
+        'data-value',
+        field,
+      );
     }
-    const options = page.getByLabel(fill(p.columnSelect, { n: 5 })).locator('option');
+    const options = await optionLabels(page.getByLabel(fill(p.columnSelect, { n: 5 })));
     for (const f of [
       'edge',
       'edgeTop',
@@ -63,7 +67,7 @@ test.describe('T011b edge band per edge', () => {
       'edgeShort1',
       'edgeShort2',
     ] as const) {
-      await expect(options.filter({ hasText: p.fields[f] })).toHaveCount(1);
+      expect(options.filter((o) => o === p.fields[f])).toHaveLength(1);
     }
     await expect(page.getByTestId('edge-help')).toHaveText(p.edgeHelp);
     await page.screenshot({ path: '__screenshots__/t011b-yapistir-uzun-kisa.png', fullPage: true });

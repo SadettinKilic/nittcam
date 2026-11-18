@@ -2,7 +2,7 @@
  * Ana sayfa (spec §3.4, T106): pure helpers that turn the company's projects, machines and exports
  * into the dashboard's numbers, the machine list order and the layout thumbnails.
  */
-import { partBoxSize, type Project, type VerificationState } from '@nittcam/core';
+import { partBoxSize, summarizeLayout, type Project, type VerificationState } from '@nittcam/core';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -62,6 +62,8 @@ export interface LayoutThumb {
   sheet: { width: number; height: number };
   sheets: number;
   parts: { x: number; y: number; w: number; h: number }[];
+  /** Material use of the whole layout in percent (placed part area / used sheet area). */
+  utilisation: number;
 }
 
 /** At most this many parts are drawn in a thumbnail (it is a hint, not a preview). */
@@ -89,5 +91,6 @@ export function layoutThumb(project: Project): LayoutThumb | null {
     sheet: { width: project.stock.sheet.width, height: project.stock.sheet.height },
     sheets: project.layout.sheets.length,
     parts: out,
+    utilisation: summarizeLayout(project).utilisationPercent,
   };
 }

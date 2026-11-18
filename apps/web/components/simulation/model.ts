@@ -1,4 +1,5 @@
 import type { SimMachineFrame, SimSheet } from '@nittcam/core';
+import { readTokenColors } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 
@@ -44,12 +45,7 @@ const TOKENS: Record<keyof SimColors, string> = {
 };
 
 export function readSimColors(): SimColors {
-  const style = getComputedStyle(document.documentElement);
-  const out = {} as SimColors;
-  for (const [key, token] of Object.entries(TOKENS) as [keyof SimColors, string][]) {
-    out[key] = style.getPropertyValue(token).trim() || '#888888';
-  }
-  return out;
+  return readTokenColors(TOKENS, getComputedStyle(document.documentElement));
 }
 
 /** Number of depth colour steps (cuts are batched per colour when drawing). */

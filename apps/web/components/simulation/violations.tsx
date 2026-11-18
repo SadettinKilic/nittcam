@@ -113,7 +113,7 @@ function FindingList({ t, items }: { t: SimText; items: readonly Finding[] }) {
                 key={`${f.code}-${f.file ?? ''}-${f.line ?? 0}-${i}`}
                 data-testid="violation"
                 data-code={f.code}
-                className="flex flex-col gap-0.5 rounded-md bg-bg/70 px-3 py-2 text-sm sm:flex-row sm:items-baseline sm:gap-3"
+                className="flex flex-col gap-0.5 rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm sm:flex-row sm:items-baseline sm:gap-3"
               >
                 <span className="shrink-0 font-mono text-xs text-fg-muted">
                   {f.sheet !== undefined && !f.file
@@ -150,17 +150,17 @@ export function Violations({ t, result }: { t: SimText; result: SimulateResult }
       role="alert"
       aria-labelledby="blocked-title"
       data-testid="sim-blocked"
-      className="flex flex-col gap-4 rounded-card border border-danger bg-danger-bg p-4 text-fg sm:p-5"
+      className="flex flex-col gap-4 rounded-xl border border-danger-border bg-danger-subtle p-4 text-fg sm:p-5"
     >
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-danger font-bold text-accent-fg"
+          className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-danger font-bold text-danger-fg"
         >
           !
         </span>
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 id="blocked-title" className="text-xl font-semibold text-danger">
+          <h2 id="blocked-title" className="text-base font-semibold text-danger-text">
             {t.blocked.title}
           </h2>
           <p className="text-sm">{fill(t.blocked.body, { count: errors.length })}</p>
@@ -180,7 +180,7 @@ export function Violations({ t, result }: { t: SimText; result: SimulateResult }
       ) : null}
       <p className="text-sm">
         {t.blocked.machinesHint}{' '}
-        <Link href="/makineler" className="font-medium text-accent underline">
+        <Link href="/makineler" className="rounded-sm font-medium text-accent-text underline">
           {t.machine.link}
         </Link>
       </p>

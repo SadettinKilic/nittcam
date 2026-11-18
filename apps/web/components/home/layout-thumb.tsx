@@ -1,8 +1,8 @@
 import type { LayoutThumb } from '../../lib/dashboard';
 
 /**
- * Small drawing of a project's first sheet (T106). Pure SVG coloured with tokens, so it follows the
- * theme and costs nothing on the server. Sheet coordinates are y-up (origin front-left).
+ * Small drawing of a project's first sheet (T106). Pure SVG coloured with the canvas tokens (tinted
+ * sheet with a clear edge, parts in the accent tint with an outline), so it follows the theme. Sheet coordinates are y-up (origin front-left).
  */
 export function LayoutThumbnail({ thumb, label }: { thumb: LayoutThumb; label: string }) {
   const { width, height } = thumb.sheet;
@@ -21,8 +21,8 @@ export function LayoutThumbnail({ thumb, label }: { thumb: LayoutThumb; label: s
         y={0}
         width={width}
         height={height}
-        className="fill-surface stroke-border-strong"
-        strokeWidth={stroke}
+        className="fill-sheet stroke-sheet-edge"
+        strokeWidth={stroke * 1.5}
       />
       {thumb.parts.map((p, i) => (
         <rect
@@ -31,7 +31,7 @@ export function LayoutThumbnail({ thumb, label }: { thumb: LayoutThumb; label: s
           y={height - p.y - p.h}
           width={p.w}
           height={p.h}
-          className="fill-accent-subtle stroke-accent-border"
+          className="fill-part stroke-part-stroke"
           strokeWidth={stroke}
         />
       ))}

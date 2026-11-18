@@ -15,7 +15,21 @@ import { useId, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
-import { NumberField, inputClass } from './number-field';
+import { TriangleAlert } from 'lucide-react';
+import { focusRing } from '../page/page-header';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from '@nittcam/ui';
+import { NumberField } from './number-field';
+
+import { Callout, canvasWellClass } from './panels';
 
 type Text = Messages['wizard']['machine'];
 type MaterialText = Messages['materials'];
@@ -79,31 +93,32 @@ export function MachineFields({
   const materialName = (k: MaterialKind) => materials[k];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <p className="text-sm text-fg-muted">{t.help}</p>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor={ids.machine} className="text-sm font-medium">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={ids.machine} className="text-sm font-medium text-fg">
           {t.machine}
         </label>
-        <select
-          id={ids.machine}
-          data-testid="wizard-machine"
-          className={inputClass}
-          value={known ? project.machine.machineId : ''}
-          onChange={(e) => {
-            const m = machines.find((x) => x.id === e.target.value);
+        <Select
+          value={known ? project.machine.machineId : undefined}
+          onValueChange={(v) => {
+            const m = machines.find((x) => x.id === v);
             if (m) run('setMachine', { machineId: m.id, profileVersion: m.version });
           }}
         >
-          {known ? null : <option value="">{t.choose}</option>}
-          {machines.map((m) => (
-            <option key={m.id} value={m.id}>
-              {fill(t.option, { name: m.name, version: m.version })}
-            </option>
-          ))}
-        </select>
-        {!known ? <p className="text-xs text-warn">{t.unknownMachine}</p> : null}
+          <SelectTrigger id={ids.machine} data-testid="wizard-machine">
+            <SelectValue placeholder={t.choose} />
+          </SelectTrigger>
+          <SelectContent>
+            {machines.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {fill(t.option, { name: m.name, version: m.version })}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {!known ? <p className="text-xs text-warning-text">{t.unknownMachine}</p> : null}
         {profile ? (
           <p className="text-xs text-fg-muted">
             {fill(t.table, {
@@ -114,10 +129,12 @@ export function MachineFields({
           </p>
         ) : null}
         {detail && (detail.state !== 'verified' || detail.profile.example) ? (
-          <p className="text-xs text-warn">{t.unverified}</p>
+          <Callout tone="warning" icon={<TriangleAlert aria-hidden />} className="text-xs">
+            <p>{t.unverified}</p>
+          </Callout>
         ) : null}
         {detail && known && detail.version !== project.machine.profileVersion ? (
-          <div className="flex flex-wrap items-center gap-2 text-xs text-info">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-info-border bg-info-subtle px-3 py-2 text-xs text-info-text">
             <span>
               {fill(t.profileNewer, {
                 old: project.machine.profileVersion,
@@ -126,7 +143,7 @@ export function MachineFields({
             </span>
             <button
               type="button"
-              className="rounded-md border border-border bg-bg px-2 py-1 font-medium hover:bg-sidebar focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className={`h-control-sm rounded-md border border-border-strong bg-surface px-2.5 font-medium text-fg shadow-xs hover:bg-surface-hover ${focusRing}`}
               onClick={() =>
                 run('setMachine', { machineId: detail.id, profileVersion: detail.version })
               }
@@ -137,40 +154,49 @@ export function MachineFields({
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor={ids.material} className="text-sm font-medium">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={ids.material} className="text-sm font-medium text-fg">
           {t.material}
         </label>
-        <select
-          id={ids.material}
-          data-testid="wizard-material"
-          className={inputClass}
+        <Select
           value={kind ?? stock.material}
-          onChange={(e) => run('setMaterial', { material: e.target.value })}
+          onValueChange={(v) => run('setMaterial', { material: v })}
         >
-          {kind === null ? (
-            <option value={stock.material}>
-              {fill(materials.unknown, { id: stock.material })}
-            </option>
-          ) : null}
-          <optgroup label={materials.groupWood}>
-            {WOOD.map((k) => (
-              <option key={k} value={k}>
-                {materialName(k)}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label={materials.groupPlastic}>
-            {PLASTIC.map((k) => (
-              <option key={k} value={k}>
-                {materialName(k)}
-              </option>
-            ))}
-          </optgroup>
-          <option value="" disabled>
-            {materials.stone}
-          </option>
-        </select>
+          <SelectTrigger
+            id={ids.material}
+            data-testid="wizard-material"
+            data-value={kind ?? stock.material}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {kind === null ? (
+              <SelectItem value={stock.material}>
+                {fill(materials.unknown, { id: stock.material })}
+              </SelectItem>
+            ) : null}
+            <SelectGroup>
+              <SelectLabel>{materials.groupWood}</SelectLabel>
+              {WOOD.map((k) => (
+                <SelectItem key={k} value={k}>
+                  {materialName(k)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>{materials.groupPlastic}</SelectLabel>
+              {PLASTIC.map((k) => (
+                <SelectItem key={k} value={k}>
+                  {materialName(k)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectSeparator />
+            <SelectItem value="__stone" disabled>
+              {materials.stone}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -199,7 +225,7 @@ export function MachineFields({
                   type="button"
                   aria-pressed={v === stock.thickness}
                   onClick={() => run('setThickness', { thickness: v })}
-                  className={`rounded-md border px-2 py-0.5 text-xs font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${v === stock.thickness ? 'border-accent bg-accent text-accent-fg' : 'border-border bg-bg hover:bg-sidebar'}`}
+                  className={`h-control-sm min-w-11 rounded-md border px-2.5 text-xs font-medium tabular-nums transition-colors duration-(--duration-fast) ${focusRing} ${v === stock.thickness ? 'border-accent bg-accent text-accent-fg shadow-xs' : 'border-border-strong bg-surface text-fg hover:bg-surface-hover'}`}
                 >
                   {mm(v)}
                 </button>
@@ -213,13 +239,13 @@ export function MachineFields({
           <p
             role="alert"
             data-testid="no-cutting-params"
-            className="rounded-lg bg-danger-bg p-3 text-sm text-danger"
+            className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
           >
             {fill(t.noParams, {
               material: kind ? materialName(kind) : stock.material,
               thickness: mm(stock.thickness),
             })}{' '}
-            <Link href="/makineler" className="font-medium underline">
+            <Link href="/makineler" className={`font-medium underline ${focusRing}`}>
               {machinesLink}
             </Link>
           </p>
@@ -237,19 +263,19 @@ export function MachineFields({
       </div>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">{t.sheet}</legend>
+        <legend className="mb-1.5 text-sm font-medium text-fg">{t.sheet}</legend>
         <div className="flex flex-wrap gap-2">
           {SHEET_PRESETS.map((p, i) => {
             const on = !custom && preset === i;
             return (
               <label
                 key={`${p.a}x${p.b}`}
-                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${on ? 'border-accent bg-accent/10 font-medium' : 'border-border bg-bg hover:bg-sidebar'}`}
+                className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${on ? 'border-accent-border bg-accent-subtle font-medium text-fg' : 'border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg'}`}
               >
                 <input
                   type="radio"
                   name="sheet-size"
-                  className="accent-accent"
+                  className="size-4 accent-(--color-accent)"
                   checked={on}
                   onChange={() => {
                     setCustomOpen(false);
@@ -261,12 +287,12 @@ export function MachineFields({
             );
           })}
           <label
-            className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${custom ? 'border-accent bg-accent/10 font-medium' : 'border-border bg-bg hover:bg-sidebar'}`}
+            className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${custom ? 'border-accent-border bg-accent-subtle font-medium text-fg' : 'border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg'}`}
           >
             <input
               type="radio"
               name="sheet-size"
-              className="accent-accent"
+              className="size-4 accent-(--color-accent)"
               checked={custom}
               onChange={() => setCustomOpen(true)}
             />
@@ -295,7 +321,7 @@ export function MachineFields({
           <p
             role="alert"
             data-testid="sheet-table-warning"
-            className="rounded-lg bg-warn-bg p-3 text-sm text-warn"
+            className="rounded-lg border border-warning-border bg-warning-subtle px-3 py-2.5 text-sm text-warning-text"
           >
             {fill(t.tableWarning, {
               w: mm(stock.sheet.width),
@@ -309,17 +335,17 @@ export function MachineFields({
 
       {materialHasGrain(kind) ? (
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">{t.grain}</legend>
+          <legend className="mb-1.5 text-sm font-medium text-fg">{t.grain}</legend>
           <div className="flex flex-wrap gap-2">
             {([0, 90] as const).map((g) => (
               <label
                 key={g}
-                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${stock.sheet.grain === g ? 'border-accent bg-accent/10 font-medium' : 'border-border bg-bg hover:bg-sidebar'}`}
+                className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${stock.sheet.grain === g ? 'border-accent-border bg-accent-subtle font-medium text-fg' : 'border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg'}`}
               >
                 <input
                   type="radio"
                   name="grain"
-                  className="accent-accent"
+                  className="size-4 accent-(--color-accent)"
                   checked={stock.sheet.grain === g}
                   onChange={() => run('setGrain', { grain: g })}
                 />
@@ -366,13 +392,17 @@ export function SheetPreview({
   const arrow = Math.min(sheet.width, sheet.height) * 0.35;
   const showGrain = materialHasGrain(materialKindOf(project.stock.material));
   return (
-    <figure className="flex flex-col gap-2" data-testid="sheet-preview" data-fits={fits}>
-      <figcaption className="text-sm font-medium">{t.preview}</figcaption>
+    <figure
+      className={`${canvasWellClass} flex flex-col gap-3 p-4 sm:p-5`}
+      data-testid="sheet-preview"
+      data-fits={fits}
+    >
+      <figcaption className="text-sm font-semibold text-fg">{t.preview}</figcaption>
       <svg
         role="img"
         aria-label={label}
         viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad}`}
-        className="h-auto max-h-[60vh] w-full rounded-lg border border-border bg-sidebar"
+        className="h-auto max-h-[62vh] w-full rounded-lg bg-canvas"
       >
         {profile ? (
           <rect
@@ -380,7 +410,7 @@ export function SheetPreview({
             y={sy(0, table.depth)}
             width={table.width}
             height={table.depth}
-            className="fill-bg stroke-sim-table"
+            className="fill-surface stroke-sim-table"
             strokeWidth={W / 300}
             strokeDasharray={`${W / 60} ${W / 120}`}
           />
@@ -390,13 +420,13 @@ export function SheetPreview({
           y={sy(off.y, sheet.height)}
           width={sheet.width}
           height={sheet.height}
-          className={fits ? 'fill-part stroke-part-stroke' : 'fill-danger-bg stroke-danger'}
+          className={fits ? 'fill-sheet stroke-sheet-edge' : 'fill-danger-subtle stroke-danger'}
           strokeWidth={W / 250}
         />
         {showGrain ? (
           <g
             transform={`rotate(${-sheet.grain} ${cx} ${cy})`}
-            className="stroke-part-stroke"
+            className="stroke-grain"
             strokeWidth={W / 300}
             fill="none"
           >
@@ -418,7 +448,7 @@ export function SheetPreview({
         ) : null}
         <span className="flex items-center gap-1.5">
           <span
-            className="inline-block size-3.5 rounded-sm border border-part-stroke bg-part"
+            className="inline-block size-3.5 rounded-sm border border-sheet-edge bg-sheet"
             aria-hidden="true"
           />
           {t.legendSheet} {fill(t.preset, { a: mm(sheet.width), b: mm(sheet.height) })}

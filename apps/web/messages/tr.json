@@ -33,7 +33,8 @@
       "noExport": "Henüz export yok",
       "noLayout": "Dizilim yok",
       "thumb": "{name} dizilim önizlemesi",
-      "updated": "Güncellendi {date}"
+      "updated": "Güncellendi {date}",
+      "utilisation": "Kullanım %{value}"
     },
     "machines": "Makineler",
     "machinesDescription": "Doğrulama durumu",
@@ -407,7 +408,7 @@
     "subtitle": "Kesim listesini tabloya girin ya da Excel'den yapıştırın. Ölçüler milimetredir.",
     "tableLabel": "Kesim listesi",
     "empty": "Henüz parça yok. Excel'den yapıştırın ya da yeni satır ekleyin.",
-    "addRow": "+ Satır ekle",
+    "addRow": "Satır ekle",
     "pasteOpen": "Excel'den yapıştır",
     "undo": "Geri al",
     "redo": "Yinele",
@@ -818,8 +819,8 @@
     "gcode": {
       "title": "G-code",
       "label": "G-code satırları. Bir satıra tıklayınca simülasyon o satıra gider.",
-      "line": "Satır {line}: {text}",
-      "file": "Dosya: {name}"
+      "file": "Dosya: {name}",
+      "lineWord": "Satır"
     },
     "zStrip": {
       "label": "Z derinliği / zaman. Tıklayınca o ana gidilir.",
@@ -846,7 +847,7 @@
   "projects": {
     "title": "Projeler",
     "subtitle": "Kayıtlı projeleriniz. Bir projeyi açıp kaldığınız yerden devam edin.",
-    "newProject": "+ Yeni proje",
+    "newProject": "Yeni proje",
     "search": "Projelerde ara",
     "searchPlaceholder": "Ad, makine veya malzeme",
     "loading": "Projeler yükleniyor…",
@@ -872,7 +873,6 @@
     },
     "open": "Aç",
     "copy": "Kopyala",
-    "copying": "Kopyalanıyor…",
     "copyName": "{name} (kopya)",
     "copied": "“{name}” oluşturuldu.",
     "copyFailed": "Proje kopyalanamadı. Tekrar deneyin.",
@@ -916,10 +916,22 @@
       "dizilim": "Dizilim",
       "simulasyon": "Önizleme / simülasyon",
       "export": "Dışa aktar",
-      "stepOf": "Adım {n} / {total}"
+      "stepOf": "Adım {n} / {total}",
+      "status": {
+        "done": "tamamlandı",
+        "current": "şu anki adım",
+        "upcoming": "sıradaki",
+        "blocked": "henüz hazır değil"
+      },
+      "blocked": {
+        "noParts": "Önce Parçalar adımında parça ekleyin.",
+        "noLayout": "Önce Dizilim adımında parçaları dizin."
+      },
+      "nextStep": "Sonraki: {name}",
+      "counter": "{n} / {total}"
     },
-    "back": "← Geri",
-    "next": "İleri →",
+    "back": "Geri",
+    "next": "İleri",
     "save": {
       "label": "Kayıt durumu",
       "new": "Henüz kaydedilmedi",
@@ -927,7 +939,13 @@
       "saving": "Kaydediliyor…",
       "error": "Kaydedilemedi",
       "retrying": "Kaydedilemedi, yeniden denenecek",
-      "revision": "revizyon {n}"
+      "revision": "revizyon {n}",
+      "short": {
+        "saved": "Kaydedildi",
+        "saving": "Kaydediliyor",
+        "error": "Kaydedilemedi",
+        "new": "Taslak"
+      }
     },
     "conflict": {
       "title": "Proje başka bir yerde değişti",

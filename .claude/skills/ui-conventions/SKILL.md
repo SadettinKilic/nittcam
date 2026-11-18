@@ -9,7 +9,8 @@ Look: modern, calm, corporate (Linear / Vercel class). Neutral graphite surfaces
 
 ## Stack
 - Next.js App Router + Tailwind v4. Components are ours, in `packages/ui` (shadcn style on Radix via the `radix-ui` package), `cva` variants, `cn()` for class merging, `lucide-react` icons, `sonner` toasts, `cmdk` palette, `next-themes`.
-- New or changed screens use `@nittcam/ui` components and tokens only. No ad-hoc buttons/inputs in apps/web.
+- New or changed screens use `@nittcam/ui` components and tokens only. No ad-hoc buttons/inputs in apps/web and no local button class strings: use `Button` / `IconButton` / `buttonVariants` (the old `buttonClass` helper and the legacy token aliases `sidebar`, `ok`, `warn`, `*-bg` were removed in B4).
+- **No native `<select>` or `<input type="checkbox">` in apps/web.** Use `Select` (`SelectTrigger` + `SelectValue` + `SelectContent` + `SelectItem`; `SelectGroup`/`SelectLabel` for groups) and `Checkbox` from `@nittcam/ui`. Put `id` and `data-testid` on the trigger, link the label with `htmlFor`, mirror the value as `data-value` on the trigger for tests, and use a sentinel such as `__none__` instead of an empty item value (Radix forbids `""`). In e2e use `pickOption()` / `optionLabels()` from `e2e/tests/wizard-helpers.ts` instead of `selectOption`; `check()` and `toBeChecked()` work on `Checkbox`.
 - Gallery of every component/variant/state: `/dev/ui` (dev only). Add a new component there in the same PR.
 
 ## Tokens (`packages/ui/src/tokens.css`, the only place for values)
@@ -20,8 +21,8 @@ Look: modern, calm, corporate (Linear / Vercel class). Neutral graphite surfaces
   - Text: `fg`, `fg-muted` (secondary), `fg-subtle` (hints, placeholders), `fg-disabled`.
   - Accent: `accent` (solid fill) + `accent-fg` (text on it), `accent-hover`, `accent-text` (links, active nav text), `accent-subtle` (selected row/tint), `accent-border`; `focus` is the focus-ring colour.
   - Status `success | warning | danger | info`: `X` solid, `X-fg` text on solid, `X-text` coloured text on surfaces, `X-subtle` tint, `X-border`. `danger-hover` for destructive buttons.
-  - Legacy aliases (`sidebar`, `ok`, `ok-bg`, `warn`, `warn-bg`, `danger-bg`, `info-bg`) exist only for M1 screens until B3/B4; do not use them in new code.
-  - Canvas (`sheet-*`, `part-*`, `grid`, `sim-*`): Konva/3D read them with `getComputedStyle(document.documentElement)`; they have dark values too.
+  - Canvas tokens: `canvas` (well behind a drawing), `sheet`, `sheet-waste`, `sheet-margin`, `sheet-edge`, `grid`, `grain`, `part`, `part-stroke`, `part-locked`, `part-locked-stroke`, `selection`, `sim-*` (depth top/bottom, rapid, tool, table, envelope, zero, tab, part, part-stroke, badge, badge-fg). All have dark values.
+  - Konva/3D cannot use classes: read the tokens with `readTokenColors(TOKENS, getComputedStyle(document.documentElement))` and subscribe with `onThemeChange(cb)` (both in `apps/web/lib/canvas-theme.ts`; it watches the `<html>` class and the system scheme, returns the unsubscribe) so the canvas recolours live on a theme switch, without a reload. Never hard-code canvas colours.
 - Radius: `rounded-sm` (6 px: badges, kbd), `rounded-md` (8 px: buttons, inputs), `rounded-lg` (10 px: menus, popovers), `rounded-xl` (14 px: cards, dialogs).
 - Spacing: 4 px grid (`p-1` = 4 px). Control heights: `h-control-sm` 32 px, `h-control-md` 40 px (default; ≥ 40 px touch target, spec §3.7), `h-control-lg` 48 px.
 - Elevation: `shadow-xs` (buttons, inputs), `shadow-sm` (cards), `shadow-md` (popover, menu), `shadow-lg` (dialog, sheet), `shadow-xl` (command palette). Flat surfaces use a border, not a shadow.
@@ -62,6 +63,8 @@ Look: modern, calm, corporate (Linear / Vercel class). Neutral graphite surfaces
 - Page body: `pageContainer` + `PageHeader` (title, description, actions on the title's baseline; actions drop below on phones) and `SectionHeader` (section title with a right-aligned link on the same line) from `apps/web/components/page/page-header.tsx`. Use `sectionLink` for "Tüm … →" links and `focusRing` for custom focusable elements.
 - Data lists: TanStack Table v9 (`useTable`, `tableFeatures`, `createColumnHelper`) inside a `Card` on wide screens; a card list below `lg`. Keep the same accessible names on both (e.g. `Düzenle: <name>`).
 - Long forms: sections as `Card`s with title + one-line hint, a sticky side index on `lg`, a floating sticky save bar (status left: clean / unsaved / errors / saving; actions right), and a leave guard (in-app links, reload, Vazgeç) when dirty. Every mm/feed/rpm value uses `NumberInput` with a unit; parse errors block saving and show inline.
+- Wizard step panels: `Panel` (titled card section), `Callout` (warning/danger/info/success notice with an icon), `panelClass` and `canvasWellClass` (background well behind a canvas) from `apps/web/components/wizard/panels.tsx`; reuse them instead of new border/background strings.
+- Tab strips that can grow (plates, sheets) scroll horizontally in an `overflow-x-auto` wrapper (`TabsList` with `w-max flex-nowrap`, triggers `shrink-0`); the toolbar next to them stacks below on phones instead of wrapping into the tabs.
 - Verification badges: `MachineStateBadge` (`STATE_TONE` in `lib/machine-state.ts`); steppers use `stepStatuses()` (done / current / upcoming, `aria-current="step"`).
 - Scrollable regions (`overflow-x-auto` around tables without inputs) need `role="region"`, an `aria-label` and `tabIndex={0}` (axe `scrollable-region-focusable`).
 - Visual QA for redesigned pages: full-page `expectNoA11yViolations(page)` in light and dark at 1440 and 390 px. Captures of pages whose data is shared with other tests use `snap(page, name, { baseline: false })` (review capture only); deterministic states (fresh visual DB) get baselines.

@@ -2,7 +2,7 @@
  * Shared steps for the Oluştur wizard (T023). Since T023 the parts, layout and simulation screens
  * are wizard steps (`/projeler/yeni?adim=…` → `/projeler/<id>?adim=…` after the first autosave).
  */
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 
 export const STEP_KEYS = ['makine', 'parcalar', 'dizilim', 'simulasyon', 'export'] as const;
@@ -90,13 +90,44 @@ export async function projectId(page: Page): Promise<string> {
   return m[1];
 }
 
+/**
+ * Picks an option of a design-system Select (Radix, B4: no native <select>) by its visible label
+ * (exact string) or by index, then checks the trigger shows it.
+ */
+export async function pickOption(trigger: Locator, option: string | { index: number }) {
+  const page = trigger.page();
+  await trigger.click();
+  const listbox = page.getByRole('listbox');
+  await expect(listbox).toBeVisible();
+  const item =
+    typeof option === 'string'
+      ? listbox.getByRole('option', { name: option, exact: true })
+      : listbox.getByRole('option').nth(option.index);
+  const label = (await item.textContent())?.trim() ?? '';
+  await item.click();
+  await expect(listbox).toBeHidden();
+  await expect(trigger).toHaveText(label);
+}
+
+/** The option labels of a design-system Select (opens and closes it again). */
+export async function optionLabels(trigger: Locator): Promise<string[]> {
+  const page = trigger.page();
+  await trigger.click();
+  const listbox = page.getByRole('listbox');
+  await expect(listbox).toBeVisible();
+  const labels = (await listbox.getByRole('option').allTextContents()).map((s) => s.trim());
+  await page.keyboard.press('Escape');
+  await expect(listbox).toBeHidden();
+  return labels;
+}
+
 /** Selects a machine in step 1 by the start of its option label. */
 export async function chooseMachine(page: Page, name: string) {
   const select = page.getByTestId('wizard-machine');
-  const labels = await select.locator('option').allTextContents();
+  const labels = await optionLabels(select);
   const label = labels.find((l) => l.startsWith(name));
   if (!label) throw new Error(`machine ${name} not in ${labels.join(', ')}`);
-  await select.selectOption({ label });
+  await pickOption(select, label);
 }
 
 /** "Diz" on the Dizilim step (goes there first when needed). */

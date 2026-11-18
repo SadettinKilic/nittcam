@@ -35,7 +35,7 @@ import {
 import { fill } from '../lib/draft-project';
 import { getMessages, type Messages } from '../lib/messages';
 import type { MachineListItem } from '../lib/machines-api';
-import type { ProjectListItem, ProjectStatus } from '../lib/projects-api';
+import { PROJECT_STATUS_TONE, type ProjectListItem } from '../lib/projects-api';
 import { companyScope } from '../lib/server/company';
 import { versionNumbers } from '../lib/server/exports';
 import { toListItem as machineItem } from '../lib/server/machines';
@@ -48,12 +48,7 @@ const RECENT = 4;
 const dateFormat = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
 const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 const countFormat = new Intl.NumberFormat('tr-TR');
-
-const STATUS_TONE: Record<ProjectStatus, 'neutral' | 'info' | 'success'> = {
-  draft: 'neutral',
-  produced: 'info',
-  completed: 'success',
-};
+const pctFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 });
 
 interface RecentProject {
   item: ProjectListItem;
@@ -260,9 +255,17 @@ function ProjectCard({ project, messages }: { project: RecentProject; messages: 
   });
   return (
     <Card interactive className="group relative flex h-full flex-col overflow-hidden">
-      <div className="flex aspect-[16/7] items-center justify-center border-b border-border-subtle bg-surface-subtle p-4">
+      <div className="relative flex h-32 items-center justify-center border-b border-border-subtle bg-canvas p-3">
         {thumb ? (
-          <LayoutThumbnail thumb={thumb} label={fill(t.thumb, { name: item.name })} />
+          <>
+            <LayoutThumbnail thumb={thumb} label={fill(t.thumb, { name: item.name })} />
+            <span
+              data-testid="home-thumb-utilisation"
+              className="numeric absolute right-2 bottom-2 rounded-md border border-border bg-surface/90 px-1.5 py-0.5 text-2xs font-medium text-fg shadow-xs backdrop-blur-sm"
+            >
+              {fill(t.utilisation, { value: pctFormat.format(thumb.utilisation) })}
+            </span>
+          </>
         ) : (
           <span className="flex flex-col items-center gap-2 text-xs text-fg-muted">
             <LayoutGrid aria-hidden className="size-5" />
@@ -278,7 +281,9 @@ function ProjectCard({ project, messages }: { project: RecentProject; messages: 
           >
             {item.name}
           </Link>
-          <Badge variant={STATUS_TONE[item.status]}>{messages.projects.status[item.status]}</Badge>
+          <Badge variant={PROJECT_STATUS_TONE[item.status]}>
+            {messages.projects.status[item.status]}
+          </Badge>
         </div>
         <p className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-fg-muted">
           <span>{item.machine ?? messages.projects.noMachine}</span>

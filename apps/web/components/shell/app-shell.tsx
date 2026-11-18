@@ -34,6 +34,7 @@ import { useReturnFocus } from './use-return-focus';
 import { SearchButton } from './search-button';
 import { Sidebar, SidebarContent, type ShellText } from './sidebar';
 import { TopBar } from './top-bar';
+import { guardedNavigate } from '../../lib/navigation-guard';
 
 export interface AppShellProps {
   t: ShellText;
@@ -71,7 +72,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
 
   const actions = useMemo<CommandActions>(
     () => ({
-      navigate: (href) => router.push(href),
+      navigate: (href) => guardedNavigate(href, (to) => router.push(to)),
       setTheme,
       toggleTheme: () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark'),
       toggleSidebar,

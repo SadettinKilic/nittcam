@@ -8,7 +8,9 @@ import type { ProjectSession } from '../../lib/project-session';
 import { useNestingWorker } from '../../lib/use-nesting-worker';
 import { LayoutView, type LockRequest } from '../layout-view/layout-view';
 import { NestingPanel } from '../parts/nesting-panel';
-import { NumberField, inputClass } from './number-field';
+import { LayoutGrid } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nittcam/ui';
+import { NumberField } from './number-field';
 
 const MODES: readonly NestingMode[] = ['minWaste', 'fastest', 'minToolChanges'];
 
@@ -77,27 +79,34 @@ export function LayoutStep({
   return (
     <>
       <aside className="flex min-w-0 flex-col gap-4" aria-label={t.options}>
-        <section className="flex flex-col gap-3 rounded-card border border-border p-4">
-          <h2 className="text-base font-semibold">{t.options}</h2>
-          <div className="flex flex-col gap-1">
-            <label htmlFor={modeId} className="text-sm font-medium">
+        <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-5">
+          <h2 className="text-sm font-semibold tracking-tight text-fg">{t.options}</h2>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={modeId} className="text-sm font-medium text-fg">
               {t.mode}
             </label>
-            <select
-              id={modeId}
-              className={inputClass}
+            <Select
               value={project.nesting.mode}
-              onChange={(e) => run('setNestingOptions', { mode: e.target.value })}
+              onValueChange={(v) => run('setNestingOptions', { mode: v })}
             >
-              {MODES.map((m) => (
-                <option key={m} value={m}>
-                  {t.modes[m]}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                id={modeId}
+                data-testid="layout-mode"
+                data-value={project.nesting.mode}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MODES.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {t.modes[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-fg-muted">{t.modeNote}</p>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 items-end gap-3">
             <NumberField
               label={t.gap}
               value={project.nesting.gap}
@@ -113,7 +122,7 @@ export function LayoutStep({
               onCommit={(margin) => run('setNestingOptions', { margin })}
             />
           </div>
-          <p className="text-xs text-fg-muted">{t.offcuts}</p>
+          <p className="text-xs text-fg-subtle">{t.offcuts}</p>
         </section>
         <NestingPanel
           t={nt}
@@ -137,12 +146,17 @@ export function LayoutStep({
             renesting={running}
           />
         ) : (
-          <p
+          <div
             data-testid="layout-empty"
-            className="rounded-card border border-dashed border-border p-6 text-center text-fg-muted"
+            className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border-strong bg-surface-subtle p-8 text-center"
           >
-            {project.parts.length === 0 ? t.noParts : t.empty}
-          </p>
+            <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface text-fg-muted">
+              <LayoutGrid aria-hidden className="size-5" />
+            </span>
+            <p className="max-w-sm text-sm text-fg-muted">
+              {project.parts.length === 0 ? t.noParts : t.empty}
+            </p>
+          </div>
         )}
       </div>
     </>

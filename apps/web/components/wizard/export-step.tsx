@@ -2,8 +2,19 @@
 
 import Link from 'next/link';
 import type { Project } from '@nittcam/core';
-import { notify } from '@nittcam/ui';
-import { useEffect, useRef, useState } from 'react';
+import { Button, Card, Checkbox, notify } from '@nittcam/ui';
+import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
+import {
+  CircleAlert,
+  CircleCheck,
+  Download,
+  FileCode,
+  ShieldAlert,
+  TriangleAlert,
+} from 'lucide-react';
+import { focusRing } from '../page/page-header';
+import { Callout } from './panels';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import {
   downloadBlocker,
@@ -22,7 +33,6 @@ import {
 import type { SaveState } from '../../lib/autosave';
 import type { Messages } from '../../lib/messages';
 import type { SimMachine } from '../simulation/simulation-view';
-import { buttonClass } from '../parts/ui';
 
 type Text = Messages['wizard']['export'];
 type Corners = Messages['machines']['form']['options']['corner'];
@@ -58,7 +68,7 @@ function Spinner() {
   return (
     <span
       aria-hidden="true"
-      className="size-4 animate-spin rounded-full border-2 border-border border-t-accent"
+      className="size-4 shrink-0 animate-spin rounded-full border-2 border-border-strong border-t-accent"
     />
   );
 }
@@ -91,6 +101,7 @@ export function ExportStep({
   saved: boolean;
   saveState: SaveState;
 }) {
+  const acceptId = useId();
   const hasLayout = project.layout.sheets.length > 0;
   const busySaving = !saved || saveState === 'pending' || saveState === 'saving';
   const canRun = machine !== null && hasLayout && projectId !== null && !busySaving;
@@ -229,7 +240,7 @@ export function ExportStep({
       <p
         role="alert"
         data-testid="export-stale"
-        className="rounded-lg bg-danger-bg p-3 text-sm text-danger"
+        className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
       >
         {t.stale}
       </p>
@@ -260,16 +271,12 @@ export function ExportStep({
     status = (
       <div
         role="alert"
-        className="flex flex-col items-start gap-2 rounded-lg bg-danger-bg p-3 text-sm text-danger"
+        className="flex flex-col items-start gap-2 rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
       >
         <p>{t.failedRun}</p>
-        <button
-          type="button"
-          onClick={() => setAttempt((n) => n + 1)}
-          className={`${buttonClass} border border-border bg-bg text-fg`}
-        >
+        <Button variant="outline" size="sm" onClick={() => setAttempt((n) => n + 1)}>
           {t.retry}
-        </button>
+        </Button>
       </div>
     );
   } else if (current.preview.ok) {
@@ -277,9 +284,9 @@ export function ExportStep({
       <p
         data-testid="export-status"
         data-ok="true"
-        className="rounded-lg bg-ok-bg p-3 text-sm font-semibold text-ok"
+        className="flex items-center gap-2 rounded-lg border border-success-border bg-success-subtle px-3 py-2.5 text-sm font-semibold text-success-text"
       >
-        <span aria-hidden="true">✓ </span>
+        <CircleCheck aria-hidden className="size-4 shrink-0" />
         {t.passed}
       </p>
     );
@@ -290,8 +297,9 @@ export function ExportStep({
           data-testid="export-status"
           data-ok="false"
           role="alert"
-          className="rounded-lg bg-danger-bg p-3 text-sm text-danger"
+          className="flex items-center gap-2 rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm font-semibold text-danger-text"
         >
+          <CircleAlert aria-hidden className="size-4 shrink-0" />
           {fill(t.failed, { count: errorCount(current.preview) })}
         </p>
         <Violations t={t} violations={current.preview.violations} />
@@ -301,66 +309,89 @@ export function ExportStep({
 
   return (
     <>
-      <aside className="flex min-w-0 flex-col gap-3 rounded-card border border-border p-4">
-        <h2 className="text-base font-semibold">{t.checks}</h2>
-        {status}
-        {preview?.profile ? (
-          <div className="flex flex-col gap-1 text-xs text-fg-muted" data-testid="export-profile">
-            <p>
-              {fill(t.profile, {
-                machine: preview.profile.machineName,
-                version: preview.profile.version,
-                state: states[preview.profile.verification],
-              })}
-            </p>
-            {preview.profile.version < preview.profile.latestVersion ? (
-              <p className="text-warn" data-testid="export-profile-old">
-                {fill(t.profileOld, {
+      <aside className="flex min-w-0 flex-col gap-4">
+        <section
+          aria-labelledby="export-checks-title"
+          className="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-5"
+        >
+          <h2 id="export-checks-title" className="text-sm font-semibold tracking-tight text-fg">
+            {t.checks}
+          </h2>
+          {status}
+          {preview?.profile ? (
+            <div className="flex flex-col gap-1 text-xs text-fg-muted" data-testid="export-profile">
+              <p>
+                {fill(t.profile, {
+                  machine: preview.profile.machineName,
                   version: preview.profile.version,
-                  latest: preview.profile.latestVersion,
+                  state: states[preview.profile.verification],
                 })}
               </p>
-            ) : null}
-            {preview.post ? (
-              <p>{fill(t.post, { name: preview.post.name, version: preview.post.version })}</p>
-            ) : null}
-          </div>
-        ) : null}
-        {preview && preview.files.length > 0 ? (
-          <div className="flex flex-col gap-1">
-            <h3 className="text-sm font-semibold">{t.filesTitle}</h3>
-            <ul className="flex flex-col gap-1 text-xs" data-testid="export-files">
-              {preview.files.map((file) => (
-                <li key={file.name} title={file.hash} className="min-w-0 break-all">
-                  {fill(t.fileLine, {
-                    name: file.name,
-                    size: file.size,
-                    hash: shortHash(file.hash),
+              {preview.profile.version < preview.profile.latestVersion ? (
+                <p className="text-warning-text" data-testid="export-profile-old">
+                  {fill(t.profileOld, {
+                    version: preview.profile.version,
+                    latest: preview.profile.latestVersion,
                   })}
+                </p>
+              ) : null}
+              {preview.post ? (
+                <p>{fill(t.post, { name: preview.post.name, version: preview.post.version })}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+        {preview && preview.files.length > 0 ? (
+          <section
+            aria-labelledby="export-files-title"
+            className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-5"
+          >
+            <h2 id="export-files-title" className="text-sm font-semibold tracking-tight text-fg">
+              {t.filesTitle}
+            </h2>
+            <ul className="flex flex-col gap-2" data-testid="export-files">
+              {preview.files.map((file) => (
+                <li
+                  key={file.name}
+                  title={file.hash}
+                  className="flex min-w-0 items-start gap-2.5 rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2"
+                >
+                  <FileCode aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
+                  <span className="min-w-0 font-mono text-xs break-all text-fg">
+                    {fill(t.fileLine, {
+                      name: file.name,
+                      size: file.size,
+                      hash: shortHash(file.hash),
+                    })}
+                  </span>
                 </li>
               ))}
             </ul>
-          </div>
+          </section>
         ) : null}
       </aside>
       <section
         aria-labelledby="export-title"
-        className="flex min-w-0 flex-col gap-3 rounded-card border border-border p-4"
+        className="flex min-w-0 flex-col gap-5 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6"
       >
-        <h2 id="export-title" className="text-xl font-semibold">
-          {t.title}
-        </h2>
-        <p className="text-sm text-fg-muted" data-testid="export-revision">
-          {fill(t.revision, { n: revision })}
-        </p>
-        {saved ? null : <p className="text-xs text-warn">{t.unsaved}</p>}
-        <p className="text-xs text-fg-muted">{t.serverNote}</p>
+        <div className="flex flex-col gap-1">
+          <h2 id="export-title" className="text-base font-semibold tracking-tight text-fg">
+            {t.title}
+          </h2>
+          <p className="text-sm text-fg-muted" data-testid="export-revision">
+            {fill(t.revision, { n: revision })}
+          </p>
+          {saved ? null : <p className="text-xs text-warning-text">{t.unsaved}</p>}
+          <p className="text-xs text-fg-subtle">{t.serverNote}</p>
+        </div>
 
         {preview?.ok && preview.needsAcceptance ? (
-          <div
+          <Callout
+            tone="danger"
             role="alert"
             data-testid="export-unverified"
-            className="flex flex-col gap-2 rounded-lg bg-warn-bg p-3 text-sm text-warn"
+            icon={<ShieldAlert aria-hidden />}
+            className="gap-3 p-4"
           >
             <p className="font-semibold">{t.unverifiedTitle}</p>
             <p>{t.unverifiedBody}</p>
@@ -375,30 +406,29 @@ export function ExportStep({
               <Link
                 href={`/makineler/${preview.profile.machineId}/dogrulama`}
                 data-testid="export-verify-link"
-                className="font-medium underline"
+                className={`self-start font-medium underline underline-offset-4 ${focusRing}`}
               >
                 {t.unverifiedLink}
               </Link>
             ) : null}
-            <label className="flex items-start gap-2 font-medium">
-              <input
-                type="checkbox"
+            <div className="mt-1 flex items-start gap-2.5 rounded-lg border border-danger-border bg-surface px-3 py-2.5 font-medium text-fg">
+              <Checkbox
+                id={acceptId}
                 data-testid="export-accept"
                 checked={f.accepted}
-                onChange={(e) => update({ accepted: e.target.checked })}
-                className="mt-0.5"
+                onCheckedChange={(v) => update({ accepted: v === true })}
+                className="mt-0.5 data-[state=checked]:border-danger data-[state=checked]:bg-danger data-[state=checked]:text-danger-fg"
               />
-              {t.accept}
-            </label>
-          </div>
+              <label htmlFor={acceptId} className="cursor-pointer">
+                {t.accept}
+              </label>
+            </div>
+          </Callout>
         ) : null}
 
         {preview?.ok ? (
-          <fieldset
-            className="flex flex-col gap-2 rounded-lg border border-border p-3"
-            data-testid="export-checklist"
-          >
-            <legend className="px-1 text-sm font-semibold">{t.checklistTitle}</legend>
+          <fieldset className="flex min-w-0 flex-col gap-2" data-testid="export-checklist">
+            <legend className="mb-2 text-sm font-semibold text-fg">{t.checklistTitle}</legend>
             <ChecklistItem
               testId="export-check-origin"
               checked={f.checks.origin}
@@ -427,21 +457,24 @@ export function ExportStep({
               onChange={(v) => update({ checks: { ...f.checks, airCut: v } })}
               label={t.checkAirCut}
             />
-            <p className="text-xs text-fg-muted">{t.airCutNote}</p>
+            <p className="flex items-start gap-1.5 text-xs text-warning-text">
+              <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+              {t.airCutNote}
+            </p>
           </fieldset>
         ) : null}
 
-        <div className="flex flex-col items-start gap-2">
-          <button
-            type="button"
+        <div className="flex flex-col items-start gap-2 border-t border-border-subtle pt-5">
+          <Button
+            size="lg"
             disabled={blocker !== null || f.download.status === 'busy'}
             aria-describedby="export-hint"
             data-testid="export-download"
             onClick={() => void doExport()}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg disabled:cursor-not-allowed disabled:opacity-50"
           >
+            <Download aria-hidden />
             {f.download.status === 'busy' ? t.downloading : t.download}
-          </button>
+          </Button>
           <p id="export-hint" data-testid="export-hint" className="text-sm text-fg-muted">
             {blocker === 'checks'
               ? t.needPass
@@ -475,17 +508,23 @@ function ChecklistItem({
   onChange: (v: boolean) => void;
   label: string;
 }) {
+  const id = useId();
   return (
-    <label className="flex items-start gap-2 text-sm">
-      <input
-        type="checkbox"
+    <div
+      className={`relative flex min-h-12 items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${checked ? 'border-success-border bg-success-subtle text-fg' : 'border-border bg-surface text-fg hover:bg-surface-hover'}`}
+    >
+      <Checkbox
+        id={id}
         data-testid={testId}
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5"
+        onCheckedChange={(v) => onChange(v === true)}
+        className="relative z-10 mt-0.5 data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-fg"
       />
-      {label}
-    </label>
+      <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer after:absolute after:inset-0">
+        {label}
+      </label>
+      {checked ? <CircleCheck aria-hidden className="size-4 shrink-0 text-success-text" /> : null}
+    </div>
   );
 }
 
@@ -493,12 +532,15 @@ function Violations({ t, violations }: { t: Text; violations: ExportViolation[] 
   const errors = violations.filter((v) => v.severity === 'error');
   if (errors.length === 0) return null;
   return (
-    <div className="flex flex-col gap-1">
-      <h3 className="text-sm font-semibold">{t.violationsTitle}</h3>
+    <div className="flex flex-col gap-1.5">
+      <h3 className="text-sm font-semibold text-fg">{t.violationsTitle}</h3>
       <ul className="flex flex-col gap-1 text-xs" data-testid="export-violations">
         {errors.map((v, i) => (
-          <li key={`${v.code}-${i}`} className="min-w-0 break-words">
-            <span className="font-mono">{v.rule}</span> {v.message}
+          <li
+            key={`${v.code}-${i}`}
+            className="min-w-0 rounded-md border border-border-subtle bg-surface-subtle px-2.5 py-1.5 break-words"
+          >
+            <span className="font-mono text-danger-text">{v.rule}</span> {v.message}
             {v.file && v.line ? (
               <span className="text-fg-muted">
                 {' '}
@@ -515,7 +557,7 @@ function Violations({ t, violations }: { t: Text; violations: ExportViolation[] 
 function DownloadResult({ t, state }: { t: Text; state: DownloadState }) {
   if (state.status === 'failed') {
     return (
-      <p role="alert" className="text-sm text-danger">
+      <p role="alert" className="text-sm font-medium text-danger-text">
         {fill(t.exportFailed, { count: state.count })}
       </p>
     );
@@ -523,12 +565,20 @@ function DownloadResult({ t, state }: { t: Text; state: DownloadState }) {
   if (state.status !== 'done') return null;
   const files = state.record.files;
   return (
-    <div role="status" data-testid="export-ready" className="flex flex-col gap-1 text-sm text-ok">
-      <p>{files.length === 1 ? t.ready : t.readyMany}</p>
+    <div
+      role="status"
+      data-testid="export-ready"
+      className="flex flex-col gap-1 text-sm text-success-text"
+    >
+      <p className="font-medium">{files.length === 1 ? t.ready : t.readyMany}</p>
       <ul className="flex flex-col gap-1">
         {files.map((file) => (
           <li key={file.name}>
-            <a href={file.downloadUrl} download={file.name} className="text-accent underline">
+            <a
+              href={file.downloadUrl}
+              download={file.name}
+              className={`rounded-sm text-accent-text underline underline-offset-4 ${focusRing}`}
+            >
               {fill(t.downloadFile, { name: file.name })}
             </a>
           </li>
@@ -537,6 +587,9 @@ function DownloadResult({ t, state }: { t: Text; state: DownloadState }) {
     </div>
   );
 }
+
+const historyFeatures = tableFeatures({});
+const historyColumn = createColumnHelper<typeof historyFeatures, ExportRecord>();
 
 function History({
   t,
@@ -548,68 +601,132 @@ function History({
   /** undefined = loading, null = error. */
   rows: ExportRecord[] | null | undefined;
 }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-2" data-testid="export-history">
-      <h3 className="text-base font-semibold">{t.historyTitle}</h3>
-      {rows === undefined ? null : rows === null ? (
-        <p className="text-sm text-danger">{t.historyError}</p>
-      ) : rows.length === 0 ? (
-        <p className="text-sm text-fg-muted">{t.historyEmpty}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="text-fg-muted">
-                <th className="py-1 pr-2 font-medium">{t.historyColumns.date}</th>
-                <th className="py-1 pr-2 font-medium">{t.historyColumns.revision}</th>
-                <th className="py-1 pr-2 font-medium">{t.historyColumns.post}</th>
-                <th className="py-1 pr-2 font-medium">{t.historyColumns.profile}</th>
-                <th className="py-1 pr-2 font-medium">{t.historyColumns.state}</th>
-                <th className="py-1 font-medium">{t.historyColumns.files}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr
-                  key={r.exportId}
-                  className="border-t border-border align-top"
-                  data-testid="export-history-row"
-                >
-                  <td className="py-1 pr-2 whitespace-nowrap">{formatDate(r.createdAt)}</td>
-                  <td className="py-1 pr-2">{fill(t.historyRevision, { n: r.revision })}</td>
-                  <td className="py-1 pr-2 font-mono">
-                    {r.post.id} {r.post.version}
-                  </td>
-                  <td className="py-1 pr-2">
-                    {r.profileVersion === null
-                      ? '-'
-                      : fill(t.historyProfile, { n: r.profileVersion })}
-                  </td>
-                  <td className="py-1 pr-2">
-                    {(states as Record<string, string>)[r.verification] ?? r.verification}
-                    {r.acceptedUnverifiedAt ? ` · ${t.historyAccepted}` : ''}
-                  </td>
-                  <td className="py-1">
-                    <ul className="flex flex-col gap-0.5">
-                      {r.files.map((file) => (
-                        <li key={file.name}>
-                          <a
-                            href={file.downloadUrl}
-                            download={file.name}
-                            title={file.hash}
-                            className="text-accent underline break-all"
-                          >
-                            {fill(t.redownload, { name: file.name })}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                </tr>
+  const c = t.historyColumns;
+  const columns = useMemo(
+    () =>
+      historyColumn.columns([
+        historyColumn.accessor('createdAt', {
+          header: c.date,
+          cell: (info) => (
+            <span className="numeric whitespace-nowrap">{formatDate(info.getValue())}</span>
+          ),
+        }),
+        historyColumn.accessor('revision', {
+          header: c.revision,
+          cell: (info) => fill(t.historyRevision, { n: info.getValue() }),
+        }),
+        historyColumn.display({
+          id: 'post',
+          header: c.post,
+          cell: (info) => (
+            <span className="font-mono text-xs">
+              {info.row.original.post.id} {info.row.original.post.version}
+            </span>
+          ),
+        }),
+        historyColumn.accessor('profileVersion', {
+          header: c.profile,
+          cell: (info) => {
+            const v = info.getValue();
+            return v === null ? '-' : fill(t.historyProfile, { n: v });
+          },
+        }),
+        historyColumn.display({
+          id: 'state',
+          header: c.state,
+          cell: (info) => {
+            const r = info.row.original;
+            return (
+              <>
+                {(states as Record<string, string>)[r.verification] ?? r.verification}
+                {r.acceptedUnverifiedAt ? ` · ${t.historyAccepted}` : ''}
+              </>
+            );
+          },
+        }),
+        historyColumn.display({
+          id: 'files',
+          header: c.files,
+          cell: (info) => (
+            <ul className="flex flex-col gap-0.5">
+              {info.row.original.files.map((file) => (
+                <li key={file.name}>
+                  <a
+                    href={file.downloadUrl}
+                    download={file.name}
+                    title={file.hash}
+                    className={`rounded-sm break-all text-accent-text underline underline-offset-4 ${focusRing}`}
+                  >
+                    {fill(t.redownload, { name: file.name })}
+                  </a>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </ul>
+          ),
+        }),
+      ]),
+    [c, t, states],
+  );
+  const table = useTable({
+    features: historyFeatures,
+    columns,
+    data: rows ?? [],
+    getRowId: (r) => r.exportId,
+  });
+  return (
+    <div
+      className="flex min-w-0 flex-col gap-3 border-t border-border-subtle pt-5"
+      data-testid="export-history"
+    >
+      <h3 className="text-sm font-semibold tracking-tight text-fg">{t.historyTitle}</h3>
+      {rows === undefined ? null : rows === null ? (
+        <p className="text-sm text-danger-text">{t.historyError}</p>
+      ) : rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border-strong px-4 py-6 text-center text-sm text-fg-muted">
+          {t.historyEmpty}
+        </p>
+      ) : (
+        <Card className="overflow-hidden p-0">
+          <div
+            role="region"
+            aria-label={t.historyTitle}
+            tabIndex={0}
+            className={`overflow-x-auto ${focusRing}`}
+          >
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border bg-surface-subtle">
+                {table.getHeaderGroups().map((group) => (
+                  <tr key={group.id}>
+                    {group.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        scope="col"
+                        className="px-3 py-2 text-xs font-medium whitespace-nowrap text-fg-muted"
+                      >
+                        {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    data-testid="export-history-row"
+                    className="align-top transition-colors duration-(--duration-fast) hover:bg-surface-hover"
+                  >
+                    {row.getAllCells().map((cell) => (
+                      <td key={cell.id} className="px-3 py-2.5 text-fg">
+                        <table.FlexRender cell={cell} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   );

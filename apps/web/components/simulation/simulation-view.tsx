@@ -1,6 +1,20 @@
 'use client';
 
 import { CanvasBoundary } from '../feedback/canvas-boundary';
+import { Button, IconButton, Tabs, TabsContent, TabsList, TabsTrigger, Tooltip } from '@nittcam/ui';
+import {
+  Maximize,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+  StepBack,
+  StepForward,
+  TriangleAlert,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
+import { onThemeChange } from '../../lib/canvas-theme';
 import {
   clampSimTime,
   lineAt,
@@ -46,14 +60,8 @@ const SimulationCanvas = dynamic(() => import('./simulation-canvas'), { ssr: fal
 const SPEEDS = [1, 2, 5, 10, 'max'] as const;
 type Speed = (typeof SPEEDS)[number];
 
-const playBtn =
-  'inline-flex min-w-28 items-center justify-center gap-1.5 rounded-lg border border-accent bg-accent px-3 py-2 text-sm font-semibold text-accent-fg hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50';
-
 /** Scrubber resolution: tenths of a second. */
 const SCRUB_UNITS = 10;
-
-const btn =
-  'inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-2 text-sm font-medium hover:bg-sidebar focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50';
 
 /** `prefers-reduced-motion: reduce` as React state (false on the server). */
 function subscribeMotion(cb: () => void): () => void {
@@ -149,18 +157,21 @@ export function SimulationView({
       <div
         role="status"
         data-testid="sim-loading"
-        className="flex items-center gap-3 rounded-card border border-border p-6 text-fg-muted"
+        className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle p-6 text-sm text-fg-muted"
       >
         <span
           aria-hidden="true"
-          className="size-5 animate-spin rounded-full border-2 border-border border-t-accent"
+          className="size-5 animate-spin rounded-full border-2 border-border-strong border-t-accent"
         />
         {t.loading}
       </div>
     );
   } else if (!response.ok) {
     body = (
-      <p role="alert" className="rounded-lg bg-danger-bg p-3 text-sm text-danger">
+      <p
+        role="alert"
+        className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
+      >
         {response.error === 'unknownPost'
           ? fill(t.unknownPost, { post: response.detail })
           : fill(t.failed, { error: response.detail })}
@@ -178,31 +189,41 @@ export function SimulationView({
           errorCount={errorCount}
           warnings={warnings}
         />
-        {sheets.length > 1 ? (
-          <div role="tablist" aria-label={t.sheetTabs} className="flex flex-wrap gap-1">
-            {sheets.map((s, i) => {
-              const active = i === sheet;
-              return (
-                <button
-                  key={s.sheet}
-                  type="button"
-                  role="tab"
-                  id={`sim-tab-${i}`}
-                  aria-selected={active}
-                  aria-controls="sim-panel"
-                  onClick={() => setSheetIndex(i)}
-                  className={`rounded-lg border px-3 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${active ? 'border-accent bg-accent text-accent-fg' : 'border-border bg-bg hover:bg-sidebar'}`}
-                >
+        {sim && sheets.length > 1 ? (
+          <Tabs
+            value={String(sheet)}
+            onValueChange={(v) => setSheetIndex(Number(v))}
+            className="flex min-w-0 flex-col gap-3"
+          >
+            <TabsList
+              variant="segmented"
+              aria-label={t.sheetTabs}
+              className="h-auto max-w-full flex-wrap justify-start self-start"
+            >
+              {sheets.map((s, i) => (
+                <TabsTrigger key={s.sheet} value={String(i)} className="h-8 gap-1.5 px-2.5">
                   {fill(t.sheetTab, { n: s.sheet + 1 })}
-                  <span className="ml-1 text-xs opacity-80">
+                  <span className="text-xs font-normal text-fg-subtle tabular-nums">
                     {fill(t.sheetTabTime, { time: formatDuration(t, s.duration) })}
                   </span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-        {sim ? (
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <TabsContent
+              value={String(sheet)}
+              tabIndex={-1}
+              className="mt-0 min-w-0 data-[state=active]:animate-none"
+            >
+              <Player
+                key={`${machineKey}-${sim.sheet}`}
+                t={t}
+                sim={sim}
+                project={project}
+                machine={result.machine}
+              />
+            </TabsContent>
+          </Tabs>
+        ) : sim ? (
           <Player
             key={`${machineKey}-${sim.sheet}`}
             t={t}
@@ -224,18 +245,18 @@ export function SimulationView({
       <p
         role="note"
         data-testid="sim-banner"
-        className="sticky top-0 z-20 flex items-baseline gap-2 rounded-lg border border-warn/30 bg-warn-bg px-3 py-1.5 text-xs text-warn shadow-sm sm:px-4 sm:py-3 sm:text-sm"
+        className="sticky top-16 z-20 flex items-center gap-2 rounded-lg border border-warning-border bg-warning-subtle px-3 py-2 text-xs text-warning-text shadow-sm sm:px-4 sm:py-2.5 sm:text-sm"
       >
+        <TriangleAlert aria-hidden className="size-4 shrink-0" />
         <strong className="truncate font-semibold sm:overflow-visible sm:whitespace-normal">
-          <span aria-hidden="true">⚠ </span>
           {t.banner}
         </strong>
-        <span className="hidden sm:inline">{t.bannerDetail}</span>
+        <span className="hidden text-warning-text/90 sm:inline">{t.bannerDetail}</span>
       </p>
 
       {hasLayout && machine && profile ? (
-        <div className="flex flex-col gap-1">
-          <p className="text-sm" data-testid="sim-machine-name">
+        <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface px-4 py-3 shadow-xs">
+          <p className="text-sm text-fg" data-testid="sim-machine-name">
             <span className="font-medium">{t.machine.label}: </span>
             {fill(t.machine.option, { name: profile.identity.name, version: machine.pv.version })}
           </p>
@@ -248,7 +269,7 @@ export function SimulationView({
               post: `${profile.post.id} ${profile.post.version}`,
             })}
           </p>
-          {unverified ? <p className="text-xs text-warn">{t.machine.unverified}</p> : null}
+          {unverified ? <p className="text-xs text-warning-text">{t.machine.unverified}</p> : null}
         </div>
       ) : null}
 
@@ -344,6 +365,8 @@ function Player({
     ro.observe(el);
     return () => ro.disconnect();
   }, [bounds, stock.height]);
+  // A theme switch re-reads the token colours, so the canvas follows light/dark live (T110).
+  useEffect(() => onThemeChange(() => setColors((c) => (c ? readSimColors() : c))), []);
 
   const fit = useCallback(() => {
     if (width > 0) setView(fitBounds(bounds, stock.height, width, canvasHeight(bounds, width)));
@@ -451,22 +474,30 @@ function Player({
   }
 
   return (
-    <div
-      id="sim-panel"
-      role="tabpanel"
-      className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]"
-    >
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="flex min-w-0 flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className={btn} onClick={() => zoomButton(1.25)}>
-            <span aria-hidden="true">+</span> {t.controls.zoomIn}
-          </button>
-          <button type="button" className={btn} onClick={() => zoomButton(1 / 1.25)}>
-            <span aria-hidden="true">−</span> {t.controls.zoomOut}
-          </button>
-          <button type="button" className={btn} onClick={fit}>
-            {t.controls.fit}
-          </button>
+        <div className="flex items-center justify-end">
+          <div className="flex items-center rounded-lg border border-border bg-surface p-0.5 shadow-xs">
+            <Tooltip content={t.controls.zoomOut}>
+              <IconButton
+                size="sm"
+                aria-label={t.controls.zoomOut}
+                onClick={() => zoomButton(1 / 1.25)}
+              >
+                <ZoomOut aria-hidden />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content={t.controls.zoomIn}>
+              <IconButton size="sm" aria-label={t.controls.zoomIn} onClick={() => zoomButton(1.25)}>
+                <ZoomIn aria-hidden />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content={t.controls.fit}>
+              <IconButton size="sm" aria-label={t.controls.fit} onClick={fit}>
+                <Maximize aria-hidden />
+              </IconButton>
+            </Tooltip>
+          </div>
         </div>
 
         <div
@@ -487,13 +518,14 @@ function Player({
           data-y={view?.y}
           data-sheet-width={stock.width}
           data-sheet-height={stock.height}
-          className="relative w-full min-w-0 touch-none overflow-hidden rounded-lg border border-border bg-sidebar focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          data-part-color={colors?.part}
+          className="relative w-full min-w-0 touch-none overflow-hidden rounded-xl border border-border bg-canvas outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           style={{ height: height || undefined, minHeight: 220 }}
         >
           <span
             data-testid="sim-grain"
             data-grain={stock.grain}
-            className="pointer-events-none absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-bg/90 px-2 py-1 text-xs text-fg shadow-sm"
+            className="pointer-events-none absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-surface/90 px-2 py-1 text-xs text-fg shadow-xs backdrop-blur-sm"
           >
             <svg
               viewBox="0 0 24 24"
@@ -538,98 +570,103 @@ function Player({
         <div
           role="group"
           aria-label={t.controls.label}
-          className="flex flex-col gap-3 rounded-lg border border-border p-3"
+          className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 shadow-xs sm:p-4"
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className={btn}
-              onClick={toStart}
-              aria-label={t.controls.start}
-              aria-keyshortcuts="Home"
-              title={t.controls.start}
-            >
-              <span aria-hidden="true">⏮</span>
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={stepPrev}
-              aria-label={t.controls.prev}
-              aria-keyshortcuts="ArrowLeft"
-              title={t.controls.prev}
-            >
-              <span aria-hidden="true">◀</span>
-            </button>
-            <button
-              type="button"
-              className={playBtn}
-              onClick={togglePlay}
-              disabled={reduced}
-              aria-keyshortcuts="Space"
-              data-testid="sim-play"
-            >
-              <span aria-hidden="true">{active ? '❚❚' : '▶'}</span>
-              {active ? t.controls.pause : t.controls.play}
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={stepNext}
-              aria-label={t.controls.next}
-              aria-keyshortcuts="ArrowRight"
-              title={t.controls.next}
-            >
-              <span aria-hidden="true">▶</span>
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={toEnd}
-              aria-label={t.controls.end}
-              aria-keyshortcuts="End"
-              title={t.controls.end}
-            >
-              <span aria-hidden="true">⏭</span>
-            </button>
-            <div
-              role="group"
-              aria-label={t.controls.speed}
-              className="ml-auto flex items-center gap-1"
-            >
-              <span className="text-xs text-fg-muted">{t.controls.speed}</span>
-              {SPEEDS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  aria-pressed={speed === s}
-                  disabled={reduced}
-                  onClick={() => setSpeed(s)}
-                  className={`rounded-md border px-2 py-1 text-xs font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 ${speed === s ? 'border-accent bg-accent text-accent-fg' : 'border-border bg-bg hover:bg-sidebar'}`}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex items-center gap-1">
+              <Tooltip content={t.controls.start}>
+                <IconButton
+                  variant="ghost"
+                  onClick={toStart}
+                  aria-label={t.controls.start}
+                  aria-keyshortcuts="Home"
                 >
-                  {s === 'max' ? t.controls.speedMax : `${s}×`}
-                </button>
-              ))}
+                  <SkipBack aria-hidden />
+                </IconButton>
+              </Tooltip>
+              <Tooltip content={t.controls.prev}>
+                <IconButton
+                  variant="ghost"
+                  onClick={stepPrev}
+                  aria-label={t.controls.prev}
+                  aria-keyshortcuts="ArrowLeft"
+                >
+                  <StepBack aria-hidden />
+                </IconButton>
+              </Tooltip>
+              <Button
+                onClick={togglePlay}
+                disabled={reduced}
+                aria-keyshortcuts="Space"
+                data-testid="sim-play"
+                className="min-w-28"
+              >
+                {active ? <Pause aria-hidden /> : <Play aria-hidden />}
+                {active ? t.controls.pause : t.controls.play}
+              </Button>
+              <Tooltip content={t.controls.next}>
+                <IconButton
+                  variant="ghost"
+                  onClick={stepNext}
+                  aria-label={t.controls.next}
+                  aria-keyshortcuts="ArrowRight"
+                >
+                  <StepForward aria-hidden />
+                </IconButton>
+              </Tooltip>
+              <Tooltip content={t.controls.end}>
+                <IconButton
+                  variant="ghost"
+                  onClick={toEnd}
+                  aria-label={t.controls.end}
+                  aria-keyshortcuts="End"
+                >
+                  <SkipForward aria-hidden />
+                </IconButton>
+              </Tooltip>
+            </div>
+            <div className="flex min-w-48 flex-1 items-center gap-3">
+              <input
+                type="range"
+                min={0}
+                max={Math.ceil(duration * SCRUB_UNITS)}
+                step={1}
+                value={Math.round(time * SCRUB_UNITS)}
+                onChange={(e) => seekTime(Number(e.target.value) / SCRUB_UNITS)}
+                aria-label={t.controls.scrubber}
+                aria-valuetext={clock}
+                data-testid="sim-scrubber"
+                className="h-10 min-w-0 flex-1 cursor-pointer accent-(--color-accent)"
+              />
+              <span
+                className="shrink-0 font-mono text-sm text-fg tabular-nums"
+                data-testid="sim-clock"
+              >
+                {clock}
+              </span>
+            </div>
+            <div role="group" aria-label={t.controls.speed} className="flex items-center gap-2">
+              <span className="text-xs text-fg-muted">{t.controls.speed}</span>
+              <div className="flex items-center gap-0.5 rounded-lg bg-surface-hover p-0.5">
+                {SPEEDS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    aria-pressed={speed === s}
+                    disabled={reduced}
+                    onClick={() => setSpeed(s)}
+                    className={`h-8 min-w-9 rounded-md px-2 text-xs font-medium tabular-nums transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus disabled:opacity-50 ${speed === s ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted hover:text-fg'}`}
+                  >
+                    {s === 'max' ? t.controls.speedMax : `${s}×`}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <input
-              type="range"
-              min={0}
-              max={Math.ceil(duration * SCRUB_UNITS)}
-              step={1}
-              value={Math.round(time * SCRUB_UNITS)}
-              onChange={(e) => seekTime(Number(e.target.value) / SCRUB_UNITS)}
-              aria-label={t.controls.scrubber}
-              aria-valuetext={clock}
-              data-testid="sim-scrubber"
-              className="min-w-0 flex-1 accent-accent"
-            />
-            <span className="shrink-0 text-sm tabular-nums" data-testid="sim-clock">
-              {clock}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted" aria-live="off">
+          <div
+            className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border-subtle pt-3 font-mono text-xs text-fg-muted"
+            aria-live="off"
+          >
             <span data-testid="sim-step">
               {fill(t.controls.step, { n: ph.done, total: sim.steps.length })}
             </span>
@@ -659,11 +696,11 @@ function Player({
             ) : null}
           </div>
           {reduced ? (
-            <p className="text-xs text-info" data-testid="sim-reduced-note">
+            <p className="text-xs text-info-text" data-testid="sim-reduced-note">
               {t.controls.reducedMotion}
             </p>
           ) : null}
-          <p className="text-xs text-fg-muted">{t.controls.shortcuts}</p>
+          <p className="text-xs text-fg-subtle">{t.controls.shortcuts}</p>
         </div>
 
         <Legend t={t} ramp={ramp} zBottom={sim.zBottom} grain={stock.grain} />
@@ -695,7 +732,7 @@ function Legend({
         <span>{l.depthTop}</span>
         <span
           aria-hidden="true"
-          className="inline-block h-3 w-32 rounded-sm border border-border"
+          className="inline-block h-2.5 w-32 rounded-full border border-border"
           style={{
             background: ramp.length ? `linear-gradient(to right, ${ramp.join(', ')})` : undefined,
           }}
@@ -754,7 +791,7 @@ function Legend({
         <li className="flex items-center gap-1.5" data-grain={grain}>
           <svg
             viewBox="0 0 24 24"
-            className="size-4 text-fg"
+            className="size-4 text-grain"
             style={{ transform: `rotate(${-grain}deg)` }}
             aria-hidden="true"
           >

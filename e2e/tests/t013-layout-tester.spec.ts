@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { nest as runDiz } from './wizard-helpers';
+import { optionLabels, pickOption, nest as runDiz } from './wizard-helpers';
 
 /** T013 tester: margin edge, refusals, undo/redo, keyboard, locks, tabs, zoom mapping, mobile. */
 
@@ -69,7 +69,7 @@ interface Box {
 }
 
 async function info(page: Page, label: string): Promise<Box & { locked: boolean }> {
-  await page.getByTestId('layout-select').selectOption({ label });
+  await pickOption(page.getByTestId('layout-select'), label);
   const pos = await page.getByTestId('layout-info-position').innerText();
   const size = await page.getByTestId('layout-info-size').innerText();
   const m = /X ([\d.,-]+) · Y ([\d.,-]+) mm/.exec(pos);
@@ -507,12 +507,12 @@ test.describe('T013 tester: Turkish strings', () => {
 
 /** A free bottom-left spot for the top panel, clear of every other part by 36 mm. */
 async function spot(page: Page, own: Box): Promise<{ x: number; y: number }> {
-  const labels = (await page.getByTestId('layout-select').locator('option').allInnerTexts()).filter(
+  const labels = (await optionLabels(page.getByTestId('layout-select'))).filter(
     (o) => o !== l.selectNone && o !== TOP,
   );
   const others: Box[] = [];
   for (const label of labels) others.push(await info(page, label));
-  await page.getByTestId('layout-select').selectOption({ label: TOP });
+  await pickOption(page.getByTestId('layout-select'), TOP);
   const clear = 36;
   for (let y = 600; y + own.h <= SHEET.height - MARGIN - clear; y += 10) {
     for (let x = 1000; x + own.w <= SHEET.width - MARGIN - clear; x += 10) {

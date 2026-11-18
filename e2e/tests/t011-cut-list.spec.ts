@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { pickOption } from './wizard-helpers';
 
 /** T011: cut-list grid + Excel/CSV paste. Screenshots go to e2e/__screenshots__/. */
 
@@ -54,7 +55,10 @@ test.describe('T011 cut list', () => {
     // Auto mapping from the Turkish header.
     const expected = ['name', 'w', 'h', 'qty', 'grain', 'edge'];
     for (const [i, field] of expected.entries()) {
-      await expect(page.getByLabel(fill(p.columnSelect, { n: i + 1 }))).toHaveValue(field);
+      await expect(page.getByLabel(fill(p.columnSelect, { n: i + 1 }))).toHaveAttribute(
+        'data-value',
+        field,
+      );
     }
     await expect(page.getByText(p.source.header)).toBeVisible();
 
@@ -70,7 +74,7 @@ test.describe('T011 cut list', () => {
     await expect(page.getByText(t.empty)).toBeVisible();
 
     // Change the mapping by hand: the edge band column is not used.
-    await page.getByLabel(fill(p.columnSelect, { n: 6 })).selectOption('ignore');
+    await pickOption(page.getByLabel(fill(p.columnSelect, { n: 6 })), p.fields.ignore);
     await expect(page.getByText(p.source.manual)).toBeVisible();
     await page.screenshot({ path: '__screenshots__/t011-yapistir-onizleme.png', fullPage: true });
 

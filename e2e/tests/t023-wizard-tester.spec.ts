@@ -4,6 +4,7 @@ import {
   KITCHEN,
   STEP_KEYS,
   chooseMachine,
+  pickOption,
   fill,
   goStep,
   openNewProject,
@@ -380,33 +381,30 @@ test.describe('T023 tester: wizard step 1', () => {
     await openNewProject(page, 'makine');
     // The example machine is already selected in a fresh project.
     const machine = page.getByTestId('wizard-machine');
-    expect(
-      await machine.evaluate((s: HTMLSelectElement) => s.selectedOptions[0]?.text ?? ''),
-    ).toMatch(/Örnek router/);
+    await expect(machine).toHaveText(/Örnek router/);
     await expect(page.getByTestId('cutting-params')).toBeVisible();
-    await expect(page.getByTestId('wizard-material')).toHaveValue('mdf');
+    await expect(page.getByTestId('wizard-material')).toHaveAttribute('data-value', 'mdf');
     // The thickness hint lists the profile's thicknesses; a listed one has cutting params.
     await expect(page.getByText(/Bu makinede kesim ayarı olan kalınlıklar/)).toBeVisible();
     // Grain for MDF (spec: grain shown), also for wood types; not for plastic.
     await expect(page.getByLabel(w.machine.grain0)).toBeVisible();
     await expect(page.getByLabel(w.machine.grain90)).toBeVisible();
-    for (const wood of ['plywood', 'melamine', 'solid']) {
-      const opt = page.getByTestId('wizard-material').locator(`option[value="${wood}"]`);
-      if ((await opt.count()) === 0) continue;
-      await page.getByTestId('wizard-material').selectOption(wood);
+    const material = page.getByTestId('wizard-material');
+    for (const wood of ['plywood', 'melamine', 'solidWood'] as const) {
+      await pickOption(material, tr.materials[wood]);
+      await expect(material).toHaveAttribute('data-value', wood);
       await expect(page.getByLabel(w.machine.grain0), wood).toBeVisible();
     }
-    await page.getByTestId('wizard-material').selectOption('pvc');
+    await pickOption(material, tr.materials.pvc);
     await expect(page.getByLabel(w.machine.grain0)).toHaveCount(0);
     await expect(page.getByText(w.machine.grainNone)).toBeVisible();
-    await page
-      .getByTestId('wizard-material')
-      .selectOption('acrylic')
-      .catch(() => undefined);
+    await pickOption(material, tr.materials.acrylic);
     await expect(page.getByLabel(w.machine.grain0)).toHaveCount(0);
     // Stone is offered but disabled ("yakında").
-    const stone = page.getByTestId('wizard-material').locator('option', { hasText: /taş/i });
-    await expect(stone).toBeDisabled();
+    await material.click();
+    const stone = page.getByRole('option', { name: /taş/i });
+    await expect(stone).toHaveAttribute('aria-disabled', 'true');
+    await page.keyboard.press('Escape');
     expect(problems).toEqual([]);
   });
 
@@ -451,7 +449,7 @@ test.describe('T023 tester: wizard step 1', () => {
   test('NO_CUTTING_PARAMS blocks the simulation and the export checks', async ({ page }) => {
     const problems = watchConsole(page);
     await openNewProject(page, 'makine');
-    await page.getByTestId('wizard-material').selectOption('pvc');
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.pvc);
     await expect(page.getByTestId('no-cutting-params')).toBeVisible();
     await goStep(page, 'parcalar');
     await paste(page, KITCHEN, 5);
@@ -471,7 +469,7 @@ test.describe('T023 tester: wizard step 1', () => {
     await expect(page.getByTestId('export-download')).toBeDisabled();
     // Back to a material with params: green again.
     await goStep(page, 'makine');
-    await page.getByTestId('wizard-material').selectOption('mdf');
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.mdf);
     await goStep(page, 'dizilim');
     await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
@@ -679,10 +677,10 @@ test.describe('T023 tester: wizard flow', () => {
     await goStep(page, 'dizilim');
     await expect(page.getByText(w.layout.modeNote)).toBeVisible();
     const mode = page.getByLabel(w.layout.mode);
-    await mode.selectOption('fastest');
-    await expect(mode).toHaveValue('fastest');
-    await mode.selectOption('minToolChanges');
-    await expect(mode).toHaveValue('minToolChanges');
+    await pickOption(mode, w.layout.modes.fastest);
+    await expect(mode).toHaveAttribute('data-value', 'fastest');
+    await pickOption(mode, w.layout.modes.minToolChanges);
+    await expect(mode).toHaveAttribute('data-value', 'minToolChanges');
     await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3', { timeout: 20_000 });
     await goStep(page, 'export');
@@ -851,7 +849,16 @@ test.describe('T023 tester: widths and keyboard', () => {
     await openNewProject(page, 'makine');
     const material = page.getByTestId('wizard-material');
     await material.focus();
+    // Design-system Select: ArrowDown opens the list, ArrowDown moves, Enter picks.
+    const before = await material.getAttribute('data-value');
     await page.keyboard.press('ArrowDown');
+    const focused = page.locator('[role="option"]:focus');
+    await expect(focused).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('ArrowDown');
+    await expect(focused).toHaveAttribute('aria-selected', 'false');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('listbox')).toBeHidden();
+    await expect(material).not.toHaveAttribute('data-value', before ?? '');
     await expect(page.getByTestId('save-status')).toBeVisible();
     const preset = page.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' }));
     await preset.focus();

@@ -150,36 +150,32 @@
   --color-info-subtle: var(--color-info-50);
   --color-info-border: var(--color-info-200);
 
-  /* Legacy names used by the M1 screens; they alias the roles until B3/B4 migrate them. */
-  --color-sidebar: var(--color-surface-subtle);
-  --color-ok: var(--color-success-text);
-  --color-ok-bg: var(--color-success-subtle);
-  --color-warn: var(--color-warning-text);
-  --color-warn-bg: var(--color-warning-subtle);
-  --color-danger-bg: var(--color-danger-subtle);
-  --color-info-bg: var(--color-info-subtle);
-
-  /* ---- Canvas: layout view (T013) and simulation (T020). Konva reads these at runtime. ---- */
-  --color-sheet-waste: #efe9dc;
-  --color-sheet-margin: #d9d1bf;
-  --color-sheet-edge: #8a8371;
-  --color-part: #f3d9b8;
-  --color-part-stroke: #6b4a2b;
-  --color-part-locked: #c9dbef;
-  --color-part-locked-stroke: #2f4f7a;
-  --color-grid: #e2dccd;
-  --color-sim-depth-top: #9ec5ea;
-  --color-sim-depth-bottom: #0f2f57;
-  --color-sim-rapid: #b4531f;
-  --color-sim-tool: #b4531f;
-  --color-sim-table: #2f4f7a;
-  --color-sim-envelope: #8a8371;
-  --color-sim-zero: #a8261b;
-  --color-sim-tab: #e8a317;
-  --color-sim-part: #f8ecdb;
-  --color-sim-part-stroke: #c9b79c;
-  --color-sim-badge: #1c1c1a;
-  --color-sim-badge-fg: #ffffff;
+  /* ---- Canvas: wizard preview, layout view and simulation (T013, T020, T110) ------------- */
+  /* Konva reads these at runtime and re-reads them when the theme changes (onThemeChange). */
+  --color-canvas: #eceff3;
+  --color-sheet: #f6f8fb;
+  --color-sheet-waste: #e6eaf0;
+  --color-sheet-margin: #d5dbe4;
+  --color-sheet-edge: #7d8798;
+  --color-grid: #dde2e9;
+  --color-grain: #8a93a3;
+  --color-part: var(--color-brand-100);
+  --color-part-stroke: var(--color-brand-600);
+  --color-part-locked: var(--color-info-100);
+  --color-part-locked-stroke: var(--color-info-800);
+  --color-selection: var(--color-brand-600);
+  --color-sim-depth-top: var(--color-brand-200);
+  --color-sim-depth-bottom: var(--color-brand-900);
+  --color-sim-rapid: var(--color-warning-600);
+  --color-sim-tool: var(--color-warning-500);
+  --color-sim-table: var(--color-neutral-600);
+  --color-sim-envelope: var(--color-neutral-400);
+  --color-sim-zero: var(--color-danger-600);
+  --color-sim-tab: var(--color-warning-400);
+  --color-sim-part: #fbfcfd;
+  --color-sim-part-stroke: #bcc4d0;
+  --color-sim-badge: var(--color-neutral-900);
+  --color-sim-badge-fg: var(--color-neutral-0);
 
   /* ---- Radius ---------------------------------------------------------------------------- */
   --radius-xs: 0.25rem;
@@ -188,7 +184,6 @@
   --radius-lg: 0.625rem;
   --radius-xl: 0.875rem;
   --radius-2xl: 1.125rem;
-  --radius-card: 0.75rem;
 
   /* ---- Spacing: 4 px base; control heights keep touch targets ≥ 40 px at md (spec §3.7). -- */
   --spacing: 0.25rem;
@@ -303,16 +298,28 @@
   --color-info-subtle: #071f2e;
   --color-info-border: #0c3a55;
 
-  --color-sheet-waste: #2b2720;
-  --color-sheet-margin: #3a342a;
-  --color-sheet-edge: #8a8371;
-  --color-part: #6b5236;
-  --color-part-stroke: #e6c9a2;
-  --color-part-locked: #2a4260;
-  --color-part-locked-stroke: #a9c6ea;
-  --color-grid: #2a2b30;
-  --color-sim-part: #2c2822;
-  --color-sim-part-stroke: #6b604f;
+  --color-canvas: #0f1115;
+  --color-sheet: #1a1e25;
+  --color-sheet-waste: #14171c;
+  --color-sheet-margin: #232831;
+  --color-sheet-edge: #5b6575;
+  --color-grid: #1d2128;
+  --color-grain: #6b7484;
+  --color-part: #1a2a5c;
+  --color-part-stroke: var(--color-brand-300);
+  --color-part-locked: #0b3049;
+  --color-part-locked-stroke: var(--color-info-300);
+  --color-selection: var(--color-brand-400);
+  --color-sim-depth-top: var(--color-brand-200);
+  --color-sim-depth-bottom: var(--color-brand-600);
+  --color-sim-rapid: var(--color-warning-400);
+  --color-sim-tool: var(--color-warning-300);
+  --color-sim-table: var(--color-neutral-400);
+  --color-sim-envelope: var(--color-neutral-600);
+  --color-sim-zero: var(--color-danger-400);
+  --color-sim-tab: var(--color-warning-300);
+  --color-sim-part: #161a20;
+  --color-sim-part-stroke: #343a45;
   --color-sim-badge: #eceef2;
   --color-sim-badge-fg: #0d0f12;
 

@@ -97,7 +97,7 @@ export function ZStrip({
         const r = e.currentTarget.getBoundingClientRect();
         if (r.width > 0) onSeek(((e.clientX - r.left) / r.width) * duration);
       }}
-      className="block w-full cursor-pointer rounded-md border border-border bg-bg"
+      className="block w-full cursor-pointer rounded-md border border-border bg-surface"
       style={{ height: HEIGHT }}
     />
   );
