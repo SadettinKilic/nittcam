@@ -334,7 +334,7 @@ Tester focus: arc radius from properties = typed radius; G-code contains G2/G3 f
 
 Source: Fable design review #2 (`docs/reviews/2026-11-18-fable-design-review-2.md`, 2026-11-18). Scores: corporate image 6.5/10 (was 5), modernity 7.5 (7), usability 7 (6.5), readiness for M3–M6 7 (6). Rule: D-039 (canvas budget, one tool-state language). Each task ≤ ½ day.
 
-### T240 Phone board: status bar visible, compact wizard header   [status: doing]
+### T240 Phone board: status bar visible, compact wizard header   [status: review]
 Spec: §3.6, §3.7 · Depends: T124, T198 · Decision: D-039
 Acceptance:
 - [ ] 390 × 844 and 360 × 740, step 2 "Çizim": the board status bar is fully visible; nothing of it sits behind the "Parçalar / Özellikler" button bar or the wizard footer (the canvas card ends above the button bar; on phones the status bar shows only the snap toggle + zoom %, cursor X/Y is hidden because there is no hover)
@@ -343,7 +343,7 @@ Acceptance:
 - [ ] the tool rail on phones does not cover the left ruler numbers (the rail starts right of the ruler, or the ruler is hidden below 640 px)
 Tester focus: bounding-box assertions (status bar bottom ≤ button bar top; canvas height / viewport height ≥ 0.55) at 390 × 844 and 360 × 740; step popover with keyboard + touch; locked steps still locked; baselines updated on purpose (steps 2–4 mobile).
 
-### T241 Desktop board: canvas budget   [status: doing]
+### T241 Desktop board: canvas budget   [status: review]
 Spec: §3.6 · Depends: T124, T197 · Decision: D-039
 Acceptance:
 - [ ] at 1440 × 900 with both panels open the board canvas is **≥ 640 px wide and ≥ 660 px high** (today ≈ 548 × 632): the "Parçalar" panel is 232 px, the inspector 264 px, and the Liste / Çizim switch moves into the wizard header row (left of the stepper) so it no longer takes a row of its own
@@ -352,7 +352,7 @@ Acceptance:
 - [ ] the same widths apply to Dizilim and Simülasyon (one `WorkspaceLayout` default), so the three steps do not jump when stepping through the wizard
 Tester focus: bounding-box assertions at 1440 × 900, 1280 × 800, 1024 × 768; no page scroll on steps 2 (Çizim), 3, 4; collapse state survives reload; baselines updated on purpose.
 
-### T242 Board inspector: icon actions, no shortcut prose   [status: doing]
+### T242 Board inspector: icon actions, no shortcut prose   [status: review]
 Spec: §4.2 · Depends: T125 · Decision: D-039
 Acceptance:
 - [ ] "İşlemler" becomes one row of 32 px icon buttons (yatay aynala, dikey aynala, 90° döndür, çoğalt, then a separator and sil in `danger` text colour), each with a tooltip "Ad · kısayol" and an `aria-label`; no label touches its button border at 264 px (today "Yatay aynala" / "Dikey aynala" fill their buttons edge to edge)
@@ -361,7 +361,7 @@ Acceptance:
 - [ ] with nothing selected the inspector shows a compact summary (parça sayısı, toplam alan in m², board extents) instead of an empty panel
 Tester focus: every action reachable and named for the keyboard and a screen reader (axe); tooltips show the shortcut; the mini-toolbar never leaves the canvas at 390 px; existing select-move-undo e2e stays green.
 
-### T243 Board reference frame: origin, sheet ghost, fit   [status: doing]
+### T243 Board reference frame: origin, sheet ghost, fit   [status: review]
 Spec: §4.2, §2.4 · Depends: T124, T196 · Decision: D-039
 Acceptance:
 - [ ] the origin is a clear marker (X axis to the right and Y axis up, 24 px arms with "X" / "Y" in mono, the same glyph as the layout canvas origin) instead of a 4 px dot

@@ -65,6 +65,9 @@ export async function goStep(page: Page, step: StepKey) {
   } else {
     // Phones: the popover can close when the wizard remounts (first save); reopen and retry.
     await expect(async () => {
+      // A click that landed but reported a detach (popover closing) already changed the step.
+      const at = await page.getByTestId('wizard-step-title').getAttribute('data-step');
+      if (at === step && (await page.getByTestId('wizard-steps').count()) === 0) return;
       await openStepList(page);
       await page.getByTestId(`wizard-step-${step}`).click({ timeout: 2_000 });
     }).toPass({ timeout: 20_000 });

@@ -20,6 +20,8 @@ export interface EditorColors {
   dim: string;
   ruler: string;
   rulerEdge: string;
+  /** Stock sheet reference outline (T243). */
+  sheetEdge: string;
 }
 
 const TOKENS: Record<keyof EditorColors, string> = {
@@ -38,6 +40,7 @@ const TOKENS: Record<keyof EditorColors, string> = {
   dim: '--color-fg-muted',
   ruler: '--color-surface',
   rulerEdge: '--color-border',
+  sheetEdge: '--color-sheet-edge',
 };
 
 export function readEditorColors(): EditorColors {

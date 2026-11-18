@@ -214,3 +214,51 @@ test.describe('T242 inspector icon actions', () => {
     await expect(canvas).toHaveAttribute('aria-label', /6 parça/);
   });
 });
+
+test.describe('T243 board reference frame', () => {
+  test('empty board: fit frames the sheet outline with 48 px padding', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openNewProject(page, 'parcalar');
+    await page.getByTestId('parts-view-drawing').click();
+    const canvas = page.getByTestId('editor-canvas');
+    await expect(canvas).toHaveAttribute('data-view', /\d/);
+    const c = await box(canvas);
+    const [scale = 0] = ((await canvas.getAttribute('data-view')) ?? '').split(',').map(Number);
+    // Default stock sheet 2800 × 2070; free area right of ruler + rail and below the ruler.
+    const expected = Math.min((c.width - 46 - 96) / 2800, (c.height - 22 - 96) / 2070);
+    expect(scale).toBeCloseTo(expected, 3);
+  });
+
+  test('grid and sheet are icon toggles; the sheet toggle is view state only', async ({ page }) => {
+    await openBoard(page, 1440, 900);
+    const grid = page.getByRole('button', { name: tr.editor.view.grid, exact: true });
+    const sheet = page.getByRole('button', { name: tr.editor.view.sheet, exact: true });
+    await expect(grid).toHaveAttribute('aria-pressed', 'true');
+    await expect(sheet).toHaveAttribute('aria-pressed', 'true');
+    await grid.click();
+    await expect(grid).toHaveAttribute('aria-pressed', 'false');
+    const status = page.getByTestId('save-status');
+    await expect(status).toHaveAttribute('data-state', /^(saved|idle)$/, { timeout: 15_000 });
+    const revision = await status.getAttribute('data-revision');
+    const undo = page.getByRole('button', { name: tr.cutList.undo });
+    const undoState = await undo.isDisabled();
+    await sheet.click();
+    await expect(sheet).toHaveAttribute('aria-pressed', 'false');
+    await sheet.click();
+    await expect(sheet).toHaveAttribute('aria-pressed', 'true');
+    // No command: nothing to save, nothing new to undo.
+    await page.waitForTimeout(500);
+    await expect(status).toHaveAttribute('data-revision', revision ?? '');
+    expect(await undo.isDisabled()).toBe(undoState);
+  });
+
+  test('390: toggles are icon buttons inside the canvas band', async ({ page }) => {
+    const canvas = await openBoard(page, 390, 844);
+    const c = await box(canvas);
+    for (const name of [tr.editor.view.grid, tr.editor.view.sheet]) {
+      const b = await box(page.getByRole('button', { name, exact: true }));
+      expect(b.x + b.width).toBeLessThanOrEqual(c.x + c.width);
+      expect(b.width).toBeLessThanOrEqual(36);
+    }
+  });
+});

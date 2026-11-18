@@ -1531,7 +1531,9 @@
       "zoomIn": "Yakınlaştır",
       "zoomOut": "Uzaklaştır",
       "fit": "Tümünü göster",
-      "grid": "Izgara"
+      "grid": "Izgara",
+      "sheet": "Plaka",
+      "sheetLabel": "Plaka {w} × {h}"
     },
     "status": {
       "label": "Durum çubuğu",

@@ -39,6 +39,8 @@ export interface EditorCanvasProps {
   marquee: Box | null;
   snap: { kind: SnapGlyph; point: Pt } | null;
   grid: boolean;
+  /** Stock sheet as a view-only reference outline (T243); null when hidden. */
+  sheet?: { w: number; h: number; label: string } | null;
   colors: EditorColors;
   /** In-progress drawing (T127–T129), board mm. */
   draft?: DraftView | null;
@@ -118,20 +120,74 @@ function drawGrid(ctx: Ctx, p: EditorCanvasProps) {
       }
     }
   }
-  // Board origin.
+}
+
+/** Origin arm length, px (T243: the layout canvas glyph, X right / Y up). */
+export const ORIGIN_ARM_PX = 24;
+
+/**
+ * Board origin (T243): X axis to the right and Y up, 24 px arms with arrow heads and "X" / "Y"
+ * in mono, a 5 px square at 0,0. Drawn with or without the grid.
+ */
+function drawOrigin(ctx: Ctx, p: EditorCanvasProps) {
+  const { view: v, colors } = p;
   const o = toScreen(v, { x: 0, y: 0 });
+  const arm = ORIGIN_ARM_PX;
+  const head = 5;
+  ctx.save();
+  ctx.strokeStyle = colors.origin;
+  ctx.fillStyle = colors.origin;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(o.x, o.y);
-  ctx.lineTo(o.x + 28, o.y);
+  ctx.lineTo(o.x + arm - head, o.y);
   ctx.moveTo(o.x, o.y);
-  ctx.lineTo(o.x, o.y - 28);
-  ctx.strokeStyle = colors.origin;
-  ctx.lineWidth = 1.5;
+  ctx.lineTo(o.x, o.y - arm + head);
   ctx.stroke();
   ctx.beginPath();
-  ctx.arc(o.x, o.y, 3, 0, 2 * Math.PI);
-  ctx.fillStyle = colors.origin;
+  ctx.moveTo(o.x + arm, o.y);
+  ctx.lineTo(o.x + arm - head, o.y - head / 2 - 0.5);
+  ctx.lineTo(o.x + arm - head, o.y + head / 2 + 0.5);
+  ctx.closePath();
+  ctx.moveTo(o.x, o.y - arm);
+  ctx.lineTo(o.x - head / 2 - 0.5, o.y - arm + head);
+  ctx.lineTo(o.x + head / 2 + 0.5, o.y - arm + head);
+  ctx.closePath();
   ctx.fill();
+  ctx.fillRect(o.x - 2.5, o.y - 2.5, 5, 5);
+  ctx.font = `600 10px ${canvasMonoFont()}`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillText('X', o.x + arm + 3, o.y);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('Y', o.x, o.y - arm - 2);
+  ctx.restore();
+}
+
+/**
+ * Reference outline of the project's stock sheet from the origin (T243, D-039): dashed
+ * `sheet-edge` stroke and "Plaka 2.800 × 2.070" in mono above its top edge. View only: no hit
+ * test, not project data, never exported.
+ */
+function drawSheet(ctx: Ctx, p: EditorCanvasProps) {
+  const sheet = p.sheet;
+  if (!sheet) return;
+  const { view: v, colors } = p;
+  const a = toScreen(v, { x: 0, y: sheet.h });
+  const b = toScreen(v, { x: sheet.w, y: 0 });
+  ctx.save();
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = colors.sheetEdge;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(Math.round(a.x) + 0.5, Math.round(a.y) + 0.5, b.x - a.x, b.y - a.y);
+  ctx.setLineDash([]);
+  ctx.font = `10px ${canvasMonoFont()}`;
+  ctx.fillStyle = colors.dim;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(sheet.label, a.x, a.y - 4);
+  ctx.restore();
 }
 
 function drawParts(ctx: Ctx, p: EditorCanvasProps) {
@@ -508,7 +564,9 @@ export default function EditorCanvas(props: EditorCanvasProps) {
           sceneFunc={(context) => {
             const ctx = raw(context);
             if (props.grid) drawGrid(ctx, props);
+            drawSheet(ctx, props);
             drawParts(ctx, props);
+            drawOrigin(ctx, props);
             drawLabels(ctx, props);
             drawSelection(ctx, props);
             drawMarquee(ctx, props);

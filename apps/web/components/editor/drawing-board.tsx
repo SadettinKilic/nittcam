@@ -13,9 +13,10 @@ import {
   type Project,
   type SnapKind,
 } from '@nittcam/core';
-import { Button, Checkbox, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
+import { Button, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
   Circle,
+  Grid3x3,
   Hand,
   List,
   Maximize,
@@ -23,6 +24,7 @@ import {
   PenLine,
   Spline,
   Square,
+  SquareDashed,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -30,7 +32,6 @@ import dynamic from 'next/dynamic';
 import {
   useCallback,
   useEffect,
-  useId,
   useMemo,
   useReducer,
   useRef,
@@ -88,8 +89,12 @@ const EditorCanvas = dynamic(() => import('./editor-canvas'), { ssr: false });
 
 type T = Messages['editor'];
 
-/** Screen area kept free of the drawing when fitting: rulers, tool rail, view toolbar. */
-const FIT_INSETS = { top: RULER_PX + 56, right: 16, bottom: 16, left: RULER_PX + 64 };
+/**
+ * Fit (T243): the parts' box (or the sheet without parts) with 48 px padding inside the area
+ * right of the left ruler + tool rail and below the top ruler.
+ */
+const FIT_INSETS = { top: RULER_PX, right: 0, bottom: 0, left: RULER_PX + 24 };
+const FIT_PADDING = 48;
 /** Offset of a pasted / duplicated copy, mm (right and down). */
 const PASTE_OFFSET = 20;
 /** Height of the top toolbar band (view switch, zoom) plus its gap: the rail starts below it. */
@@ -172,7 +177,6 @@ export function DrawingBoard({
   const [canvasEl, setCanvasEl] = useState<HTMLDivElement | null>(null);
   const pointers = useRef(new Map<number, Pt>());
   const gesture = useRef<Gesture | null>(null);
-  const gridId = useId();
 
   const parts = useMemo(() => boardParts(project), [project]);
   const bounds = useMemo(() => boardBox(parts), [parts]);
@@ -277,13 +281,23 @@ export function DrawingBoard({
   const ids = useMemo(() => project.parts.map((p) => p.id), [project.parts]);
   useEffect(() => dispatch({ type: 'prune', ids }), [ids]);
 
+  // The project's stock sheet as a reference outline (T243, D-039): view only.
+  const stock = project.stock.sheet;
+  const sheetBox = useMemo(
+    () => ({ minX: 0, minY: 0, maxX: stock.width, maxY: stock.height }),
+    [stock.width, stock.height],
+  );
   const touched = useRef(false);
   const fit = useCallback(() => {
     touched.current = false;
     if (size.w > 0 && size.h > 0) {
-      dispatch({ type: 'view', view: fitBox(bounds, size.w, size.h, FIT_INSETS) });
+      const top = FIT_INSETS.top + (viewSwitch ? BAND_PX : 0);
+      dispatch({
+        type: 'view',
+        view: fitBox(bounds ?? sheetBox, size.w, size.h, { ...FIT_INSETS, top }, FIT_PADDING),
+      });
     }
-  }, [bounds, size.w, size.h]);
+  }, [bounds, sheetBox, size.w, size.h, viewSwitch]);
   const fitRef = useRef(fit);
   useEffect(() => {
     fitRef.current = fit;
@@ -896,16 +910,36 @@ export function DrawingBoard({
         className={`${floating} absolute right-2 z-10 flex items-center gap-0.5 p-0.5`}
         style={{ top: RULER_PX + 8 }}
       >
-        <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-fg-muted">
-          <Checkbox
-            id={gridId}
-            checked={state.grid}
-            onCheckedChange={(v) => dispatch({ type: 'grid', on: v === true })}
-          />
-          <label htmlFor={gridId} className="cursor-pointer max-sm:sr-only">
-            {t.view.grid}
-          </label>
-        </div>
+        {/* T243: grid and sheet are icon toggles like zoom / fit, at every width. */}
+        <Tooltip content={t.view.grid}>
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label={t.view.grid}
+            aria-pressed={state.grid}
+            data-testid="editor-grid"
+            className={cn(state.grid && 'bg-accent-subtle text-accent-text hover:text-accent-text')}
+            onClick={() => dispatch({ type: 'grid', on: !state.grid })}
+          >
+            <Grid3x3 aria-hidden />
+          </IconButton>
+        </Tooltip>
+        <Tooltip content={t.view.sheet}>
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label={t.view.sheet}
+            aria-pressed={state.sheet}
+            data-testid="editor-sheet"
+            className={cn(
+              state.sheet && 'bg-accent-subtle text-accent-text hover:text-accent-text',
+            )}
+            onClick={() => dispatch({ type: 'sheet', on: !state.sheet })}
+          >
+            <SquareDashed aria-hidden />
+          </IconButton>
+        </Tooltip>
+        <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
         <Tooltip content={t.view.zoomOut}>
           <IconButton
             size="sm"
@@ -1046,6 +1080,17 @@ export function DrawingBoard({
             marquee={marquee}
             snap={snapMark}
             grid={state.grid}
+            sheet={
+              state.sheet
+                ? {
+                    w: stock.width,
+                    h: stock.height,
+                    label: t.view.sheetLabel
+                      .replace('{w}', formatMm(stock.width))
+                      .replace('{h}', formatMm(stock.height)),
+                  }
+                : null
+            }
             colors={colors}
             draft={bendView ?? draftView}
             draftLabel={bendView ? null : draftLabel}

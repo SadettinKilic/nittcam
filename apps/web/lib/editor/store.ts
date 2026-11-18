@@ -27,6 +27,8 @@ export interface EditorState {
   view: Viewport | null;
   snap: Record<SnapToggle, boolean>;
   grid: boolean;
+  /** Stock sheet reference outline (T243): view state only, never a command or project data. */
+  sheet: boolean;
 }
 
 export type EditorAction =
@@ -42,6 +44,7 @@ export type EditorAction =
   | { type: 'zoom'; factor: number; at: Pt }
   | { type: 'snap'; kind: SnapToggle; on: boolean }
   | { type: 'grid'; on: boolean }
+  | { type: 'sheet'; on: boolean }
   /** Drops selected ids that no longer exist (after delete or undo). */
   | { type: 'prune'; ids: readonly string[] };
 
@@ -60,6 +63,7 @@ export const initialEditorState: EditorState = {
     angle: true,
   },
   grid: true,
+  sheet: true,
 };
 
 function same(a: readonly string[], b: readonly string[]): boolean {
@@ -97,6 +101,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, snap: { ...state.snap, [action.kind]: action.on } };
     case 'grid':
       return { ...state, grid: action.on };
+    case 'sheet':
+      return state.sheet === action.on ? state : { ...state, sheet: action.on };
     case 'prune': {
       const keep = state.selection.filter((x) => action.ids.includes(x));
       const hover = state.hover !== null && action.ids.includes(state.hover) ? state.hover : null;
