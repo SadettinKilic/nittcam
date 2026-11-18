@@ -101,17 +101,13 @@ export function DynamicInput(p: DynamicInputProps) {
         const active = i === p.active;
         return (
           <span key={f} className="flex items-center gap-1">
-            {i > 0 ? (
-              <span aria-hidden className="opacity-60">
-                ;
-              </span>
-            ) : null}
-            <span className="opacity-75">{p.t.fields[f]}</span>
+            {i > 0 ? <span aria-hidden>;</span> : null}
+            <span>{p.t.fields[f]}</span>
             <span
               data-testid={`editor-input-${f}`}
               className={cn(
-                'min-w-[3ch] rounded-sm px-0.5',
-                active && 'bg-accent-fg/20 ring-1 ring-accent-fg/60',
+                'min-w-[3ch] rounded-sm px-0.5 font-semibold',
+                active && 'bg-accent-fg text-accent',
               )}
             >
               {typed !== '' ? typed : show(f, p.live[f])}

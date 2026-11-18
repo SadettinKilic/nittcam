@@ -56,6 +56,7 @@ import {
   type DrawnShape,
   type Typed,
 } from '../../lib/editor/draw-tool';
+import { claimPageKeys } from '../../lib/shortcuts';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
 import {
@@ -106,6 +107,9 @@ function typing(target: EventTarget | null): boolean {
       target.closest('input, textarea, select, [role="combobox"], [role="dialog"]') !== null)
   );
 }
+
+/** Plain keys the board owns while open (global shortcuts skip them). */
+const BOARD_KEYS = ['v', 'h', 'r', 'c', 'l', 'a', 'f', '+', '=', '-'] as const;
 
 /** One pointer gesture on the canvas. */
 type Gesture =
@@ -445,15 +449,22 @@ export function DrawingBoard({
       else if (k === 'f') fit();
       else if (k === '+' || k === '=') zoomBy(1.25);
       else if (k === '-') zoomBy(1 / 1.25);
-      else if (k === 'escape') dispatch({ type: 'clear' });
-      else return;
+      else if (k === 'escape') {
+        dispatch({ type: 'clear' });
+        return; // Esc stays visible to dialogs and popovers.
+      } else return;
+      // Handled here: the global shortcuts (C = new project, ...) must not see it too.
+      e.preventDefault();
     }
     function onUp(e: KeyboardEvent) {
       if (e.key === ' ') setSpaceDown(false);
     }
+    // The claim keeps the shell's global handler off these keys whichever listener runs first.
+    const release = claimPageKeys(BOARD_KEYS);
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onUp);
     return () => {
+      release();
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onUp);
     };

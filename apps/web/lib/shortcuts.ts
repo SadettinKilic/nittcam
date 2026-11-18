@@ -186,3 +186,28 @@ export function ariaKeyShortcuts(keys: string, isMac: boolean): string | undefin
   parts.push(step.key.length === 1 ? step.key.toUpperCase() : step.key);
   return parts.join('+');
 }
+
+/**
+ * Plain keys a mounted page (the drawing board) owns while it is open. The global handler skips
+ * them, so a tool key like C never also fires a global shortcut such as "new project".
+ */
+const claimedKeys = new Map<string, number>();
+
+/** Claim plain (no Ctrl/Cmd/Alt) keys; returns the release function for the effect cleanup. */
+export function claimPageKeys(keys: readonly string[]): () => void {
+  const ks = keys.map((k) => k.toLowerCase());
+  for (const k of ks) claimedKeys.set(k, (claimedKeys.get(k) ?? 0) + 1);
+  return () => {
+    for (const k of ks) {
+      const n = (claimedKeys.get(k) ?? 0) - 1;
+      if (n > 0) claimedKeys.set(k, n);
+      else claimedKeys.delete(k);
+    }
+  };
+}
+
+/** Is this plain key press owned by the open page? Modified presses (Ctrl+K, ...) never are. */
+export function isPageClaimedKey(e: KeyLike): boolean {
+  if (e.ctrlKey || e.metaKey || e.altKey) return false;
+  return claimedKeys.has(e.key.toLowerCase());
+}
