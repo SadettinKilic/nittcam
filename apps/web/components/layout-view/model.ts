@@ -22,6 +22,10 @@ export interface CanvasColors {
   conflict: string;
   conflictFill: string;
   text: string;
+  /** Sheet dimension labels and the scale bar (T196). */
+  dim: string;
+  /** Origin marker. */
+  origin: string;
 }
 
 /** Token name per colour (CSS custom properties of the Tailwind theme). */
@@ -38,6 +42,8 @@ const TOKENS: Record<keyof CanvasColors, string> = {
   conflict: '--color-danger',
   conflictFill: '--color-danger-subtle',
   text: '--color-fg',
+  dim: '--color-fg-muted',
+  origin: '--color-accent-text',
 };
 
 /** Reads the colour tokens from the document (browser only). */
@@ -95,12 +101,12 @@ export function drawnParts(project: Project, sheet: number): DrawnPart[] {
   return out;
 }
 
-/** Scale and pan that show the whole sheet centred with `pad` pixels around it. */
+/** Scale and pan that show the whole sheet centred with `pad` pixels around it (room for the edge dimensions, T196). */
 export function fitView(
   sheet: { width: number; height: number },
   width: number,
   height: number,
-  pad = 12,
+  pad = 30,
 ): ViewState {
   const scale = Math.max(
     0.0001,

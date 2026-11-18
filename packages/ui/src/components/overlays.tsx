@@ -353,6 +353,9 @@ const sheetVariants = cva(
         right:
           'inset-y-0 right-0 h-full w-[min(26rem,calc(100vw-3rem))] border-l border-border data-[state=open]:animate-sheet-in-right data-[state=closed]:animate-sheet-out-right',
         left: 'inset-y-0 left-0 h-full w-[min(20rem,calc(100vw-3rem))] border-r border-border data-[state=open]:animate-sheet-in-left data-[state=closed]:animate-sheet-out-left',
+        // Bottom sheet (T198): phone/tablet workspace panels; respects the home-indicator inset.
+        bottom:
+          'inset-x-0 bottom-0 max-h-[85dvh] rounded-t-xl border-t border-border pb-[env(safe-area-inset-bottom)] data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out',
       },
     },
     defaultVariants: { side: 'right' },

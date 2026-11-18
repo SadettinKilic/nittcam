@@ -20,10 +20,13 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   // Visual baselines (T102, D-032): compared only on Linux (CI) because font rendering differs
-  // on Windows/macOS. Missing baselines are written on the CI run and uploaded as an artefact;
-  // the PO commits them to e2e/visual-baselines/ to lock them in.
+  // on Windows/macOS. T199a: in CI a missing baseline FAILS (updateSnapshots 'none') instead of
+  // being written silently; the failing run's actual images are copied into the
+  // visual-screenshots artefact as candidate baselines (tools/ci/visual-candidates.mjs), and the
+  // tester commits the reviewed ones to e2e/visual-baselines/. Locally (and with
+  // VISUAL_UPDATE=missing) missing baselines are still written.
   snapshotPathTemplate: '{testDir}/../visual-baselines/{arg}{ext}',
-  updateSnapshots: 'missing',
+  updateSnapshots: process.env.CI && process.env.VISUAL_UPDATE !== 'missing' ? 'none' : 'missing',
   expect: {
     toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css', maxDiffPixels: 0 },
   },

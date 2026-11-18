@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
-  LogoMark,
+  Wordmark,
   useTheme,
   type ThemeChoice,
 } from '@nittcam/ui';
@@ -103,12 +103,15 @@ export function TopBar({ t, onOpenMenu, search, themeExtra }: TopBarProps) {
         href="/"
         aria-label={t.shell.brandHome}
         data-testid="shell-brand-mobile"
-        className="hidden shrink-0 items-center rounded-md p-1 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus min-[360px]:flex md:hidden"
+        className="flex shrink-0 items-center rounded-md p-1 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus md:hidden"
       >
-        <LogoMark size={24} />
+        <Wordmark size={20} className="hidden min-[400px]:inline-block" />
+        <Wordmark size={20} variant="short" className="min-[400px]:hidden" />
       </Link>
 
-      <nav aria-label={t.shell.breadcrumb} className="min-w-0 flex-1">
+      {/* Phones (< 640 px): no breadcrumb, the page shows its own title (B4b). */}
+      <div aria-hidden="true" className="flex-1 sm:hidden" />
+      <nav aria-label={t.shell.breadcrumb} className="hidden min-w-0 flex-1 sm:block">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm">
           {crumbs.map((crumb, i) => {
             const last = i === lastIndex;
@@ -150,7 +153,7 @@ export function TopBar({ t, onOpenMenu, search, themeExtra }: TopBarProps) {
         aria-label={t.shell.pageActions}
         className="flex shrink-0 items-center gap-2 empty:hidden"
       />
-      <div ref={slots?.setStatus} className="flex shrink-0 items-center empty:hidden" />
+      <div ref={slots?.setStatus} className="flex min-w-0 items-center empty:hidden" />
       {search}
       <ThemeMenu t={t.shell.theme} extra={themeExtra} />
     </header>

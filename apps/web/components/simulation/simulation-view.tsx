@@ -1,8 +1,22 @@
 'use client';
 
 import { CanvasBoundary } from '../feedback/canvas-boundary';
-import { Button, IconButton, Tabs, TabsContent, TabsList, TabsTrigger, Tooltip } from '@nittcam/ui';
 import {
+  Button,
+  IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+} from '@nittcam/ui';
+import { WorkspaceLayout } from '../wizard/workspace-layout';
+import { canvasTouchClass, isZoomedIn, useMediaQuery } from '../../lib/use-media-query';
+import {
+  Info,
   Maximize,
   Pause,
   Play,
@@ -10,7 +24,6 @@ import {
   SkipForward,
   StepBack,
   StepForward,
-  TriangleAlert,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -30,11 +43,19 @@ import {
   type SimSheet,
 } from '@nittcam/core';
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import { fill } from '../../lib/draft-project';
 import type { SimulationResponse } from '../../lib/simulation-messages';
 import { useSimulationWorker } from '../../lib/use-simulation-worker';
-import { canvasHeight, drawnParts, type ViewState } from '../layout-view/model';
+import { drawnParts, type ViewState } from '../layout-view/model';
 import { clampScale, zoomAt } from '../layout-view/zoom';
 import { GcodePanel } from './gcode-panel';
 import {
@@ -111,10 +132,13 @@ export function SimulationView({
   project,
   machine,
   empty,
+  left,
 }: {
   t: SimText;
   project: Project;
   machine: SimMachine | null;
+  /** Extra content for the settings panel (the wizard's warnings), T197. */
+  left?: ReactNode;
   /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
   empty: { noLayout: React.ReactNode; noMachine: React.ReactNode };
 }) {
@@ -148,6 +172,7 @@ export function SimulationView({
   const warnings = useMemo(() => all.filter((f) => f.severity === 'warning'), [all]);
 
   let body: React.ReactNode;
+  let player: React.ReactNode = null;
   if (!hasLayout) {
     body = empty.noLayout;
   } else if (!machine) {
@@ -179,8 +204,8 @@ export function SimulationView({
     );
   } else if (!response.result.ok || !result?.summary) {
     body = <Violations t={t} result={response.result} />;
-  } else {
-    body = (
+  } else if (sim) {
+    player = (
       <>
         <SummaryCard
           t={t}
@@ -189,73 +214,26 @@ export function SimulationView({
           errorCount={errorCount}
           warnings={warnings}
         />
-        {sim && sheets.length > 1 ? (
-          <Tabs
-            value={String(sheet)}
-            onValueChange={(v) => setSheetIndex(Number(v))}
-            className="flex min-w-0 flex-col gap-3"
-          >
-            <TabsList
-              variant="segmented"
-              aria-label={t.sheetTabs}
-              className="h-auto max-w-full flex-wrap justify-start self-start"
-            >
-              {sheets.map((s, i) => (
-                <TabsTrigger key={s.sheet} value={String(i)} className="h-8 gap-1.5 px-2.5">
-                  {fill(t.sheetTab, { n: s.sheet + 1 })}
-                  <span className="text-xs font-normal text-fg-subtle tabular-nums">
-                    {fill(t.sheetTabTime, { time: formatDuration(t, s.duration) })}
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <TabsContent
-              value={String(sheet)}
-              tabIndex={-1}
-              className="mt-0 min-w-0 data-[state=active]:animate-none"
-            >
-              <Player
-                key={`${machineKey}-${sim.sheet}`}
-                t={t}
-                sim={sim}
-                project={project}
-                machine={result.machine}
-              />
-            </TabsContent>
-          </Tabs>
-        ) : sim ? (
-          <Player
-            key={`${machineKey}-${sim.sheet}`}
-            t={t}
-            sim={sim}
-            project={project}
-            machine={result.machine}
-          />
-        ) : null}
       </>
     );
   }
 
   const profile = machine?.pv.profile;
-  const unverified =
-    machine !== null && (machine.pv.verification !== 'verified' || machine.pv.profile.example);
 
-  return (
-    <div className="flex w-full min-w-0 flex-col gap-4">
+  const side = (
+    <div className="flex min-w-0 flex-col gap-3">
       <p
         role="note"
         data-testid="sim-banner"
-        className="sticky top-16 z-20 flex items-center gap-2 rounded-lg border border-warning-border bg-warning-subtle px-3 py-2 text-xs text-warning-text shadow-sm sm:px-4 sm:py-2.5 sm:text-sm"
+        className="flex items-start gap-2 rounded-lg border border-info-border bg-info-subtle px-3 py-2 text-xs text-info-text"
       >
-        <TriangleAlert aria-hidden className="size-4 shrink-0" />
-        <strong className="truncate font-semibold sm:overflow-visible sm:whitespace-normal">
-          {t.banner}
-        </strong>
-        <span className="hidden text-warning-text/90 sm:inline">{t.bannerDetail}</span>
+        <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+        <span>
+          <strong className="font-semibold">{t.banner}</strong> <span>{t.bannerDetail}</span>
+        </span>
       </p>
-
       {hasLayout && machine && profile ? (
-        <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface px-4 py-3 shadow-xs">
+        <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface px-panel py-3 shadow-xs">
           <p className="text-sm text-fg" data-testid="sim-machine-name">
             <span className="font-medium">{t.machine.label}: </span>
             {fill(t.machine.option, { name: profile.identity.name, version: machine.pv.version })}
@@ -269,11 +247,61 @@ export function SimulationView({
               post: `${profile.post.id} ${profile.post.version}`,
             })}
           </p>
-          {unverified ? <p className="text-xs text-warning-text">{t.machine.unverified}</p> : null}
         </div>
       ) : null}
 
+      {player}
+      {left}
+    </div>
+  );
+
+  if (player && sim && result) {
+    const tabs =
+      sheets.length > 1 ? (
+        <TabsList
+          variant="segmented"
+          aria-label={t.sheetTabs}
+          className="h-auto w-max flex-nowrap justify-start"
+        >
+          {sheets.map((s, i) => (
+            <TabsTrigger key={s.sheet} value={String(i)} className="h-8 shrink-0 gap-1.5 px-2.5">
+              {fill(t.sheetTab, { n: s.sheet + 1 })}
+              <span className="text-xs font-normal text-fg-subtle tabular-nums">
+                {fill(t.sheetTabTime, { time: formatDuration(t, s.duration) })}
+              </span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      ) : null;
+    return (
+      <Tabs
+        value={String(sheet)}
+        onValueChange={(v) => setSheetIndex(Number(v))}
+        className="flex min-h-0 min-w-0 flex-col lg:h-full"
+      >
+        <TabsContent
+          value={String(sheet)}
+          tabIndex={-1}
+          className="mt-0 flex min-h-0 min-w-0 flex-col data-[state=active]:animate-none lg:h-full"
+        >
+          <Player
+            key={`${machineKey}-${sim.sheet}`}
+            t={t}
+            sim={sim}
+            project={project}
+            machine={result.machine}
+            left={side}
+            tabs={tabs}
+          />
+        </TabsContent>
+      </Tabs>
+    );
+  }
+
+  return (
+    <div className="flex w-full min-w-0 flex-col gap-4 lg:min-h-0 lg:overflow-y-auto">
       {body}
+      {side}
     </div>
   );
 }
@@ -299,18 +327,36 @@ export function clampView(
   return { scale, x, y };
 }
 
-/** Scale and pan that show `b` (sheet frame, mm) centred in the canvas. */
-function fitBounds(b: Bounds, sheetHeight: number, width: number, height: number): ViewState {
+/** Canvas band (px) kept free at fit: plate tabs float over the top, the grain label sits bottom-right. */
+interface FitInsets {
+  top: number;
+  bottom: number;
+}
+
+/** Scale and pan that show `b` (sheet frame, mm) centred in the canvas, clear of the overlays. */
+function fitBounds(
+  b: Bounds,
+  sheetHeight: number,
+  width: number,
+  height: number,
+  insets: FitInsets = { top: 0, bottom: 0 },
+): ViewState {
   const pad = 8;
+  // Reserve the overlay bands only while the canvas keeps >= 75 % of its height for the sheet:
+  // both bands first, then the grain label's alone, else none (short phone canvases).
+  const reserve = [insets, { top: 0, bottom: insets.bottom }, { top: 0, bottom: 0 }].find(
+    (r) => height - r.top - r.bottom >= height * 0.75,
+  ) ?? { top: 0, bottom: 0 };
+  const usable = height - reserve.top - reserve.bottom;
   const scale = Math.max(
     0.0001,
-    Math.min((width - 2 * pad) / b.width, (height - 2 * pad) / b.height),
+    Math.min((width - 2 * pad) / b.width, (usable - 2 * pad) / b.height),
   );
   const top = sheetHeight - b.y - b.height;
   return {
     scale,
     x: (width - b.width * scale) / 2 - b.x * scale,
-    y: (height - b.height * scale) / 2 - top * scale,
+    y: reserve.top + (usable - b.height * scale) / 2 - top * scale,
   };
 }
 
@@ -320,25 +366,36 @@ function Player({
   sim,
   project,
   machine,
+  left,
+  tabs,
 }: {
   t: SimText;
   sim: SimSheet;
   project: Project;
   machine: SimMachineFrame | null;
+  /** Settings panel of the workspace (summary, machine, warnings). */
+  left: ReactNode;
+  /** Plate tabs floating top-left on the canvas (more than one sheet). */
+  tabs: ReactNode;
 }) {
   const reduced = useReducedMotion();
   const [time, setTimeState] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<Speed>(5);
-  const [width, setWidth] = useState(0);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const width = size.w;
   const [view, setView] = useState<ViewState | null>(null);
   const [colors, setColors] = useState<SimColors | null>(null);
+  const coarse = useMediaQuery('(pointer: coarse)', false);
   const box = useRef<HTMLDivElement>(null);
   const timeRef = useRef(0);
   const duration = sim.duration;
   const stock = project.stock.sheet;
   const bounds = useMemo(() => simBounds(stock, machine), [stock, machine]);
-  const height = width > 0 ? canvasHeight(bounds, width) : 0;
+  // Fit keeps the sheet clear of the floating plate tabs (top) and the grain label (bottom).
+  const hasTabs = Boolean(tabs);
+  const insets = useMemo<FitInsets>(() => ({ top: hasTabs ? 44 : 0, bottom: 36 }), [hasTabs]);
+  const height = size.h;
   const parts = useMemo(() => drawnParts(project, sim.sheet), [project, sim.sheet]);
 
   const setTime = useCallback(
@@ -353,24 +410,32 @@ function Player({
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    let last = 0;
+    let last = { w: 0, h: 0 };
+    // The canvas fills its workspace cell (T197); a new width or height refits.
     const ro = new ResizeObserver((entries) => {
       const w = Math.floor(entries[0]?.contentRect.width ?? 0);
-      if (w <= 0 || w === last) return;
-      last = w;
+      const h = Math.floor(entries[0]?.contentRect.height ?? 0);
+      if (w <= 0 || h <= 0 || (w === last.w && h === last.h)) return;
+      last = { w, h };
       setColors((c) => c ?? readSimColors());
-      setWidth(w);
-      setView(fitBounds(bounds, stock.height, w, canvasHeight(bounds, w)));
+      setSize({ w, h });
+      setView(fitBounds(bounds, stock.height, w, h, insets));
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [bounds, stock.height]);
+  }, [bounds, stock.height, insets]);
   // A theme switch re-reads the token colours, so the canvas follows light/dark live (T110).
   useEffect(() => onThemeChange(() => setColors((c) => (c ? readSimColors() : c))), []);
 
   const fit = useCallback(() => {
-    if (width > 0) setView(fitBounds(bounds, stock.height, width, canvasHeight(bounds, width)));
-  }, [bounds, stock.height, width]);
+    if (width > 0 && height > 0) setView(fitBounds(bounds, stock.height, width, height, insets));
+  }, [bounds, stock.height, width, height, insets]);
+  // Zoomed past the fit: one finger pans the view; at the fit it scrolls the page on touch (T198).
+  const zoomed =
+    view !== null &&
+    width > 0 &&
+    height > 0 &&
+    isZoomedIn(view.scale, fitBounds(bounds, stock.height, width, height, insets).scale);
 
   // Playback: one animation frame per redraw; the time advances by real time × speed.
   const active = playing && !reduced;
@@ -465,7 +530,7 @@ function Player({
   const diameter = step ? toolDiameterOf(sim, step.tool) : null;
   const ramp = colors ? depthRamp(colors.depthTop, colors.depthBottom, 6) : [];
   const clock = fill(t.controls.clock, { now: formatClock(time), total: formatClock(duration) });
-  const panelHeight = Math.max(280, height + 56 + 12);
+  const panelHeight = Math.max(280, height + 120);
 
   function zoomButton(factor: number) {
     if (!view || width <= 0) return;
@@ -473,33 +538,79 @@ function Player({
     setView(clampView(zoomAt(view, factor, width / 2, height / 2), stock, width, height));
   }
 
-  return (
-    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <div className="flex min-w-0 flex-col gap-3">
-        <div className="flex items-center justify-end">
-          <div className="flex items-center rounded-lg border border-border bg-surface p-0.5 shadow-xs">
-            <Tooltip content={t.controls.zoomOut}>
-              <IconButton
-                size="sm"
-                aria-label={t.controls.zoomOut}
-                onClick={() => zoomButton(1 / 1.25)}
-              >
-                <ZoomOut aria-hidden />
-              </IconButton>
-            </Tooltip>
-            <Tooltip content={t.controls.zoomIn}>
-              <IconButton size="sm" aria-label={t.controls.zoomIn} onClick={() => zoomButton(1.25)}>
-                <ZoomIn aria-hidden />
-              </IconButton>
-            </Tooltip>
-            <Tooltip content={t.controls.fit}>
-              <IconButton size="sm" aria-label={t.controls.fit} onClick={fit}>
-                <Maximize aria-hidden />
-              </IconButton>
-            </Tooltip>
+  const floating =
+    'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
+  const overlay = (
+    <>
+      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
+        {tabs ? (
+          <div
+            className={`${floating} min-w-0 overflow-x-auto p-0.5`}
+            data-testid="sim-tabs-scroll"
+          >
+            {tabs}
           </div>
+        ) : (
+          <span />
+        )}
+        <div className={`${floating} flex shrink-0 items-center p-0.5`}>
+          <Tooltip content={t.controls.zoomOut}>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              aria-label={t.controls.zoomOut}
+              onClick={() => zoomButton(1 / 1.25)}
+            >
+              <ZoomOut aria-hidden />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content={t.controls.zoomIn}>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              aria-label={t.controls.zoomIn}
+              onClick={() => zoomButton(1.25)}
+            >
+              <ZoomIn aria-hidden />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content={t.controls.fit}>
+            <IconButton size="sm" variant="ghost" aria-label={t.controls.fit} onClick={fit}>
+              <Maximize aria-hidden />
+            </IconButton>
+          </Tooltip>
         </div>
+      </div>
+      <div className="pointer-events-none absolute bottom-2 left-2 z-10">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="pointer-events-auto bg-surface/95 shadow-sm"
+              data-testid="sim-legend-button"
+            >
+              <Info aria-hidden />
+              {t.legendButton}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" side="top" className="w-auto max-w-96">
+            <div className="flex flex-col gap-3">
+              <Legend t={t} ramp={ramp} zBottom={sim.zBottom} grain={stock.grain} />
+              <p className="text-xs text-fg-subtle">{t.controls.shortcuts}</p>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </>
+  );
 
+  return (
+    <WorkspaceLayout
+      testId="sim-workspace"
+      labels={t.workspace}
+      left={left}
+      canvas={
         <div
           ref={box}
           tabIndex={0}
@@ -519,13 +630,12 @@ function Player({
           data-sheet-width={stock.width}
           data-sheet-height={stock.height}
           data-part-color={colors?.part}
-          className="relative w-full min-w-0 touch-none overflow-hidden rounded-xl border border-border bg-canvas outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          style={{ height: height || undefined, minHeight: 220 }}
+          className={`absolute inset-0 ${canvasTouchClass(zoomed)} overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
         >
           <span
             data-testid="sim-grain"
             data-grain={stock.grain}
-            className="pointer-events-none absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-surface/90 px-2 py-1 text-xs text-fg shadow-xs backdrop-blur-sm"
+            className="pointer-events-none absolute right-2 bottom-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-surface/90 px-2 py-1 text-xs text-fg shadow-xs backdrop-blur-sm"
           >
             <svg
               viewBox="0 0 24 24"
@@ -558,156 +668,159 @@ function Player({
                 time={time}
                 onViewChange={(v) => setView(clampView(v, stock, width, height))}
                 clampPan={(x, y, scale) => clampView({ x, y, scale }, stock, width, height)}
+                pannable={zoomed || !coarse}
               />
             </CanvasBoundary>
           ) : null}
         </div>
+      }
+      canvasOverlay={overlay}
+      canvasFooter={
+        <>
+          {colors && width > 0 ? (
+            <ZStrip t={t} sim={sim} width={width} time={time} colors={colors} onSeek={seekTime} />
+          ) : null}
 
-        {colors && width > 0 ? (
-          <ZStrip t={t} sim={sim} width={width} time={time} colors={colors} onSeek={seekTime} />
-        ) : null}
-
-        <div
-          role="group"
-          aria-label={t.controls.label}
-          className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 shadow-xs sm:p-4"
-        >
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <div className="flex items-center gap-1">
-              <Tooltip content={t.controls.start}>
-                <IconButton
-                  variant="ghost"
-                  onClick={toStart}
-                  aria-label={t.controls.start}
-                  aria-keyshortcuts="Home"
-                >
-                  <SkipBack aria-hidden />
-                </IconButton>
-              </Tooltip>
-              <Tooltip content={t.controls.prev}>
-                <IconButton
-                  variant="ghost"
-                  onClick={stepPrev}
-                  aria-label={t.controls.prev}
-                  aria-keyshortcuts="ArrowLeft"
-                >
-                  <StepBack aria-hidden />
-                </IconButton>
-              </Tooltip>
-              <Button
-                onClick={togglePlay}
-                disabled={reduced}
-                aria-keyshortcuts="Space"
-                data-testid="sim-play"
-                className="min-w-28"
-              >
-                {active ? <Pause aria-hidden /> : <Play aria-hidden />}
-                {active ? t.controls.pause : t.controls.play}
-              </Button>
-              <Tooltip content={t.controls.next}>
-                <IconButton
-                  variant="ghost"
-                  onClick={stepNext}
-                  aria-label={t.controls.next}
-                  aria-keyshortcuts="ArrowRight"
-                >
-                  <StepForward aria-hidden />
-                </IconButton>
-              </Tooltip>
-              <Tooltip content={t.controls.end}>
-                <IconButton
-                  variant="ghost"
-                  onClick={toEnd}
-                  aria-label={t.controls.end}
-                  aria-keyshortcuts="End"
-                >
-                  <SkipForward aria-hidden />
-                </IconButton>
-              </Tooltip>
-            </div>
-            <div className="flex min-w-48 flex-1 items-center gap-3">
-              <input
-                type="range"
-                min={0}
-                max={Math.ceil(duration * SCRUB_UNITS)}
-                step={1}
-                value={Math.round(time * SCRUB_UNITS)}
-                onChange={(e) => seekTime(Number(e.target.value) / SCRUB_UNITS)}
-                aria-label={t.controls.scrubber}
-                aria-valuetext={clock}
-                data-testid="sim-scrubber"
-                className="h-10 min-w-0 flex-1 cursor-pointer accent-(--color-accent)"
-              />
-              <span
-                className="shrink-0 font-mono text-sm text-fg tabular-nums"
-                data-testid="sim-clock"
-              >
-                {clock}
-              </span>
-            </div>
-            <div role="group" aria-label={t.controls.speed} className="flex items-center gap-2">
-              <span className="text-xs text-fg-muted">{t.controls.speed}</span>
-              <div className="flex items-center gap-0.5 rounded-lg bg-surface-hover p-0.5">
-                {SPEEDS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    aria-pressed={speed === s}
-                    disabled={reduced}
-                    onClick={() => setSpeed(s)}
-                    className={`h-8 min-w-9 rounded-md px-2 text-xs font-medium tabular-nums transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus disabled:opacity-50 ${speed === s ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted hover:text-fg'}`}
+          <div
+            role="group"
+            aria-label={t.controls.label}
+            className="flex flex-col gap-2 px-2 py-2 sm:px-3"
+          >
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <div className="flex items-center gap-1">
+                <Tooltip content={t.controls.start}>
+                  <IconButton
+                    variant="ghost"
+                    onClick={toStart}
+                    aria-label={t.controls.start}
+                    aria-keyshortcuts="Home"
                   >
-                    {s === 'max' ? t.controls.speedMax : `${s}×`}
-                  </button>
-                ))}
+                    <SkipBack aria-hidden />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={t.controls.prev}>
+                  <IconButton
+                    variant="ghost"
+                    onClick={stepPrev}
+                    aria-label={t.controls.prev}
+                    aria-keyshortcuts="ArrowLeft"
+                  >
+                    <StepBack aria-hidden />
+                  </IconButton>
+                </Tooltip>
+                <Button
+                  onClick={togglePlay}
+                  disabled={reduced}
+                  aria-keyshortcuts="Space"
+                  data-testid="sim-play"
+                  className="min-w-28"
+                >
+                  {active ? <Pause aria-hidden /> : <Play aria-hidden />}
+                  {active ? t.controls.pause : t.controls.play}
+                </Button>
+                <Tooltip content={t.controls.next}>
+                  <IconButton
+                    variant="ghost"
+                    onClick={stepNext}
+                    aria-label={t.controls.next}
+                    aria-keyshortcuts="ArrowRight"
+                  >
+                    <StepForward aria-hidden />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={t.controls.end}>
+                  <IconButton
+                    variant="ghost"
+                    onClick={toEnd}
+                    aria-label={t.controls.end}
+                    aria-keyshortcuts="End"
+                  >
+                    <SkipForward aria-hidden />
+                  </IconButton>
+                </Tooltip>
+              </div>
+              <div className="flex min-w-48 flex-1 items-center gap-3">
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.ceil(duration * SCRUB_UNITS)}
+                  step={1}
+                  value={Math.round(time * SCRUB_UNITS)}
+                  onChange={(e) => seekTime(Number(e.target.value) / SCRUB_UNITS)}
+                  aria-label={t.controls.scrubber}
+                  aria-valuetext={clock}
+                  data-testid="sim-scrubber"
+                  className="h-10 min-w-0 flex-1 cursor-pointer accent-(--color-accent)"
+                />
+                <span
+                  className="shrink-0 font-mono text-sm text-fg tabular-nums"
+                  data-testid="sim-clock"
+                >
+                  {clock}
+                </span>
+              </div>
+              <div role="group" aria-label={t.controls.speed} className="flex items-center gap-2">
+                <span className="text-xs text-fg-muted">{t.controls.speed}</span>
+                <div className="flex items-center gap-0.5 rounded-lg bg-surface-hover p-0.5">
+                  {SPEEDS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      aria-pressed={speed === s}
+                      disabled={reduced}
+                      onClick={() => setSpeed(s)}
+                      className={`h-8 min-w-9 rounded-md px-2 text-xs font-medium tabular-nums transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus disabled:opacity-50 ${speed === s ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted hover:text-fg'}`}
+                    >
+                      {s === 'max' ? t.controls.speedMax : `${s}×`}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          <div
-            className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border-subtle pt-3 font-mono text-xs text-fg-muted"
-            aria-live="off"
-          >
-            <span data-testid="sim-step">
-              {fill(t.controls.step, { n: ph.done, total: sim.steps.length })}
-            </span>
-            {line ? <span>{fill(t.readout.line, { line: line.line })}</span> : null}
-            <span className="tabular-nums" data-testid="sim-position">
-              {step
-                ? fill(t.readout.position, {
-                    x: formatCoord(pos.x),
-                    y: formatCoord(pos.y),
-                    z: formatCoord(pos.z),
-                  })
-                : t.readout.idle}
-            </span>
-            {step ? (
-              <span>
-                {step.tool !== null && diameter !== null
-                  ? fill(t.readout.tool, { tool: step.tool, d: formatMm(diameter) })
-                  : t.readout.toolUnknown}
+            <div
+              className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border-subtle pt-3 font-mono text-xs text-fg-muted"
+              aria-live="off"
+            >
+              <span data-testid="sim-step">
+                {fill(t.controls.step, { n: ph.done, total: sim.steps.length })}
               </span>
-            ) : null}
-            {step ? (
-              <span>
-                {step.kind === 'cut'
-                  ? fill(t.readout.feed, { feed: formatInt(step.feed ?? 0) })
-                  : t.readout.rapid}
+              {line ? <span>{fill(t.readout.line, { line: line.line })}</span> : null}
+              <span className="tabular-nums" data-testid="sim-position">
+                {step
+                  ? fill(t.readout.position, {
+                      x: formatCoord(pos.x),
+                      y: formatCoord(pos.y),
+                      z: formatCoord(pos.z),
+                    })
+                  : t.readout.idle}
               </span>
+              {step ? (
+                <span>
+                  {step.tool !== null && diameter !== null
+                    ? fill(t.readout.tool, { tool: step.tool, d: formatMm(diameter) })
+                    : t.readout.toolUnknown}
+                </span>
+              ) : null}
+              {step ? (
+                <span>
+                  {step.kind === 'cut'
+                    ? fill(t.readout.feed, { feed: formatInt(step.feed ?? 0) })
+                    : t.readout.rapid}
+                </span>
+              ) : null}
+            </div>
+            {reduced ? (
+              <p className="text-xs text-info-text" data-testid="sim-reduced-note">
+                {t.controls.reducedMotion}
+              </p>
             ) : null}
           </div>
-          {reduced ? (
-            <p className="text-xs text-info-text" data-testid="sim-reduced-note">
-              {t.controls.reducedMotion}
-            </p>
-          ) : null}
-          <p className="text-xs text-fg-subtle">{t.controls.shortcuts}</p>
-        </div>
-
-        <Legend t={t} ramp={ramp} zBottom={sim.zBottom} grain={stock.grain} />
-      </div>
-
-      <GcodePanel t={t} files={sim.files} current={line} height={panelHeight} onSeek={seekLine} />
-    </div>
+        </>
+      }
+      right={
+        <GcodePanel t={t} files={sim.files} current={line} height={panelHeight} onSeek={seekLine} />
+      }
+    />
   );
 }
 

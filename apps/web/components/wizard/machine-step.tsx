@@ -16,7 +16,6 @@ import { fill } from '../../lib/draft-project';
 import { fillRich } from '../../lib/fill-rich';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
-import { TriangleAlert } from 'lucide-react';
 import { focusRing } from '../page/page-header';
 import {
   Measure,
@@ -31,7 +30,7 @@ import {
 } from '@nittcam/ui';
 import { NumberField } from './number-field';
 
-import { Callout, canvasWellClass } from './panels';
+import { canvasWellClass } from './panels';
 
 type Text = Messages['wizard']['machine'];
 type MaterialText = Messages['materials'];
@@ -130,11 +129,7 @@ export function MachineFields({
             })}
           </p>
         ) : null}
-        {detail && (detail.state !== 'verified' || detail.profile.example) ? (
-          <Callout tone="warning" icon={<TriangleAlert aria-hidden />} className="text-xs">
-            <p>{t.unverified}</p>
-          </Callout>
-        ) : null}
+        {/* T199: the unverified-profile notice is the header chip (ProfileStatusChip). */}
         {detail && known && detail.version !== project.machine.profileVersion ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-info-border bg-info-subtle px-3 py-2 text-xs text-info-text">
             <span>
@@ -377,7 +372,10 @@ export function SheetPreview({
   const off = profile?.origin.sheetOffset ?? { x: 0, y: 0 };
   const W = Math.max(table.width, off.x + sheet.width);
   const H = Math.max(table.depth, off.y + sheet.height);
-  const pad = Math.max(W, H) * 0.03;
+  const pad = Math.max(W, H) * 0.07;
+  const fs = Math.max(W, H) / 55;
+  const margin = Math.max(0, project.nesting.margin);
+  const patternId = `grain-${Math.round(sheet.width)}-${Math.round(sheet.height)}`;
   const fits =
     off.x + sheet.width <= table.width + 0.001 && off.y + sheet.height <= table.depth + 0.001;
   // SVG y grows downwards; the machine frame has Y up (front-left zero, D-019).
@@ -390,7 +388,6 @@ export function SheetPreview({
   });
   const cx = off.x + sheet.width / 2;
   const cy = sy(off.y, sheet.height) + sheet.height / 2;
-  const arrow = Math.min(sheet.width, sheet.height) * 0.35;
   const showGrain = materialHasGrain(materialKindOf(project.stock.material));
   return (
     <figure
@@ -425,17 +422,78 @@ export function SheetPreview({
           strokeWidth={W / 250}
         />
         {showGrain ? (
-          <g
-            transform={`rotate(${-sheet.grain} ${cx} ${cy})`}
-            className="stroke-grain"
-            strokeWidth={W / 300}
-            fill="none"
-          >
-            <path
-              d={`M ${cx - arrow} ${cy} H ${cx + arrow} M ${cx + arrow - arrow / 5} ${cy - arrow / 6} L ${cx + arrow} ${cy} L ${cx + arrow - arrow / 5} ${cy + arrow / 6} M ${cx - arrow + arrow / 5} ${cy - arrow / 6} L ${cx - arrow} ${cy} L ${cx - arrow + arrow / 5} ${cy + arrow / 6}`}
+          <>
+            {/* Grain as a fine line texture along the grain direction (T196). */}
+            <defs>
+              <pattern
+                id={patternId}
+                width={W / 70}
+                height={W / 70}
+                patternUnits="userSpaceOnUse"
+                patternTransform={`rotate(${-sheet.grain} ${cx} ${cy})`}
+              >
+                <line
+                  x1={0}
+                  y1={W / 140}
+                  x2={W / 70}
+                  y2={W / 140}
+                  className="stroke-grain"
+                  strokeWidth={W / 900}
+                />
+              </pattern>
+            </defs>
+            <rect
+              data-testid="sheet-preview-grain"
+              x={off.x}
+              y={sy(off.y, sheet.height)}
+              width={sheet.width}
+              height={sheet.height}
+              fill={`url(#${patternId})`}
             />
-          </g>
+          </>
         ) : null}
+        {margin > 0 && sheet.width > 2 * margin && sheet.height > 2 * margin ? (
+          <rect
+            data-testid="sheet-preview-margin"
+            x={off.x + margin}
+            y={sy(off.y, sheet.height) + margin}
+            width={sheet.width - 2 * margin}
+            height={sheet.height - 2 * margin}
+            fill="none"
+            className="stroke-fg-subtle"
+            strokeWidth={W / 700}
+            strokeDasharray={`${W / 150} ${W / 200}`}
+          />
+        ) : null}
+        {/* Real size on the top and left edges, mono (T196). */}
+        <g className="fill-fg-muted font-mono" fontSize={fs} data-testid="sheet-preview-dims">
+          <text x={cx} y={sy(off.y, sheet.height) - fs * 0.6} textAnchor="middle">
+            {mm(sheet.width)}
+          </text>
+          <text
+            x={off.x - fs * 0.6}
+            y={cy}
+            textAnchor="middle"
+            transform={`rotate(-90 ${off.x - fs * 0.6} ${cy})`}
+          >
+            {mm(sheet.height)}
+          </text>
+        </g>
+        {profile ? (
+          <text
+            x={fs * 0.4}
+            y={sy(0, table.depth) + fs * 1.2}
+            fontSize={fs * 0.9}
+            className="fill-fg-subtle"
+          >
+            {t.legendTable}
+          </text>
+        ) : null}
+        {/* Origin marker: machine zero, X right and Y up. */}
+        <g className="stroke-accent-text" strokeWidth={W / 400} fill="none">
+          <path d={`M 0 ${H} H ${fs * 2.2} M 0 ${H} V ${H - fs * 2.2}`} />
+          <circle cx={0} cy={H} r={fs * 0.3} className="fill-accent-text" />
+        </g>
       </svg>
       <div className="flex flex-wrap gap-4 text-xs text-fg-muted">
         {profile ? (

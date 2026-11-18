@@ -1,6 +1,13 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { goStep, nest, openNewProject, saved, wizardReady } from './wizard-helpers';
+import {
+  goStep,
+  nest,
+  openNewProject,
+  openWorkspacePanel,
+  saved,
+  wizardReady,
+} from './wizard-helpers';
 
 /**
  * T020 tester, round 2: persistence under reloads, cursor-anchored zoom, pan clamp, 320 px
@@ -184,9 +191,23 @@ test.describe('T020 round 2: zoom and pan', () => {
       await page.setViewportSize({ width: w, height: 900 });
       await toSimulation(page);
       const canvas = await ready(page);
+      // Measure from a settled fit: the workspace grid may still resize the canvas once.
+      await page.getByRole('button', { name: s.controls.fit }).click();
+      let last = '';
+      await expect
+        .poll(
+          async () => {
+            const cur = JSON.stringify([await view(canvas), await canvas.boundingBox()]);
+            const same = cur === last;
+            last = cur;
+            return same;
+          },
+          { timeout: 3000, intervals: [150] },
+        )
+        .toBe(true);
       const fit0 = await view(canvas);
       const spots = [
-        { fx: 0.05, fy: 0.05 },
+        { fx: 0.05, fy: 0.35 }, // T197: the sheet tabs overlay the top edge of the canvas
         { fx: 0.95, fy: 0.95 },
         { fx: 0.5, fy: 0.3 },
       ];
@@ -345,7 +366,7 @@ async function colourPixels(
 }
 
 test.describe('T020 round 2: small screens and tabs', () => {
-  test('320 px: grain label vs badges, single-line banner, no horizontal scroll', async ({
+  test('320 px: grain label vs badges, notice in the panel sheet, no horizontal scroll', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 800 });
@@ -364,18 +385,17 @@ test.describe('T020 round 2: small screens and tabs', () => {
     console.log(`320px: badge pixels under the grain label ${hidden} of ${total}`);
     expect(total).toBeGreaterThan(0);
     expect(hidden).toBe(0);
-    const banner = page.getByTestId('sim-banner');
-    await expect(banner).toBeVisible();
-    const bb = await banner.boundingBox();
-    const lh = await banner.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
-    console.log(`320px banner height ${bb?.height} line-height ${lh}`);
-    expect(bb?.height ?? 999).toBeLessThanOrEqual(lh + 20);
-    expect(bb?.x ?? -1).toBeGreaterThanOrEqual(0);
-    expect((bb?.x ?? 0) + (bb?.width ?? 999)).toBeLessThanOrEqual(320);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+    // T198/T199: the preview notice lives in the left panel, a bottom sheet on phones.
+    const sheet = await openWorkspacePanel(page, 'left');
+    const banner = sheet.getByTestId('sim-banner');
+    await expect(banner).toBeVisible();
+    const bb = await banner.boundingBox();
+    expect(bb?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect((bb?.x ?? 0) + (bb?.width ?? 999)).toBeLessThanOrEqual(320);
     await page.screenshot({ path: '__screenshots__/t020-tester-320-r2.png' });
   });
 

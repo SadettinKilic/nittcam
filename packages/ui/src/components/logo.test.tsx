@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { BRAND_MARK, Logo, LogoMark } from './logo';
+import { BRAND_MARK, Logo, LogoMark, Wordmark } from './logo';
 
 /** All absolute coordinates of a path made of M/V/L/A commands (enough for the mark). */
 function points(d: string): Array<[number, number]> {
@@ -84,5 +84,28 @@ describe('Logo', () => {
 
   it('mono tone drops the accent', () => {
     expect(renderToStaticMarkup(<Logo tone="mono" />)).not.toContain('accent');
+  });
+});
+
+describe('Wordmark (T194b)', () => {
+  it('renders "NittCAM" bold and skewed with CAM in the accent text token', () => {
+    const html = renderToStaticMarkup(<Wordmark />);
+    expect(html).toContain('Nitt<span class="text-accent-text">CAM</span>');
+    expect(html).toContain('font-extrabold');
+    expect(html).toContain('-skew-x-8');
+    expect(html).toContain('aria-hidden="true"');
+  });
+
+  it('short variant keeps the first letters only', () => {
+    const html = renderToStaticMarkup(<Wordmark variant="short" />);
+    expect(html).toContain('N<span class="text-accent-text">C</span>');
+    expect(html).not.toContain('Nitt');
+  });
+
+  it('mono tone draws everything in currentColor (no hex, no accent)', () => {
+    const html = renderToStaticMarkup(<Wordmark tone="mono" />);
+    expect(html).toContain('text-current');
+    expect(html).not.toContain('accent');
+    expect(html).not.toMatch(/#[0-9a-f]{3,6}/i);
   });
 });

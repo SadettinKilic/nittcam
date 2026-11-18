@@ -43,7 +43,7 @@ export function SummaryCard({
     <section
       aria-labelledby="sim-summary-title"
       data-testid="sim-summary"
-      className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-5"
+      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-xs"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="sim-summary-title" className="text-base font-semibold tracking-tight text-fg">
@@ -58,22 +58,26 @@ export function SummaryCard({
           {checksOk ? s.checksOk : fill(s.checksFail, { count: errorCount })}
         </p>
       </div>
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        {tiles.map(([key, label, value]) => (
-          <div
-            key={key}
-            className="rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2.5"
-          >
-            <dt className="text-xs text-fg-muted">{label}</dt>
-            <dd
-              className="mt-0.5 text-lg font-semibold tracking-tight text-fg"
-              data-testid={`sim-summary-${key}`}
+      {/* B4b: tiles follow the card width (container query), not the viewport: in the narrow
+          side panel 2 columns with the time tile across both, values always on one line. */}
+      <div className="@container">
+        <dl className="grid grid-cols-2 gap-2 @md:grid-cols-3">
+          {tiles.map(([key, label, value]) => (
+            <div
+              key={key}
+              className={`min-w-0 rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2.5 ${key === 'time' ? 'col-span-2 @md:col-span-1' : ''}`}
             >
-              {value}
-            </dd>
-          </div>
-        ))}
-      </dl>
+              <dt className="truncate text-xs text-fg-muted">{label}</dt>
+              <dd
+                className="mt-0.5 truncate text-base font-semibold tracking-tight whitespace-nowrap text-fg tabular-nums @lg:text-lg"
+                data-testid={`sim-summary-${key}`}
+              >
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
       <p className="text-xs text-fg-muted">
         {fill(s.timeNote, { rapid: formatInt(summary.rapidFeed) })}
       </p>

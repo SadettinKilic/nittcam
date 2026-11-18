@@ -2,7 +2,7 @@
 
 import {
   Button,
-  Logo,
+  Wordmark,
   RouterIcon,
   TooltipContent,
   TooltipRoot,
@@ -141,8 +141,8 @@ export function SidebarContent({
             data-testid="shell-brand"
             className={cn('-mx-1 flex items-center rounded-md p-1', focus)}
           >
-            <Logo size={24} className="rail-collapsed:hidden" />
-            <Logo size={24} variant="mark" className="hidden rail-collapsed:inline-flex" />
+            <Wordmark size={24} className="rail-collapsed:hidden" />
+            <Wordmark size={24} variant="short" className="hidden rail-collapsed:inline-block" />
           </Link>
         </RailTip>
       </div>

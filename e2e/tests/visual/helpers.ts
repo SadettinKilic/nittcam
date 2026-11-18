@@ -37,13 +37,41 @@ export async function applyTheme(page: Page, theme: Theme): Promise<void> {
   await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
 }
 
-/** Waits until web fonts are loaded and layout is stable, so captures are deterministic. */
-export async function settle(page: Page): Promise<void> {
+/** Freezes transitions, animations and the caret for captures (on top of reduced motion). */
+const FREEZE_CSS =
+  '*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}';
+
+/**
+ * Waits until the page is stable so captures are deterministic (T199a; B4a lost hours to flaky
+ * captures): network idle, web fonts loaded, no pending autosave (the wizard's save badge),
+ * canvases sized (data-scale set), animations frozen, the page (window and the shell content) scrolled to 0,0,
+ * then two quiet frames.
+ */
+/**
+ * keepScroll: anchored overlays (menu, popover, select) open next to a trigger far down the page
+ * and stay there; scrolling to the top would capture the page without them (B4b round 4).
+ */
+export async function settle(page: Page, keepScroll = false): Promise<void> {
   await page.waitForLoadState('networkidle');
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  await page.addStyleTag({ content: FREEZE_CSS });
+  await page.waitForFunction(() => {
+    const save = document.querySelector('[data-testid=save-status]');
+    const state = save?.getAttribute('data-state');
+    if (state === 'saving' || state === 'pending' || state === 'dirty') return false;
+    const canvases = document.querySelectorAll(
+      '[data-testid=layout-canvas],[data-testid=sim-canvas]',
+    );
+    return Array.from(canvases).every((c) => c.getAttribute('data-scale'));
   });
+  await page.evaluate(async (keep) => {
+    await document.fonts.ready;
+    if (!keep) {
+      window.scrollTo(0, 0);
+      document.getElementById('content')?.scrollTo(0, 0);
+    }
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  }, keepScroll);
 }
 
 /**
@@ -53,10 +81,10 @@ export async function settle(page: Page): Promise<void> {
 export async function snap(
   page: Page,
   name: string,
-  opts: { fullPage?: boolean; baseline?: boolean } = {},
+  opts: { fullPage?: boolean; baseline?: boolean; keepScroll?: boolean } = {},
 ): Promise<void> {
   const fullPage = opts.fullPage ?? true;
-  await settle(page);
+  await settle(page, opts.keepScroll);
   mkdirSync(SCREENSHOT_DIR, { recursive: true });
   await page.screenshot({
     path: join(SCREENSHOT_DIR, `${name}.png`),
@@ -66,7 +94,9 @@ export async function snap(
   });
   // baseline: false = review capture only (pages whose data is shared with other tests).
   if (compareBaselines && opts.baseline !== false) {
-    await expect(page).toHaveScreenshot(`${name}.png`, { fullPage });
+    // Soft: a diff fails the test but later captures still run, so one CI run yields every
+    // candidate baseline of a multi-step test (B4b round 2).
+    await expect.soft(page).toHaveScreenshot(`${name}.png`, { fullPage });
   }
 }
 

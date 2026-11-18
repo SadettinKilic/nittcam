@@ -22,6 +22,10 @@ export interface SimColors {
   tab: string;
   badge: string;
   badgeFg: string;
+  /** Whole-path ghost at t = 0 (cut = accent 35 %), T196. */
+  ghost: string;
+  /** Secondary part label line ("W × H"). */
+  dim: string;
   text: string;
 }
 
@@ -42,6 +46,8 @@ const TOKENS: Record<keyof SimColors, string> = {
   badge: '--color-sim-badge',
   badgeFg: '--color-sim-badge-fg',
   text: '--color-fg',
+  ghost: '--color-accent',
+  dim: '--color-fg-muted',
 };
 
 export function readSimColors(): SimColors {

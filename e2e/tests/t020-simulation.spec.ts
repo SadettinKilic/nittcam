@@ -1,6 +1,13 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { chooseMachine, goStep, nest, wizardReady } from './wizard-helpers';
+import {
+  chooseMachine,
+  closeWorkspacePanel,
+  goStep,
+  nest,
+  openWorkspacePanel,
+  wizardReady,
+} from './wizard-helpers';
 
 /**
  * T020: simulation screen drawn from the read G-code (spec §6.5). The kitchen sample is nested on
@@ -303,7 +310,9 @@ test.describe('T020 simulation', () => {
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
   });
 
-  test('390 px: canvas fits, panels stack, no horizontal page scroll', async ({ page }) => {
+  test('390 px: canvas first, G-code panel in a sheet, no horizontal page scroll', async ({
+    page,
+  }) => {
     const problems = watchConsole(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await openSimulation(page);
@@ -314,10 +323,12 @@ test.describe('T020 simulation', () => {
     expect(overflow).toBeLessThanOrEqual(0);
     const box = await canvas.boundingBox();
     expect(box?.width ?? 999).toBeLessThanOrEqual(390);
-    // The G-code panel sits below the canvas.
-    const panel = await page.getByTestId('gcode-panel').boundingBox();
-    expect((panel?.y ?? 0) > (box?.y ?? 0) + (box?.height ?? 0)).toBe(true);
+    // T198: the G-code panel lives in a bottom sheet on phones.
     await page.getByRole('button', { name: s.controls.end }).click();
+    const sheet = await openWorkspacePanel(page, 'right');
+    const panel = await sheet.getByTestId('gcode-panel').boundingBox();
+    expect((panel?.x ?? 0) + (panel?.width ?? 999)).toBeLessThanOrEqual(390);
+    await closeWorkspacePanel(page);
     await canvas.scrollIntoViewIfNeeded();
     await page.screenshot({ path: '__screenshots__/t020-mobil.png' });
     expect(problems).toEqual([]);

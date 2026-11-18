@@ -1,11 +1,20 @@
 'use client';
 
 import type Konva from 'konva';
-import { memo, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import { Arrow, Group, Layer, Line, Rect, Stage, Text } from 'react-konva';
 import type { CanvasColors, DrawnPart, ViewState } from './model';
 import { zoomAt } from './zoom';
 import { canvasMonoFont } from '../../lib/canvas-theme';
+import { formatMm, partLabel } from '../../lib/canvas-labels';
+
+/** True when the operator asked for less motion (no fade-in after "Diz"). */
+function reducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  );
+}
 
 /**
  * The Konva drawing of one sheet (T013, spec §3.6, §6.5). Loaded only in the browser (react-konva
@@ -38,6 +47,13 @@ export interface LayoutCanvasProps {
   onDragMove: (key: string, x: number, y: number) => void;
   /** Drop at (mm, snapped). Returns false when the drop is refused; the part then snaps back. */
   onDrop: (key: string, x: number, y: number) => boolean;
+  /**
+   * Bumped after each "Diz" result (T196): the parts are remounted and fade/settle in, staggered,
+   * ≤ 240 ms in total; 0 or reduced motion = no animation.
+   */
+  appearKey?: number;
+  /** Stage drag pans the view (off on an un-zoomed touch canvas so the page can scroll, T198). */
+  pannable?: boolean;
 }
 
 const SheetLayer = memo(function SheetLayer({
@@ -92,9 +108,83 @@ const SheetLayer = memo(function SheetLayer({
         strokeWidth={2 * hair}
         perfectDrawEnabled={false}
       />
+      <SheetDimensions width={W} height={H} colors={colors} scale={scale} />
     </Layer>
   );
 });
+
+/**
+ * The sheet's real size on its top and left edges ("2.800" / "2.070", mono, muted) and the origin
+ * marker (X right, Y up) at the bottom-left corner, all sized in screen pixels (T196).
+ */
+function SheetDimensions({
+  width: W,
+  height: H,
+  colors,
+  scale,
+}: {
+  width: number;
+  height: number;
+  colors: CanvasColors;
+  scale: number;
+}) {
+  const px = 1 / scale;
+  const fs = 11 * px;
+  const gap = 6 * px;
+  const tick = 4 * px;
+  const arm = 22 * px;
+  const font = canvasMonoFont();
+  return (
+    <Group listening={false}>
+      <Line points={[0, -gap, W, -gap]} stroke={colors.dim} strokeWidth={px} opacity={0.5} />
+      <Line points={[0, -gap - tick, 0, -gap + tick]} stroke={colors.dim} strokeWidth={px} />
+      <Line points={[W, -gap - tick, W, -gap + tick]} stroke={colors.dim} strokeWidth={px} />
+      <Text
+        text={formatMm(W)}
+        x={0}
+        y={-gap - fs * 1.35}
+        width={W}
+        align="center"
+        fontSize={fs}
+        fontFamily={font}
+        fill={colors.dim}
+        perfectDrawEnabled={false}
+      />
+      <Line points={[-gap, 0, -gap, H]} stroke={colors.dim} strokeWidth={px} opacity={0.5} />
+      <Line points={[-gap - tick, 0, -gap + tick, 0]} stroke={colors.dim} strokeWidth={px} />
+      <Line points={[-gap - tick, H, -gap + tick, H]} stroke={colors.dim} strokeWidth={px} />
+      <Text
+        text={formatMm(H)}
+        x={-gap - fs * 1.35}
+        y={H}
+        width={H}
+        rotation={-90}
+        align="center"
+        fontSize={fs}
+        fontFamily={font}
+        fill={colors.dim}
+        perfectDrawEnabled={false}
+      />
+      <Arrow
+        points={[0, H, arm, H]}
+        stroke={colors.origin}
+        fill={colors.origin}
+        strokeWidth={1.5 * px}
+        pointerLength={5 * px}
+        pointerWidth={5 * px}
+      />
+      <Arrow
+        points={[0, H, 0, H - arm]}
+        stroke={colors.origin}
+        fill={colors.origin}
+        strokeWidth={1.5 * px}
+        pointerLength={5 * px}
+        pointerWidth={5 * px}
+      />
+      <Rect x={-2.5 * px} y={H - 2.5 * px} width={5 * px} height={5 * px} fill={colors.origin} />
+    </Group>
+  );
+}
 
 const PartShape = memo(function PartShape({
   part,
@@ -109,6 +199,7 @@ const PartShape = memo(function PartShape({
   onSelect,
   onDragMove,
   onDrop,
+  appearDelay,
 }: {
   part: DrawnPart;
   selected: boolean;
@@ -122,7 +213,26 @@ const PartShape = memo(function PartShape({
   onSelect: LayoutCanvasProps['onSelect'];
   onDragMove: LayoutCanvasProps['onDragMove'];
   onDrop: LayoutCanvasProps['onDrop'];
+  /** ms before this part fades in after a "Diz"; undefined = no animation. */
+  appearDelay?: number | undefined;
 }) {
+  const group = useRef<Konva.Group>(null);
+  useEffect(() => {
+    const node = group.current;
+    if (appearDelay === undefined || !node || reducedMotion()) return;
+    const settle = 6 / scale;
+    node.opacity(0);
+    node.y(node.y() - settle);
+    const timer = window.setTimeout(() => {
+      node.to({ opacity: 1, y: node.y() + settle, duration: 0.14 });
+    }, appearDelay);
+    return () => {
+      window.clearTimeout(timer);
+      node.opacity(1);
+    };
+    // Mount-only: the parent remounts the parts with a new key after each "Diz".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { w, h } = part;
   const pending = pendingX !== undefined && pendingY !== undefined;
   const shown = pending ? { x: pendingX, y: pendingY } : { x: part.x, y: part.y };
@@ -133,13 +243,14 @@ const PartShape = memo(function PartShape({
   if (selected) stroke = colors.selected;
   if (conflict) stroke = colors.conflict;
   const strokeWidth = (selected || conflict ? 3 : 1) * hair;
-  const font = Math.max(4, Math.min(80, Math.min(w, h) * 0.28, (w / part.label.length) * 1.4));
+  const label = partLabel({ number: part.label, name: part.name, w, h, scale });
+  const font = label.font;
   // Grain arrow along the sheet grain turned by the placement rotation (D-019: rule is relative
   // to the sheet frame). Canvas Y points down, so 90° (up on the sheet) is -Y here.
   const angle = (sheetGrain + part.rot) % 180;
   const len = Math.min(angle === 0 ? w : h, 160) * 0.5;
   const cx = w / 2;
-  const cy = h / 2 + font * 0.9;
+  const cy = h / 2 + font * (label.lines.length * 0.65 + 0.3);
   const arrow =
     angle === 0 ? [cx - len / 2, cy, cx + len / 2, cy] : [cx, cy + len / 2, cx, cy - len / 2];
 
@@ -152,6 +263,7 @@ const PartShape = memo(function PartShape({
 
   return (
     <Group
+      ref={group}
       x={shown.x}
       y={top}
       draggable
@@ -191,19 +303,27 @@ const PartShape = memo(function PartShape({
         perfectDrawEnabled={false}
         shadowForStrokeEnabled={false}
       />
-      <Text
-        text={part.label}
-        width={w}
-        y={h / 2 - font / 2 - (part.grainLock ? font * 0.3 : 0)}
-        align="center"
-        fontSize={font}
-        fontFamily={canvasMonoFont()}
-        fontStyle="bold"
-        fill={colors.text}
-        listening={false}
-        perfectDrawEnabled={false}
-      />
-      {part.grainLock ? (
+      {label.lines.map((line, i) => (
+        <Text
+          key={i}
+          text={line}
+          width={w}
+          y={
+            h / 2 -
+            (label.lines.length * font * 1.25) / 2 +
+            i * font * 1.25 -
+            (part.grainLock ? font * 0.6 : 0)
+          }
+          align="center"
+          fontSize={font}
+          fontFamily={canvasMonoFont()}
+          fontStyle={i === 0 ? 'bold' : 'normal'}
+          fill={i === 0 ? colors.text : colors.dim}
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      ))}
+      {part.grainLock && label.level !== 'none' ? (
         <Arrow
           points={arrow}
           stroke={colors.text}
@@ -234,7 +354,7 @@ export default function LayoutCanvas(props: LayoutCanvasProps) {
       scaleY={view.scale}
       x={view.x}
       y={view.y}
-      draggable
+      draggable={props.pannable ?? true}
       onMouseDown={(e) => {
         if (e.target === e.target.getStage()) props.onSelect(null);
       }}
@@ -278,9 +398,10 @@ export default function LayoutCanvas(props: LayoutCanvasProps) {
         scale={view.scale}
       />
       <Layer>
-        {props.parts.map((part) => (
+        {props.parts.map((part, i) => (
           <PartShape
-            key={part.key}
+            key={`${props.appearKey ?? 0}:${part.key}`}
+            appearDelay={props.appearKey ? Math.min(i * 8, 100) : undefined}
             part={part}
             selected={part.key === props.selected}
             conflict={props.conflicts.has(part.key)}

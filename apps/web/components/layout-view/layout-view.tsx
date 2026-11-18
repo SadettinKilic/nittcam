@@ -18,10 +18,14 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react';
 import {
   Button,
   Checkbox,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   IconButton,
   Select,
   SelectContent,
@@ -34,13 +38,15 @@ import {
   TabsTrigger,
   Tooltip,
 } from '@nittcam/ui';
-import { Lock, LockOpen, Maximize, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { Grid3x3, Info, Lock, LockOpen, Maximize, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { onThemeChange } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import { clampScale, zoomAt } from './zoom';
+import { WorkspaceLayout } from '../wizard/workspace-layout';
+import { scaleBar } from '../../lib/canvas-labels';
+import { canvasTouchClass, isZoomedIn, useMediaQuery } from '../../lib/use-media-query';
 import {
-  canvasHeight,
   copyKey,
   drawnParts,
   fitView,
@@ -75,10 +81,34 @@ export interface LayoutViewProps {
   /** "Yeniden diz": re-nests keeping the locked parts. Hidden when missing. */
   onRenest?: () => void;
   renesting?: boolean;
+  /** Bumped after each new "Diz" result; the parts fade/settle in (T196). */
+  appearKey?: number;
+  /** Settings panel shown left of the canvas in the workspace (T197). */
+  left?: ReactNode;
+  /** Below 1024 px: the main action kept next to the panel buttons ("Diz"), T198. */
+  compactAction?: ReactNode;
 }
 
 const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 const pctFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+
+/** Thin utilisation bar along the bottom of a plate tab: accent fill, `warning` under 50 % (T196). */
+function UsageBar({ used }: { used: number }) {
+  const pct = Math.max(0, Math.min(100, used));
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="sheet-usage"
+      data-usage={Math.round(pct)}
+      className="absolute inset-x-2 bottom-0.5 h-0.5 overflow-hidden rounded-full bg-border-subtle"
+    >
+      <span
+        className={`block h-full rounded-full ${pct < 50 ? 'bg-warning' : 'bg-accent'}`}
+        style={{ width: `${pct}%` }}
+      />
+    </span>
+  );
+}
 const m2Format = new Intl.NumberFormat('tr-TR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -104,7 +134,11 @@ export function LayoutView({
   onLock,
   onRenest,
   renesting = false,
+  appearKey = 0,
+  left,
+  compactAction,
 }: LayoutViewProps) {
+  const coarse = useMediaQuery('(pointer: coarse)', false);
   const gridId = useId();
   const selectId = useId();
   const count = project.layout.sheets.length;
@@ -115,13 +149,15 @@ export function LayoutView({
   const [dragCheck, setDragCheck] = useState<{ key: string; check: PlacementCheck } | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [grid, setGrid] = useState(false);
-  const [width, setWidth] = useState(0);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const width = size.w;
+  const cursor = useRef<HTMLSpanElement>(null);
   const [view, setView] = useState<ViewState | null>(null);
   const [colors, setColors] = useState<CanvasColors | null>(null);
   const box = useRef<HTMLDivElement>(null);
 
   const stock = project.stock.sheet;
-  const height = width > 0 ? canvasHeight(stock, width) : 0;
+  const height = size.h;
   const parts = useMemo(() => drawnParts(project, sheet), [project, sheet]);
   const byKey = useMemo(() => new Map(parts.map((p) => [p.key, p])), [parts]);
   const current = selected ? (byKey.get(selected) ?? null) : null;
@@ -132,15 +168,16 @@ export function LayoutView({
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    let last = 0;
+    let last = { w: 0, h: 0 };
+    // The canvas fills its workspace cell (T197): a new width or height refits the sheet.
     const ro = new ResizeObserver((entries) => {
       const w = Math.floor(entries[0]?.contentRect.width ?? 0);
-      // Height changes follow from the width; only a new width refits.
-      if (w <= 0 || w === last) return;
-      last = w;
+      const h = Math.floor(entries[0]?.contentRect.height ?? 0);
+      if (w <= 0 || h <= 0 || (w === last.w && h === last.h)) return;
+      last = { w, h };
       setColors((c) => c ?? readColors());
-      setWidth(w);
-      setView(fitView(stock, w, canvasHeight(stock, w)));
+      setSize({ w, h });
+      setView(fitView(stock, w, h));
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -149,8 +186,8 @@ export function LayoutView({
   useEffect(() => onThemeChange(() => setColors((c) => (c ? readColors() : c))), []);
 
   const fit = useCallback(() => {
-    if (width > 0) setView(fitView(stock, width, canvasHeight(stock, width)));
-  }, [stock, width]);
+    if (width > 0 && height > 0) setView(fitView(stock, width, height));
+  }, [stock, width, height]);
 
   function selectSheet(i: number) {
     setSheet(i);
@@ -329,15 +366,26 @@ export function LayoutView({
   };
   const pendingInvalid = dragCheck !== null && !placementIsValid(dragCheck.check);
 
-  return (
-    <section aria-labelledby="layout-title" className="flex min-w-0 flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h2 id="layout-title" className="text-base font-semibold tracking-tight text-fg">
-            {t.title}
-          </h2>
-          {editable ? <p className="text-sm text-fg-muted">{t.help}</p> : null}
-        </div>
+  const bar = view ? scaleBar(view.scale) : null;
+  const zoomed =
+    view !== null && width > 0 && height > 0
+      ? isZoomedIn(view.scale, fitView(stock, width, height).scale)
+      : false;
+  const onPointer = (e: { clientX: number; clientY: number }) => {
+    const el = box.current;
+    const out = cursor.current;
+    if (!el || !out || !view) return;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left - view.x) / view.scale;
+    const y = stock.height - (e.clientY - r.top - view.y) / view.scale;
+    out.textContent = `X ${mmFormat.format(Math.round(x))} · Y ${mmFormat.format(Math.round(y))}`;
+  };
+
+  const inspector = (
+    <div className="flex flex-col gap-3 text-sm">
+      <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-panel shadow-xs">
+        <h3 className="text-sm font-semibold tracking-tight text-fg">{t.title}</h3>
+        {editable ? <p className="text-xs text-fg-muted">{t.help}</p> : null}
         {onRenest ? (
           <Button
             variant="outline"
@@ -345,6 +393,7 @@ export function LayoutView({
             onClick={onRenest}
             disabled={renesting}
             aria-busy={renesting}
+            className="self-start"
           >
             <RefreshCw aria-hidden className={renesting ? 'animate-spin' : undefined} />
             {renesting ? t.renesting : t.renest}
@@ -352,224 +401,297 @@ export function LayoutView({
         ) : null}
       </div>
 
+      <div aria-live="polite">
+        {message ? (
+          <p
+            role={message.kind === 'error' ? 'alert' : 'status'}
+            data-testid="layout-message"
+            className={`rounded-lg border px-3 py-2.5 text-sm ${message.kind === 'error' ? 'border-danger-border bg-danger-subtle text-danger-text' : 'border-success-border bg-success-subtle text-success-text'}`}
+          >
+            {message.text}
+          </p>
+        ) : null}
+      </div>
+
+      {lockedIssues.map((li) => (
+        <p
+          key={li.key}
+          role="alert"
+          className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
+        >
+          {fill(t.lockedIssue, { label: labelOf(li.key) })}
+        </p>
+      ))}
+
+      <div
+        id="layout-info"
+        className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-panel shadow-xs"
+      >
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={selectId} className="font-medium text-fg">
+            {t.select}
+          </label>
+          <Select
+            value={current?.key ?? NONE}
+            onValueChange={(v) => onSelect(v === NONE ? null : v)}
+          >
+            <SelectTrigger
+              id={selectId}
+              data-testid="layout-select"
+              data-value={current?.key ?? ''}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>{t.selectNone}</SelectItem>
+              {parts.map((p) => (
+                <SelectItem key={p.key} value={p.key}>
+                  {fill(t.option, { label: p.label, name: p.name || t.unnamed })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {current ? (
+          <PartInfo
+            t={t}
+            part={current}
+            pending={pending}
+            pendingInvalid={pendingInvalid}
+            onToggleLock={
+              onLock
+                ? () => {
+                    setPending(null);
+                    setDragCheck(null);
+                    onLock({
+                      partId: current.partId,
+                      index: current.index,
+                      locked: !current.locked,
+                    });
+                  }
+                : undefined
+            }
+          />
+        ) : null}
+      </div>
+
+      <div
+        className="flex flex-col gap-0.5 rounded-xl border border-border-subtle bg-surface-subtle px-panel py-3 text-sm text-fg tabular-nums"
+        data-testid="layout-summary"
+      >
+        {stats ? (
+          <p>
+            {fill(t.summary, {
+              n: sheet + 1,
+              count: stats.placed,
+              parts: m2Format.format(stats.partArea / 1e6),
+              waste: m2Format.format(stats.wasteArea / 1e6),
+              percent: pctFormat.format(stats.wastePercent),
+            })}
+          </p>
+        ) : null}
+        <p className="text-fg-muted">
+          {fill(t.total, {
+            sheets: summary.sheetCount,
+            percent: pctFormat.format(summary.wastePercent),
+            use: pctFormat.format(summary.utilisationPercent),
+          })}
+        </p>
+      </div>
+    </div>
+  );
+
+  // Floating canvas toolbar (T197): plate tabs top-left, grid/zoom/fit top-right, legend
+  // bottom-left (popover), cursor + scale bottom-right. Below 640 px the plate tabs get their own
+  // full-width row above the toolbar (B4b), so each tab keeps its "Plaka N" label.
+  const floating =
+    'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
+  const overlay = (
+    <>
+      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-end gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div
+          className={`${floating} max-w-full min-w-0 overflow-x-auto p-0.5 max-sm:self-stretch`}
+          data-testid="sheet-tabs-scroll"
+        >
+          <TabsList
+            variant="segmented"
+            aria-label={t.sheetTabs}
+            className="h-auto w-max flex-nowrap justify-start"
+          >
+            {project.layout.sheets.map((_, i) => {
+              const st = summary.sheets[i];
+              return (
+                <TabsTrigger
+                  key={i}
+                  value={String(i)}
+                  className="relative h-8 shrink-0 gap-1.5 px-2.5 whitespace-nowrap"
+                >
+                  {fill(t.sheetTab, { n: i + 1 })}
+                  {st ? (
+                    <span className="text-xs font-normal text-fg-subtle tabular-nums">
+                      {fill(t.sheetTabWaste, { waste: pctFormat.format(st.wastePercent) })}
+                    </span>
+                  ) : null}
+                  {st ? <UsageBar used={100 - st.wastePercent} /> : null}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
+        <div className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}>
+          <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-fg-muted">
+            <Checkbox id={gridId} checked={grid} onCheckedChange={(v) => setGrid(v === true)} />
+            <label htmlFor={gridId} className="flex cursor-pointer items-center" title={t.grid}>
+              <Grid3x3 aria-hidden className="size-4 sm:hidden" />
+              <span className="max-sm:sr-only">{t.grid}</span>
+            </label>
+          </div>
+          <Tooltip content={t.zoomOut}>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              aria-label={t.zoomOut}
+              onClick={() => zoomButton(1 / 1.25)}
+              aria-keyshortcuts="-"
+            >
+              <ZoomOut aria-hidden />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content={t.zoomIn}>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              aria-label={t.zoomIn}
+              onClick={() => zoomButton(1.25)}
+              aria-keyshortcuts="+"
+            >
+              <ZoomIn aria-hidden />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content={t.fit}>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              aria-label={t.fit}
+              onClick={fit}
+              aria-keyshortcuts="0"
+            >
+              <Maximize aria-hidden />
+            </IconButton>
+          </Tooltip>
+        </div>
+      </div>
+      {/* B4b: on phones the sticky panel bar may cover the canvas foot until the page scrolls. */}
+      <div className="pointer-events-none absolute bottom-2 left-2 z-10 max-sm:bottom-8">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="pointer-events-auto bg-surface/95 shadow-sm"
+              data-testid="layout-legend-button"
+            >
+              <Info aria-hidden />
+              {t.legendButton}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" side="top" className="w-auto max-w-80">
+            <Legend t={t} margin={project.nesting.margin} grain={stock.grain} />
+          </PopoverContent>
+        </Popover>
+      </div>
+      <div
+        className={`${floating} pointer-events-none absolute right-2 bottom-2 z-10 hidden items-center gap-3 px-2.5 py-1.5 font-mono text-2xs text-fg-muted tabular-nums sm:flex`}
+        data-testid="layout-readout"
+      >
+        <span ref={cursor} title={t.cursor} className="min-w-[9.5rem] text-right">
+          –
+        </span>
+        {bar ? (
+          <span className="flex items-center gap-1.5" title={t.scale}>
+            <span
+              aria-hidden="true"
+              className="block h-1.5 border-x border-b border-fg-muted"
+              style={{ width: Math.round(bar.px) }}
+            />
+            {bar.text}
+          </span>
+        ) : null}
+      </div>
+    </>
+  );
+
+  const canvasBox = (
+    <TabsContent
+      value={String(sheet)}
+      data-testid="layout-panel"
+      tabIndex={-1}
+      className="absolute inset-0 mt-0 data-[state=active]:animate-none"
+    >
+      <div
+        ref={box}
+        tabIndex={0}
+        role="application"
+        aria-label={fill(t.canvasLabel, { n: sheet + 1, count: parts.length })}
+        aria-describedby="layout-info"
+        onKeyDown={onKeyDown}
+        onPointerMove={onPointer}
+        data-testid="layout-canvas"
+        data-part-count={parts.length}
+        data-scale={view?.scale}
+        data-x={view?.x}
+        data-y={view?.y}
+        data-sheet-height={stock.height}
+        data-part-color={colors?.part}
+        className={`absolute inset-0 ${canvasTouchClass(zoomed)} overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
+      >
+        {width > 0 && height > 0 && view && colors ? (
+          <CanvasBoundary>
+            <LayoutCanvas
+              width={width}
+              height={height}
+              sheet={stock}
+              margin={project.nesting.margin}
+              parts={parts}
+              view={view}
+              colors={colors}
+              grid={grid}
+              selected={current?.key ?? null}
+              conflicts={conflicts}
+              pending={pending}
+              onViewChange={(v) => setView({ ...v, scale: clampScale(v.scale) })}
+              onSelect={onSelect}
+              onDragMove={editable ? onDragMove : noopMove}
+              onDrop={editable ? onDrop : noopDrop}
+              appearKey={appearKey}
+              pannable={zoomed || !coarse}
+            />
+          </CanvasBoundary>
+        ) : null}
+      </div>
+    </TabsContent>
+  );
+
+  return (
+    <section aria-labelledby="layout-title" className="flex min-h-0 min-w-0 flex-col lg:h-full">
+      {/* Always present (the visible title sits in the inspector, a bottom sheet on phones). */}
+      <h2 id="layout-title" className="sr-only">
+        {t.title}
+      </h2>
       <Tabs
         value={String(sheet)}
         onValueChange={(v) => selectSheet(Number(v))}
-        className="flex min-w-0 flex-col gap-3"
+        className="flex min-h-0 min-w-0 flex-col lg:h-full"
       >
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div
-            className="-mx-1 min-w-0 overflow-x-auto px-1 pb-1 sm:pb-0"
-            data-testid="sheet-tabs-scroll"
-          >
-            <TabsList
-              variant="segmented"
-              aria-label={t.sheetTabs}
-              className="h-auto w-max flex-nowrap justify-start"
-            >
-              {project.layout.sheets.map((_, i) => {
-                const st = summary.sheets[i];
-                return (
-                  <TabsTrigger
-                    key={i}
-                    value={String(i)}
-                    className="h-8 shrink-0 gap-1.5 px-2.5 whitespace-nowrap"
-                  >
-                    {fill(t.sheetTab, { n: i + 1 })}
-                    {st ? (
-                      <span className="text-xs font-normal text-fg-subtle tabular-nums">
-                        {fill(t.sheetTabWaste, { waste: pctFormat.format(st.wastePercent) })}
-                      </span>
-                    ) : null}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-1 sm:justify-end">
-            <div className="mr-2 flex min-h-10 items-center gap-2 text-sm text-fg-muted">
-              <Checkbox id={gridId} checked={grid} onCheckedChange={(v) => setGrid(v === true)} />
-              <label htmlFor={gridId} className="cursor-pointer">
-                {t.grid}
-              </label>
-            </div>
-            <div className="flex items-center rounded-lg border border-border bg-surface p-0.5 shadow-xs">
-              <Tooltip content={t.zoomOut}>
-                <IconButton
-                  size="sm"
-                  aria-label={t.zoomOut}
-                  onClick={() => zoomButton(1 / 1.25)}
-                  aria-keyshortcuts="-"
-                >
-                  <ZoomOut aria-hidden />
-                </IconButton>
-              </Tooltip>
-              <Tooltip content={t.zoomIn}>
-                <IconButton
-                  size="sm"
-                  aria-label={t.zoomIn}
-                  onClick={() => zoomButton(1.25)}
-                  aria-keyshortcuts="+"
-                >
-                  <ZoomIn aria-hidden />
-                </IconButton>
-              </Tooltip>
-              <Tooltip content={t.fit}>
-                <IconButton size="sm" aria-label={t.fit} onClick={fit} aria-keyshortcuts="0">
-                  <Maximize aria-hidden />
-                </IconButton>
-              </Tooltip>
-            </div>
-          </div>
-        </div>
-
-        <TabsContent
-          value={String(sheet)}
-          data-testid="layout-panel"
-          tabIndex={-1}
-          className="mt-0 flex min-w-0 flex-col gap-3 data-[state=active]:animate-none"
-        >
-          <div
-            ref={box}
-            tabIndex={0}
-            role="application"
-            aria-label={fill(t.canvasLabel, { n: sheet + 1, count: parts.length })}
-            aria-describedby="layout-info"
-            onKeyDown={onKeyDown}
-            data-testid="layout-canvas"
-            data-part-count={parts.length}
-            data-scale={view?.scale}
-            data-x={view?.x}
-            data-y={view?.y}
-            data-sheet-height={stock.height}
-            data-part-color={colors?.part}
-            className="relative w-full min-w-0 touch-none overflow-hidden rounded-xl border border-border bg-canvas outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-            style={{ height: height || undefined, minHeight: 220 }}
-          >
-            {width > 0 && view && colors ? (
-              <CanvasBoundary>
-                <LayoutCanvas
-                  width={width}
-                  height={height}
-                  sheet={stock}
-                  margin={project.nesting.margin}
-                  parts={parts}
-                  view={view}
-                  colors={colors}
-                  grid={grid}
-                  selected={current?.key ?? null}
-                  conflicts={conflicts}
-                  pending={pending}
-                  onViewChange={(v) => setView({ ...v, scale: clampScale(v.scale) })}
-                  onSelect={onSelect}
-                  onDragMove={editable ? onDragMove : noopMove}
-                  onDrop={editable ? onDrop : noopDrop}
-                />
-              </CanvasBoundary>
-            ) : null}
-          </div>
-
-          <Legend t={t} margin={project.nesting.margin} grain={stock.grain} />
-
-          <div aria-live="polite">
-            {message ? (
-              <p
-                role={message.kind === 'error' ? 'alert' : 'status'}
-                data-testid="layout-message"
-                className={`rounded-lg border px-3 py-2.5 text-sm ${message.kind === 'error' ? 'border-danger-border bg-danger-subtle text-danger-text' : 'border-success-border bg-success-subtle text-success-text'}`}
-              >
-                {message.text}
-              </p>
-            ) : null}
-          </div>
-
-          {lockedIssues.map((li) => (
-            <p
-              key={li.key}
-              role="alert"
-              className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
-            >
-              {fill(t.lockedIssue, { label: labelOf(li.key) })}
-            </p>
-          ))}
-
-          <div
-            id="layout-info"
-            className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 text-sm shadow-xs"
-          >
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor={selectId} className="font-medium text-fg">
-                {t.select}
-              </label>
-              <Select
-                value={current?.key ?? NONE}
-                onValueChange={(v) => onSelect(v === NONE ? null : v)}
-              >
-                <SelectTrigger
-                  id={selectId}
-                  data-testid="layout-select"
-                  data-value={current?.key ?? ''}
-                  className="max-w-md"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>{t.selectNone}</SelectItem>
-                  {parts.map((p) => (
-                    <SelectItem key={p.key} value={p.key}>
-                      {fill(t.option, { label: p.label, name: p.name || t.unnamed })}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {current ? (
-              <PartInfo
-                t={t}
-                part={current}
-                pending={pending}
-                pendingInvalid={pendingInvalid}
-                onToggleLock={
-                  onLock
-                    ? () => {
-                        setPending(null);
-                        setDragCheck(null);
-                        onLock({
-                          partId: current.partId,
-                          index: current.index,
-                          locked: !current.locked,
-                        });
-                      }
-                    : undefined
-                }
-              />
-            ) : null}
-          </div>
-
-          <div
-            className="flex flex-col gap-0.5 rounded-xl border border-border-subtle bg-surface-subtle px-4 py-3 text-sm text-fg tabular-nums"
-            data-testid="layout-summary"
-          >
-            {stats ? (
-              <p>
-                {fill(t.summary, {
-                  n: sheet + 1,
-                  count: stats.placed,
-                  parts: m2Format.format(stats.partArea / 1e6),
-                  waste: m2Format.format(stats.wasteArea / 1e6),
-                  percent: pctFormat.format(stats.wastePercent),
-                })}
-              </p>
-            ) : null}
-            <p className="text-fg-muted">
-              {fill(t.total, {
-                sheets: summary.sheetCount,
-                percent: pctFormat.format(summary.wastePercent),
-                use: pctFormat.format(summary.utilisationPercent),
-              })}
-            </p>
-          </div>
-        </TabsContent>
+        <WorkspaceLayout
+          testId="layout-workspace"
+          labels={t.workspace}
+          left={left}
+          canvas={canvasBox}
+          canvasOverlay={overlay}
+          right={inspector}
+          compactAction={compactAction}
+        />
       </Tabs>
     </section>
   );

@@ -137,3 +137,29 @@ export async function nest(page: Page) {
   if (step !== 'dizilim') await goStep(page, 'dizilim');
   await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
 }
+
+/**
+ * T198: below the workspace breakpoint the side panels live in bottom sheets that are unmounted
+ * while closed. Opens the `side` sheet (phone button bar or tablet rail) and returns it; on a
+ * desktop layout (panels inline) it returns the inline panel column.
+ */
+export async function openWorkspacePanel(page: Page, side: 'left' | 'right'): Promise<Locator> {
+  const sheet = page.getByTestId(`workspace-sheet-${side}`);
+  if (await sheet.isVisible()) return sheet;
+  const button = page
+    .getByTestId(`workspace-open-${side}`)
+    .or(page.getByTestId(`workspace-rail-${side}`))
+    .filter({ visible: true });
+  if ((await button.count()) === 0) return page.getByTestId(`workspace-${side}`).first();
+  await button.first().click();
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
+
+/** Closes an open workspace bottom sheet (no-op when none is open). */
+export async function closeWorkspacePanel(page: Page) {
+  const open = page.locator('[data-testid^="workspace-sheet-"]');
+  if ((await open.count()) === 0) return;
+  await page.keyboard.press('Escape');
+  await expect(open).toHaveCount(0);
+}

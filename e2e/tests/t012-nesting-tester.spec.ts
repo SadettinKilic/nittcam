@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { goStep, nest } from './wizard-helpers';
+import { goStep, nest, openWorkspacePanel } from './wizard-helpers';
 
 /** T012 tester: edit-after-nest, undo of a second run, responsiveness during a big nest. */
 
@@ -139,6 +139,7 @@ test.describe('T012 nesting (tester)', () => {
   });
 
   test('390 px with 300 copies: no page-level horizontal scroll', async ({ page }) => {
+    test.setTimeout(90_000);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(URL);
     const rows = ['Ad\tEn\tBoy\tAdet'];
@@ -146,7 +147,10 @@ test.describe('T012 nesting (tester)', () => {
       rows.push(`P${i}\t${60 + ((i * 37) % 400)}\t${50 + ((i * 53) % 500)}\t5`);
     await paste(page, rows.join('\n'), 60);
     await nest(page);
-    await expect(page.getByTestId('nesting-sheets')).toBeVisible({ timeout: 60_000 });
+    // T198: below 1024 px the nesting summary lives in the left bottom sheet.
+    await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 60_000 });
+    const panel = await openWorkspacePanel(page, 'left');
+    await expect(panel.getByTestId('nesting-sheets')).toBeVisible();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );

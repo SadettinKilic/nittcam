@@ -6,6 +6,7 @@ import {
   DOMAIN_ICONS,
   Logo,
   LogoMark,
+  Wordmark,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
@@ -156,6 +157,15 @@ export function UiGallery({ t }: { t: T }) {
 
         <Section id="brand" title={t.sections.brand}>
           <div className="flex flex-col gap-6" data-testid="gallery-brand">
+            <Row label={t.brand.wordmark}>
+              <Wordmark size={20} />
+              <Wordmark size={24} />
+              <Wordmark size={32} />
+              <Wordmark size={24} variant="short" />
+              <span className="rounded-lg bg-accent p-3 text-accent-fg">
+                <Wordmark size={24} tone="mono" />
+              </span>
+            </Row>
             <Row label={t.brand.full}>
               <Logo size={32} />
             </Row>

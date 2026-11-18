@@ -23,6 +23,7 @@ import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
 import { MachineFields, SheetPreview } from './machine-step';
+import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ValidationPanel } from './validation-panel';
 import {
   STEPS,
@@ -301,6 +302,23 @@ function WizardSession({
   const stepRef = useRef(step);
   const heading = useRef<HTMLHeadingElement>(null);
   const focusHeading = useRef(false);
+  const footer = useRef<HTMLElement>(null);
+
+  // B4b: publish the sticky footer's height (incl. the safe area) so the phone panel bar of the
+  // canvas workspaces can stick just above it instead of sliding under it.
+  useEffect(() => {
+    const el = footer.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const root = document.documentElement;
+    const ro = new ResizeObserver(() => {
+      root.style.setProperty('--wizard-footer-h', `${el.getBoundingClientRect().height}px`);
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty('--wizard-footer-h');
+    };
+  }, []);
 
   // Machine profiles by id (the selected one is fetched when the selection changes).
   const [details, setDetails] = useState<Record<string, MachineDetail>>(() =>
@@ -445,6 +463,8 @@ function WizardSession({
   let left: ReactNode = null;
   let right: ReactNode = null;
   let both: ReactNode = null;
+  // Dizilim and Simülasyon are canvas-first workspaces that fill the viewport (T197).
+  const workspace = step === 'dizilim' || step === 'simulasyon';
   if (step === 'makine') {
     left = (
       <div className="flex min-w-0 flex-col gap-4">
@@ -495,11 +515,9 @@ function WizardSession({
       />
     );
   } else if (step === 'simulasyon') {
-    left = (
-      <aside className="flex min-w-0 flex-col gap-4 2xl:sticky 2xl:top-20">{validation}</aside>
-    );
-    right = (
+    both = (
       <SimulationView
+        left={validation}
         t={messages.simulation}
         project={project}
         machine={simMachine}
@@ -556,68 +574,89 @@ function WizardSession({
   const nextKey = STEPS[index + 1];
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-[96rem] min-w-0 flex-col gap-5 px-4 pt-5 sm:px-6 lg:px-8">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <NameField
-          label={t.nameLabel}
-          value={session.name}
-          onCommit={session.rename}
-          autoSelect={session.projectId === null && step === 'makine'}
-        />
-        <div className="flex items-center gap-1">
-          <ShellStatus>
-            <Badge
-              dot
-              variant={
-                session.saveState === 'error' || session.saveState === 'conflict'
-                  ? 'danger'
-                  : session.saveState === 'saved' ||
-                      (session.saveState === 'idle' && session.projectId)
-                    ? 'success'
-                    : 'neutral'
-              }
-              aria-live="polite"
-              title={t.save.label}
-              data-testid="save-status"
-              data-state={session.saveState}
-              data-revision={session.revision}
-            >
-              {saveText}
-            </Badge>
-          </ShellStatus>
-          <Tooltip content={messages.cutList.undo}>
-            <IconButton
-              aria-label={messages.cutList.undo}
-              variant="ghost"
-              onClick={session.undo}
-              disabled={!session.canUndo}
-              aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
-            >
-              <Undo2 aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={messages.cutList.redo}>
-            <IconButton
-              aria-label={messages.cutList.redo}
-              variant="ghost"
-              onClick={session.redo}
-              disabled={!session.canRedo}
-              aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
-            >
-              <Redo2 aria-hidden />
-            </IconButton>
-          </Tooltip>
-        </div>
-      </header>
+    <main
+      data-workspace={workspace ? '' : undefined}
+      className={`mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col gap-5 px-4 pt-5 sm:px-6 lg:px-8 ${workspace ? 'max-w-none lg:h-[calc(100dvh-3.5rem)] lg:gap-3 lg:overflow-hidden lg:pt-3' : 'max-w-[96rem]'}`}
+    >
+      {/* One header row on ≥ 1400 px (T197; narrower screens would squeeze the stepper): project name, stepper, undo/redo. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-5 min-[1400px]:flex-nowrap min-[1400px]:items-center">
+        <header className="contents">
+          <NameField
+            label={t.nameLabel}
+            value={session.name}
+            onCommit={session.rename}
+            autoSelect={session.projectId === null && step === 'makine'}
+          />
+          <div className="order-2 flex items-center gap-1 min-[1400px]:order-3 min-[1400px]:shrink-0">
+            {simMachine ? (
+              <ProfileStatusChip
+                t={t.profileStatus}
+                detail={t.machine.unverified}
+                reasons={profileReasons({
+                  verification: simMachine.pv.verification,
+                  example: simMachine.pv.profile.example,
+                })}
+                reasonText={t.export.reasons}
+                machineId={simMachine.id}
+              />
+            ) : null}
+            <ShellStatus>
+              <Badge
+                dot
+                variant={
+                  session.saveState === 'error' || session.saveState === 'conflict'
+                    ? 'danger'
+                    : session.saveState === 'saved' ||
+                        (session.saveState === 'idle' && session.projectId)
+                      ? 'success'
+                      : 'neutral'
+                }
+                aria-live="polite"
+                title={`${t.save.label}: ${saveText}`}
+                data-testid="save-status"
+                data-state={session.saveState}
+                data-revision={session.revision}
+                className="max-w-full min-w-0 shrink"
+              >
+                <span className="truncate max-[399px]:sr-only">{saveText}</span>
+              </Badge>
+            </ShellStatus>
+            <Tooltip content={messages.cutList.undo}>
+              <IconButton
+                aria-label={messages.cutList.undo}
+                variant="ghost"
+                onClick={session.undo}
+                disabled={!session.canUndo}
+                aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
+              >
+                <Undo2 aria-hidden />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content={messages.cutList.redo}>
+              <IconButton
+                aria-label={messages.cutList.redo}
+                variant="ghost"
+                onClick={session.redo}
+                disabled={!session.canRedo}
+                aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
+              >
+                <Redo2 aria-hidden />
+              </IconButton>
+            </Tooltip>
+          </div>
+        </header>
 
-      <StepIndicator
-        t={t.steps}
-        headingRef={heading}
-        current={step}
-        statuses={wizardStepStatuses(step, progress)}
-        progress={progress}
-        onGo={go}
-      />
+        <div className="order-3 w-full min-w-0 min-[1400px]:order-2 min-[1400px]:w-auto min-[1400px]:flex-1 min-[1400px]:max-[1679px]:min-w-min">
+          <StepIndicator
+            t={t.steps}
+            headingRef={heading}
+            current={step}
+            statuses={wizardStepStatuses(step, progress)}
+            progress={progress}
+            onGo={go}
+          />
+        </div>
+      </div>
 
       {session.saveState === 'conflict' ? (
         <ConflictNotice
@@ -645,7 +684,13 @@ function WizardSession({
         <p className="-mt-2 max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
       ) : null}
 
-      <div className={`grid min-w-0 items-start gap-5 ${GRID[step]}`}>
+      <div
+        className={
+          workspace
+            ? 'min-w-0 lg:min-h-0 lg:flex-1'
+            : `grid min-w-0 items-start gap-5 ${GRID[step]}`
+        }
+      >
         {both ?? (
           <>
             <div className={`min-w-0 ${LEFT_ORDER[step]}`}>{left}</div>
@@ -655,10 +700,11 @@ function WizardSession({
       </div>
 
       <nav
+        ref={footer}
         aria-label={t.steps.label}
         data-testid="wizard-footer"
         data-wizard-footer=""
-        className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+        className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
       >
         <div className="flex items-center justify-between gap-3">
           <Button
@@ -755,15 +801,16 @@ function StepIndicator({
     <div
       className={`${panelClass} flex flex-col gap-2 px-3 py-2.5 sm:px-4 lg:flex-row lg:items-center lg:gap-6`}
     >
+      {/* B4b: on the tightest one-row widths (1400–1479 px) the step icon and "Adım n / 5" yield. */}
       <div className="flex min-w-0 items-center gap-3 lg:shrink-0">
         <span
           aria-hidden="true"
-          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:flex [&_svg]:size-5"
+          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:max-[1399px]:flex min-[1480px]:flex [&_svg]:size-5"
         >
           <StepIcon />
         </span>
         <div className="flex min-w-0 flex-col">
-          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase">
+          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase min-[1400px]:max-[1479px]:sr-only">
             {fill(t.stepOf, { n: index + 1, total: STEPS.length })}
           </p>
           <h1
@@ -771,28 +818,34 @@ function StepIndicator({
             tabIndex={-1}
             data-testid="wizard-step-title"
             data-step={current}
-            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:text-xl"
+            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:max-[1399px]:text-xl min-[1480px]:text-xl"
           >
             {t[current]}
           </h1>
         </div>
       </div>
-      <nav aria-label={t.label} className="min-w-0 lg:flex-1">
+      <nav
+        aria-label={t.label}
+        className="min-w-0 lg:flex-1 min-[1400px]:max-[1679px]:min-w-[22.75rem]"
+      >
         <ol className="flex items-center gap-1" data-testid="wizard-steps">
           {STEPS.map((s, i) => {
             const status = statuses[i] ?? 'upcoming';
             const active = status === 'current';
             const blocker = stepBlocker(s, progress);
             return (
-              <li key={s} className="flex min-w-0 flex-1 items-center gap-1 last:flex-none">
+              <li
+                key={s}
+                className="flex min-w-10 flex-1 items-center gap-1 last:flex-none sm:min-w-15"
+              >
                 <button
                   type="button"
                   aria-current={active ? 'step' : undefined}
                   data-testid={`wizard-step-${s}`}
                   data-status={status}
-                  title={blocker && !active ? t.blocked[blocker] : undefined}
+                  title={blocker && !active ? `${t[s]}: ${t.blocked[blocker]}` : t[s]}
                   onClick={() => onGo(s)}
-                  className={`group flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:px-2 ${focusRing}`}
+                  className={`group flex min-h-10 min-w-8 items-center gap-2 rounded-lg px-0.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:min-w-11 sm:px-2 ${focusRing}`}
                 >
                   <span
                     aria-hidden="true"
@@ -814,11 +867,15 @@ function StepIndicator({
                       i + 1
                     )}
                   </span>
-                  <span
-                    className={`${active ? 'font-semibold text-fg' : status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} ${active ? 'sr-only' : 'sr-only whitespace-nowrap xl:not-sr-only'}`}
-                  >
-                    {t[s]}
-                  </span>
+                  {active ? null : (
+                    <span
+                      aria-hidden="true"
+                      className={`${status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} hidden min-w-0 truncate whitespace-nowrap xl:max-[1399px]:block min-[1680px]:block`}
+                    >
+                      {t[s]}
+                    </span>
+                  )}
+                  <span className="sr-only">{t[s]}</span>
                   <span className="sr-only">
                     {` (${t.status[status]}${blocker && !active ? `: ${t.blocked[blocker]}` : ''})`}
                   </span>
@@ -826,7 +883,7 @@ function StepIndicator({
                 {i < STEPS.length - 1 ? (
                   <span
                     aria-hidden="true"
-                    className={`h-px min-w-3 flex-1 ${i < index ? 'bg-accent-border' : 'bg-border'}`}
+                    className={`h-px min-w-1 flex-1 sm:min-w-3 ${i < index ? 'bg-accent-border' : 'bg-border'}`}
                   />
                 ) : null}
               </li>
@@ -866,12 +923,14 @@ function NameField({
     if (name !== '' && name !== value) onCommit(name.slice(0, 120));
   }
   return (
-    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:min-w-64">
+    // B4b: in the one-row header (≥ 1400 px) the name yields first, down to 10rem (ellipsis + title).
+    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:max-[1399px]:min-w-64 min-[1400px]:min-w-40 min-[1400px]:flex-[0_1_20rem]">
       <span className="px-2 text-xs font-medium text-fg-subtle">{label}</span>
       <input
         ref={input}
         type="text"
         data-testid="project-name"
+        title={text ?? value}
         value={text ?? value}
         maxLength={120}
         onChange={(e) => setText(e.target.value)}
@@ -882,7 +941,7 @@ function NameField({
             commit();
           } else if (e.key === 'Escape') setText(null);
         }}
-        className="h-10 w-full max-w-xl rounded-md border border-transparent bg-transparent px-2 text-lg font-semibold tracking-tight text-fg transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid hover:border-border focus-visible:border-border-strong focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus sm:text-xl"
+        className="h-10 w-full max-w-xl rounded-md border text-ellipsis border-transparent bg-transparent px-2 text-lg font-semibold tracking-tight text-fg transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid hover:border-border focus-visible:border-border-strong focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus sm:text-xl"
       />
     </label>
   );
