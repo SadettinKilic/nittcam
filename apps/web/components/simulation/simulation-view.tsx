@@ -14,7 +14,7 @@ import {
   Tooltip,
 } from '@nittcam/ui';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
-import { canvasTouchClass, isZoomedIn } from '../../lib/use-media-query';
+import { canvasTouchClass, isZoomedIn, useMediaQuery } from '../../lib/use-media-query';
 import {
   Info,
   Maximize,
@@ -368,6 +368,7 @@ function Player({
   const width = size.w;
   const [view, setView] = useState<ViewState | null>(null);
   const [colors, setColors] = useState<SimColors | null>(null);
+  const coarse = useMediaQuery('(pointer: coarse)', false);
   const box = useRef<HTMLDivElement>(null);
   const timeRef = useRef(0);
   const duration = sim.duration;
@@ -408,6 +409,12 @@ function Player({
   const fit = useCallback(() => {
     if (width > 0 && height > 0) setView(fitBounds(bounds, stock.height, width, height));
   }, [bounds, stock.height, width, height]);
+  // Zoomed past the fit: one finger pans the view; at the fit it scrolls the page on touch (T198).
+  const zoomed =
+    view !== null &&
+    width > 0 &&
+    height > 0 &&
+    isZoomedIn(view.scale, fitBounds(bounds, stock.height, width, height).scale);
 
   // Playback: one animation frame per redraw; the time advances by real time × speed.
   const active = playing && !reduced;
@@ -602,7 +609,7 @@ function Player({
           data-sheet-width={stock.width}
           data-sheet-height={stock.height}
           data-part-color={colors?.part}
-          className={`absolute inset-0 ${canvasTouchClass(view !== null && width > 0 && height > 0 && isZoomedIn(view.scale, fitBounds(bounds, stock.height, width, height).scale))} overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
+          className={`absolute inset-0 ${canvasTouchClass(zoomed)} overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
         >
           <span
             data-testid="sim-grain"
@@ -640,6 +647,7 @@ function Player({
                 time={time}
                 onViewChange={(v) => setView(clampView(v, stock, width, height))}
                 clampPan={(x, y, scale) => clampView({ x, y, scale }, stock, width, height)}
+                pannable={zoomed || !coarse}
               />
             </CanvasBoundary>
           ) : null}

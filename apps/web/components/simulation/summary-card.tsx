@@ -43,7 +43,7 @@ export function SummaryCard({
     <section
       aria-labelledby="sim-summary-title"
       data-testid="sim-summary"
-      className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-5"
+      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-xs"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="sim-summary-title" className="text-base font-semibold tracking-tight text-fg">

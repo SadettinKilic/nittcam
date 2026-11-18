@@ -35,6 +35,8 @@ export interface SimulationCanvasProps {
   onViewChange: (view: ViewState) => void;
   /** Keeps a dragged pan inside the allowed range (the sheet stays partly visible). */
   clampPan: (x: number, y: number, scale: number) => { x: number; y: number };
+  /** One-finger/mouse drag pans the view; off on touch at the fit so the page scrolls (T198). */
+  pannable?: boolean;
 }
 
 const StaticLayer = memo(function StaticLayer({
@@ -446,7 +448,7 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
       scaleY={view.scale}
       x={view.x}
       y={view.y}
-      draggable
+      draggable={props.pannable ?? true}
       dragBoundFunc={(pos) => props.clampPan(pos.x, pos.y, view.scale)}
       onDragEnd={(e) => {
         if (e.target === e.target.getStage()) {

@@ -83,7 +83,7 @@ export function LayoutStep({
 
   const settings = (
     <div className="flex min-w-0 flex-col gap-3">
-      <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-5">
+      <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-xs">
         <h2 className="text-sm font-semibold tracking-tight text-fg">{t.options}</h2>
         <div className="flex flex-col gap-1.5">
           <label htmlFor={modeId} className="text-sm font-medium text-fg">
