@@ -2,7 +2,16 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
@@ -32,6 +41,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  FileOutput,
   CircleAlert,
   Cloud,
   CloudAlert,
@@ -43,7 +53,18 @@ import {
   TriangleAlert,
   Undo2,
 } from 'lucide-react';
-import { Badge, Button, ErrorState, IconButton, Tooltip, notify } from '@nittcam/ui';
+import {
+  Badge,
+  Button,
+  ErrorState,
+  IconButton,
+  NestingIcon,
+  RouterIcon,
+  SheetIcon,
+  ToolpathIcon,
+  Tooltip,
+  notify,
+} from '@nittcam/ui';
 import { ariaKeyShortcuts, shortcutById } from '../../lib/shortcuts';
 import { PageSkeleton } from '../feedback/page-skeleton';
 import { ShellStatus, useShellTitle } from '../shell/shell-context';
@@ -591,6 +612,7 @@ function WizardSession({
 
       <StepIndicator
         t={t.steps}
+        headingRef={heading}
         current={step}
         statuses={wizardStepStatuses(step, progress)}
         progress={progress}
@@ -619,17 +641,8 @@ function WizardSession({
         </Callout>
       ) : null}
 
-      <h1
-        ref={heading}
-        tabIndex={-1}
-        data-testid="wizard-step-title"
-        data-step={step}
-        className="text-xl font-semibold tracking-tight text-fg focus:outline-none sm:text-2xl"
-      >
-        {t.steps[step]}
-      </h1>
       {step === 'parcalar' ? (
-        <p className="-mt-3 max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
+        <p className="-mt-2 max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
       ) : null}
 
       <div className={`grid min-w-0 items-start gap-5 ${GRID[step]}`}>
@@ -708,81 +721,120 @@ function AutosaveIndicator({
   );
 }
 
+/** Domain icon of each wizard step (T194a). */
+const STEP_ICONS: Record<StepKey, ComponentType<{ className?: string }>> = {
+  makine: RouterIcon,
+  parcalar: SheetIcon,
+  dizilim: NestingIcon,
+  simulasyon: ToolpathIcon,
+  export: FileOutput,
+};
+
+/**
+ * Step title + stepper in one panel (T195): the H1 is the active step's label, so the step
+ * name is written once (no second heading under the stepper).
+ */
 function StepIndicator({
   t,
+  headingRef,
   current,
   statuses,
   progress,
   onGo,
 }: {
   t: Messages['wizard']['steps'];
+  headingRef: RefObject<HTMLHeadingElement | null>;
   current: StepKey;
   statuses: readonly WizardStepStatus[];
   progress: WizardProgress;
   onGo: (step: StepKey) => void;
 }) {
   const index = STEPS.indexOf(current);
+  const StepIcon = STEP_ICONS[current];
   return (
-    <nav aria-label={t.label} className={`${panelClass} px-3 py-2.5 sm:px-4`}>
-      <p className="mb-2 text-xs font-medium text-fg-muted sm:hidden">
-        {fill(t.stepOf, { n: index + 1, total: STEPS.length })} · {t[current]}
-      </p>
-      <ol className="flex items-center gap-1" data-testid="wizard-steps">
-        {STEPS.map((s, i) => {
-          const status = statuses[i] ?? 'upcoming';
-          const active = status === 'current';
-          const blocker = stepBlocker(s, progress);
-          return (
-            <li key={s} className="flex min-w-0 flex-1 items-center gap-1 last:flex-none">
-              <button
-                type="button"
-                aria-current={active ? 'step' : undefined}
-                data-testid={`wizard-step-${s}`}
-                data-status={status}
-                title={blocker && !active ? t.blocked[blocker] : undefined}
-                onClick={() => onGo(s)}
-                className={`group flex min-h-10 ${active ? 'min-w-0' : 'shrink-0'} items-center gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:px-2 ${focusRing}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums ${
-                    active
-                      ? 'border-accent bg-accent text-accent-fg shadow-xs'
-                      : status === 'done'
-                        ? 'border-accent-border bg-accent-subtle text-accent-text'
-                        : status === 'blocked'
-                          ? 'border-dashed border-border-strong bg-surface text-fg-subtle'
-                          : 'border-border-strong bg-surface text-fg-muted'
-                  }`}
+    <div
+      className={`${panelClass} flex flex-col gap-2 px-3 py-2.5 sm:px-4 lg:flex-row lg:items-center lg:gap-6`}
+    >
+      <div className="flex min-w-0 items-center gap-3 lg:shrink-0">
+        <span
+          aria-hidden="true"
+          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:flex [&_svg]:size-5"
+        >
+          <StepIcon />
+        </span>
+        <div className="flex min-w-0 flex-col">
+          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase">
+            {fill(t.stepOf, { n: index + 1, total: STEPS.length })}
+          </p>
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            data-testid="wizard-step-title"
+            data-step={current}
+            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:text-xl"
+          >
+            {t[current]}
+          </h1>
+        </div>
+      </div>
+      <nav aria-label={t.label} className="min-w-0 lg:flex-1">
+        <ol className="flex items-center gap-1" data-testid="wizard-steps">
+          {STEPS.map((s, i) => {
+            const status = statuses[i] ?? 'upcoming';
+            const active = status === 'current';
+            const blocker = stepBlocker(s, progress);
+            return (
+              <li key={s} className="flex min-w-0 flex-1 items-center gap-1 last:flex-none">
+                <button
+                  type="button"
+                  aria-current={active ? 'step' : undefined}
+                  data-testid={`wizard-step-${s}`}
+                  data-status={status}
+                  title={blocker && !active ? t.blocked[blocker] : undefined}
+                  onClick={() => onGo(s)}
+                  className={`group flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:px-2 ${focusRing}`}
                 >
-                  {status === 'done' ? (
-                    <Check className="size-3.5" strokeWidth={2.5} />
-                  ) : status === 'blocked' ? (
-                    <Lock className="size-3" />
-                  ) : (
-                    i + 1
-                  )}
-                </span>
-                <span
-                  className={`${active ? 'font-semibold text-fg' : status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} ${active ? 'hidden truncate sm:inline' : 'sr-only whitespace-nowrap lg:not-sr-only'}`}
-                >
-                  {t[s]}
-                </span>
-                <span className="sr-only">
-                  {` (${t.status[status]}${blocker && !active ? `: ${t.blocked[blocker]}` : ''})`}
-                </span>
-              </button>
-              {i < STEPS.length - 1 ? (
-                <span
-                  aria-hidden="true"
-                  className={`h-px min-w-3 flex-1 ${i < index ? 'bg-accent-border' : 'bg-border'}`}
-                />
-              ) : null}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+                  <span
+                    aria-hidden="true"
+                    className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums ${
+                      active
+                        ? 'border-accent bg-accent text-accent-fg shadow-xs'
+                        : status === 'done'
+                          ? 'border-accent-border bg-accent-subtle text-accent-text'
+                          : status === 'blocked'
+                            ? 'border-dashed border-border-strong bg-surface text-fg-subtle'
+                            : 'border-border-strong bg-surface text-fg-muted'
+                    }`}
+                  >
+                    {status === 'done' ? (
+                      <Check className="size-3.5" strokeWidth={2.5} />
+                    ) : status === 'blocked' ? (
+                      <Lock className="size-3" />
+                    ) : (
+                      i + 1
+                    )}
+                  </span>
+                  <span
+                    className={`${active ? 'font-semibold text-fg' : status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} ${active ? 'sr-only' : 'sr-only whitespace-nowrap xl:not-sr-only'}`}
+                  >
+                    {t[s]}
+                  </span>
+                  <span className="sr-only">
+                    {` (${t.status[status]}${blocker && !active ? `: ${t.blocked[blocker]}` : ''})`}
+                  </span>
+                </button>
+                {i < STEPS.length - 1 ? (
+                  <span
+                    aria-hidden="true"
+                    className={`h-px min-w-3 flex-1 ${i < index ? 'bg-accent-border' : 'bg-border'}`}
+                  />
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+    </div>
   );
 }
 

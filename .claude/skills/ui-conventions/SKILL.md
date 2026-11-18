@@ -32,7 +32,11 @@ Look: modern, calm, corporate (Linear / Vercel class). Neutral graphite surfaces
 - Radius: `rounded-sm` (6 px: badges, kbd), `rounded-md` (8 px: buttons, inputs), `rounded-lg` (10 px: menus, popovers), `rounded-xl` (14 px: cards, dialogs).
 - Spacing: 4 px grid (`p-1` = 4 px). Control heights: `h-control-sm` 32 px, `h-control-md` 40 px (default; ≥ 40 px touch target, spec §3.7), `h-control-lg` 48 px.
 - Elevation: `shadow-xs` (buttons, inputs), `shadow-sm` (cards), `shadow-md` (popover, menu), `shadow-lg` (dialog, sheet), `shadow-xl` (command palette). Flat surfaces use a border, not a shadow.
-- Type: Inter via `next/font` (`--font-inter`). Scale `text-2xs` 11 · `xs` 12 · `sm` 14 (UI default) · `base` 16 · `lg` 18 · `xl` 20 · `2xl` 24 · `3xl` 30 · `4xl` 36; headings `font-semibold`, large sizes carry negative tracking. **Measurements use `numeric`** (tabular figures) so columns line up.
+- Type (T195): Inter (`--font-inter`, UI) + JetBrains Mono (`--font-jetbrains-mono` → `font-mono`), both self-hosted by `next/font` (OFL, latin-ext for İ ı Ş ğ); no Consolas/Courier fallback. Scale `text-2xs` 11 · `xs` 12 · `sm` 14 (UI default) · `base` 16 · `lg` 18 · `xl` 20 · `2xl` 24 · `3xl` 30 · `4xl` 36; headings `font-semibold`, large sizes carry negative tracking.
+- Page titles: `text-xl sm:text-2xl` (20 px phone, 24 px desktop) via `PageHeader`. KPI numbers `text-3xl` + `numeric`, unit in `fg-muted`. The wizard H1 is the stepper title (step name written once).
+- **Numbers are the signature:** every measurement uses `Measure` from `@nittcam/ui` (value(s) + unit, Turkish digits, tabular, unit muted; `mono` for coordinates/read-outs; `[w, h]` joins with ×). Inside a translated sentence use `fillRich()` (`apps/web/lib/fill-rich.ts`) with a `{size}` placeholder instead of hand-formatting "{w} × {h} mm".
+- `font-mono` for G-code, file names, hashes, coordinate read-outs; canvas labels use `canvasMonoFont()` from `apps/web/lib/canvas-theme.ts` (Konva cannot read classes).
+- Density: comfortable is the default (40 px controls/rows, 16 px panel padding). A container may opt in with `data-density="compact"` (32 px controls, 36 px rows `h-row`, 12 px `p-panel`) for dense tools (drawing-board inspector, long lists). Not a user setting until T183.
 - Motion: `--duration-instant|fast|base|slow` (80/120/180/280 ms), `ease-out`; animations `animate-fade-in|out`, `animate-pop-in|out`, `animate-sheet-in|out-right|left`. Use `duration-(--duration-fast)` in transitions. The global reduced-motion rule turns all of it off.
 - Contrast: every text/background pair is AA in both themes; `packages/ui/src/tokens.test.ts` enforces it. A new pair → add it there.
 
@@ -55,7 +59,7 @@ Look: modern, calm, corporate (Linear / Vercel class). Neutral graphite surfaces
 - Responsive: 390 / 768 / 1024 / 1440 px, no page-level horizontal scroll.
 - Heavy work (nesting, toolpath) runs in a Web Worker; the UI never freezes.
 - The UI never mutates the project directly; it always calls commands (command-layer skill).
-- Menu: Ana sayfa, Makineler, Projeler, Şablonlar, Oluştur, Ayarlar, plus a prominent "+ Yeni proje".
+- Menu (T194a): live items Ana sayfa, Makineler, Projeler, Oluştur (kept until FQ4 is answered) and a prominent "+ Yeni proje" at the top; items not built yet (Şablonlar, Ayarlar) in a muted "Yakında" group at the bottom, never between live items. One accent-filled "Yeni proje" per screen (the sidebar one; pages repeat it only below 768 px). Domain icons (`RouterIcon`, `SheetIcon`, `GrainIcon`, `NestingIcon`, `ToolpathIcon`, `AirCutIcon` from `@nittcam/ui`, lucide-compatible) for CNC concepts; never the chip/drill icon for a machine. UI text says "dışa aktarma", not "export".
 - Visual QA: `pnpm e2e:visual` (Playwright `visual` project, 1440×900 and 390×844, light + dark, `snap()` and `expectNoA11yViolations()` from `e2e/tests/visual/helpers.ts`).
 
 ## App shell (B2, T103–T105)

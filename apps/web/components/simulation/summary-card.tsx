@@ -2,7 +2,9 @@
 
 import type { SimSummary } from '@nittcam/core';
 import { fill } from '../../lib/draft-project';
-import { formatDuration, formatInt, formatMeters, type SimText } from './model';
+import { Measure } from '@nittcam/ui';
+import type { ReactNode } from 'react';
+import { formatDuration, formatInt, type SimText } from './model';
 import { WarningList, type Finding } from './violations';
 
 /** Summary card (§6.5): estimated time, lengths, tool changes, passes, tabs, check status. */
@@ -20,13 +22,22 @@ export function SummaryCard({
   warnings: readonly Finding[];
 }) {
   const s = t.summary;
-  const tiles: [string, string, string][] = [
-    ['time', s.time, fill(t.time.approx, { time: formatDuration(t, summary.seconds) })],
-    ['cut', s.cutLength, formatMeters(t, summary.cutLength)],
-    ['rapid', s.rapidLength, formatMeters(t, summary.rapidLength)],
-    ['tools', s.toolChanges, formatInt(summary.toolChanges)],
-    ['passes', s.passes, formatInt(summary.passes)],
-    ['tabs', s.tabs, formatInt(summary.tabs)],
+  // Measure (T195): Turkish digits, tabular figures, the unit quieter than the number.
+  const meters = (mm: number) => <Measure value={mm / 1000} unit={t.meterUnit} maxDecimals={1} />;
+  const count = (n: number) => <Measure value={n} maxDecimals={0} />;
+  const tiles: [string, string, ReactNode][] = [
+    [
+      'time',
+      s.time,
+      <span key="t" className="numeric">
+        {fill(t.time.approx, { time: formatDuration(t, summary.seconds) })}
+      </span>,
+    ],
+    ['cut', s.cutLength, meters(summary.cutLength)],
+    ['rapid', s.rapidLength, meters(summary.rapidLength)],
+    ['tools', s.toolChanges, count(summary.toolChanges)],
+    ['passes', s.passes, count(summary.passes)],
+    ['tabs', s.tabs, count(summary.tabs)],
   ];
   return (
     <section
@@ -55,7 +66,7 @@ export function SummaryCard({
           >
             <dt className="text-xs text-fg-muted">{label}</dt>
             <dd
-              className="mt-0.5 text-lg font-semibold tracking-tight text-fg tabular-nums"
+              className="mt-0.5 text-lg font-semibold tracking-tight text-fg"
               data-testid={`sim-summary-${key}`}
             >
               {value}

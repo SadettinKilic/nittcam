@@ -13,11 +13,13 @@ import {
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { fill } from '../../lib/draft-project';
+import { fillRich } from '../../lib/fill-rich';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { TriangleAlert } from 'lucide-react';
 import { focusRing } from '../page/page-header';
 import {
+  Measure,
   Select,
   SelectContent,
   SelectGroup,
@@ -121,10 +123,10 @@ export function MachineFields({
         {!known ? <p className="text-xs text-warning-text">{t.unknownMachine}</p> : null}
         {profile ? (
           <p className="text-xs text-fg-muted">
-            {fill(t.table, {
-              w: mm(profile.table.width),
-              d: mm(profile.table.depth),
-              post: `${profile.post.id} ${profile.post.version}`,
+            {fillRich(fill(t.table, { post: `${profile.post.id} ${profile.post.version}` }), {
+              size: (
+                <Measure value={[profile.table.width, profile.table.depth]} unit={t.units.mm} />
+              ),
             })}
           </p>
         ) : null}
@@ -252,11 +254,10 @@ export function MachineFields({
         ) : null}
         {set ? (
           <p className="text-xs text-fg-muted" data-testid="cutting-params">
-            {fill(t.paramsOk, {
-              tool: set.tool,
-              feed: mm(set.feed),
-              rpm: mm(set.rpm),
-              step: mm(set.stepDown),
+            {fillRich(fill(t.paramsOk, { tool: set.tool }), {
+              feed: <Measure value={set.feed} unit={t.units.feed} maxDecimals={0} />,
+              rpm: <Measure value={set.rpm} unit={t.units.rpm} maxDecimals={0} />,
+              step: <Measure value={set.stepDown} unit={t.units.mm} />,
             })}
           </p>
         ) : null}

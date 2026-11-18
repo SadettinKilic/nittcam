@@ -7,6 +7,7 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  Measure,
   RouterIcon,
   Skeleton,
   notify,
@@ -38,8 +39,6 @@ type Mode =
       key: number;
     };
 
-const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
-
 /** A new machine starts from the generic profile, not marked as an example, with no name. */
 function newProfile(): MachineProfile {
   const p = defaultMachineProfile();
@@ -48,8 +47,9 @@ function newProfile(): MachineProfile {
   return p;
 }
 
-function tableSize(m: MachineListItem): string {
-  return `${mmFormat.format(m.table.width)} × ${mmFormat.format(m.table.depth)} mm`;
+/** Table width × depth as a Measure (T195): Turkish digits, tabular, unit muted. */
+function TableSize({ m, className }: { m: MachineListItem; className?: string }) {
+  return <Measure value={[m.table.width, m.table.depth]} unit="mm" className={className} />;
 }
 
 export function MachinesView({ t, startNew = false }: { t: Text; startNew?: boolean }) {
@@ -208,7 +208,7 @@ function MachineList({
               <div className="flex flex-wrap items-center gap-1.5">
                 <MachineStateBadge state={m.state} label={t.state[m.state]} />
                 {m.example ? <Badge>{t.example}</Badge> : null}
-                <span className="numeric ml-auto text-xs text-fg-muted">{tableSize(m)}</span>
+                <TableSize m={m} className="ml-auto text-xs text-fg" />
               </div>
               <RowActions
                 t={t}
@@ -299,11 +299,7 @@ function MachineTable({
         }),
         column.accessor('table', {
           header: c.table,
-          cell: (info) => (
-            <span className="numeric whitespace-nowrap text-fg-muted">
-              {tableSize(info.row.original)}
-            </span>
-          ),
+          cell: (info) => <TableSize m={info.row.original} className="text-fg" />,
         }),
         column.accessor('version', {
           header: c.version,

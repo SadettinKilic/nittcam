@@ -9,8 +9,8 @@ export interface PageTitleProps {
 export function PageTitle({ children, subtitle }: PageTitleProps) {
   return (
     <header className="flex flex-col gap-2">
-      <h1 className="text-4xl font-semibold tracking-tight text-fg">{children}</h1>
-      {subtitle ? <p className="text-lg text-fg-muted">{subtitle}</p> : null}
+      <h1 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">{children}</h1>
+      {subtitle ? <p className="text-sm text-fg-muted">{subtitle}</p> : null}
     </header>
   );
 }

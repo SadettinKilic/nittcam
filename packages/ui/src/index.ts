@@ -153,3 +153,4 @@ export {
   type DomainIcon,
   type DomainIconProps,
 } from './components/domain-icons';
+export { Measure, formatMeasure, type MeasureProps } from './components/measure';
