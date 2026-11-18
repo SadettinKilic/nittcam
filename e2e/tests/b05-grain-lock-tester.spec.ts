@@ -23,8 +23,8 @@ test('lock, turn the sheet grain, LOCKED_PLACEMENT_GRAIN; unlock → PLACEMENT_G
   page,
 }) => {
   await openNewProject(page, 'makine');
-  const g0 = page.getByRole('radio', { name: tr.wizard.machine.grain0 });
-  await g0.check();
+  const g0 = page.getByTestId('sheet-grain-dial-quick-0');
+  await g0.click();
   await pasteAndNest(page, SHELF, 1, 'makine');
   await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-part-count', '2');
 
@@ -36,7 +36,7 @@ test('lock, turn the sheet grain, LOCKED_PLACEMENT_GRAIN; unlock → PLACEMENT_G
   await expect(page.getByRole('alert').filter({ hasText: 'damar yönüne uymuyor' })).toHaveCount(0);
 
   await goStep(page, 'makine');
-  await page.getByRole('radio', { name: tr.wizard.machine.grain90 }).check();
+  await page.getByTestId('sheet-grain-dial-quick-90').click();
   await goStep(page, 'dizilim');
   const alert = page.getByRole('alert').filter({ hasText: 'damar yönüne uymuyor' });
   await expect(alert).toHaveCount(1);
@@ -67,13 +67,13 @@ test('stale rotation after a sheet grain change: export refused (422, Turkish); 
 }) => {
   test.setTimeout(120_000);
   await openNewProject(page, 'makine');
-  await page.getByRole('radio', { name: tr.wizard.machine.grain0 }).check();
+  await page.getByTestId('sheet-grain-dial-quick-0').click();
   await pasteAndNest(page, SHELF, 1, 'makine');
   await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-part-count', '2');
 
   // Turn the sheet grain, skip Diz, go straight to export.
   await goStep(page, 'makine');
-  await page.getByRole('radio', { name: tr.wizard.machine.grain90 }).check();
+  await page.getByTestId('sheet-grain-dial-quick-90').click();
   await saved(page);
   const id = await projectId(page);
   await goStep(page, 'export');

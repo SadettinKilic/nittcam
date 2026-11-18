@@ -7,6 +7,7 @@ import type { CanvasColors, DrawnPart, ViewState } from './model';
 import { zoomAt } from './zoom';
 import { canvasMonoFont } from '../../lib/canvas-theme';
 import { formatMm, partLabel } from '../../lib/canvas-labels';
+import { grainArrowPoints, grainLines } from '../../lib/grain-texture';
 
 /** True when the operator asked for less motion (no fade-in after "Diz"). */
 function reducedMotion(): boolean {
@@ -78,6 +79,13 @@ const SheetLayer = memo(function SheetLayer({
     return out;
   }, [grid, W, H]);
   const hair = 1 / scale;
+  // Spacing in power-of-two mm steps so zooming does not rebuild the texture on every wheel tick.
+  const grainStep = 2 ** Math.ceil(Math.log2(Math.max(1, 14 / scale)));
+  const grainSegs = useMemo(
+    () =>
+      grainLines(W, H, sheet.grain, grainStep).map(([x1, y1, x2, y2]) => [x1, H - y1, x2, H - y2]),
+    [W, H, sheet.grain, grainStep],
+  );
   return (
     <Layer listening={false}>
       {/* Margin band = the whole sheet; the usable area (waste until parts cover it) on top. */}
@@ -90,6 +98,17 @@ const SheetLayer = memo(function SheetLayer({
         fill={colors.waste}
         perfectDrawEnabled={false}
       />
+      {/* Sheet grain texture at the sheet angle (T116, D-034): ~14 px apart on screen. */}
+      {grainSegs.map((s, i) => (
+        <Line
+          key={`g${i}`}
+          points={s}
+          stroke={colors.grain}
+          strokeWidth={hair}
+          opacity={0.45}
+          perfectDrawEnabled={false}
+        />
+      ))}
       {lines.map((pts) => (
         <Line
           key={pts.join(',')}
@@ -248,18 +267,7 @@ const PartShape = memo(function PartShape({
   // Grain arrow of a fixed-grain part at its sheet-frame angle (D-034: part grain + rotation).
   // Canvas Y points down, so 90° (up on the sheet) is -Y here.
   const angle = part.grainAngle ?? sheetGrain ?? 0;
-  const rad = (angle * Math.PI) / 180;
-  const dx = angle === 90 ? 0 : Math.cos(rad);
-  const dy = angle === 0 ? 0 : Math.sin(rad);
-  const len = Math.min(Math.abs(dx) >= Math.abs(dy) ? w : h, 160) * 0.5;
-  const cx = w / 2;
-  const cy = h / 2 + font * (label.lines.length * 0.65 + 0.3);
-  const arrow = [
-    cx - (dx * len) / 2,
-    cy + (dy * len) / 2,
-    cx + (dx * len) / 2,
-    cy - (dy * len) / 2,
-  ];
+  const arrow = grainArrowPoints(angle, w, h, font, label.lines.length);
 
   const snap = (node: Konva.Node) => {
     const x = Math.round(node.x());
@@ -300,16 +308,34 @@ const PartShape = memo(function PartShape({
         if (!onDrop(part.key, p.x, p.y)) node.position({ x: part.x, y: sheetHeight - part.y - h });
       }}
     >
-      <Rect
-        width={w}
-        height={h}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-        fill={conflict ? colors.conflictFill : fill}
-        opacity={pending ? 0.85 : 1}
-        perfectDrawEnabled={false}
-        shadowForStrokeEnabled={false}
-      />
+      {part.outline ? (
+        <>
+          {/* Hit area = the footprint, so a turned part is as easy to grab as before. */}
+          <Rect width={w} height={h} fill="transparent" perfectDrawEnabled={false} />
+          {/* True outline of a turned or drawn part (T116, D-034). */}
+          <Line
+            points={part.outline}
+            closed
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            fill={conflict ? colors.conflictFill : fill}
+            opacity={pending ? 0.85 : 1}
+            perfectDrawEnabled={false}
+            shadowForStrokeEnabled={false}
+          />
+        </>
+      ) : (
+        <Rect
+          width={w}
+          height={h}
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          fill={conflict ? colors.conflictFill : fill}
+          opacity={pending ? 0.85 : 1}
+          perfectDrawEnabled={false}
+          shadowForStrokeEnabled={false}
+        />
+      )}
       {label.lines.map((line, i) => (
         <Text
           key={i}

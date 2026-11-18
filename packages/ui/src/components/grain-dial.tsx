@@ -359,3 +359,40 @@ export function GrainDial({
     </div>
   );
 }
+
+export interface GrainArrowProps {
+  /** Grain angle in degrees (CCW from +x); null draws nothing. */
+  angle: number | null;
+  /** Edge length in px. Default 16. */
+  size?: number;
+  className?: string;
+}
+
+/**
+ * Small two-headed arrow along a grain angle (T116): cut-list cells, inspectors. A grain has no
+ * direction, so both ends carry a head. Decorative; the angle text sits next to it.
+ */
+export function GrainArrow({ angle, size = 16, className }: GrainArrowProps) {
+  if (angle === null) return null;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden
+      data-angle={normalizeGrainAngle(angle)}
+      className={cn('shrink-0', className)}
+    >
+      <g
+        transform={`rotate(${-normalizeGrainAngle(angle)} 8 8)`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M2 8h12M4.5 5.5 2 8l2.5 2.5M11.5 5.5 14 8l-2.5 2.5" />
+      </g>
+    </svg>
+  );
+}

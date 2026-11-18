@@ -9,6 +9,7 @@ import { zoomAt } from '../layout-view/zoom';
 import { DEPTH_LEVELS, depthLevel, depthRamp, toolDiameterOf, type SimColors } from './model';
 import { canvasMonoFont } from '../../lib/canvas-theme';
 import { LINE_HEIGHT, badgeCentre, labelBox, partLabel } from '../../lib/canvas-labels';
+import { grainArrowPoints, grainLines } from '../../lib/grain-texture';
 
 /**
  * Konva drawing of the simulation (T020, spec §6.5). Units inside the stage are millimetres in a
@@ -59,6 +60,12 @@ const StaticLayer = memo(function StaticLayer({
   });
   const zero = machine ? { x: machine.zero.x, y: H - machine.zero.y } : null;
   const axis = 60 * px;
+  const grainStep = 2 ** Math.ceil(Math.log2(Math.max(1, 14 / scale)));
+  const grainSegs = useMemo(
+    () =>
+      grainLines(W, H, sheet.grain, grainStep).map(([x1, y1, x2, y2]) => [x1, H - y1, x2, H - y2]),
+    [W, H, sheet.grain, grainStep],
+  );
   return (
     <Layer listening={false}>
       {machine ? (
@@ -88,13 +95,36 @@ const StaticLayer = memo(function StaticLayer({
         fill={colors.waste}
         perfectDrawEnabled={false}
       />
+      {/* Sheet grain texture at the sheet angle (T116, D-034). */}
+      {grainSegs.map((s, i) => (
+        <Line
+          key={`g${i}`}
+          points={s}
+          stroke={colors.grain}
+          strokeWidth={px}
+          opacity={0.45}
+          perfectDrawEnabled={false}
+        />
+      ))}
       <Shape
         listening={false}
         perfectDrawEnabled={false}
         sceneFunc={(context) => {
           const ctx = (context as unknown as { _context: CanvasRenderingContext2D })._context;
           ctx.beginPath();
-          for (const p of parts) ctx.rect(p.x, H - p.y - p.h, p.w, p.h);
+          for (const p of parts) {
+            if (!p.outline) {
+              ctx.rect(p.x, H - p.y - p.h, p.w, p.h);
+              continue;
+            }
+            // True outline of a turned or drawn part (T116).
+            const top = H - p.y - p.h;
+            const o = p.outline;
+            ctx.moveTo(p.x + (o[0] ?? 0), top + (o[1] ?? 0));
+            for (let i = 2; i + 1 < o.length; i += 2)
+              ctx.lineTo(p.x + (o[i] ?? 0), top + (o[i + 1] ?? 0));
+            ctx.closePath();
+          }
           ctx.fillStyle = colors.part;
           ctx.fill();
           ctx.lineWidth = px;
@@ -105,7 +135,10 @@ const StaticLayer = memo(function StaticLayer({
       {/* Part labels: the same zoom fallback as the layout view (T196). */}
       {parts.map((p) => {
         const label = partLabel({ number: p.label, name: p.name, w: p.w, h: p.h, scale });
-        const top = H - p.y - p.h + p.h / 2 - (label.lines.length * label.font * LINE_HEIGHT) / 2;
+        // A fixed-grain part lifts its label to make room for the grain arrow (as in the layout view).
+        const lift = p.grainAngle !== null ? label.font * 0.6 : 0;
+        const top =
+          H - p.y - p.h + p.h / 2 - (label.lines.length * label.font * LINE_HEIGHT) / 2 - lift;
         return label.lines.map((line, i) => (
           <Text
             key={`${p.key}:${i}`}
@@ -122,6 +155,34 @@ const StaticLayer = memo(function StaticLayer({
             perfectDrawEnabled={false}
           />
         ));
+      })}
+      {/* Grain arrow of each fixed-grain part at its effective angle (part grain + rot, T116). */}
+      {parts.map((p) => {
+        if (p.grainAngle === null) return null;
+        const label = partLabel({ number: p.label, name: p.name, w: p.w, h: p.h, scale });
+        if (label.level === 'none') return null;
+        const [x1, y1, x2, y2] = grainArrowPoints(
+          p.grainAngle,
+          p.w,
+          p.h,
+          label.font,
+          label.lines.length,
+        );
+        const top = H - p.y - p.h;
+        return (
+          <Arrow
+            key={`${p.key}:grain`}
+            points={[p.x + x1, top + y1, p.x + x2, top + y2]}
+            stroke={colors.dim}
+            fill={colors.dim}
+            strokeWidth={Math.max(px, label.font * 0.08)}
+            pointerLength={label.font * 0.35}
+            pointerWidth={label.font * 0.3}
+            pointerAtBeginning
+            opacity={0.8}
+            perfectDrawEnabled={false}
+          />
+        );
       })}
       <Rect
         x={0}

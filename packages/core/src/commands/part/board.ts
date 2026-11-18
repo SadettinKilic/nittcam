@@ -10,7 +10,14 @@ import { mirrorGrain, turnGrain } from '../../geometry/grain';
 import { mirror, rotate, rotatePoint, translate, type QuarterTurn } from '../../geometry/transform';
 import type { Point, Polyline } from '../../geometry/types';
 import { boardPositions, localBox } from '../../editor/board';
-import { partSchema, rectPartSchema, type Part, type Project, type Vertex } from '../../schema';
+import {
+  partGrainSchema,
+  partSchema,
+  rectPartSchema,
+  type Part,
+  type Project,
+  type Vertex,
+} from '../../schema';
 import { defineCommand } from '../types';
 
 const idList = z
@@ -228,6 +235,31 @@ export const removeParts = defineCommand({
     for (const sheet of draft.layout.sheets) {
       const keep = sheet.placements.filter((pl) => !ids.has(pl.partId));
       if (keep.length !== sheet.placements.length) sheet.placements = keep;
+    }
+  },
+});
+
+/**
+ * Sets the same grain on several parts in one step (T116 cut-list "apply to all"; one undo
+ * step). Same rules as `setPartGrain` (D-034).
+ */
+export const setPartsGrain = defineCommand({
+  name: 'setPartsGrain',
+  area: 'part',
+  description: 'Set the same grain (mode and angle) on several parts by id in one step.',
+  aiTool: false,
+  params: z.strictObject({
+    ids: idList,
+    mode: partGrainSchema.shape.mode,
+    angle: partGrainSchema.shape.angle,
+  }),
+  check: (project, params) => missing(project, params.ids),
+  apply: (draft, params) => {
+    const ids = new Set(params.ids);
+    for (const part of draft.parts) {
+      if (!ids.has(part.id)) continue;
+      if (part.grain.mode !== params.mode) part.grain.mode = params.mode;
+      if (part.grain.angle !== params.angle) part.grain.angle = params.angle;
     }
   },
 });

@@ -234,14 +234,14 @@ test.describe('T023 tester: autosave, offline, restore', () => {
     await saved(page);
     const id = await projectId(page);
     await goStep(page, 'makine');
-    await page.getByLabel(w.machine.grain90).check();
+    await page.getByTestId('sheet-grain-dial-quick-90').click();
     await page.waitForTimeout(1500);
     await saved(page);
     const rev = Number(await page.getByTestId('save-status').getAttribute('data-revision'));
     expect(rev).toBeGreaterThanOrEqual(2);
     await page.reload();
     await wizardReady(page, 'makine');
-    await expect(page.getByLabel(w.machine.grain90)).toBeChecked();
+    await expect(page.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '90');
     const server = await (await request.get(`/api/projects/${id}`)).json();
     expect(server.project.stock.sheet.grain).toBe(90);
     expect(server.revision).toBe(rev);
@@ -265,7 +265,7 @@ test.describe('T023 tester: autosave, offline, restore', () => {
       route.request().method() === 'PUT' ? route.abort('internetdisconnected') : route.continue(),
     );
     await goStep(page, 'makine');
-    await page.getByLabel(w.machine.grain90).check();
+    await page.getByTestId('sheet-grain-dial-quick-90').click();
     const status = page.getByTestId('save-status');
     await expect(status).toHaveText(w.save.retrying, { timeout: 15_000 });
     await expect(status).toContainText(w.save.error);
@@ -303,14 +303,14 @@ test.describe('T023 tester: autosave, offline, restore', () => {
       route.request().method() === 'PUT' ? route.abort('internetdisconnected') : route.continue(),
     );
     await goStep(page, 'makine');
-    await page.getByLabel(w.machine.grain90).check();
+    await page.getByTestId('sheet-grain-dial-quick-90').click();
     await expect(page.getByTestId('save-status')).toHaveAttribute('data-state', 'error', {
       timeout: 15_000,
     });
     await page.unroute(/\/api\/projects\/[0-9a-f-]{36}$/);
     await page.reload();
     await wizardReady(page, 'makine');
-    await expect(page.getByLabel(w.machine.grain90)).toBeChecked();
+    await expect(page.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '90');
     await expect(page.getByTestId('save-status')).toHaveAttribute('data-state', /^(saved|idle)$/, {
       timeout: 20_000,
     });
@@ -336,7 +336,7 @@ test.describe('T023 tester: autosave, offline, restore', () => {
     await b.goto(`/projeler/${id}?adim=makine`);
     await wizardReady(b, 'makine');
     await goStep(page, 'makine');
-    await page.getByLabel(w.machine.grain90).check();
+    await page.getByTestId('sheet-grain-dial-quick-90').click();
     await saved(page);
     // B edits (on the stale revision) and keeps typing: no more requests after the conflict.
     let puts = 0;
@@ -387,19 +387,18 @@ test.describe('T023 tester: wizard step 1', () => {
     // The thickness hint lists the profile's thicknesses; a listed one has cutting params.
     await expect(page.getByText(/Bu makinede kesim ayarı olan kalınlıklar/)).toBeVisible();
     // Grain for MDF (spec: grain shown), also for wood types; not for plastic.
-    await expect(page.getByLabel(w.machine.grain0)).toBeVisible();
-    await expect(page.getByLabel(w.machine.grain90)).toBeVisible();
+    await expect(page.getByTestId('sheet-grain-dial')).toBeVisible();
     const material = page.getByTestId('wizard-material');
     for (const wood of ['plywood', 'melamine', 'solidWood'] as const) {
       await pickOption(material, tr.materials[wood]);
       await expect(material).toHaveAttribute('data-value', wood);
-      await expect(page.getByLabel(w.machine.grain0), wood).toBeVisible();
+      await expect(page.getByTestId('sheet-grain-dial'), wood).toBeVisible();
     }
     await pickOption(material, tr.materials.pvc);
-    await expect(page.getByLabel(w.machine.grain0)).toHaveCount(0);
+    await expect(page.getByTestId('sheet-grain-dial')).toHaveCount(0);
     await expect(page.getByText(w.machine.grainNone)).toBeVisible();
     await pickOption(material, tr.materials.acrylic);
-    await expect(page.getByLabel(w.machine.grain0)).toHaveCount(0);
+    await expect(page.getByTestId('sheet-grain-dial')).toHaveCount(0);
     // Stone is offered but disabled ("yakında").
     await material.click();
     const stone = page.getByRole('option', { name: /taş/i });
@@ -518,12 +517,12 @@ test.describe('T023 tester: wizard flow', () => {
     await expect(undo).toBeDisabled();
 
     // Step 1: grain.
-    await page.getByLabel(w.machine.grain90).check();
-    await expect(page.getByLabel(w.machine.grain90)).toBeChecked();
+    await page.getByTestId('sheet-grain-dial-quick-90').click();
+    await expect(page.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '90');
     await undo.click();
-    await expect(page.getByLabel(w.machine.grain0)).toBeChecked();
+    await expect(page.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '0');
     await redo.click();
-    await expect(page.getByLabel(w.machine.grain90)).toBeChecked();
+    await expect(page.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '90');
     await undo.click();
 
     // Step 2: paste then undo empties the list; redo brings it back; keyboard shortcuts.

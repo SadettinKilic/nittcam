@@ -27,6 +27,8 @@ export interface SimColors {
   /** Secondary part label line ("W × H"). */
   dim: string;
   text: string;
+  /** Sheet grain texture and part grain arrows (T116). */
+  grain: string;
 }
 
 const TOKENS: Record<keyof SimColors, string> = {
@@ -48,6 +50,7 @@ const TOKENS: Record<keyof SimColors, string> = {
   text: '--color-fg',
   ghost: '--color-accent',
   dim: '--color-fg-muted',
+  grain: '--color-grain',
 };
 
 export function readSimColors(): SimColors {

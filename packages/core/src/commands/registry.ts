@@ -19,6 +19,7 @@ import {
   removeParts,
   rotatePart,
   setPartGrain,
+  setPartsGrain,
   updatePart,
 } from './part';
 import { lockPlacement, runNesting, setNestingOptions } from './nesting';
@@ -47,6 +48,7 @@ export const COMMANDS = {
   setSegmentBulge,
   updatePart,
   setPartGrain,
+  setPartsGrain,
   removePart,
   duplicatePart,
   importCutList,
