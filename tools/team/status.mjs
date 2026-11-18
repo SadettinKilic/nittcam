@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Team status CLI. Writes .team/state.json, which the dashboard (pnpm team) reads.
-//   node tools/team/status.mjs <po|dev|tester> <state> "<task>" "<message>"
+//   node tools/team/status.mjs <po|dev|tester|fable> <state> "<task>" "<message>"
 //   node tools/team/status.mjs task <Txxx> <todo|doing|review|done|blocked> ["title"] [owner]
 //   node tools/team/status.mjs milestone "<M0 — Temel>"
 //   node tools/team/status.mjs limit on "<19:40>" | limit off
@@ -18,7 +18,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 let root = join(here, '..', '..');
 try { root = dirname(execSync('git rev-parse --path-format=absolute --git-common-dir', { cwd: here, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()); } catch {}
 const file = join(root, '.team', 'state.json');
-const AGENTS = ['po', 'dev', 'tester'];
+// fable = visiting design reviewer, shown in the office only while active
+const AGENTS = ['po', 'dev', 'tester', 'fable'];
 const STATES = ['idle', 'planning', 'coding', 'testing', 'reviewing', 'blocked', 'done'];
 const TASK_STATES = ['todo', 'doing', 'review', 'done', 'blocked'];
 
@@ -37,6 +38,7 @@ const die = (m) => { console.error(m); process.exit(1); };
 if (AGENTS.includes(cmd)) {
   const [state, task = '', message = ''] = rest;
   if (!STATES.includes(state)) die(`state must be one of: ${STATES.join(', ')}`);
+  s.agents = s.agents || {};
   s.agents[cmd] = { state, task, message, updated: now };
   s.log.unshift({ t: now, who: cmd, state, task, msg: message });
   s.log = s.log.slice(0, 60);
@@ -89,7 +91,7 @@ if (AGENTS.includes(cmd)) {
 } else if (cmd === 'print') {
   process.stdout.write(JSON.stringify(s, null, 2) + '\n'); process.exit(0);
 } else {
-  die('usage: status.mjs <po|dev|tester> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | milestone "<name>" | print');
+  die('usage: status.mjs <po|dev|tester|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | milestone "<name>" | print');
 }
 
 s.updated = now;
