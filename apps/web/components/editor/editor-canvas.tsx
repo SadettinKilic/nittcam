@@ -1,6 +1,6 @@
 'use client';
 
-import { arcOf, type BoardPart, type SnapKind, type Vertex } from '@nittcam/core';
+import { arcOf, segmentMidpoint, type BoardPart, type SnapKind, type Vertex } from '@nittcam/core';
 import type Konva from 'konva';
 import { Layer, Shape, Stage } from 'react-konva';
 import { formatMm, partLabel, sizeText, LINE_HEIGHT } from '../../lib/canvas-labels';
@@ -15,6 +15,7 @@ import {
   type Pt,
   type Viewport,
 } from '../../lib/editor/viewport';
+import type { DraftView } from '../../lib/editor/draw-tool';
 import type { EditorColors } from './colors';
 
 /** Width of the rulers on the top and left edges, px. */
@@ -39,6 +40,12 @@ export interface EditorCanvasProps {
   snap: { kind: SnapGlyph; point: Pt } | null;
   grid: boolean;
   colors: EditorColors;
+  /** In-progress drawing (T127–T129), board mm. */
+  draft?: DraftView | null;
+  /** Live dimension label of the draft ("596 × 716", "R 150"). */
+  draftLabel?: string | null;
+  /** Canvas words of the drawing tools: the close glyph and the open-shape chip. */
+  drawText?: { close: string; open: string };
 }
 
 type Ctx = CanvasRenderingContext2D;
@@ -288,6 +295,141 @@ function drawSnap(ctx: Ctx, p: EditorCanvasProps) {
   ctx.stroke();
 }
 
+/** Adds one bulge segment a → b (screen space, Y flipped) to the current path. */
+function traceSegment(ctx: Ctx, a: Pt, b: Pt, bulge: number, v: Viewport) {
+  const arc = arcOf(a, b, bulge);
+  if (!arc) {
+    const s = toScreen(v, b);
+    ctx.lineTo(s.x, s.y);
+    return;
+  }
+  const c = toScreen(v, arc.center);
+  ctx.arc(
+    c.x,
+    c.y,
+    arc.radius * v.scale,
+    -arc.startAngle,
+    -(arc.startAngle + arc.sweep),
+    arc.sweep > 0,
+  );
+}
+
+/** Open path: segments between the given vertices (the last vertex's bulge is ignored). */
+function traceOpen(ctx: Ctx, vs: readonly Vertex[], v: Viewport) {
+  const first = vs[0];
+  if (!first) return;
+  const s0 = toScreen(v, first);
+  ctx.moveTo(s0.x, s0.y);
+  for (let i = 1; i < vs.length; i += 1) {
+    const a = vs[i - 1] as Vertex;
+    traceSegment(ctx, a, vs[i] as Vertex, a.bulge, v);
+  }
+}
+
+/** Mono chip with a filled background, centred on (x, y) (canvas language: dimension label). */
+function chip(ctx: Ctx, text: string, x: number, y: number, bg: string, fg: string) {
+  ctx.font = `11px ${canvasMonoFont()}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const tw = ctx.measureText(text).width + 10;
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.roundRect(x - tw / 2, y - 9, tw, 18, 4);
+  ctx.fill();
+  ctx.fillStyle = fg;
+  ctx.fillText(text, x, y + 0.5);
+}
+
+/**
+ * In-progress drawing (D-039): dashed 1.5 px accent preview, 10 % accent fill once closed,
+ * 6 px square vertex nodes, a grown start node with "Kapat" when the cursor closes the path, the
+ * arc centre as a small cross, and an open finished path in `warning` with one "Kapalı değil" chip.
+ */
+function drawDraft(ctx: Ctx, p: EditorCanvasProps) {
+  const d = p.draft;
+  if (!d) return;
+  const { view: v, colors } = p;
+  const stroke = d.open ? colors.warning : colors.accent;
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = stroke;
+  ctx.setLineDash(d.open ? [] : [6, 4]);
+  ctx.beginPath();
+  if (d.closed) {
+    traceContour(ctx, d.vertices, v);
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = colors.accent;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  } else {
+    traceOpen(ctx, d.vertices, v);
+  }
+  ctx.stroke();
+  if (d.rubber) {
+    ctx.beginPath();
+    const s = toScreen(v, d.rubber.from);
+    ctx.moveTo(s.x, s.y);
+    traceSegment(ctx, d.rubber.from, d.rubber.to, d.rubber.bulge, v);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // Vertex nodes: 6 px squares; the start node grows while the cursor closes the shape.
+  d.nodes.forEach((n, i) => {
+    const s = toScreen(v, n);
+    const r = i === 0 && d.closing ? 6 : 3;
+    ctx.fillStyle = i === 0 && d.closing ? colors.snap : colors.ruler;
+    ctx.strokeStyle = i === 0 && d.closing ? colors.snap : stroke;
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(s.x - r, s.y - r, 2 * r, 2 * r);
+    ctx.strokeRect(s.x - r, s.y - r, 2 * r, 2 * r);
+  });
+  const start = d.nodes[0];
+  if (d.closing && start && p.drawText) {
+    const s = toScreen(v, start);
+    ctx.font = `600 11px ${canvasMonoFont()}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = colors.snap;
+    ctx.fillText(p.drawText.close, s.x + 10, s.y - 12);
+  }
+  if (d.centre) {
+    const c = toScreen(v, d.centre);
+    ctx.beginPath();
+    ctx.moveTo(c.x - 5, c.y);
+    ctx.lineTo(c.x + 5, c.y);
+    ctx.moveTo(c.x, c.y - 5);
+    ctx.lineTo(c.x, c.y + 5);
+    ctx.strokeStyle = colors.accent;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  if (d.open && p.drawText) {
+    const a = d.vertices[0];
+    const b = d.vertices[1];
+    if (a && b) {
+      const m = toScreen(v, segmentMidpoint(a, b, a.bulge));
+      chip(ctx, p.drawText.open, m.x, m.y - 16, colors.warning, colors.selectionText);
+    }
+  }
+  // Live dimension label above the preview's top edge.
+  if (p.draftLabel && d.vertices.length > 0) {
+    let top = Infinity;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    for (const q of d.closed ? d.vertices : [...d.vertices, ...(d.rubber ? [d.rubber.to] : [])]) {
+      top = Math.min(top, toScreen(v, q).y);
+      const sx = toScreen(v, q).x;
+      minX = Math.min(minX, sx);
+      maxX = Math.max(maxX, sx);
+    }
+    if (d.closed && d.centre && d.vertices[0]) {
+      // Circle: the box top is the centre minus the radius on screen.
+      const c = toScreen(v, d.centre);
+      top = c.y - Math.abs(c.x - toScreen(v, d.vertices[0]).x);
+    }
+    chip(ctx, p.draftLabel, (minX + maxX) / 2, top - 16, colors.accent, colors.selectionText);
+  }
+}
+
 /** Rulers along the top and left edges, with mono labels in board millimetres. */
 function drawRulers(ctx: Ctx, p: EditorCanvasProps) {
   const { view: v, width, height, colors } = p;
@@ -353,6 +495,7 @@ export default function EditorCanvas(props: EditorCanvasProps) {
             drawLabels(ctx, props);
             drawSelection(ctx, props);
             drawMarquee(ctx, props);
+            drawDraft(ctx, props);
             drawSnap(ctx, props);
             drawRulers(ctx, props);
           }}

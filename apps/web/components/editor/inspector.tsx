@@ -82,6 +82,11 @@ export function EditorInspector({
                 X <Measure value={box.minX} mono /> · Y <Measure value={box.minY} mono />
               </span>
             </Row>
+            {selected.length === 1 && part?.kind === 'rect' ? (
+              <Row label={t.radius}>
+                <Measure value={part.params.r} unit="mm" mono data-testid="editor-radius" />
+              </Row>
+            ) : null}
             {selected.length === 1 && part ? <Row label={t.qty}>{part.qty}</Row> : null}
           </div>
           {actions ? (

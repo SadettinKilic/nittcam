@@ -1,19 +1,16 @@
 'use client';
 
-import { boardBox, boardParts, snap, type Part, type Project } from '@nittcam/core';
-import { Button, Checkbox, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
-  Circle,
-  Hand,
-  List,
-  Maximize,
-  MousePointer2,
-  PenLine,
-  Spline,
-  Square,
-  ZoomIn,
-  ZoomOut,
-} from 'lucide-react';
+  boardBox,
+  boardParts,
+  nextPartName,
+  snap,
+  type Part,
+  type Project,
+  type SnapKind,
+} from '@nittcam/core';
+import { Button, Checkbox, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
+import { Circle, Hand, List, Maximize, MousePointer2, Square, ZoomIn, ZoomOut } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import {
   useCallback,
@@ -28,6 +25,22 @@ import {
 import type { Messages } from '../../lib/messages';
 import { onThemeChange } from '../../lib/canvas-theme';
 import { newPartId } from '../../lib/draft-project';
+import {
+  backspace,
+  clickAt,
+  enter,
+  fieldsFor,
+  hintFor,
+  isDrawTool,
+  parseTyped,
+  preview,
+  type DrawDraft,
+  type DrawStep,
+  type DrawTool,
+  type DrawnShape,
+  type Typed,
+} from '../../lib/editor/draw-tool';
+import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
 import {
   SNAP_TOGGLES,
@@ -35,10 +48,19 @@ import {
   initialEditorState,
   type EditorTool,
 } from '../../lib/editor/store';
-import { fitBox, gridLevels, toWorld, type Box, type Pt } from '../../lib/editor/viewport';
+import {
+  fitBox,
+  gridLevels,
+  toScreen,
+  toWorld,
+  type Box,
+  type Pt,
+} from '../../lib/editor/viewport';
+import { formatMm, sizeText } from '../../lib/canvas-labels';
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { readEditorColors, type EditorColors } from './colors';
+import { DynamicInput } from './dynamic-input';
 import { RULER_PX, type SnapGlyph } from './editor-canvas';
 import { EditorInspector } from './inspector';
 import { BoardPartList } from './part-list';
@@ -57,13 +79,27 @@ const SNAP_PX = 10;
 /** Pointer movement that turns a click into a drag, px. */
 const DRAG_PX = 3;
 
+/** No typed values: every chip field shows its live value. */
+const NO_TYPED = { values: [] as string[], active: 0 };
+
+/** Keys go to a text field, not to the board. */
+function typing(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target.closest('input, textarea, select, [role="combobox"], [role="dialog"]') !== null)
+  );
+}
+
 /** One pointer gesture on the canvas. */
 type Gesture =
   | { kind: 'pan'; last: Pt }
   | { kind: 'pinch'; dist: number; mid: Pt }
   | { kind: 'marquee'; start: Pt; startScreen: Pt; additive: boolean; moved: boolean }
   | { kind: 'press'; id: string; start: Pt; startScreen: Pt; additive: boolean }
-  | { kind: 'move'; ids: string[]; start: Pt; anchor: Pt };
+  | { kind: 'move'; ids: string[]; start: Pt; anchor: Pt }
+  /** Drawing-tool press; `before` is the draft to restore if a pinch takes over. */
+  | { kind: 'draw'; startScreen: Pt; placed: boolean; before: DrawDraft | null };
 
 /** Board moves are kept to 0.01 mm (no float dust in the project). */
 function round(v: number): number {
@@ -126,6 +162,39 @@ export function DrawingBoard({
   const selection = useMemo(() => new Set(state.selection), [state.selection]);
   const view = state.view;
 
+  // Drawing tools (T127–T129, D-039): the in-progress shape, the snapped cursor and the typed
+  // values of the dynamic input chip. All UI state; a finished shape is one `drawPart` command.
+  const drawTool: DrawTool | null = isDrawTool(state.tool) ? state.tool : null;
+  const [draft, setDraft] = useState<DrawDraft | null>(null);
+  const [typed, setTyped] = useState<{ values: string[]; active: number }>(NO_TYPED);
+  const [drawAt, setDrawAt] = useState<Pt | null>(null);
+  const [lock, setLock] = useState(false);
+  const docked = useMediaQuery('(max-width: 639px)', false);
+  const fields = drawTool ? fieldsFor(drawTool, draft) : [];
+  const typedValues: Typed = {};
+  fields.forEach((f, i) => {
+    const v = parseTyped(typed.values[i] ?? '');
+    if (v !== undefined) typedValues[f] = v;
+  });
+  const drawCursor: Pt | null =
+    drawAt ??
+    (draft?.kind === 'rect'
+      ? draft.a
+      : draft?.kind === 'circle'
+        ? draft.c
+        : draft?.kind === 'path'
+          ? (draft.pts.at(-1) ?? null)
+          : null);
+  const draftView =
+    drawTool && drawCursor ? preview(drawTool, draft, drawCursor, typedValues, lock) : null;
+  const draftLabel = !draftView
+    ? null
+    : draft?.kind === 'rect' && draftView.live.w !== undefined && draftView.live.h !== undefined
+      ? sizeText(draftView.live.w, draftView.live.h)
+      : draftView.live.r !== undefined && draftView.live.r > 0
+        ? `R ${formatMm(draftView.live.r)}`
+        : null;
+
   // Selected ids that disappear (removed, undone) leave the selection.
   const ids = useMemo(() => project.parts.map((p) => p.id), [project.parts]);
   useEffect(() => dispatch({ type: 'prune', ids }), [ids]);
@@ -187,17 +256,117 @@ export function DrawingBoard({
     return () => el.removeEventListener('wheel', onWheel);
   }, [canvasEl]);
 
-  const setTool = useCallback((tool: EditorTool) => dispatch({ type: 'tool', tool }), []);
+  /** Switching tools ends the shape in progress; line ↔ arc keeps the path (one shape, two tools). */
+  const setTool = useCallback((tool: EditorTool) => {
+    dispatch({ type: 'tool', tool });
+    setTyped(NO_TYPED);
+    setSnapMark(null);
+    setDraft((d) =>
+      d?.kind === 'path' && (tool === 'line' || tool === 'arc') ? { ...d, pending: null } : null,
+    );
+  }, []);
+
+  /** Adds a finished shape as a part with the next free name and selects it (T127). */
+  function commitShape(shape: DrawnShape) {
+    const id = newPartId();
+    const name = nextPartName(
+      t.defaultName,
+      project.parts.map((p) => p.name),
+    );
+    if (run('drawPart', { id, name, at: shape.at, shape: shape.shape })) {
+      dispatch({ type: 'select', ids: [id] });
+    }
+  }
+
+  function applyStep(step: DrawStep) {
+    setDraft(step.draft);
+    setTyped(NO_TYPED);
+    if (step.commit) commitShape(step.commit);
+  }
+
+  /**
+   * Snapped drawing point: the path start when the cursor is near it ("Kapat"), else the T126
+   * snap engine (corners, midpoints, centres, grid, 45°/90° from the last point). Alt = free.
+   */
+  function drawPoint(w: Pt, free: boolean): { point: Pt; kind: SnapKind | 'close' } {
+    if (!view) return { point: w, kind: 'none' };
+    const tol = SNAP_PX / view.scale;
+    if (draft?.kind === 'path' && !draft.open && draft.pts.length >= 2) {
+      const start = draft.pts[0];
+      if (start && Math.hypot(w.x - start.x, w.y - start.y) <= tol) {
+        return { point: { x: start.x, y: start.y }, kind: 'close' };
+      }
+    }
+    if (free) return { point: w, kind: 'none' };
+    const from =
+      draft?.kind === 'path'
+        ? (draft.pending ?? draft.pts.at(-1))
+        : draft?.kind === 'rect'
+          ? draft.a
+          : draft?.kind === 'circle'
+            ? draft.c
+            : undefined;
+    const res = snap(w, {
+      contours: parts.flatMap((p) => [p.outline, ...p.inners]),
+      centres: parts.flatMap((p) => p.holes.map((h) => ({ x: h.x, y: h.y }))),
+      tolerance: tol,
+      grid: gridLevels(view.scale).fine,
+      ...(from ? { from: { x: from.x, y: from.y } } : {}),
+      disabled: SNAP_TOGGLES.filter((k) => !state.snap[k]),
+    });
+    return { point: res.kind === 'none' ? w : res.point, kind: res.kind };
+  }
+
+  // Drawing keys (capture phase, before the board and edit shortcuts): digits fill the chip,
+  // Tab / ; switch fields, Enter commits, Backspace edits or drops the last vertex, Esc cancels.
+  useEffect(() => {
+    if (!drawTool) return;
+    const tool = drawTool;
+    function onKey(e: KeyboardEvent) {
+      if (typing(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+      const k = e.key;
+      const n = fields.length;
+      if (/^[0-9]$/.test(k) || k === '.' || k === ',' || k === '-') {
+        if (n === 0) return;
+        setTyped((t) => {
+          const values = [...t.values];
+          values[t.active] = (values[t.active] ?? '') + k;
+          return { ...t, values };
+        });
+      } else if (k === 'Tab' || k === ';') {
+        if (n === 0) return;
+        setTyped((t) => ({ ...t, active: (t.active + (e.shiftKey ? n - 1 : 1)) % n }));
+      } else if (k === 'Enter') {
+        if (!drawCursor) return;
+        applyStep(enter(tool, draft, drawCursor, typedValues, lock));
+      } else if (k === 'Backspace') {
+        const cur = typed.values[typed.active] ?? '';
+        if (cur !== '') {
+          setTyped((t) => {
+            const values = [...t.values];
+            values[t.active] = cur.slice(0, -1);
+            return { ...t, values };
+          });
+        } else if (draft) {
+          setDraft(backspace(draft));
+          setTyped(NO_TYPED);
+        } else return;
+      } else if (k === 'Delete') {
+        if (!draft) return;
+      } else if (k === 'Escape') {
+        if (typed.values.some((v) => v !== '')) setTyped(NO_TYPED);
+        else if (draft) setDraft(null);
+        else setTool('select');
+      } else return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  });
 
   // Board keys (not while typing): V select, H pan, F fit, +/- zoom, Esc clears, Space pans.
   useEffect(() => {
-    function typing(target: EventTarget | null) {
-      return (
-        target instanceof HTMLElement &&
-        (target.isContentEditable ||
-          target.closest('input, textarea, select, [role="combobox"], [role="dialog"]') !== null)
-      );
-    }
     function onKey(e: KeyboardEvent) {
       if (typing(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
       const k = e.key.toLowerCase();
@@ -207,6 +376,8 @@ export function DrawingBoard({
         setSpaceDown(true);
       } else if (k === 'v') setTool('select');
       else if (k === 'h') setTool('pan');
+      else if (k === 'r' && !e.shiftKey) setTool('rect');
+      else if (k === 'c' && !e.shiftKey) setTool('circle');
       else if (k === 'f') fit();
       else if (k === '+' || k === '=') zoomBy(1.25);
       else if (k === '-') zoomBy(1 / 1.25);
@@ -241,6 +412,9 @@ export function DrawingBoard({
     const pts = [...pointers.current.values()];
     if (pts.length === 2 && pts[0] && pts[1]) {
       setMarquee(null);
+      // A second finger turns a drawing tap into pinch/pan: undo what the first finger placed.
+      const g0 = gesture.current;
+      if (g0?.kind === 'draw' && g0.placed) setDraft(g0.before);
       gesture.current = {
         kind: 'pinch',
         dist: dist(pts[0], pts[1]),
@@ -256,6 +430,19 @@ export function DrawingBoard({
       return;
     }
     if (e.button !== 0) return;
+    if (drawTool) {
+      // Rectangle and circle start on press (drag or click-click); paths add points on release.
+      const before = draft;
+      const { point } = drawPoint(w, e.altKey);
+      setDrawAt(point);
+      let placed = false;
+      if (!draft && (drawTool === 'rect' || drawTool === 'circle')) {
+        applyStep(clickAt(drawTool, null, point, {}, e.shiftKey));
+        placed = true;
+      }
+      gesture.current = { kind: 'draw', startScreen: s, placed, before };
+      return;
+    }
     const hit = hitPart(parts, w, 4 / view.scale);
     if (hit) {
       gesture.current = { kind: 'press', id: hit, start: w, startScreen: s, additive: e.shiftKey };
@@ -320,6 +507,15 @@ export function DrawingBoard({
     setCursor(w);
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, s);
     const g = gesture.current;
+    if (drawTool && (!g || g.kind === 'draw')) {
+      const r = drawPoint(w, e.altKey);
+      setDrawAt(r.point);
+      setLock(e.shiftKey);
+      setSnapMark(
+        r.kind === 'none' || r.kind === 'close' ? null : { kind: r.kind, point: r.point },
+      );
+      return;
+    }
     if (!g) {
       if (e.pointerType !== 'touch' && state.tool === 'select') {
         dispatch({ type: 'hover', id: hitPart(parts, w, 4 / view.scale) });
@@ -366,6 +562,16 @@ export function DrawingBoard({
       return;
     }
     gesture.current = null;
+    if (g.kind === 'draw') {
+      if (!drawTool) return;
+      const moved = dist(local(e), g.startScreen) >= DRAG_PX;
+      // A press that placed the first corner waits for the second click unless it was a drag.
+      if (g.placed && !moved) return;
+      const { point } = drawPoint(toWorld(view, local(e)), e.altKey);
+      setDrawAt(point);
+      applyStep(clickAt(drawTool, draft, point, typedValues, e.shiftKey));
+      return;
+    }
     if (g.kind === 'press') {
       dispatch(g.additive ? { type: 'toggle', id: g.id } : { type: 'select', ids: [g.id] });
     } else if (g.kind === 'move') {
@@ -479,26 +685,20 @@ export function DrawingBoard({
   const floating =
     'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
 
-  const railTool = (
-    tool: EditorTool | null,
-    label: string,
-    key: string,
-    icon: ReactNode,
-    soon = false,
-  ) => {
-    const active = tool !== null && state.tool === tool;
-    const name = soon ? t.tools.soon.replace('{tool}', label) : label;
+  // Tool rail (D-039): working tools in `fg`, the active one accent-filled; unbuilt tools are
+  // not shown. Drawing tools stay active after a shape (repeat mode); Esc or V returns to Seç.
+  const railTool = (tool: EditorTool, label: string, key: string, icon: ReactNode) => {
+    const active = state.tool === tool;
     return (
-      <Tooltip key={label} side="right" content={`${name} · ${key}`}>
+      <Tooltip key={tool} side="right" content={`${label} · ${key}`}>
         <IconButton
-          variant={active ? 'secondary' : 'ghost'}
-          aria-label={name}
-          aria-pressed={tool !== null ? active : undefined}
+          variant={active ? 'primary' : 'ghost'}
+          aria-label={label}
+          aria-pressed={active}
           aria-keyshortcuts={key}
-          disabled={soon}
-          data-testid={tool ? `editor-tool-${tool}` : undefined}
-          className={cn(active && 'bg-accent-subtle text-accent-text')}
-          onClick={tool ? () => setTool(tool) : undefined}
+          data-testid={`editor-tool-${tool}`}
+          className={cn(!active && 'text-fg')}
+          onClick={() => setTool(tool)}
         >
           {icon}
         </IconButton>
@@ -518,10 +718,8 @@ export function DrawingBoard({
         {railTool('select', t.tools.select, 'V', <MousePointer2 aria-hidden />)}
         {railTool('pan', t.tools.pan, 'H', <Hand aria-hidden />)}
         <span aria-hidden className="mx-2 my-0.5 h-px bg-border" />
-        {railTool(null, t.tools.rect, 'R', <Square aria-hidden />, true)}
-        {railTool(null, t.tools.circle, 'C', <Circle aria-hidden />, true)}
-        {railTool(null, t.tools.line, 'L', <PenLine aria-hidden />, true)}
-        {railTool(null, t.tools.arc, 'A', <Spline aria-hidden />, true)}
+        {railTool('rect', t.tools.rect, 'R', <Square aria-hidden />)}
+        {railTool('circle', t.tools.circle, 'C', <Circle aria-hidden />)}
       </div>
       <div
         className={`${floating} absolute right-2 z-10 flex items-center gap-0.5 p-0.5`}
@@ -572,7 +770,36 @@ export function DrawingBoard({
           </IconButton>
         </Tooltip>
       </div>
-      {parts.length === 0 ? (
+      {drawTool ? (
+        <DynamicInput
+          t={t.draw}
+          fields={fields}
+          values={typed.values}
+          active={typed.active}
+          live={draftView?.live ?? {}}
+          at={view && drawCursor ? toScreen(view, drawCursor) : null}
+          docked={docked}
+          canvas={size}
+          onChange={(i, value) =>
+            setTyped((s0) => {
+              const values = [...s0.values];
+              values[i] = value;
+              return { ...s0, values };
+            })
+          }
+          onFocusField={(i) => setTyped((s0) => ({ ...s0, active: i }))}
+          onCommit={() => {
+            if (drawTool && drawCursor) {
+              applyStep(enter(drawTool, draft, drawCursor, typedValues, lock));
+            }
+          }}
+          onCancel={() => {
+            setTyped(NO_TYPED);
+            setDraft(null);
+          }}
+        />
+      ) : null}
+      {parts.length === 0 && !drawTool ? (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
           <div className={`${floating} flex max-w-sm flex-col items-start gap-3 p-4`}>
             <p className="text-sm text-fg-muted">{t.empty}</p>
@@ -597,11 +824,12 @@ export function DrawingBoard({
       aria-roledescription="canvas"
       tabIndex={0}
       data-testid="editor-canvas"
+      data-tool={state.tool}
       data-view={view ? `${view.scale},${view.x},${view.y}` : undefined}
       data-selection={state.selection.join(',')}
       className={cn(
         'absolute inset-0 touch-none overflow-hidden outline-none select-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset',
-        panMode ? 'cursor-grab' : 'cursor-default',
+        panMode ? 'cursor-grab' : drawTool ? 'cursor-crosshair' : 'cursor-default',
       )}
       onPointerDown={onPointerDown}
       // Middle button pans the board: no browser autoscroll.
@@ -631,6 +859,9 @@ export function DrawingBoard({
             snap={snapMark}
             grid={state.grid}
             colors={colors}
+            draft={draftView}
+            draftLabel={draftLabel}
+            drawText={{ close: t.draw.close, open: t.draw.open }}
           />
         </CanvasBoundary>
       ) : null}
@@ -674,6 +905,8 @@ export function DrawingBoard({
           scale={view?.scale ?? 1}
           snap={state.snap}
           onSnap={(kind, on) => dispatch({ type: 'snap', kind, on })}
+          hint={drawTool ? t.draw.hints[hintFor(drawTool, draft, draftView)] : null}
+          snapName={draftView?.closing ? t.draw.close : snapMark ? t.snap[snapMark.kind] : null}
         />
       }
     />
