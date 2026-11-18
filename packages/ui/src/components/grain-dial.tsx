@@ -179,7 +179,7 @@ export function GrainDial({
       tabIndex={disabled ? -1 : 0}
       aria-label={labels.label}
       aria-valuemin={0}
-      aria-valuemax={179}
+      aria-valuemax={179.9}
       aria-valuenow={has ? shown : undefined}
       aria-valuetext={valueText}
       aria-disabled={disabled || undefined}

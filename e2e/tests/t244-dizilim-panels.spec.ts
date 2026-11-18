@@ -21,7 +21,7 @@ async function expectCentred(page: Page) {
   }).toPass();
 }
 
-test('Dizilim: chips, one summary, one toolbar row, centred sheet (1440 × 900, 1024 × 768)', async ({
+test('Dizilim: chips, one summary, tab row, centred sheet (1440 × 900, 1024 × 768)', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -50,12 +50,17 @@ test('Dizilim: chips, one summary, one toolbar row, centred sheet (1440 × 900, 
   await expect(page.getByTestId('layout-summary')).toHaveCount(0);
   await expect(page.getByTestId('layout-hint')).toHaveText(l.hint1 + l.hint2);
 
-  // Tabs (left) and tools (right) share one row.
+  // T244 r1 (PO): under 768 px of canvas (both panels open at 1440) the tabs keep their own
+  // full-width row above the tools (T199b); wider canvases may share one row.
   const tabs = await page.getByTestId('sheet-tabs-scroll').boundingBox();
   const tools = await page.getByRole('button', { name: l.fit }).boundingBox();
+  const canvasW = (await page.getByTestId('layout-canvas').boundingBox())?.width ?? 0;
   if (!tabs || !tools) throw new Error('toolbar not visible');
-  expect(tools.y).toBeLessThan(tabs.y + tabs.height);
-  expect(tools.x).toBeGreaterThan(tabs.x + tabs.width);
+  if (canvasW < 768) expect(tools.y).toBeGreaterThanOrEqual(tabs.y + tabs.height - 1);
+  else {
+    expect(tools.y).toBeLessThan(tabs.y + tabs.height);
+    expect(tools.x).toBeGreaterThan(tabs.x + tabs.width);
+  }
   await expectCentred(page);
 
   await page.setViewportSize({ width: 1024, height: 768 });

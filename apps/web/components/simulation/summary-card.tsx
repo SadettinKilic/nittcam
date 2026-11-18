@@ -3,7 +3,7 @@
 import type { SimSummary } from '@nittcam/core';
 import { fill } from '../../lib/draft-project';
 import { Measure } from '@nittcam/ui';
-import { Fragment, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { formatDuration, formatInt, type SimText } from './model';
 import { WarningList, type Finding } from './violations';
 
@@ -58,21 +58,19 @@ export function SummaryCard({
           {checksOk ? s.checksOk : fill(s.checksFail, { count: errorCount })}
         </p>
       </div>
-      {/* T245: one compact 2-column definition list (label | value), not six tiles. */}
-      <dl
-        className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 text-sm"
-        data-testid="sim-summary-list"
-      >
+      {/* T245: one compact definition list (label | value), not six tiles. Each row sizes on its own
+          so a long label next to a short value stays whole; labels wrap, never truncate (r1). */}
+      <dl className="flex flex-col gap-y-0.5 text-sm" data-testid="sim-summary-list">
         {tiles.map(([key, label, value]) => (
-          <Fragment key={key}>
-            <dt className="truncate text-fg-muted">{label}</dt>
+          <div key={key} className="flex items-baseline justify-between gap-x-3">
+            <dt className="min-w-0 text-pretty break-words text-fg-muted">{label}</dt>
             <dd
-              className="text-right font-semibold whitespace-nowrap text-fg tabular-nums"
+              className="shrink-0 text-right font-semibold whitespace-nowrap text-fg tabular-nums"
               data-testid={`sim-summary-${key}`}
             >
               {value}
             </dd>
-          </Fragment>
+          </div>
         ))}
       </dl>
       <p className="text-xs text-fg-muted">

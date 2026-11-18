@@ -60,7 +60,7 @@ test.describe('T115 GrainDial edge cases (/dev/ui, tester)', () => {
   }) => {
     const dial = page.getByTestId('grain-dial-demo');
     await expect(dial).toHaveAttribute('aria-valuemin', '0');
-    await expect(dial).toHaveAttribute('aria-valuemax', '179');
+    await expect(dial).toHaveAttribute('aria-valuemax', '179.9');
     await expect(dial).toHaveAttribute('aria-label', tr.grainDial.label);
     await expect(dial).toHaveAttribute('tabindex', '0');
     await dial.focus();

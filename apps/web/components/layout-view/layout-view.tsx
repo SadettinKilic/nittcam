@@ -505,17 +505,18 @@ export function LayoutView({
   );
 
   // Floating canvas toolbar (T197): plate tabs top-left, grid/zoom/fit top-right, legend
-  // bottom-left (popover), cursor + scale bottom-right. Tabs and tools share one row (T244, D-039:
-  // tabs scroll, tools stay); only a canvas under 448 px (phones) stacks the tabs above the tools.
+  // bottom-left (popover), cursor + scale bottom-right. Under 768 px of canvas (phone, or desktop
+  // with both side panels open) the plate tabs get their own full-width row above the tools
+  // (T199b/B10a, T244 r1) so ≥ 3 tabs stay visible; wider canvases share one row (≥ 3 tabs fit).
   const floating =
     'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
   const overlay = (
     <>
       <div className="pointer-events-none absolute inset-x-2 top-2 z-10 @container">
-        <div className="flex flex-col items-end gap-2 @md:flex-row @md:items-start @md:justify-between">
+        <div className="flex flex-col items-end gap-2 @3xl:flex-row @3xl:items-start @3xl:justify-between">
           <PlateTabStrip
             active={String(sheet)}
-            className={`${floating} max-w-full min-w-0 self-stretch p-0.5 @md:self-auto`}
+            className={`${floating} max-w-full min-w-0 self-stretch p-0.5 @3xl:self-auto`}
             testId="sheet-tabs-scroll"
           >
             <TabsList
