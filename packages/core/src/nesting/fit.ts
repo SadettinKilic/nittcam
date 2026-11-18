@@ -53,6 +53,36 @@ export function rotatedBoxSize(shape: PartShape, rot: number): { w: number; h: n
   return { w: box.maxX - box.minX, h: box.maxY - box.minY };
 }
 
+/** One distinct footprint a part can take: rotation and its rotated bbox size. */
+export interface RotationOption {
+  rot: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * The distinct footprints of a part over the given rotations, in the given (ascending) order:
+ * a rotation whose bbox equals an earlier one (180° of 0°, a square's 90°) is dropped, so the
+ * placer tries each footprint once and keeps the lowest rotation (D-034).
+ */
+export function rotationOptions(shape: PartShape, rotations: readonly number[]): RotationOption[] {
+  const out: RotationOption[] = [];
+  for (const rot of rotations) {
+    const size = rotatedBoxSize(shape, rot);
+    const same = out.some((o) => Math.abs(o.w - size.w) <= 1e-9 && Math.abs(o.h - size.h) <= 1e-9);
+    if (!same) out.push({ rot, ...size });
+  }
+  return out;
+}
+
+/** Whether any of the footprints fits an empty usable area (PART_LARGER_THAN_SHEET, TOO_LARGE). */
+export function fitsUsableAny(
+  options: readonly RotationOption[],
+  usable: { width: number; height: number },
+): boolean {
+  return options.some((o) => fitsWithin(o.w, usable.width) && fitsWithin(o.h, usable.height));
+}
+
 /** The usable sheet area: the sheet shrunk by `margin` on every side (may be ≤ 0). */
 export function usableSize(
   sheet: { width: number; height: number },

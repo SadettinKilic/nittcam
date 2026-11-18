@@ -30,7 +30,9 @@ describe('cut order benchmark', () => {
           ...base,
           parts: base.parts.map((p, i) => ({
             ...p,
-            grainLock: input.parts[i]?.grainLock ?? false,
+            grain: input.parts[i]?.grainLock
+              ? { mode: 'fixed' as const, angle: 0 }
+              : { mode: 'free' as const, angle: 0 },
           })),
           nesting: { ...base.nesting, mode },
           layout: nested.layout,

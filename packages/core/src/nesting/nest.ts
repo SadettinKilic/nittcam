@@ -4,11 +4,24 @@
  * Pure and deterministic: no randomness, stable sorts with id/index tie-breakers, first candidate
  * wins ties, so the same input gives a byte-identical result.
  */
-import type { Placement, Project } from '../schema';
+import { allowedRotations } from '../geometry/grain';
+import { contour, signedArea } from '../geometry/polyline';
+import { isQuarterTurn } from '../geometry/transform';
+import { deriveOutline, type Placement, type Project } from '../schema';
 import { compareScore, GuillotineBin, MaxRectsBin, type Bin, type Fit } from './bins';
-import { fitsUsable, partBoxSize, rotatedBoxSize, usableSize, type PartShape } from './fit';
+import {
+  fitsUsableAny,
+  partBoxSize,
+  partShape,
+  rotatedBoxSize,
+  rotationOptions,
+  usableSize,
+  type PartShape,
+  type RotationOption,
+} from './fit';
 import {
   MODE_WEIGHTS,
+  type NestingInfo,
   type NestingInput,
   type NestingResult,
   type NestPart,
@@ -47,11 +60,6 @@ export function partSpacing(toolDiameter: number, gap: number): number {
   return (toolDiameter + gap) / 2;
 }
 
-/** Size of a placed part's bounding box after rotation. */
-function rotatedSize(w: number, h: number, rot: Placement['rot']): { w: number; h: number } {
-  return rotatedBoxSize({ w, h }, rot);
-}
-
 /**
  * Footprint of a placement on its sheet (not inflated): the axis-aligned bbox of the rotated
  * outline (D-034; for quarter turns the swapped w × h); null when the part is unknown.
@@ -68,9 +76,18 @@ export function placementRect(
 interface Item {
   partId: string;
   index: number;
+  /** Footprint of the first option (orderings use it). */
   w: number;
   h: number;
-  grainLock: boolean;
+  /** Distinct footprints over the allowed rotations (D-034). */
+  options: readonly RotationOption[];
+}
+
+const QUARTER_TURNS = [0, 90, 180, 270] as const;
+
+/** The rotations a placer part may take: `rotations`, else the grainLock short form. */
+export function nestPartRotations(part: NestPart): readonly number[] {
+  return part.rotations ?? (part.grainLock ? [0, 180] : QUARTER_TURNS);
 }
 
 function orderKey(item: Item, ordering: PartOrdering): number {
@@ -155,21 +172,19 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
   }
 
   const unplaced: UnplacedPart[] = [];
-  const tryBin = (bin: Bin, item: Item): { fit: Fit; rot: 0 | 90 } | null => {
-    let best: { fit: Fit; rot: 0 | 90 } | null = null;
-    const rots: (0 | 90)[] = item.grainLock || item.w === item.h ? [0] : [0, 90];
-    for (const rot of rots) {
-      const size = rotatedSize(item.w, item.h, rot);
-      const fit = bin.find(size.w + 2 * s, size.h + 2 * s);
+  const tryBin = (bin: Bin, item: Item): { fit: Fit; opt: RotationOption } | null => {
+    let best: { fit: Fit; opt: RotationOption } | null = null;
+    for (const opt of item.options) {
+      const fit = bin.find(opt.w + 2 * s, opt.h + 2 * s);
       if (fit && (best === null || compareScore(fit.score, best.fit.score) < 0)) {
-        best = { fit, rot };
+        best = { fit, opt };
       }
     }
     return best;
   };
-  const place = (sheet: number, item: Item, fit: Fit, rot: 0 | 90): void => {
-    const size = rotatedSize(item.w, item.h, rot);
-    bins[sheet]?.occupy({ x: fit.x, y: fit.y, w: size.w + 2 * s, h: size.h + 2 * s });
+  const place = (sheet: number, item: Item, fit: Fit, opt: RotationOption): void => {
+    const { rot } = opt;
+    bins[sheet]?.occupy({ x: fit.x, y: fit.y, w: opt.w + 2 * s, h: opt.h + 2 * s });
     sheets[sheet]?.push({
       partId: item.partId,
       index: item.index,
@@ -185,7 +200,7 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
     for (const [i, bin] of bins.entries()) {
       const hit = tryBin(bin, item);
       if (hit) {
-        place(i, item, hit.fit, hit.rot);
+        place(i, item, hit.fit, hit.opt);
         done = true;
         break;
       }
@@ -194,7 +209,7 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
     const bin = openSheet();
     const hit = tryBin(bin, item);
     if (hit) {
-      place(bins.length - 1, item, hit.fit, hit.rot);
+      place(bins.length - 1, item, hit.fit, hit.opt);
     } else {
       // Defensive (items too large are filtered before packing): never leave an empty sheet.
       bins.pop();
@@ -210,7 +225,7 @@ export function sheetStats(
   index: number,
   placements: readonly Placement[],
   sheet: { width: number; height: number },
-  sizes: ReadonlyMap<string, { w: number; h: number }>,
+  sizes: ReadonlyMap<string, PartShape>,
 ): SheetStats {
   let partArea = 0;
   for (const pl of placements) {
@@ -294,8 +309,10 @@ function better(a: Candidate, b: Candidate): boolean {
 
 /** Runs the placer. Locked placements are copied unchanged and act as obstacles on their sheet. */
 export function nest(input: NestingInput): NestingResult {
-  const sizes = new Map<string, { w: number; h: number }>();
-  for (const p of input.parts) if (!sizes.has(p.id)) sizes.set(p.id, { w: p.w, h: p.h });
+  const sizes = new Map<string, PartShape>();
+  for (const p of input.parts) {
+    if (!sizes.has(p.id)) sizes.set(p.id, { w: p.w, h: p.h, outline: p.outline });
+  }
   const s = partSpacing(input.toolDiameter, input.gap);
   const usable = usableSize(input.sheet, input.margin);
   const ctx: Context = {
@@ -320,13 +337,18 @@ export function nest(input: NestingInput): NestingResult {
   input.parts.forEach((part: NestPart) => {
     if (seen.has(part.id)) return;
     seen.add(part.id);
+    const options = rotationOptions(
+      sizes.get(part.id) ?? { w: part.w, h: part.h },
+      nestPartRotations(part),
+    );
     for (let index = 0; index < part.qty; index++) {
       if (lockedKeys.has(`${part.id}#${index}`)) continue;
-      if (!fitsUsable(part.w, part.h, part.grainLock, usable)) {
+      if (!fitsUsableAny(options, usable)) {
         tooLarge.push({ partId: part.id, index, reason: 'TOO_LARGE' });
         continue;
       }
-      items.push({ partId: part.id, index, w: part.w, h: part.h, grainLock: part.grainLock });
+      const first = options[0] as RotationOption;
+      items.push({ partId: part.id, index, w: first.w, h: first.h, options });
     }
   });
 
@@ -383,7 +405,34 @@ export function nest(input: NestingInput): NestingResult {
     cost: win.cost,
     strategy: { ordering: win.ordering, heuristic: win.heuristic },
     candidates: count,
+    info: rotatedBboxInfo(win.layout, sizes),
   };
+}
+
+/** GRAIN_ROTATED_BBOX notes for every placement at a non-axis angle (D-034). */
+function rotatedBboxInfo(
+  layout: readonly (readonly Placement[])[],
+  sizes: ReadonlyMap<string, PartShape>,
+): NestingInfo[] {
+  const info: NestingInfo[] = [];
+  layout.forEach((placements, sheet) => {
+    for (const pl of placements) {
+      if (isQuarterTurn(pl.rot)) continue;
+      const shape = sizes.get(pl.partId);
+      if (!shape) continue;
+      const box = rotatedBoxSize(shape, pl.rot);
+      const own = shape.outline ? Math.abs(signedArea(shape.outline)) : shape.w * shape.h;
+      info.push({
+        code: 'GRAIN_ROTATED_BBOX',
+        partId: pl.partId,
+        index: pl.index,
+        sheet,
+        rot: pl.rot,
+        extraArea: box.w * box.h - own,
+      });
+    }
+  });
+  return info;
 }
 
 /** Options the caller adds to the project data. */
@@ -410,9 +459,9 @@ export function nestingInputFromProject(
       id: part.id,
       ...partBoxSize(part),
       qty: part.qty,
-      // Interim until the placer takes `allowedRotations` (T114): a fixed-grain part on a sheet
-      // with grain only turns 0°/180° (exact for every migrated v1 project, D-034).
-      grainLock: part.grain.mode === 'fixed' && project.stock.sheet.grain !== null,
+      // The grain rule (D-034): the single source of allowed rotations.
+      rotations: allowedRotations(part, project.stock.sheet),
+      outline: contour(deriveOutline(part)),
     })),
     gap: project.nesting.gap,
     margin: project.nesting.margin,
@@ -442,7 +491,7 @@ export interface LayoutSummary {
 
 /** Sheet count, waste % and unplaced copies of a project's current layout. Pure. */
 export function summarizeLayout(project: Project): LayoutSummary {
-  const sizes = new Map(project.parts.map((p) => [p.id, partBoxSize(p)]));
+  const sizes = new Map(project.parts.map((p) => [p.id, partShape(p)]));
   const sheet = project.stock.sheet;
   const sheets = project.layout.sheets.map((sh, i) => sheetStats(i, sh.placements, sheet, sizes));
   const placed = new Set<string>();

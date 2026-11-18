@@ -72,8 +72,20 @@ export const manySmallParts: NestingInput = {
   })(),
 };
 
+/**
+ * The kitchen on a sheet whose grain runs at 30° (D-034, T114): grain-locked parts may only be
+ * placed at 30°/210° and take the bbox of their rotated outline, the others turn freely.
+ */
+export const kitchenGrain30: NestingInput = {
+  ...kitchenCabinets,
+  parts: kitchenCabinets.parts.map((part) =>
+    part.grainLock ? { ...part, grainLock: undefined, rotations: [30, 210] } : part,
+  ),
+};
+
 export const BENCH_DATASETS: readonly { name: string; input: NestingInput }[] = [
   { name: 'kitchen cabinets', input: kitchenCabinets },
   { name: 'shelf sets', input: shelfSets },
   { name: 'many small parts', input: manySmallParts },
+  { name: 'kitchen, grain 30°', input: kitchenGrain30 },
 ];

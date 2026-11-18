@@ -5,7 +5,8 @@
  */
 import { EPS } from '../geometry';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
-import { fitsUsable, partBoxSize, usableSize } from '../nesting/fit';
+import { allowedRotations } from '../geometry/grain';
+import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
@@ -59,8 +60,8 @@ function mm(v: number): string {
  * (a) A part that fits the usable sheet area in no allowed orientation (spec §5.4 "parça plakadan
  * büyük mü"). The usable area is the sheet minus `nesting.margin` on every side (T012, D-019),
  * the same room the placer has, so a part flagged here is exactly a part the placer reports
- * `TOO_LARGE`. A grain-locked part may only turn 0°/180° (spec §6.2), so w must fit the width and
- * h the height; a free part may also turn 90°. Freeform parts use the arc-aware bbox of their
+ * `TOO_LARGE`. A fixed-grain part may only take its `allowedRotations` (D-034; on a 0°/90° sheet
+ * that is 0°/180° or 90°/270°, at other angles the bbox of the rotated outline); a free part may turn 90°. Freeform parts use the arc-aware bbox of their
  * outline (T006). The gap and tool diameter only matter between parts and are not counted.
  */
 export const partLargerThanSheet: ValidationRule = (project) => {
@@ -70,10 +71,15 @@ export const partLargerThanSheet: ValidationRule = (project) => {
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     const size = partBoxSize(part);
-    // Interim until T114 (forced grain rotation): fixed grain on a grained sheet = no 90° turn.
+    // The forced grain rotation counts (D-034): the same footprints the placer tries.
+    const rotations = allowedRotations(part, project.stock.sheet);
+    if (fitsUsableAny(rotationOptions(partShape(part), rotations), usable)) return;
     const locked = part.grain.mode === 'fixed' && project.stock.sheet.grain !== null;
-    if (fitsUsable(size.w, size.h, locked, usable)) return;
-    const how = locked ? 'grain-locked, no 90° turn' : 'in any orientation';
+    const how = !locked
+      ? 'in any orientation'
+      : rotations.every((r) => r === 0 || r === 180)
+        ? 'grain-locked, no 90° turn'
+        : `grain-locked, only at ${rotations.map(mm).join('° / ')}°`;
     const room =
       margin > 0
         ? `the ${mm(usable.width)} × ${mm(usable.height)} mm usable area of the ${width} × ${height} mm sheet (margin ${mm(margin)} mm)`
