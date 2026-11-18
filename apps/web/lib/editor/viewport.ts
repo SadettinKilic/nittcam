@@ -63,13 +63,19 @@ export function fitBox(
   width: number,
   height: number,
   insets: Insets = { top: 0, right: 0, bottom: 0, left: 0 },
+  /** Screen padding around the box, px (T243: 48). Without it the box fills 90 %. */
+  padding?: number,
 ): Viewport {
   const b = box ?? { minX: 0, minY: -1000, maxX: 2000, maxY: 0 };
   const bw = Math.max(b.maxX - b.minX, 1);
   const bh = Math.max(b.maxY - b.minY, 1);
   const aw = Math.max(width - insets.left - insets.right, 1);
   const ah = Math.max(height - insets.top - insets.bottom, 1);
-  const scale = clampScale(Math.min(aw / bw, ah / bh) * 0.9);
+  const scale = clampScale(
+    padding === undefined
+      ? Math.min(aw / bw, ah / bh) * 0.9
+      : Math.min(Math.max(aw - 2 * padding, 1) / bw, Math.max(ah - 2 * padding, 1) / bh),
+  );
   const cx = insets.left + aw / 2;
   const cy = insets.top + ah / 2;
   return {

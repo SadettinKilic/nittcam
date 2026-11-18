@@ -35,4 +35,13 @@ describe('editor store (T124)', () => {
     expect(s.snap.endpoint).toBe(true);
     expect(editorReducer(s, { type: 'grid', on: false }).grid).toBe(false);
   });
+
+  it('toggles the sheet reference as view state only (T243)', () => {
+    expect(s0.sheet).toBe(true);
+    const off = editorReducer(s0, { type: 'sheet', on: false });
+    expect(off.sheet).toBe(false);
+    // Nothing but the flag changes: no selection, view or tool change, nothing to send.
+    expect({ ...off, sheet: true }).toEqual(s0);
+    expect(editorReducer(off, { type: 'sheet', on: false })).toBe(off);
+  });
 });

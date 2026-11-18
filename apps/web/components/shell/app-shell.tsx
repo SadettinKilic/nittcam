@@ -25,6 +25,7 @@ import {
 } from 'react';
 import { NEW_PROJECT_HREF } from '../../lib/shell-nav';
 import {
+  OPEN_SHORTCUTS_EVENT,
   SHORTCUTS,
   createShortcutMatcher,
   isPageClaimedKey,
@@ -90,6 +91,16 @@ export function AppShell({ t, company, children }: AppShellProps) {
     }),
     [router, setTheme, resolvedTheme, toggleSidebar, rememberHelp],
   );
+
+  // Pages open the help too (the board status bar "?", T242).
+  useEffect(() => {
+    const open = () => {
+      rememberHelp();
+      setHelpOpen(true);
+    };
+    window.addEventListener(OPEN_SHORTCUTS_EVENT, open);
+    return () => window.removeEventListener(OPEN_SHORTCUTS_EVENT, open);
+  }, [rememberHelp]);
 
   // Global shortcuts from the registry (T104); ignored while typing, except the palette.
   const actionsRef = useRef(actions);

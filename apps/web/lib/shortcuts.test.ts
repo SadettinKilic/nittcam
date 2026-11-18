@@ -10,6 +10,7 @@ import {
   formatShortcut,
   isPageClaimedKey,
   isTypingTarget,
+  shortcutText,
   type KeyLike,
 } from './shortcuts';
 
@@ -26,13 +27,32 @@ describe('registry', () => {
   it('has unique ids and key combinations, each with Turkish text', () => {
     const ids = SHORTCUTS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-    const keys = SHORTCUTS.map((s) => s.keys);
-    expect(new Set(keys).size).toBe(keys.length);
+    // Board keys (T242) are owned by the board while it is open (claimPageKeys), so they are
+    // unique among themselves; every other key is unique app-wide.
+    for (const board of [true, false]) {
+      const keys = SHORTCUTS.filter((s) => (s.group === 'board') === board).map((s) => s.keys);
+      expect(new Set(keys).size).toBe(keys.length);
+    }
     for (const s of SHORTCUTS) {
       expect(tr.shortcuts.items[s.id], s.id).toBeTruthy();
       expect(SHORTCUT_GROUPS).toContain(s.group);
     }
     for (const g of SHORTCUT_GROUPS) expect(tr.shortcuts.groups[g]).toBeTruthy();
+  });
+});
+
+describe('shortcutText (T242)', () => {
+  it('formats tooltip keys per platform', () => {
+    expect(shortcutText('boardMirrorH', false)).toBe('Shift+X');
+    expect(shortcutText('boardDuplicate', false)).toBe('Ctrl+D');
+    expect(shortcutText('boardDuplicate', true)).toBe('⌘D');
+    expect(shortcutText('boardDelete', false)).toBe('Delete');
+  });
+
+  it('board shortcuts never reach the global matcher', () => {
+    const match = createShortcutMatcher(SHORTCUTS, false);
+    const c = { key: 'c', ctrlKey: false, metaKey: false, shiftKey: false, altKey: false };
+    expect(match(c, false, 0)?.id).toBe('newProject');
   });
 });
 

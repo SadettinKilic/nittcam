@@ -305,7 +305,7 @@ Tester focus: property tests; e2e drawing a line onto an endpoint ends exactly t
 - **Phone (390 px):** tools are usable with one finger (tap-tap, not drag-only); the dynamic input chip docks above the keyboard as a one-row bar with a numeric keypad (`inputmode="decimal"`); two-finger pan/zoom keeps working while a tool is active.
 - Visual baselines per tool: one "in progress" capture (preview + chip + hint) at 1440 light and 390 dark.
 
-### T127 Rectangle and circle tools   [status: review]
+### T127 Rectangle and circle tools   [status: done]
 Spec: §4.3, §4.4 · Depends: T125, T126
 Acceptance:
 - [ ] rectangle: drag or click + typed "W;H" → parametric rect part (corner radius in properties); circle: centre + radius → freeform round part (bulge arcs)
@@ -314,7 +314,7 @@ Acceptance:
 - [ ] a new part gets the next free name ("Parça 6") and is selected after creation, so the inspector shows it at once
 Tester focus: typed sizes exact; new parts appear in the cut list; undo; rail has no dead button; in-progress baseline (1440 light, 390 dark); a rectangle can be drawn with taps only at 390 px.
 
-### T128 Line / polyline tool with typed length   [status: review]
+### T128 Line / polyline tool with typed length   [status: done]
 Spec: §4.4, §6.1 · Depends: T126
 Acceptance:
 - [ ] click-click polyline; type a length + Enter for the current segment, Tab to type the angle; 45°/90° lock with Shift
@@ -322,7 +322,7 @@ Acceptance:
 - [ ] look and feel per the B10 block above: chip shows "Uzunluk" and "Açı" (Tab switches), rubber-band segment dashed in accent, placed vertices as 6 px square nodes, the start node grows and shows a "Kapat" snap glyph when the cursor is within JOIN_TOL; Backspace removes the last vertex; an open shape is drawn in `warning` stroke with **one** chip on the shape ("Kapalı değil"), not a callout (T199 rule)
 Tester focus: e2e drawing an L-shape by typed lengths → exact outline; open shape blocked from nesting with the Turkish warning; Backspace/Esc behaviour; in-progress baseline.
 
-### T129 Arc tool and segment bulge   [status: review]
+### T129 Arc tool and segment bulge   [status: done]
 Spec: §4.4, §6.1 · Depends: T128
 Acceptance:
 - [ ] 3-point arc and "drag segment middle to bend" (`setSegmentBulge`); typed radius
@@ -334,7 +334,7 @@ Tester focus: arc radius from properties = typed radius; G-code contains G2/G3 f
 
 Source: Fable design review #2 (`docs/reviews/2026-11-18-fable-design-review-2.md`, 2026-11-18). Scores: corporate image 6.5/10 (was 5), modernity 7.5 (7), usability 7 (6.5), readiness for M3–M6 7 (6). Rule: D-039 (canvas budget, one tool-state language). Each task ≤ ½ day.
 
-### T240 Phone board: status bar visible, compact wizard header   [status: todo]
+### T240 Phone board: status bar visible, compact wizard header   [status: review]
 Spec: §3.6, §3.7 · Depends: T124, T198 · Decision: D-039
 Acceptance:
 - [ ] 390 × 844 and 360 × 740, step 2 "Çizim": the board status bar is fully visible; nothing of it sits behind the "Parçalar / Özellikler" button bar or the wizard footer (the canvas card ends above the button bar; on phones the status bar shows only the snap toggle + zoom %, cursor X/Y is hidden because there is no hover)
@@ -343,7 +343,7 @@ Acceptance:
 - [ ] the tool rail on phones does not cover the left ruler numbers (the rail starts right of the ruler, or the ruler is hidden below 640 px)
 Tester focus: bounding-box assertions (status bar bottom ≤ button bar top; canvas height / viewport height ≥ 0.55) at 390 × 844 and 360 × 740; step popover with keyboard + touch; locked steps still locked; baselines updated on purpose (steps 2–4 mobile).
 
-### T241 Desktop board: canvas budget   [status: todo]
+### T241 Desktop board: canvas budget   [status: review]
 Spec: §3.6 · Depends: T124, T197 · Decision: D-039
 Acceptance:
 - [ ] at 1440 × 900 with both panels open the board canvas is **≥ 640 px wide and ≥ 660 px high** (today ≈ 548 × 632): the "Parçalar" panel is 232 px, the inspector 264 px, and the Liste / Çizim switch moves into the wizard header row (left of the stepper) so it no longer takes a row of its own
@@ -352,7 +352,7 @@ Acceptance:
 - [ ] the same widths apply to Dizilim and Simülasyon (one `WorkspaceLayout` default), so the three steps do not jump when stepping through the wizard
 Tester focus: bounding-box assertions at 1440 × 900, 1280 × 800, 1024 × 768; no page scroll on steps 2 (Çizim), 3, 4; collapse state survives reload; baselines updated on purpose.
 
-### T242 Board inspector: icon actions, no shortcut prose   [status: todo]
+### T242 Board inspector: icon actions, no shortcut prose   [status: review]
 Spec: §4.2 · Depends: T125 · Decision: D-039
 Acceptance:
 - [ ] "İşlemler" becomes one row of 32 px icon buttons (yatay aynala, dikey aynala, 90° döndür, çoğalt, then a separator and sil in `danger` text colour), each with a tooltip "Ad · kısayol" and an `aria-label`; no label touches its button border at 264 px (today "Yatay aynala" / "Dikey aynala" fill their buttons edge to edge)
@@ -361,7 +361,7 @@ Acceptance:
 - [ ] with nothing selected the inspector shows a compact summary (parça sayısı, toplam alan in m², board extents) instead of an empty panel
 Tester focus: every action reachable and named for the keyboard and a screen reader (axe); tooltips show the shortcut; the mini-toolbar never leaves the canvas at 390 px; existing select-move-undo e2e stays green.
 
-### T243 Board reference frame: origin, sheet ghost, fit   [status: todo]
+### T243 Board reference frame: origin, sheet ghost, fit   [status: review]
 Spec: §4.2, §2.4 · Depends: T124, T196 · Decision: D-039
 Acceptance:
 - [ ] the origin is a clear marker (X axis to the right and Y axis up, 24 px arms with "X" / "Y" in mono, the same glyph as the layout canvas origin) instead of a 4 px dot

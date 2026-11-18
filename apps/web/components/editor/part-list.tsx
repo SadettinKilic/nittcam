@@ -19,7 +19,8 @@ export function BoardPartList({
 }) {
   return (
     <section data-density="compact" className="flex flex-col gap-2 p-panel" aria-label={t.title}>
-      <div className="flex items-baseline justify-between gap-2">
+      {/* ≥ 1024 px the workspace panel header shows the title + count (T241). */}
+      <div className="flex items-baseline justify-between gap-2 lg:hidden">
         <h2 className="text-sm font-semibold">{t.title}</h2>
         <span className="text-xs text-fg-muted tabular-nums">
           {t.count.replace('{count}', String(project.parts.length))}

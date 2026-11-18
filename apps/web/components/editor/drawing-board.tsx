@@ -13,9 +13,10 @@ import {
   type Project,
   type SnapKind,
 } from '@nittcam/core';
-import { Button, Checkbox, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
+import { Button, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
   Circle,
+  Grid3x3,
   Hand,
   List,
   Maximize,
@@ -23,6 +24,7 @@ import {
   PenLine,
   Spline,
   Square,
+  SquareDashed,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -30,7 +32,6 @@ import dynamic from 'next/dynamic';
 import {
   useCallback,
   useEffect,
-  useId,
   useMemo,
   useReducer,
   useRef,
@@ -59,6 +60,7 @@ import {
 import { claimPageKeys } from '../../lib/shortcuts';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
+import { miniBarRailClear } from '../../lib/editor/mini-bar';
 import {
   SNAP_TOGGLES,
   editorReducer,
@@ -79,7 +81,8 @@ import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { readEditorColors, type EditorColors } from './colors';
 import { DynamicInput } from './dynamic-input';
 import { RULER_PX, type SnapGlyph } from './editor-canvas';
-import { EditorInspector } from './inspector';
+import { BoardActionBar, EditorInspector } from './inspector';
+import { boardSummary } from '../../lib/editor/summary';
 import { BoardPartList } from './part-list';
 import { StatusBar } from './status-bar';
 
@@ -87,10 +90,20 @@ const EditorCanvas = dynamic(() => import('./editor-canvas'), { ssr: false });
 
 type T = Messages['editor'];
 
-/** Screen area kept free of the drawing when fitting: rulers, tool rail, view toolbar. */
-const FIT_INSETS = { top: RULER_PX + 56, right: 16, bottom: 16, left: RULER_PX + 64 };
+/**
+ * Fit (T243): the parts' box (or the sheet without parts) with 48 px padding inside the area
+ * right of the left ruler + tool rail and below the top ruler.
+ */
+const FIT_INSETS = { top: RULER_PX, right: 0, bottom: 0, left: RULER_PX + 24 };
+const FIT_PADDING = 48;
 /** Offset of a pasted / duplicated copy, mm (right and down). */
 const PASTE_OFFSET = 20;
+/** Height of the top toolbar band (view switch, zoom) plus its gap: the rail starts below it. */
+const BAND_PX = 48;
+/** Phone mini-toolbar over the selection (5 × 32 px buttons, separator, padding). */
+const MINI_BAR = { w: 186, h: 38 };
+/** Left edge of the floating tool rail inside the canvas, px. */
+const RAIL_LEFT = RULER_PX + 8;
 /** Snap capture distance on screen, px. */
 const SNAP_PX = 10;
 /** Pointer movement that turns a click into a drag, px. */
@@ -142,14 +155,32 @@ export function DrawingBoard({
   project,
   run,
   onToList,
+  viewSwitch,
 }: {
   t: T;
   project: Project;
   run: (command: string, params: unknown) => boolean;
   onToList: () => void;
+  /** Liste / Çizim switch placed in the canvas toolbar band (below 1024 px, T240). */
+  viewSwitch?: ReactNode;
 }) {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  // Tool rail's rendered size: the phone mini-toolbar is kept clear of it (B10a).
+  const [railEl, setRailEl] = useState<HTMLDivElement | null>(null);
+  const [railSize, setRailSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!railEl) return;
+    const measure = () => {
+      const w = railEl.offsetWidth;
+      const h = railEl.offsetHeight;
+      setRailSize((r) => (r.w === w && r.h === h ? r : { w, h }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(railEl);
+    return () => ro.disconnect();
+  }, [railEl]);
   const [colors, setColors] = useState<EditorColors | null>(null);
   const [cursor, setCursor] = useState<Pt | null>(null);
   const [marquee, setMarquee] = useState<Box | null>(null);
@@ -164,7 +195,6 @@ export function DrawingBoard({
   const [canvasEl, setCanvasEl] = useState<HTMLDivElement | null>(null);
   const pointers = useRef(new Map<number, Pt>());
   const gesture = useRef<Gesture | null>(null);
-  const gridId = useId();
 
   const parts = useMemo(() => boardParts(project), [project]);
   const bounds = useMemo(() => boardBox(parts), [parts]);
@@ -218,6 +248,10 @@ export function DrawingBoard({
         : null;
 
   const selected = useMemo(() => parts.filter((p) => selection.has(p.id)), [parts, selection]);
+  const summary = useMemo(
+    () => boardSummary(parts, new Map(project.parts.map((p) => [p.id, p.qty]))),
+    [parts, project.parts],
+  );
 
   // Bend handles (T129): with one part selected in Seç, a round node at every segment middle
   // (on the arc for arcs); dragging it bends the segment (`setSegmentBulge`, one undo step).
@@ -265,13 +299,23 @@ export function DrawingBoard({
   const ids = useMemo(() => project.parts.map((p) => p.id), [project.parts]);
   useEffect(() => dispatch({ type: 'prune', ids }), [ids]);
 
+  // The project's stock sheet as a reference outline (T243, D-039): view only.
+  const stock = project.stock.sheet;
+  const sheetBox = useMemo(
+    () => ({ minX: 0, minY: 0, maxX: stock.width, maxY: stock.height }),
+    [stock.width, stock.height],
+  );
   const touched = useRef(false);
   const fit = useCallback(() => {
     touched.current = false;
     if (size.w > 0 && size.h > 0) {
-      dispatch({ type: 'view', view: fitBox(bounds, size.w, size.h, FIT_INSETS) });
+      const top = FIT_INSETS.top + (viewSwitch ? BAND_PX : 0);
+      dispatch({
+        type: 'view',
+        view: fitBox(bounds ?? sheetBox, size.w, size.h, { ...FIT_INSETS, top }, FIT_PADDING),
+      });
     }
-  }, [bounds, size.w, size.h]);
+  }, [bounds, sheetBox, size.w, size.h, viewSwitch]);
   const fitRef = useRef(fit);
   useEffect(() => {
     fitRef.current = fit;
@@ -777,6 +821,13 @@ export function DrawingBoard({
   }, [actions]);
 
   const panMode = state.tool === 'pan' || spaceDown;
+  const firstSelected = selected[0];
+  const inspectorTitle =
+    selected.length > 1
+      ? t.inspector.many.replace('{count}', String(selected.length))
+      : (firstSelected
+          ? (project.parts.find((x) => x.id === firstSelected.id)?.name.trim() ?? '')
+          : '') || t.inspector.title;
   const floating =
     'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
 
@@ -801,6 +852,61 @@ export function DrawingBoard({
     );
   };
 
+  // Phones (T242): the selection's actions float above it in the canvas, so mirror / rotate /
+  // duplicate / delete do not need the "Özellikler" sheet. Kept inside the canvas.
+  const editActions = {
+    mirrorH: actions.mirrorH,
+    mirrorV: actions.mirrorV,
+    rotate: actions.rotate,
+    duplicate: actions.duplicate,
+    remove: actions.remove,
+  };
+  let miniBar: ReactNode = null;
+  if (docked && view && state.tool === 'select' && selected.length > 0 && !drag && size.w > 0) {
+    const sb = selected.reduce(
+      (a, x) => ({
+        minX: Math.min(a.minX, x.box.minX),
+        minY: Math.min(a.minY, x.box.minY),
+        maxX: Math.max(a.maxX, x.box.maxX),
+        maxY: Math.max(a.maxY, x.box.maxY),
+      }),
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+    );
+    const tl = toScreen(view, { x: sb.minX, y: sb.maxY });
+    const br = toScreen(view, { x: sb.maxX, y: sb.minY });
+    const w = MINI_BAR.w;
+    const h = MINI_BAR.h;
+    const minTop = RULER_PX + 8 + (viewSwitch ? BAND_PX : 0);
+    const maxTop = size.h - h - 8;
+    let top = tl.y - h - 8;
+    if (top < minTop) top = br.y + 8;
+    top = Math.min(Math.max(top, minTop), Math.max(minTop, maxTop));
+    const maxLeft = size.w - w - 4;
+    let left = Math.min(Math.max((tl.x + br.x) / 2 - w / 2, RULER_PX + 4), maxLeft);
+    // Never cover the tool rail (its tools stay tappable): shift right of it, else below it.
+    const rail = miniBarRailClear(
+      { left, top, w, h },
+      { left: RAIL_LEFT, top: minTop, w: railSize.w, h: railSize.h },
+      { maxLeft, maxTop },
+    );
+    left = rail.left;
+    top = rail.top;
+    miniBar = (
+      <div
+        className={`${floating} absolute z-20 p-0.5`}
+        style={{ top, left: Math.max(4, left) }}
+        data-testid="editor-mini-toolbar"
+      >
+        <BoardActionBar
+          t={t.inspector}
+          label={t.actionsBar}
+          actions={editActions}
+          testId="editor-mini"
+        />
+      </div>
+    );
+  }
+
   const overlay = (
     <>
       <div
@@ -808,7 +914,9 @@ export function DrawingBoard({
         aria-label={t.tools.label}
         aria-orientation="vertical"
         className={`${floating} absolute z-10 flex flex-col gap-0.5 p-0.5`}
-        style={{ top: RULER_PX + 8, left: RULER_PX + 8 }}
+        style={{ top: RULER_PX + 8 + (viewSwitch ? BAND_PX : 0), left: RAIL_LEFT }}
+        ref={setRailEl}
+        data-testid="editor-tool-rail"
       >
         {railTool('select', t.tools.select, 'V', <MousePointer2 aria-hidden />)}
         {railTool('pan', t.tools.pan, 'H', <Hand aria-hidden />)}
@@ -818,20 +926,49 @@ export function DrawingBoard({
         {railTool('line', t.tools.line, 'L', <PenLine aria-hidden />)}
         {railTool('arc', t.tools.arc, 'A', <Spline aria-hidden />)}
       </div>
+      {viewSwitch ? (
+        <div
+          className={`${floating} absolute z-10 p-0.5`}
+          style={{ top: RULER_PX + 8, left: RULER_PX + 8 }}
+          data-testid="editor-view-switch"
+        >
+          {viewSwitch}
+        </div>
+      ) : null}
       <div
         className={`${floating} absolute right-2 z-10 flex items-center gap-0.5 p-0.5`}
         style={{ top: RULER_PX + 8 }}
       >
-        <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-fg-muted">
-          <Checkbox
-            id={gridId}
-            checked={state.grid}
-            onCheckedChange={(v) => dispatch({ type: 'grid', on: v === true })}
-          />
-          <label htmlFor={gridId} className="cursor-pointer max-sm:sr-only">
-            {t.view.grid}
-          </label>
-        </div>
+        {/* T243: grid and sheet are icon toggles like zoom / fit, at every width. */}
+        <Tooltip content={t.view.grid}>
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label={t.view.grid}
+            aria-pressed={state.grid}
+            data-testid="editor-grid"
+            className={cn(state.grid && 'bg-accent-subtle text-accent-text hover:text-accent-text')}
+            onClick={() => dispatch({ type: 'grid', on: !state.grid })}
+          >
+            <Grid3x3 aria-hidden />
+          </IconButton>
+        </Tooltip>
+        <Tooltip content={t.view.sheet}>
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label={t.view.sheet}
+            aria-pressed={state.sheet}
+            data-testid="editor-sheet"
+            className={cn(
+              state.sheet && 'bg-accent-subtle text-accent-text hover:text-accent-text',
+            )}
+            onClick={() => dispatch({ type: 'sheet', on: !state.sheet })}
+          >
+            <SquareDashed aria-hidden />
+          </IconButton>
+        </Tooltip>
+        <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
         <Tooltip content={t.view.zoomOut}>
           <IconButton
             size="sm"
@@ -912,6 +1049,7 @@ export function DrawingBoard({
           }}
         />
       ) : null}
+      {miniBar}
       {parts.length === 0 && !drawTool ? (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
           <div className={`${floating} flex max-w-sm flex-col items-start gap-3 p-4`}>
@@ -971,6 +1109,17 @@ export function DrawingBoard({
             marquee={marquee}
             snap={snapMark}
             grid={state.grid}
+            sheet={
+              state.sheet
+                ? {
+                    w: stock.width,
+                    h: stock.height,
+                    label: t.view.sheetLabel
+                      .replace('{w}', formatMm(stock.width))
+                      .replace('{h}', formatMm(stock.height)),
+                  }
+                : null
+            }
             colors={colors}
             draft={bendView ?? draftView}
             draftLabel={bendView ? null : draftLabel}
@@ -986,6 +1135,19 @@ export function DrawingBoard({
     <WorkspaceLayout
       testId="editor-workspace"
       labels={t.workspace}
+      leftHeader={
+        <>
+          <h2 className="truncate font-semibold text-fg">{t.parts.title}</h2>
+          <span className="shrink-0 text-xs text-fg-muted tabular-nums">
+            {t.parts.count.replace('{count}', String(project.parts.length))}
+          </span>
+        </>
+      }
+      rightHeader={
+        <h2 className="truncate font-semibold text-fg" data-testid="editor-inspector-title">
+          {inspectorTitle}
+        </h2>
+      }
       left={
         <BoardPartList
           t={t.parts}
@@ -1001,13 +1163,8 @@ export function DrawingBoard({
           t={t.inspector}
           project={project}
           selected={selected}
-          actions={{
-            mirrorH: actions.mirrorH,
-            mirrorV: actions.mirrorV,
-            rotate: actions.rotate,
-            duplicate: actions.duplicate,
-            remove: actions.remove,
-          }}
+          summary={summary}
+          actions={editActions}
         />
       }
       canvas={canvas}

@@ -14,6 +14,9 @@ interface ShellSlots {
   setStatus: (el: HTMLElement | null) => void;
   title: string | null;
   setTitle: (title: string | null) => void;
+  /** Phone-only stand-in while the page has no title yet (e.g. "Adsız proje" before the first save). */
+  placeholder: string | null;
+  setPlaceholder: (placeholder: string | null) => void;
 }
 
 const ShellContext = createContext<ShellSlots | null>(null);
@@ -22,9 +25,19 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [actions, setActions] = useState<HTMLElement | null>(null);
   const [status, setStatus] = useState<HTMLElement | null>(null);
   const [title, setTitle] = useState<string | null>(null);
+  const [placeholder, setPlaceholder] = useState<string | null>(null);
   const value = useMemo(
-    () => ({ actions, status, setActions, setStatus, title, setTitle }),
-    [actions, status, title],
+    () => ({
+      actions,
+      status,
+      setActions,
+      setStatus,
+      title,
+      setTitle,
+      placeholder,
+      setPlaceholder,
+    }),
+    [actions, status, title, placeholder],
   );
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
 }
@@ -47,12 +60,22 @@ export function ShellStatus({ children }: { children: ReactNode }) {
   return slots.status ? createPortal(children, slots.status) : null;
 }
 
-/** Sets the top-bar title (last breadcrumb) while the calling page is mounted. */
-export function useShellTitle(title: string | null): void {
-  const setTitle = useContext(ShellContext)?.setTitle;
+/**
+ * Sets the top-bar title (last breadcrumb) while the calling page is mounted. `placeholder` is
+ * shown on phones only while `title` is null (desktop keeps its breadcrumb text).
+ */
+export function useShellTitle(title: string | null, placeholder: string | null = null): void {
+  const ctx = useContext(ShellContext);
+  const setTitle = ctx?.setTitle;
+  const setPlaceholder = ctx?.setPlaceholder;
   useEffect(() => {
     if (!setTitle) return;
     setTitle(title);
     return () => setTitle(null);
   }, [setTitle, title]);
+  useEffect(() => {
+    if (!setPlaceholder) return;
+    setPlaceholder(placeholder);
+    return () => setPlaceholder(null);
+  }, [setPlaceholder, placeholder]);
 }

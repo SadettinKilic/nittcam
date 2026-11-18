@@ -390,7 +390,7 @@ test.describe('T013 tester: layout on small screens', () => {
 test.describe('T013 tester: mobile touch', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test('the page still scrolls vertically past the canvas; canvas height share reported', async ({
+  test('the page scrolls past the canvas when it has room; otherwise the canvas fills ≥ 55 %', async ({
     page,
   }) => {
     await nestShelf(page);
@@ -402,6 +402,22 @@ test.describe('T013 tester: mobile touch', () => {
     console.log(
       `canvas ${box?.width}x${box?.height} px, viewport h ${vh}: ${(share * 100).toFixed(1)} %`,
     );
+    // T240 (D-039, intentional): the phone workspace now fits the viewport when it can, with the
+    // canvas card ≥ 55 % of the height. Then there is no page scroll to test; the canvas share is
+    // the check. The page-scroll checks below run only when the page has room to scroll.
+    const room = await page.evaluate(
+      () => document.documentElement.scrollHeight - window.innerHeight,
+    );
+    if (room <= 10) {
+      const card = await page.getByTestId('layout-workspace-canvas').boundingBox();
+      expect((card?.height ?? 0) / vh).toBeGreaterThanOrEqual(0.55);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        ),
+      ).toBeLessThanOrEqual(0);
+      return;
+    }
     expect(share).toBeLessThan(0.6);
 
     const cdp = await page.context().newCDPSession(page);

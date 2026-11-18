@@ -63,6 +63,21 @@ describe('editor viewport (T124)', () => {
     expect(tl.y).toBeGreaterThanOrEqual(40);
   });
 
+  it('fit with 48 px padding frames the box edge to edge (T243)', () => {
+    const box = { minX: 0, minY: 0, maxX: 2000, maxY: 500 };
+    const insets = { top: 22, right: 0, bottom: 0, left: 46 };
+    const v = fitBox(box, 800, 600, insets, 48);
+    const a = toScreen(v, { x: 0, y: 500 });
+    const b = toScreen(v, { x: 2000, y: 0 });
+    // The binding axis (width) touches the padding exactly; the other one is centred inside it.
+    expect(a.x).toBeCloseTo(46 + 48, 6);
+    expect(b.x).toBeCloseTo(800 - 48, 6);
+    expect(a.y).toBeGreaterThanOrEqual(22 + 48 - 1e-6);
+    expect(b.y).toBeLessThanOrEqual(600 - 48 + 1e-6);
+    // Fills more than the unpadded 90 % fit for a large canvas.
+    expect(v.scale).toBeGreaterThan(fitBox(box, 800, 600, insets).scale * 0.9);
+  });
+
   it('grid adapts 1 / 10 / 100 mm with zoom', () => {
     expect(gridLevels(10)).toEqual({ fine: 1, major: 10 });
     expect(gridLevels(0.5)).toEqual({ fine: 100, major: 1000 });

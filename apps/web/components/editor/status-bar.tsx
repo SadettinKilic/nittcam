@@ -3,12 +3,15 @@
 import {
   Button,
   Checkbox,
+  IconButton,
+  Tooltip,
   Popover,
   PopoverContent,
   PopoverTrigger,
   formatMeasure,
 } from '@nittcam/ui';
-import { Magnet } from 'lucide-react';
+import { CircleHelp, Magnet } from 'lucide-react';
+import { OPEN_SHORTCUTS_EVENT } from '../../lib/shortcuts';
 import { useId } from 'react';
 import type { Messages } from '../../lib/messages';
 import { SNAP_TOGGLES, type SnapToggle } from '../../lib/editor/store';
@@ -52,15 +55,16 @@ export function StatusBar({
             {hint}
           </span>
         ) : (
-          <span className="font-sans">{t.status.cursor}</span>
+          <span className="font-sans max-sm:hidden">{t.status.cursor}</span>
         )}
         {snapName ? (
           <span className="shrink-0 font-sans text-info-text" data-testid="editor-snap-name">
             {snapName}
           </span>
         ) : null}
-        <span className="shrink-0">X {cursor ? fmt(cursor.x) : '—'}</span>
-        <span className="shrink-0">Y {cursor ? fmt(cursor.y) : '—'}</span>
+        {/* Phones (T240): no hover, so no cursor read-out; snap toggle + zoom % only. */}
+        <span className="shrink-0 max-sm:hidden">X {cursor ? fmt(cursor.x) : '—'}</span>
+        <span className="shrink-0 max-sm:hidden">Y {cursor ? fmt(cursor.y) : '—'}</span>
       </span>
       <span className="ml-auto" />
       <Popover>
@@ -97,7 +101,21 @@ export function StatusBar({
       <span aria-label={t.status.zoom} data-testid="editor-zoom">
         %{zoomPercent(scale)}
       </span>
-      <span className="font-sans">{t.status.units}</span>
+      <span className="font-sans max-sm:hidden">{t.status.units}</span>
+      {/* T242: the board's shortcut list lives in the shortcuts dialog ("Çizim tahtası"). */}
+      <Tooltip content={`${t.status.shortcuts} · ?`}>
+        <IconButton
+          size="sm"
+          variant="ghost"
+          aria-label={t.status.shortcuts}
+          aria-haspopup="dialog"
+          className="-mr-2 size-7"
+          data-testid="editor-shortcuts"
+          onClick={() => window.dispatchEvent(new Event(OPEN_SHORTCUTS_EVENT))}
+        >
+          <CircleHelp aria-hidden />
+        </IconButton>
+      </Tooltip>
     </div>
   );
 }

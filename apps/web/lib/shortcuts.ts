@@ -11,9 +11,23 @@ export type ShortcutId =
   | 'toggleTheme'
   | 'toggleSidebar'
   | 'undo'
-  | 'redo';
+  | 'redo'
+  | 'boardSelect'
+  | 'boardPan'
+  | 'boardRect'
+  | 'boardCircle'
+  | 'boardLine'
+  | 'boardArc'
+  | 'boardFit'
+  | 'boardCopy'
+  | 'boardPaste'
+  | 'boardDuplicate'
+  | 'boardDelete'
+  | 'boardMirrorH'
+  | 'boardMirrorV'
+  | 'boardRotate';
 
-export type ShortcutGroup = 'general' | 'navigation' | 'project';
+export type ShortcutGroup = 'general' | 'navigation' | 'project' | 'board';
 
 export interface Shortcut {
   id: ShortcutId;
@@ -40,9 +54,40 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'newProject', keys: 'c', group: 'navigation' },
   { id: 'undo', keys: 'mod+z', group: 'project', page: true },
   { id: 'redo', keys: 'mod+y', group: 'project', page: true },
+  // Drawing board (T242, D-039): handled by the board itself; listed in the help dialog, used in
+  // the inspector tooltips.
+  { id: 'boardSelect', keys: 'v', group: 'board', page: true },
+  { id: 'boardPan', keys: 'h', group: 'board', page: true },
+  { id: 'boardRect', keys: 'r', group: 'board', page: true },
+  { id: 'boardCircle', keys: 'c', group: 'board', page: true },
+  { id: 'boardLine', keys: 'l', group: 'board', page: true },
+  { id: 'boardArc', keys: 'a', group: 'board', page: true },
+  { id: 'boardFit', keys: 'f', group: 'board', page: true },
+  { id: 'boardCopy', keys: 'mod+c', group: 'board', page: true },
+  { id: 'boardPaste', keys: 'mod+v', group: 'board', page: true },
+  { id: 'boardDuplicate', keys: 'mod+d', group: 'board', page: true },
+  { id: 'boardDelete', keys: 'delete', group: 'board', page: true },
+  { id: 'boardMirrorH', keys: 'shift+x', group: 'board', page: true },
+  { id: 'boardMirrorV', keys: 'shift+y', group: 'board', page: true },
+  { id: 'boardRotate', keys: 'shift+r', group: 'board', page: true },
 ];
 
-export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = ['general', 'navigation', 'project'];
+export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
+  'general',
+  'navigation',
+  'project',
+  'board',
+];
+
+/** Event that opens the shortcuts dialog from a page (the board status bar "?", T242). */
+export const OPEN_SHORTCUTS_EVENT = 'nittcam:shortcuts';
+
+/** Display text of a shortcut for tooltips ("Shift+X", "Ctrl+D", "⌘D"). */
+export function shortcutText(id: ShortcutId, isMac: boolean): string {
+  return formatShortcut(shortcutById(id).keys, isMac)
+    .map((step) => step.join(isMac ? '' : '+'))
+    .join(' ');
+}
 
 export function shortcutById(id: ShortcutId): Shortcut {
   const found = SHORTCUTS.find((s) => s.id === id);
@@ -160,7 +205,12 @@ export function isTypingTarget(target: TargetLike | null | undefined): boolean {
   return role === 'textbox' || role === 'combobox' || role === 'searchbox';
 }
 
-const KEY_NAMES: Record<string, string> = { arrowup: '↑', arrowdown: '↓', enter: '↵' };
+const KEY_NAMES: Record<string, string> = {
+  arrowup: '↑',
+  arrowdown: '↓',
+  enter: '↵',
+  delete: 'Delete',
+};
 
 /** Display keys per step, e.g. "mod+k" → [["Ctrl", "K"]] or [["⌘", "K"]]; "g p" → [["G"], ["P"]]. */
 export function formatShortcut(keys: string, isMac: boolean): string[][] {
