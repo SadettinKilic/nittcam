@@ -168,7 +168,7 @@ test.describe('T020 simulation', () => {
     const panel = page.getByTestId('gcode-panel');
     const row = panel
       .locator('button[data-line]')
-      .filter({ hasText: /^\d+\s*G1 / })
+      .filter({ hasText: /^Satır\s*\d+:\s*G1 / })
       .nth(3);
     const line = await row.getAttribute('data-line');
     await row.click();

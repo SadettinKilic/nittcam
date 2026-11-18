@@ -1,4 +1,5 @@
 import { partBoxSize, type Placement, type Project } from '@nittcam/core';
+import { readTokenColors } from '../../lib/canvas-theme';
 
 /** Pixels per mm and the pan of the stage. */
 export interface ViewState {
@@ -33,20 +34,15 @@ const TOKENS: Record<keyof CanvasColors, string> = {
   partStroke: '--color-part-stroke',
   partLocked: '--color-part-locked',
   partLockedStroke: '--color-part-locked-stroke',
-  selected: '--color-accent',
+  selected: '--color-selection',
   conflict: '--color-danger',
-  conflictFill: '--color-danger-bg',
+  conflictFill: '--color-danger-subtle',
   text: '--color-fg',
 };
 
 /** Reads the colour tokens from the document (browser only). */
 export function readColors(): CanvasColors {
-  const style = getComputedStyle(document.documentElement);
-  const out = {} as CanvasColors;
-  for (const [key, token] of Object.entries(TOKENS) as [keyof CanvasColors, string][]) {
-    out[key] = style.getPropertyValue(token).trim() || '#888888';
-  }
-  return out;
+  return readTokenColors(TOKENS, getComputedStyle(document.documentElement));
 }
 
 /** Stable key of a part copy. */

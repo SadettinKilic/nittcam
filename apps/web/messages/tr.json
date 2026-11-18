@@ -818,8 +818,8 @@
     "gcode": {
       "title": "G-code",
       "label": "G-code satırları. Bir satıra tıklayınca simülasyon o satıra gider.",
-      "line": "Satır {line}: {text}",
-      "file": "Dosya: {name}"
+      "file": "Dosya: {name}",
+      "lineWord": "Satır"
     },
     "zStrip": {
       "label": "Z derinliği / zaman. Tıklayınca o ana gidilir.",

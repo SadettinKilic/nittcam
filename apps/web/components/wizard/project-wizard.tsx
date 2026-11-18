@@ -634,6 +634,7 @@ function WizardSession({
       <nav
         aria-label={t.steps.label}
         data-testid="wizard-footer"
+        data-wizard-footer=""
         className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
       >
         <div className="flex items-center justify-between gap-3">

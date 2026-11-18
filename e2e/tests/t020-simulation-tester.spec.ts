@@ -141,7 +141,7 @@ test.describe('T020 tester: simulation UX', () => {
       lastLine = line;
       const row = panel.locator(`button[data-file="0"][data-line="${line}"]`);
       await expect(row).toHaveAttribute('aria-current', 'true');
-      const text = ((await row.getAttribute('aria-label')) ?? '').replace(/^Satır \d+: /, '');
+      const text = (await row.getAttribute('data-text')) ?? '';
       expect(text).toMatch(/^(N\d+ )?G0?[0-3]\b/);
       const pos = readout((await page.getByTestId('sim-position').textContent()) ?? '');
       expect(pos).not.toBeNull();
@@ -160,11 +160,11 @@ test.describe('T020 tester: simulation UX', () => {
     await toSimulation(page);
     const canvas = await ready(page);
     const panel = page.getByTestId('gcode-panel');
-    const rows = panel.locator('button[data-line]').filter({ hasText: /^\d+\s*G[123] / });
+    const rows = panel.locator('button[data-line]').filter({ hasText: /^Satır\s*\d+:\s*G[123] / });
     for (const idx of [2, 5, 9]) {
       const row = rows.nth(idx);
       const line = (await row.getAttribute('data-line')) ?? '';
-      const text = ((await row.getAttribute('aria-label')) ?? '').replace(/^Satır \d+: /, '');
+      const text = (await row.getAttribute('data-text')) ?? '';
       await row.click();
       await expect(panel).toHaveAttribute('data-current-line', line);
       const pos = readout((await page.getByTestId('sim-position').textContent()) ?? '');

@@ -61,8 +61,8 @@ export const GcodePanel = memo(function GcodePanel({
   const digits = String(Math.max(...files.map((f) => f.lines.length), 1)).length;
 
   return (
-    <div className="flex min-w-0 flex-col gap-2">
-      <h3 id="gcode-title" className="text-sm font-semibold">
+    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-border bg-surface p-3 shadow-xs">
+      <h3 id="gcode-title" className="px-1 text-sm font-semibold text-fg">
         {t.gcode.title}
       </h3>
       <p id="gcode-help" className="sr-only">
@@ -78,7 +78,7 @@ export const GcodePanel = memo(function GcodePanel({
         data-current-file={current?.file ?? ''}
         tabIndex={0}
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
-        className="relative overflow-auto rounded-lg border border-border bg-bg font-mono text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="relative overflow-auto rounded-lg border border-border-subtle bg-surface-subtle font-mono text-xs outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         style={{ height }}
       >
         <div style={{ height: rows.length * ROW, position: 'relative' }}>
@@ -90,7 +90,7 @@ export const GcodePanel = memo(function GcodePanel({
                 <div
                   key={`f${row.file}`}
                   style={style}
-                  className="absolute inset-x-0 flex items-center truncate bg-sidebar px-2 font-sans font-semibold text-fg-muted"
+                  className="absolute inset-x-0 flex items-center truncate border-b border-border-subtle bg-surface-hover px-2 font-sans text-2xs font-semibold text-fg-muted"
                 >
                   {fill(t.gcode.file, { name: row.name })}
                 </div>
@@ -104,18 +104,19 @@ export const GcodePanel = memo(function GcodePanel({
                 style={style}
                 data-line={row.line}
                 data-file={row.file}
+                data-text={row.text}
                 aria-current={active ? 'true' : undefined}
-                aria-label={fill(t.gcode.line, { line: row.line, text: row.text })}
                 onClick={() => onSeek(row.file, row.line)}
-                className={`absolute inset-x-0 flex items-center gap-2 px-2 text-left whitespace-pre focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${active ? 'bg-accent text-accent-fg' : 'hover:bg-sidebar'} ${!active && row.text.trimStart().startsWith('(') ? 'text-fg-muted' : ''}`}
+                className={`absolute inset-x-0 flex items-center gap-2 px-2 text-left whitespace-pre outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${active ? 'bg-accent-subtle text-fg shadow-[inset_2px_0_0_var(--color-accent)]' : 'text-fg hover:bg-surface-hover'} ${!active && row.text.trimStart().startsWith('(') ? 'text-fg-muted' : ''}`}
               >
+                <span className="sr-only">{t.gcode.lineWord} </span>
                 <span
-                  aria-hidden="true"
-                  className={`shrink-0 text-right tabular-nums ${active ? 'opacity-90' : 'text-fg-muted'}`}
+                  className={`shrink-0 text-right tabular-nums ${active ? 'font-semibold text-accent-text' : 'text-fg-subtle'}`}
                   style={{ width: `${digits + 0.5}ch` }}
                 >
                   {row.line}
                 </span>
+                <span className="sr-only">: </span>
                 <span className="truncate">{row.text}</span>
               </button>
             );

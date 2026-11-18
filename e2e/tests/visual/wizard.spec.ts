@@ -40,7 +40,9 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await mockSaves(page);
       });
 
-      test('steps 1–2: machine & sheet, parts (T109)', async ({ page }) => {
+      test('steps 1–4: machine & sheet, parts, layout, simulation (T109, T110)', async ({
+        page,
+      }) => {
         await openNewProject(page, 'makine');
         await expect(page.getByTestId('sheet-preview')).toBeVisible();
         await expectNoA11yViolations(page);
@@ -53,6 +55,19 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoA11yViolations(page);
         await snap(page, `t109-wizard-parts-${vp}-${theme}`, { fullPage: false });
         await expect(page.getByRole('heading', { name: tr.cutList.tableLabel })).toBeVisible();
+
+        await goStep(page, 'dizilim');
+        await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+        await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
+        await page.mouse.move(0, 0);
+        await expectNoA11yViolations(page);
+        await snap(page, `t110-wizard-layout-${vp}-${theme}`, { fullPage: false });
+
+        await goStep(page, 'simulasyon');
+        await expect(page.getByTestId('sim-check-status')).toBeVisible({ timeout: 30_000 });
+        await page.mouse.move(0, 0);
+        await expectNoA11yViolations(page);
+        await snap(page, `t110-wizard-simulation-${vp}-${theme}`, { fullPage: false });
       });
     });
   }

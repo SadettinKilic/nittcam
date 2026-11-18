@@ -32,16 +32,16 @@ export function SummaryCard({
     <section
       aria-labelledby="sim-summary-title"
       data-testid="sim-summary"
-      className="flex flex-col gap-3 rounded-card border border-border p-4"
+      className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="sim-summary-title" className="text-xl font-semibold">
+        <h2 id="sim-summary-title" className="text-base font-semibold tracking-tight text-fg">
           {s.title}
         </h2>
         <p
           data-testid="sim-check-status"
           data-ok={checksOk}
-          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ${checksOk ? 'bg-ok-bg text-ok' : 'bg-danger-bg text-danger'}`}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${checksOk ? 'border-success-border bg-success-subtle text-success-text' : 'border-danger-border bg-danger-subtle text-danger-text'}`}
         >
           <span aria-hidden="true">{checksOk ? '✓' : '✕'}</span>
           {checksOk ? s.checksOk : fill(s.checksFail, { count: errorCount })}
@@ -49,9 +49,15 @@ export function SummaryCard({
       </div>
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {tiles.map(([key, label, value]) => (
-          <div key={key} className="rounded-lg bg-sidebar p-3">
+          <div
+            key={key}
+            className="rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2.5"
+          >
             <dt className="text-xs text-fg-muted">{label}</dt>
-            <dd className="text-xl font-semibold tabular-nums" data-testid={`sim-summary-${key}`}>
+            <dd
+              className="mt-0.5 text-lg font-semibold tracking-tight text-fg tabular-nums"
+              data-testid={`sim-summary-${key}`}
+            >
               {value}
             </dd>
           </div>
@@ -70,7 +76,7 @@ export function SummaryCard({
       </p>
       {warnings.length > 0 ? (
         <details className="text-sm">
-          <summary className="cursor-pointer font-medium text-warn">
+          <summary className="cursor-pointer rounded-sm font-medium text-warning-text">
             {fill(s.warnings, { count: warnings.length })}
           </summary>
           <div className="mt-2">
