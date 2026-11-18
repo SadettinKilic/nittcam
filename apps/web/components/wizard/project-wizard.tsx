@@ -659,8 +659,7 @@ function WizardSession({
           variant={
             session.saveState === 'error' || session.saveState === 'conflict'
               ? 'danger'
-              : session.saveState === 'saved' ||
-                  (session.saveState === 'idle' && session.projectId)
+              : session.saveState === 'saved' || (session.saveState === 'idle' && session.projectId)
                 ? 'success'
                 : 'neutral'
           }
@@ -702,7 +701,7 @@ function WizardSession({
   return (
     <main
       data-workspace={workspace ? '' : undefined}
-      className={`mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col gap-3 px-4 pt-1 sm:gap-5 sm:px-6 sm:pt-5 lg:px-8 ${workspace ? 'max-w-none max-sm:gap-2 lg:h-[calc(100dvh-3.5rem)] lg:gap-3 lg:overflow-hidden lg:pt-3' : 'max-w-[96rem]'}`}
+      className={`mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col gap-3 px-4 pt-1 sm:gap-5 sm:px-6 sm:pt-5 ${workspace ? 'max-w-none max-sm:gap-2 lg:h-[calc(100dvh-3.5rem)] lg:gap-2 lg:overflow-hidden lg:pt-2' : 'max-w-[96rem] lg:px-8'}`}
     >
       {phone ? (
         <>
@@ -732,31 +731,38 @@ function WizardSession({
         </>
       ) : (
         <>
-        {/* One header row on ≥ 1400 px (T197; narrower screens would squeeze the stepper): project name, stepper, undo/redo. */}
-        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-5 min-[1400px]:flex-nowrap min-[1400px]:items-center">
-          <header className="contents">
-            <NameField
-              label={t.nameLabel}
-              value={session.name}
-              onCommit={session.rename}
-              autoSelect={session.projectId === null && step === 'makine'}
-            />
-            <div className="order-2 flex items-center gap-1 min-[1400px]:order-3 min-[1400px]:shrink-0">
-              {headerActions}
+          {/* One header row on ≥ 1400 px (T197; narrower screens would squeeze the stepper): project name, stepper, undo/redo. */}
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-5 min-[1400px]:flex-nowrap min-[1400px]:items-center">
+            <header className="contents">
+              <NameField
+                label={t.nameLabel}
+                value={session.name}
+                onCommit={session.rename}
+                autoSelect={session.projectId === null && step === 'makine'}
+              />
+              <div className="order-2 flex items-center gap-1 min-[1400px]:order-3 min-[1400px]:shrink-0">
+                {headerActions}
+              </div>
+            </header>
+
+            <div className="order-3 flex w-full min-w-0 items-center gap-3 min-[1400px]:order-2 min-[1400px]:w-auto min-[1400px]:flex-1 min-[1400px]:max-[1679px]:min-w-min">
+              {step === 'parcalar' && wide ? (
+                <div className="shrink-0" data-testid="wizard-view-switch">
+                  {viewSwitch}
+                </div>
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <StepIndicator
+                  t={t.steps}
+                  headingRef={heading}
+                  current={step}
+                  statuses={wizardStepStatuses(step, progress)}
+                  progress={progress}
+                  onGo={go}
+                />
+              </div>
             </div>
-          </header>
-  
-          <div className="order-3 w-full min-w-0 min-[1400px]:order-2 min-[1400px]:w-auto min-[1400px]:flex-1 min-[1400px]:max-[1679px]:min-w-min">
-            <StepIndicator
-              t={t.steps}
-              headingRef={heading}
-              current={step}
-              statuses={wizardStepStatuses(step, progress)}
-              progress={progress}
-              onGo={go}
-            />
           </div>
-        </div>
         </>
       )}
 
@@ -782,9 +788,9 @@ function WizardSession({
         </Callout>
       ) : null}
 
-      {step === 'parcalar' && !switchInCanvas ? (
+      {step === 'parcalar' && !drawing ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 lg:-mt-1">
-          {viewSwitch}
+          {wide ? null : viewSwitch}
           {drawing ? null : (
             <p className="max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
           )}
@@ -812,7 +818,7 @@ function WizardSession({
         aria-label={t.steps.label}
         data-testid="wizard-footer"
         data-wizard-footer=""
-        className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+        className={`sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:-mx-6 sm:px-6 ${workspace ? 'lg:py-2' : 'lg:-mx-8 lg:px-8'}`}
       >
         <div className="flex items-center justify-between gap-3">
           <Button
@@ -907,7 +913,7 @@ function StepIndicator({
   const StepIcon = STEP_ICONS[current];
   return (
     <div
-      className={`${panelClass} flex flex-col gap-2 px-3 py-2.5 sm:px-4 lg:flex-row lg:items-center lg:gap-6`}
+      className={`${panelClass} flex flex-col gap-2 px-3 py-2.5 sm:px-4 lg:flex-row lg:items-center lg:gap-6 lg:py-1.5`}
     >
       {/* B4b: on the tightest one-row widths (1400–1479 px) the step icon and "Adım n / 5" yield. */}
       <div className="flex min-w-0 items-center gap-3 lg:shrink-0">

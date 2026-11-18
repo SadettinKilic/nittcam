@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useMediaQuery, WORKSPACE_DESKTOP } from '../../lib/use-media-query';
 import { useId, useState, type ReactNode } from 'react';
+import { readPanelOpen, writePanelOpen, type PanelSide } from '../../lib/workspace-panels';
 
 export interface WorkspaceLabels {
   /** Accessible name of the left settings panel ("Ayarlar"). */
@@ -39,11 +40,14 @@ export interface WorkspaceLabels {
 
 export interface WorkspaceLayoutProps {
   labels: WorkspaceLabels;
-  /** Settings panel (300 px on desktop, collapsible, compact density). */
+  /** Settings panel (232 px on desktop, collapsible, compact density). */
   left?: ReactNode;
+  /** Desktop panel header next to the collapse button (default: the panel's name). */
+  leftHeader?: ReactNode;
+  rightHeader?: ReactNode;
   /** The drawing; it fills the remaining viewport height on ≥ 1024 px. */
   canvas: ReactNode;
-  /** Inspector (280 px, collapsible): selected part, G-code. */
+  /** Inspector (264 px, collapsible): selected part, G-code. */
   right?: ReactNode;
   /** Floating controls on top of the canvas (toolbars, legend, scale), positioned by the caller. */
   canvasOverlay?: ReactNode;
@@ -65,6 +69,8 @@ export function WorkspaceLayout({
   left,
   canvas,
   right,
+  leftHeader,
+  rightHeader,
   canvasOverlay,
   canvasFooter,
   compactAction,
@@ -74,8 +80,20 @@ export function WorkspaceLayout({
   const [sheet, setSheet] = useState<'left' | 'right' | null>(null);
   const leftId = useId();
   const rightId = useId();
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  // T241: one remembered open/collapsed state per side for every workspace; the left panel
+  // starts collapsed below 1280 px. Workspaces mount on the client only (after the wizard's
+  // data loaded), so the stored state is read in the initialiser.
+  const initial = (side: PanelSide) =>
+    typeof window === 'undefined' ? true : readPanelOpen(side, window.innerWidth);
+  const [leftOpen, setLeftOpen] = useState(() => initial('left'));
+  const [rightOpen, setRightOpen] = useState(() => initial('right'));
+  const toggle = (side: PanelSide) => () => {
+    const set = side === 'left' ? setLeftOpen : setRightOpen;
+    set((o) => {
+      writePanelOpen(side, !o);
+      return !o;
+    });
+  };
   const hasLeft = left !== undefined && left !== null;
   const hasRight = right !== undefined && right !== null;
 
@@ -198,7 +216,7 @@ export function WorkspaceLayout({
       data-left={hasLeft ? (leftOpen ? 'open' : 'closed') : 'none'}
       data-right={hasRight ? (rightOpen ? 'open' : 'closed') : 'none'}
       className={cn(
-        'flex min-w-0 flex-col gap-4 lg:grid lg:h-full lg:min-h-0 lg:gap-3',
+        'flex min-w-0 flex-col gap-4 lg:grid lg:h-full lg:min-h-0 lg:gap-2',
         'lg:grid-cols-[auto_minmax(0,1fr)_auto]',
       )}
     >
@@ -208,9 +226,10 @@ export function WorkspaceLayout({
           side="left"
           open={leftOpen}
           label={labels.left}
+          header={leftHeader}
           collapse={labels.collapseLeft}
           expand={labels.expandLeft}
-          onToggle={() => setLeftOpen((o) => !o)}
+          onToggle={toggle('left')}
         >
           {left}
         </SidePanel>
@@ -226,9 +245,10 @@ export function WorkspaceLayout({
           side="right"
           open={rightOpen}
           label={labels.right}
+          header={rightHeader}
           collapse={labels.collapseRight}
           expand={labels.expandRight}
-          onToggle={() => setRightOpen((o) => !o)}
+          onToggle={toggle('right')}
         >
           {right}
         </SidePanel>
@@ -244,6 +264,7 @@ function SidePanel({
   side,
   open,
   label,
+  header,
   collapse,
   expand,
   onToggle,
@@ -253,6 +274,7 @@ function SidePanel({
   side: 'left' | 'right';
   open: boolean;
   label: string;
+  header?: ReactNode;
   collapse: string;
   expand: string;
   onToggle: () => void;
@@ -273,17 +295,23 @@ function SidePanel({
       data-state={open ? 'open' : 'closed'}
       className={cn(
         'flex min-w-0 flex-col lg:min-h-0',
-        open ? (side === 'left' ? 'lg:w-[300px]' : 'lg:w-[280px]') : 'lg:w-10',
+        open ? (side === 'left' ? 'lg:w-[232px]' : 'lg:w-[264px]') : 'lg:w-10',
         side === 'left' ? 'order-2 lg:order-none' : 'order-3 lg:order-none',
       )}
     >
+      {/* T241: the collapse button sits in the panel's own header row (name / count). */}
       <div
         className={cn(
-          'hidden shrink-0 items-center pb-1 lg:flex',
-          side === 'left' ? 'justify-end' : 'justify-start',
-          !open && 'justify-center',
+          'hidden h-9 shrink-0 items-center gap-2 lg:flex',
+          open ? 'pl-3' : 'justify-center',
         )}
+        data-testid={`workspace-${side}-header`}
       >
+        {open ? (
+          <div className="flex min-w-0 flex-1 items-baseline gap-1.5 text-sm">
+            {header ?? <h2 className="truncate text-sm font-semibold text-fg">{label}</h2>}
+          </div>
+        ) : null}
         <Tooltip content={open ? collapse : expand}>
           <IconButton
             size="sm"

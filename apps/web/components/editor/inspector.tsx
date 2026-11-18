@@ -56,7 +56,7 @@ export function EditorInspector({
       aria-label={t.title}
       data-testid="editor-inspector"
     >
-      <h2 className="text-sm font-semibold">
+      <h2 className="text-sm font-semibold lg:hidden">
         {selected.length > 1
           ? t.many.replace('{count}', String(selected.length))
           : (part?.name.trim() ?? '') || t.title}

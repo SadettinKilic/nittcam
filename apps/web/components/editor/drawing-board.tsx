@@ -782,6 +782,13 @@ export function DrawingBoard({
   }, [actions]);
 
   const panMode = state.tool === 'pan' || spaceDown;
+  const firstSelected = selected[0];
+  const inspectorTitle =
+    selected.length > 1
+      ? t.inspector.many.replace('{count}', String(selected.length))
+      : (firstSelected
+          ? (project.parts.find((x) => x.id === firstSelected.id)?.name.trim() ?? '')
+          : '') || t.inspector.title;
   const floating =
     'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
 
@@ -1000,6 +1007,19 @@ export function DrawingBoard({
     <WorkspaceLayout
       testId="editor-workspace"
       labels={t.workspace}
+      leftHeader={
+        <>
+          <h2 className="truncate font-semibold text-fg">{t.parts.title}</h2>
+          <span className="shrink-0 text-xs text-fg-muted tabular-nums">
+            {t.parts.count.replace('{count}', String(project.parts.length))}
+          </span>
+        </>
+      }
+      rightHeader={
+        <h2 className="truncate font-semibold text-fg" data-testid="editor-inspector-title">
+          {inspectorTitle}
+        </h2>
+      }
       left={
         <BoardPartList
           t={t.parts}
