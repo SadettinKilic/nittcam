@@ -818,9 +818,9 @@ function StepIndicator({
                   aria-current={active ? 'step' : undefined}
                   data-testid={`wizard-step-${s}`}
                   data-status={status}
-                  title={blocker && !active ? t.blocked[blocker] : undefined}
+                  title={blocker && !active ? `${t[s]}: ${t.blocked[blocker]}` : t[s]}
                   onClick={() => onGo(s)}
-                  className={`group flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:px-2 ${focusRing}`}
+                  className={`group flex min-h-10 min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:px-2 ${focusRing}`}
                 >
                   <span
                     aria-hidden="true"
@@ -842,11 +842,15 @@ function StepIndicator({
                       i + 1
                     )}
                   </span>
-                  <span
-                    className={`${active ? 'font-semibold text-fg' : status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} ${active ? 'sr-only' : 'sr-only whitespace-nowrap xl:not-sr-only min-[1400px]:sr-only min-[1680px]:not-sr-only'}`}
-                  >
-                    {t[s]}
-                  </span>
+                  {active ? null : (
+                    <span
+                      aria-hidden="true"
+                      className={`${status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} hidden min-w-0 truncate whitespace-nowrap xl:max-[1399px]:block min-[1680px]:block`}
+                    >
+                      {t[s]}
+                    </span>
+                  )}
+                  <span className="sr-only">{t[s]}</span>
                   <span className="sr-only">
                     {` (${t.status[status]}${blocker && !active ? `: ${t.blocked[blocker]}` : ''})`}
                   </span>

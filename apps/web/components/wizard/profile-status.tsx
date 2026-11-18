@@ -47,6 +47,7 @@ export function ProfileStatusChip({
       </PopoverTrigger>
       <PopoverContent
         align="end"
+        aria-label={t.chip}
         className="flex max-w-sm flex-col gap-2 text-sm"
         data-testid="profile-status-detail"
       >
