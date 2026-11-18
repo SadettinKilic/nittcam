@@ -29,8 +29,8 @@ test.describe('T194 tester: brand', () => {
         const logo = page.getByRole('link', { name: /NittCam/ }).first();
         await expect(logo).toBeVisible();
         const box = await logo.boundingBox();
-        expect(box!.x).toBeGreaterThanOrEqual(0);
-        expect(box!.x + box!.width).toBeLessThanOrEqual(size.width);
+        expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
+        expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(size.width);
         await expectNoA11yViolations(page);
         await snap(page, `t194-tester-${vp}-${theme}`, { baseline: false });
       });
