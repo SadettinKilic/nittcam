@@ -26,7 +26,9 @@ import type { Project } from '../schema';
 import { placedOutline } from './build';
 
 type PostId = 'generic' | 'mach3';
-const ANGLES = [0.001, 1, 30, 45, 60, 89.999, 90.001, 135, 179.999, 200.5, 270.001, 315, 359.999];
+const ANGLES = [
+  0.001, 1, 7.5, 30, 45, 60, 89.999, 90.001, 135, 150, 179.999, 200.5, 270.001, 315, 330, 359.999,
+];
 const TOOL_R = 4; // golden profile: D8
 /** Post rounding (3–4 decimals) plus offset/arc noise. */
 const TOL = 0.005;
