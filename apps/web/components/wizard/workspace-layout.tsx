@@ -162,7 +162,12 @@ export function WorkspaceLayout({
           </div>
           {canvasColumn('h-[max(55dvh,280px)] flex-1')}
         </div>
-        <div className="flex items-center gap-2 md:justify-end">
+        {/* B4b: on short phones the panel bar sticks just above the sticky wizard footer
+            (its height, incl. the safe area, is published as --wizard-footer-h). */}
+        <div
+          data-testid="workspace-panel-bar"
+          className="sticky bottom-[calc(var(--wizard-footer-h,4.25rem)+0.25rem)] z-10 -my-1 flex items-center gap-2 bg-bg/90 py-1 backdrop-blur-sm md:static md:my-0 md:justify-end md:bg-transparent md:py-0 md:backdrop-blur-none"
+        >
           <div className="flex min-w-0 flex-1 gap-2 md:hidden">
             {panelButton('left', false)}
             {panelButton('right', false)}

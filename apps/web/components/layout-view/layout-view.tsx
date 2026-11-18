@@ -38,7 +38,7 @@ import {
   TabsTrigger,
   Tooltip,
 } from '@nittcam/ui';
-import { Info, Lock, LockOpen, Maximize, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { Grid3x3, Info, Lock, LockOpen, Maximize, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { onThemeChange } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
@@ -502,14 +502,15 @@ export function LayoutView({
   );
 
   // Floating canvas toolbar (T197): plate tabs top-left, grid/zoom/fit top-right, legend
-  // bottom-left (popover), cursor + scale bottom-right.
+  // bottom-left (popover), cursor + scale bottom-right. Below 640 px the plate tabs get their own
+  // full-width row above the toolbar (B4b), so each tab keeps its "Plaka N" label.
   const floating =
     'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
   const overlay = (
     <>
-      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
+      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-end gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div
-          className={`${floating} min-w-0 overflow-x-auto p-0.5`}
+          className={`${floating} max-w-full min-w-0 overflow-x-auto p-0.5 max-sm:self-stretch`}
           data-testid="sheet-tabs-scroll"
         >
           <TabsList
@@ -540,8 +541,9 @@ export function LayoutView({
         <div className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}>
           <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-fg-muted">
             <Checkbox id={gridId} checked={grid} onCheckedChange={(v) => setGrid(v === true)} />
-            <label htmlFor={gridId} className="cursor-pointer">
-              {t.grid}
+            <label htmlFor={gridId} className="flex cursor-pointer items-center" title={t.grid}>
+              <Grid3x3 aria-hidden className="size-4 sm:hidden" />
+              <span className="max-sm:sr-only">{t.grid}</span>
             </label>
           </div>
           <Tooltip content={t.zoomOut}>
@@ -579,7 +581,8 @@ export function LayoutView({
           </Tooltip>
         </div>
       </div>
-      <div className="pointer-events-none absolute bottom-2 left-2 z-10">
+      {/* B4b: on phones the sticky panel bar may cover the canvas foot until the page scrolls. */}
+      <div className="pointer-events-none absolute bottom-2 left-2 z-10 max-sm:bottom-8">
         <Popover>
           <PopoverTrigger asChild>
             <Button

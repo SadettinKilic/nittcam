@@ -302,6 +302,23 @@ function WizardSession({
   const stepRef = useRef(step);
   const heading = useRef<HTMLHeadingElement>(null);
   const focusHeading = useRef(false);
+  const footer = useRef<HTMLElement>(null);
+
+  // B4b: publish the sticky footer's height (incl. the safe area) so the phone panel bar of the
+  // canvas workspaces can stick just above it instead of sliding under it.
+  useEffect(() => {
+    const el = footer.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const root = document.documentElement;
+    const ro = new ResizeObserver(() => {
+      root.style.setProperty('--wizard-footer-h', `${el.getBoundingClientRect().height}px`);
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty('--wizard-footer-h');
+    };
+  }, []);
 
   // Machine profiles by id (the selected one is fetched when the selection changes).
   const [details, setDetails] = useState<Record<string, MachineDetail>>(() =>
@@ -570,7 +587,7 @@ function WizardSession({
             onCommit={session.rename}
             autoSelect={session.projectId === null && step === 'makine'}
           />
-          <div className="order-2 flex items-center gap-1 min-[1400px]:order-3">
+          <div className="order-2 flex items-center gap-1 min-[1400px]:order-3 min-[1400px]:shrink-0">
             {simMachine ? (
               <ProfileStatusChip
                 t={t.profileStatus}
@@ -683,6 +700,7 @@ function WizardSession({
       </div>
 
       <nav
+        ref={footer}
         aria-label={t.steps.label}
         data-testid="wizard-footer"
         data-wizard-footer=""
@@ -783,15 +801,16 @@ function StepIndicator({
     <div
       className={`${panelClass} flex flex-col gap-2 px-3 py-2.5 sm:px-4 lg:flex-row lg:items-center lg:gap-6`}
     >
+      {/* B4b: on the tightest one-row widths (1400–1479 px) the step icon and "Adım n / 5" yield. */}
       <div className="flex min-w-0 items-center gap-3 lg:shrink-0">
         <span
           aria-hidden="true"
-          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:flex [&_svg]:size-5"
+          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:max-[1399px]:flex min-[1480px]:flex [&_svg]:size-5"
         >
           <StepIcon />
         </span>
         <div className="flex min-w-0 flex-col">
-          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase">
+          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase min-[1400px]:max-[1479px]:sr-only">
             {fill(t.stepOf, { n: index + 1, total: STEPS.length })}
           </p>
           <h1
@@ -799,7 +818,7 @@ function StepIndicator({
             tabIndex={-1}
             data-testid="wizard-step-title"
             data-step={current}
-            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:text-xl"
+            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:max-[1399px]:text-xl min-[1480px]:text-xl"
           >
             {t[current]}
           </h1>
@@ -904,12 +923,14 @@ function NameField({
     if (name !== '' && name !== value) onCommit(name.slice(0, 120));
   }
   return (
-    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:min-w-64 min-[1400px]:flex-[0_1_20rem]">
+    // B4b: in the one-row header (≥ 1400 px) the name yields first, down to 10rem (ellipsis + title).
+    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:max-[1399px]:min-w-64 min-[1400px]:min-w-40 min-[1400px]:flex-[0_1_20rem]">
       <span className="px-2 text-xs font-medium text-fg-subtle">{label}</span>
       <input
         ref={input}
         type="text"
         data-testid="project-name"
+        title={text ?? value}
         value={text ?? value}
         maxLength={120}
         onChange={(e) => setText(e.target.value)}
@@ -920,7 +941,7 @@ function NameField({
             commit();
           } else if (e.key === 'Escape') setText(null);
         }}
-        className="h-10 w-full max-w-xl rounded-md border border-transparent bg-transparent px-2 text-lg font-semibold tracking-tight text-fg transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid hover:border-border focus-visible:border-border-strong focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus sm:text-xl"
+        className="h-10 w-full max-w-xl rounded-md border text-ellipsis border-transparent bg-transparent px-2 text-lg font-semibold tracking-tight text-fg transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid hover:border-border focus-visible:border-border-strong focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus sm:text-xl"
       />
     </label>
   );
