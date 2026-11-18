@@ -89,6 +89,13 @@ const UI_PAIRS: Array<[string, string]> = [
   ['focus', 'bg'],
   ['accent', 'surface'],
   ['danger', 'surface'],
+  // Canvas (T196): a part is separable from the sheet and the sheet from the well, by stroke.
+  ['sheet-edge', 'canvas'],
+  ['sheet-edge', 'sheet-margin'],
+  ['part-stroke', 'sheet-waste'],
+  ['part-stroke', 'part'],
+  ['sim-part-stroke', 'sheet-waste'],
+  ['sim-part-stroke', 'sim-part'],
 ];
 
 describe.each([

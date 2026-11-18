@@ -209,7 +209,7 @@ Acceptance:
 - [ ] collapses gracefully: at 320 px and on the collapsed rail it shrinks/abbreviates without overflow; accessible name "NittCam, ana sayfa" unchanged; favicon may stay
 Tester focus: shell baselines light/dark at 1440/390/320; no overflow; axe.
 
-### T196 Canvas visual language v1 (layout, simulation, sheet preview)   [status: todo]
+### T196 Canvas visual language v1 (layout, simulation, sheet preview)   [status: review]
 Spec: §2.4, §3.6, §6.5 · Depends: T110, T195
 Acceptance:
 - [ ] part label = number + **name** and "W × H" in mono when the part is large enough on screen; falls back to the number only, then to nothing (no overflowing text); the same rule in layout and simulation

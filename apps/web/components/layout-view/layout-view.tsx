@@ -75,10 +75,30 @@ export interface LayoutViewProps {
   /** "Yeniden diz": re-nests keeping the locked parts. Hidden when missing. */
   onRenest?: () => void;
   renesting?: boolean;
+  /** Bumped after each new "Diz" result; the parts fade/settle in (T196). */
+  appearKey?: number;
 }
 
 const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 const pctFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+
+/** Thin utilisation bar along the bottom of a plate tab: accent fill, `warning` under 50 % (T196). */
+function UsageBar({ used }: { used: number }) {
+  const pct = Math.max(0, Math.min(100, used));
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="sheet-usage"
+      data-usage={Math.round(pct)}
+      className="absolute inset-x-2 bottom-0.5 h-0.5 overflow-hidden rounded-full bg-border-subtle"
+    >
+      <span
+        className={`block h-full rounded-full ${pct < 50 ? 'bg-warning' : 'bg-accent'}`}
+        style={{ width: `${pct}%` }}
+      />
+    </span>
+  );
+}
 const m2Format = new Intl.NumberFormat('tr-TR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -104,6 +124,7 @@ export function LayoutView({
   onLock,
   onRenest,
   renesting = false,
+  appearKey = 0,
 }: LayoutViewProps) {
   const gridId = useId();
   const selectId = useId();
@@ -373,7 +394,7 @@ export function LayoutView({
                   <TabsTrigger
                     key={i}
                     value={String(i)}
-                    className="h-8 shrink-0 gap-1.5 px-2.5 whitespace-nowrap"
+                    className="relative h-8 shrink-0 gap-1.5 px-2.5 whitespace-nowrap"
                   >
                     {fill(t.sheetTab, { n: i + 1 })}
                     {st ? (
@@ -381,6 +402,7 @@ export function LayoutView({
                         {fill(t.sheetTabWaste, { waste: pctFormat.format(st.wastePercent) })}
                       </span>
                     ) : null}
+                    {st ? <UsageBar used={100 - st.wastePercent} /> : null}
                   </TabsTrigger>
                 );
               })}
@@ -464,6 +486,7 @@ export function LayoutView({
                   onSelect={onSelect}
                   onDragMove={editable ? onDragMove : noopMove}
                   onDrop={editable ? onDrop : noopDrop}
+                  appearKey={appearKey}
                 />
               </CanvasBoundary>
             ) : null}

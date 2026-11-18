@@ -24,6 +24,8 @@ function useNest(session: ProjectSession, toolDiameter: number, t: Messages['cut
   const runNesting = useNestingWorker();
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<NestMessage>(null);
+  // Counts new "Diz" results so the layout plays its fade/settle-in once per result (T196).
+  const [nested, setNested] = useState(0);
 
   async function nest() {
     const base = session.project;
@@ -46,12 +48,14 @@ function useNest(session: ProjectSession, toolDiameter: number, t: Messages['cut
         );
       } else if (!result.changed) {
         setMessage({ kind: 'info', text: t.unchanged });
+      } else {
+        setNested((n) => n + 1);
       }
     } finally {
       setRunning(false);
     }
   }
-  return { nest, running, message };
+  return { nest, running, message, nested };
 }
 
 /** Step 3 (spec §3.6 "Dizilim"): options + "Diz" on the left, the layout view on the right. */
@@ -70,7 +74,7 @@ export function LayoutStep({
   const t = messages.wizard.layout;
   const nt = messages.cutList.nesting;
   const modeId = useId();
-  const { nest, running, message } = useNest(session, toolDiameter, nt);
+  const { nest, running, message, nested } = useNest(session, toolDiameter, nt);
   const project: Project = session.project;
   const issues: readonly ValidationIssue[] = session.issues;
   const errors = messages.wizard.machine.errors;
@@ -144,6 +148,7 @@ export function LayoutStep({
             onLock={(req: LockRequest) => run('lockPlacement', req)}
             onRenest={() => void nest()}
             renesting={running}
+            appearKey={nested}
           />
         ) : (
           <div

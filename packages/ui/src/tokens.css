@@ -156,7 +156,7 @@
   --color-sheet: #f6f8fb;
   --color-sheet-waste: #e6eaf0;
   --color-sheet-margin: #d5dbe4;
-  --color-sheet-edge: #7d8798;
+  --color-sheet-edge: #5f6879;
   --color-grid: #dde2e9;
   --color-grain: #8a93a3;
   --color-part: var(--color-brand-100);
@@ -173,7 +173,7 @@
   --color-sim-zero: var(--color-danger-600);
   --color-sim-tab: var(--color-warning-400);
   --color-sim-part: #fbfcfd;
-  --color-sim-part-stroke: #bcc4d0;
+  --color-sim-part-stroke: #727c8d;
   --color-sim-badge: var(--color-neutral-900);
   --color-sim-badge-fg: var(--color-neutral-0);
 
@@ -317,7 +317,7 @@
   --color-sheet: #1a1e25;
   --color-sheet-waste: #14171c;
   --color-sheet-margin: #232831;
-  --color-sheet-edge: #5b6575;
+  --color-sheet-edge: #7d8798;
   --color-grid: #1d2128;
   --color-grain: #6b7484;
   --color-part: #1a2a5c;
@@ -333,8 +333,8 @@
   --color-sim-envelope: var(--color-neutral-600);
   --color-sim-zero: var(--color-danger-400);
   --color-sim-tab: var(--color-warning-300);
-  --color-sim-part: #161a20;
-  --color-sim-part-stroke: #343a45;
+  --color-sim-part: #1e232b;
+  --color-sim-part-stroke: #7d8798;
   --color-sim-badge: #eceef2;
   --color-sim-badge-fg: #0d0f12;
 

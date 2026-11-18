@@ -8,6 +8,7 @@ import type { DrawnPart, ViewState } from '../layout-view/model';
 import { zoomAt } from '../layout-view/zoom';
 import { DEPTH_LEVELS, depthLevel, depthRamp, toolDiameterOf, type SimColors } from './model';
 import { canvasMonoFont } from '../../lib/canvas-theme';
+import { LINE_HEIGHT, partLabel } from '../../lib/canvas-labels';
 
 /**
  * Konva drawing of the simulation (T020, spec §6.5). Units inside the stage are millimetres in a
@@ -99,6 +100,27 @@ const StaticLayer = memo(function StaticLayer({
           ctx.stroke();
         }}
       />
+      {/* Part labels: the same zoom fallback as the layout view (T196). */}
+      {parts.map((p) => {
+        const label = partLabel({ number: p.label, name: p.name, w: p.w, h: p.h, scale });
+        const top = H - p.y - p.h + p.h / 2 - (label.lines.length * label.font * LINE_HEIGHT) / 2;
+        return label.lines.map((line, i) => (
+          <Text
+            key={`${p.key}:${i}`}
+            text={line}
+            x={p.x}
+            y={top + i * label.font * LINE_HEIGHT}
+            width={p.w}
+            align="center"
+            fontSize={label.font}
+            fontFamily={canvasMonoFont()}
+            fontStyle={i === 0 ? 'bold' : 'normal'}
+            fill={i === 0 ? colors.text : colors.dim}
+            opacity={0.8}
+            perfectDrawEnabled={false}
+          />
+        ));
+      })}
       <Rect
         x={0}
         y={0}
@@ -253,6 +275,33 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
+    // Ghost of the whole path (T196): the screen is never an empty sheet. Cuts in the accent at
+    // 35 %, rapids dashed; the played moves draw at full strength on top.
+    ctx.beginPath();
+    for (let i = 0; i < steps.length; i += 1) {
+      const s = steps[i];
+      if (!s || s.kind !== 'rapid' || !s.known) continue;
+      ctx.moveTo(x[s.p0] ?? 0, y[s.p0] ?? 0);
+      for (let k = s.p0 + 1; k <= s.p1; k += 1) ctx.lineTo(x[k] ?? 0, y[k] ?? 0);
+    }
+    ctx.setLineDash([6 * px, 4 * px]);
+    ctx.lineWidth = px;
+    ctx.strokeStyle = colors.rapid;
+    ctx.globalAlpha = 0.35;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    for (let i = 0; i < steps.length; i += 1) {
+      const s = steps[i];
+      if (!s || s.kind !== 'cut') continue;
+      ctx.moveTo(x[s.p0] ?? 0, y[s.p0] ?? 0);
+      for (let k = s.p0 + 1; k <= s.p1; k += 1) ctx.lineTo(x[k] ?? 0, y[k] ?? 0);
+    }
+    ctx.lineWidth = 1.5 * px;
+    ctx.strokeStyle = colors.ghost;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
     // Rapids: one dashed stroke.
     ctx.beginPath();
     for (let i = 0; i <= last; i += 1) {
@@ -344,8 +393,9 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
     ctx.font = `bold ${10 * px}px ${canvasMonoFont()}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    // Upcoming contours keep a faint badge so the cut order is readable before playing (T196).
     for (const c of sim.contours) {
-      if (c.step > last) break;
+      ctx.globalAlpha = c.step > last ? 0.45 : 1;
       const bx = c.x - r * 0.9;
       const by = H - c.y - r * 0.9;
       ctx.beginPath();
@@ -355,6 +405,7 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
       ctx.fillStyle = colors.badgeFg;
       ctx.fillText(String(c.n), bx, by + 0.5 * px);
     }
+    ctx.globalAlpha = 1;
 
     // Tool: translucent circle of the tool diameter at the tool centre, plus a centre mark.
     const visible =
