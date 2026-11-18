@@ -209,7 +209,7 @@ Acceptance:
 - [ ] collapses gracefully: at 320 px and on the collapsed rail it shrinks/abbreviates without overflow; accessible name "NittCam, ana sayfa" unchanged; favicon may stay
 Tester focus: shell baselines light/dark at 1440/390/320; no overflow; axe.
 
-### T196 Canvas visual language v1 (layout, simulation, sheet preview)   [status: review]
+### T196 Canvas visual language v1 (layout, simulation, sheet preview)   [status: done]
 Spec: §2.4, §3.6, §6.5 · Depends: T110, T195
 Acceptance:
 - [ ] part label = number + **name** and "W × H" in mono when the part is large enough on screen; falls back to the number only, then to nothing (no overflowing text); the same rule in layout and simulation
@@ -219,7 +219,7 @@ Acceptance:
 - [ ] "Diz" result: parts fade/settle in (≤ 240 ms total, staggered, off with reduced motion); utilisation shown as a thin bar per plate tab (accent fill, `warning` under 50 %)
 Tester focus: screenshots layout + simulation, light/dark, 1440/390; label fallback at 3 zoom levels; contrast test; reduced-motion run has no animation; golden files untouched (UI only).
 
-### T197 Workspace layout for Dizilim and Simülasyon (desktop)   [status: review]
+### T197 Workspace layout for Dizilim and Simülasyon (desktop)   [status: done]
 Spec: §3.6 · Depends: T109, T195
 Acceptance:
 - [ ] `WorkspaceLayout` in `apps/web/components/wizard/`: left settings panel (300 px, collapsible, compact density), centre canvas that **fills the remaining viewport height** (no page scroll at ≥ 1024 px on steps 3 and 4; panels scroll inside themselves), right inspector (280 px, collapsible) for the selected part / G-code
@@ -229,7 +229,7 @@ Acceptance:
 - [ ] this layout is the base the drawing board (T124) and 3D preview (T152, T160) plug into: exported with slots `left`, `canvas`, `right`, `canvasOverlay`
 Tester focus: at 1440 × 900 and 1024 × 768 the whole sheet is visible without scrolling on steps 3 and 4; panels collapse/expand with keyboard; existing layout/simulation e2e (drag, lock, play) stay green; axe.
 
-### T198 Workspace on phone and tablet: canvas first   [status: review]
+### T198 Workspace on phone and tablet: canvas first   [status: done]
 Spec: §3.7 · Depends: T197
 Acceptance:
 - [ ] below 1024 px steps 3 and 4 show the **canvas first** (≥ 55 % of the viewport height), with settings and inspector as bottom sheets opened from a two-button bar ("Ayarlar", "Parça / G-code"); "Diz" stays reachable without scrolling
@@ -238,7 +238,7 @@ Acceptance:
 - [ ] 768 px (tablet, landscape and portrait) checked as a first-class size: left panel collapses to an icon rail
 Tester focus: touch emulation at 390 × 844 and 768 × 1024: nest, select a part, play the simulation without scrolling past settings; nothing hidden behind the footer; visual both themes.
 
-### T199 Notice hierarchy: fewer, calmer warnings   [status: review]
+### T199 Notice hierarchy: fewer, calmer warnings   [status: done]
 Spec: §7.4, §8.2 · Depends: T105, T108 · Owner: FQ3
 Acceptance:
 - [ ] one rule, documented in `ui-conventions`: **danger** = blocks the action or risks the machine now; **warning** = needs the operator's confirmation once; **info** = context. At most one Callout per screen region; repeats become a status chip that opens the detail in a popover
@@ -248,7 +248,7 @@ Acceptance:
 Tester focus: **safety**: an unverified profile still cannot be downloaded without the acknowledgement; every previous warning sentence is found in the UI (string list from `tr.json`); callouts per screen region ≤ 1; axe (popover reachable by keyboard).
 
 
-### T199a CI gap: missing visual baselines fail   [status: review]
+### T199a CI gap: missing visual baselines fail   [status: done]
 Depends: T102 · Owner: PO request 2026-11-18 (B4a lost hours to flaky captures)
 Acceptance:
 - [ ] in CI a missing or changed baseline fails (`updateSnapshots: 'none'`); the actual images are copied into the `visual-screenshots` artefact as candidate baselines (`tools/ci/visual-candidates.mjs`), so the baseline-refresh workflow stays; locally (or `VISUAL_UPDATE=missing`) missing ones are still written
@@ -261,6 +261,14 @@ Tester focus: a deleted baseline makes the CI visual job red and the artefact ho
 The owner wants the drawing board early. B9 and B10 depend only on T110 (and on T197's `WorkspaceLayout`), so they run right after B4b and before M3 B5–B8. B11+ stay in M4 below. **Work order: B4b → B9 → B10 → B5 → B6 → B7 → B8 → B11 → …**
 
 ### Batch B9: T124–T126 (canvas foundation)
+
+### T199b B4b follow-ups   [status: doing]
+Spec: §3.6, §3.7 · Depends: T196–T198 · Owner: B4b tester + PO review 2026-11-18
+Acceptance:
+- [ ] desktop plate tabs never cut off the last tab (e.g. "Plaka 3" at 1440): the strip scrolls with fade edges, or the overflow goes into a "+N" menu
+- [ ] below 640 px the simulation step shows the plate tabs on their own row, the same as Dizilim
+- [ ] tool-order markers in the simulation never cover part labels (markers offset to the part corner, or labels under markers hidden at low zoom)
+Tester focus: 1440 with 3+ plates (last tab fully visible / reachable); 390 simulation with 2+ plates; simulation screenshot at fit zoom, labels readable.
 
 ### T124 Editor canvas foundation   [status: todo]
 Spec: §4.2 · Depends: T110
