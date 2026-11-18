@@ -262,7 +262,7 @@ The owner wants the drawing board early. B9 and B10 depend only on T110 (and on 
 
 ### Batch B9: T124–T126 (canvas foundation)
 
-### T199b B4b follow-ups   [status: doing]
+### T199b B4b follow-ups   [status: review]
 Spec: §3.6, §3.7 · Depends: T196–T198 · Owner: B4b tester + PO review 2026-11-18
 Acceptance:
 - [ ] desktop plate tabs never cut off the last tab (e.g. "Plaka 3" at 1440): the strip scrolls with fade edges, or the overflow goes into a "+N" menu
@@ -270,7 +270,7 @@ Acceptance:
 - [ ] tool-order markers in the simulation never cover part labels (markers offset to the part corner, or labels under markers hidden at low zoom)
 Tester focus: 1440 with 3+ plates (last tab fully visible / reachable); 390 simulation with 2+ plates; simulation screenshot at fit zoom, labels readable.
 
-### T124 Editor canvas foundation   [status: todo]
+### T124 Editor canvas foundation   [status: review]
 Spec: §4.2 · Depends: T110
 Acceptance:
 - [ ] "Çizim" view in the Parts step (tabs: Liste / Çizim, same data, §3.6); Konva stage in mm, Y up, pan (space-drag, middle mouse, two-finger), zoom to cursor (wheel, pinch), fit-to-content
@@ -279,14 +279,14 @@ Acceptance:
 - [ ] editor store: tool, selection, hover, viewport; project data only through commands
 Tester focus: pan/zoom with mouse + touch emulation; coordinates correct at 3 zoom levels; visual both themes.
 
-### T125 Selection, move, clipboard, mirror, rotate   [status: todo]
+### T125 Selection, move, clipboard, mirror, rotate   [status: review]
 Spec: §4.2, §4.4 · Depends: T124
 Acceptance:
 - [ ] click / Shift-click / box select; move by drag and arrows (1 mm, Shift 10 mm); Delete; Ctrl+C/V/D; mirror H/V; rotate 90°
 - [ ] all through commands (`movePart` in the drawing frame, `mirrorPart`, `rotatePart`) with undo; Ctrl+Z / Ctrl+Y
 Tester focus: e2e select-move-undo; clipboard paste offsets; mirror keeps outline orientation rules (outer CCW).
 
-### T126 Snap engine (core)   [status: todo]
+### T126 Snap engine (core)   [status: review]
 Spec: §4.4 · Depends: T124
 Acceptance:
 - [ ] pure `snap(point, context)`: endpoint, midpoint, centre, intersection, grid, perpendicular, 45°/90° angle lock; priority order and screen-space tolerance; returns kind + point
