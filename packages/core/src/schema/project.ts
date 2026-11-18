@@ -136,6 +136,11 @@ const partBase = {
   holes: z.array(holeSchema),
   edgeBand: edgeBandSchema,
   templates: z.array(templateRefSchema),
+  /**
+   * Position of the part's local origin on the drawing board, mm (T124, D-037). Editor-only
+   * placement: nesting, toolpath and export ignore it. Absent = the board arranges the part.
+   */
+  draw: z.strictObject({ x: coord, y: coord }).optional(),
 };
 
 /** Parametric rectangle: `params` is the source; `outline` is derived (see deriveOutline). */

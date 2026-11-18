@@ -6,7 +6,18 @@ import { Immer, enablePatches, type Patch } from 'immer';
 import { z } from 'zod';
 import { formatPath, projectSchema, type Project } from '../schema';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
-import { addPart, duplicatePart, importCutList, removePart, updatePart } from './part';
+import {
+  addPart,
+  duplicatePart,
+  importCutList,
+  mirrorPart,
+  movePart,
+  pasteParts,
+  removePart,
+  removeParts,
+  rotatePart,
+  updatePart,
+} from './part';
 import { lockPlacement, runNesting, setNestingOptions } from './nesting';
 import { setGrain, setMachine, setMaterial, setSheetSize, setThickness } from './plate';
 import {
@@ -33,6 +44,11 @@ export const COMMANDS = {
   removePart,
   duplicatePart,
   importCutList,
+  movePart,
+  mirrorPart,
+  rotatePart,
+  pasteParts,
+  removeParts,
   setNestingOptions,
   runNesting,
   lockPlacement,

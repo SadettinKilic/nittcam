@@ -153,6 +153,24 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await page.getByTestId('export-checklist').scrollIntoViewIfNeeded();
         await snap(page, `t111-wizard-export-checklist-${vp}-${theme}`, { fullPage: false });
       });
+
+      test('drawing board: parts as shapes, selection, panels (T124–T126)', async ({ page }) => {
+        await openNewProject(page, 'parcalar');
+        await paste(page, KITCHEN, 5);
+        await page.waitForURL(`**/projeler/${ID}?*`);
+        await page.getByTestId('parts-view-drawing').click();
+        const canvas = page.getByTestId('editor-canvas');
+        await expect(canvas).toHaveAttribute('data-view', /\d/);
+        if (vp === 'desktop') {
+          await page
+            .getByTestId('editor-part-list')
+            .getByRole('button', { name: 'Kapak', exact: true })
+            .click();
+        }
+        await page.mouse.move(0, 0);
+        await expectNoA11yViolations(page);
+        await snap(page, `t124-editor-board-${vp}-${theme}`, { fullPage: false });
+      });
     });
   }
 }

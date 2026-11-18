@@ -7,9 +7,18 @@
     "start": {
       "label": "Başlangıç adımları",
       "done": "tamam",
-      "machine": { "title": "Makine", "text": "Router'ınızı ve takımlarınızı tanımlayın" },
-      "cutList": { "title": "Kesim listesi", "text": "Parçaları yazın veya Excel'den yapıştırın" },
-      "gcode": { "title": "G-code", "text": "Dizin, simüle edin ve dışa aktarın" }
+      "machine": {
+        "title": "Makine",
+        "text": "Router'ınızı ve takımlarınızı tanımlayın"
+      },
+      "cutList": {
+        "title": "Kesim listesi",
+        "text": "Parçaları yazın veya Excel'den yapıştırın"
+      },
+      "gcode": {
+        "title": "G-code",
+        "text": "Dizin, simüle edin ve dışa aktarın"
+      }
     },
     "title": "Atölye özeti",
     "subtitle": "Projeleriniz, makineleriniz ve bu haftaki üretim tek bakışta.",
@@ -563,6 +572,11 @@
       "stale": "Dizilim sürerken parçalar değişti; sonuç uygulanmadı. Yeniden \"Diz\"e basın.",
       "failed": "Dizilim çalıştırılamadı: {error}",
       "unchanged": "Dizilim zaten güncel."
+    },
+    "views": {
+      "label": "Parça görünümü",
+      "list": "Liste",
+      "drawing": "Çizim"
     }
   },
   "layout": {
@@ -1024,7 +1038,11 @@
       "tableWarning": "Plaka tablaya sığmıyor: {w} × {h} mm plaka, {tw} × {td} mm tabla. Dışa aktarma kontrolü bu plakayı durdurur.",
       "noParams": "Bu makinede {material} {thickness} mm için kesim ayarı (besleme, devir, paso) yok. Makineler sayfasında bu malzemeyi ekleyin ya da başka bir kalınlık seçin.",
       "paramsOk": "Kesim ayarı: T{tool} takım, {feed} besleme, {rpm}, {step} paso.",
-      "units": { "mm": "mm", "feed": "mm/dk", "rpm": "dev/dk" },
+      "units": {
+        "mm": "mm",
+        "feed": "mm/dk",
+        "rpm": "dev/dk"
+      },
       "preview": "Önizleme",
       "previewLabel": "Tabla {tw} × {td} mm, üzerinde {w} × {h} mm plaka",
       "legendTable": "Tabla",
@@ -1469,5 +1487,83 @@
       "group": "Sayfalar",
       "items": ["Ana sayfa", "Projeler", "Makineler", "Şablonlar"]
     }
+  },
+  "editor": {
+    "canvasLabel": "Çizim tahtası: {count} parça. Tıklayarak seçin, sürükleyerek taşıyın; ok tuşları 1 mm (Shift ile 10 mm) kaydırır.",
+    "empty": "Henüz parça yok. Liste görünümünde parça ekleyin ya da Excel'den yapıştırın; parçalar burada çizim olarak görünür.",
+    "toList": "Listeye git",
+    "workspace": {
+      "left": "Parçalar",
+      "right": "Özellikler",
+      "collapseLeft": "Parça listesini gizle",
+      "expandLeft": "Parça listesini göster",
+      "collapseRight": "Özellikleri gizle",
+      "expandRight": "Özellikleri göster",
+      "openLeft": "Parçalar",
+      "openRight": "Özellikler",
+      "close": "Kapat"
+    },
+    "tools": {
+      "label": "Çizim araçları",
+      "select": "Seç",
+      "pan": "Kaydır",
+      "rect": "Dikdörtgen",
+      "circle": "Çember",
+      "line": "Çizgi",
+      "arc": "Yay",
+      "soon": "{tool} · yakında"
+    },
+    "view": {
+      "zoomIn": "Yakınlaştır",
+      "zoomOut": "Uzaklaştır",
+      "fit": "Tümünü göster",
+      "grid": "Izgara"
+    },
+    "status": {
+      "label": "Durum çubuğu",
+      "cursor": "İmleç",
+      "zoom": "Yakınlık",
+      "units": "mm",
+      "snap": "Yapışma",
+      "snapOff": "Yapışma kapalı",
+      "snapHint": "Alt basılıyken yapışma geçici olarak kapanır."
+    },
+    "snap": {
+      "endpoint": "Uç nokta",
+      "midpoint": "Orta nokta",
+      "centre": "Merkez",
+      "intersection": "Kesişim",
+      "perpendicular": "Dik",
+      "grid": "Izgara",
+      "angle": "45° / 90° kilidi"
+    },
+    "parts": {
+      "title": "Parçalar",
+      "count": "{count} parça",
+      "qty": "×{qty}",
+      "unnamed": "Adsız parça"
+    },
+    "inspector": {
+      "title": "Özellikler",
+      "none": "Bir parça seçin. Tıklayın, Shift ile ekleyin ya da boş alanda sürükleyerek kutu içine alın.",
+      "many": "{count} parça seçili",
+      "size": "Ölçü",
+      "position": "Konum",
+      "qty": "Adet",
+      "kind": {
+        "title": "Tür",
+        "rect": "Dikdörtgen",
+        "freeform": "Serbest şekil"
+      },
+      "actions": "İşlemler",
+      "mirrorH": "Yatay aynala",
+      "mirrorV": "Dikey aynala",
+      "rotate": "90° döndür",
+      "duplicate": "Çoğalt",
+      "remove": "Sil",
+      "keys": "Kısayollar: Ctrl+C kopyala · Ctrl+V yapıştır · Ctrl+D çoğalt · Delete sil · Shift+X / Shift+Y aynala · Shift+R döndür"
+    },
+    "copied": "{count} parça kopyalandı",
+    "copyName": "{name} kopya"
   }
 }

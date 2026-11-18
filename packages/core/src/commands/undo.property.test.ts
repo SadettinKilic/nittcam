@@ -150,6 +150,33 @@ const commandArb = fc.oneof(
       { requiredKeys: ['partId', 'index'] },
     ),
   }),
+  // T125 drawing-board edits.
+  fc.record({
+    name: fc.constant('movePart'),
+    params: fc.record({
+      ids: fc.array(partIdArb, { minLength: 1, maxLength: 3 }),
+      dx: fc.integer({ min: -500, max: 500 }),
+      dy: fc.integer({ min: -500, max: 500 }),
+    }),
+  }),
+  fc.record({
+    name: fc.constant('mirrorPart'),
+    params: fc.record({
+      ids: fc.array(partIdArb, { minLength: 1, maxLength: 3 }),
+      axis: fc.constantFrom('h', 'v'),
+    }),
+  }),
+  fc.record({
+    name: fc.constant('rotatePart'),
+    params: fc.record({
+      ids: fc.array(partIdArb, { minLength: 1, maxLength: 3 }),
+      turns: fc.constantFrom(90, 180, 270),
+    }),
+  }),
+  fc.record({
+    name: fc.constant('removeParts'),
+    params: fc.record({ ids: fc.array(partIdArb, { minLength: 1, maxLength: 3 }) }),
+  }),
 );
 
 const contextArb: fc.Arbitrary<CommandContext> = fc.record({

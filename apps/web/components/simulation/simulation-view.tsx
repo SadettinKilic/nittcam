@@ -13,6 +13,7 @@ import {
   TabsTrigger,
   Tooltip,
 } from '@nittcam/ui';
+import { PlateTabStrip } from '../wizard/plate-tab-strip';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { canvasTouchClass, isZoomedIn, useMediaQuery } from '../../lib/use-media-query';
 import {
@@ -342,16 +343,20 @@ function fitBounds(
   insets: FitInsets = { top: 0, bottom: 0 },
 ): ViewState {
   const pad = 8;
-  // Reserve the overlay bands only while the canvas keeps >= 75 % of its height for the sheet:
-  // both bands first, then the grain label's alone, else none (short phone canvases).
+  // Reserve the overlay bands only while the sheet keeps >= 75 % of its unreserved fit scale:
+  // both bands first, then the grain label's alone, else none (short phone canvases). A
+  // width-limited fit has vertical slack, so the bands then cost nothing (T199b).
+  const fitScale = (r: FitInsets) =>
+    Math.max(
+      0.0001,
+      Math.min((width - 2 * pad) / b.width, (height - r.top - r.bottom - 2 * pad) / b.height),
+    );
+  const full = fitScale({ top: 0, bottom: 0 });
   const reserve = [insets, { top: 0, bottom: insets.bottom }, { top: 0, bottom: 0 }].find(
-    (r) => height - r.top - r.bottom >= height * 0.75,
+    (r) => fitScale(r) >= full * 0.75,
   ) ?? { top: 0, bottom: 0 };
   const usable = height - reserve.top - reserve.bottom;
-  const scale = Math.max(
-    0.0001,
-    Math.min((width - 2 * pad) / b.width, (usable - 2 * pad) / b.height),
-  );
+  const scale = fitScale(reserve);
   const top = sheetHeight - b.y - b.height;
   return {
     scale,
@@ -394,7 +399,12 @@ function Player({
   const bounds = useMemo(() => simBounds(stock, machine), [stock, machine]);
   // Fit keeps the sheet clear of the floating plate tabs (top) and the grain label (bottom).
   const hasTabs = Boolean(tabs);
-  const insets = useMemo<FitInsets>(() => ({ top: hasTabs ? 44 : 0, bottom: 36 }), [hasTabs]);
+  const narrow = useMediaQuery('(max-width: 639px)', false);
+  // Own-row tabs on phones push the zoom toolbar to a second row (T199b).
+  const insets = useMemo<FitInsets>(
+    () => ({ top: hasTabs ? (narrow ? 88 : 44) : 0, bottom: 36 }),
+    [hasTabs, narrow],
+  );
   const height = size.h;
   const parts = useMemo(() => drawnParts(project, sim.sheet), [project, sim.sheet]);
 
@@ -542,14 +552,16 @@ function Player({
     'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
   const overlay = (
     <>
-      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2">
+      {/* Below 640 px the plate tabs get their own full-width row, the same as Dizilim (T199b). */}
+      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-end gap-2 sm:flex-row sm:items-start sm:justify-between">
         {tabs ? (
-          <div
-            className={`${floating} min-w-0 overflow-x-auto p-0.5`}
-            data-testid="sim-tabs-scroll"
+          <PlateTabStrip
+            active={String(sim.sheet)}
+            className={`${floating} max-w-full min-w-0 p-0.5 max-sm:self-stretch`}
+            testId="sim-tabs-scroll"
           >
             {tabs}
-          </div>
+          </PlateTabStrip>
         ) : (
           <span />
         )}

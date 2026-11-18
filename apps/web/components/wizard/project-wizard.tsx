@@ -19,6 +19,7 @@ import { useProjectSession, type SessionInit } from '../../lib/project-session';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
 import { untitledName } from '../../lib/untitled-name';
 import { CutListEditor } from '../parts/cut-list-editor';
+import { DrawingBoard } from '../editor/drawing-board';
 import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
@@ -62,6 +63,9 @@ import {
   NestingIcon,
   RouterIcon,
   SheetIcon,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   ToolpathIcon,
   Tooltip,
   notify,
@@ -279,6 +283,8 @@ const LEFT_ORDER: Record<StepKey, string> = {
   export: '',
 };
 
+type PartsView = 'list' | 'drawing';
+
 function WizardSession({
   messages,
   initialStep,
@@ -299,6 +305,20 @@ function WizardSession({
   const t = messages.wizard;
   const router = useRouter();
   const [step, setStep] = useState<StepKey>(initialStep);
+  // Parts step view (T124, §3.6): "Liste" (cut list) or "Çizim" (drawing board), same data.
+  const [partsView, setPartsViewState] = useState<PartsView>(() =>
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('gorunum') === 'cizim'
+      ? 'drawing'
+      : 'list',
+  );
+  const setPartsView = useCallback((v: PartsView) => {
+    setPartsViewState(v);
+    const url = new URL(window.location.href);
+    if (v === 'drawing') url.searchParams.set('gorunum', 'cizim');
+    else url.searchParams.delete('gorunum');
+    window.history.replaceState(window.history.state, '', url);
+  }, []);
   const stepRef = useRef(step);
   const heading = useRef<HTMLHeadingElement>(null);
   const focusHeading = useRef(false);
@@ -328,11 +348,12 @@ function WizardSession({
 
   const created = useCallback(
     (id: string) => {
-      window.history.replaceState(
-        { [STEP_STATE]: stepRef.current },
-        '',
-        stepUrl(id, stepRef.current),
-      );
+      // Keep the step's other query params (e.g. `?gorunum=cizim`, T124) across the first save.
+      const url = new URL(stepUrl(id, stepRef.current), window.location.origin);
+      new URLSearchParams(window.location.search).forEach((value, key) => {
+        if (key !== 'adim') url.searchParams.set(key, value);
+      });
+      window.history.replaceState({ [STEP_STATE]: stepRef.current }, '', url.pathname + url.search);
       onCreated(id);
     },
     [onCreated],
@@ -464,7 +485,8 @@ function WizardSession({
   let right: ReactNode = null;
   let both: ReactNode = null;
   // Dizilim and Simülasyon are canvas-first workspaces that fill the viewport (T197).
-  const workspace = step === 'dizilim' || step === 'simulasyon';
+  const drawing = step === 'parcalar' && partsView === 'drawing';
+  const workspace = step === 'dizilim' || step === 'simulasyon' || drawing;
   if (step === 'makine') {
     left = (
       <div className="flex min-w-0 flex-col gap-4">
@@ -495,6 +517,15 @@ function WizardSession({
       </div>
     );
     right = <SheetPreview t={t.machine} project={project} profile={profile} />;
+  } else if (drawing) {
+    both = (
+      <DrawingBoard
+        t={messages.editor}
+        project={project}
+        run={session.run}
+        onToList={() => setPartsView('list')}
+      />
+    );
   } else if (step === 'parcalar') {
     left = <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-20">{validation}</aside>;
     right = (
@@ -681,10 +712,35 @@ function WizardSession({
       ) : null}
 
       {step === 'parcalar' ? (
-        <p className="-mt-2 max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
+        <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 lg:-mt-1">
+          <Tabs value={partsView} onValueChange={(v) => setPartsView(v as PartsView)}>
+            <TabsList variant="segmented" aria-label={messages.cutList.views.label}>
+              <TabsTrigger
+                value="list"
+                className="h-8 px-3"
+                aria-controls="step-content"
+                data-testid="parts-view-list"
+              >
+                {messages.cutList.views.list}
+              </TabsTrigger>
+              <TabsTrigger
+                value="drawing"
+                className="h-8 px-3"
+                aria-controls="step-content"
+                data-testid="parts-view-drawing"
+              >
+                {messages.cutList.views.drawing}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {drawing ? null : (
+            <p className="max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
+          )}
+        </div>
       ) : null}
 
       <div
+        id="step-content"
         className={
           workspace
             ? 'min-w-0 lg:min-h-0 lg:flex-1'

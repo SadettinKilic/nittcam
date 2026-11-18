@@ -228,3 +228,5 @@ export const duplicatePart = defineCommand({
     draft.parts.splice(index + 1, 0, copy);
   },
 });
+
+export { mirrorPart, movePart, pasteParts, removeParts, rotatePart } from './board';

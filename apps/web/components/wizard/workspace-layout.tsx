@@ -79,7 +79,7 @@ export function WorkspaceLayout({
   const hasLeft = left !== undefined && left !== null;
   const hasRight = right !== undefined && right !== null;
 
-  const canvasColumn = (extra: string) => (
+  const canvasColumn = (extra: string, canvasMin = 'min-h-[220px]') => (
     <div
       data-testid={`${testId}-canvas`}
       className={cn(
@@ -87,7 +87,7 @@ export function WorkspaceLayout({
         extra,
       )}
     >
-      <div className="relative min-h-[220px] min-w-0 flex-1">
+      <div className={cn('relative min-w-0 flex-1', canvasMin)}>
         {canvas}
         {canvasOverlay}
       </div>
@@ -160,7 +160,11 @@ export function WorkspaceLayout({
             {panelButton('left', true)}
             {panelButton('right', true)}
           </div>
-          {canvasColumn('h-[max(55dvh,280px)] flex-1')}
+          {/* T199b: with a docked footer (simulation transport) the drawing itself keeps a usable
+              height on phones instead of sharing 55 dvh with the footer. */}
+          {canvasFooter
+            ? canvasColumn('min-h-[max(55dvh,280px)] flex-1', 'min-h-[max(40dvh,260px)]')
+            : canvasColumn('h-[max(55dvh,280px)] flex-1')}
         </div>
         {/* B4b: on short phones the panel bar sticks just above the sticky wizard footer
             (its height, incl. the safe area, is published as --wizard-footer-h). */}
