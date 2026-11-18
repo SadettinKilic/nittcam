@@ -35,7 +35,7 @@ Windows shell PATH: `export PATH="$PATH:/c/Users/sadik/AppData/Roaming/npm:/c/Pr
 - No GPL/AGPL dependencies (MIT, BSD, Apache-2.0, BSL-1.0 are OK; MPL-2.0 only as a devDependency, OFL-1.1 for fonts, D-032).
 
 ## Human gates (ask the owner)
-Machine tests, scope decisions, pricing, golden file changes, anything in spec §14.2 "Açık maddeler". PO merges normal PRs after green CI and tester approval.
+Machine tests, scope decisions, pricing, golden file changes, anything in spec §14.2 "Açık maddeler". PO merges normal PRs after green CI and tester approval. **Lean CI (owner, 2026-11-18):** PR pushes run only fast checks; the full e2e/visual job runs after every merge on main and once before a merge via `gh workflow run CI --ref <branch>` (PO merges only after that full run is green on the PR head). Docs-only changes run nothing.
 
 ## Git
 - Identity: `sadi.kilicc@gmail.com` (repo-local config). Remote: `SadettinKilic/nittcam`.
