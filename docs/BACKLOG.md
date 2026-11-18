@@ -17,7 +17,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M0 Temel | T001–T009 | – | done |
 | M1 İnce dilim | T010–T024 | – | done (2026-11-17) |
 | M2 Tasarım sistemi ve uygulama kabuğu | T100–T111 (12) | B1–B4 | every existing screen in the new design, visual + axe checks in CI |
-| M2.5 Marka ve çalışma alanı cilası (Fable review #1) | T194–T199, T194a (7) | B4a–B4b | brand mark in the shell, mono numerics, canvas-first workspace on steps 3–4, calmer notices |
+| M2.5 Marka ve çalışma alanı cilası (Fable review #1) | T194–T199, T194a, T194b (8) | B4a–B4b | brand mark in the shell, mono numerics, canvas-first workspace on steps 3–4, calmer notices |
 | M3 Kesim listesi, malzeme, damar kadranı | T112–T123 (12) | B5–B8 | free-angle grain respected from cut list to G-code; cut list editable without Excel |
 | M4 Çizim tahtası I: editör | T124–T137 (14) | B9–B13 | a drawn freeform part with fillets is nested and gives checked G-code |
 | M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
@@ -30,7 +30,9 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
 | M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
 
-**Before the field test: 101 tasks in 33 batches** (94 + 7 from Fable design review #1, `docs/reviews/2026-11-18-fable-design-review-1.md`). The "~90 % / field-test ready" line is the end of M9 (T193).
+**Before the field test: 102 tasks in 33 batches** (94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`). The "~90 % / field-test ready" line is the end of M9 (T193).
+
+**Order note (2026-11-18, D-035 amendment):** after B4b come B9–B10 (drawing board foundation, T124–T129), then M3 B5–B8, then B11+.
 
 ---
 
@@ -198,7 +200,14 @@ Acceptance:
 - [ ] a `data-density="compact"` scope in tokens (control height 32 px, table row 36 px, panel padding 12 px) usable by a container; **not** a user setting yet (that stays in T183)
 Tester focus: font files are self-hosted (no request to a font CDN); Turkish capital İ renders in mono; gallery shows both densities; contrast test still green; baselines updated on purpose.
 
-### Batch B4b: T196–T199 (canvas language, workspace layout, notices)
+### Batch B4b: T194b, T196–T199 (wordmark, canvas language, workspace layout, notices)
+
+### T194b Wordmark: bold, slightly italic "NittCAM" text logo   [status: todo]
+Spec: §3.7 · Depends: T194 · Owner: request 2026-11-18
+Acceptance:
+- [ ] the shell logo is a text wordmark "NittCAM" ("CAM" in capitals) in the brand font, bold (700–800) with a subtle italic skew; tokens only, works in light and dark
+- [ ] collapses gracefully: at 320 px and on the collapsed rail it shrinks/abbreviates without overflow; accessible name "NittCam, ana sayfa" unchanged; favicon may stay
+Tester focus: shell baselines light/dark at 1440/390/320; no overflow; axe.
 
 ### T196 Canvas visual language v1 (layout, simulation, sheet preview)   [status: todo]
 Spec: §2.4, §3.6, §6.5 · Depends: T110, T195
@@ -237,6 +246,61 @@ Acceptance:
 - [ ] verification page: the right-hand reasons panel and the in-step warning are merged; the acknowledgement checkbox row is a plain row, not a second yellow box
 - [ ] no safety text is removed: every sentence that exists today is still reachable in one click, and the G-code header warning is unchanged
 Tester focus: **safety**: an unverified profile still cannot be downloaded without the acknowledgement; every previous warning sentence is found in the UI (string list from `tr.json`); callouts per screen region ≤ 1; axe (popover reachable by keyboard).
+
+---
+
+## M4 early: Çizim tahtası temeli, B9–B10 (moved before M3; D-035 amendment 2026-11-18)
+
+The owner wants the drawing board early. B9 and B10 depend only on T110 (and on T197's `WorkspaceLayout`), so they run right after B4b and before M3 B5–B8. B11+ stay in M4 below. **Work order: B4b → B9 → B10 → B5 → B6 → B7 → B8 → B11 → …**
+
+### Batch B9: T124–T126 (canvas foundation)
+
+### T124 Editor canvas foundation   [status: todo]
+Spec: §4.2 · Depends: T110
+Acceptance:
+- [ ] "Çizim" view in the Parts step (tabs: Liste / Çizim, same data, §3.6); Konva stage in mm, Y up, pan (space-drag, middle mouse, two-finger), zoom to cursor (wheel, pinch), fit-to-content
+- [ ] built on `WorkspaceLayout` (T197): vertical tool rail on the left edge of the canvas (40 px buttons, tooltip + shortcut letter), compact inspector on the right, a status bar under the canvas (cursor X/Y in mono, snap toggles, zoom %, units); dot grid rather than lines at the finest level; canvas language from T196 (dimension labels in mono, accent selection, `info` colour for snap guides)
+- [ ] adaptive mm grid (1/10/100), rulers, cursor coordinates, scale bar; theme colours
+- [ ] editor store: tool, selection, hover, viewport; project data only through commands
+Tester focus: pan/zoom with mouse + touch emulation; coordinates correct at 3 zoom levels; visual both themes.
+
+### T125 Selection, move, clipboard, mirror, rotate   [status: todo]
+Spec: §4.2, §4.4 · Depends: T124
+Acceptance:
+- [ ] click / Shift-click / box select; move by drag and arrows (1 mm, Shift 10 mm); Delete; Ctrl+C/V/D; mirror H/V; rotate 90°
+- [ ] all through commands (`movePart` in the drawing frame, `mirrorPart`, `rotatePart`) with undo; Ctrl+Z / Ctrl+Y
+Tester focus: e2e select-move-undo; clipboard paste offsets; mirror keeps outline orientation rules (outer CCW).
+
+### T126 Snap engine (core)   [status: todo]
+Spec: §4.4 · Depends: T124
+Acceptance:
+- [ ] pure `snap(point, context)`: endpoint, midpoint, centre, intersection, grid, perpendicular, 45°/90° angle lock; priority order and screen-space tolerance; returns kind + point
+- [ ] snap glyphs in the editor; toggle per kind; hold Alt to disable
+- [ ] fast-check: a snapped point equals the target within EPS; no snap outside tolerance
+Tester focus: property tests; e2e drawing a line onto an endpoint ends exactly there (read from properties panel).
+
+### Batch B10: T127–T129 (drawing tools)
+
+### T127 Rectangle and circle tools   [status: todo]
+Spec: §4.3, §4.4 · Depends: T125, T126
+Acceptance:
+- [ ] rectangle: drag or click + typed "W;H" → parametric rect part (corner radius in properties); circle: centre + radius → freeform round part (bulge arcs)
+- [ ] live dimension labels while drawing; Esc cancels
+Tester focus: typed sizes exact; new parts appear in the cut list; undo.
+
+### T128 Line / polyline tool with typed length   [status: todo]
+Spec: §4.4, §6.1 · Depends: T126
+Acceptance:
+- [ ] click-click polyline; type a length + Enter for the current segment, Tab to type the angle; 45°/90° lock with Shift
+- [ ] ends within JOIN_TOL close the contour → freeform part (`addSegment`, CCW normalised); open shape shows "Kesilemez, kapalı değil"
+Tester focus: e2e drawing an L-shape by typed lengths → exact outline; open shape blocked from nesting with the Turkish warning.
+
+### T129 Arc tool and segment bulge   [status: todo]
+Spec: §4.4, §6.1 · Depends: T128
+Acceptance:
+- [ ] 3-point arc and "drag segment middle to bend" (`setSegmentBulge`); typed radius
+- [ ] arcs survive save/load and produce G2/G3 (checked through the pipeline)
+Tester focus: arc radius from properties = typed radius; G-code contains G2/G3 for the arc; reader check passes.
 
 ---
 
@@ -360,54 +424,7 @@ Tester focus: e2e search + sort + group collapse; project JSON order unchanged a
 
 Konva stays the 2D engine (§8.3). Every edit is a command (§5.1). Snap/geometry logic is pure core code with property tests.
 
-### Batch B9: T124–T126 (canvas foundation)
-
-### T124 Editor canvas foundation   [status: todo]
-Spec: §4.2 · Depends: T110
-Acceptance:
-- [ ] "Çizim" view in the Parts step (tabs: Liste / Çizim, same data, §3.6); Konva stage in mm, Y up, pan (space-drag, middle mouse, two-finger), zoom to cursor (wheel, pinch), fit-to-content
-- [ ] built on `WorkspaceLayout` (T197): vertical tool rail on the left edge of the canvas (40 px buttons, tooltip + shortcut letter), compact inspector on the right, a status bar under the canvas (cursor X/Y in mono, snap toggles, zoom %, units); dot grid rather than lines at the finest level; canvas language from T196 (dimension labels in mono, accent selection, `info` colour for snap guides)
-- [ ] adaptive mm grid (1/10/100), rulers, cursor coordinates, scale bar; theme colours
-- [ ] editor store: tool, selection, hover, viewport; project data only through commands
-Tester focus: pan/zoom with mouse + touch emulation; coordinates correct at 3 zoom levels; visual both themes.
-
-### T125 Selection, move, clipboard, mirror, rotate   [status: todo]
-Spec: §4.2, §4.4 · Depends: T124
-Acceptance:
-- [ ] click / Shift-click / box select; move by drag and arrows (1 mm, Shift 10 mm); Delete; Ctrl+C/V/D; mirror H/V; rotate 90°
-- [ ] all through commands (`movePart` in the drawing frame, `mirrorPart`, `rotatePart`) with undo; Ctrl+Z / Ctrl+Y
-Tester focus: e2e select-move-undo; clipboard paste offsets; mirror keeps outline orientation rules (outer CCW).
-
-### T126 Snap engine (core)   [status: todo]
-Spec: §4.4 · Depends: T124
-Acceptance:
-- [ ] pure `snap(point, context)`: endpoint, midpoint, centre, intersection, grid, perpendicular, 45°/90° angle lock; priority order and screen-space tolerance; returns kind + point
-- [ ] snap glyphs in the editor; toggle per kind; hold Alt to disable
-- [ ] fast-check: a snapped point equals the target within EPS; no snap outside tolerance
-Tester focus: property tests; e2e drawing a line onto an endpoint ends exactly there (read from properties panel).
-
-### Batch B10: T127–T129 (drawing tools)
-
-### T127 Rectangle and circle tools   [status: todo]
-Spec: §4.3, §4.4 · Depends: T125, T126
-Acceptance:
-- [ ] rectangle: drag or click + typed "W;H" → parametric rect part (corner radius in properties); circle: centre + radius → freeform round part (bulge arcs)
-- [ ] live dimension labels while drawing; Esc cancels
-Tester focus: typed sizes exact; new parts appear in the cut list; undo.
-
-### T128 Line / polyline tool with typed length   [status: todo]
-Spec: §4.4, §6.1 · Depends: T126
-Acceptance:
-- [ ] click-click polyline; type a length + Enter for the current segment, Tab to type the angle; 45°/90° lock with Shift
-- [ ] ends within JOIN_TOL close the contour → freeform part (`addSegment`, CCW normalised); open shape shows "Kesilemez, kapalı değil"
-Tester focus: e2e drawing an L-shape by typed lengths → exact outline; open shape blocked from nesting with the Turkish warning.
-
-### T129 Arc tool and segment bulge   [status: todo]
-Spec: §4.4, §6.1 · Depends: T128
-Acceptance:
-- [ ] 3-point arc and "drag segment middle to bend" (`setSegmentBulge`); typed radius
-- [ ] arcs survive save/load and produce G2/G3 (checked through the pipeline)
-Tester focus: arc radius from properties = typed radius; G-code contains G2/G3 for the arc; reader check passes.
+B9–B10 (T124–T129) were moved up and run right after M2.5, before M3 (D-035 amendment, 2026-11-18); their task text is in the section "M4 early: Çizim tahtası temeli" above. M4 continues here with B11.
 
 ### Batch B11: T130–T132 (properties and corner tools)
 

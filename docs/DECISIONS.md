@@ -391,6 +391,7 @@ Owner wants to test on the machine only when the product is ~90 % done; the back
 - **AI chat stays out of the 90 % line** (behind Q001): it is not needed to cut parts, it needs the command set to be complete (end of M5), and it adds API cost and quota/auth work that belongs after M10.
 - **Risk accepted:** a wrong controller assumption is found later. Mitigation: declarative post (most fixes are config), §7.2 rules + reader checks on every file, a G-code regression set for every new operation (T189), and the owner can still air-cut the current output at any time.
 - Old milestone names in D-001…D-031 map as in spec §12.1.
+- **Amendment 2026-11-18:** owner wants the drawing board early; B9–B10 moved before M3 (they depend only on T110). Order: B4b → B9 → B10 → M3 (B5–B8) → B11+.
 
 ## D-036 Small tasks, batches and agent context hygiene (2026-11-17, v3 replan, owner decision)
 Owner: shorter tasks so the developer finishes more per run; stronger tester checks; agents should manage context like the PO's /compact.
