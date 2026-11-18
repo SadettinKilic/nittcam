@@ -430,7 +430,7 @@ export function SheetPreview({
                 width={W / 70}
                 height={W / 70}
                 patternUnits="userSpaceOnUse"
-                patternTransform={`rotate(${-sheet.grain} ${cx} ${cy})`}
+                patternTransform={`rotate(${-(sheet.grain ?? 0)} ${cx} ${cy})`}
               >
                 <line
                   x1={0}

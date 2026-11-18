@@ -22,7 +22,7 @@ export function newProject(machine?: {
 }): Project {
   const set = machine?.profile.materials[0];
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     machine: machine
       ? { machineId: machine.id, profileVersion: machine.version }
       : { machineId: 'draft', profileVersion: 1 },

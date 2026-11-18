@@ -732,7 +732,7 @@ function PartInfo({
     ],
     ['rotation', i.rotation, fill(i.rotationValue, { rot: part.rot })],
     ['locked', i.locked, part.locked ? i.lockedYes : i.lockedNo],
-    ['grain', i.grain, part.grainLock ? i.grainYes : i.grainNo],
+    ['grain', i.grain, part.grainAngle !== null ? i.grainYes : i.grainNo],
   ];
   return (
     <div className="flex flex-col gap-2" data-testid="layout-info">
@@ -767,7 +767,7 @@ function PartInfo({
   );
 }
 
-function Legend({ t, margin, grain }: { t: Text; margin: number; grain: 0 | 90 }) {
+function Legend({ t, margin, grain }: { t: Text; margin: number; grain: number | null }) {
   const l = t.legend;
   const swatch = 'inline-block size-3 rounded-[3px] border';
   return (
@@ -792,11 +792,15 @@ function Legend({ t, margin, grain }: { t: Text; margin: number; grain: 0 | 90 }
         <span className={`${swatch} border-danger bg-danger-subtle`} aria-hidden="true" />
         {l.conflict}
       </li>
-      <li className="flex items-center gap-1.5" data-testid="layout-sheet-grain" data-grain={grain}>
+      <li
+        className="flex items-center gap-1.5"
+        data-testid="layout-sheet-grain"
+        data-grain={grain ?? 'none'}
+      >
         <svg
           viewBox="0 0 24 24"
           className="size-4 text-grain"
-          style={{ transform: `rotate(${-grain}deg)` }}
+          style={{ transform: `rotate(${-(grain ?? 0)}deg)` }}
           aria-hidden="true"
         >
           <path

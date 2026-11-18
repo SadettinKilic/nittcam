@@ -384,7 +384,7 @@ describe('D-013 offset results', () => {
           id: 'l',
           name: 'L',
           qty: 1,
-          grainLock: false,
+          grain: { mode: 'free', angle: 0 },
           kind: 'freeform',
           outline,
           inners: [],

@@ -252,6 +252,15 @@ export function toCommandLogEntry(row: ProjectCommandRow): CommandLogEntry {
   };
 }
 
+/**
+ * Stored project JSON may be an older schema version (schema v2, D-034): it is upgraded on read so
+ * callers always get the latest shape. A row that does not parse is returned unchanged.
+ */
+function upgradeRow(row: ProjectRow): ProjectRow {
+  const result = parseProject(row.data);
+  return result.ok ? { ...row, data: result.project } : row;
+}
+
 function validProject(data: unknown): Project {
   const result = parseProject(data);
   if (!result.ok) throw new InvalidProject(result.issues);
@@ -312,12 +321,17 @@ function projectsRepo(db: Db, companyId: string) {
   }
   return {
     ...base,
+    async get(id: string) {
+      const row = await base.get(id);
+      return row ? upgradeRow(row) : null;
+    },
     async list() {
-      return db
+      const rows = await db
         .select()
         .from(projectsTable)
         .where(eq(projectsTable.companyId, companyId))
         .orderBy(desc(projectsTable.updatedAt));
+      return rows.map(upgradeRow);
     },
     async create(values: NewProject): Promise<ProjectRow> {
       const data = validProject(values.data);
@@ -368,7 +382,7 @@ function projectsRepo(db: Db, companyId: string) {
         const existing = await tx.select().from(projectsTable).where(scope(values.id));
         const row = existing[0];
         if (!row) throw new IdTaken('project', values.id);
-        return { row, created: false };
+        return { row: upgradeRow(row), created: false };
       });
     },
     /**

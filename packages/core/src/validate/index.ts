@@ -70,8 +70,10 @@ export const partLargerThanSheet: ValidationRule = (project) => {
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     const size = partBoxSize(part);
-    if (fitsUsable(size.w, size.h, part.grainLock, usable)) return;
-    const how = part.grainLock ? 'grain-locked, no 90° turn' : 'in any orientation';
+    // Interim until T114 (forced grain rotation): fixed grain on a grained sheet = no 90° turn.
+    const locked = part.grain.mode === 'fixed' && project.stock.sheet.grain !== null;
+    if (fitsUsable(size.w, size.h, locked, usable)) return;
+    const how = locked ? 'grain-locked, no 90° turn' : 'in any orientation';
     const room =
       margin > 0
         ? `the ${mm(usable.width)} × ${mm(usable.height)} mm usable area of the ${width} × ${height} mm sheet (margin ${mm(margin)} mm)`

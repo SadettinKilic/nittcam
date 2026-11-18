@@ -57,7 +57,11 @@ describe('plate commands: apply → expected JSON', () => {
       ...start,
       stock: { ...start.stock, sheet: { ...start.stock.sheet, grain } },
     });
-    expect(applyCommand(start, 'setGrain', { grain: 45 }).ok).toBe(false);
+    // v2 (D-034): any angle in [0, 180) or null; 180 and negatives are rejected.
+    expect(applied(start, 'setGrain', { grain: 37.5 }).stock.sheet.grain).toBe(37.5);
+    expect(applied(start, 'setGrain', { grain: null }).stock.sheet.grain).toBeNull();
+    expect(applyCommand(start, 'setGrain', { grain: 180 }).ok).toBe(false);
+    expect(applyCommand(start, 'setGrain', { grain: -1 }).ok).toBe(false);
   });
 
   it('rejects invalid params with readable paths and leaves the project untouched', () => {
@@ -96,7 +100,7 @@ describe('addPart', () => {
       id: 'shelf',
       name: '',
       qty: 1,
-      grainLock: false,
+      grain: { mode: 'free', angle: 0 },
       kind: 'rect',
       params: { w: 600, h: 300, r: 0 },
       inners: [],
@@ -120,7 +124,8 @@ describe('addPart', () => {
       id: 'top',
       name: 'Üst tabla',
       qty: 3,
-      grainLock: true,
+      // grainLock alias: fixed along the sheet grain (D-034).
+      grain: { mode: 'fixed', angle: next.stock.sheet.grain },
       params: { w: 800, h: 300, r: 5 },
       edgeBand: { top: 0, right: 2, bottom: 2, left: 2 },
     });
@@ -221,7 +226,6 @@ describe('CommandStack', () => {
           id: 'p',
           name: '',
           qty: 1,
-          grainLock: false,
           params: { w: 1, h: 2, r: 0 },
           edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
         },
@@ -290,6 +294,7 @@ describe('commandToolDefinitions (future AI tools)', () => {
         'setMachine',
         'setMaterial',
         'setGrain',
+        'setPartGrain',
         'setSheetSize',
         'setThickness',
         'updatePart',

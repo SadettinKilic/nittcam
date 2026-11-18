@@ -12,7 +12,7 @@ function rect(id: string, w: number, h: number, qty = 1): Part {
     id,
     name: id,
     qty,
-    grainLock: false,
+    grain: { mode: 'free', angle: 0 },
     inners: [],
     holes: [],
     edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },

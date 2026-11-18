@@ -1,6 +1,7 @@
 /**
- * Rigid transforms of bulge polylines: translate, rotate by quarter turns, mirror.
- * Quarter-turn rotations swap and negate coordinates (no sin/cos), so 90/180/270° are exact.
+ * Rigid transforms of bulge polylines: translate, rotate, mirror.
+ * Quarter-turn rotations swap and negate coordinates (no sin/cos), so 0/90/180/270° stay exact
+ * (and existing outputs byte-identical); any other angle uses cos/sin (D-034).
  */
 import { negate } from './polyline';
 import type { Point, Polyline, Vertex } from './types';
@@ -14,7 +15,8 @@ export type MirrorAxis = 'x' | 'y';
 /** Applied in this order: mirror, then rotate about the origin, then translate. */
 export interface Transform {
   mirror?: MirrorAxis;
-  rotate?: QuarterTurn;
+  /** CCW degrees; any angle (quarter turns are exact). */
+  rotate?: number;
   dx?: number;
   dy?: number;
 }
@@ -41,9 +43,33 @@ export function translate(poly: Polyline, dx: number, dy: number): Polyline {
   return mapVertices(poly, (v) => ({ x: v.x + dx, y: v.y + dy, bulge: v.bulge }));
 }
 
-/** Rotation keeps bulges (and orientation). */
-export function rotate(poly: Polyline, deg: QuarterTurn): Polyline {
-  return mapVertices(poly, (v) => ({ ...rotatePoint(v, deg), bulge: v.bulge }));
+/** True for 0/90/180/270 (after reduction to [0, 360)). */
+export function isQuarterTurn(deg: number): deg is QuarterTurn {
+  return deg === 0 || deg === 90 || deg === 180 || deg === 270;
+}
+
+/** Reduces degrees to [0, 360). */
+function reduceDeg(deg: number): number {
+  const r = ((deg % 360) + 360) % 360;
+  return r === 0 ? 0 : r;
+}
+
+/**
+ * Rotates a point CCW about the origin by any angle in degrees. Quarter turns go through
+ * `rotatePoint` (exact); other angles use cos/sin.
+ */
+export function rotatePointBy(p: Point, deg: number): Point {
+  const d = reduceDeg(deg);
+  if (isQuarterTurn(d)) return rotatePoint(p, d);
+  const rad = (d * Math.PI) / 180;
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  return { x: p.x * c - p.y * s, y: p.x * s + p.y * c };
+}
+
+/** Rotation (CCW degrees, any angle) keeps bulges (and orientation): arcs stay arcs. */
+export function rotate(poly: Polyline, deg: number): Polyline {
+  return mapVertices(poly, (v) => ({ ...rotatePointBy(v, deg), bulge: v.bulge }));
 }
 
 /**

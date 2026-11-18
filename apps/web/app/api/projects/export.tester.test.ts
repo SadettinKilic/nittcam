@@ -27,7 +27,7 @@ async function project(): Promise<Project> {
   const set = m?.profile.materials[0];
   if (!m || !set) throw new Error('no seeded machine');
   let p = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     machine: { machineId: m.machine.id, profileVersion: m.version.version },
     stock: {
       material: set.material,

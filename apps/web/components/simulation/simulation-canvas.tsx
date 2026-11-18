@@ -24,7 +24,7 @@ export interface SimulationCanvasProps {
   width: number;
   height: number;
   sim: SimSheet;
-  sheet: { width: number; height: number; grain: 0 | 90 };
+  sheet: { width: number; height: number; grain: number | null };
   margin: number;
   parts: readonly DrawnPart[];
   machine: SimMachineFrame | null;

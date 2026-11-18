@@ -42,7 +42,7 @@ async function nestedProject(over: (p: Project) => Project = (p) => p): Promise<
   const set = m.profile.materials[0];
   if (!set) throw new Error('no material set');
   let p: Project = over({
-    schemaVersion: 1,
+    schemaVersion: 2,
     machine: { machineId: m.machine.id, profileVersion: m.version.version },
     stock: {
       material: set.material,

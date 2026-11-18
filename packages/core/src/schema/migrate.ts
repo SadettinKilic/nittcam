@@ -18,10 +18,37 @@ export type ParseProjectResult =
 export type MigrationStep = (json: Record<string, unknown>) => Record<string, unknown>;
 
 /**
- * Registered steps keyed by the version they upgrade FROM. v1 is the first version, so there are
- * no steps yet. Adding v2 means: bump LATEST_SCHEMA_VERSION, add `1: (json) => ...`, add a test.
+ * v1 → v2 (D-034): free-angle grain. The sheet grain (0 or 90) is kept. A v1 grain-locked part was
+ * only placed at 0°/180°, so its grain was the sheet grain: `grainLock: true` → `{ mode: 'fixed',
+ * angle: sheet grain }`, `false` → `{ mode: 'free', angle: 0 }`. Placements are unchanged (their
+ * 0/90/180/270 are valid v2 rotations). Malformed input is passed through for the schema to report.
  */
-export const MIGRATIONS: Readonly<Record<number, MigrationStep>> = {};
+export function migrateV1toV2(json: Record<string, unknown>): Record<string, unknown> {
+  const stock = json['stock'];
+  const sheet = isPlainObject(stock) ? stock['sheet'] : undefined;
+  const sheetGrain = isPlainObject(sheet) ? sheet['grain'] : undefined;
+  const lockedAngle = sheetGrain === 90 ? 90 : 0;
+  const parts = json['parts'];
+  if (!Array.isArray(parts)) return json;
+  return {
+    ...json,
+    parts: parts.map((part: unknown) => {
+      if (!isPlainObject(part) || !('grainLock' in part)) return part;
+      const { grainLock, ...rest } = part;
+      if (typeof grainLock !== 'boolean') return part;
+      return {
+        ...rest,
+        grain: grainLock ? { mode: 'fixed', angle: lockedAngle } : { mode: 'free', angle: 0 },
+      };
+    }),
+  };
+}
+
+/**
+ * Registered steps keyed by the version they upgrade FROM. Adding a version means: bump
+ * LATEST_SCHEMA_VERSION, add `n: (json) => ...`, add a test.
+ */
+export const MIGRATIONS: Readonly<Record<number, MigrationStep>> = { 1: migrateV1toV2 };
 
 /** Thrown by `migrate` when the JSON cannot be upgraded or does not validate. */
 export class ProjectSchemaError extends Error {

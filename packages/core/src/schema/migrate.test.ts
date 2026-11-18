@@ -12,17 +12,55 @@ import {
 } from './index';
 
 describe('migrate', () => {
-  it('latest version is 1 and needs no steps', () => {
-    expect(LATEST_SCHEMA_VERSION).toBe(1);
-    expect(Object.keys(MIGRATIONS)).toEqual([]);
+  it('latest version is 2 with one step (v1 → v2, D-034)', () => {
+    expect(LATEST_SCHEMA_VERSION).toBe(2);
+    expect(Object.keys(MIGRATIONS)).toEqual(['1']);
   });
 
   it.each([
     ['cabinetDoors', cabinetDoors],
     ['shelfSet', shelfSet],
     ['mixed', mixed],
-  ])('v1 is an identity: %s', (_name, json) => {
-    expect(migrate(json)).toEqual(json);
+  ])('v1 → v2 maps grainLock to part grain and keeps the rest: %s', (_name, json) => {
+    const v2 = migrate(json);
+    const v1 = json as unknown as {
+      stock: { sheet: { grain: number } };
+      parts: { grainLock: boolean }[];
+    };
+    const sheetGrain = v1.stock.sheet.grain;
+    expect(v2.schemaVersion).toBe(2);
+    expect(v2.stock.sheet.grain).toBe(sheetGrain);
+    v2.parts.forEach((part, i) => {
+      const locked = v1.parts[i]?.grainLock;
+      expect(part.grain).toEqual(
+        locked ? { mode: 'fixed', angle: sheetGrain } : { mode: 'free', angle: 0 },
+      );
+      expect('grainLock' in part).toBe(false);
+      const rest: Record<string, unknown> = { ...part };
+      delete rest['grain'];
+      const restV1: Record<string, unknown> = { ...v1.parts[i] };
+      delete restV1['grainLock'];
+      expect(rest).toEqual(restV1);
+    });
+    expect(v2.layout).toEqual((json as { layout: unknown }).layout);
+  });
+
+  it('v1 → v2 locks to 90 on a 90° sheet and keeps placements unchanged', () => {
+    const v1 = {
+      ...cabinetDoors,
+      stock: { ...cabinetDoors.stock, sheet: { ...cabinetDoors.stock.sheet, grain: 90 } },
+    };
+    const v2 = migrate(v1);
+    expect(
+      v2.parts.filter((p) => p.grain.mode === 'fixed').every((p) => p.grain.angle === 90),
+    ).toBe(true);
+  });
+
+  it('a v2 document with grainLock is rejected (the alias lives only in commands)', () => {
+    const v2 = migrate(cabinetDoors);
+    const bad = JSON.parse(JSON.stringify(v2)) as { parts: Record<string, unknown>[] };
+    if (bad.parts[0]) bad.parts[0]['grainLock'] = true;
+    expect(() => migrate(bad)).toThrow(/grainLock/);
   });
 
   it.each([

@@ -54,7 +54,8 @@ export const setGrain = defineCommand({
   name: 'setGrain',
   area: 'plate',
   description:
-    'Set the sheet grain direction: 0 = along the sheet width (X), 90 = along the height (Y).',
+    'Set the sheet grain angle in degrees [0, 180): 0 = along the sheet width (X), 90 = along the ' +
+    'height (Y), any angle in between allowed; null = the sheet has no grain.',
   aiTool: true,
   params: stockSchema.shape.sheet.pick({ grain: true }),
   apply: (draft, params) => {

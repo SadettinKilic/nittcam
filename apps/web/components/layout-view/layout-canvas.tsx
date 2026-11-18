@@ -29,7 +29,7 @@ function reducedMotion(): boolean {
 export interface LayoutCanvasProps {
   width: number;
   height: number;
-  sheet: { width: number; height: number; grain: 0 | 90 };
+  sheet: { width: number; height: number; grain: number | null };
   margin: number;
   parts: readonly DrawnPart[];
   view: ViewState;
@@ -207,7 +207,7 @@ const PartShape = memo(function PartShape({
   pendingX: number | undefined;
   pendingY: number | undefined;
   sheetHeight: number;
-  sheetGrain: 0 | 90;
+  sheetGrain: number | null;
   colors: CanvasColors;
   scale: number;
   onSelect: LayoutCanvasProps['onSelect'];
@@ -245,14 +245,21 @@ const PartShape = memo(function PartShape({
   const strokeWidth = (selected || conflict ? 3 : 1) * hair;
   const label = partLabel({ number: part.label, name: part.name, w, h, scale });
   const font = label.font;
-  // Grain arrow along the sheet grain turned by the placement rotation (D-019: rule is relative
-  // to the sheet frame). Canvas Y points down, so 90° (up on the sheet) is -Y here.
-  const angle = (sheetGrain + part.rot) % 180;
-  const len = Math.min(angle === 0 ? w : h, 160) * 0.5;
+  // Grain arrow of a fixed-grain part at its sheet-frame angle (D-034: part grain + rotation).
+  // Canvas Y points down, so 90° (up on the sheet) is -Y here.
+  const angle = part.grainAngle ?? sheetGrain ?? 0;
+  const rad = (angle * Math.PI) / 180;
+  const dx = angle === 90 ? 0 : Math.cos(rad);
+  const dy = angle === 0 ? 0 : Math.sin(rad);
+  const len = Math.min(Math.abs(dx) >= Math.abs(dy) ? w : h, 160) * 0.5;
   const cx = w / 2;
   const cy = h / 2 + font * (label.lines.length * 0.65 + 0.3);
-  const arrow =
-    angle === 0 ? [cx - len / 2, cy, cx + len / 2, cy] : [cx, cy + len / 2, cx, cy - len / 2];
+  const arrow = [
+    cx - (dx * len) / 2,
+    cy + (dy * len) / 2,
+    cx + (dx * len) / 2,
+    cy - (dy * len) / 2,
+  ];
 
   const snap = (node: Konva.Node) => {
     const x = Math.round(node.x());
@@ -312,7 +319,7 @@ const PartShape = memo(function PartShape({
             h / 2 -
             (label.lines.length * font * 1.25) / 2 +
             i * font * 1.25 -
-            (part.grainLock ? font * 0.6 : 0)
+            (part.grainAngle !== null ? font * 0.6 : 0)
           }
           align="center"
           fontSize={font}
@@ -323,7 +330,7 @@ const PartShape = memo(function PartShape({
           perfectDrawEnabled={false}
         />
       ))}
-      {part.grainLock && label.level !== 'none' ? (
+      {part.grainAngle !== null && label.level !== 'none' ? (
         <Arrow
           points={arrow}
           stroke={colors.text}

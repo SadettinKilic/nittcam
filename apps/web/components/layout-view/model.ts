@@ -1,4 +1,4 @@
-import { partBoxSize, type Placement, type Project } from '@nittcam/core';
+import { normalizeGrain, partBoxSize, type Placement, type Project } from '@nittcam/core';
 import { readTokenColors } from '../../lib/canvas-theme';
 
 /** Pixels per mm and the pan of the stage. */
@@ -71,7 +71,8 @@ export interface DrawnPart {
   h: number;
   rot: Placement['rot'];
   locked: boolean;
-  grainLock: boolean;
+  /** Sheet-frame angle of a fixed-grain part's grain line ([0, 180), D-034); null = free grain. */
+  grainAngle: number | null;
 }
 
 /** The placements of one sheet, ready to draw. Placements of unknown parts are skipped. */
@@ -95,7 +96,8 @@ export function drawnParts(project: Project, sheet: number): DrawnPart[] {
       h: turned ? size.w : size.h,
       rot: pl.rot,
       locked: pl.locked,
-      grainLock: hit.part.grainLock,
+      grainAngle:
+        hit.part.grain.mode === 'fixed' ? normalizeGrain(hit.part.grain.angle + pl.rot) : null,
     });
   }
   return out;

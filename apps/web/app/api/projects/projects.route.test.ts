@@ -19,7 +19,7 @@ const AT = '2026-11-17T10:00:00.000+03:00';
 
 function project(): Project {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     machine: { machineId: 'draft', profileVersion: 1 },
     stock: {
       material: 'mdf',

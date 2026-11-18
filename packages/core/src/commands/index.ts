@@ -5,6 +5,7 @@ export * from './log';
 export {
   addPart,
   updatePart,
+  setPartGrain,
   removePart,
   duplicatePart,
   importCutList,

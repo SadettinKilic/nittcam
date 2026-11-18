@@ -408,7 +408,9 @@ export function nestingInputFromProject(
       id: part.id,
       ...partBoxSize(part),
       qty: part.qty,
-      grainLock: part.grainLock,
+      // Interim until the placer takes `allowedRotations` (T114): a fixed-grain part on a sheet
+      // with grain only turns 0°/180° (exact for every migrated v1 project, D-034).
+      grainLock: part.grain.mode === 'fixed' && project.stock.sheet.grain !== null,
     })),
     gap: project.nesting.gap,
     margin: project.nesting.margin,

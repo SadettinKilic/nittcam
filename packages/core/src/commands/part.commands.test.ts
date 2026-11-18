@@ -55,7 +55,7 @@ describe('importCutList', () => {
         id: 'a',
         name: 'Kapak',
         qty: 4,
-        grainLock: true,
+        grain: { mode: 'fixed', angle: 0 },
         kind: 'rect',
         params: { w: 396, h: 716, r: 0 },
         inners: [],
@@ -67,7 +67,7 @@ describe('importCutList', () => {
         id: 'b',
         name: '',
         qty: 1,
-        grainLock: false,
+        grain: { mode: 'free', angle: 0 },
         kind: 'rect',
         params: { w: 564, h: 300, r: 0 },
         inners: [],
@@ -119,7 +119,7 @@ describe('importCutList', () => {
       id: 'k1',
       name: 'Kapak',
       qty: 2,
-      grainLock: true,
+      grain: { mode: 'fixed', angle: 0 },
       params: { w: 396, h: 716, r: 0 },
       edgeBand: { top: 0.8, right: 0.8, bottom: 0.8, left: 0.8 },
     });
@@ -150,7 +150,7 @@ describe('updatePart', () => {
       qty: 3,
       edgeBand: { left: 2 },
     });
-    expect(next.parts[0]).toMatchObject({ grainLock: false, qty: 3 });
+    expect(next.parts[0]).toMatchObject({ grain: { mode: 'free', angle: 0 }, qty: 3 });
     expect(next.parts[0]?.edgeBand.left).toBe(2);
   });
 
