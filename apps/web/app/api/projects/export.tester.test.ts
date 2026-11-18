@@ -97,3 +97,59 @@ describe('T021 tester: exported bytes', () => {
     }
   });
 });
+
+describe('B5 round 2 tester: grain lock export gate', () => {
+  /** Part "a" fixed grain 0, copy 0 locked; then the sheet grain turns to 90 (lock now bad). */
+  async function regrained(): Promise<Project> {
+    let p = await project();
+    const run = (name: string, params: unknown) => {
+      const r = applyCommand(p, name, params);
+      if (!r.ok) throw new Error(r.error.message);
+      p = r.project;
+    };
+    run('setPartGrain', { id: 'a', mode: 'fixed', angle: 0 });
+    const scope = await companyScope();
+    const [m] = await scope.machines.listWithProfiles();
+    run('runNesting', { toolDiameter: (m && nestingToolDiameter(m.profile, p.stock)) ?? 8 });
+    run('lockPlacement', { partId: 'a', index: 0 });
+    run('setGrain', { grain: 90 });
+    return p;
+  }
+
+  async function exportOf(p: Project) {
+    const res = await create(post({ name: 'Damar', project: p }));
+    expect(res.status).toBe(201);
+    const d = (await res.json()) as ProjectDetail;
+    const ex = await doExport(
+      post({ revision: d.revision, acceptUnverified: true }),
+      ctx({ id: d.id }),
+    );
+    const scope = await companyScope();
+    return {
+      status: ex.status,
+      body: (await ex.json()) as unknown,
+      stored: await scope.exports.listForProject(d.id),
+    };
+  }
+
+  it('bad lock via real commands → 422, Turkish message, nothing stored', async () => {
+    const r = await exportOf(await regrained());
+    expect(r.status).toBe(422);
+    expect(JSON.stringify(r.body)).toMatch(/LOCKED_PLACEMENT_GRAIN/);
+    expect(JSON.stringify(r.body)).toMatch(/damar yönüne uymuyor/);
+    expect(r.stored).toEqual([]);
+  });
+
+  it('the same lock turned to an allowed angle exports normally (201, stored)', async () => {
+    let p = await regrained();
+    const r1 = applyCommand(p, 'lockPlacement', { partId: 'a', index: 0, rot: 90 });
+    if (!r1.ok) throw new Error(r1.error.message);
+    // Re-nest so the turned copy does not overlap its neighbours; the lock stays at 90.
+    const r2 = applyCommand(r1.project, 'runNesting', { toolDiameter: 8 });
+    if (!r2.ok) throw new Error(r2.error.message);
+    p = r2.project;
+    const r = await exportOf(p);
+    expect(r.status).toBe(201);
+    expect(r.stored).toHaveLength(1);
+  });
+});
