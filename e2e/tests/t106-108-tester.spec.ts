@@ -115,8 +115,8 @@ test.describe('B3 machine form leave guard and save', () => {
     await expect(page.getByTestId('machine-leave-dialog')).toHaveCount(0);
   });
 
-  // FINDING (minor): the guard only intercepts <a> clicks and beforeunload; Back and the palette are not guarded.
-  test.fail('dirty form: browser Back asks before discarding', async ({ page }) => {
+  // Fixed in B4 (PO follow-up): browser Back and the palette are guarded too.
+  test('dirty form: browser Back asks before discarding', async ({ page }) => {
     await page.goto('/projeler');
     await page.goto('/makineler');
     await page.getByRole('button', { name: mt.add }).click();
@@ -125,7 +125,7 @@ test.describe('B3 machine form leave guard and save', () => {
     await expect(page.getByTestId('machine-leave-dialog')).toBeVisible({ timeout: 2000 });
   });
 
-  test.fail('dirty form: command palette navigation asks before discarding', async ({ page }) => {
+  test('dirty form: command palette navigation asks before discarding', async ({ page }) => {
     await page.goto('/makineler');
     await page.getByRole('button', { name: mt.add }).click();
     await page.getByLabel(mf.name).fill('Kaybolmasin');

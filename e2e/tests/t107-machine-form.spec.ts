@@ -114,4 +114,23 @@ test.describe('T107 machine form', () => {
       list.getByRole('link', { name: new RegExp(`^${t.verify}:`) }).first(),
     ).toBeVisible();
   });
+
+  test('leave guard: Back asks; Kal stays, Çık goes back past the form (B3 follow-up)', async ({
+    page,
+  }) => {
+    await page.goto('/projeler');
+    await page.goto('/makineler');
+    await page.getByRole('button', { name: t.add }).click();
+    await page.getByLabel(f.name).fill('Geri testi');
+    await page.goBack();
+    const dialog = page.getByTestId('machine-leave-dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: t.form.leave.stay }).click();
+    await expect(page).toHaveURL(/\/makineler/);
+    await expect(page.getByLabel(f.name)).toHaveValue('Geri testi');
+    await page.goBack();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: t.form.leave.discard }).click();
+    await expect(page).toHaveURL(/\/projeler$/);
+  });
 });

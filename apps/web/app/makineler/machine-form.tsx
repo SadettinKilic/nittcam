@@ -1,5 +1,6 @@
 'use client';
 
+import { setNavigationGuard } from '../../lib/navigation-guard';
 import {
   KNOWN_POSTS,
   parseMachineProfile,
@@ -134,8 +135,11 @@ export function MachineForm({
   const [parseErrors, setParseErrors] = useState<Record<string, NumberParseError>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  // Where to go when the user confirms leaving with unsaved changes (href, or the list).
-  const [leaving, setLeaving] = useState<{ href: string | null } | null>(null);
+  // Where to go when the user confirms leaving with unsaved changes: an href, the list (null), or
+  // browser history ('back': the user pressed Back/Forward).
+  const [leaving, setLeaving] = useState<{ href: string | null | 'back' } | null>(null);
+  // Set right before a confirmed navigation, so the history guard does not undo it.
+  const leavingNow = useRef(false);
   const toolRows = useRowKeys(initial.tools.length);
   const materialRows = useRowKeys(initial.materials.length);
   const active = useActiveSection();
@@ -167,6 +171,42 @@ export function MachineForm({
       document.removeEventListener('click', onClick, true);
     };
   }, [dirty, saving]);
+
+  // Programmatic navigation (command palette, shortcuts) asks before leaving (B3 follow-up).
+  useEffect(() => {
+    if (!dirty) return;
+    return setNavigationGuard((href) => {
+      setLeaving({ href });
+      return true;
+    });
+  }, [dirty]);
+
+  // Browser Back/Forward: while dirty a guard entry (same URL) sits on top of the page's entry.
+  // Leaving it (popstate) puts it back and asks; "Çık" then goes back past both entries.
+  useEffect(() => {
+    if (!dirty) return;
+    leavingNow.current = false;
+    window.history.pushState(
+      { ...window.history.state, [GUARD_STATE]: true },
+      '',
+      window.location.href,
+    );
+    const onPop = () => {
+      if (leavingNow.current) return;
+      window.history.pushState(
+        { ...window.history.state, [GUARD_STATE]: true },
+        '',
+        window.location.href,
+      );
+      setLeaving({ href: 'back' });
+    };
+    window.addEventListener('popstate', onPop);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      // Saved or cancelled on this page: drop the guard entry again (not after a confirmed leave).
+      if (!leavingNow.current && isGuardEntry()) window.history.back();
+    };
+  }, [dirty]);
 
   // Client-side check with the same core schema the server uses; shown after the first submit.
   const errors: FieldErrors = useMemo(() => {
@@ -257,7 +297,14 @@ export function MachineForm({
     setLeaving(null);
     if (!target) return;
     if (target.href === null) onCancel();
-    else router.push(target.href);
+    else if (target.href === 'back') {
+      leavingNow.current = true;
+      // The guard entry and the page's own entry: back to where the user came from.
+      window.history.go(-2);
+    } else {
+      leavingNow.current = true;
+      router.push(target.href);
+    }
   }
 
   const e = (path: string) => errors[path];
@@ -839,6 +886,14 @@ export function MachineForm({
       </AlertDialog>
     </form>
   );
+}
+
+/** History-state key of the leave guard's extra entry. */
+const GUARD_STATE = 'nittcamLeaveGuard';
+
+function isGuardEntry(): boolean {
+  const state: unknown = window.history.state;
+  return typeof state === 'object' && state !== null && GUARD_STATE in state;
 }
 
 function RowTable(props: {
