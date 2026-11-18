@@ -305,7 +305,7 @@ Tester focus: property tests; e2e drawing a line onto an endpoint ends exactly t
 - **Phone (390 px):** tools are usable with one finger (tap-tap, not drag-only); the dynamic input chip docks above the keyboard as a one-row bar with a numeric keypad (`inputmode="decimal"`); two-finger pan/zoom keeps working while a tool is active.
 - Visual baselines per tool: one "in progress" capture (preview + chip + hint) at 1440 light and 390 dark.
 
-### T127 Rectangle and circle tools   [status: doing]
+### T127 Rectangle and circle tools   [status: review]
 Spec: §4.3, §4.4 · Depends: T125, T126
 Acceptance:
 - [ ] rectangle: drag or click + typed "W;H" → parametric rect part (corner radius in properties); circle: centre + radius → freeform round part (bulge arcs)
@@ -314,7 +314,7 @@ Acceptance:
 - [ ] a new part gets the next free name ("Parça 6") and is selected after creation, so the inspector shows it at once
 Tester focus: typed sizes exact; new parts appear in the cut list; undo; rail has no dead button; in-progress baseline (1440 light, 390 dark); a rectangle can be drawn with taps only at 390 px.
 
-### T128 Line / polyline tool with typed length   [status: doing]
+### T128 Line / polyline tool with typed length   [status: review]
 Spec: §4.4, §6.1 · Depends: T126
 Acceptance:
 - [ ] click-click polyline; type a length + Enter for the current segment, Tab to type the angle; 45°/90° lock with Shift
@@ -322,7 +322,7 @@ Acceptance:
 - [ ] look and feel per the B10 block above: chip shows "Uzunluk" and "Açı" (Tab switches), rubber-band segment dashed in accent, placed vertices as 6 px square nodes, the start node grows and shows a "Kapat" snap glyph when the cursor is within JOIN_TOL; Backspace removes the last vertex; an open shape is drawn in `warning` stroke with **one** chip on the shape ("Kapalı değil"), not a callout (T199 rule)
 Tester focus: e2e drawing an L-shape by typed lengths → exact outline; open shape blocked from nesting with the Turkish warning; Backspace/Esc behaviour; in-progress baseline.
 
-### T129 Arc tool and segment bulge   [status: doing]
+### T129 Arc tool and segment bulge   [status: review]
 Spec: §4.4, §6.1 · Depends: T128
 Acceptance:
 - [ ] 3-point arc and "drag segment middle to bend" (`setSegmentBulge`); typed radius
