@@ -720,9 +720,11 @@ function Player({
                     <StepBack aria-hidden />
                   </IconButton>
                 </Tooltip>
+                {/* T245: idle = solid accent "Oynat"; playing = secondary "Duraklat". Under reduced
+                    motion it stays enabled and steps once, like Space (no animation). */}
                 <Button
-                  onClick={togglePlay}
-                  disabled={reduced}
+                  variant={active ? 'secondary' : 'primary'}
+                  onClick={reduced ? stepNext : togglePlay}
                   aria-keyshortcuts="Space"
                   data-testid="sim-play"
                   className="min-w-28"
@@ -787,6 +789,24 @@ function Player({
                     </button>
                   ))}
                 </div>
+                {reduced ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <IconButton
+                        size="sm"
+                        variant="ghost"
+                        aria-label={t.controls.reducedMotionInfo}
+                        data-testid="sim-reduced-info"
+                        className="text-info-text"
+                      >
+                        <Info aria-hidden />
+                      </IconButton>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-72 text-sm">
+                      <p data-testid="sim-reduced-note">{t.controls.reducedMotion}</p>
+                    </PopoverContent>
+                  </Popover>
+                ) : null}
               </div>
             </div>
             <div
@@ -821,11 +841,6 @@ function Player({
                 </span>
               ) : null}
             </div>
-            {reduced ? (
-              <p className="text-xs text-info-text" data-testid="sim-reduced-note">
-                {t.controls.reducedMotion}
-              </p>
-            ) : null}
           </div>
         </>
       }

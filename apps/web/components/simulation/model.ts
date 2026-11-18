@@ -102,11 +102,13 @@ export function simBounds(
   let x1 = sheet.width;
   let y1 = sheet.height;
   if (machine) {
+    // Table and the dashed travel outline both stay inside the fit (T245: never clipped).
     const t = machine.table;
-    x0 = Math.min(x0, t.x, machine.zero.x);
-    y0 = Math.min(y0, t.y, machine.zero.y);
-    x1 = Math.max(x1, t.x + t.width, machine.zero.x);
-    y1 = Math.max(y1, t.y + t.height, machine.zero.y);
+    const e = machine.envelope;
+    x0 = Math.min(x0, t.x, e.x, machine.zero.x);
+    y0 = Math.min(y0, t.y, e.y, machine.zero.y);
+    x1 = Math.max(x1, t.x + t.width, e.x + e.width, machine.zero.x);
+    y1 = Math.max(y1, t.y + t.height, e.y + e.height, machine.zero.y);
   }
   const pad = Math.max(x1 - x0, y1 - y0) * 0.02;
   return { x: x0 - pad, y: y0 - pad, width: x1 - x0 + 2 * pad, height: y1 - y0 + 2 * pad };
