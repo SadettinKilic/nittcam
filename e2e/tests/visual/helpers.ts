@@ -88,7 +88,9 @@ export async function snap(
   });
   // baseline: false = review capture only (pages whose data is shared with other tests).
   if (compareBaselines && opts.baseline !== false) {
-    await expect(page).toHaveScreenshot(`${name}.png`, { fullPage });
+    // Soft: a diff fails the test but later captures still run, so one CI run yields every
+    // candidate baseline of a multi-step test (B4b round 2).
+    await expect.soft(page).toHaveScreenshot(`${name}.png`, { fullPage });
   }
 }
 

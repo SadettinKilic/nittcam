@@ -5,7 +5,7 @@ import { STEP_KEYS, openNewProject } from './wizard-helpers';
  * T197 tester: the wizard stepper never overlaps itself at desktop widths (the one-row header
  * starts at 1400 px), and every step button receives its own click.
  */
-for (const width of [1280, 1440, 1920]) {
+for (const width of [1280, 1366, 1440, 1600, 1680, 1920]) {
   for (const step of ['parcalar', 'dizilim'] as const) {
     test(`stepper at ${width} px on ${step}: no overlapping steps, each one clickable`, async ({
       page,
@@ -28,8 +28,23 @@ for (const width of [1280, 1440, 1920]) {
                     .map((s) => s.getBoundingClientRect().right),
                 )
               : 0;
+            // Round 2: the number circle must sit inside its button, and the connector line
+            // after it must start to the right of the circle (never drawn through it).
+            const circle = b?.querySelector('span[aria-hidden="true"]')?.getBoundingClientRect();
+            const li = b?.closest('li');
+            const line =
+              li?.lastElementChild !== b
+                ? li?.lastElementChild?.getBoundingClientRect()
+                : undefined;
             return {
               k,
+              circleInside: !!(
+                r &&
+                circle &&
+                circle.left >= r.left - 0.5 &&
+                circle.right <= r.right + 0.5
+              ),
+              lineClear: !line || !circle || line.left >= circle.right - 0.5,
               left: r?.left ?? 0,
               right: Math.max(r?.right ?? 0, textRight),
               own: !!(b && hit && b.contains(hit)),
@@ -38,7 +53,11 @@ for (const width of [1280, 1440, 1920]) {
         },
         [...STEP_KEYS],
       );
-      for (const b of boxes) expect(b.own, `${b.k} receives its own click`).toBe(true);
+      for (const b of boxes) {
+        expect(b.own, `${b.k} receives its own click`).toBe(true);
+        expect(b.circleInside, `${b.k} circle fits inside its button`).toBe(true);
+        expect(b.lineClear, `connector after ${b.k} does not cross its circle`).toBe(true);
+      }
       for (let i = 1; i < boxes.length; i += 1) {
         const prev = boxes[i - 1];
         const cur = boxes[i];
@@ -49,4 +68,22 @@ for (const width of [1280, 1440, 1920]) {
       }
     });
   }
+}
+
+/**
+ * B4b round 2: at phone width the profile chip shares the row with the project name; the default
+ * name "Adsız proje" must still be readable in full (CI candidate showed "Adsız p").
+ */
+for (const width of [320, 390]) {
+  test(`project name is not clipped at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await openNewProject(page);
+    const name = page.getByTestId('project-name');
+    await expect(name).toHaveValue(/\S/);
+    const fit = await name.evaluate((el) => {
+      const i = el as HTMLInputElement;
+      return { scroll: i.scrollWidth, client: i.clientWidth };
+    });
+    expect(fit.scroll, 'project name fits its field').toBeLessThanOrEqual(fit.client + 1);
+  });
 }
