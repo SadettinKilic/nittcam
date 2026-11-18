@@ -126,14 +126,14 @@ describe('rotationAllowed 3-decimal boundary (tester round 2)', () => {
   });
 });
 
-describe('KNOWN GAP (tester round 2): an unlocked copy left at a stale rotation after a grain change', () => {
+describe('Unlocked copy left at a stale rotation after a grain change (tester round 2, fixed: PLACEMENT_GRAIN)', () => {
   /**
    * Nesting is manual in the web app (Diz button). After setGrain / setPartGrain without re-nesting,
    * unlocked copies keep their old rotation. No validation rule reports them, so the NC export
    * (which only gates LOCKED_PLACEMENT_GRAIN) would cut them against the grain.
-   * `it.fails` = expected behaviour not met yet; flip to `it` when fixed.
+   * Fixed in round 2: PLACEMENT_GRAIN reports it and the export refuses it.
    */
-  it.fails('validation reports an unlocked copy at a rotation its grain does not allow', () => {
+  it('validation reports an unlocked copy at a rotation its grain does not allow', () => {
     const { p, partId, index } = badLock();
     const q = run(p, 'lockPlacement', { partId, index, locked: false });
     const part = q.parts.find((x) => x.id === partId)!;

@@ -21,7 +21,7 @@ test('lock, turn the sheet grain, Dizilim shows LOCKED_PLACEMENT_GRAIN; unlock c
   await page.getByRole('button', { name: l.info.lock }).click();
   await expect(page.getByTestId('layout-info-locked')).toHaveText(l.info.lockedYes);
 
-  const msg = fill(l.lockedGrainIssue, { label: '1.1' });
+  const msg = fill(l.lockedGrainIssue, { label: LABEL });
   await expect(page.getByRole('alert').filter({ hasText: 'damar yönüne uymuyor' })).toHaveCount(0);
 
   await goStep(page, 'makine');

@@ -68,3 +68,46 @@ describe('LOCKED_PLACEMENT_GRAIN', () => {
     expect(grainIssues(p)).toEqual([]);
   });
 });
+
+describe('PLACEMENT_GRAIN (B5 fix round 2)', () => {
+  const codes = (p: Project) =>
+    validateProject(p, {})
+      .filter((i) => i.code === 'PLACEMENT_GRAIN' || i.code === 'LOCKED_PLACEMENT_GRAIN')
+      .map((i) => ({ code: i.code, path: i.path }));
+
+  it('an unlocked copy left at a stale rotation is an error until re-nested', () => {
+    const { project, partId, index } = lockedFixed();
+    let p = run(project, 'lockPlacement', { partId, index, locked: false });
+    expect(codes(p)).toEqual([]);
+    p = run(p, 'setGrain', { grain: 0 });
+    const issues = validateProject(p, {}).filter((i) => i.code === 'PLACEMENT_GRAIN');
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.every((i) => i.severity === 'error')).toBe(true);
+    for (const i of issues) {
+      const [, s, k] = /^layout\.sheets\[(\d+)\]\.placements\[(\d+)\]$/.exec(i.path)!;
+      const pl = p.layout.sheets[Number(s)]!.placements[Number(k)]!;
+      const part = p.parts.find((x) => x.id === pl.partId)!;
+      expect(pl.locked).toBeFalsy();
+      expect(rotationAllowed(part, p.stock.sheet, pl.rot)).toBe(false);
+    }
+    expect(codes(run(p, 'runNesting', { toolDiameter: 8 }))).toEqual([]);
+  });
+
+  it('a locked copy gets only LOCKED_PLACEMENT_GRAIN, never both codes', () => {
+    const { project } = lockedFixed();
+    const p = run(project, 'setGrain', { grain: 0 });
+    const locked = new Set(
+      p.layout.sheets.flatMap((s, si) =>
+        s.placements.flatMap((pl, k) =>
+          pl.locked ? [`layout.sheets[${si}].placements[${k}]`] : [],
+        ),
+      ),
+    );
+    const all = codes(p);
+    expect(new Set(all.map((i) => i.path)).size).toBe(all.length);
+    for (const i of all) {
+      expect(i.code).toBe(locked.has(i.path) ? 'LOCKED_PLACEMENT_GRAIN' : 'PLACEMENT_GRAIN');
+    }
+    expect(all.some((i) => i.code === 'LOCKED_PLACEMENT_GRAIN')).toBe(true);
+  });
+});

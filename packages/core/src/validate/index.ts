@@ -22,6 +22,7 @@ export type ValidationCode =
   | 'GROOVE_NARROWER_THAN_TOOL'
   | 'LOCKED_PLACEMENT_INVALID'
   | 'LOCKED_PLACEMENT_GRAIN'
+  | 'PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
   | 'SHEET_LARGER_THAN_TABLE';
 
@@ -215,30 +216,44 @@ export const lockedPlacementInvalid: ValidationRule = (project, context) => {
 };
 
 /**
- * (d2) A locked copy at a rotation its grain does not allow (D-034 amendment): e.g. the sheet or
- * part grain changed after the lock. The lock is the user's choice, so re-nesting keeps it in place
- * and nothing moves it silently; this error asks the user to unlock or turn it, and the NC export
- * (web `runExport`) refuses the project while it is reported. Same rotation
- * comparison as `allowedRotations` everywhere else (`rotationAllowed`, 3 decimals).
+ * (d2) A placed copy at a rotation its grain does not allow (D-034 amendment): e.g. the sheet or
+ * part grain changed after nesting. One issue per copy, never two:
+ * - locked copy → `LOCKED_PLACEMENT_GRAIN`: the lock is the user's choice, so re-nesting keeps it
+ *   in place and nothing moves it silently; the user unlocks or turns it.
+ * - unlocked copy → `PLACEMENT_GRAIN`: nesting only runs on demand (Diz), so the copy keeps its
+ *   stale rotation until the user re-nests.
+ * The NC export (web `runExport`) refuses the project while either is reported
+ * (`EXPORT_BLOCKING_CODES`). Same rotation comparison as `allowedRotations` everywhere else
+ * (`rotationAllowed`, 3 decimals).
  */
-export const lockedPlacementGrain: ValidationRule = (project) => {
+export const placementGrain: ValidationRule = (project) => {
   const parts = new Map(project.parts.map((p) => [p.id, p]));
   const issues: ValidationIssue[] = [];
   project.layout.sheets.forEach((sheet, s) => {
     sheet.placements.forEach((pl, p) => {
       const part = parts.get(pl.partId);
-      if (!pl.locked || !part || rotationAllowed(part, project.stock.sheet, pl.rot)) return;
+      if (!part || rotationAllowed(part, project.stock.sheet, pl.rot)) return;
       const allowed = allowedRotations(part, project.stock.sheet);
+      const what = pl.locked ? 'locked copy' : 'copy';
       issues.push({
-        code: 'LOCKED_PLACEMENT_GRAIN',
+        code: pl.locked ? 'LOCKED_PLACEMENT_GRAIN' : 'PLACEMENT_GRAIN',
         severity: 'error',
         path: formatPath(['layout', 'sheets', s, 'placements', p]),
-        message: `locked copy ${pl.index + 1} of part "${pl.partId}" on sheet ${s + 1} is at ${pl.rot}°, which its grain does not allow (allowed: ${allowed.join(', ')}°)`,
+        message: `${what} ${pl.index + 1} of part "${pl.partId}" on sheet ${s + 1} is at ${pl.rot}°, which its grain does not allow (allowed: ${allowed.join(', ')}°)${pl.locked ? '' : '; re-nest'}`,
       });
     });
   });
   return issues;
 };
+
+/**
+ * Validation codes that block the NC export on the server (web `runExport`): the toolpath itself
+ * accepts any rotation (D-034 stage 1), so a copy cut against the grain is stopped there.
+ */
+export const EXPORT_BLOCKING_CODES: ReadonlySet<ValidationCode> = new Set<ValidationCode>([
+  'LOCKED_PLACEMENT_GRAIN',
+  'PLACEMENT_GRAIN',
+]);
 
 /**
  * (e) The selected machine has no cutting parameter set for the stock (spec §3.6 "Malzeme =
@@ -288,7 +303,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   holeDepthBelowThickness,
   holeVsTool,
   lockedPlacementInvalid,
-  lockedPlacementGrain,
+  placementGrain,
   noCuttingParams,
   sheetLargerThanTable,
 ];

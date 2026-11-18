@@ -8,7 +8,8 @@ import {
   canDownload,
   exportNc,
   findMaterialParams,
-  lockedPlacementGrain,
+  EXPORT_BLOCKING_CODES,
+  placementGrain,
   needsUnverifiedAcceptance,
   parsePostConfig,
   unverifiedReasons,
@@ -175,17 +176,17 @@ export async function runExport(
     };
   }
   const post = { id: cfg.config.id, version: cfg.config.version, name: cfg.config.name };
-  // A locked copy its grain no longer allows (D-034 amendment) is never cut: the user unlocks or
+  // A copy its grain no longer allows (D-034 amendment) is never cut: the user re-nests, unlocks or
   // turns it first. The toolpath itself accepts any rotation (D-034 stage 1), so the gate is here.
-  const grainLocks = lockedPlacementGrain(data);
-  if (grainLocks.length > 0) {
+  const blocking = placementGrain(data).filter((i) => EXPORT_BLOCKING_CODES.has(i.code));
+  if (blocking.length > 0) {
     return {
       kind: 'run',
       run: {
         ...base,
         post,
         stage: 'toolpath',
-        violations: grainLocks.map((i): ExportViolation => {
+        violations: blocking.map((i): ExportViolation => {
           const sheet = sheetOf(i.path);
           return {
             stage: 'toolpath',
