@@ -109,8 +109,19 @@ export function TopBar({ t, onOpenMenu, search, themeExtra }: TopBarProps) {
         <Wordmark size={20} variant="short" className="min-[400px]:hidden" />
       </Link>
 
-      {/* Phones (< 640 px): no breadcrumb, the page shows its own title (B4b). */}
-      <div aria-hidden="true" className="flex-1 sm:hidden" />
+      {/* Phones (< 640 px): no breadcrumb, the page shows its own title (B4b); a page title set
+          by the page (the project name, T240) stays visible here. */}
+      <div className="flex min-w-0 flex-1 sm:hidden">
+        {slots?.title ? (
+          <span
+            data-testid="shell-title-mobile"
+            title={slots.title}
+            className="truncate px-1 text-sm font-semibold text-fg"
+          >
+            {slots.title}
+          </span>
+        ) : null}
+      </div>
       <nav aria-label={t.shell.breadcrumb} className="hidden min-w-0 flex-1 sm:block">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm">
           {crumbs.map((crumb, i) => {

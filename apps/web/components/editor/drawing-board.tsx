@@ -91,6 +91,8 @@ type T = Messages['editor'];
 const FIT_INSETS = { top: RULER_PX + 56, right: 16, bottom: 16, left: RULER_PX + 64 };
 /** Offset of a pasted / duplicated copy, mm (right and down). */
 const PASTE_OFFSET = 20;
+/** Height of the top toolbar band (view switch, zoom) plus its gap: the rail starts below it. */
+const BAND_PX = 48;
 /** Snap capture distance on screen, px. */
 const SNAP_PX = 10;
 /** Pointer movement that turns a click into a drag, px. */
@@ -142,11 +144,14 @@ export function DrawingBoard({
   project,
   run,
   onToList,
+  viewSwitch,
 }: {
   t: T;
   project: Project;
   run: (command: string, params: unknown) => boolean;
   onToList: () => void;
+  /** Liste / Çizim switch placed in the canvas toolbar band (below 1024 px, T240). */
+  viewSwitch?: ReactNode;
 }) {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -808,7 +813,7 @@ export function DrawingBoard({
         aria-label={t.tools.label}
         aria-orientation="vertical"
         className={`${floating} absolute z-10 flex flex-col gap-0.5 p-0.5`}
-        style={{ top: RULER_PX + 8, left: RULER_PX + 8 }}
+        style={{ top: RULER_PX + 8 + (viewSwitch ? BAND_PX : 0), left: RULER_PX + 8 }}
       >
         {railTool('select', t.tools.select, 'V', <MousePointer2 aria-hidden />)}
         {railTool('pan', t.tools.pan, 'H', <Hand aria-hidden />)}
@@ -818,6 +823,15 @@ export function DrawingBoard({
         {railTool('line', t.tools.line, 'L', <PenLine aria-hidden />)}
         {railTool('arc', t.tools.arc, 'A', <Spline aria-hidden />)}
       </div>
+      {viewSwitch ? (
+        <div
+          className={`${floating} absolute z-10 p-0.5`}
+          style={{ top: RULER_PX + 8, left: RULER_PX + 8 }}
+          data-testid="editor-view-switch"
+        >
+          {viewSwitch}
+        </div>
+      ) : null}
       <div
         className={`${floating} absolute right-2 z-10 flex items-center gap-0.5 p-0.5`}
         style={{ top: RULER_PX + 8 }}

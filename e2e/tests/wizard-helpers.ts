@@ -46,9 +46,25 @@ export async function openNewProject(page: Page, step: StepKey = 'makine') {
   await wizardReady(page, step);
 }
 
-/** Goes to a step with the step indicator. */
+/** Opens the phone step list (T240: below 640 px the steps live in a popover). */
+export async function openStepList(page: Page) {
+  const trigger = page.getByTestId('wizard-steps-trigger');
+  if ((await trigger.count()) > 0 && (await page.getByTestId('wizard-steps').count()) === 0) {
+    await trigger.click();
+  }
+}
+
+/** Goes to a step with the step indicator (the popover step list on phones). */
 export async function goStep(page: Page, step: StepKey) {
-  await page.getByTestId(`wizard-step-${step}`).click();
+  if ((await page.getByTestId('wizard-steps-trigger').count()) === 0) {
+    await page.getByTestId(`wizard-step-${step}`).click();
+  } else {
+    // Phones: the popover can close when the wizard remounts (first save); reopen and retry.
+    await expect(async () => {
+      await openStepList(page);
+      await page.getByTestId(`wizard-step-${step}`).click({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+  }
   await wizardReady(page, step);
 }
 

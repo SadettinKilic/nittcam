@@ -52,15 +52,16 @@ export function StatusBar({
             {hint}
           </span>
         ) : (
-          <span className="font-sans">{t.status.cursor}</span>
+          <span className="font-sans max-sm:hidden">{t.status.cursor}</span>
         )}
         {snapName ? (
           <span className="shrink-0 font-sans text-info-text" data-testid="editor-snap-name">
             {snapName}
           </span>
         ) : null}
-        <span className="shrink-0">X {cursor ? fmt(cursor.x) : '—'}</span>
-        <span className="shrink-0">Y {cursor ? fmt(cursor.y) : '—'}</span>
+        {/* Phones (T240): no hover, so no cursor read-out; snap toggle + zoom % only. */}
+        <span className="shrink-0 max-sm:hidden">X {cursor ? fmt(cursor.x) : '—'}</span>
+        <span className="shrink-0 max-sm:hidden">Y {cursor ? fmt(cursor.y) : '—'}</span>
       </span>
       <span className="ml-auto" />
       <Popover>
@@ -97,7 +98,7 @@ export function StatusBar({
       <span aria-label={t.status.zoom} data-testid="editor-zoom">
         %{zoomPercent(scale)}
       </span>
-      <span className="font-sans">{t.status.units}</span>
+      <span className="font-sans max-sm:hidden">{t.status.units}</span>
     </div>
   );
 }

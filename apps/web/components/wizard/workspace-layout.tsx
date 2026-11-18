@@ -162,9 +162,17 @@ export function WorkspaceLayout({
           </div>
           {/* T199b: with a docked footer (simulation transport) the drawing itself keeps a usable
               height on phones instead of sharing 55 dvh with the footer. */}
+          {/* T240 (D-039): below 640 px the column fills the viewport between the one-row wizard
+              header and the panel bar + footer (≥ 55 % of the height); the drawing of a
+              workspace with a docked footer keeps ≥ 55 % itself and the page scrolls to it. */}
           {canvasFooter
-            ? canvasColumn('min-h-[max(55dvh,280px)] flex-1', 'min-h-[max(40dvh,260px)]')
-            : canvasColumn('h-[max(55dvh,280px)] flex-1')}
+            ? canvasColumn(
+                'min-h-[max(55dvh,280px)] flex-1 max-sm:min-h-[max(calc(100dvh-12rem-var(--wizard-footer-h,4.25rem)),280px)]',
+                'min-h-[max(55dvh,260px)]',
+              )
+            : canvasColumn(
+                'h-[max(62dvh,280px)] flex-1 max-sm:h-[max(calc(100dvh-12rem-var(--wizard-footer-h,4.25rem)),280px)]',
+              )}
         </div>
         {/* B4b: on short phones the panel bar sticks just above the sticky wizard footer
             (its height, incl. the safe area, is published as --wizard-footer-h). */}

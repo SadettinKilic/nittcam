@@ -43,6 +43,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
   FileOutput,
   CircleAlert,
   Cloud,
@@ -61,6 +62,9 @@ import {
   ErrorState,
   IconButton,
   NestingIcon,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   RouterIcon,
   SheetIcon,
   Tabs,
@@ -71,6 +75,7 @@ import {
   notify,
 } from '@nittcam/ui';
 import { ariaKeyShortcuts, shortcutById } from '../../lib/shortcuts';
+import { useMediaQuery, WORKSPACE_DESKTOP } from '../../lib/use-media-query';
 import { PageSkeleton } from '../feedback/page-skeleton';
 import { ShellStatus, useShellTitle } from '../shell/shell-context';
 
@@ -319,6 +324,10 @@ function WizardSession({
     else url.searchParams.delete('gorunum');
     window.history.replaceState(window.history.state, '', url);
   }, []);
+  // T240: below 640 px the wizard header is one compact row; T241: on ≥ 1024 px the
+  // Liste / Çizim switch sits in the header row, below that (drawing view) in the canvas band.
+  const phone = useMediaQuery('(max-width: 639px)', false);
+  const wide = useMediaQuery(WORKSPACE_DESKTOP);
   const stepRef = useRef(step);
   const heading = useRef<HTMLHeadingElement>(null);
   const focusHeading = useRef(false);
@@ -487,6 +496,31 @@ function WizardSession({
   // Dizilim and Simülasyon are canvas-first workspaces that fill the viewport (T197).
   const drawing = step === 'parcalar' && partsView === 'drawing';
   const workspace = step === 'dizilim' || step === 'simulasyon' || drawing;
+  // Liste / Çizim (T124). D-039: never a row of its own on the board: in the wizard header row
+  // on ≥ 1024 px (T241), in the canvas toolbar band below that (T240).
+  const viewSwitch = (
+    <Tabs value={partsView} onValueChange={(v) => setPartsView(v as PartsView)}>
+      <TabsList variant="segmented" aria-label={messages.cutList.views.label}>
+        <TabsTrigger
+          value="list"
+          className="h-8 px-3"
+          aria-controls="step-content"
+          data-testid="parts-view-list"
+        >
+          {messages.cutList.views.list}
+        </TabsTrigger>
+        <TabsTrigger
+          value="drawing"
+          className="h-8 px-3"
+          aria-controls="step-content"
+          data-testid="parts-view-drawing"
+        >
+          {messages.cutList.views.drawing}
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+  const switchInCanvas = drawing && !wide;
   if (step === 'makine') {
     left = (
       <div className="flex min-w-0 flex-col gap-4">
@@ -524,6 +558,7 @@ function WizardSession({
         project={project}
         run={session.run}
         onToList={() => setPartsView('list')}
+        viewSwitch={switchInCanvas ? viewSwitch : undefined}
       />
     );
   } else if (step === 'parcalar') {
@@ -604,90 +639,126 @@ function WizardSession({
   const indicator = saveIndicator(session.saveState, session.projectId !== null);
   const nextKey = STEPS[index + 1];
 
+  const headerActions = (
+    <>
+      {simMachine ? (
+        <ProfileStatusChip
+          t={t.profileStatus}
+          detail={t.machine.unverified}
+          reasons={profileReasons({
+            verification: simMachine.pv.verification,
+            example: simMachine.pv.profile.example,
+          })}
+          reasonText={t.export.reasons}
+          machineId={simMachine.id}
+        />
+      ) : null}
+      <ShellStatus>
+        <Badge
+          dot
+          variant={
+            session.saveState === 'error' || session.saveState === 'conflict'
+              ? 'danger'
+              : session.saveState === 'saved' ||
+                  (session.saveState === 'idle' && session.projectId)
+                ? 'success'
+                : 'neutral'
+          }
+          aria-live="polite"
+          title={`${t.save.label}: ${saveText}`}
+          data-testid="save-status"
+          data-state={session.saveState}
+          data-revision={session.revision}
+          className="max-w-full min-w-0 shrink"
+        >
+          <span className="truncate max-[399px]:sr-only">{saveText}</span>
+        </Badge>
+      </ShellStatus>
+      <Tooltip content={messages.cutList.undo}>
+        <IconButton
+          aria-label={messages.cutList.undo}
+          variant="ghost"
+          onClick={session.undo}
+          disabled={!session.canUndo}
+          aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
+        >
+          <Undo2 aria-hidden />
+        </IconButton>
+      </Tooltip>
+      <Tooltip content={messages.cutList.redo}>
+        <IconButton
+          aria-label={messages.cutList.redo}
+          variant="ghost"
+          onClick={session.redo}
+          disabled={!session.canRedo}
+          aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
+        >
+          <Redo2 aria-hidden />
+        </IconButton>
+      </Tooltip>
+    </>
+  );
+
   return (
     <main
       data-workspace={workspace ? '' : undefined}
-      className={`mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col gap-5 px-4 pt-5 sm:px-6 lg:px-8 ${workspace ? 'max-w-none lg:h-[calc(100dvh-3.5rem)] lg:gap-3 lg:overflow-hidden lg:pt-3' : 'max-w-[96rem]'}`}
+      className={`mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col gap-3 px-4 pt-1 sm:gap-5 sm:px-6 sm:pt-5 lg:px-8 ${workspace ? 'max-w-none max-sm:gap-2 lg:h-[calc(100dvh-3.5rem)] lg:gap-3 lg:overflow-hidden lg:pt-3' : 'max-w-[96rem]'}`}
     >
-      {/* One header row on ≥ 1400 px (T197; narrower screens would squeeze the stepper): project name, stepper, undo/redo. */}
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-5 min-[1400px]:flex-nowrap min-[1400px]:items-center">
-        <header className="contents">
-          <NameField
-            label={t.nameLabel}
-            value={session.name}
-            onCommit={session.rename}
-            autoSelect={session.projectId === null && step === 'makine'}
-          />
-          <div className="order-2 flex items-center gap-1 min-[1400px]:order-3 min-[1400px]:shrink-0">
-            {simMachine ? (
-              <ProfileStatusChip
-                t={t.profileStatus}
-                detail={t.machine.unverified}
-                reasons={profileReasons({
-                  verification: simMachine.pv.verification,
-                  example: simMachine.pv.profile.example,
-                })}
-                reasonText={t.export.reasons}
-                machineId={simMachine.id}
-              />
-            ) : null}
-            <ShellStatus>
-              <Badge
-                dot
-                variant={
-                  session.saveState === 'error' || session.saveState === 'conflict'
-                    ? 'danger'
-                    : session.saveState === 'saved' ||
-                        (session.saveState === 'idle' && session.projectId)
-                      ? 'success'
-                      : 'neutral'
-                }
-                aria-live="polite"
-                title={`${t.save.label}: ${saveText}`}
-                data-testid="save-status"
-                data-state={session.saveState}
-                data-revision={session.revision}
-                className="max-w-full min-w-0 shrink"
-              >
-                <span className="truncate max-[399px]:sr-only">{saveText}</span>
-              </Badge>
-            </ShellStatus>
-            <Tooltip content={messages.cutList.undo}>
-              <IconButton
-                aria-label={messages.cutList.undo}
-                variant="ghost"
-                onClick={session.undo}
-                disabled={!session.canUndo}
-                aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
-              >
-                <Undo2 aria-hidden />
-              </IconButton>
-            </Tooltip>
-            <Tooltip content={messages.cutList.redo}>
-              <IconButton
-                aria-label={messages.cutList.redo}
-                variant="ghost"
-                onClick={session.redo}
-                disabled={!session.canRedo}
-                aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
-              >
-                <Redo2 aria-hidden />
-              </IconButton>
-            </Tooltip>
+      {phone ? (
+        <>
+          <header
+            data-testid="wizard-compact-header"
+            className="flex h-14 min-w-0 items-center gap-1"
+          >
+            <CompactStepper
+              t={t.steps}
+              headingRef={heading}
+              current={step}
+              statuses={wizardStepStatuses(step, progress)}
+              progress={progress}
+              onGo={go}
+            />
+            <div className="flex shrink-0 items-center gap-0.5">{headerActions}</div>
+          </header>
+          {/* The name lives in the top-bar title; on step 1 it stays editable here. */}
+          {step === 'makine' ? (
+            <NameField
+              label={t.nameLabel}
+              value={session.name}
+              onCommit={session.rename}
+              autoSelect={session.projectId === null}
+            />
+          ) : null}
+        </>
+      ) : (
+        <>
+        {/* One header row on ≥ 1400 px (T197; narrower screens would squeeze the stepper): project name, stepper, undo/redo. */}
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-5 min-[1400px]:flex-nowrap min-[1400px]:items-center">
+          <header className="contents">
+            <NameField
+              label={t.nameLabel}
+              value={session.name}
+              onCommit={session.rename}
+              autoSelect={session.projectId === null && step === 'makine'}
+            />
+            <div className="order-2 flex items-center gap-1 min-[1400px]:order-3 min-[1400px]:shrink-0">
+              {headerActions}
+            </div>
+          </header>
+  
+          <div className="order-3 w-full min-w-0 min-[1400px]:order-2 min-[1400px]:w-auto min-[1400px]:flex-1 min-[1400px]:max-[1679px]:min-w-min">
+            <StepIndicator
+              t={t.steps}
+              headingRef={heading}
+              current={step}
+              statuses={wizardStepStatuses(step, progress)}
+              progress={progress}
+              onGo={go}
+            />
           </div>
-        </header>
-
-        <div className="order-3 w-full min-w-0 min-[1400px]:order-2 min-[1400px]:w-auto min-[1400px]:flex-1 min-[1400px]:max-[1679px]:min-w-min">
-          <StepIndicator
-            t={t.steps}
-            headingRef={heading}
-            current={step}
-            statuses={wizardStepStatuses(step, progress)}
-            progress={progress}
-            onGo={go}
-          />
         </div>
-      </div>
+        </>
+      )}
 
       {session.saveState === 'conflict' ? (
         <ConflictNotice
@@ -711,28 +782,9 @@ function WizardSession({
         </Callout>
       ) : null}
 
-      {step === 'parcalar' ? (
+      {step === 'parcalar' && !switchInCanvas ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 lg:-mt-1">
-          <Tabs value={partsView} onValueChange={(v) => setPartsView(v as PartsView)}>
-            <TabsList variant="segmented" aria-label={messages.cutList.views.label}>
-              <TabsTrigger
-                value="list"
-                className="h-8 px-3"
-                aria-controls="step-content"
-                data-testid="parts-view-list"
-              >
-                {messages.cutList.views.list}
-              </TabsTrigger>
-              <TabsTrigger
-                value="drawing"
-                className="h-8 px-3"
-                aria-controls="step-content"
-                data-testid="parts-view-drawing"
-              >
-                {messages.cutList.views.drawing}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {viewSwitch}
           {drawing ? null : (
             <p className="max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
           )}
@@ -903,26 +955,7 @@ function StepIndicator({
                   onClick={() => onGo(s)}
                   className={`group flex min-h-10 min-w-8 items-center gap-2 rounded-lg px-0.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:min-w-11 sm:px-2 ${focusRing}`}
                 >
-                  <span
-                    aria-hidden="true"
-                    className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums ${
-                      active
-                        ? 'border-accent bg-accent text-accent-fg shadow-xs'
-                        : status === 'done'
-                          ? 'border-accent-border bg-accent-subtle text-accent-text'
-                          : status === 'blocked'
-                            ? 'border-dashed border-border-strong bg-surface text-fg-subtle'
-                            : 'border-border-strong bg-surface text-fg-muted'
-                    }`}
-                  >
-                    {status === 'done' ? (
-                      <Check className="size-3.5" strokeWidth={2.5} />
-                    ) : status === 'blocked' ? (
-                      <Lock className="size-3" />
-                    ) : (
-                      i + 1
-                    )}
-                  </span>
+                  <StepDot status={status} n={i + 1} />
                   {active ? null : (
                     <span
                       aria-hidden="true"
@@ -948,6 +981,153 @@ function StepIndicator({
         </ol>
       </nav>
     </div>
+  );
+}
+
+/** The round step marker: number, check (done) or lock (blocked); accent when current. */
+function StepDot({ status, n }: { status: WizardStepStatus; n: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums ${
+        status === 'current'
+          ? 'border-accent bg-accent text-accent-fg shadow-xs'
+          : status === 'done'
+            ? 'border-accent-border bg-accent-subtle text-accent-text'
+            : status === 'blocked'
+              ? 'border-dashed border-border-strong bg-surface text-fg-subtle'
+              : 'border-border-strong bg-surface text-fg-muted'
+      }`}
+    >
+      {status === 'done' ? (
+        <Check className="size-3.5" strokeWidth={2.5} />
+      ) : status === 'blocked' ? (
+        <Lock className="size-3" />
+      ) : (
+        n
+      )}
+    </span>
+  );
+}
+
+/**
+ * Phone wizard header (T240, D-039): one row ≤ 56 px. The step title with "2 / 5" and a
+ * 5-segment progress line; a tap opens the step list as a popover (same statuses and lock
+ * rules as the desktop stepper).
+ */
+function CompactStepper({
+  t,
+  headingRef,
+  current,
+  statuses,
+  progress,
+  onGo,
+}: {
+  t: Messages['wizard']['steps'];
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  current: StepKey;
+  statuses: readonly WizardStepStatus[];
+  progress: WizardProgress;
+  onGo: (step: StepKey) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const chosen = useRef(false);
+  const index = STEPS.indexOf(current);
+  const count = fill(t.counter, { n: index + 1, total: STEPS.length });
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-1.5 px-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            data-testid="wizard-step-title"
+            data-step={current}
+            className="truncate text-base leading-tight font-semibold tracking-tight text-fg focus:outline-none"
+          >
+            {t[current]}
+          </h1>
+          <span
+            aria-hidden="true"
+            data-testid="wizard-step-counter"
+            className="shrink-0 font-mono text-xs text-fg-muted tabular-nums"
+          >
+            {count}
+          </span>
+          <ChevronDown aria-hidden className="size-3.5 shrink-0 text-fg-subtle" />
+        </div>
+        <div aria-hidden="true" className="flex max-w-56 gap-1" data-testid="wizard-progress">
+          {STEPS.map((s, i) => (
+            <span
+              key={s}
+              data-status={statuses[i]}
+              className={`h-1 flex-1 rounded-full ${
+                i === index ? 'bg-accent' : i < index ? 'bg-accent-border' : 'bg-border'
+              }`}
+            />
+          ))}
+        </div>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={`${t.label}: ${fill(t.stepOf, { n: index + 1, total: STEPS.length })}`}
+            data-testid="wizard-steps-trigger"
+            className={`absolute inset-0 rounded-lg transition-colors duration-(--duration-fast) hover:bg-surface-hover/40 ${focusRing}`}
+          />
+        </PopoverTrigger>
+      </div>
+      <PopoverContent
+        align="start"
+        className="w-[min(18rem,calc(100vw-2rem))] p-1.5"
+        data-testid="wizard-steps-popover"
+        onCloseAutoFocus={(e) => {
+          // A chosen step moves focus to its heading (go), not back to the trigger.
+          if (chosen.current) {
+            e.preventDefault();
+            chosen.current = false;
+          }
+        }}
+      >
+        <nav aria-label={t.label}>
+          <ol className="flex flex-col gap-0.5" data-testid="wizard-steps">
+            {STEPS.map((s, i) => {
+              const status = statuses[i] ?? 'upcoming';
+              const active = status === 'current';
+              const blocker = stepBlocker(s, progress);
+              return (
+                <li key={s}>
+                  <button
+                    type="button"
+                    aria-current={active ? 'step' : undefined}
+                    data-testid={`wizard-step-${s}`}
+                    data-status={status}
+                    onClick={() => {
+                      chosen.current = true;
+                      setOpen(false);
+                      onGo(s);
+                    }}
+                    className={`flex min-h-11 w-full items-center gap-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover ${active ? 'bg-accent-subtle/60' : ''} ${focusRing}`}
+                  >
+                    <StepDot status={status} n={i + 1} />
+                    <span className="flex min-w-0 flex-col">
+                      <span
+                        className={`truncate ${active ? 'font-semibold text-fg' : status === 'blocked' ? 'text-fg-subtle' : 'text-fg'}`}
+                      >
+                        {t[s]}
+                      </span>
+                      {blocker && !active ? (
+                        <span className="text-xs text-fg-subtle">{t.blocked[blocker]}</span>
+                      ) : null}
+                    </span>
+                    <span className="sr-only">{` (${t.status[status]})`}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+      </PopoverContent>
+    </Popover>
   );
 }
 
