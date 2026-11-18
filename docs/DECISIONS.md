@@ -410,3 +410,11 @@ The editor (T124–T125) needs a place for each part on the board, and `movePart
 Grain is a property of the physical piece. `rotatePart` and `mirrorPart` turn the part's grain together with its shape, so the grain relative to the part's geometry never changes; still one command = one undo step.
 - **Rule (pure, `packages/core/src/geometry/grain.ts`):** CCW quarter turn t → part grain angle + t; mirror (`h` or `v`) → −angle; all mod 180 (D-034). Tested: 4 × 90° = identity, mirror twice = identity.
 - **Schema v1 today:** a part has only `grainLock` (its grain = the sheet grain, 0 or 90, in the part frame). Mirror and 180° already keep that grain exactly. A 90°/270° turn of a grain-locked part cannot be stored until the part grain angle exists, so T112 (schema v2, `part.grain.angle`) wires `turnGrain`/`mirrorGrain` into both commands.
+
+## D-039 Canvas budget and one tool-state language (2026-11-18, Fable design review #2, design delegated by the owner)
+Review #2 found the drawing board squeezed by chrome (≈ 548 px wide at 1440; ≈ 46 % of the height at 390) and no shared look for "a tool is active". Rules for every canvas screen (board, Dizilim, Simülasyon, later 3D):
+- **Canvas budget:** at 1440 × 900 the canvas is ≥ 640 × 660 px with both panels open; below 1024 px it gets ≥ 55 % of the viewport height. View switches, toggles and collapse buttons live in an existing row (wizard header, panel header, canvas overlay), never in a row of their own. Nothing may overlap the canvas status bar.
+- **Tool state:** active tool = accent-filled rail button; unbuilt tools are not shown; in-progress geometry = dashed accent preview; typed values = one mono "dynamic input" chip at the cursor (docked above the keyboard on phones); next-step hints = one line in the status bar. No modal and no side-panel form for drawing.
+- **Panels carry values, not prose:** actions are icon buttons with tooltip + shortcut; shortcut lists live in the shortcuts dialog; explanations go into popovers. Safety sentences are exempt (T199 rule stays).
+- **Reference, not constraint:** the board may show the stock sheet as a view-only outline for scale; it is never project data.
+- Tasks: T127–T129 guidance, B10a (T240–T243), riders T244–T247. Review: `docs/reviews/2026-11-18-fable-design-review-2.md`.
