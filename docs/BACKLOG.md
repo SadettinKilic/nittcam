@@ -334,7 +334,7 @@ Tester focus: arc radius from properties = typed radius; G-code contains G2/G3 f
 
 Source: Fable design review #2 (`docs/reviews/2026-11-18-fable-design-review-2.md`, 2026-11-18). Scores: corporate image 6.5/10 (was 5), modernity 7.5 (7), usability 7 (6.5), readiness for M3–M6 7 (6). Rule: D-039 (canvas budget, one tool-state language). Each task ≤ ½ day.
 
-### T240 Phone board: status bar visible, compact wizard header   [status: review]
+### T240 Phone board: status bar visible, compact wizard header   [status: done]
 Spec: §3.6, §3.7 · Depends: T124, T198 · Decision: D-039
 Acceptance:
 - [ ] 390 × 844 and 360 × 740, step 2 "Çizim": the board status bar is fully visible; nothing of it sits behind the "Parçalar / Özellikler" button bar or the wizard footer (the canvas card ends above the button bar; on phones the status bar shows only the snap toggle + zoom %, cursor X/Y is hidden because there is no hover)
@@ -343,7 +343,7 @@ Acceptance:
 - [ ] the tool rail on phones does not cover the left ruler numbers (the rail starts right of the ruler, or the ruler is hidden below 640 px)
 Tester focus: bounding-box assertions (status bar bottom ≤ button bar top; canvas height / viewport height ≥ 0.55) at 390 × 844 and 360 × 740; step popover with keyboard + touch; locked steps still locked; baselines updated on purpose (steps 2–4 mobile).
 
-### T241 Desktop board: canvas budget   [status: review]
+### T241 Desktop board: canvas budget   [status: done]
 Spec: §3.6 · Depends: T124, T197 · Decision: D-039
 Acceptance:
 - [ ] at 1440 × 900 with both panels open the board canvas is **≥ 640 px wide and ≥ 660 px high** (today ≈ 548 × 632): the "Parçalar" panel is 232 px, the inspector 264 px, and the Liste / Çizim switch moves into the wizard header row (left of the stepper) so it no longer takes a row of its own
@@ -352,7 +352,7 @@ Acceptance:
 - [ ] the same widths apply to Dizilim and Simülasyon (one `WorkspaceLayout` default), so the three steps do not jump when stepping through the wizard
 Tester focus: bounding-box assertions at 1440 × 900, 1280 × 800, 1024 × 768; no page scroll on steps 2 (Çizim), 3, 4; collapse state survives reload; baselines updated on purpose.
 
-### T242 Board inspector: icon actions, no shortcut prose   [status: review]
+### T242 Board inspector: icon actions, no shortcut prose   [status: done]
 Spec: §4.2 · Depends: T125 · Decision: D-039
 Acceptance:
 - [ ] "İşlemler" becomes one row of 32 px icon buttons (yatay aynala, dikey aynala, 90° döndür, çoğalt, then a separator and sil in `danger` text colour), each with a tooltip "Ad · kısayol" and an `aria-label`; no label touches its button border at 264 px (today "Yatay aynala" / "Dikey aynala" fill their buttons edge to edge)
@@ -361,7 +361,7 @@ Acceptance:
 - [ ] with nothing selected the inspector shows a compact summary (parça sayısı, toplam alan in m², board extents) instead of an empty panel
 Tester focus: every action reachable and named for the keyboard and a screen reader (axe); tooltips show the shortcut; the mini-toolbar never leaves the canvas at 390 px; existing select-move-undo e2e stays green.
 
-### T243 Board reference frame: origin, sheet ghost, fit   [status: review]
+### T243 Board reference frame: origin, sheet ghost, fit   [status: done]
 Spec: §4.2, §2.4 · Depends: T124, T196 · Decision: D-039
 Acceptance:
 - [ ] the origin is a clear marker (X axis to the right and Y axis up, 24 px arms with "X" / "Y" in mono, the same glyph as the layout canvas origin) instead of a 4 px dot
@@ -372,7 +372,7 @@ Tester focus: coordinates still correct at 3 zoom levels; the sheet outline is a
 
 ### Review #2 riders: T244–T247 (not a batch; each rides with the batch named in its title; no reorder)
 
-### T244 Dizilim panels: less prose, one summary (rides with B6)   [status: todo]
+### T244 Dizilim panels: less prose, one summary (rides with B6)   [status: doing]
 Spec: §3.6 · Depends: T197
 Acceptance:
 - [ ] left panel: the "Dizilim" card's two paragraphs become one line of chips ("Boşluk 8 mm · Kenar 10 mm · Takım Ø8") with the rest in an info popover; the three KPI tiles do not wrap their labels at the panel width ("Plaka", "Fire", "Kullanım")
@@ -380,7 +380,7 @@ Acceptance:
 - [ ] the grid/zoom toolbar shares the row with the plate tabs (tabs left, tools right) and the sheet is centred in the remaining canvas (today it hangs at the top with an empty band below)
 Tester focus: no sentence with a safety meaning is removed (string list); sheet centred at 1440 × 900 and 1024 × 768; baselines.
 
-### T245 Simulation transport and summary polish (rides with B6)   [status: todo]
+### T245 Simulation transport and summary polish (rides with B6)   [status: doing]
 Spec: §8.2 · Depends: T197
 Acceptance:
 - [ ] "Oynat" is a solid accent button in its idle state (today it is a pale tint that reads as disabled); while playing it becomes "Duraklat" in the secondary style
@@ -410,7 +410,7 @@ Tester focus: nav item count and active state through a new-project flow; a rena
 
 ### Batch B5: T112–T114 (grain angle engine)
 
-### T112 Grain angle model: schema v2, migration, commands   [status: review]
+### T112 Grain angle model: schema v2, migration, commands   [status: done]
 Spec: §6.2, §9.2 · Depends: none · Decision: D-034
 Acceptance:
 - [ ] schema v2: `stock.sheet.grain` = angle in degrees [0, 180) (or `null` = no grain); part `grain: { mode: 'free' | 'fixed', angle }` (angle in the part frame, [0, 180)); placement `rot` = any degrees [0, 360) (number, 3 decimals)
@@ -421,7 +421,7 @@ Acceptance:
 - [ ] D-038: `rotatePart` / `mirrorPart` turn `part.grain.angle` with the shape via `turnGrain` / `mirrorGrain` (core, B9); unit tests: 4 × rotate 90° = identity incl. grain, mirror twice = identity
 Tester focus: migration on every existing fixture + saved projects in PGlite; undo round-trip; property test review.
 
-### T113 Arbitrary-angle rotation through geometry, toolpath, post and checks   [status: review]
+### T113 Arbitrary-angle rotation through geometry, toolpath, post and checks   [status: done]
 Spec: §6.1, §6.3, §6.5, §7.2 · Depends: T112
 Acceptance:
 - [ ] geometry `transform` supports any angle (bulges unchanged, vertices rotated); arc-aware bbox of rotated outlines
@@ -430,7 +430,7 @@ Acceptance:
 - [ ] properties: for random angles every cutting move stays at tool radius from the rotated part (± EPS); area invariant under rotation
 Tester focus: **G-code safety**: a 30°-rotated part through post + reader + checks; §7.2 rule tests still pass; golden diff = none.
 
-### T114 Placer: grain-aware rotations with rotated footprints   [status: review]
+### T114 Placer: grain-aware rotations with rotated footprints   [status: done]
 Spec: §6.2 · Depends: T113
 Acceptance:
 - [ ] the min-waste placer takes rotations from `allowedRotations`; an axis-aligned angle uses the rectangle as today; a non-axis angle places the **axis-aligned bbox of the rotated outline** (interim until true-shape, T165–T167) and reports `GRAIN_ROTATED_BBOX` info with the extra waste
@@ -441,7 +441,7 @@ Tester focus: property tests for the grain rule; a fixed 30° part never appears
 
 ### Batch B6: T115–T117 (grain dial UI)
 
-### T115 GrainDial component   [status: todo]
+### T115 GrainDial component   [status: doing]
 Spec: §3.6, §3.7 · Depends: T101
 Acceptance:
 - [ ] circular dial like an angle wheel: drag the handle around the circle, click on the ring to jump, numeric input next to it (°, decimal comma), quick buttons 0° / 45° / 90° / 135°
@@ -452,7 +452,7 @@ Acceptance:
 - [ ] in `/dev/ui` gallery; unit tests for angle maths (pointer → angle, snap, normalise)
 Tester focus: drag interaction e2e (mouse + touch emulation), keyboard steps, snap behaviour, axe, screenshots both themes.
 
-### T116 Grain in the UI: sheet, parts, layout and simulation   [status: todo]
+### T116 Grain in the UI: sheet, parts, layout and simulation   [status: doing]
 Spec: §3.6, §4.1, §6.5 · Depends: T114, T115
 Acceptance:
 - [ ] wizard step 1: GrainDial for the sheet (only for wood/veneered materials; "damar yok" otherwise); the sheet preview (T196) redraws its grain texture live while the dial is dragged
@@ -460,7 +460,7 @@ Acceptance:
 - [ ] layout view + simulation: sheet grain texture lines at the sheet angle; each part shows a grain arrow at its effective angle (part grain + rot); rotated parts drawn rotated
 Tester focus: visual check that arrows match angles (screenshot at 0/30/90°); editing grain is one undo step; free parts show no arrow.
 
-### T117 Grain end-to-end test   [status: todo]
+### T117 Grain end-to-end test   [status: doing]
 Spec: §11 · Depends: T116
 Acceptance:
 - [ ] e2e: sheet grain 0°, part A fixed 0°, part B fixed 90°, part C fixed 30° → nesting places A at 0/180, B at 90/270, C at −30/150; simulation and NC download pass every check

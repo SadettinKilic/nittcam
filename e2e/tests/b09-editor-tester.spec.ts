@@ -472,6 +472,31 @@ test.describe('B9 tester: plate tabs (T199b)', () => {
     });
   }
 
+  test('1440, both panels collapsed (wide canvas), 10 plates: tabs share the row, ≥ 3 fully visible (T244 r2)', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openNewProject(page, 'parcalar');
+    await pasteAndNest(page, BIG, 1);
+    await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-scale', /[0-9]/);
+    for (const side of ['left', 'right'] as const) {
+      const panel = page.getByTestId(`workspace-${side}`);
+      if ((await panel.getAttribute('data-state')) !== 'closed') {
+        await page.getByTestId(`workspace-${side}-toggle`).click();
+        await expect(panel).toHaveAttribute('data-state', 'closed');
+      }
+    }
+    await expect
+      .poll(async () => (await page.getByTestId('layout-canvas').boundingBox())?.width ?? 0)
+      .toBeGreaterThanOrEqual(768);
+    const strip = page.getByTestId('sheet-tabs-scroll');
+    await expect.poll(() => visibleTabs(strip)).toBeGreaterThanOrEqual(3);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.screenshot({ path: `__screenshots__/b06-r2-tabs-wide-1440.png` });
+  });
+
   test('390: Dizilim tabs: ≥ 2 fully visible, strip inside the viewport, light and dark', async ({
     page,
   }) => {

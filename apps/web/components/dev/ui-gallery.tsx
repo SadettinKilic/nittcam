@@ -2,6 +2,7 @@
 
 import {
   AlertDialog,
+  GrainDial,
   Measure,
   DOMAIN_ICONS,
   Logo,
@@ -93,6 +94,7 @@ import {
 } from '@nittcam/ui';
 import { Copy, FolderPlus, MoreHorizontal, Pencil, Plus, Settings, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { grainDialLabels } from '../../lib/grain-labels';
 import type { Messages } from '../../lib/messages';
 
 type T = Messages['devUi'];
@@ -142,6 +144,9 @@ export function UiGallery({ t }: { t: T }) {
   const [widthError, setWidthError] = useState<NumberParseError | null>(null);
   const [thickness, setThickness] = useState<number | null>(18);
   const [grain, setGrain] = useState(true);
+  const [grainAngle, setGrainAngle] = useState(30);
+  const [grainLive, setGrainLive] = useState(30);
+  const grainLabels = grainDialLabels();
   const errors = numberErrors(t);
 
   return (
@@ -414,6 +419,57 @@ export function UiGallery({ t }: { t: T }) {
               <output className="numeric text-sm text-fg-muted" data-testid="width-value">
                 {width === null ? '—' : String(width)}
               </output>
+            </div>
+          </div>
+        </Section>
+
+        <Section id="grain-dial" title={t.sections.grainDial}>
+          <div className="grid gap-6 sm:grid-cols-2" data-testid="gallery-grain-dial">
+            <Row label={t.grainDemo.md}>
+              <GrainDial
+                value={grainAngle}
+                onValueChange={setGrainLive}
+                onValueCommit={(a) => {
+                  setGrainAngle(a);
+                  setGrainLive(a);
+                }}
+                labels={grainLabels}
+                data-testid="grain-dial-demo"
+              />
+            </Row>
+            <div className="flex flex-col gap-6">
+              <Row label={t.grainDemo.sm}>
+                <GrainDial
+                  value={grainAngle}
+                  onValueCommit={setGrainAngle}
+                  labels={grainLabels}
+                  size="sm"
+                  controls={false}
+                  data-testid="grain-dial-sm"
+                />
+                <output className="numeric text-sm text-fg-muted" data-testid="grain-dial-value">
+                  {t.grainDemo.value}: {grainLive}°
+                </output>
+              </Row>
+              <Row label={t.grainDemo.none}>
+                <GrainDial
+                  value={null}
+                  onValueCommit={() => {}}
+                  labels={grainLabels}
+                  size="sm"
+                  controls={false}
+                />
+              </Row>
+              <Row label={t.grainDemo.disabled}>
+                <GrainDial
+                  value={90}
+                  onValueCommit={() => {}}
+                  labels={grainLabels}
+                  size="sm"
+                  controls={false}
+                  disabled
+                />
+              </Row>
             </div>
           </div>
         </Section>

@@ -285,5 +285,5 @@ export const duplicatePart = defineCommand({
   },
 });
 
-export { mirrorPart, movePart, pasteParts, removeParts, rotatePart } from './board';
+export { mirrorPart, movePart, pasteParts, removeParts, rotatePart, setPartsGrain } from './board';
 export { drawPart, setSegmentBulge } from './draw';

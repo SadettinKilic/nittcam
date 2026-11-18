@@ -2,6 +2,7 @@
  * Ana sayfa (spec §3.4, T106): pure helpers that turn the company's projects, machines and exports
  * into the dashboard's numbers, the machine list order and the layout thumbnails.
  */
+import { footprintOutline } from './placed-outline';
 import {
   partShape,
   rotatedBoxSize,
@@ -67,7 +68,8 @@ export function machinesByUrgency<T extends { state: VerificationState; name: st
 export interface LayoutThumb {
   sheet: { width: number; height: number };
   sheets: number;
-  parts: { x: number; y: number; w: number; h: number }[];
+  /** `outline`: the true outline of a turned or drawn part (footprint frame, Y down; T116). */
+  parts: { x: number; y: number; w: number; h: number; outline: number[] | null }[];
   /** Material use of the whole layout in percent (placed part area / used sheet area). */
   utilisation: number;
 }
@@ -90,7 +92,13 @@ export function layoutThumb(project: Project): LayoutThumb | null {
     if (!part) continue;
     // Footprint = bbox of the rotated outline (quarter turns swap w × h exactly, D-034).
     const size = rotatedBoxSize(partShape(part), pl.rot);
-    out.push({ x: pl.x, y: pl.y, w: size.w, h: size.h });
+    out.push({
+      x: pl.x,
+      y: pl.y,
+      w: size.w,
+      h: size.h,
+      outline: footprintOutline(part, pl.rot, size.h),
+    });
   }
   if (out.length === 0) return null;
   return {

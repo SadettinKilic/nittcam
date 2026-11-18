@@ -6,6 +6,7 @@ import {
   type Project,
 } from '@nittcam/core';
 import { readTokenColors } from '../../lib/canvas-theme';
+import { footprintOutline } from '../../lib/placed-outline';
 
 /** Pixels per mm and the pan of the stage. */
 export interface ViewState {
@@ -32,6 +33,8 @@ export interface CanvasColors {
   dim: string;
   /** Origin marker. */
   origin: string;
+  /** Sheet grain texture (T116). */
+  grain: string;
 }
 
 /** Token name per colour (CSS custom properties of the Tailwind theme). */
@@ -50,6 +53,7 @@ const TOKENS: Record<keyof CanvasColors, string> = {
   text: '--color-fg',
   dim: '--color-fg-muted',
   origin: '--color-accent-text',
+  grain: '--color-grain',
 };
 
 /** Reads the colour tokens from the document (browser only). */
@@ -79,6 +83,8 @@ export interface DrawnPart {
   locked: boolean;
   /** Sheet-frame angle of a fixed-grain part's grain line ([0, 180), D-034); null = free grain. */
   grainAngle: number | null;
+  /** True outline in the footprint frame (Y down), or null when the footprint rectangle is it (T116). */
+  outline: number[] | null;
 }
 
 /** The placements of one sheet, ready to draw. Placements of unknown parts are skipped. */
@@ -104,6 +110,7 @@ export function drawnParts(project: Project, sheet: number): DrawnPart[] {
       locked: pl.locked,
       grainAngle:
         hit.part.grain.mode === 'fixed' ? normalizeGrain(hit.part.grain.angle + pl.rot) : null,
+      outline: footprintOutline(hit.part, pl.rot, size.h),
     });
   }
   return out;
@@ -115,10 +122,12 @@ export function fitView(
   width: number,
   height: number,
   pad = 30,
+  /** Extra vertical room (px, top and bottom alike) for floating toolbars, T244. */
+  band = 0,
 ): ViewState {
   const scale = Math.max(
     0.0001,
-    Math.min((width - 2 * pad) / sheet.width, (height - 2 * pad) / sheet.height),
+    Math.min((width - 2 * pad) / sheet.width, (height - 2 * (pad + band)) / sheet.height),
   );
   return {
     scale,

@@ -1,4 +1,12 @@
 {
+  "grainDial": {
+    "label": "Damar açısı",
+    "valueText": "{deg} derece",
+    "noGrain": "Damar yok",
+    "input": "Damar açısı (derece)",
+    "note": "Damarın yönü yoktur: 30° ile 210° aynı damardır.",
+    "quick": "Hızlı açılar"
+  },
   "meta": {
     "title": "NittCam",
     "description": "CNC router için web tabanlı kesim programı"
@@ -466,6 +474,15 @@
     },
     "cellLabel": "Satır {n}: {column}",
     "edgeLabel": "Satır {n}: {edge} kenar bandı (mm)",
+    "grainCell": {
+      "edit": "Satır {n}: damar açısı {angle}",
+      "free": "Serbest",
+      "title": "Parça damarı",
+      "fixed": "Sabit damar",
+      "fixedHint": "Sabit damarlı parça yalnızca damarı plaka damarına paralel olacak şekilde döner.",
+      "applyAll": "Tüm parçalara uygula",
+      "applied": "Damar {count} parçaya uygulandı."
+    },
     "duplicate": "Çoğalt",
     "remove": "Sil",
     "rowAction": "{action}: satır {n}",
@@ -579,9 +596,13 @@
       "running": "Diziliyor…",
       "help": "Parçaları plakalara yerleştirir (en az fire). Parça arası boşluk {gap} mm, kenar payı {margin} mm, takım çapı {tool} mm.",
       "toolNote": "Takım çapı, seçilen makinenin bu malzeme ve kalınlık için önerdiği takımdan gelir.",
+      "about": "Dizilim hakkında",
+      "gapChip": "Boşluk {value} mm",
+      "marginChip": "Kenar {value} mm",
+      "toolChip": "Takım Ø{value}",
       "none": "Henüz dizilim yok. \"Diz\" ile başlatın.",
-      "sheets": "Plaka sayısı",
-      "waste": "Toplam fire",
+      "sheets": "Plaka",
+      "waste": "Fire",
       "utilisation": "Kullanım",
       "percent": "%{value}",
       "sheetLine": "Plaka {n}: {count} parça, fire %{waste}",
@@ -612,7 +633,8 @@
     "cursor": "İmleç",
     "scale": "Ölçek",
     "title": "Plaka yerleşimi",
-    "help": "Bir parçayı seçip sürükleyerek yerini değiştirin; bıraktığınız yer uygunsa parça oraya kilitlenir. Kilitli parçalara \"Yeniden diz\" dokunmaz.",
+    "hint1": "Bir parçayı seçip sürükleyin; uygun yere bırakınca oraya kilitlenir.",
+    "hint2": "Kilitli parçalara \"Yeniden diz\" dokunmaz.",
     "canvasLabel": "Plaka {n} dizilimi: {count} parça. Seçili parçayı ok tuşlarıyla 1 mm (Shift ile 10 mm) kaydırın, Enter ile uygulayın, Esc ile vazgeçin.",
     "sheetTabs": "Plakalar",
     "sheetTab": "Plaka {n}",
@@ -647,8 +669,6 @@
       "unlock": "Kilidi aç",
       "pending": "Yeni konum: X {x} · Y {y} mm. Enter ile uygula, Esc ile vazgeç."
     },
-    "summary": "Plaka {n}: {count} parça, parça alanı {parts} m², fire {waste} m² (%{percent}).",
-    "total": "Toplam: {sheets} plaka, fire %{percent}, kullanım %{use}.",
     "legend": {
       "title": "Gösterim",
       "part": "Parça",
@@ -872,7 +892,8 @@
       "scrubber": "Zaman çizelgesi",
       "clock": "{now} / {total}",
       "step": "Hareket {n} / {total}",
-      "reducedMotion": "Hareketi azalt açık: oynatma animasyonu kapalı. Adım düğmeleri, zaman çizelgesi ve G-code satırları anında atlar.",
+      "reducedMotion": "Hareketi azalt açık: oynatma animasyonu kapalı. Oynat, adım düğmeleri, zaman çizelgesi ve G-code satırları anında atlar.",
+      "reducedMotionInfo": "Hareketi azalt açık",
       "shortcuts": "Kısayollar: Boşluk oynat/duraklat · ← → önceki/sonraki hareket · Home/End baş/son",
       "zoomIn": "Yakınlaştır",
       "zoomOut": "Uzaklaştır",
@@ -1054,8 +1075,6 @@
       "width": "En, X yönü (mm)",
       "height": "Boy, Y yönü (mm)",
       "grain": "Damar yönü",
-      "grain0": "0° (X boyunca)",
-      "grain90": "90° (Y boyunca)",
       "grainNone": "Plastik malzemede damar yönü yoktur.",
       "tableWarning": "Plaka tablaya sığmıyor: {w} × {h} mm plaka, {tw} × {td} mm tabla. Dışa aktarma kontrolü bu plakayı durdurur.",
       "noParams": "Bu makinede {material} {thickness} mm için kesim ayarı (besleme, devir, paso) yok. Makineler sayfasında bu malzemeyi ekleyin ya da başka bir kalınlık seçin.",
@@ -1337,7 +1356,15 @@
       "feedback": "Yükleme ve kısayollar",
       "states": "Boş, hata ve bildirim",
       "command": "Komut listesi",
-      "density": "Yoğunluk"
+      "density": "Yoğunluk",
+      "grainDial": "Damar kadranı"
+    },
+    "grainDemo": {
+      "md": "Varsayılan (120 px)",
+      "sm": "Küçük (72 px, açılır pencere ve tablo hücresi)",
+      "none": "Damar yok",
+      "disabled": "Devre dışı",
+      "value": "Değer"
     },
     "density": {
       "comfortable": "Rahat (varsayılan, 40 px)",

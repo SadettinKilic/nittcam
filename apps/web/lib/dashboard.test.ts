@@ -125,9 +125,9 @@ describe('layoutThumb', () => {
       sheet: { width: 2800, height: 2070 },
       sheets: 2,
       parts: [
-        { x: 10, y: 10, w: 600, h: 400 },
-        { x: 700, y: 10, w: 400, h: 600 },
-        { x: 10, y: 500, w: 100, h: 300 },
+        { x: 10, y: 10, w: 600, h: 400, outline: null },
+        { x: 700, y: 10, w: 400, h: 600, outline: null },
+        { x: 10, y: 500, w: 100, h: 300, outline: null },
       ],
       utilisation: summarizeLayout(withLayout()).utilisationPercent,
     });

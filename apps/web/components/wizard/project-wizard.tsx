@@ -370,6 +370,7 @@ function WizardSession({
 
   // The session needs the profile for validation; it is read from the latest state each render.
   const [machineId, setMachineId] = useState(init.project.machine.machineId);
+  const [sheetGrainPreview, setSheetGrainPreview] = useState<number | null>(null);
   const detail = details[machineId] ?? null;
   const session = useProjectSession({
     initial: init,
@@ -540,6 +541,7 @@ function WizardSession({
               t={t.machine}
               materials={messages.materials}
               machinesLink={t.machinesLink}
+              onGrainPreview={setSheetGrainPreview}
               project={project}
               machines={machines}
               detail={detail}
@@ -551,7 +553,14 @@ function WizardSession({
         {validation}
       </div>
     );
-    right = <SheetPreview t={t.machine} project={project} profile={profile} />;
+    right = (
+      <SheetPreview
+        t={t.machine}
+        project={project}
+        profile={profile}
+        grainPreview={sheetGrainPreview}
+      />
+    );
   } else if (drawing) {
     both = (
       <DrawingBoard

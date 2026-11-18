@@ -58,26 +58,21 @@ export function SummaryCard({
           {checksOk ? s.checksOk : fill(s.checksFail, { count: errorCount })}
         </p>
       </div>
-      {/* B4b: tiles follow the card width (container query), not the viewport: in the narrow
-          side panel 2 columns with the time tile across both, values always on one line. */}
-      <div className="@container">
-        <dl className="grid grid-cols-2 gap-2 @md:grid-cols-3">
-          {tiles.map(([key, label, value]) => (
-            <div
-              key={key}
-              className={`min-w-0 rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2.5 ${key === 'time' ? 'col-span-2 @md:col-span-1' : ''}`}
+      {/* T245: one compact definition list (label | value), not six tiles. Each row sizes on its own
+          so a long label next to a short value stays whole; labels wrap, never truncate (r1). */}
+      <dl className="flex flex-col gap-y-0.5 text-sm" data-testid="sim-summary-list">
+        {tiles.map(([key, label, value]) => (
+          <div key={key} className="flex items-baseline justify-between gap-x-3">
+            <dt className="min-w-0 text-pretty break-words text-fg-muted">{label}</dt>
+            <dd
+              className="shrink-0 text-right font-semibold whitespace-nowrap text-fg tabular-nums"
+              data-testid={`sim-summary-${key}`}
             >
-              <dt className="truncate text-xs text-fg-muted">{label}</dt>
-              <dd
-                className="mt-0.5 truncate text-base font-semibold tracking-tight whitespace-nowrap text-fg tabular-nums @lg:text-lg"
-                data-testid={`sim-summary-${key}`}
-              >
-                {value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
       <p className="text-xs text-fg-muted">
         {fill(s.timeNote, { rapid: formatInt(summary.rapidFeed) })}
       </p>

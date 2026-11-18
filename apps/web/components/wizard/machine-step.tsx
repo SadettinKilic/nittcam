@@ -14,10 +14,12 @@ import Link from 'next/link';
 import { useId, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import { fillRich } from '../../lib/fill-rich';
+import { grainDialLabels } from '../../lib/grain-labels';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { focusRing } from '../page/page-header';
 import {
+  GrainDial,
   Measure,
   Select,
   SelectContent,
@@ -68,9 +70,11 @@ export function MachineFields({
   issues,
   run,
   machinesLink,
+  onGrainPreview,
 }: {
   t: Text;
   machinesLink: string;
+  onGrainPreview?: (angle: number | null) => void;
   materials: MaterialText;
   project: Project;
   machines: readonly MachineListItem[];
@@ -332,23 +336,16 @@ export function MachineFields({
       {materialHasGrain(kind) ? (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1.5 text-sm font-medium text-fg">{t.grain}</legend>
-          <div className="flex flex-wrap gap-2">
-            {([0, 90] as const).map((g) => (
-              <label
-                key={g}
-                className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${stock.sheet.grain === g ? 'border-accent-border bg-accent-subtle font-medium text-fg' : 'border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg'}`}
-              >
-                <input
-                  type="radio"
-                  name="grain"
-                  className="size-4 accent-(--color-accent)"
-                  checked={stock.sheet.grain === g}
-                  onChange={() => run('setGrain', { grain: g })}
-                />
-                {g === 0 ? t.grain0 : t.grain90}
-              </label>
-            ))}
-          </div>
+          <GrainDial
+            value={stock.sheet.grain}
+            onValueChange={(a) => onGrainPreview?.(a)}
+            onValueCommit={(a) => {
+              onGrainPreview?.(null);
+              if (a !== stock.sheet.grain) run('setGrain', { grain: a });
+            }}
+            labels={grainDialLabels()}
+            data-testid="sheet-grain-dial"
+          />
         </fieldset>
       ) : (
         <p className="text-xs text-fg-muted">{t.grainNone}</p>
@@ -362,12 +359,16 @@ export function SheetPreview({
   t,
   project,
   profile,
+  grainPreview = null,
 }: {
   t: Text;
   project: Project;
   profile: MachineProfile | null;
+  grainPreview?: number | null;
 }) {
   const { sheet } = project.stock;
+  // While the grain dial is dragged the preview follows the live angle (T116).
+  const grain = grainPreview ?? sheet.grain;
   const table = profile?.table ?? { width: sheet.width, depth: sheet.height };
   const off = profile?.origin.sheetOffset ?? { x: 0, y: 0 };
   const W = Math.max(table.width, off.x + sheet.width);
@@ -430,7 +431,7 @@ export function SheetPreview({
                 width={W / 70}
                 height={W / 70}
                 patternUnits="userSpaceOnUse"
-                patternTransform={`rotate(${-(sheet.grain ?? 0)} ${cx} ${cy})`}
+                patternTransform={`rotate(${-(grain ?? 0)} ${cx} ${cy})`}
               >
                 <line
                   x1={0}
@@ -444,6 +445,7 @@ export function SheetPreview({
             </defs>
             <rect
               data-testid="sheet-preview-grain"
+              data-angle={grain ?? undefined}
               x={off.x}
               y={sy(off.y, sheet.height)}
               width={sheet.width}

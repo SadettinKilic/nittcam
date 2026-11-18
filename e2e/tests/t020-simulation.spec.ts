@@ -339,8 +339,12 @@ test.describe('T020 simulation', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await openSimulation(page);
     const canvas = await readyCanvas(page);
-    await expect(page.getByTestId('sim-reduced-note')).toBeVisible();
-    await expect(page.getByTestId('sim-play')).toBeDisabled();
+    // T245: the note sits behind an info icon; "Oynat" stays enabled and steps once.
+    await expect(page.getByTestId('sim-reduced-note')).toHaveCount(0);
+    await page.getByTestId('sim-reduced-info').click();
+    await expect(page.getByTestId('sim-reduced-note')).toHaveText(s.controls.reducedMotion);
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('sim-play')).toBeEnabled();
     await canvas.focus();
     await page.keyboard.press(' ');
     await expect(canvas).toHaveAttribute('data-done', '1');
@@ -350,6 +354,9 @@ test.describe('T020 simulation', () => {
     expect(await num(page, 'data-time')).toBe(t0);
     await page.getByRole('button', { name: s.controls.next }).click();
     await expect(canvas).toHaveAttribute('data-done', '2');
+    await page.getByTestId('sim-play').click();
+    await expect(canvas).toHaveAttribute('data-done', '3');
+    await expect(canvas).toHaveAttribute('data-playing', 'false');
     await shot(page, '__screenshots__/t020-hareketi-azalt.png');
     expect(problems).toEqual([]);
   });

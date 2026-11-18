@@ -93,6 +93,9 @@ export interface LayoutViewProps {
 const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 const pctFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 
+/** Vertical room kept at fit for the one-row plate tabs + tools (top) and the legend (bottom), T244. */
+const FIT_BAND = 24;
+
 /** Thin utilisation bar along the bottom of a plate tab: accent fill, `warning` under 50 % (T196). */
 function UsageBar({ used }: { used: number }) {
   const pct = Math.max(0, Math.min(100, used));
@@ -110,10 +113,6 @@ function UsageBar({ used }: { used: number }) {
     </span>
   );
 }
-const m2Format = new Intl.NumberFormat('tr-TR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 /** Radix Select items cannot use an empty value; this stands for "no part". */
 const NONE = '__none__';
@@ -186,7 +185,7 @@ export function LayoutView({
       last = { w, h };
       setColors((c) => c ?? readColors());
       setSize({ w, h });
-      setView(fitView(stock, w, h));
+      setView(fitView(stock, w, h, 30, FIT_BAND));
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -195,7 +194,7 @@ export function LayoutView({
   useEffect(() => onThemeChange(() => setColors((c) => (c ? readColors() : c))), []);
 
   const fit = useCallback(() => {
-    if (width > 0 && height > 0) setView(fitView(stock, width, height));
+    if (width > 0 && height > 0) setView(fitView(stock, width, height, 30, FIT_BAND));
   }, [stock, width, height]);
 
   function selectSheet(i: number) {
@@ -365,7 +364,6 @@ export function LayoutView({
   }, [issues, project, sheet, dragCheck]);
 
   if (count === 0) return null;
-  const stats = summary.sheets[sheet];
   const labelOf = (key: string) => {
     const [partId, index] = [
       key.slice(0, key.lastIndexOf('#')),
@@ -380,7 +378,7 @@ export function LayoutView({
   const bar = view ? scaleBar(view.scale) : null;
   const zoomed =
     view !== null && width > 0 && height > 0
-      ? isZoomedIn(view.scale, fitView(stock, width, height).scale)
+      ? isZoomedIn(view.scale, fitView(stock, width, height, 30, FIT_BAND).scale)
       : false;
   const onPointer = (e: { clientX: number; clientY: number }) => {
     const el = box.current;
@@ -392,26 +390,10 @@ export function LayoutView({
     out.textContent = `X ${mmFormat.format(Math.round(x))} · Y ${mmFormat.format(Math.round(y))}`;
   };
 
+  // T244 (D-039): the inspector carries only the selected part; the per-plate summary lives once,
+  // in the left panel. Messages and placement errors stay above it (safety texts never hide).
   const inspector = (
     <div className="flex flex-col gap-3 text-sm">
-      <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-panel shadow-xs">
-        <h3 className="text-sm font-semibold tracking-tight text-fg">{t.title}</h3>
-        {editable ? <p className="text-xs text-fg-muted">{t.help}</p> : null}
-        {onRenest ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRenest}
-            disabled={renesting}
-            aria-busy={renesting}
-            className="self-start"
-          >
-            <RefreshCw aria-hidden className={renesting ? 'animate-spin' : undefined} />
-            {renesting ? t.renesting : t.renest}
-          </Button>
-        ) : null}
-      </div>
-
       <div aria-live="polite">
         {message ? (
           <p
@@ -450,6 +432,23 @@ export function LayoutView({
         id="layout-info"
         className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-panel shadow-xs"
       >
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold tracking-tight text-fg">{t.title}</h3>
+          {onRenest ? (
+            <Tooltip content={t.renest}>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                aria-label={renesting ? t.renesting : t.renest}
+                onClick={onRenest}
+                disabled={renesting}
+                aria-busy={renesting}
+              >
+                <RefreshCw aria-hidden className={renesting ? 'animate-spin' : undefined} />
+              </IconButton>
+            </Tooltip>
+          ) : null}
+        </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor={selectId} className="font-medium text-fg">
             {t.select}
@@ -495,39 +494,20 @@ export function LayoutView({
                 : undefined
             }
           />
+        ) : editable ? (
+          <div className="flex flex-col gap-0.5 text-xs text-fg-muted" data-testid="layout-hint">
+            <p>{t.hint1}</p>
+            <p>{t.hint2}</p>
+          </div>
         ) : null}
-      </div>
-
-      <div
-        className="flex flex-col gap-0.5 rounded-xl border border-border-subtle bg-surface-subtle px-panel py-3 text-sm text-fg tabular-nums"
-        data-testid="layout-summary"
-      >
-        {stats ? (
-          <p>
-            {fill(t.summary, {
-              n: sheet + 1,
-              count: stats.placed,
-              parts: m2Format.format(stats.partArea / 1e6),
-              waste: m2Format.format(stats.wasteArea / 1e6),
-              percent: pctFormat.format(stats.wastePercent),
-            })}
-          </p>
-        ) : null}
-        <p className="text-fg-muted">
-          {fill(t.total, {
-            sheets: summary.sheetCount,
-            percent: pctFormat.format(summary.wastePercent),
-            use: pctFormat.format(summary.utilisationPercent),
-          })}
-        </p>
       </div>
     </div>
   );
 
   // Floating canvas toolbar (T197): plate tabs top-left, grid/zoom/fit top-right, legend
-  // bottom-left (popover), cursor + scale bottom-right. When the canvas is narrower than 768 px
-  // (phone, or desktop with both side panels open) the plate tabs get their own full-width row
-  // above the toolbar (B4b, B9), so 3–4 "Plaka N" tabs stay visible.
+  // bottom-left (popover), cursor + scale bottom-right. Under 768 px of canvas (phone, or desktop
+  // with both side panels open) the plate tabs get their own full-width row above the tools
+  // (T199b/B10a, T244 r1) so ≥ 3 tabs stay visible; wider canvases share one row (≥ 3 tabs fit).
   const floating =
     'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
   const overlay = (

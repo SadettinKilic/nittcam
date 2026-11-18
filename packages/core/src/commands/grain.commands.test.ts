@@ -178,3 +178,26 @@ describe('grain follows the piece on the board (D-038)', () => {
     );
   });
 });
+
+describe('setPartsGrain (T116)', () => {
+  it('sets the same grain on every listed part in one undo step', () => {
+    const start = load(mixed);
+    const ids = start.parts.map((p) => p.id);
+    const stack = new CommandStack(start);
+    const before = JSON.stringify(stack.project);
+    expect(stack.execute('setPartsGrain', { ids, mode: 'fixed', angle: 30 }, ctx).ok).toBe(true);
+    for (const p of stack.project.parts) expect(p.grain).toEqual({ mode: 'fixed', angle: 30 });
+    stack.undo();
+    expect(JSON.stringify(stack.project)).toBe(before);
+  });
+
+  it('leaves other parts alone and rejects unknown ids', () => {
+    const start = load(mixed);
+    const [first, ...rest] = start.parts;
+    const next = run(start, 'setPartsGrain', { ids: [first?.id], mode: 'fixed', angle: 90 });
+    expect(next.parts.slice(1)).toEqual(rest);
+    expect(applyCommand(start, 'setPartsGrain', { ids: ['nope'], mode: 'free', angle: 0 }).ok).toBe(
+      false,
+    );
+  });
+});

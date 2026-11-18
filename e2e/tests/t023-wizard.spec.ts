@@ -161,12 +161,12 @@ test.describe('T023 wizard', () => {
     test.setTimeout(120_000);
     const problems = watchConsole(page);
     await openNewProject(page, 'makine');
-    await page.getByLabel(w.machine.grain90).check();
+    await page.getByTestId('sheet-grain-dial-quick-90').click();
     await saved(page);
     const id = await projectId(page);
     await page.reload();
     await wizardReady(page, 'makine');
-    await expect(page.getByLabel(w.machine.grain90)).toBeChecked();
+    await expect(page.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '90');
 
     await pasteAndNest(page, KITCHEN, 5, 'makine');
     await saved(page);
@@ -300,7 +300,7 @@ test.describe('T023 wizard', () => {
 
     // A saves first (revision 3).
     await goStep(page, 'makine');
-    await page.getByLabel(w.machine.grain90).check();
+    await page.getByTestId('sheet-grain-dial-quick-90').click();
     await saved(page);
 
     // B is still on revision 2: its save is rejected.
@@ -323,14 +323,14 @@ test.describe('T023 wizard', () => {
     // Reload: B goes back to the original, edits again on a stale revision, then reloads.
     await b.goto(`/projeler/${id}?adim=makine`);
     await wizardReady(b, 'makine');
-    await page.getByLabel(w.machine.grain0).check();
+    await page.getByTestId('sheet-grain-dial-quick-0').click();
     await saved(page);
     await b.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' })).check();
     await expect(b.getByTestId('conflict')).toBeVisible({ timeout: 15_000 });
     await b.getByRole('button', { name: w.conflict.reload }).click();
     await wizardReady(b, 'makine');
     await expect(b.getByTestId('conflict')).toHaveCount(0);
-    await expect(b.getByLabel(w.machine.grain0)).toBeChecked();
+    await expect(b.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '0');
     await expect(b.getByLabel(fill(w.machine.preset, { a: '2.070', b: '2.800' }))).toBeChecked();
     expect(problems).toEqual([]);
     expect(problemsB.filter((p) => !p.includes('409'))).toEqual([]);

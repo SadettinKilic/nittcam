@@ -106,7 +106,12 @@ for (const [width, height] of [
       await expect(page.getByTestId('workspace-open-left')).toBeVisible({ timeout: 30_000 });
       await openWorkspacePanel(page, 'left');
     }
-    const values = page.locator('[data-testid^="sim-summary-"]').filter({ visible: true });
+    // T245: the six values are <dd>s of one compact list; the labels (<dt>) must not truncate.
+    const values = page
+      .locator(
+        '[data-testid^="sim-summary-"]:not([data-testid="sim-summary-list"]), [data-testid="sim-summary-list"] dt',
+      )
+      .filter({ visible: true });
     await expect(values.first()).toBeVisible({ timeout: 30_000 });
     for (const v of await values.all()) {
       const r = await v.evaluate((el) => ({

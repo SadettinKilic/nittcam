@@ -11,7 +11,23 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { fill, newPartId } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import { PastePanel } from './paste-panel';
-import { Button, Checkbox, IconButton, Tooltip } from '@nittcam/ui';
+import {
+  Button,
+  Checkbox,
+  GrainArrow,
+  GrainDial,
+  IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Switch,
+  Tooltip,
+  buttonVariants,
+  cn,
+  formatNumberTr,
+  notify,
+} from '@nittcam/ui';
+import { grainDialLabels } from '../../lib/grain-labels';
 import {
   CircleCheck,
   ClipboardPaste,
@@ -181,18 +197,111 @@ function band(t: Text) {
 
 export type Run = (name: string, params: unknown) => boolean;
 
+/**
+ * Grain cell of a row (T116, D-034): mini arrow + angle; opens a popover with the GrainDial, the
+ * fixed/free switch and "apply to all parts" (one `setPartsGrain` command, one undo step).
+ * Changing the angle makes the grain fixed: an angle only matters for a fixed grain.
+ */
+function GrainCell({
+  t,
+  part,
+  n,
+  allIds,
+  run,
+}: {
+  t: Text;
+  part: Part;
+  n: number;
+  allIds: readonly string[];
+  run: Run;
+}) {
+  const g = t.grainCell;
+  const fixed = part.grain.mode === 'fixed';
+  const [live, setLive] = useState<number | null>(null);
+  const angle = live ?? part.grain.angle;
+  const deg = `${formatNumberTr(angle, { maxDecimals: 1 })}°`;
+  const switchId = `grain-fixed-${part.id}`;
+  return (
+    <Popover onOpenChange={() => setLive(null)}>
+      <PopoverTrigger
+        className={cn(
+          buttonVariants({ variant: 'ghost', size: 'sm' }),
+          'gap-1 px-1.5 font-mono tabular-nums',
+          fixed ? 'text-fg' : 'text-fg-subtle',
+        )}
+        aria-label={fill(g.edit, { n, angle: fixed ? deg : g.free })}
+        data-testid={`grain-cell-${n}`}
+        data-mode={part.grain.mode}
+        data-angle={part.grain.angle}
+      >
+        {fixed ? <GrainArrow angle={angle} className="text-accent-text" /> : null}
+        {fixed ? deg : g.free}
+      </PopoverTrigger>
+      <PopoverContent className="flex w-80 flex-col gap-3" data-density="compact">
+        <p className="text-sm font-semibold text-fg">{g.title}</p>
+        <div className="flex items-start gap-2">
+          <Switch
+            id={switchId}
+            checked={fixed}
+            onCheckedChange={(v) =>
+              void run('setPartGrain', { id: part.id, mode: v ? 'fixed' : 'free', angle })
+            }
+            data-testid={`grain-fixed-${n}`}
+          />
+          <label htmlFor={switchId} className="flex flex-col gap-0.5 text-sm text-fg">
+            {g.fixed}
+            <span className="text-xs text-fg-muted">{g.fixedHint}</span>
+          </label>
+        </div>
+        <GrainDial
+          value={part.grain.angle}
+          onValueChange={setLive}
+          onValueCommit={(a) => {
+            setLive(null);
+            if (a !== part.grain.angle || !fixed) {
+              run('setPartGrain', { id: part.id, mode: 'fixed', angle: a });
+            }
+          }}
+          labels={grainDialLabels()}
+          data-testid={`grain-dial-${n}`}
+        />
+        {allIds.length > 1 ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="self-start"
+            onClick={() => {
+              const ok = run('setPartsGrain', {
+                ids: allIds,
+                mode: part.grain.mode,
+                angle: part.grain.angle,
+              });
+              if (ok) notify.success(fill(g.applied, { count: allIds.length }));
+            }}
+            data-testid={`grain-apply-all-${n}`}
+          >
+            {g.applyAll}
+          </Button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function PartRow({
   t,
   part,
   index,
   issues,
   run,
+  allIds,
 }: {
   t: Text;
   part: Part;
   index: number;
   issues: readonly ValidationIssue[];
   run: Run;
+  allIds: readonly string[];
 }) {
   const n = index + 1;
   const label = (column: string) => fill(t.cellLabel, { n, column });
@@ -252,14 +361,22 @@ function PartRow({
           onCommit={(qty) => update({ qty })}
         />
       </td>
-      <td className="px-1 py-1 text-center">
-        <Checkbox
-          id={cellId(index, 'grain')}
-          aria-label={label(t.columns.grain)}
-          className="mt-2"
-          checked={part.grain.mode === 'fixed'}
-          onCheckedChange={(v) => void update({ grainLock: v === true })}
-        />
+      <td className="px-1 py-1">
+        <div className="flex items-center gap-1">
+          <Checkbox
+            id={cellId(index, 'grain')}
+            aria-label={label(t.columns.grain)}
+            checked={part.grain.mode === 'fixed'}
+            onCheckedChange={(v) =>
+              void run('setPartGrain', {
+                id: part.id,
+                mode: v === true ? 'fixed' : 'free',
+                angle: part.grain.angle,
+              })
+            }
+          />
+          <GrainCell t={t} part={part} n={n} allIds={allIds} run={run} />
+        </div>
       </td>
       {EDGES.map((edge) => (
         <td key={edge} className="min-w-16 px-0.5 py-1">
@@ -332,6 +449,7 @@ export function CutListEditor({
   });
 
   const parts = project.parts;
+  const allIds = parts.map((p) => p.id);
   const pieces = parts.reduce((sum, p) => sum + p.qty, 0);
 
   function addRow() {
@@ -495,6 +613,7 @@ export function CutListEditor({
                     index={index}
                     issues={issuesOf(index)}
                     run={run}
+                    allIds={allIds}
                   />
                 ))}
               </tbody>
