@@ -71,44 +71,37 @@ h2{font-size:16px;margin:0;font-weight:650;letter-spacing:-.01em}
 .limit-band p{margin:0;color:var(--fg)}
 body.limited .top{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}
 
-/* office */
-.office{border-radius:10px;overflow:hidden;background:var(--floor);border:1px solid var(--border)}
-#floor{display:block;width:100%;height:auto}
-#floor text{font-family:var(--f-sans)}
-.rl{fill:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
-.agent,.bub{transition:transform 1.6s cubic-bezier(.45,.05,.3,1)}
-.agent .arm{transition:transform .4s}
-.agent.st-coding .arm{animation:type .32s ease-in-out infinite alternate}
-.agent.st-coding .arm.r{animation-delay:.16s}
-.agent.st-planning .arm.r{transform:rotate(-150deg)}
-.agent.st-planning .fig{animation:sway 2.4s ease-in-out infinite}
-.agent.st-testing .fig{animation:lean 1.8s ease-in-out infinite}
-.agent.st-reviewing .fig{animation:nod 2.2s ease-in-out infinite}
-.agent.st-idle .steam{animation:steam 2s ease-in-out infinite}
-.agent .p{display:none}
-.agent.st-idle .p-cup,.agent.st-testing .p-lens,.agent.st-reviewing .p-clip,.agent.st-planning .p-pen{display:inline}
-.agent .badge{display:none}
-.agent.st-blocked .b-bang,.agent.st-done .b-check{display:inline}
-.agent.st-blocked .b-bang{animation:pulse 1s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
-.agent.st-blocked .fig{animation:shake .5s ease-in-out infinite}
-.scr-l{opacity:.25}
-#floor.dev-on .dev-scr .scr-l{animation:code 1.6s steps(4) infinite;opacity:1}
-#floor.dev-on .dev-scr .scr-l:nth-child(2n){animation-delay:.4s}
-#floor.lab-on .lab-scr .scr-l{animation:code 1.2s steps(3) infinite;opacity:1}
-#floor.meet-on .tv-on{display:inline}
-.tv-on{display:none}
-.led{animation:led 1.4s steps(2) infinite}
-.led:nth-of-type(3n){animation-delay:.5s} .led:nth-of-type(4n){animation-delay:.9s}
-.ci-run .ci-lamp{animation:pulse 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
-@keyframes type{from{transform:translateY(0)}to{transform:translateY(-3px)}}
-@keyframes sway{50%{transform:translateX(3px)}}
-@keyframes lean{50%{transform:translateX(-3px) rotate(-3deg)}}
-@keyframes nod{50%{transform:translateY(1.5px)}}
-@keyframes steam{0%{opacity:0;transform:translateY(2px)}50%{opacity:.9}100%{opacity:0;transform:translateY(-6px)}}
-@keyframes pulse{50%{transform:scale(1.15)}}
-@keyframes shake{25%{transform:translateX(-1.5px)}75%{transform:translateX(1.5px)}}
-@keyframes code{0%{opacity:.25}50%{opacity:1}}
-@keyframes led{50%{opacity:.3}}
+/* office: pixel-art canvas + HTML overlay */
+.office{border-radius:10px;overflow:hidden;background:#262a33;border:1px solid var(--border);display:flex;justify-content:center}
+.stage{position:relative;flex:none;max-width:100%}
+#floor{display:block;image-rendering:crisp-edges;image-rendering:pixelated}
+.ov{position:absolute;inset:0;pointer-events:none;font-family:var(--f-sans)}
+.pbw{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;will-change:transform;--c:var(--accent);--tx:50%}
+.pbt{max-width:230px;padding:3px 7px 4px;background:var(--surface);color:var(--fg);border:2px solid var(--c);box-shadow:3px 3px 0 rgb(0 0 0 / .28);font-size:12px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbt b{font-family:var(--f-mono);font-weight:650;font-size:11.5px;color:var(--c)}
+.pbw .tail{position:absolute;left:calc(var(--tx) - 4px);bottom:-6px;width:8px;height:4px;background:var(--c);clip-path:polygon(0 0,100% 0,100% 50%,75% 50%,75% 100%,25% 100%,25% 50%,0 50%)}
+.pbw.blocked{--c:var(--bad)}
+.pbw.below .tail{bottom:auto;top:-6px;transform:scaleY(-1)}
+.ov.tall .pbt{max-width:118px;font-size:10.5px;padding:1px 5px 2px;border-width:2px}
+.ov.tall .pbt b{font-size:10px}
+.hit{position:absolute;pointer-events:auto;background:none;border:0;padding:0;margin:0;cursor:pointer}
+.hit:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.cichip{position:absolute;display:flex;flex-direction:column;justify-content:center;gap:1px;padding:4px 7px;background:rgb(16 18 24 / .86);color:#dfe5ee;border:2px solid #0b0d11;box-shadow:inset 0 0 0 1px #3a404d;font:11px/1.3 var(--f-mono);overflow:hidden}
+.cichip b{display:flex;align-items:center;gap:6px;font-weight:650;color:#fff;font-size:12px}
+.cichip i{width:8px;height:8px;flex:none;background:#8a94a6;box-shadow:0 0 0 1px #0b0d11}
+.cichip[data-st="ok"] i{background:#3ee07a} .cichip[data-st="run"] i{background:#ffb020} .cichip[data-st="fail"] i{background:#ff4d4d}
+.cichip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cichip span:last-child{color:#9aa4b4}
+.ov.tall .cichip{font-size:10px;padding:3px 5px} .ov.tall .cichip b{font-size:11px}
+.pop{position:absolute;z-index:3;pointer-events:auto;width:min(270px,calc(100% - 8px));background:var(--surface);color:var(--fg);border:2px solid var(--c,var(--accent));box-shadow:4px 4px 0 rgb(0 0 0 / .3);padding:10px 12px;display:grid;gap:6px;font-size:13px}
+.pop-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pop .nm{font-weight:650}
+.pop .nm small{color:var(--muted);font-weight:400;margin-left:6px}
+.pop .x{font:inherit;font-size:18px;line-height:1;border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px}
+.pop-s{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pop .where{color:var(--muted);font-size:12.5px}
+.pop .msg{margin:0;white-space:pre-wrap}
+.pop .tk{font-size:12px;color:var(--subtle)} .pop .tk b{color:var(--fg);font-family:var(--f-mono);font-weight:500}
 
 /* crew cards */
 .crew{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
@@ -258,7 +251,13 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
 
   <section class="card" id="ofis" aria-labelledby="h-ofis">
     <div class="sec-h"><h2 id="h-ofis">Ofis</h2><span class="meta" id="officeMeta">tek kat · canlı</span></div>
-    <div class="office"><svg id="floor" role="img" aria-label="Ofis planı: ekibin şu an nerede ve ne yaptığı"></svg></div>
+    <div class="office" id="office"><div class="stage" id="stage">
+      <canvas id="floor" width="376" height="216" role="img" aria-label="Ofis: ekibin şu an nerede ve ne yaptığı"></canvas>
+      <div class="ov" id="ov">
+        <div class="cichip" id="ciChip" data-st="none"><b><i aria-hidden="true"></i><span id="ciT1">CI</span></b><span id="ciT2"></span><span id="ciT3"></span></div>
+        <div class="pop" id="pop" role="dialog" aria-label="Ekip üyesi" hidden></div>
+      </div>
+    </div></div>
     <div class="crew" id="crew"></div>
   </section>
 
@@ -313,123 +312,574 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   $('themeBtn').addEventListener('click', ()=>{ theme = THEMES[(THEMES.indexOf(theme)+1)%3]; try{ localStorage.setItem('nittcam-theme', theme); }catch(e){} applyTheme(); });
   applyTheme();
 
-  // ---------- office floor plan ----------
-  // Two layouts: wide (desktop) and tall (phone). Furniture is placed relative to each room, so both share one drawing code.
-  const LAYOUTS = {
-    wide: {w:1200, h:560, k:1.15, fs:14, rooms:{
-      po:{x:12,y:12,w:340,h:268}, meet:{x:352,y:12,w:440,h:268}, dev:{x:792,y:12,w:396,h:268},
-      lab:{x:12,y:280,w:420,h:268}, brk:{x:432,y:280,w:500,h:268}, ci:{x:932,y:280,w:256,h:268}}},
-    tall: {w:520, h:900, k:1.2, fs:15, rooms:{
-      po:{x:10,y:10,w:250,h:280}, dev:{x:260,y:10,w:250,h:280}, meet:{x:10,y:290,w:500,h:220},
-      lab:{x:10,y:510,w:250,h:260}, brk:{x:260,y:510,w:250,h:260}, ci:{x:10,y:770,w:500,h:120}}},
-  };
+  // ---------- office: pixel-art floor (canvas, 3/4 top-down view) ----------
+  // Everything is drawn procedurally at a low internal resolution (wide 376×216, phone 160×304) and scaled up by an
+  // integer factor. Readable text (speech bubbles, CI status, details) is an HTML overlay; room plaques and name tags
+  // use a tiny built-in 3×5 pixel font. Characters walk between rooms along door/corridor waypoints.
   const ROOM_TR = {po:'PO ofisi', meet:'Toplantı odası', dev:'Geliştirme', lab:'Test laboratuvarı', brk:'Mola alanı', ci:'Sunucu · CI'};
-  const mq = matchMedia('(max-width: 640px)');
-  let L = null, SPOTS = {};
-  const f = (v) => `style="fill:var(--${v})"`;
-  const R = (x,y,w,h,v,rx=0,extra='') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" ${f(v)} ${extra}/>`;
-  function plant(x,y,k){ return `<g transform="translate(${x} ${y}) scale(${k})"><rect x="-9" y="0" width="18" height="16" rx="3" style="fill:var(--desk-edge)"/><circle cx="0" cy="-8" r="11" style="fill:var(--plant)"/><circle cx="-8" cy="-2" r="7" style="fill:var(--plant);opacity:.8"/><circle cx="8" cy="-3" r="7" style="fill:var(--plant);opacity:.8"/></g>`; }
-  function screenLines(x,y,w,h,cls){
-    let s = `<g class="${cls}">`; const n = Math.max(3, Math.floor(h/9));
-    for(let i=0;i<n;i++){ const lw = w*(.35+((i*37)%50)/100); s += `<rect class="scr-l" x="${x+6+(i%3===1?8:0)}" y="${y+6+i*8}" width="${Math.min(w-14,lw)}" height="3" rx="1.5" style="fill:${['#6690f7','#32d583','#fdb022','#9b8afb'][i%4]}"/>`; }
-    return s+'</g>';
+  const PLAQ = {
+    wide:{po:'PO OFİSİ', meet:'TOPLANTI ODASI', dev:'GELİŞTİRME', lab:'TEST LABORATUVARI', brk:'MOLA ALANI', ci:'SUNUCU · CI'},
+    tall:{po:'PO', meet:'TOPLANTI', dev:'GELİŞTİRME', lab:'TEST LAB', brk:'MOLA', ci:'SUNUCU·CI'}};
+  const GLY = {A:'010101111101101',B:'110101110101110',C:'011100100100011',D:'110101101101110',E:'111100110100111',F:'111100110100100',
+    G:'011100101101011',H:'101101111101101',I:'111010010010111',J:'001001001101010',K:'101101110101101',L:'100100100100111',
+    M:'101111111101101',N:'110101101101101',O:'010101101101010',P:'110101110100100',R:'110101110101101',S:'011100010001110',
+    T:'111010010010010',U:'101101101101111',V:'101101101101010',Y:'101101010010010',Z:'111001010100111','·':'000000010000000','.':'000000000000010'};
+  const MARK = {'İ':['I',[[1,-2]]],'Ş':['S',[[1,5]]],'Ç':['C',[[1,5]]],'Ö':['O',[[0,-2],[2,-2]]],'Ü':['U',[[0,-2],[2,-2]]],'Ğ':['G',[[0,-2],[2,-2]]]};
+  const ptw = (s) => [...s].length*4-1;
+  function ptext(c, s, x, y, col){
+    c.fillStyle = col;
+    for(const ch of s){ let g = GLY[ch], m = null; if(!g && MARK[ch]){ g = GLY[MARK[ch][0]]; m = MARK[ch][1]; }
+      if(g) for(let i=0;i<15;i++) if(g[i]==='1') c.fillRect(x+i%3, y+(i/3|0), 1, 1);
+      if(m) m.forEach(([a,b])=>c.fillRect(x+a, y+b, 1, 1)); x += 4; }
   }
-  function chairBack(x,y,k){ return `<rect x="${x-18*k}" y="${y-19*k}" width="${36*k}" height="${17*k}" rx="${6*k}" ${f('chair')}/>`; }
+  const P = {
+    cap:'#353a47', capHi:'#474e5e', face:'#ece5d8', faceLo:'#e0d7c7', base:'#b5a790', thresh:'#c9b089', doorway:'#26232a', doorFr:'#8d7a62',
+    woodA:'#d8b386', woodB:'#d2ab7d', woodS:'#c9a074',
+    tileA:'#c2c8d3', tileB:'#bbc1cd', tileS:'#adb4c1',
+    carA:'#8fa3c4', carB:'#879bbd',
+    labA:'#eef0f3', labB:'#e1e5ea', grout:'#d2d7de',
+    brA:'#e7cba4', brB:'#e0c299',
+    rug:'#c4584c', rugB:'#a9473c', rugE:'#e8b660',
+    metA:'#7c8492', metB:'#747c8a', rivet:'#9ba3af',
+    corA:'#d3d7dd', corB:'#c8cdd4', mat:'#7a5c43', matB:'#694d37',
+    deskTop:'#c98f58', deskHi:'#dca66f', deskFr:'#9b663b', leg:'#5c3d22',
+    benchTop:'#b8c0cb', benchHi:'#ced5de', benchFr:'#8a93a0', benchLeg:'#5d6470',
+    bezel:'#23262e', scrOff:'#18212f',
+    chair:'#3c4250', chairHi:'#575e6f',
+    tblTop:'#ebe5d9', tblHi:'#f8f4ec', tblFr:'#b8ae9d', tblSh:'#9d927f',
+    sofa:'#5b7be0', sofaHi:'#7b97ef', sofaBk:'#4a68cf', sofaSh:'#3a53a8',
+    pot:'#b5653d', potHi:'#d07c50', leaf:'#3fae5a', leafD:'#2b8443', leafL:'#69cf80',
+    wbFrame:'#99a0ab', wb:'#fbfaf6',
+    winFrame:'#8a92a0', sky:'#93d0f4', skyB:'#b7e2fa', cloud:'#ffffff', nsky:'#141d45', star:'#fff4c4', moon:'#f3e7b3',
+    rack:'#2a2e37', rackFr:'#363b46', slot:'#1a1d24', rackTop:'#4a505e',
+    machine:'#3a3f4b', machHi:'#525969',
+    paper:'#ffffff', ink:'#8a92a0',
+    plaque:'#2b2f39', plaqueT:'#f1ebdf',
+  };
+  // crew look: shirt, shade, hair, accessory (+2nd accessory colour), name-tag colour
+  const LOOK = {
+    po:{c:'#3d63e6', d:'#2949b8', h:'#3b2a20', a:'#1b2140', b:'#1b2140', acc:'tie', tag:'#2f56e3'},
+    dev:{c:'#14a693', d:'#0b7a6d', h:'#1e1a17', a:'#30343c', b:'#30343c', acc:'phones', tag:'#0e9384'},
+    tester:{c:'#f08a1c', d:'#c45f07', h:'#7a4a24', a:'#d9480f', b:'#a8370a', acc:'cap', tag:'#dc6803'},
+    fable:{c:'#8466f9', d:'#5d40d8', h:'#e4dfd6', a:'#f4c542', b:'#f4c542', acc:'scarf', tag:'#7a5af8'},
+  };
+  const SKIN = '#f2c9a4', EYE = '#2a1f1a', PANTS = '#2f3542', SHOE = '#15171c';
+  const TPL = {
+    front:['..hhhh..','.hhhhhh.','.hssssh.','.sesses.','..ssss..','.dccccd.','dccccccd','dccccccd','sccccccs','.pppppp.','.pp..pp.','.pp..pp.','.kk..kk.'],
+    back: ['..hhhh..','.hhhhhh.','.hhhhhh.','.hhhhhh.','..ssss..','.dccccd.','dccccccd','dccccccd','sccccccs','.pppppp.','.pp..pp.','.pp..pp.','.kk..kk.'],
+    side: ['..hhhh..','.hhhhhh.','.hhssss.','.hhsses.','..ssss..','..cccc..','..cccc..','..cdcc..','..cscc..','..pppp..','...pp...','...pp...','...kkk..'],
+  };
+  const SPR = new Map();
+  function sprite(key, view, v){
+    const id = key+view+v; if(SPR.has(id)) return SPR.get(id);
+    const side = view==='left' || view==='right', lk = LOOK[key];
+    let g = TPL[side ? 'side' : view].map(r=>r.split(''));
+    const rows = (a)=>a.map(r=>r.split(''));
+    if(v==='walk1') g.splice(10, 3, ...rows(side ? ['..pp.pp.','.pp...pp','.kk...kk'] : ['.pp..pp.','.kk..pp.','.....kk.']));
+    if(v==='walk2') g.splice(10, 3, ...rows(side ? ['...pp...','...pp...','...kkk..'] : ['.pp..pp.','.pp..kk.','.kk.....']));
+    if(v==='type1'){ g[8] = 'dccccccs'.split(''); g[7] = 'sccccccd'.split(''); }
+    if(v==='type2'){ g[8] = 'sccccccd'.split(''); g[7] = 'dccccccs'.split(''); }
+    if(v==='raise1'){ g[4][7]='s'; g[5][7]='c'; g[8][7]='.'; }
+    if(v==='raise2'){ g[3][7]='s'; g[4][7]='c'; g[5][7]='c'; g[8][7]='.'; }
+    if(v==='point'){ g[6][6]='c'; g[6][7]='s'; g[8][3]='c'; }
+    const set = (r,c,ch)=>{ if(g[r] && c>=0 && c<8) g[r][c] = ch; };
+    if(lk.acc==='tie' && view==='front'){ set(5,3,'a'); set(5,4,'a'); set(6,3,'a'); set(7,3,'a'); set(7,4,'a'); }
+    if(lk.acc==='phones'){ if(side){ [2,3,4,5].forEach(i=>set(0,i,'a')); set(1,2,'a'); set(2,2,'a'); set(3,2,'a'); } else { [2,3,4,5].forEach(i=>set(0,i,'a')); set(1,1,'a'); set(1,6,'a'); set(2,0,'a'); set(3,0,'a'); set(2,7,'a'); set(3,7,'a'); } }
+    if(lk.acc==='cap'){ [2,3,4,5].forEach(i=>set(0,i,'a')); [1,2,3,4,5,6].forEach(i=>set(1,i,'a')); if(view==='front') [1,2,3,4,5,6].forEach(i=>set(2,i,'b')); if(side){ set(1,7,'b'); set(2,6,'b'); set(2,7,'b'); } }
+    if(lk.acc==='scarf'){ (side?[2,3,4,5]:[1,2,3,4,5,6]).forEach(i=>set(5,i,'a')); if(view==='front') set(6,5,'a'); if(view==='back') set(6,2,'a'); }
+    if(v.startsWith('sit')||v.startsWith('type')){ g = g.slice(0,9); if(view==='front') g.push(...rows(['.pppppp.','.pppppp.','.kk..kk.'])); }
+    if(view==='left') g = g.map(r=>r.slice().reverse());
+    const col = {h:lk.h, s:SKIN, e:EYE, c:lk.c, d:lk.d, p:PANTS, k:SHOE, a:lk.a, b:lk.b};
+    const cv = document.createElement('canvas'); cv.width = 8; cv.height = g.length; const c = cv.getContext('2d');
+    g.forEach((r,y)=>r.forEach((ch,x)=>{ if(col[ch]){ c.fillStyle = col[ch]; c.fillRect(x,y,1,1); } }));
+    SPR.set(id, cv); return cv;
+  }
 
-  function buildFloor(){
-    L = mq.matches ? LAYOUTS.tall : LAYOUTS.wide; const k = L.k, rm = L.rooms; SPOTS = {};
-    const svg = $('floor'); svg.setAttribute('viewBox', `0 0 ${L.w} ${L.h}`);
-    let bg = R(0,0,L.w,L.h,'floor'), fg = '';
-    // rooms + labels + doors
-    for(const [key,r] of Object.entries(rm)){
-      bg += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" style="fill:var(--room);stroke:var(--${key==='meet'?'glass':'wall'});stroke-width:${key==='meet'?4:3}"/>`;
+  // ---------- layout: rooms, doors, furniture and spots for one arrangement ----------
+  const F = (c,x,y,w,h,col)=>{ c.fillStyle = col; c.fillRect(x,y,w,h); };
+  function buildLayout(tall){
+    const L = {tall, rooms:{}, items:[], SP:{}, screens:[], wins:[], plaques:[], rugs:[], leds:[], lamps:[]};
+    if(!tall){
+      L.W = 376; L.H = 216; L.corr = {x:0, y:96, w:376, h:22}; L.entrance = {x:-10, y:108};
+      const t = (a,b)=>({x:a, y:17, w:b-a, h:75}), bt = (a,b)=>({x:a, y:135, w:b-a, h:77});
+      Object.assign(L.rooms, {po:t(3,120), meet:t(123,252), dev:t(255,373), lab:bt(3,136), brk:bt(139,284), ci:bt(287,373)});
+      for(const r of Object.values(L.rooms)){ const top = r.y < 100; r.top = top; r.aisle = r.y+r.h-(top?6:7);
+        const dx = top ? r.x+(r.w>>1) : r.x+r.w-12; r.dx = dx; r.inn = {x:dx, y:r.aisle}; r.out = {x:dx, y:108}; }
+    } else {
+      L.W = 160; L.H = 304; L.corr = {x:76, y:17, w:10, h:287}; L.entrance = {x:81, y:L.H+10};
+      const mk = (left,row)=>({x:left?3:89, y:row*100+17, w:left?70:68, h:83, left});
+      Object.assign(L.rooms, {po:mk(1,0), dev:mk(0,0), meet:mk(1,1), lab:mk(0,1), brk:mk(1,2), ci:mk(0,2)});
+      for(const r of Object.values(L.rooms)){ r.aisle = r.y+r.h-7; r.inn = {x:r.left?r.x+r.w-4:r.x+4, y:r.aisle}; r.out = {x:81, y:r.aisle}; }
     }
-    for(const [key,r] of Object.entries(rm)){
-      const top = r.y < 40; const dx = r.x + r.w*(key==='brk'?.12:.5) - 24*k;
-      bg += R(dx, top ? r.y+r.h-3 : r.y-3, 48*k, 6, 'room');
-      bg += `<text class="rl" x="${r.x+12}" y="${r.y+22}" font-size="${L.fs*.82}">${ROOM_TR[key]}</text>`;
+    furnish(L); L.items.sort((a,b)=>a.y-b.y); return L;
+  }
+  function furnish(L){
+    const R = L.rooms, tall = L.tall, SP = L.SP, lbl = PLAQ[tall?'tall':'wide'];
+    const add = (y,d)=>L.items.push({y,d});
+    const plaque = (r,k)=>{ const w = ptw(lbl[k])+4; L.plaques.push({x:r.x+3, y:r.y-13, w, s:lbl[k]}); return w; };
+    const plant = (x,b)=>add(b, (c)=>{ F(c,x-2,b-4,5,4,P.pot); F(c,x-2,b-4,5,1,P.potHi); F(c,x-1,b,3,1,'rgba(0,0,0,.18)');
+      [[0,-12,'leafL'],[-1,-11,'leaf'],[1,-11,'leafL'],[-2,-10,'leaf'],[0,-10,'leafD'],[2,-10,'leaf'],[-3,-9,'leafD'],[-1,-9,'leaf'],[1,-9,'leafL'],[3,-9,'leaf'],
+       [-2,-8,'leaf'],[0,-8,'leafL'],[2,-8,'leafD'],[-3,-7,'leaf'],[-1,-7,'leafD'],[1,-7,'leaf'],[3,-7,'leafD'],[-2,-6,'leafD'],[0,-6,'leaf'],[2,-6,'leaf'],[-1,-5,'leafD'],[1,-5,'leafD']]
+        .forEach(([dx,dy,k])=>F(c,x+dx,b+dy,1,1,P[k])); });
+    const chairB = (s)=>add(s.y+.5, (c)=>{ F(c,s.x-4,s.y-4,8,4,P.chair); F(c,s.x-4,s.y-4,8,1,P.chairHi); F(c,s.x-3,s.y,1,1,P.leg); F(c,s.x+2,s.y,1,1,P.leg); });
+    const chairF = (s)=>add(s.y-.5, (c)=>{ F(c,s.x-4,s.y-14,8,6,P.chair); F(c,s.x-4,s.y-14,8,1,P.chairHi); });
+    const monitor = (c,mx,y)=>{ F(c,mx-6,y-9,12,8,P.bezel); F(c,mx-1,y-1,2,2,P.bezel); F(c,mx-3,y+1,6,1,P.bezel); };
+    const desk = (x,y,w,mons,extra)=>{
+      mons.forEach(m=>L.screens.push({x:m.x-5, y:y-8, w:10, h:6, id:m.id, kind:'mon'}));
+      add(y+10, (c)=>{ F(c,x,y,w,6,P.deskTop); F(c,x,y,w,1,P.deskHi); F(c,x,y+6,w,4,P.deskFr); F(c,x+1,y+10,2,2,P.leg); F(c,x+w-3,y+10,2,2,P.leg);
+        mons.forEach(m=>monitor(c,m.x,y));
+        mons.forEach(m=>{ F(c,m.x-4,y+3,8,2,'#3a3f4b'); F(c,m.x+6,y+3,2,2,'#e9ecf0'); }); // keyboard + mouse
+        if(extra && extra.mug!=null){ F(c,extra.mug,y+1,3,3,'#f4f1ea'); F(c,extra.mug+3,y+2,1,1,'#f4f1ea'); }
+        if(extra && extra.lamp!=null){ const lx = extra.lamp; F(c,lx,y-6,1,7,'#4a505e'); F(c,lx-2,y-8,5,2,'#f2c94c'); F(c,lx-2,y+1,5,1,'#4a505e'); }
+      });
+    };
+
+    // PO office: plaque, whiteboard, window, desk
+    { const r = R.po, pw = plaque(r,'po'), bw = tall?30:44, bx = r.x+3+pw+4;
+      L.board = {x:bx, y:r.y-13, w:bw, h:11};
+      if(!tall) L.wins.push({x:r.x+r.w-22, y:r.y-12, w:16, h:9, r});
+      const sx = bx+(bw>>1);
+      SP.board = [{room:'po', x:sx, y:r.y+13, face:'up', pose:'stand'}, {room:'po', x:sx-12, y:r.y+13, face:'up', pose:'stand'}];
+      const dw = tall?26:42, dx = r.x+r.w-dw-4, dy = r.y+16, mx = dx+(dw>>1);
+      desk(dx, dy, dw, [{x:mx, id:'po'}], tall?null:{mug:dx+3});
+      const seat = {room:'po', x:mx, y:dy+16, face:'up', pose:'sit', scr:'po', paper:{x:mx+(tall?-11:-14), y:dy+1}};
+      SP.poDesk = [seat, {...seat, x:mx-12, scr:null, paper:null}]; chairB(seat);
+      plant(r.x+7, r.y+r.h-3);
     }
-    // PO office: whiteboard (planning) + desk (review)
-    { const r = rm.po; const bw = r.w*.42, bx = r.x+16, by = r.y+36;
-      bg += R(bx,by,bw,62*k,'surface',4,'style="fill:var(--surface);stroke:var(--desk-edge);stroke-width:2"');
-      ['#fdb022','#6690f7','#32d583','#f97066','#9b8afb','#fdb022'].forEach((c,i)=>{ bg += `<rect x="${bx+8+(i%3)*(bw-16)/3}" y="${by+8+Math.floor(i/3)*26*k}" width="${(bw-16)/3-6}" height="${18*k}" rx="2" style="fill:${c};opacity:.85"/>`; });
-      SPOTS.board = {x: bx+bw/2, y: by+62*k+86*k};
-      const dw = r.w*.42, dxx = r.x+r.w-dw-16, dy = r.y+r.h*.36;
-      bg += R(dxx, dy, dw, 30*k, 'desk', 4, 'style="fill:var(--desk);stroke:var(--desk-edge);stroke-width:2"');
-      bg += R(dxx+dw/2-24*k, dy-30*k, 48*k, 30*k, 'screen', 3) + screenLines(dxx+dw/2-24*k, dy-30*k, 48*k, 26*k, 'po-scr');
-      SPOTS.poDesk = {x: dxx+dw/2, y: dy+30*k+50*k}; fg += chairBack(SPOTS.poDesk.x, SPOTS.poDesk.y, k);
-      bg += plant(r.x+r.w-22, r.y+r.h-30, k);
+    // meeting room: TV, table, chairs
+    { const r = R.meet, pw = plaque(r,'meet'), tw = tall?32:76, tx = r.x+((r.w-tw)>>1), ty = r.y+24;
+      const tvw = tall?24:40; let tvx = Math.max(r.x+3+pw+4, tx+((tw-tvw)>>1)); tvx = Math.min(tvx, r.x+r.w-tvw-3);
+      L.tv = {x:tvx, y:r.y-13, w:tvw, h:11};
+      L.screens.push({x:tvx+1, y:r.y-12, w:tvw-2, h:8, id:'tv', kind:'tv'});
+      add(ty+16, (c)=>{ F(c,tx+1,ty,tw-2,1,P.tblHi); F(c,tx,ty+1,tw,11,P.tblTop); F(c,tx,ty+1,tw,1,P.tblHi); F(c,tx,ty+12,tw,3,P.tblFr); F(c,tx+1,ty+15,tw-2,1,P.tblSh);
+        F(c,tx+2,ty+15,2,3,P.tblSh); F(c,tx+tw-4,ty+15,2,3,P.tblSh);
+        const mx = tx+(tw>>1); F(c,mx-2,ty+4,4,4,'#9fd0e8'); F(c,mx-2,ty+4,4,1,'#c8e6f3'); F(c,mx-1,ty+3,2,1,'#9fd0e8'); }); // water jug
+      const xl = tx+(tw>>2), xr = tx+tw-(tw>>2), via = (x)=>[{x:tx-6, y:ty-4}, {x, y:ty-4}];
+      SP.meet = [
+        {room:'meet', x:tx+tw+8, y:ty+12, face:'left', pose:'stand'},
+        {room:'meet', x:xl, y:ty+3, face:'down', pose:'sit', via:via(xl), paper:{x:xl-2, y:ty+5}},
+        {room:'meet', x:xl, y:ty+22, face:'up', pose:'sit', paper:{x:xl-2, y:ty+8}},
+        {room:'meet', x:xr, y:ty+22, face:'up', pose:'sit', paper:{x:xr-2, y:ty+8}},
+        {room:'meet', x:xr, y:ty+3, face:'down', pose:'sit', via:via(xr), paper:{x:xr-2, y:ty+5}},
+      ];
+      SP.meet.forEach((s,i)=>{ if(i) (s.face==='up' ? chairB : chairF)(s); });
+      if(!tall) plant(r.x+7, r.y+r.h-3);
     }
-    // meeting room: table, TV
-    { const r = rm.meet; const cx = r.x+r.w/2, cy = r.y+r.h*.5+6, rx = Math.min(r.w*.28,130), ry = 34*k;
-      bg += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" style="fill:var(--desk);stroke:var(--desk-edge);stroke-width:2"/>`;
-      const tw = 120*k; bg += R(cx-tw/2, r.y+10, tw, 34*k, 'screen', 4) + `<g class="tv-on">${R(cx-tw/2+5,r.y+15,tw-10,34*k-10,'accent',2)}<text x="${cx}" y="${r.y+15+(34*k-10)/2+5}" text-anchor="middle" font-size="${12*k}" font-weight="700" fill="#fff">İnceleme</text></g>`;
-      SPOTS.meet = [{x:cx-rx-30*k,y:cy+30*k},{x:cx+rx+30*k,y:cy+30*k},{x:cx-48*k,y:cy+ry+44*k},{x:cx+48*k,y:cy+ry+44*k}];
+    // development: window, clock, long desk with two workstations
+    { const r = R.dev, pw = plaque(r,'dev'), wx = r.x+3+pw+6;
+      if(wx+18 <= r.x+r.w-3) L.wins.push({x:wx, y:r.y-12, w:tall?Math.min(18, r.x+r.w-3-wx):20, h:9, r});
+      if(!tall) L.clock = {x:wx+28, y:r.y-11};
+      const dw = tall?56:92, dx = r.x+((r.w-dw)>>1), dy = r.y+14, off = tall?14:22, s0 = dx+off, s1 = dx+dw-off;
+      desk(dx, dy, dw, [{x:s0, id:'dev0'}, {x:s1, id:'dev1'}], tall?null:{lamp:dx+(dw>>1), mug:dx+(dw>>1)+6});
+      SP.devDesk = [{room:'dev', x:s0, y:dy+16, face:'up', pose:'sit', scr:'dev0'}, {room:'dev', x:s1, y:dy+16, face:'up', pose:'sit', scr:'dev1'}];
+      SP.devDesk.forEach(chairB);
+      plant(r.x+r.w-7, r.y+r.h-3);
     }
-    // dev: desk with two monitors
-    { const r = rm.dev; const dw = Math.min(r.w*.62, 240), dx = r.x+(r.w-dw)/2, dy = r.y+r.h*.42;
-      bg += R(dx, dy, dw, 30*k, 'desk', 4, 'style="fill:var(--desk);stroke:var(--desk-edge);stroke-width:2"');
-      const mw = 62*k, mh = 40*k;
-      [dx+dw/2-mw-4, dx+dw/2+4].forEach(mx=>{ bg += R(mx, dy-mh+4, mw, mh, 'screen', 3) + screenLines(mx, dy-mh+4, mw, mh-6, 'dev-scr'); });
-      bg += `<rect x="${dx+12}" y="${dy+6}" width="${14*k}" height="${14*k}" rx="3" style="fill:#fff;stroke:var(--desk-edge)"/>`; // mug
-      SPOTS.devDesk = {x: dx+dw/2, y: dy+30*k+50*k}; fg += chairBack(SPOTS.devDesk.x, SPOTS.devDesk.y, k);
-      bg += plant(r.x+r.w-24, r.y+46, k*.9);
+    // test lab: shelf, bench with test monitor, phone and a mini CNC
+    { const r = R.lab, pw = plaque(r,'lab'), shx = r.x+3+pw+4, shw = Math.min(30, (tall ? r.x+r.w-3 : r.x+r.w-20) - shx);
+      if(shw > 10) L.shelf = {x:shx, y:r.y-12, w:shw};
+      const bw = tall?54:96, bx = r.x+(tall?7:5), by = r.y+14, cw = tall?22:34, cx0 = bx+bw-cw-3, mx = bx+9;
+      L.cnc = {x:cx0, y:by, w:cw};
+      L.screens.push({x:mx-5, y:by-8, w:10, h:6, id:'lab', kind:'mon'});
+      add(by+10, (c,t)=>{ F(c,bx,by,bw,6,P.benchTop); F(c,bx,by,bw,1,P.benchHi); F(c,bx,by+6,bw,4,P.benchFr); F(c,bx+1,by+10,2,2,P.benchLeg); F(c,bx+bw-3,by+10,2,2,P.benchLeg);
+        monitor(c,mx,by); F(c,mx-4,by+3,8,2,'#3a3f4b');
+        F(c,mx+8,by-4,3,5,P.bezel); F(c,mx+9,by-3,1,3,'#5fb3ff'); // phone on a stand
+        // mini CNC: base, workpiece, posts, gantry; the spindle moves while someone tests
+        F(c,cx0,by-4,cw,5,'#d4ac74'); F(c,cx0,by-4,cw,1,'#e6c38e'); F(c,cx0+3,by-5,cw-6,1,'#f0dcb4');
+        F(c,cx0,by-12,2,9,'#59606c'); F(c,cx0+cw-2,by-12,2,9,'#59606c'); F(c,cx0,by-13,cw,2,'#3b414d');
+        const sp = L.cncX!=null ? L.cncX : cx0+(cw>>1)-1; F(c,sp,by-11,3,5,'#2f56e3'); F(c,sp,by-11,3,1,'#6690f7'); F(c,sp+1,by-6,1,1,'#d7dbe1');
+      });
+      SP.bench = [{room:'lab', x:mx, y:by+16, face:'up', pose:'sit', scr:'lab'}, {room:'lab', x:cx0+(cw>>1), y:by+16, face:'up', pose:'sit', scr:'cnc'}];
+      SP.bench.forEach(chairB);
+      if(!tall) plant(r.x+7, r.y+r.h-3);
     }
-    // test lab: bench, test monitor, phone, mini CNC model
-    { const r = rm.lab; const dw = r.w*.74, dx = r.x+(r.w-dw)/2, dy = r.y+r.h*.42;
-      bg += R(dx, dy, dw, 30*k, 'desk', 4, 'style="fill:var(--desk);stroke:var(--desk-edge);stroke-width:2"');
-      const mw = 58*k, mh = 38*k, mx = dx+10;
-      bg += R(mx, dy-mh+4, mw, mh, 'screen', 3) + `<g class="lab-scr">${[0,1,2].map(i=>`<rect class="scr-l" x="${mx+6}" y="${dy-mh+10+i*9*k}" width="${mw*(i===1?.45:.7)}" height="${4*k}" rx="2" style="fill:${i===1?'#f97066':'#32d583'}"/>`).join('')}</g>`;
-      bg += `<rect x="${mx+mw+10}" y="${dy-22*k}" width="${14*k}" height="${24*k}" rx="3" style="fill:var(--screen)"/>`;
-      const cx0 = dx+dw-80*k; bg += `<g transform="translate(${cx0} ${dy-26*k})"><rect width="${68*k}" height="${28*k}" rx="3" style="fill:#d9b37a"/><rect x="${6*k}" y="${-12*k}" width="${8*k}" height="${40*k}" style="fill:var(--desk-edge)"/><rect x="${54*k}" y="${-12*k}" width="${8*k}" height="${40*k}" style="fill:var(--desk-edge)"/><rect x="${4*k}" y="${-14*k}" width="${60*k}" height="${6*k}" rx="2" style="fill:var(--rack)"/><rect class="cnc-head" x="${28*k}" y="${-10*k}" width="${10*k}" height="${18*k}" rx="2" style="fill:var(--accent)"/></g>`;
-      SPOTS.bench = {x: dx+dw*.38, y: dy+30*k+50*k}; fg += chairBack(SPOTS.bench.x, SPOTS.bench.y, k);
+    // break area: rug, sofa, coffee counter, side table with lamp
+    { const r = R.brk, pw = plaque(r,'brk');
+      const sw = tall?46:70, sx = r.x+((r.w-sw)>>1)-(tall?0:10), sy = r.y+28;
+      L.rugs.push({x:sx-7, y:sy+5, w:sw+14, h:tall?24:30});
+      add(sy+8, (c)=>{ F(c,sx,sy,sw,8,P.sofaBk); F(c,sx,sy,sw,1,P.sofaHi); for(let i=1;i<4;i++) F(c,sx+Math.round(sw*i/4),sy+2,1,5,P.sofaSh);
+        F(c,sx,sy+8,sw,6,P.sofa); F(c,sx,sy+8,sw,1,P.sofaHi); F(c,sx,sy+14,sw,3,P.sofaSh);
+        F(c,sx-4,sy+3,4,14,P.sofaBk); F(c,sx-4,sy+3,4,1,P.sofaHi); F(c,sx+sw,sy+3,4,14,P.sofaBk); F(c,sx+sw,sy+3,4,1,P.sofaHi); });
+      SP.brk = [0,1,2,3].map(i=>({room:'brk', x:sx+Math.round(sw*(i+.5)/4), y:sy+16, face:'down', pose:'sit', cup:true}));
+      const cx = r.x+3+pw+6, cwid = tall ? Math.min(26, r.x+r.w-cx-3) : 34;
+      L.coffee = {x:cx+8, y:r.y-8};
+      add(r.y+10, (c)=>{ F(c,cx,r.y,cwid,5,P.deskTop); F(c,cx,r.y,cwid,1,P.deskHi); F(c,cx,r.y+5,cwid,5,P.deskFr);
+        F(c,cx+3,r.y-10,9,12,P.machine); F(c,cx+3,r.y-10,9,1,P.machHi); F(c,cx+5,r.y-6,5,2,'#20232a'); F(c,cx+6,r.y-4,3,1,'#20232a'); F(c,cx+6,r.y,3,2,'#f4f1ea');
+        F(c,cx+15,r.y-2,2,3,'#f4f1ea'); F(c,cx+18,r.y-2,2,3,'#f2c94c'); if(cwid>26){ F(c,cx+23,r.y-4,6,5,'#b9463a'); F(c,cx+23,r.y-4,6,1,'#d4655a'); } });
+      if(!tall){ const tx = sx+sw+8, ty = sy+9; L.lamps.push({x:tx+4, y:ty-7});
+        add(ty+7, (c)=>{ F(c,tx,ty,9,5,P.deskTop); F(c,tx,ty,9,1,P.deskHi); F(c,tx,ty+5,9,2,P.deskFr); F(c,tx+4,ty-5,1,5,'#4a505e'); F(c,tx+1,ty-8,7,3,'#f2d39b'); F(c,tx+1,ty-8,7,1,'#f7e3bd'); }); }
+      plant(r.x+7, r.y+r.h-3);
     }
-    // break area: sofa, coffee machine, plant
-    { const r = rm.brk; const sw = r.w*.72, sx = r.x+(r.w-sw)/2, sy = r.y+r.h*.55;
-      bg += R(sx, sy-14*k, sw, 30*k, 'sofa', 10) + R(sx-8, sy-6*k, 16, 40*k, 'sofa', 6) + R(sx+sw-8, sy-6*k, 16, 40*k, 'sofa', 6);
-      bg += `<rect x="${sx+8}" y="${sy+10*k}" width="${sw-16}" height="${22*k}" rx="6" style="fill:var(--sofa);opacity:.75"/>`;
-      const cmx = r.x+r.w-60*k; bg += R(cmx-10, r.y+30, 64*k, 26*k, 'desk', 3, 'style="fill:var(--desk);stroke:var(--desk-edge);stroke-width:2"') + R(cmx+8*k, r.y+30-26*k, 24*k, 30*k, 'rack', 4) + `<circle cx="${cmx+20*k}" cy="${r.y+30-14*k}" r="${4*k}" style="fill:#f97066"/>`;
-      bg += plant(r.x+30, r.y+r.h-30, k);
-      SPOTS.brk = L.w < 800
-        ? [[.22,0],[.66,0],[.44,46],[.88,46]].map(([p,d])=>({x: r.x+r.w*p, y: sy+30*k+d*k}))
-        : [.12,.37,.63,.88].map(p=>({x: sx+sw*p, y: sy+30*k}));
+    // server / CI corner: three racks with LEDs and a status beacon
+    { const r = R.ci; plaque(r,'ci'); const rw = 16, gap = 4, x0 = r.x+5, y0 = r.y-4;
+      for(let i=0;i<3;i++){ const x = x0+i*(rw+gap);
+        for(let j=0;j<7;j++){ L.leds.push({x:x+rw-5, y:y0+6+j*4, i:i*7+j}); if(j%2===0) L.leds.push({x:x+rw-8, y:y0+6+j*4, i:i*7+j+40}); }
+        add(y0+34, (c)=>{ F(c,x,y0,rw,3,P.rackTop); F(c,x,y0+3,rw,31,P.rack); F(c,x+1,y0+4,rw-2,29,P.rackFr);
+          for(let j=0;j<7;j++) F(c,x+2,y0+5+j*4,rw-5,3,P.slot); F(c,x+1,y0+34,2,1,P.slot); F(c,x+rw-3,y0+34,2,1,P.slot); }); }
+      L.ciLamp = {x:x0+2*(rw+gap)+6, y:y0-3};
+      L.ciArea = {x:r.x+4, y:r.y+35, w:r.w-8, h:r.h-38};
     }
-    // server / CI corner
-    { const r = rm.ci; const wide = r.w > r.h*1.6; const rh = wide ? r.h-46 : r.h*.42, rw = 46*k;
-      for(let i=0;i<2;i++){ const x = r.x+16+i*(rw+10), y = r.y+34;
-        bg += R(x,y,rw,rh,'rack',4); const n = Math.floor((rh-10)/12);
-        for(let j=0;j<n;j++){ bg += `<rect x="${x+6}" y="${y+6+j*12}" width="${rw-12}" height="7" rx="1.5" style="fill:#000;opacity:.25"/><circle class="led" cx="${x+rw-10}" cy="${y+9.5+j*12}" r="2.2" style="fill:${(i+j)%3?'#32d583':'#6690f7'}"/>`; }
+    if(!tall){ // extra props so rooms feel lived in
+      const cab = (x,b,w,col,top)=>add(b, (c)=>{ F(c,x,b-16,w,16,col); F(c,x,b-16,w,1,top); for(let y=b-12;y<b;y+=5) F(c,x+1,y,w-2,1,'rgba(0,0,0,.18)'); F(c,x+(w>>1)-1,b-10,2,1,'#e9ecf0'); F(c,x+(w>>1)-1,b-5,2,1,'#e9ecf0'); });
+      { const r = R.po, x = r.x+r.w-14, b = r.y+r.h-14; add(b, (c)=>{ F(c,x,b-22,11,22,P.deskFr); F(c,x,b-22,11,1,P.deskHi);
+          ['#c94f45','#3d63e6','#e9b949','#4caf7a','#8466f9','#e07a5f'].forEach((col,i)=>{ F(c,x+1+(i%3)*3,b-20+(i/3|0)*7,2,6,col); }); F(c,x+1,b-6,9,1,P.leg); F(c,x+2,b-5,7,4,'#f4f1ea'); }); }
+      { const r = R.dev, x = r.x+6, b = r.y+r.h-14; cab(x,b,14,'#9aa1ac','#c3c8d0'); add(b-15.5, (c)=>{ F(c,x+1,b-21,12,5,'#e9ecf0'); F(c,x+1,b-21,12,1,'#ffffff'); F(c,x+3,b-17,8,1,'#3a3f4b'); F(c,x+4,b-23,6,2,'#f4f1ea'); }); }
+      { const r = R.meet; plant(r.x+r.w-8, r.y+r.h-3); add(r.y+r.h-14, (c)=>{ const x = r.x+r.w-16, y = r.y+r.h-30; F(c,x,y,10,16,'#e9e4da'); F(c,x,y,10,1,'#ffffff'); F(c,x+4,y+16,2,1,P.leg); F(c,x+2,y+3,6,1,'#2f56e3'); F(c,x+2,y+6,4,1,'#d92d20'); F(c,x+2,y+9,5,1,'#039855'); }); }
+      { const r = R.lab, b = r.y+r.h-22, x = r.x+r.w-30; add(b, (c)=>{ F(c,x,b-8,10,8,'#c9a06a'); F(c,x,b-8,10,1,'#dcb784'); F(c,x+4,b-8,2,8,'#e8d2a9'); F(c,x+11,b-7,8,7,'#b98f5a'); F(c,x+11,b-7,8,1,'#cfa673'); F(c,x+2,b-14,8,6,'#b98f5a'); F(c,x+2,b-14,8,1,'#cfa673'); F(c,x+5,b-14,2,6,'#e8d2a9'); }); }
+    }
+    // corridor props (wide only)
+    if(!tall){ plant(121, 102); plant(253, 102);
+      add(102, (c)=>{ const x = 344; F(c,x,93,7,9,'#d9dde3'); F(c,x,93,7,1,'#eef0f3'); F(c,x+1,87,5,6,'#8fd0f2'); F(c,x+1,87,5,1,'#c4e8f8'); F(c,x+5,96,1,1,'#3f8be0'); }); }
+  }
+
+  // ---------- static background: walls, floors, doors, wall decor ----------
+  function paintBG(L){
+    const cv = document.createElement('canvas'); cv.width = L.W; cv.height = L.H; const c = cv.getContext('2d');
+    F(c,0,0,L.W,L.H,P.cap);
+    const clip = (r,fn)=>{ c.save(); c.beginPath(); c.rect(r.x,r.y,r.w,r.h); c.clip(); fn(); c.restore(); };
+    const wood = (r,a,b,s)=>clip(r,()=>{ F(c,r.x,r.y,r.w,r.h,a); for(let y=r.y,i=0;y<r.y+r.h;y+=5,i++){ if(i%2) F(c,r.x,y,r.w,5,b); F(c,r.x,y+4,r.w,1,s); for(let x=r.x+(i*11)%23;x<r.x+r.w;x+=23) F(c,x,y,1,4,s); } });
+    const dither = (r,a,b,n)=>clip(r,()=>{ F(c,r.x,r.y,r.w,r.h,a); c.fillStyle = b; for(let y=r.y;y<r.y+r.h;y++) for(let x=r.x;x<r.x+r.w;x++) if(hash(x*73+y*311) < 1/n*1.4) c.fillRect(x,y,1,1); });
+    const tiles = (r,a,b,g,s)=>clip(r,()=>{ for(let y=r.y,j=0;y<r.y+r.h;y+=s,j++) for(let x=r.x,i=0;x<r.x+r.w;x+=s,i++){ F(c,x,y,s,s,(i+j)%2?b:a); F(c,x,y+s-1,s,1,g); F(c,x+s-1,y,1,s,g); } });
+    const metal = (r)=>clip(r,()=>{ for(let y=r.y,j=0;y<r.y+r.h;y+=12,j++) for(let x=r.x,i=0;x<r.x+r.w;x+=12,i++){ F(c,x,y,12,12,(i+j)%2?P.metB:P.metA); F(c,x,y,12,1,P.rivet); F(c,x+1,y+2,1,1,P.rivet); F(c,x+10,y+2,1,1,P.rivet); F(c,x+1,y+10,1,1,P.rivet); F(c,x+10,y+10,1,1,P.rivet); } });
+    // corridor
+    const co = L.corr; tiles(co, P.corA, P.corB, '#bcc1c9', 10);
+    // rooms: floor + back wall face + baseboard
+    const R = L.rooms;
+    wood(R.po, P.woodA, P.woodB, P.woodS); dither(R.meet, P.carA, P.carB, 3); tiles(R.dev, P.tileA, P.tileB, P.tileS, 9);
+    tiles(R.lab, P.labA, P.labB, P.grout, 8); dither(R.brk, P.brA, P.brB, 4); metal(R.ci);
+    for(const r of Object.values(R)){ F(c,r.x,r.y-14,r.w,14,P.face); F(c,r.x,r.y-14,r.w,1,P.faceLo); F(c,r.x,r.y-3,r.w,3,P.base); F(c,r.x,r.y-3,r.w,1,'#c7baa4'); F(c,r.x,r.y,r.w,1,'rgba(0,0,0,.10)'); }
+    if(!L.tall){
+      // top rooms' south wall: thin cap + a sliver of face seen from the corridor
+      for(const r of [R.po,R.meet,R.dev]){ F(c,r.x,92,r.w,2,P.cap); F(c,r.x,94,r.w,2,'#cfc6b5'); }
+      // doors
+      for(const r of [R.po,R.meet,R.dev]){ F(c,r.dx-6,92,12,4,P.thresh); F(c,r.dx-7,92,1,4,P.doorFr); F(c,r.dx+6,92,1,4,P.doorFr); }
+      for(const r of [R.lab,R.brk,R.ci]){ F(c,r.dx-7,118,14,17,P.doorFr); F(c,r.dx-6,119,12,16,P.doorway); F(c,r.dx-6,131,12,4,'#3a3540'); F(c,r.dx-6,133,12,2,P.thresh); }
+      // entrance + mat
+      F(c,0,co.y,3,co.h,P.corA); F(c,2,100,9,16,P.mat); for(let y=101;y<115;y+=2) F(c,3,y,7,1,P.matB);
+      // corridor ceiling edge shadow
+      F(c,0,96,376,1,'rgba(0,0,0,.12)');
+    } else {
+      // corridor back wall face at the top, side doors, exit at the bottom
+      F(c,co.x,3,co.w,14,P.face); F(c,co.x,14,co.w,3,P.base);
+      for(const r of Object.values(R)){ const wx = r.left ? r.x+r.w : r.x-3; F(c,wx,r.aisle-9,3,12,P.thresh); F(c,wx,r.aisle-10,3,1,P.doorFr); F(c,wx,r.aisle+3,3,1,P.doorFr); }
+      F(c,co.x,L.H-4,co.w,4,P.corA); F(c,co.x+1,L.H-12,co.w-2,10,P.mat); for(let y=L.H-11;y<L.H-2;y+=2) F(c,co.x+2,y,co.w-4,1,P.matB);
+    }
+    // rugs
+    for(const g of L.rugs){ F(c,g.x,g.y,g.w,g.h,P.rug); F(c,g.x+2,g.y+2,g.w-4,g.h-4,P.rugB); F(c,g.x+3,g.y+3,g.w-6,g.h-6,P.rug);
+      for(let x=g.x+1;x<g.x+g.w-1;x+=3){ F(c,x,g.y+1,1,1,P.rugE); F(c,x,g.y+g.h-2,1,1,P.rugE); } }
+    // whiteboard with sticky notes and a sketch
+    if(L.board){ const b = L.board; F(c,b.x,b.y,b.w,b.h,P.wbFrame); F(c,b.x+1,b.y+1,b.w-2,b.h-2,P.wb); F(c,b.x+1,b.y+b.h,b.w-2,1,'#7d8592');
+      const nc = ['#fdd25a','#8ab4ff','#7ee0a4','#ff9f8f','#c3a8ff','#fdd25a']; const cols = L.tall?2:3;
+      nc.slice(0,cols*2).forEach((col,i)=>F(c,b.x+3+(i%cols)*4,b.y+2+(i/cols|0)*4,3,3,col));
+      b.dx = b.x+3+cols*4+2; b.dw = b.x+b.w-3-b.dx; }
+    // TV bezel
+    if(L.tv){ const t = L.tv; F(c,t.x,t.y,t.w,t.h,P.bezel); F(c,t.x+(t.w>>1)-2,t.y+t.h,4,1,P.bezel); }
+    // window frames (glass is drawn per frame for day/night)
+    for(const w of L.wins){ F(c,w.x-1,w.y-1,w.w+2,w.h+2,P.winFrame); F(c,w.x-1,w.y+w.h+1,w.w+2,1,'#c9c0ae'); }
+    // clock
+    if(L.clock){ const k = L.clock; F(c,k.x+1,k.y,5,7,'#4a505e'); F(c,k.x,k.y+1,7,5,'#4a505e'); F(c,k.x+1,k.y+1,5,5,'#fbfaf6'); F(c,k.x+3,k.y+2,1,2,'#23262e'); F(c,k.x+4,k.y+3,1,1,'#d92d20'); }
+    // shelf with boxes in the lab
+    if(L.shelf){ const s = L.shelf; F(c,s.x,s.y+4,s.w,1,'#8d7a62'); F(c,s.x,s.y+9,s.w,1,'#8d7a62');
+      const bx = ['#c9a06a','#7fa7e8','#e07a5f','#9ccf8f','#c9a06a'];
+      for(let i=0,x=s.x+1;x<s.x+s.w-4;i++,x+=5){ F(c,x,s.y+(i%2?1:0),4,4-(i%2),bx[i%5]); if(i%3!==2) F(c,x+1,s.y+6,3,3,bx[(i+2)%5]); } }
+    return cv;
+  }
+
+  // ---------- actors ----------
+  const SPEED = 38; // internal px per second
+  const actors = {};
+  CREW.forEach((c,i)=>{ actors[c.key] = {c, key:c.key, x:0, y:0, path:[], dir:'down', vis:false, placed:false, grp:null, idx:0, want:null, st:'idle', a:{}, ph:i*1.37, walkT:0, dest:null}; });
+  let L = null, BG = null, K = 1, night = false, ciState = 'none', VIEW = [];
+  const office = $('office'), stage = $('stage'), cvs = $('floor'), ctx = cvs.getContext('2d'), ov = $('ov');
+  const rmq = matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced = () => rmq.matches;
+  const spotOf = (g,i) => g==='door' ? {entrance:true} : L.SP[g][Math.min(i, L.SP[g].length-1)];
+  function roomExit(s){ const r = L.rooms[s.room], v = (s.via||[]).slice().reverse(), pts = [{x:s.x,y:s.y}, ...v], last = pts[pts.length-1];
+    pts.push({x:last.x, y:r.aisle}); return pts; }
+  function pathBetween(from, to){
+    let pts;
+    if(!from.entrance && !to.entrance && from.room===to.room) pts = [...roomExit(from), ...roomExit(to).reverse()];
+    else {
+      const out = (s)=>{ const r = L.rooms[s.room]; return [...roomExit(s), {x:r.inn.x, y:r.aisle}, r.out]; };
+      pts = [...(from.entrance ? [L.entrance] : out(from)), ...(to.entrance ? [L.entrance] : out(to).reverse())];
+    }
+    return pts.filter((p,i)=>!i || p.x!==pts[i-1].x || p.y!==pts[i-1].y);
+  }
+  function goTo(A, g, i){
+    if(A.path.length){ A.want = {g, i}; return; }
+    if(A.placed && A.grp===g && A.idx===i) return;
+    const to = spotOf(g, i);
+    if(!A.placed || reduced()){
+      if(to.entrance) A.vis = false; else { A.x = to.x; A.y = to.y; A.vis = true; }
+      A.grp = g; A.idx = i; A.placed = true; A.path = []; return;
+    }
+    if(to.entrance && !A.vis){ A.grp = g; A.idx = i; return; }
+    const from = A.vis ? spotOf(A.grp, A.idx) : {entrance:true};
+    if(!A.vis){ A.x = L.entrance.x; A.y = L.entrance.y; A.vis = true; }
+    A.path = pathBetween(from, to).filter(p=>p.x!==A.x || p.y!==A.y); A.grp = g; A.idx = i; A.dest = to; A.walkT = 0;
+  }
+  function relocate(){ // layout changed: snap everybody to their spot in the new arrangement
+    Object.values(actors).forEach(A=>{ A.path = []; A.want = null; if(!A.placed) return; const s = spotOf(A.grp, A.idx);
+      if(s.entrance) A.vis = false; else { A.x = s.x; A.y = s.y; } });
+  }
+  function update(dt){
+    for(const A of Object.values(actors)){
+      if(!A.vis || !A.path.length) continue;
+      let step = SPEED*dt; A.walkT += dt;
+      while(step > 0 && A.path.length){
+        const p = A.path[0], dx = p.x-A.x, dy = p.y-A.y;
+        if(dx){ A.dir = dx>0 ? 'right' : 'left'; const m = Math.min(step, Math.abs(dx)); A.x += Math.sign(dx)*m; step -= m; }
+        else if(dy){ A.dir = dy<0 ? 'up' : 'down'; const m = Math.min(step, Math.abs(dy)); A.y += Math.sign(dy)*m; step -= m; }
+        if(A.x===p.x && A.y===p.y) A.path.shift();
       }
-      const tx = wide ? r.x+16+2*(rw+10)+10 : r.x+16, ty = wide ? r.y+44 : r.y+34+rh+28;
-      bg += `<g id="ciBox"><circle class="ci-lamp" id="ciLamp" cx="${tx+10*k}" cy="${ty}" r="${9*k}" style="fill:var(--subtle)"/><text id="ciT1" x="${tx+26*k}" y="${ty+5*k}" font-size="${L.fs*1.05}" font-weight="650" style="fill:var(--fg)">CI</text><text id="ciT2" x="${tx}" y="${ty+28*k}" font-size="${L.fs*.85}" style="fill:var(--muted)"></text><text id="ciT3" x="${tx}" y="${ty+48*k}" font-size="${L.fs*.8}" style="fill:var(--subtle)"></text></g>`;
-      SPOTS.ciTextW = wide ? r.x+r.w-tx-8 : r.w-32;
+      if(!A.path.length){ if(A.dest && A.dest.entrance) A.vis = false; if(A.want){ const w = A.want; A.want = null; goTo(A, w.g, w.i); } }
     }
-    svg.innerHTML = `<g>${bg}</g><g id="agents"></g><g>${fg}</g><g id="bubbles"></g>`;
-    const ag = $('agents'), bb = $('bubbles');
-    CREW.forEach(c=>{ ag.insertAdjacentHTML('beforeend', figure(c)); bb.insertAdjacentHTML('beforeend', `<g class="bub" id="bub-${c.key}"></g>`); });
-    placed = {}; renderOffice(); renderCI();
   }
-  function figure(c){
-    const k = L.k, col = `var(--c-${c.key})`;
-    return `<g class="agent st-idle" id="ag-${c.key}" style="transform:translate(-200px,-200px)" opacity="0"><g transform="scale(${k})">
-      <ellipse cx="0" cy="0" rx="18" ry="4.5" style="fill:#000;opacity:.12"/>
-      <g class="fig">
-        <path class="arm l" d="M-14 -38 L-20 -18" style="stroke:${col};stroke-width:7;stroke-linecap:round;transform-origin:-14px -38px"/>
-        <path class="arm r" d="M14 -38 L20 -18" style="stroke:${col};stroke-width:7;stroke-linecap:round;transform-origin:14px -38px"/>
-        <rect x="-15" y="-44" width="30" height="42" rx="12" style="fill:${col}"/>
-        <circle cx="0" cy="-56" r="12" style="fill:var(--skin)"/>
-        <path d="M-12.5 -56 a12.5 12.5 0 0 1 25 0 q-4 -4 -12.5 -4 q-8.5 0 -12.5 4z" style="fill:${c.hair}"/>
-        <g class="p p-cup"><rect x="17" y="-24" width="9" height="10" rx="2" style="fill:#fff;stroke:#9da5b3"/><path class="steam" d="M20 -28 q2 -3 0 -6 M24 -28 q2 -3 0 -6" style="stroke:#9da5b3;fill:none;stroke-width:1.5"/></g>
-        <g class="p p-lens"><circle cx="24" cy="-22" r="6" style="fill:none;stroke:var(--fg);stroke-width:2.5"/><path d="M19.5 -17.5 l-4 4" style="stroke:var(--fg);stroke-width:3;stroke-linecap:round"/></g>
-        <g class="p p-clip"><rect x="15" y="-30" width="13" height="17" rx="2" style="fill:#fff;stroke:#9da5b3"/><path d="M18 -25h7M18 -21h7M18 -17h5" style="stroke:#9da5b3"/></g>
-        <g class="p p-pen"><rect x="30" y="-80" width="4" height="12" rx="1" transform="rotate(20 32 -74)" style="fill:#f97066"/></g>
-      </g>
-      <g class="badge b-bang"><circle cx="-24" cy="-64" r="10" style="fill:var(--bad)"/><text x="-24" y="-59" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">!</text></g>
-      <g class="badge b-check"><circle cx="-24" cy="-64" r="10" style="fill:var(--ok)"/><path d="M-29 -64 l4 4 l7 -8" style="fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round"/></g>
-      <rect x="${-(c.name.length*4.2+10)}" y="5" width="${c.name.length*8.4+20}" height="18" rx="9" style="fill:${col}"/>
-      <text x="0" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">${esc(c.name)}</text>
-    </g></g>`;
+  // current pose of an actor: view (front/back/left/right), sprite variant, top-left y offset, sitting flag
+  function poseOf(A, t){
+    if(A.path.length){ const f = (A.walkT*8|0)%4, side = A.dir==='left'||A.dir==='right'; return {view: A.dir==='up'?'back':A.dir==='down'?'front':A.dir, v: side ? (f%2?'walk2':'walk1') : ['walk1','stand','walk2','stand'][f], sit:false}; }
+    const s = spotOf(A.grp, A.idx), st = A.st, rm = reduced();
+    const view = s.face==='up'?'back':s.face==='down'?'front':s.face;
+    if(s.pose==='sit'){
+      let v = 'sit';
+      if(!rm && view==='back' && st==='coding') v = (t*7|0)%2 ? 'type1' : 'type2';
+      if(!rm && view==='back' && st==='testing') v = (t*2.5|0)%3===0 ? 'type1' : 'sit';
+      return {view, v, sit:true};
+    }
+    let v = 'stand';
+    if(!rm && st==='planning' && view==='back') v = (t*3|0)%2 ? 'raise1' : 'raise2';
+    if(st==='reviewing' && A.key==='fable') v = rm || (t/1.6|0)%2 ? 'point' : 'stand';
+    return {view, v, sit:false};
   }
+  function actorBox(A, t){ // feet position and sprite top, rounded to pixels
+    const p = poseOf(A, t), x = Math.round(A.x); let y = Math.round(A.y);
+    if(!reduced() && !A.path.length){
+      if(A.st==='done' && !p.sit && ((t+A.ph)%3) < .25) y -= 1;
+    }
+    let dx = 0; if(!reduced() && A.st==='blocked' && !A.path.length) dx = (t*4|0)%2 ? 1 : 0;
+    const top = p.sit ? (p.view==='front' ? y-11 : y-9) : y-12;
+    return {x:x+dx, y, top, p};
+  }
+
+  // ---------- per-frame drawing ----------
+  const hash = (n) => { n = (n*2654435761)>>>0; return ((n^(n>>>15))>>>0)/4294967296; };
+  function sceneState(){ // which screens/props are active, from actors that reached their spot
+    const s = {scr:{}, testing:false, meeting:false, planning:false};
+    for(const A of Object.values(actors)){
+      if(!A.vis || A.path.length || !A.grp || A.grp==='door') continue;
+      const sp = spotOf(A.grp, A.idx);
+      if(A.st==='coding' && sp.scr) s.scr[sp.scr==='cnc'?'lab':sp.scr] = 'code';
+      if(A.st==='testing'){ s.testing = true; s.scr.lab = 'test'; }
+      if(A.st==='reviewing' && sp.scr==='po') s.scr.po = 'doc';
+      if((A.st==='reviewing') && sp.room==='meet') s.meeting = true;
+      if(A.st==='planning' && A.grp==='board') s.planning = true;
+    }
+    return s;
+  }
+  function pixEllipse(c, cx, cy, rx, ry, col){ c.fillStyle = col; for(let y=-ry;y<=ry;y++){ const w = Math.round(rx*Math.sqrt(1-(y*y)/(ry*ry))); c.fillRect(cx-w, cy+y, w*2, 1); } }
+  function drawScreen(c, s, mode, t){
+    const {x,y,w,h} = s, T = (t*6)|0;
+    if(s.kind==='tv'){
+      if(mode!=='on'){ F(c,x,y,w,h,'#161a22'); F(c,x+w-4,y+1,2,1,'#2b3240'); return; }
+      const slide = (t/3|0)%3; F(c,x,y,w,h,'#2f56e3'); F(c,x+2,y+1,Math.min(w-4,14),1,'#ffffff');
+      if(slide===0){ for(let i=0;i<4;i++) F(c,x+3+i*5,y+h-1-(2+((i*3)%4)),3,2+((i*3)%4),['#ffd166','#7ee0a4','#ff9f8f','#c3a8ff'][i]); }
+      else if(slide===1){ for(let i=0;i<3;i++){ F(c,x+2,y+3+i*2,1,1,'#ffd166'); F(c,x+4,y+3+i*2,w-10-(i*4)%9,1,'#c8d6ff'); } }
+      else { F(c,x+3,y+3,8,4,'#ffffff'); F(c,x+4,y+4,6,2,'#9fb8ff'); F(c,x+13,y+3,w-17,1,'#c8d6ff'); F(c,x+13,y+5,w-20,1,'#c8d6ff'); }
+      return;
+    }
+    if(mode==='code'){
+      F(c,x,y,w,h,'#0f1a2a');
+      for(let i=0;i<3;i++){ const k = i+T, ind = (k%3===1)?2:0, len = Math.min(w-2-ind, 2+((k*5)%7)); F(c,x+1+ind,y+1+i*2,len,1,['#5ee08f','#6fb0ff','#ffd166','#c49bff'][k%4]); }
+      if((t*2|0)%2) F(c,x+w-2,y+h-2,1,1,'#ffffff');
+    } else if(mode==='test'){
+      const ok = (t*2.5|0)%3 !== 1; F(c,x,y,w,h,'#0f1a2a');
+      F(c,x+1,y+1,w-2,1,ok?'#5ee08f':'#ff6b5e'); F(c,x+1,y+3,Math.max(1,(t*8|0)%(w-1)),1,'#ffd166'); F(c,x+1,y+5,w-4,1,ok?'#5ee08f':'#ff6b5e');
+    } else if(mode==='doc'){
+      F(c,x,y,w,h,'#e9eef7'); for(let i=0;i<3;i++) F(c,x+1,y+1+i*2,w-3-(i===2?3:0),1,'#8a92a0'); F(c,x+w-3,y+1,2,2,'#2f56e3');
+    } else { // idle: dim screen with a slow screensaver dot
+      F(c,x,y,w,h,P.scrOff); const k = (t*1.5|0); F(c,x+(k%(w-1)),y+((k>>2)%(h-1)),1,1,'#3e5a86');
+    }
+  }
+  function drawWindows(c, t){
+    for(const wn of L.wins){
+      const {x,y,w,h} = wn;
+      if(!night){ F(c,x,y,w,h,P.sky); F(c,x,y+h-3,w,3,P.skyB); const cx = x + ((t*1.2|0) % (w+8)) - 6;
+        c.save(); c.beginPath(); c.rect(x,y,w,h); c.clip(); F(c,cx,y+2,5,2,P.cloud); F(c,cx+1,y+1,3,1,P.cloud); c.restore(); }
+      else { F(c,x,y,w,h,P.nsky); [[2,2],[w-4,1],[(w>>1)+1,4],[4,h-3],[w-3,h-4]].forEach(([a,b],i)=>{ if(hash(i+(t*1.5|0)*7+x)>.25) F(c,x+a,y+b,1,1,P.star); });
+        if(wn===L.wins[0]){ F(c,x+w-6,y+2,3,3,P.moon); F(c,x+w-5,y+2,1,1,P.nsky); } }
+      F(c,x+(w>>1),y,1,h,P.winFrame); F(c,x,y+(h>>1),w,1,P.winFrame);
+    }
+  }
+  function drawSun(c){ // daylight patches on the floor below windows
+    c.fillStyle = 'rgba(255,250,228,.22)';
+    for(const wn of L.wins){ const fy = wn.r.y; for(let i=0;i<12;i++) c.fillRect(wn.x+2+(i>>1), fy+i, wn.w-2, 1); }
+  }
+  function drawLeds(c, t){
+    const n = L.leds.length;
+    for(const l of L.leds){
+      let col;
+      if(ciState==='ok') col = Math.sin(t*3+l.i*1.7) > -.4 ? '#3ee07a' : '#1d5a33';
+      else if(ciState==='run') col = ((t*10|0)%n)===(l.i%n) || ((t*10|0)+n/2|0)%n===(l.i%n) || Math.sin(t*5+l.i) > .2 ? '#ffb020' : '#6b4a0c';
+      else if(ciState==='fail') col = (t*2|0)%2 || l.i%3 ? '#ff4d4d' : '#6e1d1d';
+      else col = Math.sin(t+l.i) > 0 ? '#7d93b2' : '#3c4a5e';
+      if(reduced()) col = {ok:'#3ee07a', run:'#ffb020', fail:'#ff4d4d', none:'#7d93b2'}[ciState];
+      F(c,l.x,l.y,2,1,col);
+    }
+    const lp = L.ciLamp, lc = {ok:'#3ee07a', run:'#ffb020', fail:'#ff4d4d', none:'#8a94a6'}[ciState];
+    const on = reduced() || ciState==='none' || ciState==='ok' || (t*(ciState==='fail'?3:2)|0)%2===0;
+    F(c,lp.x-1,lp.y+2,5,1,'#23262e'); F(c,lp.x,lp.y,3,2,on?lc:'#3a3f4b');
+    if(on && night){ c.fillStyle = lc; c.globalAlpha = .18; c.fillRect(lp.x-2,lp.y-2,7,6); c.globalAlpha = 1; }
+  }
+  function drawProps(c, t, S){ // animated details on top of furniture (before the night tint)
+    const rm = reduced();
+    // whiteboard sketch: grows while someone is planning
+    if(L.board){ const b = L.board, n = b.dw; const prog = S.planning && !rm ? (t*5|0)%(n+6) : n;
+      for(let i=0;i<Math.min(prog,n);i++){ const yy = b.y+3+Math.round(2+1.6*Math.sin(i*.7)); F(c,b.dx+i,yy,1,1,'#2f56e3'); if(i%4===0 && i<n-2) F(c,b.dx+i,b.y+8,2,1,'#d92d20'); } }
+    // CNC spindle position
+    if(L.cnc){ const k = L.cnc, span = k.w-7; L.cncX = S.testing && !rm ? k.x+2+Math.abs(((t*10|0)%(span*2))-span) : null; }
+    for(const A of Object.values(actors)){
+      if(!A.vis || A.path.length || !A.grp || A.grp==='door') continue;
+      const sp = spotOf(A.grp, A.idx), bx = actorBox(A, t);
+      if(A.st==='reviewing' && sp.paper){ const flip = !rm && (t+A.ph)%2.4 < .3; F(c,sp.paper.x,sp.paper.y,5,4,P.paper); F(c,sp.paper.x+1,sp.paper.y+1,3,1,P.ink); F(c,sp.paper.x+1,sp.paper.y+(flip?2:3),2,1,P.ink); if(flip) F(c,sp.paper.x+4,sp.paper.y,1,2,'#d7dbe1'); }
+      if(A.grp==='brk' && sp.cup){ const hx = bx.x+3, hy = bx.top+8; F(c,hx,hy,2,2,'#f4f1ea'); F(c,hx,hy,2,1,'#7a4a24'); }
+    }
+  }
+  function drawEmissive(c, t, S){
+    for(const s of L.screens) drawScreen(c, s, s.kind==='tv' ? (S.meeting?'on':'off') : (S.scr[s.id]||'off'), reduced()?0:t);
+    drawWindows(c, reduced()?0:t); drawLeds(c, reduced()?0:t);
+    if(L.coffee){ F(c,L.coffee.x,L.coffee.y,1,1,(reduced()||(t|0)%2)?'#ff5a4f':'#a8322a'); }
+    if(S.testing && !reduced() && L.cncX!=null){ const k = L.cnc, fr = (t*15|0); for(let i=0;i<3;i++){ const h1 = hash(fr*3+i), h2 = hash(fr*7+i*13); F(c,L.cncX+1+Math.round((h1-.5)*6), k.y-6-Math.round(h2*3),1,1,h1>.5?'#ffd166':'#ff9f43'); } }
+    // steam from coffee cups on the sofa
+    if(!reduced()) for(const A of Object.values(actors)){ if(!A.vis || A.path.length || A.grp!=='brk') continue; const bx = actorBox(A,t);
+      for(let i=0;i<2;i++){ const k = ((t*3 + A.ph + i*1.5) % 3); F(c,bx.x+3+(k>1.5?1:0)+i, bx.top+7-Math.round(k*2), 1, 1, 'rgba(255,255,255,.75)'); } }
+    if(night){
+      for(const r of Object.values(L.rooms)) { pixEllipse(c, r.x+(r.w>>1), r.y+(r.h>>1), Math.round(r.w*.42), Math.round(r.h*.4), 'rgba(255,208,140,.06)'); pixEllipse(c, r.x+(r.w>>1), r.y+(r.h>>1), Math.round(r.w*.24), Math.round(r.h*.22), 'rgba(255,208,140,.05)'); }
+      for(const s of L.screens) if(s.kind==='tv' ? S.meeting : S.scr[s.id]) pixEllipse(c, s.x+(s.w>>1), s.y+s.h+(s.kind==='tv'?10:8), s.kind==='tv'?18:9, s.kind==='tv'?6:4, 'rgba(120,170,255,.10)');
+      for(const l of L.lamps){ F(c,l.x-3,l.y-1,7,3,'#f7e3bd'); pixEllipse(c, l.x, l.y+8, 14, 8, 'rgba(255,214,150,.10)'); }
+    }
+  }
+  function drawUI(c, t){
+    for(const p of L.plaques){ F(c,p.x,p.y,p.w,9,P.plaque); F(c,p.x,p.y+9,p.w,1,'rgba(0,0,0,.25)'); ptext(c,p.s,p.x+2,p.y+3,P.plaqueT); }
+    // name tags, nudged so they never overlap
+    const tags = [];
+    for(const A of Object.values(actors)){ if(!A.vis) continue; const b = actorBox(A,t), s = A.c.name.toUpperCase(), w = ptw(s)+4;
+      tags.push({A, x:b.x-(w>>1), y:b.y+2, w, s}); }
+    tags.sort((a,b)=>a.x-b.x);
+    tags.forEach((g,i)=>{ for(let j=0;j<i;j++){ const o = tags[j]; if(g.x < o.x+o.w+1 && o.x < g.x+g.w+1 && Math.abs(g.y-o.y) < 8) g.y = o.y+8; } });
+    for(const g of tags){ const col = LOOK[g.A.key].tag; F(c,g.x,g.y,g.w,7,col); F(c,g.x,g.y+7,g.w,1,'rgba(0,0,0,.3)'); ptext(c,g.s,g.x+2,g.y+1,'#ffffff'); }
+    // status icons: blocked "!" bobbing, done check popping
+    for(const A of Object.values(actors)){
+      if(!A.vis || A.path.length || (A.st!=='blocked' && A.st!=='done')) continue;
+      const b = actorBox(A,t), x = b.x-12;
+      if(A.st==='blocked'){ const y = b.top-1+(reduced()?0:Math.round(Math.sin(t*5+A.ph))); F(c,x,y,7,9,'#7a1410'); F(c,x+1,y+1,5,7,'#ef3b2c'); F(c,x+3,y+2,1,3,'#fff'); F(c,x+3,y+6,1,1,'#fff'); F(c,x+5,y+9,1,1,'#7a1410'); }
+      else { const pop = !reduced() && ((t+A.ph)%3) < .35, y = b.top-(pop?2:0); F(c,x,y,8,8,'#0b5e35'); F(c,x+1,y+1,6,6,'#22b464'); [[2,4],[3,5],[4,4],[5,3],[6,2]].forEach(([a,d])=>F(c,x+a-(a>5?1:0),y+d,1,1,'#fff')); if(pop){ F(c,x-1,y-1,1,1,'#ffe66d'); F(c,x+8,y-1,1,1,'#ffe66d'); } }
+    }
+  }
+  function draw(t){
+    if(!L) return;
+    const c = ctx, S = sceneState();
+    c.imageSmoothingEnabled = false;
+    c.drawImage(BG,0,0);
+    if(!night) drawSun(c);
+    // depth-sorted furniture and characters
+    const list = L.items.slice();
+    for(const A of Object.values(actors)) if(A.vis) list.push({y:A.y, A});
+    list.sort((a,b)=>a.y-b.y);
+    for(const it of list){
+      if(it.A){ const b = actorBox(it.A, t), spr = sprite(it.A.key, b.p.view, b.p.v); F(c,b.x-3,b.y,7,1,'rgba(0,0,0,.18)'); c.drawImage(spr, b.x-4, b.top); }
+      else it.d(c, t);
+    }
+    drawProps(c, t, S);
+    if(night){ c.fillStyle = 'rgba(10,14,40,.48)'; c.fillRect(0,0,L.W,L.H); }
+    drawEmissive(c, t, S);
+    drawUI(c, t);
+    placeOverlays(t);
+  }
+
+  // ---------- HTML overlay: speech bubbles, hit areas, CI chip, detail popover ----------
+  const OV = {};
+  CREW.forEach(c=>{
+    const w = document.createElement('div'); w.className = 'pbw'; w.hidden = true; w.style.setProperty('--c', `var(--c-${c.key})`);
+    w.innerHTML = `<div class="pbt"></div><i class="tail"></i>`;
+    const h = document.createElement('button'); h.type = 'button'; h.className = 'hit'; h.hidden = true;
+    w.addEventListener('click', ()=>openPop(c.key)); h.addEventListener('click', (e)=>{ e.stopPropagation(); openPop(c.key); });
+    ov.append(w, h); OV[c.key] = {w, t:w.firstChild, h, txt:'', bw:0, bh:0, last:''};
+  });
+  const pop = $('pop'); let popKey = null;
+  function placeOverlays(t){
+    const vis = Object.values(actors).filter(A=>A.vis), maxW = L.W*K;
+    const boxes = [];
+    for(const A of Object.values(actors)){ const o = OV[A.key]; if(!A.vis){ o.w.hidden = true; o.h.hidden = true; } else if(A.path.length){ o.w.hidden = true; o.h.hidden = false; const b = actorBox(A,t); o.h.style.left = Math.round((b.x-6)*K)+'px'; o.h.style.top = Math.round((b.top-2)*K)+'px'; } }
+    const items = vis.filter(A=>!A.path.length).map(A=>{ const b = actorBox(A,t), o = OV[A.key]; o.w.hidden = false; o.h.hidden = false;
+      if(!o.bw){ o.bw = o.w.offsetWidth; o.bh = o.w.offsetHeight; }
+      const cx = b.x*K, bw = o.bw, bh = o.bh; let left = Math.round(Math.max(2, Math.min(cx-bw/2, maxW-bw-2)));
+      let top = Math.round((b.top-3)*K - bh - 6), below = false;
+      const rm = L.rooms[spotOf(A.grp, A.idx).room]; // would cover the wall decor: hang the bubble below the name tag instead
+      if(rm && top < (rm.y-2)*K){ top = Math.round((b.y+11)*K + 6); below = true; }
+      return {A, b, o, left, top, bw, bh, cx, below}; });
+    items.sort((a,b)=>a.b.top-b.b.top || a.cx-b.cx);
+    items.forEach((it,i)=>{ for(let pass=0;pass<3;pass++) for(let j=0;j<i;j++){ const o = items[j];
+      if(it.left < o.left+o.bw+4 && o.left < it.left+it.bw+4 && it.top < o.top+o.bh+10 && o.top < it.top+it.bh+10) it.top = it.below ? o.top+o.bh+10 : o.top-it.bh-10; } });
+    for(const it of items){
+      const top = Math.max(0, it.top), tail = Math.round(Math.max(8, Math.min(it.cx-it.left, it.bw-8)));
+      const key = it.left+','+top+','+tail; if(it.o.last!==key){ it.o.last = key; it.o.w.style.transform = `translate(${it.left}px,${top}px)`; it.o.w.style.setProperty('--tx', tail+'px'); it.o.w.classList.toggle('below', it.below); }
+      const h = it.o.h; h.style.left = Math.round((it.b.x-6)*K)+'px'; h.style.top = Math.round((it.b.top-2)*K)+'px'; h.style.width = Math.round(12*K)+'px'; h.style.height = Math.round((it.b.y-it.b.top+11)*K)+'px';
+    }
+    if(popKey) placePop();
+  }
+  function placePop(){
+    const A = actors[popKey]; if(!A || !A.vis){ closePop(); return; }
+    const b = actorBox(A, 0), pw = pop.offsetWidth, ph = pop.offsetHeight, W = L.W*K, H = L.H*K;
+    let left = Math.max(4, Math.min(b.x*K - pw/2, W-pw-4)), top = (b.y+12)*K;
+    if(top+ph > H-4) top = Math.max(4, b.top*K - ph - 8);
+    pop.style.left = Math.round(left)+'px'; pop.style.top = Math.round(top)+'px';
+  }
+  function popHTML(key){
+    const v = VIEW.find(x=>x.c.key===key); if(!v) return '';
+    const {c,a,st} = v, A = actors[key], room = A.grp && A.grp!=='door' ? ROOM_TR[spotOf(A.grp,A.idx).room] : '';
+    return `<div class="pop-h"><span class="nm">${esc(c.name)}<small>${esc(c.role)}</small></span><button type="button" class="x" aria-label="Kapat">×</button></div>
+      <div class="pop-s"><span class="pill s-${st}">${STATE_TR[st]}</span>${room?`<span class="where">${esc(room)}</span>`:''}</div>
+      <p class="msg">${esc(a.message || '—')}</p>
+      <div class="tk">${a.task ? `<b>${esc(a.task)}</b> · ` : ''}${esc(ago(a.updated))}</div>`;
+  }
+  function openPop(key){ if(popKey===key && !pop.hidden){ closePop(); return; } popKey = key; pop.style.setProperty('--c', `var(--c-${key})`); pop.innerHTML = popHTML(key); pop.hidden = false; placePop(); }
+  function closePop(){ popKey = null; pop.hidden = true; }
+  pop.addEventListener('click', (e)=>{ if(e.target.closest('.x')) closePop(); e.stopPropagation(); });
+  document.addEventListener('click', (e)=>{ if(popKey && !e.target.closest('.pbw')) closePop(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && popKey) closePop(); });
+
+  // ---------- sizing, theme and the animation loop ----------
+  function layout(){
+    const cw = office.clientWidth || 1128, dpr = window.devicePixelRatio || 1, tall = cw < 752;
+    if(!L || L.tall!==tall){ L = buildLayout(tall); BG = paintBG(L); cvs.width = L.W; cvs.height = L.H; relocate(); }
+    let s = Math.max(1, Math.floor(cw*dpr/L.W)); if(tall) s = Math.max(1, Math.min(s, Math.floor(3*dpr)));
+    K = s/dpr; const w = L.W*K, h = L.H*K;
+    stage.style.width = w+'px'; stage.style.height = h+'px'; cvs.style.width = w+'px'; cvs.style.height = h+'px';
+    ov.classList.toggle('tall', tall);
+    const a = L.ciArea, chip = $('ciChip'); chip.style.left = Math.round(a.x*K)+'px'; chip.style.top = Math.round(a.y*K)+'px'; chip.style.width = Math.round(a.w*K)+'px'; chip.style.height = Math.round(a.h*K)+'px';
+    Object.values(OV).forEach(o=>{ o.bw = 0; o.last = ''; });
+    kick(true);
+  }
+  function readTheme(){ night = /dark/.test(getComputedStyle(document.documentElement).colorScheme || ''); kick(true); }
+  let raf = 0, lastT = 0;
+  function frame(now){
+    raf = 0; if(document.hidden || !L) return;
+    const walking = Object.values(actors).some(A=>A.vis && A.path.length);
+    if(now-lastT >= (walking ? 33 : 66)){ const dt = Math.min(.1, (now-lastT)/1000); lastT = now; update(dt); draw(now/1000); }
+    raf = requestAnimationFrame(frame);
+  }
+  function kick(redraw){
+    if(!L) return;
+    if(reduced()){ update(0); draw(0); return; }
+    if(redraw) draw(performance.now()/1000);
+    if(!raf && !document.hidden){ lastT = performance.now(); raf = requestAnimationFrame(frame); }
+  }
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) kick(true); });
+  rmq.addEventListener ? rmq.addEventListener('change', ()=>kick(true)) : rmq.addListener(()=>kick(true));
+  const dmq = matchMedia('(prefers-color-scheme: dark)'); dmq.addEventListener ? dmq.addEventListener('change', readTheme) : dmq.addListener(readTheme);
+  $('themeBtn').addEventListener('click', readTheme);
+  if(window.ResizeObserver) new ResizeObserver(()=>{ const cw = office.clientWidth; if(cw && cw!==layout.cw){ layout.cw = cw; layout(); } }).observe(office);
+  else addEventListener('resize', layout);
 
   // where each agent stands, from its state
   function spotFor(c, st, ctx){
@@ -445,7 +895,6 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     if(st==='coding') return {spot: c.key==='tester' ? 'bench' : 'devDesk'};
     return {spot: c.key==='po'?'poDesk' : c.key==='dev'?'devDesk' : 'bench'};
   }
-  let placed = {};
   function agentView(){
     const lim = limitInfo(), A = S.agents||{};
     const fa = A.fable, fableOn = !!fa && fa.state && fa.state!=='idle' && fa.updated && (Date.now()-new Date(fa.updated)) < 12*3600e3;
@@ -456,34 +905,27 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     });
   }
   function renderOffice(){
-    if(!L) return;
     const lim = limitInfo(), view = agentView(), fableOn = view.some(v=>v.c.visitor);
-    const ctx = {limited: lim.blocked, fable: fableOn};
-    const used = {}; let brkI = 0;
-    const svg = $('floor');
-    svg.classList.toggle('dev-on', view.some(v=>v.st==='coding' && spotFor(v.c,v.st,ctx).spot==='devDesk'));
-    svg.classList.toggle('lab-on', view.some(v=>v.st==='testing' || (v.st==='coding'&&v.c.key==='tester')));
-    svg.classList.toggle('meet-on', fableOn || view.some(v=>v.st==='reviewing' && spotFor(v.c,v.st,ctx).spot==='meet'));
-    CREW.forEach(c=>{ const el = $('ag-'+c.key); if(el && !view.some(v=>v.c===c)){ el.setAttribute('opacity','0'); $('bub-'+c.key).innerHTML=''; } });
-    view.forEach(({c,a,st})=>{
-      const s = spotFor(c, st, ctx); let p, slot = 0;
-      if(s.spot==='brk'){ slot = brkI; p = SPOTS.brk[brkI++ % 4]; }
-      else if(s.spot==='meet') p = SPOTS.meet[s.i];
-      else { p = SPOTS[s.spot]; const n = used[s.spot] = (used[s.spot]||0)+1; if(n>1) p = {x:p.x+(n-1)*46*L.k, y:p.y}; slot = n-1; }
-      const el = $('ag-'+c.key); el.setAttribute('class', 'agent st-'+st); el.setAttribute('opacity','1');
-      const tr = `translate(${p.x}px,${p.y}px)`;
-      if(!placed[c.key]){ el.style.transition='none'; el.style.transform=tr; el.getBoundingClientRect(); el.style.transition=''; } else el.style.transform = tr;
-      // speech bubble (separate top layer so it is never hidden behind furniture)
-      const msg = (a.task ? a.task+' · ' : '') + (a.message || STATE_TR[st]);
-      const max = L === LAYOUTS.tall ? 24 : 34, txt = trunc(msg, max);
-      const fs = 12.5*L.k, w = Math.min(txt.length*fs*.56+20, L.w-8), h = 26*L.k;
-      let bx = -w/2; bx = Math.max(4-p.x, Math.min(bx, L.w-4-p.x-w));
-      const by = -(96*L.k) - slot*(h+6);
-      const bub = $('bub-'+c.key);
-      bub.innerHTML = `<rect x="${bx}" y="${by}" width="${w}" height="${h}" rx="${8*L.k}" style="fill:var(--surface);stroke:${st==='blocked'?'var(--bad)':`var(--c-${c.key})`};stroke-width:1.5"/><path d="M${-6} ${by+h-.5} L0 ${by+h+7} L6 ${by+h-.5}" style="fill:var(--surface);stroke:${st==='blocked'?'var(--bad)':`var(--c-${c.key})`};stroke-width:1.5;stroke-linejoin:round"/><rect x="-5" y="${by+h-2}" width="10" height="3" style="fill:var(--surface)"/><text x="${bx+10}" y="${by+h/2+fs*.36}" font-size="${fs}" style="fill:var(--fg)"><title>${esc(msg)}</title>${esc(txt)}</text>`;
-      if(!placed[c.key]){ bub.style.transition='none'; bub.style.transform=tr; bub.getBoundingClientRect(); bub.style.transition=''; } else bub.style.transform = tr;
-      placed[c.key] = true;
-    });
+    const cx = {limited: lim.blocked, fable: fableOn};
+    VIEW = view;
+    if(L && Object.keys(S.agents||{}).length){
+      const taken = new Set();
+      view.forEach(({c,a,st})=>{
+        const s = spotFor(c, st, cx), A = actors[c.key], g = s.spot, n = L.SP[g].length; let i;
+        if(g==='meet') i = s.i;
+        else { i = A.grp===g && !taken.has(g+A.idx) ? A.idx : [...Array(n).keys()].find(k=>!taken.has(g+k)); if(i==null) i = n-1; }
+        taken.add(g+i); A.st = st; A.a = a; goTo(A, g, i);
+        const o = OV[c.key], txt = (a.task ? `<b>${esc(a.task)}</b> ` : '') + esc(a.message || STATE_TR[st]);
+        if(o.txt!==txt){ o.txt = txt; o.t.innerHTML = '<span class="ct">'+txt+'</span>'; o.bw = 0; o.last = ''; }
+        o.w.classList.toggle('blocked', st==='blocked');
+        o.h.setAttribute('aria-label', `${c.name}: ${STATE_TR[st]}${a.task?' · '+a.task:''}. Ayrıntı için tıkla.`);
+        o.w.title = (a.task ? a.task+' · ' : '') + (a.message || STATE_TR[st]);
+      });
+      CREW.forEach(c=>{ if(!view.some(v=>v.c===c)){ const A = actors[c.key]; A.st = 'idle'; goTo(A, 'door', 0); } });
+      cvs.setAttribute('aria-label', 'Ofis: ' + view.map(({c,st})=>{ const A = actors[c.key]; return `${c.name} ${ROOM_TR[spotOf(A.grp,A.idx).room]||''}, ${STATE_TR[st].toLowerCase()}`; }).join('; '));
+      if(popKey){ if(view.some(v=>v.c.key===popKey)) pop.innerHTML = popHTML(popKey); else closePop(); }
+      kick(true);
+    }
     $('officeMeta').textContent = lim.blocked ? 'limit doldu · ekip molada' : view.filter(v=>v.st!=='idle').length+' kişi çalışıyor · '+view.filter(v=>v.st==='idle').length+' molada';
     // crew cards
     $('crew').innerHTML = view.map(({c,a,st})=>`<div class="ag" style="--c:var(--c-${c.key})">
@@ -494,20 +936,19 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
 
   // ---------- CI corner ----------
   function renderCI(){
-    const lamp = $('ciLamp'); if(!lamp) return;
-    const box = $('ciBox'); let col = 'var(--subtle)', t1 = 'CI', t2 = 'durum yok', t3 = '', running = false;
+    let st = 'none', t1 = 'CI', t2 = 'durum yok', t3 = '';
     if(CI && CI.available && CI.runs && CI.runs.length){
       const act = CI.runs.find(r=>r.status!=='completed'); const last = CI.runs.find(r=>r.status==='completed');
-      const r = act || last; running = !!act;
-      col = running ? 'var(--warn-c)' : r.conclusion==='success' ? 'var(--ok)' : r.conclusion==='cancelled'||r.conclusion==='skipped' ? 'var(--subtle)' : 'var(--bad)';
-      t1 = 'CI ' + (running ? 'çalışıyor' : r.conclusion==='success' ? 'yeşil' : r.conclusion==='cancelled' ? 'iptal' : 'kırmızı');
-      const chars = Math.floor(SPOTS.ciTextW / (L.fs*.85*.55));
-      t2 = trunc(r.headBranch + (r.event==='workflow_dispatch'?' · tam paket':''), chars);
+      const r = act || last;
+      st = act ? 'run' : r.conclusion==='success' ? 'ok' : r.conclusion==='cancelled'||r.conclusion==='skipped' ? 'none' : 'fail';
+      t1 = 'CI ' + (act ? 'çalışıyor' : r.conclusion==='success' ? 'yeşil' : r.conclusion==='cancelled' ? 'iptal' : 'kırmızı');
+      t2 = r.headBranch + (r.event==='workflow_dispatch'?' · tam paket':'');
       t3 = ago(r.updatedAt || r.createdAt) + (act && last ? ' · önceki: ' + (last.conclusion==='success'?'yeşil':last.conclusion) : '');
-      t3 = trunc(t3, chars);
     } else if(CI && !CI.available) t2 = 'gh yok ya da erişilemiyor';
-    lamp.style.fill = col; box.classList.toggle('ci-run', running);
+    ciState = st;
+    const chip = $('ciChip'); chip.dataset.st = st; chip.title = [t1,t2,t3].filter(Boolean).join(' · ');
     $('ciT1').textContent = t1; $('ciT2').textContent = t2; $('ciT3').textContent = t3;
+    kick(false);
   }
 
   // ---------- usage limits ----------
@@ -681,8 +1122,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     try{ const r = await fetch('api/roadmap', {cache:'no-store'}); const t = await r.text(); if(t!==lastRM){ lastRM = t; RM = JSON.parse(t); renderPhases(); renderTasks(); } }catch(e){}
   }
   async function pollCI(){ try{ const r = await fetch('api/ci', {cache:'no-store'}); CI = await r.json(); renderCI(); }catch(e){} }
-  buildFloor(); render();
-  mq.addEventListener ? mq.addEventListener('change', buildFloor) : mq.addListener(buildFloor);
+  readTheme(); layout.cw = office.clientWidth; layout(); render();
   poll(); setInterval(poll, 2000);
   pollRM(); setInterval(pollRM, 30000);
   pollCI(); setInterval(pollCI, 60000);
