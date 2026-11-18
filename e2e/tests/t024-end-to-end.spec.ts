@@ -152,7 +152,8 @@ async function runFlow(page: Page, mobile: boolean) {
   );
   await saved(page);
   const id = await projectId(page);
-  await expect(page.getByTestId('validation-panel')).toHaveAttribute('data-errors', '0');
+  // T246: no issues = a Sorun yok chip instead of the panel.
+  await expect(page.getByTestId('cut-list-issue-chip')).toHaveAttribute('data-count', '0');
   if (mobile) await noHorizontalScroll(page);
 
   // --- Step 3: nesting, then lock one part ---------------------------------------------------

@@ -4,7 +4,6 @@ import { fill, openNewProject, paste } from './wizard-helpers';
 
 // T116: grain in the UI. Sheet dial with live preview (one undo step per drag), cut-list grain
 // cell with popover dial, fixed/free switch and "apply to all" (one undo step).
-const undoName = { name: tr.cutList.undo, exact: true };
 const PARTS = ['Parça adı\tEn\tBoy\tAdet', 'Kapak\t400\t700\t1', 'Raf\t500\t300\t2'].join('\n');
 
 test('sheet dial: live preview while dragging, one undo step per drag', async ({ page }) => {
@@ -28,7 +27,7 @@ test('sheet dial: live preview while dragging, one undo step per drag', async ({
   await expect(preview).toHaveAttribute('data-angle', '30');
   await page.mouse.up();
   await expect(dial).toHaveAttribute('aria-valuenow', '30');
-  await page.getByRole('button', undoName).click();
+  await page.getByTestId('wizard-undo').click();
   await expect(dial).toHaveAttribute('aria-valuenow', '0');
   await expect(preview).toHaveAttribute('data-angle', '0');
 });
@@ -62,7 +61,7 @@ test('cut list: grain popover sets a fixed angle; apply to all is one undo step'
   await expect(cell2).toHaveAttribute('data-mode', 'fixed');
   await expect(cell2).toContainText('30°');
 
-  await page.getByRole('button', undoName).click();
+  await page.getByTestId('wizard-undo').click();
   await expect(cell2).toHaveAttribute('data-mode', 'free');
   await expect(cell1).toHaveAttribute('data-angle', '30');
 

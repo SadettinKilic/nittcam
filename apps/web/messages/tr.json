@@ -448,12 +448,12 @@
     "title": "Parçalar",
     "subtitle": "Kesim listesini tabloya girin ya da Excel'den yapıştırın. Ölçüler milimetredir.",
     "tableLabel": "Kesim listesi",
-    "empty": "Henüz parça yok. Excel'den yapıştırın ya da yeni satır ekleyin.",
+    "empty": "Henüz parça yok.",
     "addRow": "Satır ekle",
     "pasteOpen": "Excel'den yapıştır",
     "undo": "Geri al",
     "redo": "Yinele",
-    "shortcuts": "Kısayollar: Enter alt satıra geçer, Esc değişikliği bırakır; tablo dışında Ctrl+Z geri alır, Ctrl+Y yineler.",
+    "shortcuts": "Enter alt satıra, Tab sonraki hücreye geçer; oklarla gezinin, F2 ile düzenleyin, Esc vazgeçer. Tablo dışında Ctrl+Z geri alır.",
     "count": "{rows} satır · toplam {pieces} parça",
     "defaultName": "Parça {n}",
     "columns": {
@@ -464,7 +464,10 @@
       "qty": "Adet",
       "grain": "Damar kilidi",
       "edgeGroup": "Kenar bandı (mm)",
-      "actions": "İşlem"
+      "actions": "İşlem",
+      "grainHeader": "Damar",
+      "band": "Bant",
+      "note": "Not"
     },
     "edge": {
       "top": "Üst",
@@ -565,7 +568,7 @@
       "applyCount": "Uygula ({count} satır)",
       "cancel": "Vazgeç",
       "nothing": "Eklenecek geçerli satır yok.",
-      "applied": "{count} satır eklendi. Geri almak için \"Geri al\".",
+      "applied": "{count} satır eklendi.",
       "applyError": "Satırlar eklenemedi. Değerleri kontrol edin.",
       "errors": {
         "MISSING_COLUMN": "{field} sütunu seçilmedi.",
@@ -615,7 +618,24 @@
       "label": "Parça görünümü",
       "list": "Liste",
       "drawing": "Çizim"
-    }
+    },
+    "bandCell": {
+      "edit": "Satır {n}: kenar bandı, {sides}",
+      "none": "bant yok",
+      "title": "Kenar bandı (mm)",
+      "sides": "{count} kenar"
+    },
+    "issueChip": {
+      "ok": "Sorun yok",
+      "count": "{count} sorun",
+      "label": "Uyarılar: {state}"
+    },
+    "rowIssue": "Satır {n}: {text}",
+    "cards": {
+      "label": "Parça kartları",
+      "title": "Satır {n}"
+    },
+    "edgeHeader": "{edge} bant"
   },
   "layout": {
     "workspace": {

@@ -572,15 +572,30 @@ function WizardSession({
       />
     );
   } else if (step === 'parcalar') {
-    left = <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-20">{validation}</aside>;
-    right = (
+    const editor = (
       <CutListEditor
         t={messages.cutList}
         project={project}
         issues={session.issues}
         run={session.run}
+        onUndo={session.undo}
+        onShowIssues={() =>
+          document
+            .querySelector<HTMLButtonElement>('[data-testid=validation-panel] h2 button')
+            ?.focus()
+        }
       />
     );
+    // T246: no issues = no Uyarılar panel (a 'Sorun yok' chip in the table header); the table
+    // takes the full width. With issues the panel returns on the left.
+    if (session.issues.length === 0) {
+      both = editor;
+    } else {
+      left = (
+        <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-20">{validation}</aside>
+      );
+      right = editor;
+    }
   } else if (step === 'dizilim') {
     both = (
       <LayoutStep
@@ -686,6 +701,7 @@ function WizardSession({
       <Tooltip content={messages.cutList.undo}>
         <IconButton
           aria-label={messages.cutList.undo}
+          data-testid="wizard-undo"
           variant="ghost"
           onClick={session.undo}
           disabled={!session.canUndo}
@@ -697,6 +713,7 @@ function WizardSession({
       <Tooltip content={messages.cutList.redo}>
         <IconButton
           aria-label={messages.cutList.redo}
+          data-testid="wizard-redo"
           variant="ghost"
           onClick={session.redo}
           disabled={!session.canRedo}
@@ -798,12 +815,9 @@ function WizardSession({
         </Callout>
       ) : null}
 
-      {step === 'parcalar' && !drawing ? (
+      {step === 'parcalar' && !drawing && !wide ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 lg:-mt-1">
-          {wide ? null : viewSwitch}
-          {drawing ? null : (
-            <p className="max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
-          )}
+          {viewSwitch}
         </div>
       ) : null}
 
@@ -812,7 +826,7 @@ function WizardSession({
         className={
           workspace
             ? 'min-w-0 lg:min-h-0 lg:flex-1'
-            : `grid min-w-0 items-start gap-5 ${GRID[step]}`
+            : `grid min-w-0 items-start gap-5 ${both ? '' : GRID[step]}`
         }
       >
         {both ?? (

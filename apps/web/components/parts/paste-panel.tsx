@@ -49,6 +49,8 @@ export interface PastePanelProps {
   /** Executes importCutList; false when the command was rejected. */
   onApply: (parts: CutListPartInput[]) => boolean;
   onCancel: () => void;
+  /** One line above the help text (the cut list's "how" sentence, T246). */
+  intro?: string;
 }
 
 /**
@@ -56,7 +58,7 @@ export interface PastePanelProps {
  * checks the column mapping, sees invalid rows with Turkish messages and answers the unit question
  * when sizes may be centimetres. Nothing reaches the project until "Uygula".
  */
-export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
+export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
   const uid = useId();
   const [text, setText] = useState('');
   const [delimiter, setDelimiter] = useState<DelimiterChoice>('auto');
@@ -127,6 +129,7 @@ export function PastePanel({ t, onApply, onCancel }: PastePanelProps) {
           {t.title}
         </h2>
         <p id={`${uid}-help`} className="text-sm text-fg-muted">
+          {intro ? `${intro} ` : ''}
           {t.help}
         </p>
       </div>

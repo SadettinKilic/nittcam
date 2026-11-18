@@ -1,33 +1,15 @@
 'use client';
 
+import type { CutListPartInput, Part, Project, ValidationIssue } from '@nittcam/core';
 import {
-  parseCutListNumber,
-  type CutListPartInput,
-  type Project,
-  type Part,
-  type ValidationIssue,
-} from '@nittcam/core';
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { fill, newPartId } from '../../lib/draft-project';
-import type { Messages } from '../../lib/messages';
-import { PastePanel } from './paste-panel';
-import {
-  Button,
-  Checkbox,
-  GrainArrow,
-  GrainDial,
-  IconButton,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Switch,
-  Tooltip,
-  buttonVariants,
-  cn,
-  formatNumberTr,
-  notify,
-} from '@nittcam/ui';
-import { grainDialLabels } from '../../lib/grain-labels';
+  columnResizingFeature,
+  columnSizingFeature,
+  createColumnHelper,
+  tableFeatures,
+  useTable,
+} from '@tanstack/react-table';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Button, Checkbox, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
   CircleCheck,
   ClipboardPaste,
@@ -37,477 +19,749 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from 'react';
+import {
+  EDGES,
+  WIDE_BANDS_MIN,
+  cellId,
+  formatInput,
+  navColumns,
+  navTarget,
+  validatePositive,
+  validateQty,
+  type NavDirection,
+} from '../../lib/cut-list-grid';
+import { fill, newPartId } from '../../lib/draft-project';
+import { useMediaQuery } from '../../lib/use-media-query';
+import {
+  BandCell,
+  EdgeInput,
+  GrainCell,
+  TextCell,
+  onButtonNav,
+  type Navigate,
+  type Run,
+  type Text,
+} from './cut-list-cells';
+import { PastePanel } from './paste-panel';
 
-type Text = Messages['cutList'];
-type EdgeKey = 'top' | 'right' | 'bottom' | 'left';
+export type { Run } from './cut-list-cells';
 
-/** Grid order of the edge band columns: Üst, Alt, Sol, Sağ (T011b). */
-const EDGES: readonly EdgeKey[] = ['top', 'bottom', 'left', 'right'];
+/** Row height of the compact grid (T118, T195 compact density). */
+const ROW_HEIGHT = 36;
+/** Card height estimate below 640 px (measured after render). */
+const CARD_HEIGHT = 196;
 
-/** Spreadsheet-like cell input: quiet until hover or focus (T109 restyle; full grid UX is M3). */
-const inputClass =
-  'h-control-sm w-full rounded-md border border-transparent bg-transparent px-2 text-sm text-fg transition-colors duration-(--duration-fast) outline-none hover:border-border-strong focus-visible:outline-solid focus-visible:border-focus focus-visible:bg-surface focus-visible:outline-3 focus-visible:outline-offset-0 focus-visible:outline-focus/25 aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger-subtle';
+const features = tableFeatures({ columnSizingFeature, columnResizingFeature });
+const column = createColumnHelper<typeof features, Part>();
 
-/** Numbers in inputs: Turkish decimal comma, no grouping. */
-function formatInput(v: number): string {
-  return String(v).replace('.', ',');
+/** Everything a cell needs besides its part; read through a ref so the columns stay stable. */
+interface GridContext {
+  t: Text;
+  run: Run;
+  navigate: Navigate;
+  allIds: () => readonly string[];
+  issuesOf: (index: number) => readonly ValidationIssue[];
 }
 
-/** DOM id of a grid input, used for Enter → next row. */
-function cellId(row: number, col: string): string {
-  return `cl-${row}-${col}`;
+function issueText(t: Text, issue: ValidationIssue): string {
+  return issue.code in t.issues ? t.issues[issue.code as keyof Text['issues']] : t.issues.other;
 }
 
-type Validated<T> = { ok: true; value: T } | { ok: false; error: string };
-
-interface CellProps<T> {
-  row: number;
-  col: string;
-  label: string;
-  /** Shown text of the current project value. */
-  value: string;
-  /** The current project value; committing an equal value runs no command. */
-  current: T;
-  numeric?: boolean;
-  className?: string;
-  validate: (text: string) => Validated<T>;
-  /** Runs the command; false when it was rejected. */
-  onCommit: (value: T) => boolean;
-  rejected: string;
-}
-
-/**
- * One editable grid cell. Typing only changes local text; the command runs on Enter or when the
- * cell loses focus, so each edit is one undo step. Esc drops the typed text.
- */
-function Cell<T>({
-  row,
-  col,
-  label,
-  value,
-  current,
-  numeric,
-  className,
-  validate,
-  onCommit,
-  rejected,
-}: CellProps<T>) {
-  const [draft, setDraftState] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  // The pending text, read synchronously: Enter commits and moves focus, and the blur that follows
-  // must see that the edit is already committed (a state value would still be the stale draft).
-  const pending = useRef<string | null>(null);
-  const id = cellId(row, col);
-
-  function setDraft(text: string | null) {
-    pending.current = text;
-    setDraftState(text);
-  }
-
-  /** Idempotent: commits each edit at most once and never runs a command for an unchanged value. */
-  function commit(): boolean {
-    const text = pending.current;
-    if (text === null) return true;
-    if (text === value) {
-      setDraft(null);
-      return true;
-    }
-    const v = validate(text);
-    if (!v.ok) {
-      setError(v.error);
-      return false;
-    }
-    if (Object.is(v.value, current)) {
-      setDraft(null);
-      setError(null);
-      return true;
-    }
-    if (onCommit(v.value)) {
-      setDraft(null);
-      setError(null);
-      return true;
-    }
-    setError(rejected);
-    return false;
-  }
-
-  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (commit()) document.getElementById(cellId(row + 1, col))?.focus();
-    } else if (e.key === 'Escape') {
-      setDraft(null);
-      setError(null);
-    }
-  }
-
+function NameCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
+  const { t } = ctx;
+  const issues = ctx.issuesOf(row);
   return (
-    <div className="flex flex-col gap-1">
-      <input
-        id={id}
-        type="text"
-        inputMode={numeric ? 'decimal' : undefined}
-        autoComplete="off"
-        aria-label={label}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={`${inputClass} ${numeric ? 'text-right tabular-nums' : ''} ${className ?? ''}`}
-        value={draft ?? value}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          setError(null);
-        }}
-        onBlur={() => void commit()}
-        onKeyDown={onKeyDown}
-      />
-      {error ? (
-        <p id={`${id}-error`} className="px-2 text-xs font-medium text-danger-text">
-          {error}
-        </p>
+    <div className="flex items-center gap-1">
+      <div className="min-w-0 flex-1">
+        <TextCell
+          row={row}
+          col="name"
+          label={fill(t.cellLabel, { n: row + 1, column: t.columns.name })}
+          value={part.name}
+          current={part.name}
+          validate={(text) => ({ ok: true, value: text.trim() })}
+          onCommit={(name) => ctx.run('updatePart', { id: part.id, name })}
+          rejected={t.errors.rejected}
+          navigate={ctx.navigate}
+        />
+      </div>
+      {issues.length > 0 ? (
+        <Tooltip content={issues.map((i) => issueText(t, i)).join(' ')}>
+          <span
+            tabIndex={-1}
+            role="img"
+            aria-label={fill(t.rowIssue, {
+              n: row + 1,
+              text: issues.map((i) => issueText(t, i)).join(' '),
+            })}
+            data-testid={`row-issue-${row + 1}`}
+            data-codes={issues.map((i) => i.code).join(' ')}
+            className="flex size-6 shrink-0 items-center justify-center text-warning-text"
+          >
+            <TriangleAlert aria-hidden className="size-3.5" />
+          </span>
+        </Tooltip>
       ) : null}
     </div>
   );
 }
 
-function positive(t: Text) {
-  return (text: string): Validated<number> => {
-    const n = parseCutListNumber(text, 'comma');
-    if (n === null) return { ok: false, error: t.errors.number };
-    if (n <= 0) return { ok: false, error: t.errors.positive };
-    return { ok: true, value: n };
-  };
-}
-
-function quantity(t: Text) {
-  return (text: string): Validated<number> => {
-    const n = parseCutListNumber(text, 'comma');
-    if (n === null || !Number.isInteger(n) || n < 1) return { ok: false, error: t.errors.qty };
-    return { ok: true, value: n };
-  };
-}
-
-function band(t: Text) {
-  return (text: string): Validated<number> => {
-    if (text.trim() === '') return { ok: true, value: 0 };
-    const n = parseCutListNumber(text, 'comma');
-    if (n === null || n < 0) return { ok: false, error: t.errors.band };
-    return { ok: true, value: n };
-  };
-}
-
-export type Run = (name: string, params: unknown) => boolean;
-
-/**
- * Grain cell of a row (T116, D-034): mini arrow + angle; opens a popover with the GrainDial, the
- * fixed/free switch and "apply to all parts" (one `setPartsGrain` command, one undo step).
- * Changing the angle makes the grain fixed: an angle only matters for a fixed grain.
- */
-function GrainCell({
-  t,
+function SizeCell({
+  ctx,
   part,
-  n,
-  allIds,
-  run,
+  row,
+  field,
 }: {
-  t: Text;
+  ctx: GridContext;
   part: Part;
-  n: number;
-  allIds: readonly string[];
-  run: Run;
+  row: number;
+  field: 'w' | 'h';
 }) {
-  const g = t.grainCell;
-  const fixed = part.grain.mode === 'fixed';
-  const [live, setLive] = useState<number | null>(null);
-  const angle = live ?? part.grain.angle;
-  const deg = `${formatNumberTr(angle, { maxDecimals: 1 })}°`;
-  const switchId = `grain-fixed-${part.id}`;
+  const { t } = ctx;
+  if (part.kind !== 'rect') return <span className="block px-2 text-right text-fg-muted">–</span>;
   return (
-    <Popover onOpenChange={() => setLive(null)}>
-      <PopoverTrigger
-        className={cn(
-          buttonVariants({ variant: 'ghost', size: 'sm' }),
-          'gap-1 px-1.5 font-mono tabular-nums',
-          fixed ? 'text-fg' : 'text-fg-subtle',
-        )}
-        aria-label={fill(g.edit, { n, angle: fixed ? deg : g.free })}
-        data-testid={`grain-cell-${n}`}
-        data-mode={part.grain.mode}
-        data-angle={part.grain.angle}
-      >
-        {fixed ? <GrainArrow angle={angle} className="text-accent-text" /> : null}
-        {fixed ? deg : g.free}
-      </PopoverTrigger>
-      <PopoverContent className="flex w-80 flex-col gap-3" data-density="compact">
-        <p className="text-sm font-semibold text-fg">{g.title}</p>
-        <div className="flex items-start gap-2">
-          <Switch
-            id={switchId}
-            checked={fixed}
-            onCheckedChange={(v) =>
-              void run('setPartGrain', { id: part.id, mode: v ? 'fixed' : 'free', angle })
-            }
-            data-testid={`grain-fixed-${n}`}
-          />
-          <label htmlFor={switchId} className="flex flex-col gap-0.5 text-sm text-fg">
-            {g.fixed}
-            <span className="text-xs text-fg-muted">{g.fixedHint}</span>
-          </label>
-        </div>
-        <GrainDial
-          value={part.grain.angle}
-          onValueChange={setLive}
-          onValueCommit={(a) => {
-            setLive(null);
-            if (a !== part.grain.angle || !fixed) {
-              run('setPartGrain', { id: part.id, mode: 'fixed', angle: a });
-            }
-          }}
-          labels={grainDialLabels()}
-          data-testid={`grain-dial-${n}`}
-        />
-        {allIds.length > 1 ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="self-start"
-            onClick={() => {
-              const ok = run('setPartsGrain', {
-                ids: allIds,
-                mode: part.grain.mode,
-                angle: part.grain.angle,
-              });
-              if (ok) notify.success(fill(g.applied, { count: allIds.length }));
-            }}
-            data-testid={`grain-apply-all-${n}`}
-          >
-            {g.applyAll}
-          </Button>
-        ) : null}
-      </PopoverContent>
-    </Popover>
+    <TextCell
+      row={row}
+      col={field}
+      numeric
+      label={fill(t.cellLabel, { n: row + 1, column: t.columns[field] })}
+      value={formatInput(part.params[field])}
+      current={part.params[field]}
+      validate={(text) => validatePositive(t.errors, text)}
+      onCommit={(v) => ctx.run('updatePart', { id: part.id, params: { [field]: v } })}
+      rejected={t.errors.rejected}
+      navigate={ctx.navigate}
+    />
   );
 }
 
-function PartRow({
-  t,
-  part,
-  index,
-  issues,
-  run,
-  allIds,
-}: {
-  t: Text;
-  part: Part;
-  index: number;
-  issues: readonly ValidationIssue[];
-  run: Run;
-  allIds: readonly string[];
-}) {
-  const n = index + 1;
-  const label = (column: string) => fill(t.cellLabel, { n, column });
-  const update = (fields: Record<string, unknown>) => run('updatePart', { id: part.id, ...fields });
-  const rect = part.kind === 'rect' ? part : null;
-  const cellProps = { row: index, rejected: t.errors.rejected };
+function QtyCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
+  const { t } = ctx;
   return (
-    <tr className="align-top transition-colors duration-(--duration-fast) hover:bg-surface-subtle">
-      <td className="px-3 py-2.5 text-right text-xs text-fg-subtle tabular-nums">{n}</td>
-      <td className="min-w-40 px-1 py-1">
-        <Cell
-          {...cellProps}
-          col="name"
-          label={label(t.columns.name)}
-          value={part.name}
-          current={part.name}
-          validate={(text) => ({ ok: true, value: text.trim() })}
-          onCommit={(name) => update({ name })}
-        />
-        {issues.map((issue) => (
-          <p
-            key={`${issue.code}-${issue.path}`}
-            className="mt-1 flex items-center gap-1 px-2 text-xs font-medium text-warning-text"
-          >
-            <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-            {issue.code in t.issues ? t.issues[issue.code as keyof Text['issues']] : t.issues.other}
-          </p>
-        ))}
-      </td>
-      {(['w', 'h'] as const).map((key) => (
-        <td key={key} className="min-w-24 px-1 py-1">
-          {rect ? (
-            <Cell
-              {...cellProps}
-              col={key}
-              numeric
-              label={label(t.columns[key])}
-              value={formatInput(rect.params[key])}
-              current={rect.params[key]}
-              validate={positive(t)}
-              onCommit={(v) => update({ params: { [key]: v } })}
-            />
-          ) : (
-            <span className="text-fg-muted">–</span>
-          )}
+    <TextCell
+      row={row}
+      col="qty"
+      numeric
+      label={fill(t.cellLabel, { n: row + 1, column: t.columns.qty })}
+      value={String(part.qty)}
+      current={part.qty}
+      validate={(text) => validateQty(t.errors, text)}
+      onCommit={(qty) => ctx.run('updatePart', { id: part.id, qty })}
+      rejected={t.errors.rejected}
+      navigate={ctx.navigate}
+    />
+  );
+}
+
+function GrainColumnCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
+  const { t, run } = ctx;
+  return (
+    <div className="flex items-center gap-0.5">
+      <Checkbox
+        tabIndex={-1}
+        aria-label={fill(t.cellLabel, { n: row + 1, column: t.columns.grain })}
+        checked={part.grain.mode === 'fixed'}
+        onCheckedChange={(v) =>
+          void run('setPartGrain', {
+            id: part.id,
+            mode: v === true ? 'fixed' : 'free',
+            angle: part.grain.angle,
+          })
+        }
+      />
+      <GrainCell
+        t={t}
+        part={part}
+        row={row}
+        allIds={ctx.allIds}
+        run={run}
+        navigate={ctx.navigate}
+      />
+    </div>
+  );
+}
+
+function NoteCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
+  const { t } = ctx;
+  return (
+    <TextCell
+      row={row}
+      col="note"
+      maxLength={200}
+      label={fill(t.cellLabel, { n: row + 1, column: t.columns.note })}
+      value={part.note ?? ''}
+      current={part.note ?? ''}
+      validate={(text) => ({ ok: true, value: text.trim() })}
+      onCommit={(note) => ctx.run('updatePart', { id: part.id, note })}
+      rejected={t.errors.rejected}
+      navigate={ctx.navigate}
+    />
+  );
+}
+
+function ActionsCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
+  const { t, run } = ctx;
+  const n = row + 1;
+  return (
+    <div className="flex justify-end gap-0.5">
+      <Tooltip content={t.duplicate}>
+        <IconButton
+          id={cellId(row, 'actions')}
+          size="sm"
+          aria-label={fill(t.rowAction, { action: t.duplicate, n })}
+          onKeyDown={(e) => onButtonNav(e, row, 'actions', ctx.navigate)}
+          onClick={() => void run('duplicatePart', { id: part.id, newId: newPartId() })}
+        >
+          <Copy aria-hidden />
+        </IconButton>
+      </Tooltip>
+      <Tooltip content={t.remove}>
+        <IconButton
+          size="sm"
+          aria-label={fill(t.rowAction, { action: t.remove, n })}
+          className="hover:bg-danger-subtle hover:text-danger-text"
+          onClick={() => void run('removePart', { id: part.id })}
+        >
+          <Trash2 aria-hidden />
+        </IconButton>
+      </Tooltip>
+    </div>
+  );
+}
+
+/** The grid's columns; `wideBands` shows the four edge band columns instead of one "Bant" cell. */
+function buildColumns(t: Text, wideBands: boolean, ctx: { current: GridContext }) {
+  const c = () => ctx.current;
+  return column.columns([
+    column.display({
+      id: 'index',
+      header: t.columns.index,
+      size: 36,
+      enableResizing: false,
+      cell: (info) => (
+        <span className="block px-2 text-right text-xs text-fg-subtle tabular-nums">
+          {info.row.index + 1}
+        </span>
+      ),
+    }),
+    column.display({
+      id: 'name',
+      header: t.columns.name,
+      size: 120,
+      minSize: 120,
+      cell: (info) => <NameCell ctx={c()} part={info.row.original} row={info.row.index} />,
+    }),
+    column.display({
+      id: 'w',
+      header: t.columns.w,
+      size: 76,
+      minSize: 64,
+      cell: (info) => (
+        <SizeCell ctx={c()} part={info.row.original} row={info.row.index} field="w" />
+      ),
+    }),
+    column.display({
+      id: 'h',
+      header: t.columns.h,
+      size: 76,
+      minSize: 64,
+      cell: (info) => (
+        <SizeCell ctx={c()} part={info.row.original} row={info.row.index} field="h" />
+      ),
+    }),
+    column.display({
+      id: 'qty',
+      header: t.columns.qty,
+      size: 56,
+      minSize: 52,
+      cell: (info) => <QtyCell ctx={c()} part={info.row.original} row={info.row.index} />,
+    }),
+    column.display({
+      id: 'grain',
+      header: t.columns.grainHeader,
+      size: 108,
+      minSize: 100,
+      cell: (info) => <GrainColumnCell ctx={c()} part={info.row.original} row={info.row.index} />,
+    }),
+    ...(wideBands
+      ? EDGES.map((edge) =>
+          column.display({
+            id: `edge-${edge}`,
+            header: fill(t.edgeHeader, { edge: t.edge[edge] }),
+            size: 64,
+            minSize: 52,
+            cell: (info) => (
+              <EdgeInput
+                t={c().t}
+                part={info.row.original}
+                row={info.row.index}
+                edge={edge}
+                run={c().run}
+                navigate={c().navigate}
+              />
+            ),
+          }),
+        )
+      : [
+          column.display({
+            id: 'band',
+            header: t.columns.band,
+            size: 72,
+            minSize: 64,
+            cell: (info) => (
+              <BandCell
+                t={c().t}
+                part={info.row.original}
+                row={info.row.index}
+                run={c().run}
+                navigate={c().navigate}
+              />
+            ),
+          }),
+        ]),
+    column.display({
+      id: 'note',
+      header: t.columns.note,
+      size: 112,
+      minSize: 80,
+      cell: (info) => <NoteCell ctx={c()} part={info.row.original} row={info.row.index} />,
+    }),
+    column.display({
+      id: 'actions',
+      header: () => <span className="sr-only">{t.columns.actions}</span>,
+      size: 68,
+      enableResizing: false,
+      cell: (info) => <ActionsCell ctx={c()} part={info.row.original} row={info.row.index} />,
+    }),
+  ]);
+}
+
+/** Numeric columns: header and content right-aligned. */
+const NUMERIC = new Set(['index', 'w', 'h', 'qty']);
+
+/** Width of an element, live (ResizeObserver). */
+function useWidth(ref: { current: HTMLElement | null }): number {
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setWidth(el.clientWidth);
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return width;
+}
+
+/**
+ * One grid row, memoised: scrolling renders only the rows that come into view (T118 perf). It
+ * re-renders when its part, its index, its warnings or the row count change.
+ */
+const GridRow = memo(function GridRow({
+  row,
+  index,
+  Render,
+}: {
+  row: { id: string; getAllCells: () => { id: string }[] };
+  index: number;
+  part: Part;
+  issueKey: string;
+  rowCount: number;
+  /** The column set (wide / compact bands): a change re-renders every row. */
+  columns: unknown;
+  Render: ComponentType<{ cell: unknown }>;
+}) {
+  return (
+    <tr
+      aria-rowindex={index + 2}
+      data-testid="cut-list-row"
+      className="transition-colors duration-(--duration-fast) hover:bg-surface-subtle"
+    >
+      {row.getAllCells().map((cell) => (
+        <td key={cell.id} className="h-9 border-b border-border-subtle px-0.5 py-0.5">
+          <Render cell={cell} />
         </td>
       ))}
-      <td className="min-w-20 px-1 py-1">
-        <Cell
-          {...cellProps}
-          col="qty"
-          numeric
-          label={label(t.columns.qty)}
-          value={String(part.qty)}
-          current={part.qty}
-          validate={quantity(t)}
-          onCommit={(qty) => update({ qty })}
-        />
-      </td>
-      <td className="px-1 py-1">
-        <div className="flex items-center gap-1">
-          <Checkbox
-            id={cellId(index, 'grain')}
-            aria-label={label(t.columns.grain)}
-            checked={part.grain.mode === 'fixed'}
-            onCheckedChange={(v) =>
-              void run('setPartGrain', {
-                id: part.id,
-                mode: v === true ? 'fixed' : 'free',
-                angle: part.grain.angle,
-              })
-            }
-          />
-          <GrainCell t={t} part={part} n={n} allIds={allIds} run={run} />
-        </div>
-      </td>
-      {EDGES.map((edge) => (
-        <td key={edge} className="min-w-16 px-0.5 py-1">
-          <Cell
-            {...cellProps}
-            col={`edge-${edge}`}
-            numeric
-            className="px-1.5"
-            label={fill(t.edgeLabel, { n, edge: t.edge[edge] })}
-            value={formatInput(part.edgeBand[edge])}
-            current={part.edgeBand[edge]}
-            validate={band(t)}
-            onCommit={(v) => update({ edgeBand: { [edge]: v } })}
-          />
-        </td>
-      ))}
-      <td className="px-1 py-1">
-        <div className="flex justify-end gap-0.5">
-          <Tooltip content={t.duplicate}>
-            <IconButton
-              size="sm"
-              aria-label={fill(t.rowAction, { action: t.duplicate, n })}
-              onClick={() => void run('duplicatePart', { id: part.id, newId: newPartId() })}
-            >
-              <Copy aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t.remove}>
-            <IconButton
-              size="sm"
-              aria-label={fill(t.rowAction, { action: t.remove, n })}
-              className="hover:bg-danger-subtle hover:text-danger-text"
-              onClick={() => void run('removePart', { id: part.id })}
-            >
-              <Trash2 aria-hidden />
-            </IconButton>
-          </Tooltip>
-        </div>
-      </td>
     </tr>
   );
+});
+
+/** Desktop grid: TanStack Table (sizing + resizing) with virtual rows and a sticky header. */
+function Grid({
+  t,
+  parts,
+  ctx,
+  wideBands,
+  scrollRef,
+  scrollToRow,
+}: {
+  t: Text;
+  parts: readonly Part[];
+  ctx: { current: GridContext };
+  wideBands: boolean;
+  scrollRef: { current: HTMLDivElement | null };
+  scrollToRow: { current: ((row: number) => void) | null };
+}) {
+  const columns = useMemo(() => buildColumns(t, wideBands, ctx), [t, wideBands, ctx]);
+  const table = useTable({
+    features,
+    columns,
+    data: parts as Part[],
+    getRowId: (p) => p.id,
+    columnResizeMode: 'onChange',
+  });
+  const rows = table.getRowModel().rows;
+  // eslint-disable-next-line react-hooks/incompatible-library -- the virtualizer re-renders this component itself
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12,
+    initialRect: { width: 1000, height: 640 },
+  });
+  scrollToRow.current = (row) => virtualizer.scrollToIndex(row, { align: 'auto' });
+  const items = virtualizer.getVirtualItems();
+  const padTop = items[0]?.start ?? 0;
+  const padBottom = virtualizer.getTotalSize() - (items[items.length - 1]?.end ?? 0);
+  const headers = table.getHeaderGroups()[0]?.headers ?? [];
+  const colCount = headers.length;
+  const nameResized = table.state.columnSizing.name !== undefined;
+  const ctxNow = ctx.current;
+
+  return (
+    <table
+      className="w-full table-fixed border-separate border-spacing-0 text-left text-sm"
+      style={{ minWidth: table.getTotalSize() }}
+      aria-labelledby="cut-list-title"
+      aria-rowcount={rows.length + 1}
+      data-testid="cut-list-grid"
+    >
+      <colgroup>
+        {headers.map((h) => (
+          // The name column takes the free width until the user resizes it.
+          <col
+            key={h.id}
+            style={{ width: h.id === 'name' && !nameResized ? undefined : h.getSize() }}
+          />
+        ))}
+      </colgroup>
+      <thead>
+        <tr>
+          {headers.map((h) => (
+            <th
+              key={h.id}
+              scope="col"
+              data-testid={h.id.startsWith('edge-') ? `edge-col-${h.id.slice(5)}` : undefined}
+              className={cn(
+                'sticky top-0 z-10 h-9 border-b border-border bg-surface-subtle px-2 text-xs font-medium whitespace-nowrap text-fg-muted',
+                NUMERIC.has(h.id) && 'text-right',
+              )}
+            >
+              <span className="block truncate">
+                {h.isPlaceholder ? null : <table.FlexRender header={h} />}
+              </span>
+              {h.column.getCanResize() ? (
+                <div
+                  aria-hidden
+                  onMouseDown={h.getResizeHandler()}
+                  onTouchStart={h.getResizeHandler()}
+                  onDoubleClick={() => h.column.resetSize()}
+                  className={cn(
+                    'absolute top-1.5 right-0 bottom-1.5 w-1.5 cursor-col-resize touch-none rounded-full select-none hover:bg-accent-border',
+                    h.column.getIsResizing() && 'bg-accent',
+                  )}
+                />
+              ) : null}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {padTop > 0 ? (
+          <tr aria-hidden>
+            <td colSpan={colCount} style={{ height: padTop, padding: 0 }} />
+          </tr>
+        ) : null}
+        {items.map((v) => {
+          const row = rows[v.index];
+          if (!row) return null;
+          return (
+            <GridRow
+              key={row.id}
+              row={row}
+              index={v.index}
+              part={row.original}
+              issueKey={ctxNow
+                .issuesOf(v.index)
+                .map((i) => i.code)
+                .join(' ')}
+              rowCount={rows.length}
+              columns={columns}
+              Render={table.FlexRender as ComponentType<{ cell: unknown }>}
+            />
+          );
+        })}
+        {padBottom > 0 ? (
+          <tr aria-hidden>
+            <td colSpan={colCount} style={{ height: padBottom, padding: 0 }} />
+          </tr>
+        ) : null}
+      </tbody>
+    </table>
+  );
+}
+
+/** Phone layout (390 px, T118): one card per part with the same cells, virtualised. */
+function Cards({
+  t,
+  parts,
+  ctx,
+  scrollRef,
+  scrollToRow,
+}: {
+  t: Text;
+  parts: readonly Part[];
+  ctx: { current: GridContext };
+  scrollRef: { current: HTMLDivElement | null };
+  scrollToRow: { current: ((row: number) => void) | null };
+}) {
+  // eslint-disable-next-line react-hooks/incompatible-library -- the virtualizer re-renders this component itself
+  const virtualizer = useVirtualizer({
+    count: parts.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => CARD_HEIGHT,
+    overscan: 4,
+    initialRect: { width: 390, height: 640 },
+  });
+  scrollToRow.current = (row) => virtualizer.scrollToIndex(row, { align: 'auto' });
+  const c = ctx.current;
+  const field = (label: string, child: ReactNode, className?: string) => (
+    <div className={cn('flex min-w-0 flex-col gap-0.5', className)}>
+      <span aria-hidden className="px-2 text-2xs text-fg-subtle">
+        {label}
+      </span>
+      {child}
+    </div>
+  );
+  return (
+    <ul
+      aria-label={t.cards.label}
+      className="relative"
+      style={{ height: virtualizer.getTotalSize() }}
+      data-testid="cut-list-cards"
+    >
+      {virtualizer.getVirtualItems().map((v) => {
+        const part = parts[v.index];
+        if (!part) return null;
+        const row = v.index;
+        return (
+          <li
+            key={part.id}
+            data-index={v.index}
+            ref={virtualizer.measureElement}
+            className="absolute inset-x-0 top-0 px-3 py-1.5"
+            style={{ transform: `translateY(${v.start}px)` }}
+            data-testid="cut-list-row"
+          >
+            <div className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-2">
+              <div className="flex items-center gap-1">
+                <span className="w-6 shrink-0 text-right text-xs text-fg-subtle tabular-nums">
+                  {row + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <NameCell ctx={c} part={part} row={row} />
+                </div>
+                <ActionsCell ctx={c} part={part} row={row} />
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {field(t.columns.w, <SizeCell ctx={c} part={part} row={row} field="w" />)}
+                {field(t.columns.h, <SizeCell ctx={c} part={part} row={row} field="h" />)}
+                {field(t.columns.qty, <QtyCell ctx={c} part={part} row={row} />)}
+              </div>
+              <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-end gap-1">
+                {field(t.columns.grainHeader, <GrainColumnCell ctx={c} part={part} row={row} />)}
+                {field(
+                  t.columns.band,
+                  <BandCell t={t} part={part} row={row} run={c.run} navigate={c.navigate} />,
+                )}
+                {field(t.columns.note, <NoteCell ctx={c} part={part} row={row} />)}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 /**
- * The cut-list editor of the wizard's Parçalar step (T011, T011b; spec §3.6 step 2, §4.1): the
- * Excel/CSV paste and the editable grid. It never changes the project itself: every edit runs a
- * command through `run` (command layer), so undo/redo, autosave and validation see it.
+ * The cut-list editor of the wizard's Parçalar step (T011, T011b, T118; spec §3.6 step 2, §4.1):
+ * a spreadsheet-like grid (cards on phones) and the Excel/CSV paste. It never changes the project
+ * itself: every edit runs a command through `run` (command layer), so undo/redo, autosave and
+ * validation see it.
  */
 export function CutListEditor({
   t,
   project,
   issues,
   run,
+  onUndo,
+  onShowIssues,
 }: {
   t: Text;
   project: Project;
   issues: readonly ValidationIssue[];
   run: Run;
+  /** Undo of the last command (the "Geri al" action of the paste toast, T246). */
+  onUndo?: () => void;
+  /** Brings the Uyarılar panel into view (the issue chip, T246). */
+  onShowIssues?: () => void;
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
   const focusNext = useRef<string | null>(null);
   const pasteButton = useRef<HTMLButtonElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollToRow = useRef<((row: number) => void) | null>(null);
+  const phone = !useMediaQuery('(min-width: 640px)');
+  const width = useWidth(scrollRef);
+  const wideBands = !phone && width >= WIDE_BANDS_MIN;
+
+  const parts = project.parts;
+  const pieces = parts.reduce((sum, p) => sum + p.qty, 0);
+  const cols = useMemo(() => navColumns(wideBands), [wideBands]);
+
+  /** Focuses a cell, scrolling its row into view first when it is not rendered yet. */
+  function focusCell(row: number, col: string, tries = 3) {
+    const el = document.getElementById(cellId(row, col));
+    if (el) {
+      el.focus();
+      if (el instanceof HTMLInputElement) el.select();
+      return;
+    }
+    scrollToRow.current?.(row);
+    if (tries > 0) requestAnimationFrame(() => focusCell(row, col, tries - 1));
+  }
 
   useEffect(() => {
     if (focusNext.current) {
-      document.getElementById(focusNext.current)?.focus();
+      const [row, col] = focusNext.current.split('|');
       focusNext.current = null;
+      focusCell(Number(row), col ?? 'name');
     }
   });
 
-  const parts = project.parts;
-  const allIds = parts.map((p) => p.id);
-  const pieces = parts.reduce((sum, p) => sum + p.qty, 0);
-
-  function addRow() {
-    setNotice(null);
+  function addRow(col = 'name') {
     const ok = run('addPart', {
       id: newPartId(),
       name: fill(t.defaultName, { n: parts.length + 1 }),
       params: { w: 100, h: 100, r: 0 },
     });
-    if (ok) focusNext.current = cellId(parts.length, 'name');
+    if (ok) {
+      focusNext.current = `${parts.length}|${col}`;
+      scrollToRow.current?.(parts.length);
+    }
   }
+
+  const navigate: Navigate = (row: number, col: string, dir: NavDirection, enter = false) => {
+    const target = navTarget(row, col, dir, parts.length, cols, enter);
+    if (!target) return;
+    if ('append' in target) addRow(target.col === 'actions' ? 'name' : target.col);
+    else focusCell(target.row, target.col);
+  };
+
+  const issuesOf = (index: number) =>
+    issues.filter((i) => i.path === `parts[${index}]` || i.path.startsWith(`parts[${index}].`));
+
+  // Cells call through this ref, so memoised rows always reach the current project and handlers.
+  const latest = useRef({ run, navigate, parts, issuesOf });
+  latest.current = { run, navigate, parts, issuesOf };
+  const ctx = useMemo(
+    () => ({
+      current: {
+        t,
+        run: (name: string, params: unknown) => latest.current.run(name, params),
+        navigate: ((row, col, dir, enter) =>
+          latest.current.navigate(row, col, dir, enter)) as Navigate,
+        allIds: () => latest.current.parts.map((p) => p.id),
+        issuesOf: (index: number) => latest.current.issuesOf(index),
+      } satisfies GridContext,
+    }),
+    [t],
+  );
 
   function applyPaste(rows: CutListPartInput[]): boolean {
     const ok = run('importCutList', { parts: rows });
     if (ok) {
       setPasteOpen(false);
-      setNotice(fill(t.paste.applied, { count: rows.length }));
+      notify.success(fill(t.paste.applied, { count: rows.length }), {
+        id: 'cut-list-paste',
+        ...(onUndo ? { action: { label: t.undo, onClick: onUndo } } : {}),
+      });
       requestAnimationFrame(() => pasteButton.current?.focus());
     }
     return ok;
   }
 
-  const issuesOf = (index: number) =>
-    issues.filter((i) => i.path === `parts[${index}]` || i.path.startsWith(`parts[${index}].`));
+  const problemCount = issues.length;
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <div aria-live="polite">
-        {notice ? (
-          <p
-            role="status"
-            className="flex items-center gap-2 rounded-lg border border-success-border bg-success-subtle px-3 py-2.5 text-sm text-success-text"
-          >
-            <CircleCheck aria-hidden className="size-4 shrink-0" />
-            {notice}
-          </p>
-        ) : null}
-      </div>
-
       {pasteOpen ? (
-        <PastePanel t={t.paste} onApply={applyPaste} onCancel={() => setPasteOpen(false)} />
+        <PastePanel
+          t={t.paste}
+          intro={t.subtitle}
+          onApply={applyPaste}
+          onCancel={() => setPasteOpen(false)}
+        />
       ) : null}
 
       <section
         aria-labelledby="cut-list-title"
+        data-density="compact"
         className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-xs"
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3 sm:px-5">
-          <div className="flex min-w-0 flex-col gap-0.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
             <h2 id="cut-list-title" className="text-base font-semibold tracking-tight text-fg">
               {t.tableLabel}
             </h2>
             <p className="text-sm text-fg-muted tabular-nums" data-testid="cut-list-count">
               {fill(t.count, { rows: parts.length, pieces })}
             </p>
+            {problemCount === 0 ? (
+              <span
+                data-testid="cut-list-issue-chip"
+                data-count={0}
+                className="inline-flex h-6 items-center gap-1 rounded-sm border border-success-border bg-success-subtle px-2 text-xs font-medium text-success-text"
+              >
+                <CircleCheck aria-hidden className="size-3.5" />
+                {t.issueChip.ok}
+              </span>
+            ) : (
+              <button
+                type="button"
+                data-testid="cut-list-issue-chip"
+                data-count={problemCount}
+                onClick={onShowIssues}
+                className="inline-flex h-6 items-center gap-1 rounded-sm border border-warning-border bg-warning-subtle px-2 text-xs font-medium text-warning-text outline-none hover:bg-warning-subtle/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                <TriangleAlert aria-hidden className="size-3.5" />
+                {fill(t.issueChip.count, { count: problemCount })}
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={addRow}>
+            <Button variant="outline" size="sm" onClick={() => addRow()}>
               <Plus aria-hidden />
               {t.addRow}
             </Button>
@@ -516,111 +770,43 @@ export function CutListEditor({
               size="sm"
               aria-expanded={pasteOpen}
               aria-controls="paste-panel"
-              onClick={() => {
-                setNotice(null);
-                setPasteOpen((o) => !o);
-              }}
+              onClick={() => setPasteOpen((o) => !o)}
             >
               <ClipboardPaste aria-hidden />
               {t.pasteOpen}
             </Button>
           </div>
         </div>
-        {parts.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface-subtle text-fg-muted">
-              <Rows3 aria-hidden className="size-5" />
-            </span>
-            <p className="max-w-sm text-sm text-fg-muted">{t.empty}</p>
-          </div>
-        ) : (
-          <div className="relative max-w-full overflow-x-auto">
-            <table className="w-full text-left text-sm" aria-labelledby="cut-list-title">
-              <thead className="border-b border-border bg-surface-subtle text-fg-muted">
-                <tr>
-                  <th
-                    scope="col"
-                    rowSpan={2}
-                    className="px-3 py-2.5 text-xs font-medium text-right"
-                  >
-                    {t.columns.index}
-                  </th>
-                  <th scope="col" rowSpan={2} className="px-3 py-2.5 text-xs font-medium">
-                    {t.columns.name}
-                  </th>
-                  <th
-                    scope="col"
-                    rowSpan={2}
-                    className="px-3 py-2.5 text-xs font-medium text-right"
-                  >
-                    {t.columns.w}
-                  </th>
-                  <th
-                    scope="col"
-                    rowSpan={2}
-                    className="px-3 py-2.5 text-xs font-medium text-right"
-                  >
-                    {t.columns.h}
-                  </th>
-                  <th
-                    scope="col"
-                    rowSpan={2}
-                    className="px-3 py-2.5 text-xs font-medium text-right"
-                  >
-                    {t.columns.qty}
-                  </th>
-                  <th
-                    scope="col"
-                    rowSpan={2}
-                    className="px-3 py-2.5 text-xs font-medium text-center"
-                  >
-                    {t.columns.grain}
-                  </th>
-                  <th
-                    scope="colgroup"
-                    colSpan={EDGES.length}
-                    className="px-1 pt-2.5 pb-0.5 text-center text-xs font-medium whitespace-nowrap"
-                  >
-                    {t.columns.edgeGroup}
-                  </th>
-                  <th
-                    scope="col"
-                    rowSpan={2}
-                    className="px-3 py-2.5 text-xs font-medium text-right"
-                  >
-                    {t.columns.actions}
-                  </th>
-                </tr>
-                <tr>
-                  {EDGES.map((e) => (
-                    <th
-                      key={e}
-                      scope="col"
-                      className="px-0.5 pb-2 text-center text-2xs font-normal text-fg-subtle"
-                      data-testid={`edge-col-${e}`}
-                    >
-                      {t.edge[e]}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle">
-                {parts.map((part, index) => (
-                  <PartRow
-                    key={part.id}
-                    t={t}
-                    part={part}
-                    index={index}
-                    issues={issuesOf(index)}
-                    run={run}
-                    allIds={allIds}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="border-t border-border-subtle px-4 py-2.5 text-xs text-fg-subtle sm:px-5">
+        <div
+          ref={scrollRef}
+          className={cn(
+            'relative max-w-full overflow-auto',
+            parts.length === 0 ? '' : 'max-h-[max(22rem,calc(100dvh-20rem))]',
+          )}
+          data-testid="cut-list-scroll"
+        >
+          {parts.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+              <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface-subtle text-fg-muted">
+                <Rows3 aria-hidden className="size-5" />
+              </span>
+              <p className="text-sm font-medium text-fg">{t.empty}</p>
+              <p className="max-w-sm text-sm text-fg-muted">{t.subtitle}</p>
+            </div>
+          ) : phone ? (
+            <Cards t={t} parts={parts} ctx={ctx} scrollRef={scrollRef} scrollToRow={scrollToRow} />
+          ) : (
+            <Grid
+              t={t}
+              parts={parts}
+              ctx={ctx}
+              wideBands={wideBands}
+              scrollRef={scrollRef}
+              scrollToRow={scrollToRow}
+            />
+          )}
+        </div>
+        <p className="border-t border-border-subtle px-4 py-2.5 text-xs text-fg-subtle">
           {t.shortcuts}
         </p>
       </section>

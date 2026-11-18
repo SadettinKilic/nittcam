@@ -69,7 +69,7 @@ test.describe('T012 nesting', () => {
     await expect(page.getByText(n.unchanged)).toBeVisible();
 
     // One undo step removes the layout; redo brings it back.
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(page.getByText(n.none)).toBeVisible();
     await page.getByRole('button', { name: t.redo }).click();
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
@@ -84,7 +84,10 @@ test.describe('T012 nesting', () => {
       ['Ad\tEn\tBoy\tAdet', 'Raf\t800\t300\t2', 'Dev\t3000\t2500\t1'].join('\n'),
       2,
     );
-    await expect(page.getByText(t.issues.PART_LARGER_THAN_SHEET)).toBeVisible();
+    // T118: the row shows a warning icon (text in its tooltip / accessible name).
+    await expect(
+      page.locator('[data-testid^=row-issue-][data-codes*=PART_LARGER_THAN_SHEET]'),
+    ).toBeVisible();
     await nest(page);
     await expect(page.getByTestId('nesting-sheets')).toHaveText('1');
     await expect(page.getByTestId('nesting-unplaced')).toHaveText(fill(n.unplaced, { count: 1 }));

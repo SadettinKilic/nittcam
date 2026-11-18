@@ -16,6 +16,7 @@
     "@nittcam/machines": "workspace:*",
     "@nittcam/ui": "workspace:*",
     "@tanstack/react-table": "9.3.1",
+    "@tanstack/react-virtual": "3.14.26",
     "konva": "10.9.1",
     "lucide-react": "1.74.0",
     "next": "16.4.5",

@@ -7,8 +7,6 @@ import { goStep, openNewProject, paste, pasteAndNest, saved } from './wizard-hel
 // snap borders, Alt, touch, disabled / no grain), slider semantics + axe, undo granularity,
 // persistence after reload, simulation transport under reduced motion and idle contrast.
 
-const undoName = { name: tr.cutList.undo, exact: true };
-
 async function axeClean(page: Page, include?: string) {
   let b = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
   if (include) b = b.include(include);
@@ -262,13 +260,13 @@ test.describe('T116 grain in the wizard (tester)', () => {
     await dial.press('ArrowRight');
     await expect(dial).toHaveAttribute('aria-valuenow', '2');
     await expect(preview).toHaveAttribute('data-angle', '2');
-    await page.getByRole('button', undoName).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(dial).toHaveAttribute('aria-valuenow', '1');
-    await page.getByRole('button', undoName).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(dial).toHaveAttribute('aria-valuenow', '0');
     // Quick button at the current value is no new undo step.
     await page.getByTestId('sheet-grain-dial-quick-0').click();
-    await expect(page.getByRole('button', undoName)).toBeDisabled();
+    await expect(page.getByTestId('wizard-undo')).toBeDisabled();
 
     const input = page.getByTestId('sheet-grain-dial-input');
     await input.fill('210');
@@ -306,7 +304,7 @@ test.describe('T116 grain in the wizard (tester)', () => {
     await expect(cell1).toHaveAttribute('data-angle', '52');
     await expect(cell1).toContainText('52°');
     await expect(cell1.locator('svg')).toHaveCount(1);
-    await page.getByRole('button', undoName).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(cell1).toHaveAttribute('data-mode', 'free');
     await expect(cell1).toHaveAttribute('data-angle', '0');
     await page.getByRole('button', { name: tr.cutList.redo, exact: true }).click();
