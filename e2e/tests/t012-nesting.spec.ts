@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { goStep, nest } from './wizard-helpers';
+import { goStep, nest, openWorkspacePanel } from './wizard-helpers';
 
 /** T012: "Diz" on the parts page runs the placer in a Web Worker and shows sheets + waste %. */
 
@@ -97,7 +97,10 @@ test.describe('T012 nesting', () => {
     await page.goto(URL);
     await paste(page, KITCHEN, 5);
     await nest(page);
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
+    // T198: below 1024 px the nesting summary lives in the left bottom sheet.
+    await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
+    const panel = await openWorkspacePanel(page, 'left');
+    await expect(panel.getByTestId('nesting-sheets')).toHaveText('3');
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
