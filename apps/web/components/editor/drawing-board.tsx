@@ -1,7 +1,7 @@
 'use client';
 
-import { boardBox, boardParts, type Project } from '@nittcam/core';
-import { Button, Checkbox, IconButton, Tooltip, cn } from '@nittcam/ui';
+import { boardBox, boardParts, type Part, type Project } from '@nittcam/core';
+import { Button, Checkbox, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
   Circle,
   Hand,
@@ -27,6 +27,7 @@ import {
 } from 'react';
 import type { Messages } from '../../lib/messages';
 import { onThemeChange } from '../../lib/canvas-theme';
+import { newPartId } from '../../lib/draft-project';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
 import { editorReducer, initialEditorState, type EditorTool } from '../../lib/editor/store';
 import { fitBox, toWorld, type Box, type Pt } from '../../lib/editor/viewport';
@@ -44,6 +45,8 @@ type T = Messages['editor'];
 
 /** Screen area kept free of the drawing when fitting: rulers, tool rail, view toolbar. */
 const FIT_INSETS = { top: RULER_PX + 56, right: 16, bottom: 16, left: RULER_PX + 64 };
+/** Offset of a pasted / duplicated copy, mm (right and down). */
+const PASTE_OFFSET = 20;
 /** Pointer movement that turns a click into a drag, px. */
 const DRAG_PX = 3;
 
@@ -52,7 +55,13 @@ type Gesture =
   | { kind: 'pan'; last: Pt }
   | { kind: 'pinch'; dist: number; mid: Pt }
   | { kind: 'marquee'; start: Pt; startScreen: Pt; additive: boolean; moved: boolean }
-  | { kind: 'press'; id: string; startScreen: Pt; additive: boolean };
+  | { kind: 'press'; id: string; start: Pt; startScreen: Pt; additive: boolean }
+  | { kind: 'move'; ids: string[]; start: Pt };
+
+/** Board moves are kept to 0.01 mm (no float dust in the project). */
+function round(v: number): number {
+  return Math.round(v * 100) / 100;
+}
 
 function dist(a: Pt, b: Pt): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -66,6 +75,7 @@ function dist(a: Pt, b: Pt): number {
 export function DrawingBoard({
   t,
   project,
+  run,
   onToList,
 }: {
   t: T;
@@ -78,6 +88,9 @@ export function DrawingBoard({
   const [colors, setColors] = useState<EditorColors | null>(null);
   const [cursor, setCursor] = useState<Pt | null>(null);
   const [marquee, setMarquee] = useState<Box | null>(null);
+  const [drag, setDrag] = useState<Pt | null>(null);
+  const clipboard = useRef<Part[]>([]);
+  const pastes = useRef(0);
   const [spaceDown, setSpaceDown] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const pointers = useRef(new Map<number, Pt>());
@@ -226,7 +239,7 @@ export function DrawingBoard({
     if (e.button !== 0) return;
     const hit = hitPart(parts, w, 4 / view.scale);
     if (hit) {
-      gesture.current = { kind: 'press', id: hit, startScreen: s, additive: e.shiftKey };
+      gesture.current = { kind: 'press', id: hit, start: w, startScreen: s, additive: e.shiftKey };
       return;
     }
     // Empty canvas: one finger pans on touch; mouse/pen draws a selection box.
@@ -260,6 +273,15 @@ export function DrawingBoard({
       dispatch({ type: 'pan', dx: mid.x - g.mid.x, dy: mid.y - g.mid.y });
       dispatch({ type: 'zoom', factor: d / Math.max(g.dist, 1), at: mid });
       gesture.current = { kind: 'pinch', dist: d, mid };
+    } else if (g.kind === 'press') {
+      // A press that moves becomes a move of the selection (the pressed part joins it).
+      if (dist(s, g.startScreen) < DRAG_PX) return;
+      const ids = selection.has(g.id) ? state.selection : [g.id];
+      if (!selection.has(g.id)) dispatch({ type: 'select', ids });
+      gesture.current = { kind: 'move', ids, start: g.start };
+      setDrag({ x: w.x - g.start.x, y: w.y - g.start.y });
+    } else if (g.kind === 'move') {
+      setDrag({ x: w.x - g.start.x, y: w.y - g.start.y });
     } else if (g.kind === 'marquee') {
       if (!g.moved && dist(s, g.startScreen) < DRAG_PX) return;
       g.moved = true;
@@ -279,6 +301,12 @@ export function DrawingBoard({
     gesture.current = null;
     if (g.kind === 'press') {
       dispatch(g.additive ? { type: 'toggle', id: g.id } : { type: 'select', ids: [g.id] });
+    } else if (g.kind === 'move') {
+      const d = drag;
+      setDrag(null);
+      if (d && (d.x !== 0 || d.y !== 0)) {
+        run('movePart', { ids: g.ids, dx: round(d.x), dy: round(d.y) });
+      }
     } else if (g.kind === 'marquee') {
       if (g.moved) {
         const found = partsInBox(parts, boxFrom(g.start, toWorld(view, local(e))));
@@ -291,6 +319,89 @@ export function DrawingBoard({
   }
 
   const selected = useMemo(() => parts.filter((p) => selection.has(p.id)), [parts, selection]);
+
+  // Edit actions (T125): every change is a command with undo (Ctrl+Z / Ctrl+Y in the wizard).
+  const actions = useMemo(() => {
+    const ids = state.selection;
+    const at = new Map(parts.map((p) => [p.id, p.at]));
+    /** Selected parts with their current board position (a clipboard snapshot). */
+    const snapshot = (): Part[] =>
+      project.parts
+        .filter((p) => ids.includes(p.id))
+        .map((p) => {
+          const pos = at.get(p.id) ?? { x: 0, y: 0 };
+          return { ...structuredClone(p), draw: { x: pos.x, y: pos.y } };
+        });
+    const paste = (src: readonly Part[], offset: number) => {
+      if (src.length === 0) return;
+      const copies = src.map((p) => ({
+        ...structuredClone(p),
+        id: newPartId(),
+        name: p.name.trim() ? t.copyName.replace('{name}', p.name.trim()) : p.name,
+        draw: { x: (p.draw?.x ?? 0) + offset, y: (p.draw?.y ?? 0) - offset },
+      }));
+      if (run('pasteParts', { parts: copies })) {
+        dispatch({ type: 'select', ids: copies.map((c) => c.id) });
+      }
+    };
+    const has = ids.length > 0;
+    return {
+      has,
+      move: (dx: number, dy: number) => has && run('movePart', { ids, dx, dy }),
+      mirrorH: () => has && run('mirrorPart', { ids, axis: 'h' }),
+      mirrorV: () => has && run('mirrorPart', { ids, axis: 'v' }),
+      // The button turns clockwise (= 270° counter-clockwise).
+      rotate: () => has && run('rotatePart', { ids, turns: 270 }),
+      remove: () => has && run('removeParts', { ids }),
+      duplicate: () => has && paste(snapshot(), PASTE_OFFSET),
+      copy: () => {
+        if (!has) return;
+        clipboard.current = snapshot();
+        pastes.current = 0;
+        notify.success(t.copied.replace('{count}', String(ids.length)));
+      },
+      paste: () => {
+        pastes.current += 1;
+        paste(clipboard.current, PASTE_OFFSET * pastes.current);
+      },
+      selectAll: () => dispatch({ type: 'select', ids: parts.map((p) => p.id) }),
+    };
+  }, [state.selection, parts, project.parts, run, t.copyName, t.copied]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.closest('input, textarea, select, [role="combobox"], [role="dialog"]') !== null)
+      ) {
+        return;
+      }
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase();
+      const step = e.shiftKey ? 10 : 1;
+      let done = true;
+      if (mod && !e.altKey && k === 'c') actions.copy();
+      else if (mod && !e.altKey && k === 'v') actions.paste();
+      else if (mod && !e.altKey && k === 'd') actions.duplicate();
+      else if (mod && !e.altKey && k === 'a') actions.selectAll();
+      else if (mod || e.altKey) done = false;
+      else if (k === 'delete' || k === 'backspace')
+        done = actions.has && actions.remove() !== false;
+      else if (k === 'arrowleft') done = actions.has && actions.move(-step, 0) !== false;
+      else if (k === 'arrowright') done = actions.has && actions.move(step, 0) !== false;
+      else if (k === 'arrowup') done = actions.has && actions.move(0, step) !== false;
+      else if (k === 'arrowdown') done = actions.has && actions.move(0, -step) !== false;
+      else if (e.shiftKey && k === 'x') actions.mirrorH();
+      else if (e.shiftKey && k === 'y') actions.mirrorV();
+      else if (e.shiftKey && k === 'r') actions.rotate();
+      else done = false;
+      if (done) e.preventDefault();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [actions]);
 
   const panMode = state.tool === 'pan' || spaceDown;
   const floating =
@@ -440,7 +551,7 @@ export function DrawingBoard({
             names={names}
             selection={selection}
             hover={state.hover}
-            drag={null}
+            drag={drag}
             marquee={marquee}
             snap={null}
             grid={state.grid}
@@ -465,7 +576,20 @@ export function DrawingBoard({
           }
         />
       }
-      right={<EditorInspector t={t.inspector} project={project} selected={selected} />}
+      right={
+        <EditorInspector
+          t={t.inspector}
+          project={project}
+          selected={selected}
+          actions={{
+            mirrorH: actions.mirrorH,
+            mirrorV: actions.mirrorV,
+            rotate: actions.rotate,
+            duplicate: actions.duplicate,
+            remove: actions.remove,
+          }}
+        />
+      }
       canvas={canvas}
       canvasOverlay={overlay}
       canvasFooter={
