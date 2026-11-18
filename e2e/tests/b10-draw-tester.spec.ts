@@ -216,9 +216,9 @@ test.describe('B10 tester: stored geometry (T127–T129)', () => {
     await page.getByTestId('editor-canvas').focus();
     await page.keyboard.press('c');
     await expect(page.getByTestId('editor-tool-circle')).toHaveAttribute('aria-pressed', 'true');
-    // no navigation within 2.5 s
+    // no navigation within 3 s
     const left = await page
-      .waitForURL((u) => u.toString() !== url, { timeout: 2_500 })
+      .waitForURL((u) => u.toString() !== url, { timeout: 3_000 })
       .then(
         () => true,
         () => false,
@@ -243,6 +243,83 @@ test.describe('B10 tester: stored geometry (T127–T129)', () => {
     await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
     expect((await stored(page)).parts).toHaveLength(5);
+  });
+});
+
+test.describe('B10 tester round 2: board keys vs global shortcuts (B10-1)', () => {
+  async function stays(page: Page, url: string, ms = 1_000): Promise<void> {
+    const left = await page
+      .waitForURL((u) => u.toString() !== url, { timeout: ms })
+      .then(
+        () => true,
+        () => false,
+      );
+    expect(left).toBe(false);
+  }
+
+  test('every board key and "g h" stay on the board; "g p" still navigates', async ({ page }) => {
+    await openBoard(page);
+    await saved(page);
+    const url = page.url();
+    await page.getByTestId('editor-canvas').focus();
+    for (const k of ['v', 'h', 'r', 'l', 'a', 'f', '+', '=', '-', 'c']) {
+      await page.keyboard.press(k);
+      await page.keyboard.press('Escape');
+    }
+    await stays(page, url, 3_000);
+    await expect(page.getByTestId('editor-canvas')).toBeVisible();
+    // g h: H belongs to the board (pan), so "go home" must not fire
+    await page.keyboard.press('g');
+    await page.keyboard.press('h');
+    await expect(page.getByTestId('editor-tool-pan')).toHaveAttribute('aria-pressed', 'true');
+    await stays(page, url, 2_000);
+    // g p: P is not a board key, the global sequence still works on the board
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('g');
+    await page.keyboard.press('p');
+    await page.waitForURL(/\/projeler$/);
+    // board unmounted → claim released: C is "new project" again
+    await page.keyboard.press('c');
+    await page.waitForURL(/\/projeler\/yeni/);
+  });
+
+  test('help opens over the board, Esc closes it; after leaving Çizim C is global again', async ({
+    page,
+  }) => {
+    await openBoard(page);
+    await saved(page);
+    const url = page.url();
+    await page.getByTestId('editor-canvas').focus();
+    await page.keyboard.press('r');
+    await page.keyboard.press('?');
+    await expect(page.getByTestId('shortcuts-dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('shortcuts-dialog')).toBeHidden();
+    await expect(page.getByTestId('editor-tool-rect')).toHaveAttribute('aria-pressed', 'true');
+    await stays(page, url);
+    // list view: the board is gone, C opens a new project again
+    await page.getByTestId('parts-view-list').click();
+    await expect(page.getByTestId('editor-canvas')).toHaveCount(0);
+    await page.getByTestId('parts-view-list').focus();
+    await page.keyboard.press('c');
+    await page.waitForURL((u) => u.toString() !== url && /\/projeler\/yeni/.test(u.pathname));
+  });
+
+  test('keys typed in the keypad bar field never reach the board or the shell', async ({
+    page,
+  }) => {
+    const canvas = await openBoard(page, 390);
+    await saved(page);
+    const url = page.url();
+    const b = await canvas.boundingBox();
+    if (!b) throw new Error('no canvas');
+    await page.getByTestId('editor-tool-rect').click();
+    await page.mouse.click(b.x + b.width * 0.5, b.y + b.height * 0.4);
+    const field = page.getByTestId('editor-input-w');
+    await field.focus();
+    await page.keyboard.type('clvh');
+    await expect(page.getByTestId('editor-tool-rect')).toHaveAttribute('aria-pressed', 'true');
+    await stays(page, url, 2_000);
   });
 });
 
