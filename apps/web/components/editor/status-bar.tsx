@@ -3,12 +3,15 @@
 import {
   Button,
   Checkbox,
+  IconButton,
+  Tooltip,
   Popover,
   PopoverContent,
   PopoverTrigger,
   formatMeasure,
 } from '@nittcam/ui';
-import { Magnet } from 'lucide-react';
+import { CircleHelp, Magnet } from 'lucide-react';
+import { OPEN_SHORTCUTS_EVENT } from '../../lib/shortcuts';
 import { useId } from 'react';
 import type { Messages } from '../../lib/messages';
 import { SNAP_TOGGLES, type SnapToggle } from '../../lib/editor/store';
@@ -99,6 +102,20 @@ export function StatusBar({
         %{zoomPercent(scale)}
       </span>
       <span className="font-sans max-sm:hidden">{t.status.units}</span>
+      {/* T242: the board's shortcut list lives in the shortcuts dialog ("Çizim tahtası"). */}
+      <Tooltip content={`${t.status.shortcuts} · ?`}>
+        <IconButton
+          size="sm"
+          variant="ghost"
+          aria-label={t.status.shortcuts}
+          aria-haspopup="dialog"
+          className="-mr-2 size-7"
+          data-testid="editor-shortcuts"
+          onClick={() => window.dispatchEvent(new Event(OPEN_SHORTCUTS_EVENT))}
+        >
+          <CircleHelp aria-hidden />
+        </IconButton>
+      </Tooltip>
     </div>
   );
 }

@@ -79,7 +79,8 @@ import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { readEditorColors, type EditorColors } from './colors';
 import { DynamicInput } from './dynamic-input';
 import { RULER_PX, type SnapGlyph } from './editor-canvas';
-import { EditorInspector } from './inspector';
+import { BoardActionBar, EditorInspector } from './inspector';
+import { boardSummary } from '../../lib/editor/summary';
 import { BoardPartList } from './part-list';
 import { StatusBar } from './status-bar';
 
@@ -93,6 +94,8 @@ const FIT_INSETS = { top: RULER_PX + 56, right: 16, bottom: 16, left: RULER_PX +
 const PASTE_OFFSET = 20;
 /** Height of the top toolbar band (view switch, zoom) plus its gap: the rail starts below it. */
 const BAND_PX = 48;
+/** Phone mini-toolbar over the selection (5 × 32 px buttons, separator, padding). */
+const MINI_BAR = { w: 186, h: 38 };
 /** Snap capture distance on screen, px. */
 const SNAP_PX = 10;
 /** Pointer movement that turns a click into a drag, px. */
@@ -223,6 +226,10 @@ export function DrawingBoard({
         : null;
 
   const selected = useMemo(() => parts.filter((p) => selection.has(p.id)), [parts, selection]);
+  const summary = useMemo(
+    () => boardSummary(parts, new Map(project.parts.map((p) => [p.id, p.qty]))),
+    [parts, project.parts],
+  );
 
   // Bend handles (T129): with one part selected in Seç, a round node at every segment middle
   // (on the arc for arcs); dragging it bends the segment (`setSegmentBulge`, one undo step).
@@ -813,6 +820,52 @@ export function DrawingBoard({
     );
   };
 
+  // Phones (T242): the selection's actions float above it in the canvas, so mirror / rotate /
+  // duplicate / delete do not need the "Özellikler" sheet. Kept inside the canvas.
+  const editActions = {
+    mirrorH: actions.mirrorH,
+    mirrorV: actions.mirrorV,
+    rotate: actions.rotate,
+    duplicate: actions.duplicate,
+    remove: actions.remove,
+  };
+  let miniBar: ReactNode = null;
+  if (docked && view && state.tool === 'select' && selected.length > 0 && !drag && size.w > 0) {
+    const sb = selected.reduce(
+      (a, x) => ({
+        minX: Math.min(a.minX, x.box.minX),
+        minY: Math.min(a.minY, x.box.minY),
+        maxX: Math.max(a.maxX, x.box.maxX),
+        maxY: Math.max(a.maxY, x.box.maxY),
+      }),
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+    );
+    const tl = toScreen(view, { x: sb.minX, y: sb.maxY });
+    const br = toScreen(view, { x: sb.maxX, y: sb.minY });
+    const w = MINI_BAR.w;
+    const h = MINI_BAR.h;
+    const minTop = RULER_PX + 8 + (viewSwitch ? BAND_PX : 0);
+    const maxTop = size.h - h - 8;
+    let top = tl.y - h - 8;
+    if (top < minTop) top = br.y + 8;
+    top = Math.min(Math.max(top, minTop), Math.max(minTop, maxTop));
+    const left = Math.min(Math.max((tl.x + br.x) / 2 - w / 2, RULER_PX + 4), size.w - w - 4);
+    miniBar = (
+      <div
+        className={`${floating} absolute z-20 p-0.5`}
+        style={{ top, left: Math.max(4, left) }}
+        data-testid="editor-mini-toolbar"
+      >
+        <BoardActionBar
+          t={t.inspector}
+          label={t.actionsBar}
+          actions={editActions}
+          testId="editor-mini"
+        />
+      </div>
+    );
+  }
+
   const overlay = (
     <>
       <div
@@ -933,6 +986,7 @@ export function DrawingBoard({
           }}
         />
       ) : null}
+      {miniBar}
       {parts.length === 0 && !drawTool ? (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
           <div className={`${floating} flex max-w-sm flex-col items-start gap-3 p-4`}>
@@ -1035,13 +1089,8 @@ export function DrawingBoard({
           t={t.inspector}
           project={project}
           selected={selected}
-          actions={{
-            mirrorH: actions.mirrorH,
-            mirrorV: actions.mirrorV,
-            rotate: actions.rotate,
-            duplicate: actions.duplicate,
-            remove: actions.remove,
-          }}
+          summary={summary}
+          actions={editActions}
         />
       }
       canvas={canvas}

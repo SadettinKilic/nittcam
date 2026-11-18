@@ -1,5 +1,13 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { KITCHEN, goStep, openNewProject, paste } from './wizard-helpers';
+import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import {
+  KITCHEN,
+  closeWorkspacePanel,
+  goStep,
+  openNewProject,
+  openWorkspacePanel,
+  paste,
+} from './wizard-helpers';
 
 // B10a (T240–T243, D-039): canvas budget and board polish. Bounding-box checks only; the
 // visual baselines are reviewed by the tester.
@@ -143,5 +151,66 @@ test.describe('T241 desktop canvas budget', () => {
     await page.reload();
     await expect(page.getByTestId('editor-canvas')).toHaveAttribute('data-view', /\d/);
     await expect(page.getByTestId('workspace-left')).toHaveAttribute('data-state', 'open');
+  });
+});
+
+test.describe('T242 inspector icon actions', () => {
+  const ins = tr.editor.inspector;
+  const names = [ins.mirrorH, ins.mirrorV, ins.rotate, ins.duplicate, ins.remove];
+
+  test('1440: one icon row with tooltips + shortcuts, summary, help from the status bar', async ({
+    page,
+  }) => {
+    await openBoard(page, 1440, 900);
+    const inspector = page.getByTestId('editor-inspector');
+    // Nothing selected: compact summary instead of an empty panel.
+    await expect(page.getByTestId('editor-summary')).toBeVisible();
+    await expect(page.getByTestId('editor-summary-area')).toContainText(ins.summary.areaUnit);
+    await expect(page.getByTestId('editor-summary-extents')).toContainText('×');
+
+    await page.getByTestId('editor-part-list').getByRole('button').first().click();
+    const bar = inspector.getByRole('toolbar', { name: ins.actions });
+    for (const n of names) {
+      const b = bar.getByRole('button', { name: n, exact: true });
+      await expect(b).toBeVisible();
+      const bb = await box(b);
+      expect(Math.round(bb.width)).toBe(32);
+      expect(Math.round(bb.height)).toBe(32);
+      await expect(b).toHaveAttribute('aria-keyshortcuts', /.+/);
+    }
+    // No shortcut prose in the panel.
+    await expect(inspector).not.toContainText('Kısayollar:');
+    await bar.getByRole('button', { name: ins.mirrorH, exact: true }).hover();
+    await expect(page.getByRole('tooltip')).toContainText(`${ins.mirrorH} · Shift+X`);
+
+    await page.getByTestId('editor-shortcuts').click();
+    const dialog = page.getByTestId('shortcuts-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(tr.shortcuts.groups.board);
+    await expect(dialog.getByTestId('shortcut-boardMirrorH')).toContainText(
+      tr.shortcuts.items.boardMirrorH,
+    );
+  });
+
+  test('390: mini-toolbar over the selection stays inside the canvas and acts', async ({
+    page,
+  }) => {
+    const canvas = await openBoard(page, 390, 844);
+    const sheet = await openWorkspacePanel(page, 'left');
+    await sheet.getByTestId('editor-part-list').getByRole('button').first().click();
+    await closeWorkspacePanel(page);
+    const mini = page.getByTestId('editor-mini-toolbar');
+    await expect(mini).toBeVisible();
+    const c = await box(canvas);
+    const m = await box(mini);
+    expect(m.x).toBeGreaterThanOrEqual(c.x);
+    expect(m.y).toBeGreaterThanOrEqual(c.y);
+    expect(m.x + m.width).toBeLessThanOrEqual(c.x + c.width);
+    expect(m.y + m.height).toBeLessThanOrEqual(c.y + c.height);
+    for (const n of names) {
+      await expect(mini.getByRole('button', { name: n, exact: true })).toBeVisible();
+    }
+    await mini.getByRole('button', { name: ins.duplicate, exact: true }).click();
+    await expect(canvas).toHaveAttribute('aria-label', /6 parça/);
   });
 });

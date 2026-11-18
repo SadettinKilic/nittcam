@@ -156,7 +156,8 @@
     "groups": {
       "general": "Genel",
       "navigation": "Gezinme",
-      "project": "Proje"
+      "project": "Proje",
+      "board": "Çizim tahtası"
     },
     "items": {
       "palette": "Komut paletini aç",
@@ -168,7 +169,21 @@
       "goMachines": "Makinelere git",
       "newProject": "Yeni proje",
       "undo": "Geri al",
-      "redo": "Yinele"
+      "redo": "Yinele",
+      "boardSelect": "Seç aracı",
+      "boardPan": "Kaydır aracı",
+      "boardRect": "Dikdörtgen aracı",
+      "boardCircle": "Çember aracı",
+      "boardLine": "Çizgi aracı",
+      "boardArc": "Yay aracı",
+      "boardFit": "Tümünü göster",
+      "boardCopy": "Seçili parçaları kopyala",
+      "boardPaste": "Yapıştır",
+      "boardDuplicate": "Çoğalt",
+      "boardDelete": "Sil",
+      "boardMirrorH": "Yatay aynala",
+      "boardMirrorV": "Dikey aynala",
+      "boardRotate": "90° döndür"
     }
   },
   "feedback": {
@@ -1525,7 +1540,8 @@
       "units": "mm",
       "snap": "Yapışma",
       "snapOff": "Yapışma kapalı",
-      "snapHint": "Alt basılıyken yapışma geçici olarak kapanır."
+      "snapHint": "Alt basılıyken yapışma geçici olarak kapanır.",
+      "shortcuts": "Kısayollar"
     },
     "snap": {
       "endpoint": "Uç nokta",
@@ -1544,7 +1560,7 @@
     },
     "inspector": {
       "title": "Özellikler",
-      "none": "Bir parça seçin. Tıklayın, Shift ile ekleyin ya da boş alanda sürükleyerek kutu içine alın.",
+      "none": "Bir parça seçin: tıklayın, Shift ile ekleyin ya da boş alanda sürükleyin.",
       "many": "{count} parça seçili",
       "size": "Ölçü",
       "position": "Konum",
@@ -1561,7 +1577,13 @@
       "rotate": "90° döndür",
       "duplicate": "Çoğalt",
       "remove": "Sil",
-      "keys": "Kısayollar: Ctrl+C kopyala · Ctrl+V yapıştır · Ctrl+D çoğalt · Delete sil · Shift+X / Shift+Y aynala · Shift+R döndür"
+      "summary": {
+        "parts": "Parça",
+        "pieces": "Adet",
+        "area": "Toplam alan",
+        "extents": "Kapladığı alan",
+        "areaUnit": "m²"
+      }
     },
     "copied": "{count} parça kopyalandı",
     "copyName": "{name} kopya",
@@ -1594,6 +1616,7 @@
       "apply": "Uygula",
       "cancel": "Vazgeç",
       "bendHandle": "Kavis tutamağı"
-    }
+    },
+    "actionsBar": "Seçim işlemleri"
   }
 }
