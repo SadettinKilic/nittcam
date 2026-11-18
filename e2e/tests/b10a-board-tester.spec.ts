@@ -488,3 +488,122 @@ test.describe('B10a tester T243 reference frame', () => {
     await expect.poll(async () => (await view(canvas)).scale).toBeCloseTo(withParts, 4);
   });
 });
+
+// ---------------------------------------------------------------- round 2 (fix fcbc079)
+
+test.describe('B10a tester round 2 fixes', () => {
+  async function openShortcuts(page: Page) {
+    const help = page.getByTestId('editor-shortcuts');
+    if (await help.isVisible()) await help.click();
+    else await page.keyboard.press('?');
+    await expect(page.getByTestId('shortcuts-dialog')).toBeVisible();
+  }
+
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`BUG1: board shortcuts list is a labelled, focusable scroll region; axe 390 ${scheme}`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await openBoard(page, 390, 844);
+      await openShortcuts(page);
+      const list = page.getByTestId('shortcuts-list');
+      await expect(list).toHaveAttribute('role', 'region');
+      await expect(list).toHaveAttribute('tabindex', '0');
+      await expect(list).toHaveAccessibleName(tr.shortcuts.title);
+      await axeClean(page);
+    });
+  }
+
+  test('BUG1: keyboard-only scroll of the shortcuts list', async ({ page }) => {
+    // A short viewport makes sure the list overflows.
+    await openBoard(page, 1440, 520);
+    await openShortcuts(page);
+    const list = page.getByTestId('shortcuts-list');
+    const dims = await list.evaluate((el) => ({ sh: el.scrollHeight, ch: el.clientHeight }));
+    expect(dims.sh, 'list overflows at 520 px').toBeGreaterThan(dims.ch);
+    for (let i = 0; i < 6 && !(await list.evaluate((el) => el === document.activeElement)); i++)
+      await page.keyboard.press('Tab');
+    await expect(list).toBeFocused();
+    await page.keyboard.press('End');
+    await expect
+      .poll(() => list.evaluate((el) => el.scrollTop), { message: 'End scrolls the list' })
+      .toBeGreaterThan(0);
+    await page.keyboard.press('Home');
+    await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBe(0);
+    await axeClean(page);
+  });
+
+  test('BUG2: phone step popover is named "Adımlar"', async ({ page }) => {
+    await openBoard(page, 390, 844);
+    await page.getByTestId('wizard-steps-trigger').click();
+    const pop = page.getByTestId('wizard-steps');
+    await expect(pop).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Adımlar' })).toBeVisible();
+    await axeClean(page);
+  });
+
+  test('BUG3: 390 mini-toolbar clears the rail for parts 1 and 5 and at the bottom-right edge', async ({
+    page,
+  }) => {
+    const canvas = await openBoard(page, 390, 844);
+    const rail = page.getByTestId('editor-tool-rail');
+    const mini = page.getByTestId('editor-mini-toolbar');
+
+    async function checkClear(label: string) {
+      await expect(mini, label).toBeVisible();
+      const c = await box(canvas);
+      const m = await box(mini);
+      const r = await box(rail);
+      const overlaps =
+        m.x < r.x + r.width && r.x < m.x + m.width && m.y < r.y + r.height && r.y < m.y + m.height;
+      expect(overlaps, `${label}: mini-toolbar overlaps the rail`).toBe(false);
+      expect(m.x, `${label}: inside canvas (left)`).toBeGreaterThanOrEqual(c.x);
+      expect(m.y, `${label}: inside canvas (top)`).toBeGreaterThanOrEqual(c.y);
+      expect(m.x + m.width, `${label}: inside canvas (right)`).toBeLessThanOrEqual(c.x + c.width);
+      expect(m.y + m.height, `${label}: inside canvas (bottom)`).toBeLessThanOrEqual(
+        c.y + c.height,
+      );
+      // Every rail tool is the top element at its centre (tappable).
+      const blocked = await rail.evaluate((el) =>
+        [...el.querySelectorAll('button')]
+          .filter((b) => {
+            const q = b.getBoundingClientRect();
+            const hit = document.elementFromPoint(q.x + q.width / 2, q.y + q.height / 2);
+            return !hit || !b.contains(hit);
+          })
+          .map((b) => b.getAttribute('aria-label')),
+      );
+      expect(blocked, `${label}: rail tools covered`).toEqual([]);
+    }
+
+    for (const idx of [0, 4]) {
+      const sheet = await openWorkspacePanel(page, 'left');
+      await sheet.getByTestId('editor-part-list').getByRole('button').nth(idx).click();
+      await closeWorkspacePanel(page);
+      await checkClear(`part ${idx + 1}`);
+    }
+
+    // Pan with the middle button until the selection sits at the bottom-right edge.
+    const c = await box(canvas);
+    const before = await box(mini);
+    await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2);
+    await page.mouse.down({ button: 'middle' });
+    await page.mouse.move(c.x + c.width - 10, c.y + c.height - 10, { steps: 8 });
+    await page.mouse.up({ button: 'middle' });
+    await expect.poll(async () => (await box(mini)).x).not.toBe(before.x);
+    await checkClear('bottom-right edge');
+    await noHorizontalScroll(page);
+  });
+
+  test('top bar: phone "Adsız proje", desktop breadcrumb "Yeni proje" for an unsaved project', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openNewProject(page, 'parcalar');
+    await expect(page.getByTestId('shell-title-mobile')).toHaveText('Adsız proje');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const crumbs = page.getByRole('navigation', { name: tr.shell.breadcrumb });
+    await expect(crumbs).toBeVisible();
+    await expect(crumbs).toContainText('Yeni proje');
+  });
+});
