@@ -95,3 +95,67 @@ export function scaleBar(scale: number, targetPx = 96): { mm: number; px: number
 
 /** Space the sheet dimension labels need around the sheet, px on screen. */
 export const DIMENSION_GUTTER_PX = 22;
+
+/** Axis-aligned box in sheet millimetres, Y up. */
+export interface MmBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** Box a centred part label occupies (sheet mm, Y up); null when the label is empty. */
+export function labelBox(
+  part: { x: number; y: number; w: number; h: number },
+  label: PartLabel,
+): MmBox | null {
+  if (label.lines.length === 0) return null;
+  const longest = Math.max(...label.lines.map((l) => l.length));
+  const w = longest * label.font * MONO_ADVANCE;
+  const h = label.lines.length * label.font * LINE_HEIGHT;
+  const cx = part.x + part.w / 2;
+  const cy = part.y + part.h / 2;
+  return { x0: cx - w / 2, y0: cy - h / 2, x1: cx + w / 2, y1: cy + h / 2 };
+}
+
+function circleHitsBox(c: { x: number; y: number }, r: number, b: MmBox): boolean {
+  const dx = c.x - Math.max(b.x0, Math.min(c.x, b.x1));
+  const dy = c.y - Math.max(b.y0, Math.min(c.y, b.y1));
+  return dx * dx + dy * dy < r * r;
+}
+
+/**
+ * Centre of a cut-order badge of radius `r` (mm) for a contour starting at `start` (T199b).
+ * Default: up-left of the start point. When that would cover a part label, the badge moves to
+ * the nearest corner of the part the contour belongs to (inside the corner, else just outside),
+ * so markers never hide a label.
+ */
+export function badgeCentre(
+  start: { x: number; y: number },
+  r: number,
+  parts: readonly { x: number; y: number; w: number; h: number }[],
+  labels: readonly (MmBox | null)[],
+): { x: number; y: number } {
+  const hits = (c: { x: number; y: number }) =>
+    labels.some((b) => b !== null && circleHitsBox(c, r, b));
+  const preferred = { x: start.x - r * 0.9, y: start.y + r * 0.9 };
+  if (!hits(preferred)) return preferred;
+  const tol = 2 * r;
+  const own = parts.find(
+    (p) =>
+      start.x >= p.x - tol &&
+      start.x <= p.x + p.w + tol &&
+      start.y >= p.y - tol &&
+      start.y <= p.y + p.h + tol,
+  );
+  if (!own) return preferred;
+  const left = start.x - own.x <= own.x + own.w - start.x;
+  const bottom = start.y - own.y <= own.y + own.h - start.y;
+  const cx = left ? own.x : own.x + own.w;
+  const cy = bottom ? own.y : own.y + own.h;
+  const sx = left ? 1 : -1;
+  const sy = bottom ? 1 : -1;
+  const inside = { x: cx + sx * r * 1.1, y: cy + sy * r * 1.1 };
+  if (!hits(inside)) return inside;
+  return { x: cx - sx * r * 1.1, y: cy - sy * r * 1.1 };
+}

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   LINE_HEIGHT,
+  badgeCentre,
+  labelBox,
   MONO_ADVANCE,
   formatMm,
   partLabel,
@@ -59,5 +61,39 @@ describe('scaleBar', () => {
     expect(b.px).toBeGreaterThan(40);
     expect(b.px).toBeLessThan(200);
     expect(scaleBar(0.05).text).toBe('2.000 mm');
+  });
+});
+
+describe('badgeCentre (T199b)', () => {
+  const part = { x: 0, y: 0, w: 400, h: 300 };
+  const scale = 0.5;
+  const label = partLabel({ number: '1', name: 'Yan', w: 400, h: 300, scale });
+  const box = labelBox(part, label);
+  const r = 8 / scale;
+  const overlaps = (c: { x: number; y: number }) =>
+    box !== null &&
+    Math.hypot(
+      c.x - Math.max(box.x0, Math.min(c.x, box.x1)),
+      c.y - Math.max(box.y0, Math.min(c.y, box.y1)),
+    ) < r;
+
+  it('keeps the default spot when it is clear of labels', () => {
+    expect(badgeCentre({ x: 0, y: 0 }, r, [part], [box])).toEqual({ x: -r * 0.9, y: r * 0.9 });
+  });
+
+  it('moves a badge off a label to the part corner', () => {
+    const start = { x: 200, y: 150 };
+    const c = badgeCentre(start, r, [part], [box]);
+    expect(overlaps(c)).toBe(false);
+  });
+
+  it('never covers a label for starts anywhere on the part', () => {
+    for (let x = 0; x <= 400; x += 25)
+      for (let y = 0; y <= 300; y += 25)
+        expect(overlaps(badgeCentre({ x, y }, r, [part], [box]))).toBe(false);
+  });
+
+  it('labelBox is null for an empty label', () => {
+    expect(labelBox(part, { level: 'none', lines: [], font: 1 })).toBeNull();
   });
 });

@@ -43,6 +43,7 @@ import { onThemeChange } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import { clampScale, zoomAt } from './zoom';
+import { PlateTabStrip } from '../wizard/plate-tab-strip';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { scaleBar } from '../../lib/canvas-labels';
 import { canvasTouchClass, isZoomedIn, useMediaQuery } from '../../lib/use-media-query';
@@ -509,9 +510,10 @@ export function LayoutView({
   const overlay = (
     <>
       <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-end gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div
-          className={`${floating} max-w-full min-w-0 overflow-x-auto p-0.5 max-sm:self-stretch`}
-          data-testid="sheet-tabs-scroll"
+        <PlateTabStrip
+          active={String(sheet)}
+          className={`${floating} max-w-full min-w-0 p-0.5 max-sm:self-stretch`}
+          testId="sheet-tabs-scroll"
         >
           <TabsList
             variant="segmented"
@@ -537,7 +539,7 @@ export function LayoutView({
               );
             })}
           </TabsList>
-        </div>
+        </PlateTabStrip>
         <div className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}>
           <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-fg-muted">
             <Checkbox id={gridId} checked={grid} onCheckedChange={(v) => setGrid(v === true)} />

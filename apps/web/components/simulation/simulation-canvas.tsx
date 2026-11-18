@@ -8,7 +8,7 @@ import type { DrawnPart, ViewState } from '../layout-view/model';
 import { zoomAt } from '../layout-view/zoom';
 import { DEPTH_LEVELS, depthLevel, depthRamp, toolDiameterOf, type SimColors } from './model';
 import { canvasMonoFont } from '../../lib/canvas-theme';
-import { LINE_HEIGHT, partLabel } from '../../lib/canvas-labels';
+import { LINE_HEIGHT, badgeCentre, labelBox, partLabel } from '../../lib/canvas-labels';
 
 /**
  * Konva drawing of the simulation (T020, spec §6.5). Units inside the stage are millimetres in a
@@ -239,6 +239,19 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
   }, [props.time, view.scale]);
 
   const H = sheet.height;
+  // Cut-order badges never cover a part label (T199b): placed once per zoom level.
+  const badges = useMemo(() => {
+    const r = 8 / view.scale;
+    const labels = props.parts.map((p) =>
+      labelBox(p, partLabel({ number: p.label, name: p.name, w: p.w, h: p.h, scale: view.scale })),
+    );
+    return sim.contours.map((c) => badgeCentre(c, r, props.parts, labels));
+  }, [sim.contours, props.parts, view.scale]);
+  const badgeRef = useRef(badges);
+  useEffect(() => {
+    badgeRef.current = badges;
+    pathShape.current?.getLayer()?.batchDraw();
+  }, [badges]);
 
   function drawPath(context: Konva.Context) {
     const ctx = (context as unknown as { _context: CanvasRenderingContext2D })._context;
@@ -396,10 +409,12 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     // Upcoming contours keep a faint badge so the cut order is readable before playing (T196).
-    for (const c of sim.contours) {
+    const badges = badgeRef.current;
+    for (const [i, c] of sim.contours.entries()) {
       ctx.globalAlpha = c.step > last ? 0.45 : 1;
-      const bx = c.x - r * 0.9;
-      const by = H - c.y - r * 0.9;
+      const at = badges[i] ?? { x: c.x - r * 0.9, y: c.y + r * 0.9 };
+      const bx = at.x;
+      const by = H - at.y;
       ctx.beginPath();
       ctx.arc(bx, by, c.n > 99 ? r * 1.25 : r, 0, 2 * Math.PI);
       ctx.fillStyle = colors.badge;
