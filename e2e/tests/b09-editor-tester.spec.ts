@@ -117,6 +117,13 @@ test.describe('B9 tester: editing (T125)', () => {
     await saved(page);
     await expect(page).toHaveURL(/\/projeler\/[0-9a-f-]{36}/);
     await expect(page).toHaveURL(/gorunum=cizim/);
+    // Round 2: a reload reopens Çizim, and another step does not inherit a stale view param.
+    await page.reload();
+    await expect(page.getByTestId('editor-canvas')).toHaveAttribute('data-view', /\d/);
+    await expect(page).toHaveURL(/adim=parcalar/);
+    await goStep(page, 'dizilim');
+    await expect(page).toHaveURL(/adim=dizilim/);
+    expect(page.url()).not.toContain('gorunum=');
   });
 
   test('Ctrl+A, Ctrl+C, Ctrl+V: every copy keeps its offset (+20, −20) to its original', async ({
@@ -222,6 +229,36 @@ test.describe('B9 tester: editing (T125)', () => {
       return ev.defaultPrevented;
     });
     expect(prevented).toBe(false);
+  });
+
+  test('Ctrl+V with an empty board clipboard and Ctrl+D with nothing selected stay native', async ({
+    page,
+  }) => {
+    await openBoard(page);
+    const canvas = page.getByTestId('editor-canvas');
+    await canvas.focus();
+    await page.keyboard.press('Escape');
+    const keys = (list: string[]) =>
+      canvas.evaluate(
+        (el, ks) =>
+          ks.map((key) => {
+            const ev = new KeyboardEvent('keydown', {
+              key,
+              ctrlKey: true,
+              bubbles: true,
+              cancelable: true,
+            });
+            el.dispatchEvent(ev);
+            return ev.defaultPrevented;
+          }),
+        list,
+      );
+    expect(await keys(['v', 'd', 'c'])).toEqual([false, false, false]);
+    await expect(page.getByTestId('editor-part-list').getByRole('button')).toHaveCount(5);
+    // With a selection the board still owns copy and paste.
+    await select(page, 'Raf');
+    expect(await keys(['c', 'v'])).toEqual([true, true]);
+    await expect(page.getByTestId('editor-part-list').getByRole('button')).toHaveCount(6);
   });
 });
 
@@ -386,6 +423,79 @@ test.describe('B9 tester: plate tabs (T199b)', () => {
       for (let i = 0; i < 10; i += 1) await page.mouse.wheel(0, -400);
       await expect(strip).not.toHaveAttribute('data-overflow-start', 'true');
     }
+  });
+
+  async function visibleTabs(strip: Locator) {
+    const sb = await strip.boundingBox();
+    if (!sb) throw new Error('strip box');
+    let visible = 0;
+    for (const tab of await strip.getByRole('tab').all()) {
+      const tb = await tab.boundingBox();
+      if (tb && tb.x >= sb.x - 0.5 && tb.x + tb.width <= sb.x + sb.width + 0.5) visible += 1;
+    }
+    return visible;
+  }
+
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`1440 ${scheme}, both panels open, 10 plates: own tab row, ≥ 3 tabs fully visible`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await openNewProject(page, 'parcalar');
+      await pasteAndNest(page, BIG, 1);
+      await expect(page.getByTestId('layout-panel')).toBeVisible();
+      await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-scale', /[0-9]/);
+      const strip = page.getByTestId('sheet-tabs-scroll');
+      expect(await strip.getByRole('tab').count()).toBeGreaterThanOrEqual(10);
+      const canvasW = (await page.getByTestId('layout-canvas').boundingBox())?.width ?? 0;
+      const visible = await visibleTabs(strip);
+      test
+        .info()
+        .annotations.push({ type: 'tabs', description: `canvas ${canvasW}px, ${visible} visible` });
+      expect(visible).toBeGreaterThanOrEqual(3);
+      // Own row under 768 px of canvas: nothing in the strip's parent shares its vertical band.
+      const overlap = await strip.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const parent = el.parentElement;
+        if (!parent) return -1;
+        return [...parent.children]
+          .filter((c) => c !== el)
+          .map((c) => c.getBoundingClientRect())
+          .filter((b) => b.width > 0 && b.top < r.bottom - 1 && b.bottom > r.top + 1).length;
+      });
+      if (canvasW < 768) expect(overlap).toBe(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await page.screenshot({ path: `__screenshots__/b09-r2-tabs-1440-${scheme}.png` });
+    });
+  }
+
+  test('390: Dizilim tabs: ≥ 2 fully visible, strip inside the viewport, light and dark', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openNewProject(page, 'parcalar');
+    await pasteAndNest(page, BIG, 1);
+    await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-scale', /[0-9]/);
+    const strip = page.getByTestId('sheet-tabs-scroll');
+    const sb = await strip.boundingBox();
+    if (!sb) throw new Error('strip box');
+    expect(sb.x + sb.width).toBeLessThanOrEqual(390 + 0.5);
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.screenshot({ path: `__screenshots__/b09-r2-tabs-390-${scheme}.png` });
+    }
+    const widths = await strip
+      .getByRole('tab')
+      .evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
+    // Each tab carries its waste (≈ 126 px); at 390 two fit fully and the third peeks (scrollable).
+    expect(widths.every((w) => w <= 140)).toBe(true);
+    expect(await visibleTabs(strip)).toBeGreaterThanOrEqual(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
   });
 
   test('390: simulation plate tabs sit on their own row, like Dizilim', async ({ page }) => {
