@@ -59,6 +59,43 @@ test.describe('app shell', () => {
     await expect(page).toHaveTitle(`${tr.machines.title} · NittCam`);
   });
 
+  test('declutter: live items first, Yakında group last, one accent Yeni proje (T194a)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const nav = menu(page);
+    await expect(nav.getByRole('link')).toHaveText([
+      tr.nav.home,
+      tr.nav.machines,
+      tr.nav.projects,
+      tr.nav.create,
+    ]);
+    const soon = nav.getByRole('list', { name: tr.nav.soonGroup });
+    await expect(soon.getByRole('listitem')).toHaveText([tr.nav.templates, tr.nav.settings]);
+    await expect(soon.getByRole('link')).toHaveCount(0);
+    // Exactly one accent-filled "Yeni proje" at 1440 px: the sidebar button.
+    const accent = page
+      .getByRole('link', { name: tr.nav.newProject, exact: true })
+      .filter({ visible: true })
+      .and(page.locator('.bg-accent'));
+    await expect(accent).toHaveCount(1);
+    await expect(accent).toHaveAttribute('data-testid', 'nav-new-project');
+  });
+
+  test('a new project is "Adsız proje…" with the name focused and selected (T194a)', async ({
+    page,
+  }) => {
+    await page.goto('/projeler/yeni');
+    await expect(page.getByTestId('wizard-step-title')).toBeVisible({ timeout: 30_000 });
+    const name = page.getByTestId('project-name');
+    await expect(name).toHaveValue(new RegExp(`^${tr.wizard.defaultName}( \\d+)?$`));
+    await expect(name).toBeFocused();
+    const selected = await name.evaluate((el: HTMLInputElement) =>
+      el.value.slice(el.selectionStart ?? 0, el.selectionEnd ?? 0),
+    );
+    expect(selected).toBe(await name.inputValue());
+  });
+
   test('breadcrumb links back to the parent page', async ({ page }) => {
     await page.goto('/projeler/yeni');
     await expect(page.getByTestId('wizard-step-title')).toBeVisible({ timeout: 30_000 });
@@ -119,6 +156,8 @@ test.describe('app shell', () => {
       await page.goto('/');
       await expect(page.getByTestId('shell-sidebar')).toBeHidden();
       await expect(page.getByTestId('shell-brand-mobile')).toBeVisible();
+      // Below 768 px the sidebar is a drawer, so the page keeps its own "Yeni proje".
+      await expect(page.getByTestId('home-new-project')).toBeVisible();
       await page.getByRole('button', { name: tr.shell.openMenu }).click();
       const drawer = page.getByTestId('shell-drawer');
       await expect(drawer).toBeVisible();

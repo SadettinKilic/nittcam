@@ -2,6 +2,7 @@
 
 import {
   AlertDialog,
+  DOMAIN_ICONS,
   Logo,
   LogoMark,
   AlertDialogAction,
@@ -179,6 +180,19 @@ export function UiGallery({ t }: { t: T }) {
               <span className="rounded-lg bg-accent p-4 text-accent-fg">
                 <Logo size={24} tone="mono" />
               </span>
+            </Row>
+            <Row label={t.brand.icons}>
+              {[16, 20, 24].map((size) => (
+                <span
+                  key={size}
+                  className="flex items-center gap-3 text-fg"
+                  data-testid="gallery-icons"
+                >
+                  {Object.entries(DOMAIN_ICONS).map(([name, Icon]) => (
+                    <Icon key={name} size={size} aria-label={name} />
+                  ))}
+                </span>
+              ))}
             </Row>
             <Row label={t.brand.clearSpace}>
               <span className="rounded-md p-3 outline-1 outline-border-strong outline-dashed">

@@ -92,7 +92,9 @@ test.describe('T106 home dashboard', () => {
       Number(await page.getByTestId('stat-projects').locator('p').first().innerText()),
     ).toBeGreaterThanOrEqual(2);
     await expect(page.getByTestId('stat-machines')).toContainText(/\d+ \/ \d+/);
-    await expect(page.getByTestId('stat-waste')).toContainText(t.stats.soon);
+    // T194a: the placeholder waste KPI is hidden until it has data.
+    await expect(page.getByTestId('stat-waste')).toHaveCount(0);
+    await expect(page.getByTestId('home-start')).toHaveCount(0);
 
     // Section header links stay on the heading's line (no wrap under the title).
     for (const [heading, link] of [

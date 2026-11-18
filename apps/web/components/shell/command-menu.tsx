@@ -11,13 +11,13 @@ import {
   CommandLoading,
   CommandShortcut,
   Kbd,
+  RouterIcon,
   type ThemeChoice,
 } from '@nittcam/ui';
 import {
   FileText,
   FolderKanban,
   House,
-  Drill,
   Keyboard,
   Monitor,
   Moon,
@@ -25,9 +25,8 @@ import {
   Plus,
   SunMoon,
   Sun,
-  type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import type { Messages } from '../../lib/messages';
 import type { ProjectListItem } from '../../lib/projects-api';
 import { NEW_PROJECT_HREF } from '../../lib/shell-nav';
@@ -64,7 +63,7 @@ function PaletteItem({
   then,
 }: {
   value: string;
-  icon: LucideIcon;
+  icon: ComponentType<{ 'aria-hidden'?: boolean }>;
   keywords?: string;
   shortcut?: ShortcutId;
   onSelect: () => void;
@@ -172,7 +171,7 @@ export function CommandMenu({
           <PaletteItem
             then={t.shortcuts.then}
             value={t.nav.machines}
-            icon={Drill}
+            icon={RouterIcon}
             keywords={p.keywords.machines}
             shortcut="goMachines"
             onSelect={() => run(() => actions.navigate('/makineler'))}

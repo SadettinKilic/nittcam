@@ -1,8 +1,15 @@
 'use client';
 
-import { Badge, Button, Logo, TooltipContent, TooltipRoot, TooltipTrigger, cn } from '@nittcam/ui';
 import {
-  Drill,
+  Button,
+  Logo,
+  RouterIcon,
+  TooltipContent,
+  TooltipRoot,
+  TooltipTrigger,
+  cn,
+} from '@nittcam/ui';
+import {
   FolderKanban,
   House,
   LayoutTemplate,
@@ -11,11 +18,10 @@ import {
   PencilRuler,
   Plus,
   Settings,
-  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useId, type ComponentType, type ReactNode } from 'react';
 import type { Messages } from '../../lib/messages';
 import { NAV_ITEMS, NEW_PROJECT_HREF, isNavActive, type NavKey } from '../../lib/shell-nav';
 
@@ -26,9 +32,9 @@ export type ShellText = {
   shortcuts: Messages['shortcuts'];
 };
 
-const ICONS: Record<NavKey, LucideIcon> = {
+const ICONS: Record<NavKey, ComponentType<{ className?: string; 'aria-hidden'?: boolean }>> = {
   home: House,
-  machines: Drill,
+  machines: RouterIcon,
   projects: FolderKanban,
   templates: LayoutTemplate,
   create: PencilRuler,
@@ -36,6 +42,12 @@ const ICONS: Record<NavKey, LucideIcon> = {
 };
 
 const noop = () => {};
+
+const row = cn(
+  'group flex h-control-md items-center gap-3 rounded-md px-2.5 text-sm whitespace-nowrap',
+  'transition-colors duration-(--duration-fast) ease-out',
+  'rail-collapsed:justify-center rail-collapsed:px-0',
+);
 
 const focus =
   'outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
@@ -115,6 +127,9 @@ export function SidebarContent({
   footer,
 }: SidebarContentProps) {
   const pathname = usePathname();
+  const soonId = useId();
+  const live = NAV_ITEMS.filter((i) => i.href);
+  const soon = NAV_ITEMS.filter((i) => !i.href);
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-14 shrink-0 items-center px-4 rail-collapsed:justify-center rail-collapsed:px-0">
@@ -147,43 +162,24 @@ export function SidebarContent({
         </RailTip>
       </div>
 
-      <nav aria-label={t.nav.label} className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+      <nav
+        aria-label={t.nav.label}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3"
+      >
         <ul className="flex flex-col gap-0.5">
-          {NAV_ITEMS.map(({ key, href }) => {
+          {live.map(({ key, href }) => {
             const Icon = ICONS[key];
-            const row = cn(
-              'group flex h-control-md items-center gap-3 rounded-md px-2.5 text-sm whitespace-nowrap',
-              'transition-colors duration-(--duration-fast) ease-out',
-              'rail-collapsed:justify-center rail-collapsed:px-0',
-              focus,
-            );
-            if (!href) {
-              return (
-                <li key={key}>
-                  <RailTip label={`${t.nav[key]} (${t.nav.soon})`} show={collapsed}>
-                    <span aria-disabled="true" className={cn(row, 'cursor-default text-fg-muted')}>
-                      <Icon className="size-4 shrink-0" aria-hidden />
-                      <span className="flex min-w-0 flex-1 items-center gap-2 rail-collapsed:sr-only">
-                        <span className="truncate">{t.nav[key]}</span>
-                        <Badge variant="neutral" className="ml-auto">
-                          {t.nav.soon}
-                        </Badge>
-                      </span>
-                    </span>
-                  </RailTip>
-                </li>
-              );
-            }
             const active = isNavActive(key, pathname);
             return (
               <li key={key}>
                 <RailTip label={t.nav[key]} show={collapsed}>
                   <Link
-                    href={href}
+                    href={href ?? '/'}
                     onClick={onNavigate}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
                       row,
+                      focus,
                       active
                         ? 'bg-surface-active font-medium text-fg'
                         : 'text-fg-muted hover:bg-surface-hover hover:text-fg',
@@ -203,6 +199,35 @@ export function SidebarContent({
             );
           })}
         </ul>
+        {/* Not built yet: a muted group at the bottom, not between live items (T194a). */}
+        {soon.length > 0 ? (
+          <div className="mt-auto flex flex-col gap-0.5 pt-6" data-testid="nav-soon">
+            <p
+              id={soonId}
+              className="px-2.5 pb-1 text-2xs font-medium tracking-wide text-fg-subtle uppercase rail-collapsed:sr-only"
+            >
+              {t.nav.soonGroup}
+            </p>
+            <ul aria-labelledby={soonId} className="flex flex-col gap-0.5">
+              {soon.map(({ key }) => {
+                const Icon = ICONS[key];
+                return (
+                  <li key={key}>
+                    <RailTip label={`${t.nav[key]} (${t.nav.soon})`} show={collapsed}>
+                      <span
+                        aria-disabled="true"
+                        className={cn(row, 'h-control-sm cursor-default text-fg-subtle')}
+                      >
+                        <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
+                        <span className="truncate rail-collapsed:sr-only">{t.nav[key]}</span>
+                      </span>
+                    </RailTip>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
       </nav>
       <WorkspaceRow t={t} company={company} collapsed={collapsed} />
       {footer}

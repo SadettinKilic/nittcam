@@ -7,7 +7,8 @@ import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
-import type { ProjectDetail } from '../../lib/projects-api';
+import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
+import { untitledName } from '../../lib/untitled-name';
 import { CutListEditor } from '../parts/cut-list-editor';
 import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
@@ -166,11 +167,15 @@ export function ProjectWizard({
           if (first) {
             firstDetail = (await getJson<MachineDetail>(`/api/machines/${first.id}`)).body;
           }
-          const date = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+          // "Adsız proje" + counter (T194a); a failed list only drops the counter.
+          const names = await getJson<ProjectListItem[]>('/api/projects').then(
+            (r) => (r.body ?? []).map((p) => p.name),
+            () => [],
+          );
           init = {
             id: null,
             revision: 0,
-            name: fill(t.defaultName, { date: date.format(new Date()) }),
+            name: untitledName(t.defaultName, names),
             project: newProject(firstDetail ?? undefined),
           };
         }
@@ -532,7 +537,12 @@ function WizardSession({
   return (
     <main className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-[96rem] min-w-0 flex-col gap-5 px-4 pt-5 sm:px-6 lg:px-8">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <NameField label={t.nameLabel} value={session.name} onCommit={session.rename} />
+        <NameField
+          label={t.nameLabel}
+          value={session.name}
+          onCommit={session.rename}
+          autoSelect={session.projectId === null && step === 'makine'}
+        />
         <div className="flex items-center gap-1">
           <ShellStatus>
             <Badge
@@ -780,12 +790,23 @@ function NameField({
   label,
   value,
   onCommit,
+  autoSelect = false,
 }: {
   label: string;
   value: string;
   onCommit: (name: string) => void;
+  /** New project on step 1: focus and select the suggested name once (T194a). */
+  autoSelect?: boolean;
 }) {
   const [text, setText] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const selectOnMount = useRef(autoSelect);
+  useEffect(() => {
+    if (!selectOnMount.current) return;
+    selectOnMount.current = false;
+    input.current?.focus();
+    input.current?.select();
+  }, []);
   function commit() {
     if (text === null) return;
     const name = text.trim();
@@ -796,6 +817,7 @@ function NameField({
     <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:min-w-64">
       <span className="px-2 text-xs font-medium text-fg-subtle">{label}</span>
       <input
+        ref={input}
         type="text"
         data-testid="project-name"
         value={text ?? value}
