@@ -52,6 +52,8 @@ export interface LayoutCanvasProps {
    * ≤ 240 ms in total; 0 or reduced motion = no animation.
    */
   appearKey?: number;
+  /** Stage drag pans the view (off on an un-zoomed touch canvas so the page can scroll, T198). */
+  pannable?: boolean;
 }
 
 const SheetLayer = memo(function SheetLayer({
@@ -352,7 +354,7 @@ export default function LayoutCanvas(props: LayoutCanvasProps) {
       scaleY={view.scale}
       x={view.x}
       y={view.y}
-      draggable
+      draggable={props.pannable ?? true}
       onMouseDown={(e) => {
         if (e.target === e.target.getStage()) props.onSelect(null);
       }}

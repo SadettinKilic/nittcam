@@ -63,6 +63,15 @@ Look: modern, calm, corporate (Linear / Vercel class). Neutral graphite surfaces
 - Menu (T194a): live items Ana sayfa, Makineler, Projeler, Oluştur (kept until FQ4 is answered) and a prominent "+ Yeni proje" at the top; items not built yet (Şablonlar, Ayarlar) in a muted "Yakında" group at the bottom, never between live items. One accent-filled "Yeni proje" per screen (the sidebar one; pages repeat it only below 768 px). Domain icons (`RouterIcon`, `SheetIcon`, `GrainIcon`, `NestingIcon`, `ToolpathIcon`, `AirCutIcon` from `@nittcam/ui`, lucide-compatible) for CNC concepts; never the chip/drill icon for a machine. UI text says "dışa aktarma", not "export".
 - Visual QA: `pnpm e2e:visual` (Playwright `visual` project, 1440×900 and 390×844, light + dark, `snap()` and `expectNoA11yViolations()` from `e2e/tests/visual/helpers.ts`).
 
+## Notices (T199, Fable review #1)
+- **danger** = blocks the action or risks the machine now; **warning** = needs the operator's confirmation once; **info** = context. At most one `Callout` per screen region; a repeated notice becomes a status chip that opens the detail in a popover (keyboard reachable).
+- The unverified-profile notice is one `warning` chip in the wizard header on every step (`ProfileStatusChip`: sentence, reasons and the Doğrulama link in its popover). The export step keeps its full notice and the mandatory acknowledgement (tone `warning`, amber); the G-code header warning never changes. Never delete a safety sentence: move it behind one click.
+
+## Workspace (T197, T198) and canvas language (T196)
+- Dizilim and Simülasyon use `WorkspaceLayout` (`apps/web/components/wizard/workspace-layout.tsx`): slots `left` (300 px settings, compact density), `canvas`, `right` (280 px inspector), `canvasOverlay` (floating: plate tabs top-left, zoom/fit/grid top-right, legend popover bottom-left, cursor/scale bottom-right), `canvasFooter` (simulation transport + depth strip), `compactAction`. From 1024 px the page does not scroll; panels scroll inside. The drawing board (T124) and 3D preview plug into the same slots.
+- Below 1024 px: canvas first (≥ 55 % of the viewport), panels as bottom sheets from an "Ayarlar" / "Parça" bar (an icon rail from 768 px); the main action (`compactAction`, e.g. "Diz") stays beside them. Canvas touch: `canvasTouchClass(zoomed)` from `lib/use-media-query.ts` (pan-y while not zoomed, none when zoomed; pinch is always the canvas's).
+- Canvas labels via `partLabel()` (`lib/canvas-labels.ts`: number + name + W × H → number → nothing, never overflowing); sheet dimensions on the top/left edges in mono, origin marker, scale bar; simulation shows the whole path as a ghost at t = 0.
+
 ## App shell (B2, T103–T105)
 - Every page renders inside `AppShell` (`apps/web/components/shell/`): sidebar (224 px, collapsible, state remembered), sticky top bar (breadcrumb + title), drawer below 768 px, skip link. Pages render their own `<main>` inside `#content`.
 - Top-bar slots from a page: `<ShellActions>` (page actions), `<ShellStatus>` (save status, e.g. the wizard autosave) and `useShellTitle(title)` (last breadcrumb, e.g. the project name) from `shell-context.tsx`.

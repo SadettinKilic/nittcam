@@ -91,6 +91,8 @@ test.describe('T020 tester: simulation UX', () => {
       `kitchen: tabs=${await summaryNum(page, 'tabs')} passes=${await summaryNum(page, 'passes')}`,
     );
     expect(await summaryNum(page, 'passes')).toBeGreaterThan(0);
+    // T197: the legend is a popover on the canvas (bottom-left).
+    await page.getByTestId('sim-legend-button').click();
     await expect(page.getByText(s.legend.cut, { exact: true })).toBeVisible();
     await expect(page.getByText(s.legend.depthTop)).toBeVisible();
     await expect(page.getByText(s.legend.tabMarker)).toBeVisible();

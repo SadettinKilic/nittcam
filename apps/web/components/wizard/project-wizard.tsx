@@ -23,6 +23,7 @@ import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
 import { MachineFields, SheetPreview } from './machine-step';
+import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ValidationPanel } from './validation-panel';
 import {
   STEPS,
@@ -445,6 +446,8 @@ function WizardSession({
   let left: ReactNode = null;
   let right: ReactNode = null;
   let both: ReactNode = null;
+  // Dizilim and Simülasyon are canvas-first workspaces that fill the viewport (T197).
+  const workspace = step === 'dizilim' || step === 'simulasyon';
   if (step === 'makine') {
     left = (
       <div className="flex min-w-0 flex-col gap-4">
@@ -495,11 +498,9 @@ function WizardSession({
       />
     );
   } else if (step === 'simulasyon') {
-    left = (
-      <aside className="flex min-w-0 flex-col gap-4 2xl:sticky 2xl:top-20">{validation}</aside>
-    );
-    right = (
+    both = (
       <SimulationView
+        left={validation}
         t={messages.simulation}
         project={project}
         machine={simMachine}
@@ -556,68 +557,88 @@ function WizardSession({
   const nextKey = STEPS[index + 1];
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-[96rem] min-w-0 flex-col gap-5 px-4 pt-5 sm:px-6 lg:px-8">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <NameField
-          label={t.nameLabel}
-          value={session.name}
-          onCommit={session.rename}
-          autoSelect={session.projectId === null && step === 'makine'}
-        />
-        <div className="flex items-center gap-1">
-          <ShellStatus>
-            <Badge
-              dot
-              variant={
-                session.saveState === 'error' || session.saveState === 'conflict'
-                  ? 'danger'
-                  : session.saveState === 'saved' ||
-                      (session.saveState === 'idle' && session.projectId)
-                    ? 'success'
-                    : 'neutral'
-              }
-              aria-live="polite"
-              title={t.save.label}
-              data-testid="save-status"
-              data-state={session.saveState}
-              data-revision={session.revision}
-            >
-              {saveText}
-            </Badge>
-          </ShellStatus>
-          <Tooltip content={messages.cutList.undo}>
-            <IconButton
-              aria-label={messages.cutList.undo}
-              variant="ghost"
-              onClick={session.undo}
-              disabled={!session.canUndo}
-              aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
-            >
-              <Undo2 aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={messages.cutList.redo}>
-            <IconButton
-              aria-label={messages.cutList.redo}
-              variant="ghost"
-              onClick={session.redo}
-              disabled={!session.canRedo}
-              aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
-            >
-              <Redo2 aria-hidden />
-            </IconButton>
-          </Tooltip>
-        </div>
-      </header>
+    <main
+      data-workspace={workspace ? '' : undefined}
+      className={`mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col gap-5 px-4 pt-5 sm:px-6 lg:px-8 ${workspace ? 'max-w-none lg:h-[calc(100dvh-3.5rem)] lg:gap-3 lg:overflow-hidden lg:pt-3' : 'max-w-[96rem]'}`}
+    >
+      {/* One header row on ≥ 1400 px (T197; narrower screens would squeeze the stepper): project name, stepper, undo/redo. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-5 min-[1400px]:flex-nowrap min-[1400px]:items-center">
+        <header className="contents">
+          <NameField
+            label={t.nameLabel}
+            value={session.name}
+            onCommit={session.rename}
+            autoSelect={session.projectId === null && step === 'makine'}
+          />
+          <div className="order-2 flex items-center gap-1 min-[1400px]:order-3">
+            {simMachine ? (
+              <ProfileStatusChip
+                t={t.profileStatus}
+                detail={t.machine.unverified}
+                reasons={profileReasons({
+                  verification: simMachine.pv.verification,
+                  example: simMachine.pv.profile.example,
+                })}
+                reasonText={t.export.reasons}
+                machineId={simMachine.id}
+              />
+            ) : null}
+            <ShellStatus>
+              <Badge
+                dot
+                variant={
+                  session.saveState === 'error' || session.saveState === 'conflict'
+                    ? 'danger'
+                    : session.saveState === 'saved' ||
+                        (session.saveState === 'idle' && session.projectId)
+                      ? 'success'
+                      : 'neutral'
+                }
+                aria-live="polite"
+                title={t.save.label}
+                data-testid="save-status"
+                data-state={session.saveState}
+                data-revision={session.revision}
+              >
+                {saveText}
+              </Badge>
+            </ShellStatus>
+            <Tooltip content={messages.cutList.undo}>
+              <IconButton
+                aria-label={messages.cutList.undo}
+                variant="ghost"
+                onClick={session.undo}
+                disabled={!session.canUndo}
+                aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
+              >
+                <Undo2 aria-hidden />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content={messages.cutList.redo}>
+              <IconButton
+                aria-label={messages.cutList.redo}
+                variant="ghost"
+                onClick={session.redo}
+                disabled={!session.canRedo}
+                aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
+              >
+                <Redo2 aria-hidden />
+              </IconButton>
+            </Tooltip>
+          </div>
+        </header>
 
-      <StepIndicator
-        t={t.steps}
-        headingRef={heading}
-        current={step}
-        statuses={wizardStepStatuses(step, progress)}
-        progress={progress}
-        onGo={go}
-      />
+        <div className="order-3 w-full min-w-0 min-[1400px]:order-2 min-[1400px]:w-auto min-[1400px]:flex-1">
+          <StepIndicator
+            t={t.steps}
+            headingRef={heading}
+            current={step}
+            statuses={wizardStepStatuses(step, progress)}
+            progress={progress}
+            onGo={go}
+          />
+        </div>
+      </div>
 
       {session.saveState === 'conflict' ? (
         <ConflictNotice
@@ -645,7 +666,13 @@ function WizardSession({
         <p className="-mt-2 max-w-prose text-sm text-fg-muted">{messages.cutList.subtitle}</p>
       ) : null}
 
-      <div className={`grid min-w-0 items-start gap-5 ${GRID[step]}`}>
+      <div
+        className={
+          workspace
+            ? 'min-w-0 lg:min-h-0 lg:flex-1'
+            : `grid min-w-0 items-start gap-5 ${GRID[step]}`
+        }
+      >
         {both ?? (
           <>
             <div className={`min-w-0 ${LEFT_ORDER[step]}`}>{left}</div>
@@ -658,7 +685,7 @@ function WizardSession({
         aria-label={t.steps.label}
         data-testid="wizard-footer"
         data-wizard-footer=""
-        className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+        className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
       >
         <div className="flex items-center justify-between gap-3">
           <Button
@@ -815,7 +842,7 @@ function StepIndicator({
                     )}
                   </span>
                   <span
-                    className={`${active ? 'font-semibold text-fg' : status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} ${active ? 'sr-only' : 'sr-only whitespace-nowrap xl:not-sr-only'}`}
+                    className={`${active ? 'font-semibold text-fg' : status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} ${active ? 'sr-only' : 'sr-only whitespace-nowrap xl:not-sr-only min-[1400px]:sr-only min-[1680px]:not-sr-only'}`}
                   >
                     {t[s]}
                   </span>

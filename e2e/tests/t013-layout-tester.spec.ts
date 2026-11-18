@@ -134,14 +134,15 @@ test.describe('T013 tester: margin edge', () => {
     const right = SHEET.width - MARGIN - before.w; // 1990: exact right usable limit
     await page.getByTestId('layout-canvas').scrollIntoViewIfNeeded();
 
-    // 1) drop clearly inside the right margin band (right edge ~8 mm past the limit)
-    await dragTopTo(page, before, right + 8, 900);
+    // 1) drop inside the right margin band (right edge ~5 mm past the limit: mid-band, so one
+    //    screen pixel of rounding on the T197 workspace canvas still lands in the band)
+    await dragTopTo(page, before, right + 5, 900);
     await expect(message(page)).toHaveAttribute('role', 'alert');
     await expect(message(page)).toContainText(fill(l.drop.inMargin, { margin: MARGIN }));
     expect(await info(page, TOP)).toEqual(before);
 
     // 2) drop just inside the usable area: accepted and locked
-    await dragTopTo(page, before, right - 8, 900);
+    await dragTopTo(page, before, right - 6, 900);
     await expect(message(page)).toContainText('kilitlendi');
     const inside = await info(page, TOP);
     expect(inside.locked).toBe(true);

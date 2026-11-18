@@ -301,11 +301,6 @@ function Ready({
   return (
     <div className="flex flex-col gap-6">
       <Stepper state={data.state} t={t} />
-      {data.state === 'reverify_needed' ? (
-        <Callout tone="warning" icon={<CircleAlert />}>
-          {t.reverifyNote}
-        </Callout>
-      ) : null}
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
@@ -315,7 +310,13 @@ function Ready({
 
         <aside className="flex min-w-0 flex-col gap-6">
           {data.unverifiedReasons.length > 0 ? (
+            // T199: one warning region; the re-verify note joins the reasons instead of a second box.
             <Callout tone="warning" icon={<CircleAlert />} testId="verification-reasons">
+              {data.state === 'reverify_needed' ? (
+                <p className="mb-2" data-testid="verification-reverify">
+                  {t.reverifyNote}
+                </p>
+              ) : null}
               <p className="font-medium">{t.stillWarned}</p>
               <ul className="mt-1 list-disc pl-5">
                 {data.unverifiedReasons.map((r: UnverifiedReason) => (
@@ -400,7 +401,8 @@ function ProgramFiles({
   return (
     <div className="flex flex-col gap-3">
       {needsAccept ? (
-        <div className="flex items-start gap-3 rounded-lg border border-warning-border bg-warning-subtle p-3">
+        // T199: a plain row; the warning itself is the reasons panel next to the steps.
+        <div className="flex items-start gap-3 py-1">
           <Checkbox
             id={acceptId}
             data-testid={acceptId}
@@ -408,7 +410,7 @@ function ProgramFiles({
             onCheckedChange={(v) => setAccepted(v === true)}
             className="mt-0.5"
           />
-          <Label htmlFor={acceptId} className="font-normal text-warning-text">
+          <Label htmlFor={acceptId} className="font-normal text-fg">
             {t.acceptDownload}
           </Label>
         </div>

@@ -219,7 +219,7 @@ Acceptance:
 - [ ] "Diz" result: parts fade/settle in (≤ 240 ms total, staggered, off with reduced motion); utilisation shown as a thin bar per plate tab (accent fill, `warning` under 50 %)
 Tester focus: screenshots layout + simulation, light/dark, 1440/390; label fallback at 3 zoom levels; contrast test; reduced-motion run has no animation; golden files untouched (UI only).
 
-### T197 Workspace layout for Dizilim and Simülasyon (desktop)   [status: todo]
+### T197 Workspace layout for Dizilim and Simülasyon (desktop)   [status: review]
 Spec: §3.6 · Depends: T109, T195
 Acceptance:
 - [ ] `WorkspaceLayout` in `apps/web/components/wizard/`: left settings panel (300 px, collapsible, compact density), centre canvas that **fills the remaining viewport height** (no page scroll at ≥ 1024 px on steps 3 and 4; panels scroll inside themselves), right inspector (280 px, collapsible) for the selected part / G-code
@@ -229,7 +229,7 @@ Acceptance:
 - [ ] this layout is the base the drawing board (T124) and 3D preview (T152, T160) plug into: exported with slots `left`, `canvas`, `right`, `canvasOverlay`
 Tester focus: at 1440 × 900 and 1024 × 768 the whole sheet is visible without scrolling on steps 3 and 4; panels collapse/expand with keyboard; existing layout/simulation e2e (drag, lock, play) stay green; axe.
 
-### T198 Workspace on phone and tablet: canvas first   [status: todo]
+### T198 Workspace on phone and tablet: canvas first   [status: review]
 Spec: §3.7 · Depends: T197
 Acceptance:
 - [ ] below 1024 px steps 3 and 4 show the **canvas first** (≥ 55 % of the viewport height), with settings and inspector as bottom sheets opened from a two-button bar ("Ayarlar", "Parça / G-code"); "Diz" stays reachable without scrolling
@@ -238,7 +238,7 @@ Acceptance:
 - [ ] 768 px (tablet, landscape and portrait) checked as a first-class size: left panel collapses to an icon rail
 Tester focus: touch emulation at 390 × 844 and 768 × 1024: nest, select a part, play the simulation without scrolling past settings; nothing hidden behind the footer; visual both themes.
 
-### T199 Notice hierarchy: fewer, calmer warnings   [status: todo]
+### T199 Notice hierarchy: fewer, calmer warnings   [status: review]
 Spec: §7.4, §8.2 · Depends: T105, T108 · Owner: FQ3
 Acceptance:
 - [ ] one rule, documented in `ui-conventions`: **danger** = blocks the action or risks the machine now; **warning** = needs the operator's confirmation once; **info** = context. At most one Callout per screen region; repeats become a status chip that opens the detail in a popover
@@ -247,6 +247,13 @@ Acceptance:
 - [ ] no safety text is removed: every sentence that exists today is still reachable in one click, and the G-code header warning is unchanged
 Tester focus: **safety**: an unverified profile still cannot be downloaded without the acknowledgement; every previous warning sentence is found in the UI (string list from `tr.json`); callouts per screen region ≤ 1; axe (popover reachable by keyboard).
 
+
+### T199a CI gap: missing visual baselines fail   [status: review]
+Depends: T102 · Owner: PO request 2026-11-18 (B4a lost hours to flaky captures)
+Acceptance:
+- [ ] in CI a missing or changed baseline fails (`updateSnapshots: 'none'`); the actual images are copied into the `visual-screenshots` artefact as candidate baselines (`tools/ci/visual-candidates.mjs`), so the baseline-refresh workflow stays; locally (or `VISUAL_UPDATE=missing`) missing ones are still written
+- [ ] `settle()` makes captures deterministic: network idle, fonts, no pending autosave, canvases sized, transitions/animations frozen, page scrolled to 0,0
+Tester focus: a deleted baseline makes the CI visual job red and the artefact holds the candidate; commit the Linux baselines from the artefact.
 ---
 
 ## M4 early: Çizim tahtası temeli, B9–B10 (moved before M3; D-035 amendment 2026-11-18)

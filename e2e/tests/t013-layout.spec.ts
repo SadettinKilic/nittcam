@@ -158,7 +158,10 @@ test.describe('T013 layout view', () => {
     await expect(page.getByTestId('layout-summary')).toContainText('Plaka 1: 8 parça');
     await expect(page.getByTestId('layout-summary')).toContainText(/Toplam: 1 plaka, fire %[\d,]+/);
     await expect(page.getByTestId('nesting-waste')).toHaveText(/^%\d+(,\d)?$/);
+    // T197: the legend is a popover on the canvas (bottom-left).
+    await page.getByTestId('layout-legend-button').click();
     await expect(page.getByText(l.legend.waste)).toBeVisible();
+    await page.keyboard.press('Escape');
     await pickOption(page.getByTestId('layout-select'), '1.1 · Yan dikme');
     await expect(page.getByTestId('layout-info-grain')).toHaveText(l.info.grainYes);
     await expect(page.getByTestId('layout-info-size')).toHaveText('300 × 1.800 mm');
@@ -179,8 +182,11 @@ test.describe('T013 layout view', () => {
     await expect(page.getByTestId('layout-message')).toContainText('kilitlendi');
     const after = await info(page, TOP);
     expect(after.locked).toBe(true);
-    expect(Math.abs(after.x - spot.x)).toBeLessThanOrEqual(2);
-    expect(Math.abs(after.y - spot.y)).toBeLessThanOrEqual(2);
+    // One screen pixel is 1/scale mm; the workspace canvas (T197) can be narrower than before.
+    const scale = Number(await page.getByTestId('layout-canvas').getAttribute('data-scale'));
+    const tol = Math.max(2, 1.5 / scale);
+    expect(Math.abs(after.x - spot.x)).toBeLessThanOrEqual(tol);
+    expect(Math.abs(after.y - spot.y)).toBeLessThanOrEqual(tol);
     expect(Number.isInteger(after.x) && Number.isInteger(after.y)).toBe(true);
     await page.screenshot({ path: '__screenshots__/t013-surukle-kilitle.png', fullPage: true });
 
@@ -325,7 +331,8 @@ test.describe('T013 layout view', () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    await page.getByRole('heading', { name: l.title }).scrollIntoViewIfNeeded();
+    // T198: canvas first on phones; the title lives in the inspector bottom sheet.
+    await page.getByTestId('layout-canvas').scrollIntoViewIfNeeded();
     await page.screenshot({ path: '__screenshots__/t013-mobil-dizilim.png' });
   });
 

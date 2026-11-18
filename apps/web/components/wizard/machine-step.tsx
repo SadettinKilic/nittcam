@@ -16,7 +16,6 @@ import { fill } from '../../lib/draft-project';
 import { fillRich } from '../../lib/fill-rich';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
-import { TriangleAlert } from 'lucide-react';
 import { focusRing } from '../page/page-header';
 import {
   Measure,
@@ -31,7 +30,7 @@ import {
 } from '@nittcam/ui';
 import { NumberField } from './number-field';
 
-import { Callout, canvasWellClass } from './panels';
+import { canvasWellClass } from './panels';
 
 type Text = Messages['wizard']['machine'];
 type MaterialText = Messages['materials'];
@@ -130,11 +129,7 @@ export function MachineFields({
             })}
           </p>
         ) : null}
-        {detail && (detail.state !== 'verified' || detail.profile.example) ? (
-          <Callout tone="warning" icon={<TriangleAlert aria-hidden />} className="text-xs">
-            <p>{t.unverified}</p>
-          </Callout>
-        ) : null}
+        {/* T199: the unverified-profile notice is the header chip (ProfileStatusChip). */}
         {detail && known && detail.version !== project.machine.profileVersion ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-info-border bg-info-subtle px-3 py-2 text-xs text-info-text">
             <span>

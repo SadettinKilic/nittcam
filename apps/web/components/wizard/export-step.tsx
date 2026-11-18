@@ -387,7 +387,7 @@ export function ExportStep({
 
         {preview?.ok && preview.needsAcceptance ? (
           <Callout
-            tone="danger"
+            tone="warning"
             role="alert"
             data-testid="export-unverified"
             icon={<ShieldAlert aria-hidden />}
@@ -411,13 +411,13 @@ export function ExportStep({
                 {t.unverifiedLink}
               </Link>
             ) : null}
-            <div className="mt-1 flex items-start gap-2.5 rounded-lg border border-danger-border bg-surface px-3 py-2.5 font-medium text-fg">
+            <div className="mt-1 flex items-start gap-2.5 rounded-lg border border-warning-border bg-surface px-3 py-2.5 font-medium text-fg">
               <Checkbox
                 id={acceptId}
                 data-testid="export-accept"
                 checked={f.accepted}
                 onCheckedChange={(v) => update({ accepted: v === true })}
-                className="mt-0.5 data-[state=checked]:border-danger data-[state=checked]:bg-danger data-[state=checked]:text-danger-fg"
+                className="mt-0.5 data-[state=checked]:border-warning data-[state=checked]:bg-warning data-[state=checked]:text-warning-fg"
               />
               <label htmlFor={acceptId} className="cursor-pointer">
                 {t.accept}

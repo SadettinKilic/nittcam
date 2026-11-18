@@ -566,6 +566,20 @@
     }
   },
   "layout": {
+    "workspace": {
+      "left": "Ayarlar",
+      "right": "Parça",
+      "collapseLeft": "Ayarları gizle",
+      "expandLeft": "Ayarları göster",
+      "collapseRight": "Parça panelini gizle",
+      "expandRight": "Parça panelini göster",
+      "openLeft": "Ayarlar",
+      "openRight": "Parça",
+      "close": "Kapat"
+    },
+    "legendButton": "Açıklama",
+    "cursor": "İmleç",
+    "scale": "Ölçek",
     "title": "Plaka yerleşimi",
     "help": "Bir parçayı seçip sürükleyerek yerini değiştirin; bıraktığınız yer uygunsa parça oraya kilitlenir. Kilitli parçalara \"Yeniden diz\" dokunmaz.",
     "canvasLabel": "Plaka {n} dizilimi: {count} parça. Seçili parçayı ok tuşlarıyla 1 mm (Shift ile 10 mm) kaydırın, Enter ile uygulayın, Esc ile vazgeçin.",
@@ -626,6 +640,18 @@
     "empty": "Dizilim yok."
   },
   "simulation": {
+    "legendButton": "Açıklama",
+    "workspace": {
+      "left": "Ayarlar ve uyarılar",
+      "right": "G-code",
+      "collapseLeft": "Ayarları gizle",
+      "expandLeft": "Ayarları göster",
+      "collapseRight": "G-code panelini gizle",
+      "expandRight": "G-code panelini göster",
+      "openLeft": "Ayarlar",
+      "openRight": "G-code",
+      "close": "Kapat"
+    },
     "open": "Simülasyona geç →",
     "title": "Simülasyon",
     "subtitle": "Üretilen G-code bağımsız okuyucuyla geri okunup çizilir: makinenin gerçekte yapacağını görürsünüz.",
@@ -908,6 +934,10 @@
     "unknown": "{id} (tanınmayan malzeme)"
   },
   "wizard": {
+    "profileStatus": {
+      "chip": "Profil doğrulanmadı",
+      "verify": "Makine doğrulama: air cut ve test kesimi"
+    },
     "titleNew": "Yeni proje",
     "nameLabel": "Proje adı",
     "defaultName": "Adsız proje",
