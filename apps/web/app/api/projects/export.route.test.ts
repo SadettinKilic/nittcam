@@ -42,7 +42,7 @@ async function nestedProject(over: (p: Project) => Project = (p) => p): Promise<
   const set = m.profile.materials[0];
   if (!set) throw new Error('no material set');
   let p: Project = over({
-    schemaVersion: 1,
+    schemaVersion: 2,
     machine: { machineId: m.machine.id, profileVersion: m.version.version },
     stock: {
       material: set.material,
@@ -272,6 +272,86 @@ describe('POST /api/projects/:id/export', () => {
 
     for (const d of [d1, d2]) expect(await scope.exports.listForProject(d.id)).toEqual([]);
     expect(await companyStorage(scope.companyId).list('exports/')).toEqual(before);
+  });
+
+  it('a locked copy its grain does not allow → 422 LOCKED_PLACEMENT_GRAIN, nothing stored', async () => {
+    const scope = await companyScope();
+    // Fixed grain 0 on a grain-0 sheet allows rot 0/180; one copy is locked at 90 (as after a
+    // grain change, D-034 amendment).
+    const bad = await nestedProject((p) => p);
+    const kapak = bad.parts.find((x) => x.id === 'kapak');
+    if (!kapak) throw new Error('kapak missing');
+    const regrained: Project = {
+      ...bad,
+      parts: bad.parts.map((x) =>
+        x.id === 'kapak' ? { ...x, grain: { mode: 'fixed' as const, angle: 0 } } : x,
+      ),
+      layout: {
+        sheets: bad.layout.sheets.map((s, si) => ({
+          placements: s.placements.map((pl) => {
+            if (si !== 0 || pl.partId !== 'kapak' || pl.index !== 0) return pl;
+            return { ...pl, rot: 90, locked: true };
+          }),
+        })),
+      },
+    };
+    const d = await createProject('Damar kilidi', regrained);
+    const pre = await preview(new Request(`http://test/x?revision=1`), ctx({ id: d.id }));
+    const pv = (await pre.json()) as ExportPreview;
+    expect(pv.ok).toBe(false);
+    expect(pv.files).toEqual([]);
+    const r = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d.id }));
+    expect(r.status).toBe(422);
+    const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
+    expect(e.stage).toBe('toolpath');
+    expect(e.violations).toHaveLength(1);
+    expect(e.violations[0]).toMatchObject({
+      code: 'LOCKED_PLACEMENT_GRAIN',
+      severity: 'error',
+      sheet: 0,
+    });
+    expect(e.violations[0]?.message).toMatch(/damar yönüne uymuyor/);
+    expect(await scope.exports.listForProject(d.id)).toEqual([]);
+  });
+
+  it('an unlocked copy left at a stale rotation → 422 PLACEMENT_GRAIN, nothing stored', async () => {
+    const scope = await companyScope();
+    // Fixed grain 0 on a grain-0 sheet allows rot 0/180; one unlocked copy sits at 90 (as after
+    // a grain change without re-nesting).
+    const bad = await nestedProject((p) => p);
+    const kapak = bad.parts.find((x) => x.id === 'kapak');
+    if (!kapak) throw new Error('kapak missing');
+    const regrained: Project = {
+      ...bad,
+      parts: bad.parts.map((x) =>
+        x.id === 'kapak' ? { ...x, grain: { mode: 'fixed' as const, angle: 0 } } : x,
+      ),
+      layout: {
+        sheets: bad.layout.sheets.map((s, si) => ({
+          placements: s.placements.map((pl) => {
+            if (si !== 0 || pl.partId !== 'kapak' || pl.index !== 0) return pl;
+            return { ...pl, rot: 90, locked: false };
+          }),
+        })),
+      },
+    };
+    const d = await createProject('Damar eski', regrained);
+    const pre = await preview(new Request(`http://test/x?revision=1`), ctx({ id: d.id }));
+    const pv = (await pre.json()) as ExportPreview;
+    expect(pv.ok).toBe(false);
+    expect(pv.files).toEqual([]);
+    const r = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d.id }));
+    expect(r.status).toBe(422);
+    const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
+    expect(e.stage).toBe('toolpath');
+    expect(e.violations).toHaveLength(1);
+    expect(e.violations[0]).toMatchObject({
+      code: 'PLACEMENT_GRAIN',
+      severity: 'error',
+      sheet: 0,
+    });
+    expect(e.violations[0]?.message).toMatch(/yeniden dizin/);
+    expect(await scope.exports.listForProject(d.id)).toEqual([]);
   });
 
   it('bad input', async () => {

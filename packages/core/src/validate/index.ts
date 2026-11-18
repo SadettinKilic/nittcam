@@ -5,7 +5,8 @@
  */
 import { EPS } from '../geometry';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
-import { fitsUsable, partBoxSize, usableSize } from '../nesting/fit';
+import { allowedRotations, rotationAllowed } from '../geometry/grain';
+import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
@@ -20,6 +21,8 @@ export type ValidationCode =
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
   | 'LOCKED_PLACEMENT_INVALID'
+  | 'LOCKED_PLACEMENT_GRAIN'
+  | 'PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
   | 'SHEET_LARGER_THAN_TABLE';
 
@@ -59,8 +62,8 @@ function mm(v: number): string {
  * (a) A part that fits the usable sheet area in no allowed orientation (spec §5.4 "parça plakadan
  * büyük mü"). The usable area is the sheet minus `nesting.margin` on every side (T012, D-019),
  * the same room the placer has, so a part flagged here is exactly a part the placer reports
- * `TOO_LARGE`. A grain-locked part may only turn 0°/180° (spec §6.2), so w must fit the width and
- * h the height; a free part may also turn 90°. Freeform parts use the arc-aware bbox of their
+ * `TOO_LARGE`. A fixed-grain part may only take its `allowedRotations` (D-034; on a 0°/90° sheet
+ * that is 0°/180° or 90°/270°, at other angles the bbox of the rotated outline); a free part may turn 90°. Freeform parts use the arc-aware bbox of their
  * outline (T006). The gap and tool diameter only matter between parts and are not counted.
  */
 export const partLargerThanSheet: ValidationRule = (project) => {
@@ -70,8 +73,15 @@ export const partLargerThanSheet: ValidationRule = (project) => {
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     const size = partBoxSize(part);
-    if (fitsUsable(size.w, size.h, part.grainLock, usable)) return;
-    const how = part.grainLock ? 'grain-locked, no 90° turn' : 'in any orientation';
+    // The forced grain rotation counts (D-034): the same footprints the placer tries.
+    const rotations = allowedRotations(part, project.stock.sheet);
+    if (fitsUsableAny(rotationOptions(partShape(part), rotations), usable)) return;
+    const locked = part.grain.mode === 'fixed' && project.stock.sheet.grain !== null;
+    const how = !locked
+      ? 'in any orientation'
+      : rotations.every((r) => r === 0 || r === 180)
+        ? 'grain-locked, no 90° turn'
+        : `grain-locked, only at ${rotations.map(mm).join('° / ')}°`;
     const room =
       margin > 0
         ? `the ${mm(usable.width)} × ${mm(usable.height)} mm usable area of the ${width} × ${height} mm sheet (margin ${mm(margin)} mm)`
@@ -206,6 +216,46 @@ export const lockedPlacementInvalid: ValidationRule = (project, context) => {
 };
 
 /**
+ * (d2) A placed copy at a rotation its grain does not allow (D-034 amendment): e.g. the sheet or
+ * part grain changed after nesting. One issue per copy, never two:
+ * - locked copy → `LOCKED_PLACEMENT_GRAIN`: the lock is the user's choice, so re-nesting keeps it
+ *   in place and nothing moves it silently; the user unlocks or turns it.
+ * - unlocked copy → `PLACEMENT_GRAIN`: nesting only runs on demand (Diz), so the copy keeps its
+ *   stale rotation until the user re-nests.
+ * The NC export (web `runExport`) refuses the project while either is reported
+ * (`EXPORT_BLOCKING_CODES`). Same rotation comparison as `allowedRotations` everywhere else
+ * (`rotationAllowed`, 3 decimals).
+ */
+export const placementGrain: ValidationRule = (project) => {
+  const parts = new Map(project.parts.map((p) => [p.id, p]));
+  const issues: ValidationIssue[] = [];
+  project.layout.sheets.forEach((sheet, s) => {
+    sheet.placements.forEach((pl, p) => {
+      const part = parts.get(pl.partId);
+      if (!part || rotationAllowed(part, project.stock.sheet, pl.rot)) return;
+      const allowed = allowedRotations(part, project.stock.sheet);
+      const what = pl.locked ? 'locked copy' : 'copy';
+      issues.push({
+        code: pl.locked ? 'LOCKED_PLACEMENT_GRAIN' : 'PLACEMENT_GRAIN',
+        severity: 'error',
+        path: formatPath(['layout', 'sheets', s, 'placements', p]),
+        message: `${what} ${pl.index + 1} of part "${pl.partId}" on sheet ${s + 1} is at ${pl.rot}°, which its grain does not allow (allowed: ${allowed.join(', ')}°)${pl.locked ? '' : '; re-nest'}`,
+      });
+    });
+  });
+  return issues;
+};
+
+/**
+ * Validation codes that block the NC export on the server (web `runExport`): the toolpath itself
+ * accepts any rotation (D-034 stage 1), so a copy cut against the grain is stopped there.
+ */
+export const EXPORT_BLOCKING_CODES: ReadonlySet<ValidationCode> = new Set<ValidationCode>([
+  'LOCKED_PLACEMENT_GRAIN',
+  'PLACEMENT_GRAIN',
+]);
+
+/**
  * (e) The selected machine has no cutting parameter set for the stock (spec §3.6 "Malzeme =
  * parametre seti", D-029): the toolpath cannot be built (`NO_CUTTING_PARAMS`, D-021), so it is
  * an error the user sees in the wizard before nesting. The stock material id is mapped to the
@@ -253,6 +303,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   holeDepthBelowThickness,
   holeVsTool,
   lockedPlacementInvalid,
+  placementGrain,
   noCuttingParams,
   sheetLargerThanTable,
 ];

@@ -1,6 +1,7 @@
 /**
  * Nesting types (spec §6.2, D-019). All lengths are millimetres, areas mm². Pure data, no I/O.
  */
+import type { Polyline } from '../geometry/types';
 import type { Layout, NestingMode, Placement } from '../schema';
 
 /** An axis-aligned rectangle; (x, y) is the bottom-left corner (sheet origin bottom-left, Y up). */
@@ -19,8 +20,29 @@ export interface NestPart {
   /** Bounding-box height (local Y) at rotation 0. */
   h: number;
   qty: number;
-  /** Grain-locked parts only rotate 0°/180°: for a rectangle that means never 90° (spec §6.2). */
-  grainLock: boolean;
+  /**
+   * Allowed rotations (CCW degrees), normally from `allowedRotations` (D-034). Wins over
+   * `grainLock`. A non-axis angle places the axis-aligned bbox of the rotated outline.
+   */
+  rotations?: readonly number[] | undefined;
+  /** Short form when `rotations` is absent: true = 0°/180° only, false/absent = quarter turns. */
+  grainLock?: boolean | undefined;
+  /** Local outline (for the footprint at non-axis angles); absent = the w × h rectangle. */
+  outline?: Polyline | undefined;
+}
+
+/**
+ * Information about the result (D-034): a part placed at a non-axis angle occupies the bounding
+ * box of its rotated outline until true-shape nesting (T165–T167); `extraArea` is that box minus
+ * the part's own area, mm².
+ */
+export interface NestingInfo {
+  code: 'GRAIN_ROTATED_BBOX';
+  partId: string;
+  index: number;
+  sheet: number;
+  rot: number;
+  extraArea: number;
 }
 
 /**
@@ -125,4 +147,6 @@ export interface NestingResult {
   strategy: { ordering: PartOrdering; heuristic: PlacerHeuristic };
   /** How many ordering × heuristic candidates were tried. */
   candidates: number;
+  /** Notes on the layout (no errors): rotated-bbox footprints (D-034). */
+  info: NestingInfo[];
 }

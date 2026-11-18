@@ -14,7 +14,7 @@ const square = [
 function board() {
   const base = {
     qty: 1,
-    grainLock: false,
+    grain: { mode: 'free', angle: 0 },
     kind: 'rect',
     holes: [],
     edgeBand: noBand,

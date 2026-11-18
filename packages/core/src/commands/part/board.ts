@@ -6,6 +6,7 @@
 import type { Draft } from 'immer';
 import { z } from 'zod';
 import { contour, normalize } from '../../geometry/polyline';
+import { mirrorGrain, turnGrain } from '../../geometry/grain';
 import { mirror, rotate, rotatePoint, translate, type QuarterTurn } from '../../geometry/transform';
 import type { Point, Polyline } from '../../geometry/types';
 import { boardPositions, localBox } from '../../editor/board';
@@ -113,6 +114,9 @@ export const mirrorPart = defineCommand({
       part.edgeBand = h
         ? { ...band, left: band.right, right: band.left }
         : { ...band, top: band.bottom, bottom: band.top };
+      // Grain follows the piece (D-038): a mirror reflects the grain line, a → −a (mod 180).
+      const grain = mirrorGrain(part.grain.angle);
+      if (grain !== part.grain.angle) part.grain.angle = grain;
     }
   },
 });
@@ -137,7 +141,7 @@ export const rotatePart = defineCommand({
   area: 'part',
   description:
     'Rotate parts by 90, 180 or 270 degrees counter-clockwise about their centre on the board. ' +
-    'Holes, cut-outs and edge bands rotate with the part.',
+    'Holes, cut-outs, edge bands and the grain direction rotate with the part.',
   aiTool: false,
   params: z.strictObject({
     ids: idList,
@@ -170,6 +174,9 @@ export const rotatePart = defineCommand({
           : turns === 180
             ? { top: e.bottom, right: e.left, bottom: e.top, left: e.right }
             : { top: e.left, right: e.top, bottom: e.right, left: e.bottom };
+      // Grain follows the piece (D-038): the grain line turns with the shape.
+      const grain = turnGrain(part.grain.angle, turns);
+      if (grain !== part.grain.angle) part.grain.angle = grain;
       // Keep the centre: the box swaps width and height around it.
       const w2 = swap ? h : w;
       const h2 = swap ? w : h;

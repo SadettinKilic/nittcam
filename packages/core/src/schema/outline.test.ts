@@ -122,7 +122,7 @@ describe('rectOutline / deriveOutline', () => {
       id: 'p',
       name: '',
       qty: 1,
-      grainLock: false,
+      grain: { mode: 'free', angle: 0 },
       kind: 'rect',
       params: { w: 10, h: 20, r: 0 },
       outline: [{ x: 0, y: 0, bulge: 0 }],

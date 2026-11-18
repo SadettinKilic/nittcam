@@ -286,10 +286,17 @@ describe('lockPlacement command', () => {
       },
     );
     expect(
-      applyCommand(p, 'lockPlacement', { partId: 'door-left', index: 0, rot: 45 }),
+      applyCommand(p, 'lockPlacement', { partId: 'door-left', index: 0, rot: 400 }),
     ).toMatchObject({
       ok: false,
       error: { code: 'INVALID_PARAMS' },
+    });
+    // v2 (D-034): 45° is a valid number but not an allowed rotation for this part.
+    expect(
+      applyCommand(p, 'lockPlacement', { partId: 'door-left', index: 0, rot: 45 }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: 'PRECONDITION_FAILED' },
     });
   });
 

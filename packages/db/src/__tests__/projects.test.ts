@@ -1,6 +1,8 @@
 import { CommandStack, parseProject, type Project } from '@nittcam/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import type { DbHandle } from '../client';
+import { projects } from '../schema';
 import {
   forCompany,
   InvalidProject,
@@ -38,6 +40,22 @@ describe('projects jsonb', () => {
     expect(again.ok && again.project).toEqual(parsed(fixture));
     expect(loaded.revision).toBe(1);
     expect(loaded.status).toBe('draft');
+  });
+
+  it('a stored v1 row reads back as schema v2 (D-034 migration on read)', async () => {
+    const v1 = JSON.parse(JSON.stringify(loadFixture('cabinet-doors'))) as Record<string, unknown>;
+    const created = await scope.projects.create({ name: 'v1', data: v1 });
+    // Simulate a row saved by an older build: write the raw v1 JSON past validation.
+    await h.db
+      .update(projects)
+      .set({ data: v1 as never })
+      .where(eq(projects.id, created.id));
+    const loaded = await scope.projects.get(created.id);
+    expect(loaded?.data.schemaVersion).toBe(2);
+    expect(loaded?.data.parts.every((p) => p.grain !== undefined)).toBe(true);
+    expect(loaded?.data).toEqual(parsed(v1));
+    const listed = (await scope.projects.list()).find((r) => r.id === created.id);
+    expect(listed?.data).toEqual(parsed(v1));
   });
 
   it('rejects invalid project JSON and writes nothing', async () => {

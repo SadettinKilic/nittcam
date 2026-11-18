@@ -63,7 +63,7 @@ export const drawPart = defineCommand({
       id: params.id,
       name: params.name,
       qty: 1,
-      grainLock: false,
+      grain: { mode: 'free' as const, angle: 0 },
       inners: [],
       holes: [],
       edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },

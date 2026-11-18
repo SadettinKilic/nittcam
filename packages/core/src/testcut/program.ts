@@ -115,7 +115,7 @@ function partCentre(): { x: number; y: number } {
 /** The test part as a one-part project (outer contour only; hole and pocket are added after). */
 function testProject(set: MaterialParams): Project {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     machine: { machineId: 'test-part', profileVersion: 1 },
     stock: {
       material: set.material,
@@ -128,7 +128,7 @@ function testProject(set: MaterialParams): Project {
         id: 'test',
         name: 'Test parçası',
         qty: 1,
-        grainLock: false,
+        grain: { mode: 'free', angle: 0 },
         kind: 'rect',
         params: { w: TEST_PART.size, h: TEST_PART.size, r: 0 },
         inners: [],

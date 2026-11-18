@@ -2,6 +2,7 @@
 import { original } from 'immer';
 import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
+import { allowedRotations, rotationAllowed } from '../../geometry/grain';
 import { nestProject } from '../../nesting/nest';
 import { nestingSchema, placementSchema, type Project } from '../../schema';
 import { defineCommand } from '../types';
@@ -92,12 +93,21 @@ export const lockPlacement = defineCommand({
     'Move a placed part copy to x, y (mm, sheet frame) with an optional rotation and lock it, or lock/unlock it in place.',
   aiTool: false,
   params: lockPlacementParamsSchema,
-  check: (project, params) =>
-    project.layout.sheets.some((sh) =>
+  check: (project, params) => {
+    const placed = project.layout.sheets.some((sh) =>
       sh.placements.some((p) => p.partId === params.partId && p.index === params.index),
-    )
-      ? undefined
-      : `copy ${params.index} of part "${params.partId}" is not placed`,
+    );
+    if (!placed) return `copy ${params.index} of part "${params.partId}" is not placed`;
+    if (params.rot !== undefined) {
+      // The grain rule (D-034): only rotations from `allowedRotations` may be set by hand.
+      const part = project.parts.find((p) => p.id === params.partId);
+      if (!part || !rotationAllowed(part, project.stock.sheet, params.rot)) {
+        const allowed = part ? allowedRotations(part, project.stock.sheet) : [];
+        return `rotation ${params.rot}° is not allowed for part "${params.partId}" (allowed: ${allowed.join(', ')})`;
+      }
+    }
+    return undefined;
+  },
   apply: (draft, params) => {
     for (const sheet of draft.layout.sheets) {
       const pl = sheet.placements.find(

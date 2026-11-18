@@ -1,11 +1,12 @@
 /**
- * Project JSON schema v1 (spec §9.2). All lengths are millimetres (spec §6.1).
+ * Project JSON schema v2 (spec §9.2; v2 = free-angle grain, D-034). All lengths are millimetres (spec §6.1).
  * Validation only: no I/O, clock or randomness. Messages are English; the UI translates them.
  */
 import { z } from 'zod';
+import { normalizeRotation } from '../geometry/grain';
 
 /** The schema version this build writes and reads natively. */
-export const LATEST_SCHEMA_VERSION = 1;
+export const LATEST_SCHEMA_VERSION = 2;
 
 // ---------------------------------------------------------------------------
 // Primitives
@@ -31,8 +32,21 @@ const positiveInt = z
   .int({ error: 'must be an integer' })
   .min(1, { error: 'must be an integer >= 1' });
 
-/** Grain direction in degrees. Free-angle grain is out of scope for now (spec §2.5). */
-const grainAngle = z.union([z.literal(0), z.literal(90)], { error: 'grain must be 0 or 90' });
+/**
+ * A grain angle in degrees, [0, 180) (D-034): grain is an undirected line, so 30° and 210° are the
+ * same grain and are stored as 30.
+ */
+export const grainAngleSchema = z
+  .number({ error: 'grain angle must be a number (degrees)' })
+  .min(0, { error: 'grain angle must be >= 0 and < 180 degrees' })
+  .lt(180, { error: 'grain angle must be >= 0 and < 180 degrees' });
+
+/** Placement rotation, counter-clockwise degrees in [0, 360) with at most 3 decimals (D-034). */
+export const rotationSchema = z
+  .number({ error: 'rot must be a number (degrees)' })
+  .min(0, { error: 'rot must be >= 0 and < 360 degrees' })
+  .lt(360, { error: 'rot must be >= 0 and < 360 degrees' })
+  .refine((r) => normalizeRotation(r) === r, { error: 'rot must have at most 3 decimals' });
 
 // ---------------------------------------------------------------------------
 // Geometry (spec §6.1): bulge polyline, closed implicitly
@@ -125,12 +139,21 @@ export const templateRefSchema = z.strictObject({
   overrides: z.array(z.string()),
 });
 
+/** A part's grain (D-034); `angle` is in the part's own frame, [0, 180). */
+export const partGrainSchema = z.strictObject({
+  mode: z.enum(['free', 'fixed'], { error: 'grain mode must be "free" or "fixed"' }),
+  angle: grainAngleSchema,
+});
+
 const partBase = {
   id: nonEmptyId,
   name: z.string({ error: 'must be a string' }),
   qty: positiveInt,
-  /** Grain-locked parts only rotate 0°/180° in nesting (spec §6.2). */
-  grainLock: z.boolean({ error: 'must be true or false' }),
+  /**
+   * Grain of the piece (D-034): `fixed` = the grain line at `angle` (part frame) must lie along the
+   * sheet grain after placement; `free` = no grain rule (the angle is kept for display).
+   */
+  grain: partGrainSchema,
   /** Inner contours (windows, cut-outs), stored CW (spec §6.1). */
   inners: z.array(contourSchema),
   holes: z.array(holeSchema),
@@ -190,7 +213,8 @@ export const stockSchema = z.strictObject({
   sheet: z.strictObject({
     width: positiveMm,
     height: positiveMm,
-    grain: grainAngle,
+    /** Sheet grain angle in degrees [0, 180) (0 = along X); `null` = the sheet has no grain. */
+    grain: grainAngleSchema.nullable(),
   }),
   useOffcuts: z.boolean({ error: 'must be true or false' }),
 });
@@ -217,9 +241,8 @@ export const placementSchema = z.strictObject({
     .nonnegative({ error: 'must be an integer >= 0' }),
   x: coord,
   y: coord,
-  rot: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)], {
-    error: 'rot must be 0, 90, 180 or 270',
-  }),
+  /** Counter-clockwise rotation, degrees [0, 360) with 3 decimals (D-034). */
+  rot: rotationSchema,
   locked: z.boolean({ error: 'must be true or false' }),
 });
 
@@ -351,6 +374,7 @@ export type RectParams = z.infer<typeof rectParamsSchema>;
 export type RectPart = z.infer<typeof rectPartSchema>;
 export type FreeformPart = z.infer<typeof freeformPartSchema>;
 export type Part = z.infer<typeof partSchema>;
+export type PartGrain = z.infer<typeof partGrainSchema>;
 export type MachineRef = z.infer<typeof machineRefSchema>;
 export type Stock = z.infer<typeof stockSchema>;
 export type NestingMode = z.infer<typeof nestingModeSchema>;

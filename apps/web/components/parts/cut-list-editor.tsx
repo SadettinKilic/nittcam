@@ -257,7 +257,7 @@ function PartRow({
           id={cellId(index, 'grain')}
           aria-label={label(t.columns.grain)}
           className="mt-2"
-          checked={part.grainLock}
+          checked={part.grain.mode === 'fixed'}
           onCheckedChange={(v) => void update({ grainLock: v === true })}
         />
       </td>

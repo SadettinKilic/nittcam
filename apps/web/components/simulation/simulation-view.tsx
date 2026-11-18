@@ -646,13 +646,13 @@ function Player({
         >
           <span
             data-testid="sim-grain"
-            data-grain={stock.grain}
+            data-grain={stock.grain ?? 'none'}
             className="pointer-events-none absolute right-2 bottom-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-surface/90 px-2 py-1 text-xs text-fg shadow-xs backdrop-blur-sm"
           >
             <svg
               viewBox="0 0 24 24"
               className="size-4"
-              style={{ transform: `rotate(${-stock.grain}deg)` }}
+              style={{ transform: `rotate(${-(stock.grain ?? 0)}deg)` }}
               aria-hidden="true"
             >
               <path
@@ -845,7 +845,7 @@ function Legend({
   t: SimText;
   ramp: readonly string[];
   zBottom: number;
-  grain: 0 | 90;
+  grain: number | null;
 }) {
   const l = t.legend;
   const swatch = 'inline-block size-3.5 rounded-sm border';
@@ -913,11 +913,11 @@ function Legend({
           <span className="inline-block size-2.5 rounded-full bg-sim-zero" aria-hidden="true" />
           {l.zero}
         </li>
-        <li className="flex items-center gap-1.5" data-grain={grain}>
+        <li className="flex items-center gap-1.5" data-grain={grain ?? 'none'}>
           <svg
             viewBox="0 0 24 24"
             className="size-4 text-grain"
-            style={{ transform: `rotate(${-grain}deg)` }}
+            style={{ transform: `rotate(${-(grain ?? 0)}deg)` }}
             aria-hidden="true"
           >
             <path

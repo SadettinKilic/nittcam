@@ -410,7 +410,7 @@ Tester focus: nav item count and active state through a new-project flow; a rena
 
 ### Batch B5: T112–T114 (grain angle engine)
 
-### T112 Grain angle model: schema v2, migration, commands   [status: todo]
+### T112 Grain angle model: schema v2, migration, commands   [status: review]
 Spec: §6.2, §9.2 · Depends: none · Decision: D-034
 Acceptance:
 - [ ] schema v2: `stock.sheet.grain` = angle in degrees [0, 180) (or `null` = no grain); part `grain: { mode: 'free' | 'fixed', angle }` (angle in the part frame, [0, 180)); placement `rot` = any degrees [0, 360) (number, 3 decimals)
@@ -421,7 +421,7 @@ Acceptance:
 - [ ] D-038: `rotatePart` / `mirrorPart` turn `part.grain.angle` with the shape via `turnGrain` / `mirrorGrain` (core, B9); unit tests: 4 × rotate 90° = identity incl. grain, mirror twice = identity
 Tester focus: migration on every existing fixture + saved projects in PGlite; undo round-trip; property test review.
 
-### T113 Arbitrary-angle rotation through geometry, toolpath, post and checks   [status: todo]
+### T113 Arbitrary-angle rotation through geometry, toolpath, post and checks   [status: review]
 Spec: §6.1, §6.3, §6.5, §7.2 · Depends: T112
 Acceptance:
 - [ ] geometry `transform` supports any angle (bulges unchanged, vertices rotated); arc-aware bbox of rotated outlines
@@ -430,7 +430,7 @@ Acceptance:
 - [ ] properties: for random angles every cutting move stays at tool radius from the rotated part (± EPS); area invariant under rotation
 Tester focus: **G-code safety**: a 30°-rotated part through post + reader + checks; §7.2 rule tests still pass; golden diff = none.
 
-### T114 Placer: grain-aware rotations with rotated footprints   [status: todo]
+### T114 Placer: grain-aware rotations with rotated footprints   [status: review]
 Spec: §6.2 · Depends: T113
 Acceptance:
 - [ ] the min-waste placer takes rotations from `allowedRotations`; an axis-aligned angle uses the rectangle as today; a non-axis angle places the **axis-aligned bbox of the rotated outline** (interim until true-shape, T165–T167) and reports `GRAIN_ROTATED_BBOX` info with the extra waste

@@ -84,7 +84,7 @@ describe('findMaterialParams', () => {
 
 function project(material: string, thickness = 18): Project {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     machine: { machineId: 'm', profileVersion: 1 },
     stock: {
       material,
@@ -97,7 +97,7 @@ function project(material: string, thickness = 18): Project {
         id: 'a',
         name: 'A',
         qty: 1,
-        grainLock: false,
+        grain: { mode: 'free', angle: 0 },
         kind: 'rect',
         params: { w: 400, h: 300, r: 0 },
         inners: [],

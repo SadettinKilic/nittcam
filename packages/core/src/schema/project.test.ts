@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import cabinetDoors from './__fixtures__/cabinet-doors.json';
 import mixed from './__fixtures__/mixed.json';
 import shelfSet from './__fixtures__/shelf-set.json';
-import { parseProject, type ProjectIssue } from './index';
+import { grainAngleSchema, parseProject, rotationSchema, type ProjectIssue } from './index';
 
 const fixtures = { cabinetDoors, shelfSet, mixed } as const;
 
@@ -228,12 +228,28 @@ describe('invalid projects are rejected with readable paths', () => {
     expectIssue([], '(root)', /JSON object/);
   });
 
-  it('grain other than 0 or 90', () => {
+  it('grain outside [0, 180) (v2, D-034)', () => {
     expectIssue(
-      variant((j) => (j.stock.sheet.grain = 45)),
+      variant((j) => (j.stock.sheet.grain = 180)),
       'stock.sheet.grain',
-      /0 or 90/,
+      /< 180/,
     );
+    expectIssue(
+      variant((j) => (j.stock.sheet.grain = -5)),
+      'stock.sheet.grain',
+      />= 0/,
+    );
+  });
+
+  it('placement rot: any degrees in [0, 360) with at most 3 decimals', () => {
+    for (const ok of [0, 30, 90, 212.125, 359.999]) {
+      expect(rotationSchema.safeParse(ok).success).toBe(true);
+    }
+    for (const bad of [-1, 360, 400, 12.0001, Number.NaN]) {
+      expect(rotationSchema.safeParse(bad).success).toBe(false);
+    }
+    expect(grainAngleSchema.safeParse(179.5).success).toBe(true);
+    expect(grainAngleSchema.safeParse(180).success).toBe(false);
   });
 
   it('corner radius larger than half the shorter side', () => {

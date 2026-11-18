@@ -119,6 +119,14 @@ const m2Format = new Intl.NumberFormat('tr-TR', {
 const NONE = '__none__';
 const LOCKED_PATH = /^layout\.sheets\[(\d+)\]\.placements\[(\d+)\]$/;
 
+/** Placement validation codes listed on Dizilim, with their `layout` text key. */
+const PLACEMENT_ISSUE_TEXT = {
+  LOCKED_PLACEMENT_INVALID: 'lockedIssue',
+  LOCKED_PLACEMENT_GRAIN: 'lockedGrainIssue',
+  PLACEMENT_GRAIN: 'placementGrainIssue',
+} as const;
+type PlacementIssueCode = keyof typeof PLACEMENT_ISSUE_TEXT;
+
 /**
  * Layout view (T013, spec §3.6 step 3, §6.2 "Elle müdahale"): the sheet with its margin band and
  * waste, numbered parts, grain arrows, sheet tabs, zoom/pan, and manual placement. A drop or an
@@ -332,16 +340,17 @@ export function LayoutView({
     setView(zoomAt(view, factor, width / 2, height / 2));
   }
 
-  // Locked placements the rule flags (e.g. after a part was enlarged): listed and drawn red.
+  // Placements the rules flag (a locked copy after a part was enlarged, any copy the grain no longer
+  // allows): listed and drawn red.
   const lockedIssues = issues
-    .filter((i) => i.code === 'LOCKED_PLACEMENT_INVALID')
+    .filter((i): i is typeof i & { code: PlacementIssueCode } => i.code in PLACEMENT_ISSUE_TEXT)
     .map((i) => {
       const m = LOCKED_PATH.exec(i.path);
       const s = Number(m?.[1]);
       const pl = project.layout.sheets[s]?.placements[Number(m?.[2])];
-      return pl ? { sheet: s, key: copyKey(pl) } : null;
+      return pl ? { sheet: s, key: copyKey(pl), code: i.code } : null;
     })
-    .filter((x): x is { sheet: number; key: string } => x !== null);
+    .filter((x): x is { sheet: number; key: string; code: PlacementIssueCode } => x !== null);
 
   const conflicts = useMemo(() => {
     const set = new Set<string>();
@@ -363,7 +372,8 @@ export function LayoutView({
       Number(key.slice(key.lastIndexOf('#') + 1)),
     ];
     const row = project.parts.findIndex((p) => p.id === partId);
-    return `${row + 1}.${index + 1}`;
+    const name = project.parts[row]?.name;
+    return fill(t.option, { label: `${row + 1}.${index + 1}`, name: name || t.unnamed });
   };
   const pendingInvalid = dragCheck !== null && !placementIsValid(dragCheck.check);
 
@@ -416,11 +426,23 @@ export function LayoutView({
 
       {lockedIssues.map((li) => (
         <p
-          key={li.key}
+          key={`${li.key}-${li.code}`}
           role="alert"
           className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
         >
-          {fill(t.lockedIssue, { label: labelOf(li.key) })}
+          {fill(t[PLACEMENT_ISSUE_TEXT[li.code]], { label: labelOf(li.key) })}
+          {li.code === 'PLACEMENT_GRAIN' && onRenest ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRenest}
+              disabled={renesting}
+              className="mt-2 flex"
+            >
+              <RefreshCw aria-hidden />
+              {t.renestStale}
+            </Button>
+          ) : null}
         </p>
       ))}
 
@@ -732,7 +754,7 @@ function PartInfo({
     ],
     ['rotation', i.rotation, fill(i.rotationValue, { rot: part.rot })],
     ['locked', i.locked, part.locked ? i.lockedYes : i.lockedNo],
-    ['grain', i.grain, part.grainLock ? i.grainYes : i.grainNo],
+    ['grain', i.grain, part.grainAngle !== null ? i.grainYes : i.grainNo],
   ];
   return (
     <div className="flex flex-col gap-2" data-testid="layout-info">
@@ -767,7 +789,7 @@ function PartInfo({
   );
 }
 
-function Legend({ t, margin, grain }: { t: Text; margin: number; grain: 0 | 90 }) {
+function Legend({ t, margin, grain }: { t: Text; margin: number; grain: number | null }) {
   const l = t.legend;
   const swatch = 'inline-block size-3 rounded-[3px] border';
   return (
@@ -792,11 +814,15 @@ function Legend({ t, margin, grain }: { t: Text; margin: number; grain: 0 | 90 }
         <span className={`${swatch} border-danger bg-danger-subtle`} aria-hidden="true" />
         {l.conflict}
       </li>
-      <li className="flex items-center gap-1.5" data-testid="layout-sheet-grain" data-grain={grain}>
+      <li
+        className="flex items-center gap-1.5"
+        data-testid="layout-sheet-grain"
+        data-grain={grain ?? 'none'}
+      >
         <svg
           viewBox="0 0 24 24"
           className="size-4 text-grain"
-          style={{ transform: `rotate(${-grain}deg)` }}
+          style={{ transform: `rotate(${-(grain ?? 0)}deg)` }}
           aria-hidden="true"
         >
           <path

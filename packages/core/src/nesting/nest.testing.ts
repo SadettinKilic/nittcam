@@ -4,7 +4,7 @@
  */
 import { EPS } from '../geometry/constants';
 import type { Placement } from '../schema';
-import { partSpacing, placementRect } from './nest';
+import { nestPartRotations, partSpacing, placementRect } from './nest';
 import type { NestingInput, NestingResult, Rect } from './types';
 
 /** Distance between two rectangles along the axis where they are separated (≤ 0 = overlapping). */
@@ -20,8 +20,8 @@ export function separation(a: Rect, b: Rect): number {
  */
 export function invariantViolations(input: NestingInput, result: NestingResult): string[] {
   const out: string[] = [];
-  const sizes = new Map(input.parts.map((p) => [p.id, { w: p.w, h: p.h }]));
-  const grain = new Map(input.parts.map((p) => [p.id, p.grainLock]));
+  const sizes = new Map(input.parts.map((p) => [p.id, { w: p.w, h: p.h, outline: p.outline }]));
+  const allowed = new Map(input.parts.map((p) => [p.id, nestPartRotations(p)]));
   const s = partSpacing(input.toolDiameter, input.gap);
   const required = 2 * s; // toolDiameter + gap
   const ux0 = input.margin;
@@ -63,8 +63,8 @@ export function invariantViolations(input: NestingInput, result: NestingResult):
       if (!r) return;
       if (pi < nLocked) return; // locked: given, not checked
       if (p.locked) out.push(`new placement ${p.partId}#${p.index} is locked`);
-      if (grain.get(p.partId) && (p.rot === 90 || p.rot === 270)) {
-        out.push(`grain-locked ${p.partId}#${p.index} turned ${p.rot}`);
+      if (!(allowed.get(p.partId) ?? []).includes(p.rot)) {
+        out.push(`${p.partId}#${p.index} at ${p.rot}°, not an allowed rotation (grain rule)`);
       }
       if (r.x < ux0 - EPS || r.y < uy0 - EPS || r.x + r.w > ux1 + EPS || r.y + r.h > uy1 + EPS) {
         out.push(`${p.partId}#${p.index} outside the usable area on sheet ${si}`);

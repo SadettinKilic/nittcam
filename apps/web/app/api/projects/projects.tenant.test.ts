@@ -13,7 +13,7 @@ import { POST as copy } from './[id]/copy/route';
 
 function project(thickness = 18): Project {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     machine: { machineId: 'draft', profileVersion: 1 },
     stock: {
       material: 'mdf',
