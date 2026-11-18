@@ -151,13 +151,14 @@ describe('lockPlacement respects the grain rule (tester)', () => {
   });
 });
 
-describe('KNOWN GAP: a locked copy keeps a rotation the grain no longer allows (tester)', () => {
+describe('a locked copy at a rotation the grain no longer allows (tester, fixed in B5 round 1)', () => {
   /**
    * D-034: `allowedRotations` is the single source for placer, layout drag AND validation.
    * Repro: shelf-set (sheet 90°, fixed parts at grain 90 → rot 0/180), lock one copy at rot 0,
    * then `setGrain(0)`: the part now needs 90/270, but validation reports nothing and runNesting
    * keeps the locked copy at 0 → the cut part has its grain across the sheet grain.
-   * `it.fails` = the expected behaviour below is NOT met yet; flip to `it` when fixed.
+   * PO decision (D-034 amendment): the lock is the user's choice, so it is never moved silently;
+   * validation reports an error (LOCKED_PLACEMENT_GRAIN) and the toolpath refuses it.
    */
   function lockedThenRegrained(): Project {
     let p = load(shelfSet);
@@ -175,19 +176,29 @@ describe('KNOWN GAP: a locked copy keeps a rotation the grain no longer allows (
     return run(p, 'setGrain', { grain: 0 });
   }
 
-  it.fails('validation flags a locked copy at a rotation outside allowedRotations', async () => {
+  it('validation flags a locked copy at a rotation outside allowedRotations', async () => {
     const { validateProject } = await import('../validate');
     const p = lockedThenRegrained();
     const issues = validateProject(p, {}).filter((i) => i.severity === 'error');
-    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.map((i) => i.code)).toContain('LOCKED_PLACEMENT_GRAIN');
   });
 
-  it.fails('after runNesting every copy of a fixed part is at an allowed rotation', () => {
-    const p = run(lockedThenRegrained(), 'runNesting', { toolDiameter: 8 });
+  it('after runNesting every unlocked copy is at an allowed rotation; the bad lock stays and is reported', async () => {
+    const { validateProject } = await import('../validate');
+    const before = lockedThenRegrained();
+    const p = run(before, 'runNesting', { toolDiameter: 8 });
+    let badLocks = 0;
     for (const s of p.layout.sheets)
       for (const pl of s.placements) {
         const pt = p.parts.find((x) => x.id === pl.partId)!;
-        expect(allowedRotations(pt, p.stock.sheet)).toContain(pl.rot);
+        if (pl.locked) {
+          if (!allowedRotations(pt, p.stock.sheet).includes(pl.rot)) badLocks++;
+          expect(pl.rot).toBe(0);
+        } else expect(allowedRotations(pt, p.stock.sheet)).toContain(pl.rot);
       }
+    expect(badLocks).toBe(1);
+    const grainErrors = validateProject(p, {}).filter((i) => i.code === 'LOCKED_PLACEMENT_GRAIN');
+    expect(grainErrors).toHaveLength(1);
+    expect(grainErrors[0]!.severity).toBe('error');
   });
 });

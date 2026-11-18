@@ -8,6 +8,7 @@ import {
   canDownload,
   exportNc,
   findMaterialParams,
+  lockedPlacementGrain,
   needsUnverifiedAcceptance,
   parsePostConfig,
   unverifiedReasons,
@@ -94,6 +95,12 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
   return out;
 }
 
+/** Sheet index of a `layout.sheets[s]...` validation path. */
+function sheetOf(path: string): number | undefined {
+  const m = /^layout\.sheets\[(\d+)\]/.exec(path);
+  return m ? Number(m[1]) : undefined;
+}
+
 function profileProblem(code: string): ExportViolation {
   return { stage: 'profile', rule: 'INPUT', code, severity: 'error', message: turkish(code) };
 }
@@ -168,6 +175,30 @@ export async function runExport(
     };
   }
   const post = { id: cfg.config.id, version: cfg.config.version, name: cfg.config.name };
+  // A locked copy its grain no longer allows (D-034 amendment) is never cut: the user unlocks or
+  // turns it first. The toolpath itself accepts any rotation (D-034 stage 1), so the gate is here.
+  const grainLocks = lockedPlacementGrain(data);
+  if (grainLocks.length > 0) {
+    return {
+      kind: 'run',
+      run: {
+        ...base,
+        post,
+        stage: 'toolpath',
+        violations: grainLocks.map((i): ExportViolation => {
+          const sheet = sheetOf(i.path);
+          return {
+            stage: 'toolpath',
+            rule: 'LAYOUT',
+            code: i.code,
+            severity: 'error',
+            message: turkish(i.code),
+            ...(sheet !== undefined ? { sheet } : {}),
+          };
+        }),
+      },
+    };
+  }
   const pv = {
     profile: machine.profile,
     version: machine.version.version,

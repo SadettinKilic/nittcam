@@ -464,7 +464,8 @@
     "issues": {
       "PART_LARGER_THAN_SHEET": "Parça plakaya sığmıyor.",
       "other": "Bu satırda bir sorun var.",
-      "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde."
+      "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde.",
+      "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün."
     },
     "paste": {
       "title": "Excel'den yapıştır",
@@ -651,6 +652,7 @@
       "rejected": "Parça taşınamadı."
     },
     "lockedIssue": "Kilitli parça {label} geçersiz bir yerde (kenar payında, plaka dışında ya da başka parçaya çok yakın). Taşıyın ya da kilidini açıp yeniden dizin.",
+    "lockedGrainIssue": "Kilitli parça {label} damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
     "empty": "Dizilim yok."
   },
   "simulation": {
@@ -734,6 +736,7 @@
       "NO_CUTTING_PARAMS": "Bu malzeme ve kalınlık için makine profilinde kesim parametresi yok (Makineler → Malzemeler).",
       "POST_MISMATCH": "Makine profilindeki post sürümü yüklü post ile uyuşmuyor.",
       "NO_PLACEMENTS": "Dizilimde yerleşmiş parça yok.",
+      "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
       "NO_OPERATIONS": "Kesilecek parça yok.",
       "DEPTH_EXCEEDS_FLUTE_LENGTH": "Kesim derinliği takımın kesici boyunu aşıyor.",
       "SMALL_PART_UNSECURED": "Küçük parça sabitlenemiyor (köprü yerleşmedi).",
@@ -1162,6 +1165,7 @@
         "HOLE_SMALLER_THAN_TOOL": "Delik, takımdan küçük.",
         "GROOVE_NARROWER_THAN_TOOL": "Kanal, takımdan dar.",
         "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde (plaka dışında, kenar payında ya da başka parçaya çok yakın).",
+        "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
         "NO_CUTTING_PARAMS": "Makinede bu malzeme ve kalınlık için kesim ayarı yok.",
         "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor."
       },

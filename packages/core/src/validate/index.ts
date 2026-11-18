@@ -5,7 +5,7 @@
  */
 import { EPS } from '../geometry';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
-import { allowedRotations } from '../geometry/grain';
+import { allowedRotations, rotationAllowed } from '../geometry/grain';
 import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
@@ -21,6 +21,7 @@ export type ValidationCode =
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
   | 'LOCKED_PLACEMENT_INVALID'
+  | 'LOCKED_PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
   | 'SHEET_LARGER_THAN_TABLE';
 
@@ -214,6 +215,32 @@ export const lockedPlacementInvalid: ValidationRule = (project, context) => {
 };
 
 /**
+ * (d2) A locked copy at a rotation its grain does not allow (D-034 amendment): e.g. the sheet or
+ * part grain changed after the lock. The lock is the user's choice, so re-nesting keeps it in place
+ * and nothing moves it silently; this error asks the user to unlock or turn it, and the NC export
+ * (web `runExport`) refuses the project while it is reported. Same rotation
+ * comparison as `allowedRotations` everywhere else (`rotationAllowed`, 3 decimals).
+ */
+export const lockedPlacementGrain: ValidationRule = (project) => {
+  const parts = new Map(project.parts.map((p) => [p.id, p]));
+  const issues: ValidationIssue[] = [];
+  project.layout.sheets.forEach((sheet, s) => {
+    sheet.placements.forEach((pl, p) => {
+      const part = parts.get(pl.partId);
+      if (!pl.locked || !part || rotationAllowed(part, project.stock.sheet, pl.rot)) return;
+      const allowed = allowedRotations(part, project.stock.sheet);
+      issues.push({
+        code: 'LOCKED_PLACEMENT_GRAIN',
+        severity: 'error',
+        path: formatPath(['layout', 'sheets', s, 'placements', p]),
+        message: `locked copy ${pl.index + 1} of part "${pl.partId}" on sheet ${s + 1} is at ${pl.rot}°, which its grain does not allow (allowed: ${allowed.join(', ')}°)`,
+      });
+    });
+  });
+  return issues;
+};
+
+/**
  * (e) The selected machine has no cutting parameter set for the stock (spec §3.6 "Malzeme =
  * parametre seti", D-029): the toolpath cannot be built (`NO_CUTTING_PARAMS`, D-021), so it is
  * an error the user sees in the wizard before nesting. The stock material id is mapped to the
@@ -261,6 +288,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   holeDepthBelowThickness,
   holeVsTool,
   lockedPlacementInvalid,
+  lockedPlacementGrain,
   noCuttingParams,
   sheetLargerThanTable,
 ];

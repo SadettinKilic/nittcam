@@ -64,3 +64,16 @@ export function allowedRotations(
       : free;
   return [...new Set(raw.map(normalizeRotation))].sort((a, b) => a - b);
 }
+
+/**
+ * Whether a placement rotation (degrees) is one of the part's `allowedRotations` (D-034), compared
+ * at the stored precision (`normalizeRotation`, 3 decimals), the same tolerance as everywhere else.
+ */
+export function rotationAllowed(
+  part: GrainOfPart,
+  sheet: { grain: number | null },
+  rot: number,
+  policy: RotationPolicy = {},
+): boolean {
+  return allowedRotations(part, sheet, policy).includes(normalizeRotation(rot));
+}

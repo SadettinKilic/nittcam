@@ -2,7 +2,7 @@
 import { original } from 'immer';
 import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
-import { allowedRotations } from '../../geometry/grain';
+import { allowedRotations, rotationAllowed } from '../../geometry/grain';
 import { nestProject } from '../../nesting/nest';
 import { nestingSchema, placementSchema, type Project } from '../../schema';
 import { defineCommand } from '../types';
@@ -101,8 +101,8 @@ export const lockPlacement = defineCommand({
     if (params.rot !== undefined) {
       // The grain rule (D-034): only rotations from `allowedRotations` may be set by hand.
       const part = project.parts.find((p) => p.id === params.partId);
-      const allowed = part ? allowedRotations(part, project.stock.sheet) : [];
-      if (!allowed.includes(params.rot)) {
+      if (!part || !rotationAllowed(part, project.stock.sheet, params.rot)) {
+        const allowed = part ? allowedRotations(part, project.stock.sheet) : [];
         return `rotation ${params.rot}° is not allowed for part "${params.partId}" (allowed: ${allowed.join(', ')})`;
       }
     }

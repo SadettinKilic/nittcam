@@ -334,14 +334,14 @@ export function LayoutView({
 
   // Locked placements the rule flags (e.g. after a part was enlarged): listed and drawn red.
   const lockedIssues = issues
-    .filter((i) => i.code === 'LOCKED_PLACEMENT_INVALID')
+    .filter((i) => i.code === 'LOCKED_PLACEMENT_INVALID' || i.code === 'LOCKED_PLACEMENT_GRAIN')
     .map((i) => {
       const m = LOCKED_PATH.exec(i.path);
       const s = Number(m?.[1]);
       const pl = project.layout.sheets[s]?.placements[Number(m?.[2])];
-      return pl ? { sheet: s, key: copyKey(pl) } : null;
+      return pl ? { sheet: s, key: copyKey(pl), grain: i.code === 'LOCKED_PLACEMENT_GRAIN' } : null;
     })
-    .filter((x): x is { sheet: number; key: string } => x !== null);
+    .filter((x): x is { sheet: number; key: string; grain: boolean } => x !== null);
 
   const conflicts = useMemo(() => {
     const set = new Set<string>();
@@ -416,11 +416,11 @@ export function LayoutView({
 
       {lockedIssues.map((li) => (
         <p
-          key={li.key}
+          key={`${li.key}${li.grain ? '-grain' : ''}`}
           role="alert"
           className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
         >
-          {fill(t.lockedIssue, { label: labelOf(li.key) })}
+          {fill(li.grain ? t.lockedGrainIssue : t.lockedIssue, { label: labelOf(li.key) })}
         </p>
       ))}
 
