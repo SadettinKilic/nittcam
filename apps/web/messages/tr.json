@@ -4,6 +4,13 @@
     "description": "CNC router için web tabanlı kesim programı"
   },
   "home": {
+    "start": {
+      "label": "Başlangıç adımları",
+      "done": "tamam",
+      "machine": { "title": "Makine", "text": "Router'ınızı ve takımlarınızı tanımlayın" },
+      "cutList": { "title": "Kesim listesi", "text": "Parçaları yazın veya Excel'den yapıştırın" },
+      "gcode": { "title": "G-code", "text": "Dizin, simüle edin ve dışa aktarın" }
+    },
     "title": "Atölye özeti",
     "subtitle": "Projeleriniz, makineleriniz ve bu haftaki üretim tek bakışta.",
     "newProject": "Yeni proje",
@@ -11,7 +18,7 @@
       "label": "Özet",
       "projects": "Projeler",
       "projectsHint": "{n} taslak",
-      "exports": "Bu hafta export",
+      "exports": "Bu hafta dışa aktarma",
       "exportsHint": "Son 7 günde üretilen NC dosyası",
       "machines": "Doğrulanmış makine",
       "machinesValue": "{verified} / {total}",
@@ -29,8 +36,8 @@
     "card": {
       "pieces": "{n} parça",
       "sheets": "{n} plaka",
-      "lastExport": "Son export {date}",
-      "noExport": "Henüz export yok",
+      "lastExport": "Son dışa aktarma {date}",
+      "noExport": "Henüz dışa aktarma yok",
       "noLayout": "Dizilim yok",
       "thumb": "{name} dizilim önizlemesi",
       "updated": "Güncellendi {date}",
@@ -72,11 +79,13 @@
     "create": "Oluştur",
     "settings": "Ayarlar",
     "newProject": "Yeni proje",
-    "soon": "yakında"
+    "soon": "yakında",
+    "soonGroup": "Yakında"
   },
   "shell": {
     "skipToContent": "İçeriğe geç",
     "operator": "Operatör",
+    "brandHome": "NittCam, ana sayfa",
     "workspace": "Çalışma alanı",
     "breadcrumb": "Sayfa yolu",
     "openMenu": "Menüyü aç",
@@ -784,6 +793,7 @@
       "approx": "≈ {time}"
     },
     "meters": "{value} m",
+    "meterUnit": "m",
     "sheetTabs": "Plakalar",
     "sheetTab": "Plaka {n}",
     "sheetTabTime": "≈ {time}",
@@ -864,7 +874,7 @@
       "material": "Malzeme",
       "updated": "Güncellendi",
       "actions": "İşlem",
-      "lastExport": "Son export"
+      "lastExport": "Son dışa aktarma"
     },
     "status": {
       "draft": "Taslak",
@@ -900,7 +910,7 @@
   "wizard": {
     "titleNew": "Yeni proje",
     "nameLabel": "Proje adı",
-    "defaultName": "Proje {date}",
+    "defaultName": "Adsız proje",
     "loading": "Proje yükleniyor…",
     "loadError": "Proje yüklenemedi.",
     "notFound": "Proje bulunamadı.",
@@ -962,7 +972,7 @@
       "help": "Makine; tabla ölçüsünü, takımları ve G-code biçimini belirler. Malzeme ve kalınlık kesim ayarlarını seçer.",
       "machine": "Makine",
       "option": "{name} · sürüm {version}",
-      "table": "Tabla {w} × {d} mm · post {post}",
+      "table": "Tabla {size} · post {post}",
       "unverified": "Bu makine profili doğrulanmadı: G-code'un ilk satırı \"DOĞRULANMADI, önce air cut\" uyarısıdır.",
       "profileNewer": "Makine profili güncellendi: proje sürüm {old} ile kaydedildi, son sürüm {latest}. Dışa aktarma projenin sürümüyle (sürüm {old}) yapılır.",
       "useLatest": "Son sürüme geç",
@@ -981,9 +991,10 @@
       "grain0": "0° (X boyunca)",
       "grain90": "90° (Y boyunca)",
       "grainNone": "Plastik malzemede damar yönü yoktur.",
-      "tableWarning": "Plaka tablaya sığmıyor: {w} × {h} mm plaka, {tw} × {td} mm tabla. Export kontrolü bu plakayı durdurur.",
+      "tableWarning": "Plaka tablaya sığmıyor: {w} × {h} mm plaka, {tw} × {td} mm tabla. Dışa aktarma kontrolü bu plakayı durdurur.",
       "noParams": "Bu makinede {material} {thickness} mm için kesim ayarı (besleme, devir, paso) yok. Makineler sayfasında bu malzemeyi ekleyin ya da başka bir kalınlık seçin.",
-      "paramsOk": "Kesim ayarı: T{tool} takım, {feed} mm/dk besleme, {rpm} dev/dk, {step} mm paso.",
+      "paramsOk": "Kesim ayarı: T{tool} takım, {feed} besleme, {rpm}, {step} paso.",
+      "units": { "mm": "mm", "feed": "mm/dk", "rpm": "dev/dk" },
       "preview": "Önizleme",
       "previewLabel": "Tabla {tw} × {td} mm, üzerinde {w} × {h} mm plaka",
       "legendTable": "Tabla",
@@ -1240,6 +1251,7 @@
       "dark": "Koyu"
     },
     "sections": {
+      "brand": "Marka",
       "colors": "Renkler",
       "type": "Yazı",
       "buttons": "Butonlar",
@@ -1252,13 +1264,27 @@
       "cards": "Kartlar",
       "feedback": "Yükleme ve kısayollar",
       "states": "Boş, hata ve bildirim",
-      "command": "Komut listesi"
+      "command": "Komut listesi",
+      "density": "Yoğunluk"
+    },
+    "density": {
+      "comfortable": "Rahat (varsayılan, 40 px)",
+      "compact": "Kompakt (data-density=\"compact\", 32 / 36 px)",
+      "rows": ["Yan panel", "Raf"]
     },
     "colorGroups": {
       "surfaces": "Zemin ve yüzey",
       "text": "Metin",
       "accent": "Vurgu",
       "status": "Durum"
+    },
+    "brand": {
+      "full": "İşaret ve yazı markası",
+      "sizes": "Boyutlar (20 / 24 / 32 px) ve yalnız işaret",
+      "variants": "İşaret biçimleri: karo, sade, tek renk",
+      "icons": "Alan ikonları (16 / 20 / 24 px): router, plaka, damar, dizilim, takım yolu, air cut",
+      "backgrounds": "Sayfa, kenar çubuğu ve vurgu zemininde (koyu tema için temayı değiştirin)",
+      "clearSpace": "Boşluk payı: işaret yüksekliğinin yarısı; logo token dışı renge boyanmaz"
     },
     "typeSample": "Plaka 1.220 × 2.440 mm, 18 mm MDF",
     "typeBody": "Kesim listesi, dizilim ve G-code tek akışta. Ölçüler eşit genişlikte rakamlarla hizalanır.",

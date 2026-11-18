@@ -134,3 +134,23 @@ export {
   type NotifyOptions,
 } from './components/feedback';
 export { fieldBase, fieldFocus, focusRing } from './lib/styles';
+export {
+  BRAND_MARK,
+  Logo,
+  LogoMark,
+  type LogoMarkProps,
+  type LogoProps,
+  type LogoSize,
+} from './components/logo';
+export {
+  AirCutIcon,
+  DOMAIN_ICONS,
+  GrainIcon,
+  NestingIcon,
+  RouterIcon,
+  SheetIcon,
+  ToolpathIcon,
+  type DomainIcon,
+  type DomainIconProps,
+} from './components/domain-icons';
+export { Measure, formatMeasure, type MeasureProps } from './components/measure';

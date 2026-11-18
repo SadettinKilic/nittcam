@@ -1,5 +1,5 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { ThemeProvider } from '@nittcam/ui';
 import { AppShell } from '../components/shell/app-shell';
@@ -18,17 +18,37 @@ const shellText = {
 
 // Inter (OFL-1.1, D-032), downloaded and self-hosted at build time by next/font.
 const inter = Inter({ subsets: ['latin', 'latin-ext'], display: 'swap', variable: '--font-inter' });
+// JetBrains Mono (OFL-1.1, T195): numbers, coordinates, G-code and file names; latin-ext
+// carries the Turkish İ ı Ş ş Ğ ğ. Self-hosted, so Windows never falls back to Consolas.
+const mono = JetBrains_Mono({
+  subsets: ['latin', 'latin-ext'],
+  display: 'swap',
+  variable: '--font-jetbrains-mono',
+});
 
 export const metadata: Metadata = {
   title: messages.meta.title,
   description: messages.meta.description,
+  applicationName: messages.meta.title,
+};
+
+// Browser chrome follows the page background of each theme (tokens bg: neutral-25 / neutral-1000).
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fcfcfd' },
+    { media: '(prefers-color-scheme: dark)', color: '#08090b' },
+  ],
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // next-themes and the sidebar script set <html> attributes before hydration (no flash);
     // the mismatch is expected.
-    <html lang={defaultLocale} className={inter.variable} suppressHydrationWarning>
+    <html
+      lang={defaultLocale}
+      className={`${inter.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
       </head>

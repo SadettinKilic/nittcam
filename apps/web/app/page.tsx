@@ -1,21 +1,21 @@
 import { materialKindOf, type VerificationState } from '@nittcam/core';
-import { Badge, Button, Card, EmptyState, ErrorState } from '@nittcam/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, RouterIcon } from '@nittcam/ui';
 import {
   ArrowRight,
   ClipboardPaste,
-  Cpu,
   FileOutput,
   FolderOpen,
   LayoutGrid,
   Plus,
-  Recycle,
   ShieldCheck,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PageSkeleton } from '../components/feedback/page-skeleton';
 import { ThrowProbe } from '../components/feedback/throw-probe';
 import { LayoutThumbnail } from '../components/home/layout-thumb';
+import { StartStrip } from '../components/home/start-strip';
 import { StatTile } from '../components/home/stat-tile';
 import { MachineStateBadge } from '../components/machines/state-badge';
 import {
@@ -42,6 +42,10 @@ import { toListItem as machineItem } from '../lib/server/machines';
 import { machineNames, toListItem } from '../lib/server/projects';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: `${getMessages().nav.home} · ${getMessages().meta.title}`,
+};
 
 /** Recent project cards on the home page (a 2 × 2 grid on wide screens). */
 const RECENT = 4;
@@ -115,7 +119,7 @@ async function Dashboard() {
         title={t.title}
         description={t.subtitle}
         actions={
-          <Button asChild>
+          <Button asChild className="md:hidden">
             <Link href="/projeler/yeni" data-testid="home-new-project">
               <Plus aria-hidden />
               {t.newProject}
@@ -136,7 +140,19 @@ async function Dashboard() {
         />
       ) : (
         <>
-          <Stats stats={data.stats} t={t} />
+          {data.stats.projects === 0 ? (
+            <StartStrip
+              label={t.start.label}
+              doneLabel={t.start.done}
+              steps={[
+                { ...t.start.machine, href: '/makineler', done: data.stats.machines > 0 },
+                { ...t.start.cutList, href: '/projeler/yeni?adim=parcalar' },
+                { ...t.start.gcode, href: '/projeler/yeni' },
+              ]}
+            />
+          ) : (
+            <Stats stats={data.stats} t={t} />
+          )}
           <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] lg:gap-6">
             <RecentProjects recent={data.recent} messages={messages} />
             <div className="flex min-w-0 flex-col gap-6">
@@ -153,7 +169,10 @@ async function Dashboard() {
 function Stats({ stats, t }: { stats: DashboardStats; t: Messages['home'] }) {
   const s = t.stats;
   return (
-    <section aria-label={s.label} className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+    <section
+      aria-label={s.label}
+      className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4 [&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1"
+    >
       <StatTile
         testId="stat-projects"
         label={s.projects}
@@ -182,14 +201,6 @@ function Stats({ stats, t }: { stats: DashboardStats; t: Messages['home'] }) {
         }
         icon={<ShieldCheck />}
       />
-      <StatTile
-        testId="stat-waste"
-        label={s.waste}
-        value="—"
-        hint={s.wasteHint}
-        badge={s.soon}
-        icon={<Recycle />}
-      />
     </section>
   );
 }
@@ -217,7 +228,7 @@ function RecentProjects({ recent, messages }: { recent: RecentProject[]; message
           description={t.recentEmpty}
           action={
             <>
-              <Button asChild size="sm">
+              <Button asChild size="sm" variant="secondary">
                 <Link href="/projeler/yeni">
                   <Plus aria-hidden />
                   {t.newProject}
@@ -340,7 +351,7 @@ function Machines({ machines, messages }: { machines: MachineListItem[]; message
       {machines.length === 0 ? (
         <EmptyState
           compact
-          icon={<Cpu />}
+          icon={<RouterIcon />}
           title={t.machinesEmptyTitle}
           description={t.machinesEmpty}
           action={
@@ -361,7 +372,7 @@ function Machines({ machines, messages }: { machines: MachineListItem[]; message
                   aria-hidden
                   className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-surface-subtle text-fg-muted [&_svg]:size-4"
                 >
-                  <Cpu />
+                  <RouterIcon />
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="truncate text-sm font-medium text-fg">{m.name}</span>
@@ -394,7 +405,7 @@ function QuickActions({ t }: { t: Messages['home'] }) {
   const items = [
     { href: '/projeler/yeni', icon: <Plus />, ...q.newProject },
     { href: '/projeler/yeni?adim=parcalar', icon: <ClipboardPaste />, ...q.paste },
-    { href: '/makineler?yeni=1', icon: <Cpu />, ...q.addMachine },
+    { href: '/makineler?yeni=1', icon: <RouterIcon />, ...q.addMachine },
   ];
   return (
     <section aria-labelledby="home-quick" className="flex min-w-0 flex-col gap-4">

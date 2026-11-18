@@ -2,6 +2,10 @@
 
 import {
   AlertDialog,
+  Measure,
+  DOMAIN_ICONS,
+  Logo,
+  LogoMark,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
@@ -150,6 +154,55 @@ export function UiGallery({ t }: { t: T }) {
           <ThemeSwitcher labels={t.theme} />
         </header>
 
+        <Section id="brand" title={t.sections.brand}>
+          <div className="flex flex-col gap-6" data-testid="gallery-brand">
+            <Row label={t.brand.full}>
+              <Logo size={32} />
+            </Row>
+            <Row label={t.brand.sizes}>
+              <Logo size={20} />
+              <Logo size={24} />
+              <Logo size={32} />
+              <Logo size={24} variant="mark" />
+            </Row>
+            <Row label={t.brand.variants}>
+              <LogoMark size={32} />
+              <LogoMark size={32} variant="plain" className="text-fg" />
+              <LogoMark size={32} variant="mono" className="text-fg" />
+              <LogoMark size={16} />
+            </Row>
+            <Row label={t.brand.backgrounds}>
+              <span className="rounded-lg border border-border bg-bg p-4">
+                <Logo size={24} />
+              </span>
+              <span className="rounded-lg border border-border bg-surface-subtle p-4">
+                <Logo size={24} />
+              </span>
+              <span className="rounded-lg bg-accent p-4 text-accent-fg">
+                <Logo size={24} tone="mono" />
+              </span>
+            </Row>
+            <Row label={t.brand.icons}>
+              {[16, 20, 24].map((size) => (
+                <span
+                  key={size}
+                  className="flex items-center gap-3 text-fg"
+                  data-testid="gallery-icons"
+                >
+                  {Object.entries(DOMAIN_ICONS).map(([name, Icon]) => (
+                    <Icon key={name} size={size} aria-label={name} />
+                  ))}
+                </span>
+              ))}
+            </Row>
+            <Row label={t.brand.clearSpace}>
+              <span className="rounded-md p-3 outline-1 outline-border-strong outline-dashed">
+                <Logo size={32} />
+              </span>
+            </Row>
+          </div>
+        </Section>
+
         <Section id="colors" title={t.sections.colors}>
           <div className="grid gap-6 sm:grid-cols-2">
             {(Object.keys(SWATCHES) as Array<keyof typeof SWATCHES>).map((group) => (
@@ -179,6 +232,52 @@ export function UiGallery({ t }: { t: T }) {
             <p className="text-sm text-fg-muted">{t.typeBody}</p>
             <p className="text-xs text-fg-subtle">{t.typeBody}</p>
             <p className="numeric text-sm text-fg">1.220,0 · 2.440,0 · 18,0 · 111,1 mm</p>
+            <p className="font-mono text-sm text-fg" data-testid="gallery-mono">
+              G1 X1220.000 Y2440.000 F12000 · mutfak-dolabi_İŞĞıüç.nc · sha256 9f2c…
+            </p>
+            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm text-fg">
+              <Measure value={[3050, 2150]} unit="mm" />
+              <Measure value={18} decimals={1} unit="mm" />
+              <Measure value={12000} unit="mm/dk" maxDecimals={0} />
+              <Measure value={[412.5, -18]} unit="mm" mono />
+              <span className="numeric text-3xl font-semibold tracking-tight">
+                <Measure value={43.6} unit="%" />
+              </span>
+            </div>
+          </div>
+        </Section>
+
+        <Section id="density" title={t.sections.density}>
+          <div className="grid gap-6 md:grid-cols-2">
+            {(['comfortable', 'compact'] as const).map((d) => (
+              <div
+                key={d}
+                data-density={d === 'compact' ? 'compact' : undefined}
+                data-testid={`density-${d}`}
+                className="flex flex-col gap-3 rounded-lg border border-border-subtle p-panel"
+              >
+                <span className="text-xs font-medium text-fg-subtle">{t.density[d]}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="md">{t.variants.primary}</Button>
+                  <Button size="md" variant="outline">
+                    {t.variants.outline}
+                  </Button>
+                  <Input aria-label={t.density[d]} defaultValue="1.220" className="w-28" />
+                </div>
+                <div className="divide-y divide-border-subtle rounded-md border border-border-subtle text-sm">
+                  {t.density.rows.map((name, i) => (
+                    <div key={name} className="flex h-row items-center gap-3 px-3">
+                      <span className="flex-1 truncate text-fg">{name}</span>
+                      <Measure
+                        value={[720 - i * 38, 560 - i * 20]}
+                        unit="mm"
+                        className="text-fg-muted"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </Section>
 

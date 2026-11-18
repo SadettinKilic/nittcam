@@ -45,6 +45,21 @@ async function strayTexts(page: Page, data: readonly string[]): Promise<string[]
     else if (o && typeof o === 'object') Object.values(o).forEach(walk);
   };
   walk(tr);
+  // fillRich() (T195) renders a sentence as text nodes around Measure nodes: accept every
+  // part of a template that runs from one placeholder boundary to another.
+  for (const l of [...leaves]) {
+    const tokens = l.split(/(\{\w+\})/);
+    if (tokens.length < 3) continue;
+    for (let i = 0; i < tokens.length; i += 2) {
+      for (let j = i + 1; j <= tokens.length; j += 2) {
+        const part = tokens
+          .slice(i, j)
+          .join('')
+          .replace(/^[·:,.\s]+|[·:,.\s]+$/g, '');
+        if (part !== l && /[A-Za-zÇĞİÖŞÜçğıöşü]{2}/.test(part)) leaves.push(part);
+      }
+    }
+  }
   const esc = (x: string) => x.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
   const patterns = [...leaves, ...data].map(
     (l) =>

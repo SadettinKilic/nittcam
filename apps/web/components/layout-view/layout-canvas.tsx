@@ -5,6 +5,7 @@ import { memo, useMemo, useRef } from 'react';
 import { Arrow, Group, Layer, Line, Rect, Stage, Text } from 'react-konva';
 import type { CanvasColors, DrawnPart, ViewState } from './model';
 import { zoomAt } from './zoom';
+import { canvasMonoFont } from '../../lib/canvas-theme';
 
 /**
  * The Konva drawing of one sheet (T013, spec §3.6, §6.5). Loaded only in the browser (react-konva
@@ -196,6 +197,7 @@ const PartShape = memo(function PartShape({
         y={h / 2 - font / 2 - (part.grainLock ? font * 0.3 : 0)}
         align="center"
         fontSize={font}
+        fontFamily={canvasMonoFont()}
         fontStyle="bold"
         fill={colors.text}
         listening={false}

@@ -120,6 +120,9 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await goStep(page, 'parcalar');
         await paste(page, KITCHEN, 5);
         await expect(page.getByTestId('cut-list-count')).toContainText('30');
+        // The first autosave (mocked) moves the URL to /projeler/<id>; the sidebar highlight and
+        // the breadcrumb follow it, so capture only after that has happened.
+        await page.waitForURL(`**/projeler/${ID}?*`);
         await page.mouse.move(0, 0);
         await expectNoA11yViolations(page);
         await snap(page, `t109-wizard-parts-${vp}-${theme}`, { fullPage: false });

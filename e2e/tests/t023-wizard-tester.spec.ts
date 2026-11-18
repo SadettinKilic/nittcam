@@ -626,15 +626,15 @@ test.describe('T023 tester: wizard flow', () => {
     await wizardReady(page);
     await expect(page.locator('[data-testid^=wizard-step-][aria-current=step]')).toHaveCount(1);
   });
-  test('menu: Şablonlar and Ayarlar say yakında, the others navigate', async ({ page }) => {
+  test('menu: Şablonlar and Ayarlar sit in the Yakında group, the others navigate', async ({
+    page,
+  }) => {
     const problems = watchConsole(page);
     await page.goto('/');
     const nav = page.getByRole('navigation', { name: tr.nav.label });
+    const soon = nav.getByRole('list', { name: tr.nav.soonGroup });
     for (const label of [tr.nav.templates, tr.nav.settings]) {
-      const item = nav.getByText(label, { exact: false }).first();
-      await expect(item).toBeVisible();
-      await expect(nav).toContainText(`${label}`);
-      await expect(nav.locator(`:text("${tr.nav.soon}")`).first()).toBeVisible();
+      await expect(soon.getByText(label, { exact: true })).toBeVisible();
     }
     // They are not links (no dead end), or they lead to a page that says yakında.
     expect(await nav.getByRole('link', { name: tr.nav.templates }).count()).toBeLessThanOrEqual(1);

@@ -143,3 +143,31 @@ describe('token file shape', () => {
     expect(css).toContain('--color-*: initial;');
   });
 });
+
+describe('density scope (T195)', () => {
+  const block = (selector: string) => {
+    const start = css.indexOf(`${selector} {`);
+    return start < 0 ? '' : css.slice(start, css.indexOf('}', start));
+  };
+  const value = (src: string, name: string) =>
+    new RegExp(`${name}:\\s*([^;]+);`).exec(src)?.[1]?.trim();
+
+  it('comfortable defaults: 40 px controls and rows, 16 px panel padding', () => {
+    expect(value(css, '--spacing-control-md')).toBe('2.5rem');
+    expect(value(css, '--spacing-row')).toBe('2.5rem');
+    expect(value(css, '--spacing-panel')).toBe('1rem');
+  });
+
+  it('compact: 32 px controls, 36 px rows, 12 px panel padding', () => {
+    const compact = block("[data-density='compact']");
+    expect(value(compact, '--spacing-control-md')).toBe('2rem');
+    expect(value(compact, '--spacing-row')).toBe('2.25rem');
+    expect(value(compact, '--spacing-panel')).toBe('0.75rem');
+  });
+
+  it('mono family is the self-hosted font with generic fallbacks only', () => {
+    const mono = value(css, '--font-mono') ?? '';
+    expect(mono.startsWith('var(--font-jetbrains-mono)')).toBe(true);
+    expect(mono).not.toMatch(/consolas|courier/i);
+  });
+});

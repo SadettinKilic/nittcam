@@ -120,7 +120,7 @@ export function VerificationView({
         </Link>
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex min-w-0 flex-col gap-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-fg sm:text-3xl">{t.title}</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">{t.title}</h1>
             {load.status === 'ready' ? (
               <p className="text-sm text-fg-muted sm:text-base">
                 {fill(t.subtitle, { machine: load.data.machineName, version: load.data.version })}

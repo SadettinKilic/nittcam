@@ -77,6 +77,13 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(tr.home.title);
         await expect(page.getByTestId('home-projects-empty')).toBeVisible();
         await expect(page.getByTestId('home-machines')).toBeVisible();
+        // T194a: zero projects → start strip instead of KPIs; one accent "Yeni proje" (sidebar).
+        await expect(page.getByTestId('home-start')).toBeVisible();
+        if (vp === 'desktop') {
+          await expect(page.getByTestId('home-new-project').filter({ visible: true })).toHaveCount(
+            0,
+          );
+        }
         await expectNoA11yViolations(page);
         await snap(page, `t106-home-empty-${vp}-${theme}`);
       });

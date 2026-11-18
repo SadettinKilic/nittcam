@@ -29,3 +29,22 @@ export function onThemeChange(onChange: () => void): () => void {
     mq?.removeEventListener('change', onChange);
   };
 }
+
+/** The `--font-mono` stack (T195) from a computed style; missing → generic monospace. */
+export function monoFontFamily(style: Pick<CSSStyleDeclaration, 'getPropertyValue'>): string {
+  return style.getPropertyValue('--font-mono').trim() || 'monospace';
+}
+
+let monoCache: string | null = null;
+
+/**
+ * Font family for canvas labels and read-outs (dimension labels, coordinates, badges): the
+ * self-hosted mono, so Windows never falls back to Consolas/Courier. Read once (it does not
+ * change with the theme); `monospace` during server rendering.
+ */
+export function canvasMonoFont(): string {
+  if (monoCache) return monoCache;
+  if (typeof window === 'undefined') return 'monospace';
+  monoCache = monoFontFamily(getComputedStyle(document.documentElement));
+  return monoCache;
+}

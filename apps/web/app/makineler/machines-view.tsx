@@ -1,9 +1,19 @@
 'use client';
 
 import { defaultMachineProfile, type MachineProfile } from '@nittcam/core';
-import { Badge, Button, Card, EmptyState, ErrorState, Skeleton, notify } from '@nittcam/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  Measure,
+  RouterIcon,
+  Skeleton,
+  notify,
+} from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
-import { Cpu, Pencil, Plus, ShieldCheck } from 'lucide-react';
+import { Pencil, Plus, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MachineStateBadge } from '../../components/machines/state-badge';
@@ -29,8 +39,6 @@ type Mode =
       key: number;
     };
 
-const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
-
 /** A new machine starts from the generic profile, not marked as an example, with no name. */
 function newProfile(): MachineProfile {
   const p = defaultMachineProfile();
@@ -39,8 +47,9 @@ function newProfile(): MachineProfile {
   return p;
 }
 
-function tableSize(m: MachineListItem): string {
-  return `${mmFormat.format(m.table.width)} × ${mmFormat.format(m.table.depth)} mm`;
+/** Table width × depth as a Measure (T195): Turkish digits, tabular, unit muted. */
+function TableSize({ m, className }: { m: MachineListItem; className?: string }) {
+  return <Measure value={[m.table.width, m.table.depth]} unit="mm" className={className} />;
 }
 
 export function MachinesView({ t, startNew = false }: { t: Text; startNew?: boolean }) {
@@ -179,7 +188,7 @@ function MachineList({
     return <ErrorState title={t.loadError} onRetry={onRetry} retryLabel={t.retry} />;
   }
   if (list.items.length === 0) {
-    return <EmptyState icon={<Cpu />} title={t.emptyTitle} description={t.empty} />;
+    return <EmptyState icon={<RouterIcon />} title={t.emptyTitle} description={t.empty} />;
   }
   return (
     <div data-testid="machine-list" className="flex flex-col gap-3">
@@ -199,7 +208,7 @@ function MachineList({
               <div className="flex flex-wrap items-center gap-1.5">
                 <MachineStateBadge state={m.state} label={t.state[m.state]} />
                 {m.example ? <Badge>{t.example}</Badge> : null}
-                <span className="numeric ml-auto text-xs text-fg-muted">{tableSize(m)}</span>
+                <TableSize m={m} className="ml-auto text-xs text-fg" />
               </div>
               <RowActions
                 t={t}
@@ -275,7 +284,7 @@ function MachineTable({
                   aria-hidden
                   className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-surface-subtle text-fg-muted [&_svg]:size-4"
                 >
-                  <Cpu />
+                  <RouterIcon />
                 </span>
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <span className="flex items-center gap-2">
@@ -290,11 +299,7 @@ function MachineTable({
         }),
         column.accessor('table', {
           header: c.table,
-          cell: (info) => (
-            <span className="numeric whitespace-nowrap text-fg-muted">
-              {tableSize(info.row.original)}
-            </span>
-          ),
+          cell: (info) => <TableSize m={info.row.original} className="text-fg" />,
         }),
         column.accessor('version', {
           header: c.version,

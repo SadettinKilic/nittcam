@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
+  LogoMark,
   useTheme,
   type ThemeChoice,
 } from '@nittcam/ui';
@@ -98,6 +99,14 @@ export function TopBar({ t, onOpenMenu, search, themeExtra }: TopBarProps) {
       >
         <Menu aria-hidden />
       </IconButton>
+      <Link
+        href="/"
+        aria-label={t.shell.brandHome}
+        data-testid="shell-brand-mobile"
+        className="hidden shrink-0 items-center rounded-md p-1 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus min-[360px]:flex md:hidden"
+      >
+        <LogoMark size={24} />
+      </Link>
 
       <nav aria-label={t.shell.breadcrumb} className="min-w-0 flex-1">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm">

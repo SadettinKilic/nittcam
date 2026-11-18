@@ -7,6 +7,7 @@ import { Arrow, Circle, Group, Layer, Line, Rect, Shape, Stage, Text } from 'rea
 import type { DrawnPart, ViewState } from '../layout-view/model';
 import { zoomAt } from '../layout-view/zoom';
 import { DEPTH_LEVELS, depthLevel, depthRamp, toolDiameterOf, type SimColors } from './model';
+import { canvasMonoFont } from '../../lib/canvas-theme';
 
 /**
  * Konva drawing of the simulation (T020, spec §6.5). Units inside the stage are millimetres in a
@@ -132,6 +133,7 @@ const StaticLayer = memo(function StaticLayer({
             x={(machine?.xSign ?? 1) * (axis + 4 * px) - (machine?.xSign === -1 ? 14 * px : 0)}
             y={-6 * px}
             fontSize={11 * px}
+            fontFamily={canvasMonoFont()}
             fontStyle="bold"
             fill={colors.zero}
             perfectDrawEnabled={false}
@@ -141,6 +143,7 @@ const StaticLayer = memo(function StaticLayer({
             x={-7 * px}
             y={-(machine?.ySign ?? 1) * (axis + 6 * px) - (machine?.ySign === -1 ? 0 : 11 * px)}
             fontSize={11 * px}
+            fontFamily={canvasMonoFont()}
             fontStyle="bold"
             fill={colors.zero}
             perfectDrawEnabled={false}
@@ -338,7 +341,7 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
 
     // Cut-order badges at each contour start reached so far.
     const r = 8 * px;
-    ctx.font = `bold ${10 * px}px system-ui, sans-serif`;
+    ctx.font = `bold ${10 * px}px ${canvasMonoFont()}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (const c of sim.contours) {
