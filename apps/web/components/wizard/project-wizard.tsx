@@ -629,7 +629,7 @@ function WizardSession({
           </div>
         </header>
 
-        <div className="order-3 w-full min-w-0 min-[1400px]:order-2 min-[1400px]:w-auto min-[1400px]:flex-1">
+        <div className="order-3 w-full min-w-0 min-[1400px]:order-2 min-[1400px]:w-auto min-[1400px]:flex-1 min-[1400px]:max-[1679px]:min-w-min">
           <StepIndicator
             t={t.steps}
             headingRef={heading}
@@ -805,7 +805,10 @@ function StepIndicator({
           </h1>
         </div>
       </div>
-      <nav aria-label={t.label} className="min-w-0 lg:flex-1">
+      <nav
+        aria-label={t.label}
+        className="min-w-0 lg:flex-1 min-[1400px]:max-[1679px]:min-w-[22.75rem]"
+      >
         <ol className="flex items-center gap-1" data-testid="wizard-steps">
           {STEPS.map((s, i) => {
             const status = statuses[i] ?? 'upcoming';
@@ -901,7 +904,7 @@ function NameField({
     if (name !== '' && name !== value) onCommit(name.slice(0, 120));
   }
   return (
-    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:min-w-64">
+    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:min-w-64 min-[1400px]:flex-[0_1_20rem]">
       <span className="px-2 text-xs font-medium text-fg-subtle">{label}</span>
       <input
         ref={input}
