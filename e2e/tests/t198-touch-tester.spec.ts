@@ -32,17 +32,19 @@ test.describe('T198 tester: one-finger touch on the canvas', () => {
     const room = await page.evaluate(
       () => document.documentElement.scrollHeight - window.innerHeight,
     );
-    // Canvas-first workspace: the page below the canvas is short (sheet bar, footer), not zero.
-    expect(room, 'page has vertical scroll room below the canvas').toBeGreaterThan(10);
-
+    // T240 (D-039, intentional): the phone workspace now fits the viewport when it can (Dizilim
+    // at 390 × 844), so there may be nothing to scroll; the fit-swipe check runs only when the
+    // page has room (Simülasyon with its transport).
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect.poll(() => scrollY(page)).toBe(0);
     let box = await canvas.boundingBox();
     if (!box) throw new Error('canvas has no box');
     const v0 = await view(canvas);
     await swipeUp(page, box.x + box.width / 2, box.y + box.height * 0.7, 160);
-    // At the fit: the page scrolls, the view is not panned.
-    await expect.poll(() => scrollY(page)).toBeGreaterThanOrEqual(Math.min(30, room - 2));
+    // At the fit: the page scrolls (when it can), the view is not panned.
+    if (room > 10) {
+      await expect.poll(() => scrollY(page)).toBeGreaterThanOrEqual(Math.min(30, room - 2));
+    }
     expect(await view(canvas)).toBe(v0);
 
     // Zoomed in: the same gesture pans the view and leaves the page where it is.

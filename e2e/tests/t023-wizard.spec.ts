@@ -343,8 +343,10 @@ test.describe('T023 wizard', () => {
     await openNewProject(page, 'parcalar');
     await paste(page, KITCHEN, 5);
     await saved(page);
-    const name = await page.getByTestId('project-name').inputValue();
+    // T240: below 640 px the name field is shown on step 1 only (the top bar carries the title).
+    const name = ((await page.getByTestId('shell-title-mobile').textContent()) ?? '').trim();
     await goStep(page, 'makine');
+    await expect(page.getByTestId('project-name')).toHaveValue(name);
     const data = [name, SEEDED];
     for (const step of STEP_KEYS) {
       await goStep(page, step);

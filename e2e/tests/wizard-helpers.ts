@@ -49,9 +49,13 @@ export async function openNewProject(page: Page, step: StepKey = 'makine') {
 /** Opens the phone step list (T240: below 640 px the steps live in a popover). */
 export async function openStepList(page: Page) {
   const trigger = page.getByTestId('wizard-steps-trigger');
-  if ((await trigger.count()) > 0 && (await page.getByTestId('wizard-steps').count()) === 0) {
+  if ((await trigger.count()) === 0) return;
+  if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+    // A popover closed by the previous step change may still be animating out.
+    await expect(page.getByTestId('wizard-steps')).toHaveCount(0);
     await trigger.click();
   }
+  await expect(page.getByTestId('wizard-steps')).toBeVisible();
 }
 
 /** Goes to a step with the step indicator (the popover step list on phones). */
