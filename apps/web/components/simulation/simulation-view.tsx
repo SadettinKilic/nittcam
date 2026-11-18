@@ -327,18 +327,36 @@ export function clampView(
   return { scale, x, y };
 }
 
-/** Scale and pan that show `b` (sheet frame, mm) centred in the canvas. */
-function fitBounds(b: Bounds, sheetHeight: number, width: number, height: number): ViewState {
+/** Canvas band (px) kept free at fit: plate tabs float over the top, the grain label sits bottom-right. */
+interface FitInsets {
+  top: number;
+  bottom: number;
+}
+
+/** Scale and pan that show `b` (sheet frame, mm) centred in the canvas, clear of the overlays. */
+function fitBounds(
+  b: Bounds,
+  sheetHeight: number,
+  width: number,
+  height: number,
+  insets: FitInsets = { top: 0, bottom: 0 },
+): ViewState {
   const pad = 8;
+  // Reserve the overlay bands only while the canvas keeps >= 75 % of its height for the sheet:
+  // both bands first, then the grain label's alone, else none (short phone canvases).
+  const reserve = [insets, { top: 0, bottom: insets.bottom }, { top: 0, bottom: 0 }].find(
+    (r) => height - r.top - r.bottom >= height * 0.75,
+  ) ?? { top: 0, bottom: 0 };
+  const usable = height - reserve.top - reserve.bottom;
   const scale = Math.max(
     0.0001,
-    Math.min((width - 2 * pad) / b.width, (height - 2 * pad) / b.height),
+    Math.min((width - 2 * pad) / b.width, (usable - 2 * pad) / b.height),
   );
   const top = sheetHeight - b.y - b.height;
   return {
     scale,
     x: (width - b.width * scale) / 2 - b.x * scale,
-    y: (height - b.height * scale) / 2 - top * scale,
+    y: reserve.top + (usable - b.height * scale) / 2 - top * scale,
   };
 }
 
@@ -374,6 +392,9 @@ function Player({
   const duration = sim.duration;
   const stock = project.stock.sheet;
   const bounds = useMemo(() => simBounds(stock, machine), [stock, machine]);
+  // Fit keeps the sheet clear of the floating plate tabs (top) and the grain label (bottom).
+  const hasTabs = Boolean(tabs);
+  const insets = useMemo<FitInsets>(() => ({ top: hasTabs ? 44 : 0, bottom: 36 }), [hasTabs]);
   const height = size.h;
   const parts = useMemo(() => drawnParts(project, sim.sheet), [project, sim.sheet]);
 
@@ -398,23 +419,23 @@ function Player({
       last = { w, h };
       setColors((c) => c ?? readSimColors());
       setSize({ w, h });
-      setView(fitBounds(bounds, stock.height, w, h));
+      setView(fitBounds(bounds, stock.height, w, h, insets));
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [bounds, stock.height]);
+  }, [bounds, stock.height, insets]);
   // A theme switch re-reads the token colours, so the canvas follows light/dark live (T110).
   useEffect(() => onThemeChange(() => setColors((c) => (c ? readSimColors() : c))), []);
 
   const fit = useCallback(() => {
-    if (width > 0 && height > 0) setView(fitBounds(bounds, stock.height, width, height));
-  }, [bounds, stock.height, width, height]);
+    if (width > 0 && height > 0) setView(fitBounds(bounds, stock.height, width, height, insets));
+  }, [bounds, stock.height, width, height, insets]);
   // Zoomed past the fit: one finger pans the view; at the fit it scrolls the page on touch (T198).
   const zoomed =
     view !== null &&
     width > 0 &&
     height > 0 &&
-    isZoomedIn(view.scale, fitBounds(bounds, stock.height, width, height).scale);
+    isZoomedIn(view.scale, fitBounds(bounds, stock.height, width, height, insets).scale);
 
   // Playback: one animation frame per redraw; the time advances by real time × speed.
   const active = playing && !reduced;

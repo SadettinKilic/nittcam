@@ -14,6 +14,8 @@ import {
 } from '../../packages/core/src/index';
 import {
   chooseMachine,
+  closeWorkspacePanel,
+  openWorkspacePanel,
   pickOption,
   fill,
   openNewProject,
@@ -158,21 +160,32 @@ async function runFlow(page: Page, mobile: boolean) {
   await wizardReady(page, 'dizilim');
   await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
+  // T198: on phones the nesting summary (left) and the part inspector (right) are bottom sheets.
+  if (mobile) await openWorkspacePanel(page, 'left');
   const sheets = Number(await page.getByTestId('nesting-sheets').innerText());
   expect(sheets).toBeGreaterThanOrEqual(1);
+  if (mobile) {
+    await closeWorkspacePanel(page);
+    await openWorkspacePanel(page, 'right');
+  }
   await pickOption(page.getByTestId('layout-select'), { index: 1 });
   await page.getByRole('button', { name: tr.layout.info.lock }).click();
   await expect(page.getByTestId('layout-info-locked')).toHaveText(tr.layout.info.lockedYes);
+  if (mobile) await closeWorkspacePanel(page);
   await saved(page);
   if (mobile) await noHorizontalScroll(page);
 
   // --- Step 4: simulation, every check green -------------------------------------------------
   await page.getByTestId('wizard-next').click();
   await wizardReady(page, 'simulasyon');
+  await expect(page.getByTestId('sim-canvas').locator('canvas').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  if (mobile) await openWorkspacePanel(page, 'left');
   await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true', {
     timeout: 30_000,
   });
-  await expect(page.getByTestId('sim-canvas').locator('canvas').first()).toBeVisible();
+  if (mobile) await closeWorkspacePanel(page);
   if (mobile) await noHorizontalScroll(page);
 
   // --- Step 5: checklist + acceptance → download ---------------------------------------------

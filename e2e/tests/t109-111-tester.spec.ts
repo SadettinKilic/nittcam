@@ -21,7 +21,7 @@ test('keyboard only: İleri/Geri with Enter walks all 5 steps and back', async (
   await next.focus();
   await page.keyboard.press('Enter');
   await expect(title).toHaveAttribute('data-step', 'simulasyon');
-  await expect(page.getByTestId('sim-check-status')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('sim-canvas')).toBeVisible({ timeout: 30_000 });
   await next.focus();
   await page.keyboard.press('Enter');
   await expect(title).toHaveAttribute('data-step', 'export');

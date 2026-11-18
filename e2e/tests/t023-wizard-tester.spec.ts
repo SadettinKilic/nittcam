@@ -781,7 +781,7 @@ test.describe('T023 tester: widths and keyboard', () => {
           await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
         }
         if (key === 'simulasyon') {
-          await expect(page.getByTestId('sim-check-status')).toBeVisible({ timeout: 30_000 });
+          await expect(page.getByTestId('sim-canvas')).toBeVisible({ timeout: 30_000 });
         }
         if (key === 'export') {
           await expect(page.getByTestId('export-status')).toBeVisible({ timeout: 30_000 });

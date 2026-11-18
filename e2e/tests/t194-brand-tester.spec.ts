@@ -27,7 +27,7 @@ test.describe('T194 tester: brand', () => {
           await snap(page, `t194-tester-${vp}-${theme}`, { baseline: false });
           return;
         }
-        const logo = page.getByRole('link', { name: /NittCam/ }).first();
+        const logo = page.getByRole('link', { name: tr.shell.brandHome }).first();
         await expect(logo).toBeVisible({ timeout: 15_000 });
         const box = await logo.boundingBox();
         expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);

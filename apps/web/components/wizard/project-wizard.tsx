@@ -599,8 +599,9 @@ function WizardSession({
                 data-testid="save-status"
                 data-state={session.saveState}
                 data-revision={session.revision}
+                className="max-w-full min-w-0 shrink"
               >
-                {saveText}
+                <span className="truncate">{saveText}</span>
               </Badge>
             </ShellStatus>
             <Tooltip content={messages.cutList.undo}>

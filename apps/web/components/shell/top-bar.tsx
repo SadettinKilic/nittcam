@@ -151,7 +151,7 @@ export function TopBar({ t, onOpenMenu, search, themeExtra }: TopBarProps) {
         aria-label={t.shell.pageActions}
         className="flex shrink-0 items-center gap-2 empty:hidden"
       />
-      <div ref={slots?.setStatus} className="flex shrink-0 items-center empty:hidden" />
+      <div ref={slots?.setStatus} className="flex min-w-0 items-center empty:hidden" />
       {search}
       <ThemeMenu t={t.shell.theme} extra={themeExtra} />
     </header>

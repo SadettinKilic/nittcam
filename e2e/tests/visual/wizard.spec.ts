@@ -136,7 +136,7 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await snap(page, `t110-wizard-layout-${vp}-${theme}`, { fullPage: false });
 
         await goStep(page, 'simulasyon');
-        await expect(page.getByTestId('sim-check-status')).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByTestId('sim-canvas')).toBeVisible({ timeout: 30_000 });
         await page.mouse.move(0, 0);
         await expectNoA11yViolations(page);
         await snap(page, `t110-wizard-simulation-${vp}-${theme}`, { fullPage: false });

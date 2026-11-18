@@ -1,6 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { chooseMachine, goStep, nest, saved, wizardReady } from './wizard-helpers';
+import {
+  chooseMachine,
+  goStep,
+  nest,
+  openWorkspacePanel,
+  saved,
+  wizardReady,
+} from './wizard-helpers';
 
 /**
  * T020 tester: the simulation screen as a user sees it. Complements the dev spec: line/playhead
@@ -276,7 +283,11 @@ test.describe('T020 tester: simulation UX', () => {
   });
 
   for (const w of [320, 390, 768]) {
-    test(`${w} px: no page-level horizontal scroll, panels stack`, async ({ page }) => {
+    // T198: below the workspace breakpoint the canvas comes first (>= 55 % of the viewport) and
+    // the G-code panel opens as a bottom sheet (phone button bar / tablet rail).
+    test(`${w} px: no page-level horizontal scroll, canvas first, G-code in a sheet`, async ({
+      page,
+    }) => {
       await page.setViewportSize({ width: w, height: 900 });
       await toSimulation(page);
       const canvas = await ready(page);
@@ -286,11 +297,15 @@ test.describe('T020 tester: simulation UX', () => {
       );
       expect(overflow).toBeLessThanOrEqual(0);
       const box = await canvas.boundingBox();
-      const panel = await page.getByTestId('gcode-panel').boundingBox();
       expect(box?.width ?? 999).toBeLessThanOrEqual(w);
-      expect((panel?.y ?? 0) >= (box?.y ?? 0) + (box?.height ?? 0)).toBe(true);
+      const column = await page.getByTestId('sim-workspace-canvas').boundingBox();
+      expect(column?.height ?? 0).toBeGreaterThanOrEqual(900 * 0.55 - 1);
       const play = await page.getByTestId('sim-play').boundingBox();
       expect((play?.x ?? 0) + (play?.width ?? 0)).toBeLessThanOrEqual(w + 1);
+      const sheet = await openWorkspacePanel(page, 'right');
+      const panel = await sheet.getByTestId('gcode-panel').boundingBox();
+      expect(panel?.x ?? -1).toBeGreaterThanOrEqual(0);
+      expect((panel?.x ?? 0) + (panel?.width ?? 999)).toBeLessThanOrEqual(w);
       await page.screenshot({ path: `__screenshots__/t020-tester-${w}.png` });
     });
   }

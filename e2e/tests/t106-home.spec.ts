@@ -76,7 +76,7 @@ test.describe('T106 home dashboard', () => {
 
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(t.title);
-    const projects = page.getByTestId('home-projects');
+    const projects = page.getByTestId('home-projects').filter({ visible: true });
     await expect(projects).toContainText(drawn);
     // Our newest project shows its layout thumbnail (other tests may add projects in parallel).
     const first = projects.getByRole('listitem').filter({ hasText: drawn });
@@ -133,7 +133,7 @@ test.describe('T106 home dashboard', () => {
         await applyTheme(page, theme);
         await createProject(page.request, `T106 görsel ${Date.now()}`, true);
         await page.goto('/');
-        await expect(page.getByTestId('home-projects')).toBeVisible();
+        await expect(page.getByTestId('home-projects').filter({ visible: true })).toBeVisible();
         const overflow = await page.evaluate(
           () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
         );

@@ -275,7 +275,9 @@ test.describe('T023 wizard', () => {
     );
     // The home page lists the latest projects.
     await page.goto('/');
-    await expect(page.getByTestId('home-projects')).toContainText(copyName);
+    await expect(page.getByTestId('home-projects').filter({ visible: true })).toContainText(
+      copyName,
+    );
     await expect(page.getByTestId('home-machines')).toContainText(SEEDED);
     await shot(page, 't023-ana-sayfa');
     expect(problems).toEqual([]);
@@ -351,7 +353,7 @@ test.describe('T023 wizard', () => {
         await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
       }
       if (step === 'simulasyon') {
-        await expect(page.getByTestId('sim-check-status')).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByTestId('sim-canvas')).toBeVisible({ timeout: 30_000 });
       }
       if (step === 'export') {
         await expect(page.getByTestId('export-status')).toBeVisible({ timeout: 30_000 });
