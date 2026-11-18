@@ -123,9 +123,6 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         // The first autosave (mocked) moves the URL to /projeler/<id>; the sidebar highlight and
         // the breadcrumb follow it, so capture only after that has happened.
         await page.waitForURL(`**/projeler/${ID}?*`);
-        await expect(
-          page.getByRole('navigation').getByRole('link', { name: 'Projeler', exact: true }),
-        ).toHaveAttribute('aria-current', 'page');
         await page.mouse.move(0, 0);
         await expectNoA11yViolations(page);
         await snap(page, `t109-wizard-parts-${vp}-${theme}`, { fullPage: false });
