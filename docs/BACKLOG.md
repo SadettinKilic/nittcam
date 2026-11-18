@@ -372,7 +372,7 @@ Tester focus: coordinates still correct at 3 zoom levels; the sheet outline is a
 
 ### Review #2 riders: T244–T247 (not a batch; each rides with the batch named in its title; no reorder)
 
-### T244 Dizilim panels: less prose, one summary (rides with B6)   [status: doing]
+### T244 Dizilim panels: less prose, one summary (rides with B6)   [status: done]
 Spec: §3.6 · Depends: T197
 Acceptance:
 - [ ] left panel: the "Dizilim" card's two paragraphs become one line of chips ("Boşluk 8 mm · Kenar 10 mm · Takım Ø8") with the rest in an info popover; the three KPI tiles do not wrap their labels at the panel width ("Plaka", "Fire", "Kullanım")
@@ -380,7 +380,7 @@ Acceptance:
 - [ ] the grid/zoom toolbar shares the row with the plate tabs (tabs left, tools right) and the sheet is centred in the remaining canvas (today it hangs at the top with an empty band below)
 Tester focus: no sentence with a safety meaning is removed (string list); sheet centred at 1440 × 900 and 1024 × 768; baselines.
 
-### T245 Simulation transport and summary polish (rides with B6)   [status: doing]
+### T245 Simulation transport and summary polish (rides with B6)   [status: done]
 Spec: §8.2 · Depends: T197
 Acceptance:
 - [ ] "Oynat" is a solid accent button in its idle state (today it is a pale tint that reads as disabled); while playing it becomes "Duraklat" in the secondary style
@@ -388,7 +388,7 @@ Acceptance:
 - [ ] "Özet" is a 2-column definition list in compact density (6 values in ≤ 150 px height) instead of six tiles; the dashed table outline is never clipped by the canvas edge at fit zoom
 Tester focus: **safety**: the air-cut sentence is still visible without a click; play/pause e2e green; contrast of the idle "Oynat" ≥ 4.5:1.
 
-### T246 Cut list feedback and empty warnings (rides with B7, with T118)   [status: todo]
+### T246 Cut list feedback and empty warnings (rides with B7, with T118)   [status: doing]
 Spec: §4.1 · Depends: T105
 Acceptance:
 - [ ] "5 satır eklendi. Geri almak için …" is a toast with a "Geri al" action (sonner), not a persistent full-width green banner above the table
@@ -441,7 +441,7 @@ Tester focus: property tests for the grain rule; a fixed 30° part never appears
 
 ### Batch B6: T115–T117 (grain dial UI)
 
-### T115 GrainDial component   [status: doing]
+### T115 GrainDial component   [status: done]
 Spec: §3.6, §3.7 · Depends: T101
 Acceptance:
 - [ ] circular dial like an angle wheel: drag the handle around the circle, click on the ring to jump, numeric input next to it (°, decimal comma), quick buttons 0° / 45° / 90° / 135°
@@ -452,7 +452,7 @@ Acceptance:
 - [ ] in `/dev/ui` gallery; unit tests for angle maths (pointer → angle, snap, normalise)
 Tester focus: drag interaction e2e (mouse + touch emulation), keyboard steps, snap behaviour, axe, screenshots both themes.
 
-### T116 Grain in the UI: sheet, parts, layout and simulation   [status: doing]
+### T116 Grain in the UI: sheet, parts, layout and simulation   [status: done]
 Spec: §3.6, §4.1, §6.5 · Depends: T114, T115
 Acceptance:
 - [ ] wizard step 1: GrainDial for the sheet (only for wood/veneered materials; "damar yok" otherwise); the sheet preview (T196) redraws its grain texture live while the dial is dragged
@@ -460,7 +460,7 @@ Acceptance:
 - [ ] layout view + simulation: sheet grain texture lines at the sheet angle; each part shows a grain arrow at its effective angle (part grain + rot); rotated parts drawn rotated
 Tester focus: visual check that arrows match angles (screenshot at 0/30/90°); editing grain is one undo step; free parts show no arrow.
 
-### T117 Grain end-to-end test   [status: doing]
+### T117 Grain end-to-end test   [status: done]
 Spec: §11 · Depends: T116
 Acceptance:
 - [ ] e2e: sheet grain 0°, part A fixed 0°, part B fixed 90°, part C fixed 30° → nesting places A at 0/180, B at 90/270, C at −30/150; simulation and NC download pass every check
@@ -469,7 +469,7 @@ Tester focus: run the e2e; inspect the NC file contour direction for C; G-code s
 
 ### Batch B7: T118–T120 (cut list UX)
 
-### T118 Cut list grid v2   [status: todo]
+### T118 Cut list grid v2   [status: doing]
 Spec: §4.1 · Depends: T111
 Acceptance:
 - [ ] TanStack Table + virtual rows: name, W, H, qty, grain, edge Üst/Alt/Sol/Sağ, material note; sticky header; column resize
@@ -480,7 +480,7 @@ Acceptance:
 - [ ] compact density (T195): 36 px rows, numbers right-aligned in tabular figures, the four edge-band columns collapsed into one "Bant" cell with a 4-side glyph (click opens the four inputs), so name/W/H/qty/grain fit without horizontal scroll at 1024 px
 Tester focus: keyboard-only edit flow e2e; perf trace with 1 000 rows; undo/redo after a series of edits; visual both widths.
 
-### T119 Row actions, multi-select and bulk edit   [status: todo]
+### T119 Row actions, multi-select and bulk edit   [status: doing]
 Spec: §4.1, §5.1 · Depends: T118
 Acceptance:
 - [ ] row menu: duplicate, delete, move up/down; Ctrl/Shift multi-select; Ctrl+D duplicate, Delete removes (with undo toast)
@@ -488,7 +488,7 @@ Acceptance:
 - [ ] footer summary: rows, total pieces, total area m², estimated sheets (area / usable sheet area)
 Tester focus: bulk edit of 50 rows → one undo restores all; summary numbers checked against a hand calculation.
 
-### T120 Import and export: CSV/XLSX file, paste dialog, CSV out   [status: todo]
+### T120 Import and export: CSV/XLSX file, paste dialog, CSV out   [status: doing]
 Spec: §4.1 · Depends: T118
 Acceptance:
 - [ ] "İçe aktar" dialog: drop/select `.csv`, `.xlsx` (MIT/Apache reader, licence-checked), or paste; reuses the T011/T011b parser and mapping preview; size limit and type check (§8.6)
