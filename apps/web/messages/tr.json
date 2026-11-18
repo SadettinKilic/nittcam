@@ -1541,7 +1541,6 @@
       "title": "Parçalar",
       "count": "{count} parça",
       "qty": "×{qty}",
-      "select": "Seç: {name}",
       "unnamed": "Adsız parça"
     },
     "inspector": {

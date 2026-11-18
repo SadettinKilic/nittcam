@@ -35,7 +35,6 @@ export function BoardPartList({
               <button
                 type="button"
                 aria-pressed={on}
-                aria-label={t.select.replace('{name}', name)}
                 onClick={(e) => onSelect(p.id, e.shiftKey)}
                 className={cn(
                   'flex h-row w-full items-center gap-2 rounded-md px-2 text-left text-sm',
@@ -43,13 +42,21 @@ export function BoardPartList({
                   on ? 'bg-accent-subtle text-accent-text' : 'hover:bg-surface-hover',
                 )}
               >
-                <span className="w-6 shrink-0 font-mono text-xs text-fg-subtle tabular-nums">
+                <span
+                  aria-hidden
+                  className="w-6 shrink-0 font-mono text-xs text-fg-subtle tabular-nums"
+                >
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{name}</span>
-                <Measure value={[size.w, size.h]} mono className="shrink-0 text-xs text-fg-muted" />
+                <Measure
+                  aria-hidden
+                  value={[size.w, size.h]}
+                  mono
+                  className="shrink-0 text-xs text-fg-muted"
+                />
                 {p.qty > 1 ? (
-                  <span className="shrink-0 font-mono text-xs text-fg-subtle">
+                  <span aria-hidden className="shrink-0 font-mono text-xs text-fg-subtle">
                     {t.qty.replace('{qty}', String(p.qty))}
                   </span>
                 ) : null}

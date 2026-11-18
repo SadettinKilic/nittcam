@@ -215,7 +215,9 @@ it('300 parts simulate in reasonable time', () => {
   expect(r.ok).toBe(true);
   expect(r.sheets.reduce((n, s) => n + s.contours.length, 0)).toBe(300);
   expect(ms).toBeLessThan(15_000);
-});
+  // The budget is the 15 s above; the default 5 s test timeout also counts nesting and is hit on
+  // a busy machine when the whole suite runs in parallel.
+}, 30_000);
 
 it('the seeded example profile (Mach3) simulates the kitchen sample on the draft sheet', () => {
   const rows = [

@@ -33,10 +33,7 @@ async function view(canvas: Locator) {
 }
 
 async function selectByName(page: Page, name: string) {
-  await page
-    .getByTestId('editor-part-list')
-    .getByRole('button', { name: `Seç: ${name}`, exact: true })
-    .click();
+  await page.getByTestId('editor-part-list').getByRole('button', { name, exact: true }).click();
   // Keys go to the board, not the list button.
   await page.getByTestId('editor-canvas').focus();
 }
@@ -125,7 +122,7 @@ test.describe('T125 selection and edit commands', () => {
     await selectByName(page, 'Yan');
     await page
       .getByTestId('editor-part-list')
-      .getByRole('button', { name: 'Seç: Taban' })
+      .getByRole('button', { name: 'Taban' })
       .click({ modifiers: ['Shift'] });
     await expect(canvas).toHaveAttribute('data-selection', /,/);
     const box = await canvas.boundingBox();

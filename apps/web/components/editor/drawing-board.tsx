@@ -1,6 +1,6 @@
 'use client';
 
-import { boardBox, boardParts, type Part, type Project } from '@nittcam/core';
+import { boardBox, boardParts, snap, type Part, type Project } from '@nittcam/core';
 import { Button, Checkbox, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
   Circle,
@@ -29,12 +29,17 @@ import type { Messages } from '../../lib/messages';
 import { onThemeChange } from '../../lib/canvas-theme';
 import { newPartId } from '../../lib/draft-project';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
-import { editorReducer, initialEditorState, type EditorTool } from '../../lib/editor/store';
-import { fitBox, toWorld, type Box, type Pt } from '../../lib/editor/viewport';
+import {
+  SNAP_TOGGLES,
+  editorReducer,
+  initialEditorState,
+  type EditorTool,
+} from '../../lib/editor/store';
+import { fitBox, gridLevels, toWorld, type Box, type Pt } from '../../lib/editor/viewport';
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { readEditorColors, type EditorColors } from './colors';
-import { RULER_PX } from './editor-canvas';
+import { RULER_PX, type SnapGlyph } from './editor-canvas';
 import { EditorInspector } from './inspector';
 import { BoardPartList } from './part-list';
 import { StatusBar } from './status-bar';
@@ -47,6 +52,8 @@ type T = Messages['editor'];
 const FIT_INSETS = { top: RULER_PX + 56, right: 16, bottom: 16, left: RULER_PX + 64 };
 /** Offset of a pasted / duplicated copy, mm (right and down). */
 const PASTE_OFFSET = 20;
+/** Snap capture distance on screen, px. */
+const SNAP_PX = 10;
 /** Pointer movement that turns a click into a drag, px. */
 const DRAG_PX = 3;
 
@@ -56,7 +63,7 @@ type Gesture =
   | { kind: 'pinch'; dist: number; mid: Pt }
   | { kind: 'marquee'; start: Pt; startScreen: Pt; additive: boolean; moved: boolean }
   | { kind: 'press'; id: string; start: Pt; startScreen: Pt; additive: boolean }
-  | { kind: 'move'; ids: string[]; start: Pt };
+  | { kind: 'move'; ids: string[]; start: Pt; anchor: Pt };
 
 /** Board moves are kept to 0.01 mm (no float dust in the project). */
 function round(v: number): number {
@@ -89,10 +96,14 @@ export function DrawingBoard({
   const [cursor, setCursor] = useState<Pt | null>(null);
   const [marquee, setMarquee] = useState<Box | null>(null);
   const [drag, setDrag] = useState<Pt | null>(null);
+  const [snapMark, setSnapMark] = useState<{ kind: SnapGlyph; point: Pt } | null>(null);
   const clipboard = useRef<Part[]>([]);
   const pastes = useRef(0);
   const [spaceDown, setSpaceDown] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement | null>(null);
+  // The canvas element can be remounted (the workspace switches between its phone and desktop
+  // trees), so observers attach to the current element, not to the first one.
+  const [canvasEl, setCanvasEl] = useState<HTMLDivElement | null>(null);
   const pointers = useRef(new Map<number, Pt>());
   const gesture = useRef<Gesture | null>(null);
   const gridId = useId();
@@ -119,15 +130,21 @@ export function DrawingBoard({
   const ids = useMemo(() => project.parts.map((p) => p.id), [project.parts]);
   useEffect(() => dispatch({ type: 'prune', ids }), [ids]);
 
+  const touched = useRef(false);
   const fit = useCallback(() => {
+    touched.current = false;
     if (size.w > 0 && size.h > 0) {
       dispatch({ type: 'view', view: fitBox(bounds, size.w, size.h, FIT_INSETS) });
     }
   }, [bounds, size.w, size.h]);
+  const fitRef = useRef(fit);
+  useEffect(() => {
+    fitRef.current = fit;
+  }, [fit]);
 
   // The canvas fills its workspace cell; the first size fits the board.
   useEffect(() => {
-    const el = box.current;
+    const el = canvasEl;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       const w = Math.floor(entries[0]?.contentRect.width ?? 0);
@@ -138,17 +155,18 @@ export function DrawingBoard({
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
-  const fitted = useRef(false);
+  }, [canvasEl]);
+  // Until the user pans or zooms, the board stays fitted: a new canvas size (panel toggled,
+  // window resized, phone/desktop layout switch) or the first parts refit it.
+  const hasParts = parts.length > 0;
   useEffect(() => {
-    if (fitted.current || size.w === 0) return;
-    fitted.current = true;
-    fit();
-  }, [fit, size.w]);
+    if (!touched.current && size.w > 0) fitRef.current();
+  }, [size.w, size.h, hasParts]);
   useEffect(() => onThemeChange(() => setColors((c) => (c ? readEditorColors() : c))), []);
 
   const zoomBy = useCallback(
     (factor: number, at?: Pt) => {
+      touched.current = true;
       dispatch({ type: 'zoom', factor, at: at ?? { x: size.w / 2, y: size.h / 2 } });
     },
     [size.w, size.h],
@@ -156,17 +174,18 @@ export function DrawingBoard({
 
   // Wheel / trackpad pinch zooms at the cursor (non-passive so the page does not scroll).
   useEffect(() => {
-    const el = box.current;
+    const el = canvasEl;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const r = el.getBoundingClientRect();
       const at = { x: e.clientX - r.left, y: e.clientY - r.top };
+      touched.current = true;
       dispatch({ type: 'zoom', factor: Math.exp(-e.deltaY * 0.0015), at });
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [canvasEl]);
 
   const setTool = useCallback((tool: EditorTool) => dispatch({ type: 'tool', tool }), []);
 
@@ -249,6 +268,51 @@ export function DrawingBoard({
         : { kind: 'marquee', start: w, startScreen: s, additive: e.shiftKey, moved: false };
   }
 
+  /** The grabbed part's outline vertex nearest to the press point: the point that snaps. */
+  function anchorOf(id: string, at: Pt): Pt {
+    const part = parts.find((p) => p.id === id);
+    let best: Pt = at;
+    let bestD = Infinity;
+    for (const v of part?.outline ?? []) {
+      const dd = Math.hypot(v.x - at.x, v.y - at.y);
+      if (dd < bestD) {
+        best = { x: v.x, y: v.y };
+        bestD = dd;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Drag offset of a move with snapping (T126): the anchor snaps to the other parts' corners,
+   * midpoints, centres and crossings, to the grid, or along 45°/90° from where it started.
+   * Holding Alt moves freely.
+   */
+  function snapMove(g: { ids: string[]; start: Pt; anchor: Pt }, w: Pt, free: boolean): Pt {
+    const raw = { x: w.x - g.start.x, y: w.y - g.start.y };
+    if (!view || free) {
+      setSnapMark(null);
+      return raw;
+    }
+    const moving = new Set(g.ids);
+    const others = parts.filter((p) => !moving.has(p.id));
+    const target = { x: g.anchor.x + raw.x, y: g.anchor.y + raw.y };
+    const res = snap(target, {
+      contours: others.flatMap((p) => [p.outline, ...p.inners]),
+      centres: others.flatMap((p) => p.holes.map((h) => ({ x: h.x, y: h.y }))),
+      tolerance: SNAP_PX / view.scale,
+      grid: gridLevels(view.scale).fine,
+      from: g.anchor,
+      disabled: SNAP_TOGGLES.filter((k) => !state.snap[k]),
+    });
+    if (res.kind === 'none') {
+      setSnapMark(null);
+      return raw;
+    }
+    setSnapMark({ kind: res.kind, point: res.point });
+    return { x: res.point.x - g.anchor.x, y: res.point.y - g.anchor.y };
+  }
+
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!view) return;
     const s = local(e);
@@ -263,6 +327,7 @@ export function DrawingBoard({
       return;
     }
     if (g.kind === 'pan') {
+      touched.current = true;
       dispatch({ type: 'pan', dx: s.x - g.last.x, dy: s.y - g.last.y });
       g.last = s;
     } else if (g.kind === 'pinch') {
@@ -270,6 +335,7 @@ export function DrawingBoard({
       if (pts.length < 2 || !pts[0] || !pts[1]) return;
       const d = dist(pts[0], pts[1]);
       const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      touched.current = true;
       dispatch({ type: 'pan', dx: mid.x - g.mid.x, dy: mid.y - g.mid.y });
       dispatch({ type: 'zoom', factor: d / Math.max(g.dist, 1), at: mid });
       gesture.current = { kind: 'pinch', dist: d, mid };
@@ -278,10 +344,11 @@ export function DrawingBoard({
       if (dist(s, g.startScreen) < DRAG_PX) return;
       const ids = selection.has(g.id) ? state.selection : [g.id];
       if (!selection.has(g.id)) dispatch({ type: 'select', ids });
-      gesture.current = { kind: 'move', ids, start: g.start };
-      setDrag({ x: w.x - g.start.x, y: w.y - g.start.y });
+      const move = { kind: 'move' as const, ids, start: g.start, anchor: anchorOf(g.id, g.start) };
+      gesture.current = move;
+      setDrag(snapMove(move, w, e.altKey));
     } else if (g.kind === 'move') {
-      setDrag({ x: w.x - g.start.x, y: w.y - g.start.y });
+      setDrag(snapMove(g, w, e.altKey));
     } else if (g.kind === 'marquee') {
       if (!g.moved && dist(s, g.startScreen) < DRAG_PX) return;
       g.moved = true;
@@ -304,6 +371,7 @@ export function DrawingBoard({
     } else if (g.kind === 'move') {
       const d = drag;
       setDrag(null);
+      setSnapMark(null);
       if (d && (d.x !== 0 || d.y !== 0)) {
         run('movePart', { ids: g.ids, dx: round(d.x), dy: round(d.y) });
       }
@@ -516,7 +584,10 @@ export function DrawingBoard({
 
   const canvas = (
     <div
-      ref={box}
+      ref={(node) => {
+        box.current = node;
+        setCanvasEl(node);
+      }}
       role="application"
       aria-label={t.canvasLabel.replace('{count}', String(parts.length))}
       aria-roledescription="canvas"
@@ -553,7 +624,7 @@ export function DrawingBoard({
             hover={state.hover}
             drag={drag}
             marquee={marquee}
-            snap={null}
+            snap={snapMark}
             grid={state.grid}
             colors={colors}
           />

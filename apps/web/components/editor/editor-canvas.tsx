@@ -1,6 +1,6 @@
 'use client';
 
-import { arcOf, type BoardPart, type Vertex } from '@nittcam/core';
+import { arcOf, type BoardPart, type SnapKind, type Vertex } from '@nittcam/core';
 import type Konva from 'konva';
 import { Layer, Shape, Stage } from 'react-konva';
 import { formatMm, partLabel, sizeText, LINE_HEIGHT } from '../../lib/canvas-labels';
@@ -20,9 +20,8 @@ import type { EditorColors } from './colors';
 /** Width of the rulers on the top and left edges, px. */
 export const RULER_PX = 22;
 
-/** Snap glyph kinds (T126 engine kinds). */
-export type SnapGlyph =
-  'endpoint' | 'midpoint' | 'centre' | 'intersection' | 'perpendicular' | 'angle' | 'grid';
+/** Snap glyph kinds: the engine's kinds (T126). */
+export type SnapGlyph = Exclude<SnapKind, 'none'>;
 
 export interface EditorCanvasProps {
   width: number;
