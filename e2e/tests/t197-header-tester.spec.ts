@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { STEP_KEYS, openNewProject } from './wizard-helpers';
+import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { STEP_KEYS, goStep, openNewProject, pasteAndNest } from './wizard-helpers';
 
 /**
  * T197 tester: the wizard stepper never overlaps itself at desktop widths (the one-row header
@@ -87,3 +88,46 @@ for (const width of [320, 390]) {
     expect(fit.scroll, 'project name fits its field').toBeLessThanOrEqual(fit.client + 1);
   });
 }
+
+/**
+ * B4b round 3: the one-row header must keep undo/redo inside the viewport on every step
+ * (CI candidate t110-wizard-simulation-desktop-*: redo pushed off-screen at 1440 px).
+ */
+for (const width of [1280, 1440, 1600]) {
+  test(`header controls stay on screen at ${width} px on every step`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openNewProject(page, 'parcalar');
+    await pasteAndNest(page);
+    for (const step of STEP_KEYS) {
+      await goStep(page, step);
+      for (const name of [tr.cutList.undo, tr.cutList.redo]) {
+        const box = await page.getByRole('button', { name, exact: true }).first().boundingBox();
+        expect(box, `${name} on ${step}`).not.toBeNull();
+        expect(
+          (box?.x ?? 0) + (box?.width ?? 0),
+          `${name} on ${step} inside the viewport`,
+        ).toBeLessThanOrEqual(width);
+      }
+    }
+  });
+}
+
+/**
+ * B4b round 3: at phone width the plate tabs on the layout step must stay readable next to the
+ * canvas toolbar (CI candidate t110-wizard-layout-mobile-*: tabs squeezed to "P").
+ */
+test('layout plate tabs are readable at 390 px', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openNewProject(page, 'parcalar');
+  await pasteAndNest(page);
+  await goStep(page, 'dizilim');
+  const tabs = page.getByRole('tab').filter({ visible: true });
+  await expect(tabs.first()).toBeVisible();
+  // The tabs sit in a scroll strip; measure how much of it is visible beside the toolbar.
+  const w = await tabs
+    .first()
+    .evaluate(
+      (el) => el.closest('[role=tablist]')?.parentElement?.getBoundingClientRect().width ?? 0,
+    );
+  expect(w, 'plate tab strip shows at least "Plaka 1"').toBeGreaterThanOrEqual(56);
+});
