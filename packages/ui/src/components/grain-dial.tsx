@@ -137,12 +137,13 @@ export function GrainDial({
 
   // Typed degrees commit on Enter or blur, so one typed value is one undo step.
   const typed = useRef<number | null>(null);
-  function commitTyped() {
-    const v = typed.current;
+  // Enter also confirms an unchanged value (e.g. fixing a free part at its current angle).
+  function commitTyped(confirm = false) {
+    const v = typed.current ?? (confirm ? value : null);
     typed.current = null;
     if (v === null) return;
     const a = normalizeGrainAngle(v);
-    if (a !== value) commitStep(a);
+    commitStep(a);
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -320,9 +321,9 @@ export function GrainDial({
             typed.current = v;
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') commitTyped();
+            if (e.key === 'Enter') commitTyped(true);
           }}
-          onBlur={commitTyped}
+          onBlur={() => commitTyped()}
           min={-360}
           max={360}
           unit="°"
