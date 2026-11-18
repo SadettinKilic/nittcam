@@ -18,6 +18,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M1 İnce dilim | T010–T024 | – | done (2026-11-17) |
 | M2 Tasarım sistemi ve uygulama kabuğu | T100–T111 (12) | B1–B4 | every existing screen in the new design, visual + axe checks in CI |
 | M2.5 Marka ve çalışma alanı cilası (Fable review #1) | T194–T199, T194a, T194b (8) | B4a–B4b | brand mark in the shell, mono numerics, canvas-first workspace on steps 3–4, calmer notices |
+| Fable review #2 follow-ups | T240–T247 (8) | B10a (T240–T243) + riders (T244–T247) | board usable on a phone, canvas gets the space, one tool-state language (D-039) |
 | M3 Kesim listesi, malzeme, damar kadranı | T112–T123 (12) | B5–B8 | free-angle grain respected from cut list to G-code; cut list editable without Excel |
 | M4 Çizim tahtası I: editör | T124–T137 (14) | B9–B13 | a drawn freeform part with fillets is nested and gives checked G-code |
 | M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
@@ -30,9 +31,9 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
 | M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
 
-**Before the field test: 102 tasks in 33 batches** (94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`). The "~90 % / field-test ready" line is the end of M9 (T193).
+**Before the field test: 110 tasks in 34 batches** (94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11). The "~90 % / field-test ready" line is the end of M9 (T193).
 
-**Order note (2026-11-18, D-035 amendment):** after B4b come B9–B10 (drawing board foundation, T124–T129), then M3 B5–B8, then B11+.
+**Order note (2026-11-18, D-035 amendment):** after B4b come B9–B10 (drawing board foundation, T124–T129), then **B10a** (Fable review #2 must-fixes, T240–T243), then M3 B5–B8, then B11+.
 
 ---
 
@@ -258,7 +259,7 @@ Tester focus: a deleted baseline makes the CI visual job red and the artefact ho
 
 ## M4 early: Çizim tahtası temeli, B9–B10 (moved before M3; D-035 amendment 2026-11-18)
 
-The owner wants the drawing board early. B9 and B10 depend only on T110 (and on T197's `WorkspaceLayout`), so they run right after B4b and before M3 B5–B8. B11+ stay in M4 below. **Work order: B4b → B9 → B10 → B5 → B6 → B7 → B8 → B11 → …**
+The owner wants the drawing board early. B9 and B10 depend only on T110 (and on T197's `WorkspaceLayout`), so they run right after B4b and before M3 B5–B8. B11+ stay in M4 below. **Work order: B4b → B9 → B10 → B10a → B5 → B6 → B7 → B8 → B11 → …**
 
 ### Batch B9: T124–T126 (canvas foundation)
 
@@ -296,26 +297,112 @@ Tester focus: property tests; e2e drawing a line onto an endpoint ends exactly t
 
 ### Batch B10: T127–T129 (drawing tools)
 
+**Look and feel for all three tools (Fable review #2, D-039), implied in each task's acceptance:**
+- **Tool rail states:** a tool that works is `fg` colour; the active tool is an accent-filled button (not only a tinted background) and stays active after a shape is finished (repeat mode; Esc or `V` returns to Seç); a tool that is not built yet is not shown at all (no grey, dead buttons). Every rail button has a tooltip with the Turkish name + shortcut letter (`V` seç, `H` kaydır, `R` dikdörtgen, `C` daire, `L` çizgi, `A` yay).
+- **In-progress geometry:** accent 1.5 px dashed preview with a 10 % accent fill once the shape is closed; committed parts keep the `sim-part` fill. Cursor is a crosshair while a drawing tool is active; snap glyphs use the `info` colour (T126) and the snapped kind is named in the status bar ("Uç nokta", "Orta nokta").
+- **Typed input = one "dynamic input" chip at the cursor** (mono, same chip style as the selection size label "596 × 716"): shows the live value(s), takes digits straight from the keyboard without clicking, Tab moves between fields, Enter commits, Esc cancels. No modal dialog and no input in a side panel for drawing.
+- **Next-step hint lives in the status bar** (left, replaces the "İmleç" text while a tool is active), one short Turkish line per state, e.g. "İlk köşeyi tıklayın" → "Karşı köşeyi tıklayın ya da En;Boy yazın". No prose paragraphs in the inspector.
+- **Phone (390 px):** tools are usable with one finger (tap-tap, not drag-only); the dynamic input chip docks above the keyboard as a one-row bar with a numeric keypad (`inputmode="decimal"`); two-finger pan/zoom keeps working while a tool is active.
+- Visual baselines per tool: one "in progress" capture (preview + chip + hint) at 1440 light and 390 dark.
+
 ### T127 Rectangle and circle tools   [status: todo]
 Spec: §4.3, §4.4 · Depends: T125, T126
 Acceptance:
 - [ ] rectangle: drag or click + typed "W;H" → parametric rect part (corner radius in properties); circle: centre + radius → freeform round part (bulge arcs)
 - [ ] live dimension labels while drawing; Esc cancels
-Tester focus: typed sizes exact; new parts appear in the cut list; undo.
+- [ ] look and feel per the B10 block above: accent-filled active rail button, crosshair, dashed accent preview, dynamic input chip "En ; Boy" (rectangle) / "R" or "Ø" (circle) at the cursor, status-bar hint per state; the rail shows only tools that work (line and arc buttons appear with T128/T129)
+- [ ] a new part gets the next free name ("Parça 6") and is selected after creation, so the inspector shows it at once
+Tester focus: typed sizes exact; new parts appear in the cut list; undo; rail has no dead button; in-progress baseline (1440 light, 390 dark); a rectangle can be drawn with taps only at 390 px.
 
 ### T128 Line / polyline tool with typed length   [status: todo]
 Spec: §4.4, §6.1 · Depends: T126
 Acceptance:
 - [ ] click-click polyline; type a length + Enter for the current segment, Tab to type the angle; 45°/90° lock with Shift
 - [ ] ends within JOIN_TOL close the contour → freeform part (`addSegment`, CCW normalised); open shape shows "Kesilemez, kapalı değil"
-Tester focus: e2e drawing an L-shape by typed lengths → exact outline; open shape blocked from nesting with the Turkish warning.
+- [ ] look and feel per the B10 block above: chip shows "Uzunluk" and "Açı" (Tab switches), rubber-band segment dashed in accent, placed vertices as 6 px square nodes, the start node grows and shows a "Kapat" snap glyph when the cursor is within JOIN_TOL; Backspace removes the last vertex; an open shape is drawn in `warning` stroke with **one** chip on the shape ("Kapalı değil"), not a callout (T199 rule)
+Tester focus: e2e drawing an L-shape by typed lengths → exact outline; open shape blocked from nesting with the Turkish warning; Backspace/Esc behaviour; in-progress baseline.
 
 ### T129 Arc tool and segment bulge   [status: todo]
 Spec: §4.4, §6.1 · Depends: T128
 Acceptance:
 - [ ] 3-point arc and "drag segment middle to bend" (`setSegmentBulge`); typed radius
 - [ ] arcs survive save/load and produce G2/G3 (checked through the pipeline)
-Tester focus: arc radius from properties = typed radius; G-code contains G2/G3 for the arc; reader check passes.
+- [ ] look and feel per the B10 block above: chip shows "R"; the bend handle is a round node at the segment middle (distinct from square vertex nodes), visible only on the selected part, with a ≥ 24 px hit area (44 px on touch); while bending, the arc centre is marked with a small cross and the radius is live in the chip
+Tester focus: arc radius from properties = typed radius; G-code contains G2/G3 for the arc; reader check passes; bend handle usable with touch emulation at 390 px.
+
+### Batch B10a: T240–T243 (Fable review #2 must-fixes; runs right after B10)
+
+Source: Fable design review #2 (`docs/reviews/2026-11-18-fable-design-review-2.md`, 2026-11-18). Scores: corporate image 6.5/10 (was 5), modernity 7.5 (7), usability 7 (6.5), readiness for M3–M6 7 (6). Rule: D-039 (canvas budget, one tool-state language). Each task ≤ ½ day.
+
+### T240 Phone board: status bar visible, compact wizard header   [status: todo]
+Spec: §3.6, §3.7 · Depends: T124, T198 · Decision: D-039
+Acceptance:
+- [ ] 390 × 844 and 360 × 740, step 2 "Çizim": the board status bar is fully visible; nothing of it sits behind the "Parçalar / Özellikler" button bar or the wizard footer (the canvas card ends above the button bar; on phones the status bar shows only the snap toggle + zoom %, cursor X/Y is hidden because there is no hover)
+- [ ] below 640 px the wizard header is **one row ≤ 56 px**: step title + "2 / 5" with a 5-segment progress line (tap opens the step list as a popover with the same lock rules), then the unverified-profile chip (icon only) and undo/redo; the separate "Proje adı / Adsız proje" block and the stepper card are not rendered (the project name is in the top bar title and stays editable on step 1)
+- [ ] the Liste / Çizim switch sits in the same band as the canvas toolbar (no row of its own); result: the canvas gets **≥ 55 % of the viewport height** on step 2 Çizim, step 3 and step 4 at 390 × 844 (today ≈ 46 % on the board)
+- [ ] the tool rail on phones does not cover the left ruler numbers (the rail starts right of the ruler, or the ruler is hidden below 640 px)
+Tester focus: bounding-box assertions (status bar bottom ≤ button bar top; canvas height / viewport height ≥ 0.55) at 390 × 844 and 360 × 740; step popover with keyboard + touch; locked steps still locked; baselines updated on purpose (steps 2–4 mobile).
+
+### T241 Desktop board: canvas budget   [status: todo]
+Spec: §3.6 · Depends: T124, T197 · Decision: D-039
+Acceptance:
+- [ ] at 1440 × 900 with both panels open the board canvas is **≥ 640 px wide and ≥ 660 px high** (today ≈ 548 × 632): the "Parçalar" panel is 232 px, the inspector 264 px, and the Liste / Çizim switch moves into the wizard header row (left of the stepper) so it no longer takes a row of its own
+- [ ] at 1024–1279 px the "Parçalar" panel starts collapsed (icon rail); the choice is remembered per browser (localStorage, safe when unavailable)
+- [ ] the panel collapse buttons sit inside their panel header (same row as "Parçalar · 5 parça" / the part name), not on an empty row above the panels
+- [ ] the same widths apply to Dizilim and Simülasyon (one `WorkspaceLayout` default), so the three steps do not jump when stepping through the wizard
+Tester focus: bounding-box assertions at 1440 × 900, 1280 × 800, 1024 × 768; no page scroll on steps 2 (Çizim), 3, 4; collapse state survives reload; baselines updated on purpose.
+
+### T242 Board inspector: icon actions, no shortcut prose   [status: todo]
+Spec: §4.2 · Depends: T125 · Decision: D-039
+Acceptance:
+- [ ] "İşlemler" becomes one row of 32 px icon buttons (yatay aynala, dikey aynala, 90° döndür, çoğalt, then a separator and sil in `danger` text colour), each with a tooltip "Ad · kısayol" and an `aria-label`; no label touches its button border at 264 px (today "Yatay aynala" / "Dikey aynala" fill their buttons edge to edge)
+- [ ] the "Kısayollar: Ctrl+C …" paragraph is removed from the inspector; the same list is a "Çizim tahtası" section in the existing shortcuts dialog (T104), opened from a "?" button in the board status bar
+- [ ] on phones the same icon row appears as a floating mini-toolbar above the selection (in the canvas overlay), so mirror/rotate/duplicate/delete do not need the "Özellikler" sheet
+- [ ] with nothing selected the inspector shows a compact summary (parça sayısı, toplam alan in m², board extents) instead of an empty panel
+Tester focus: every action reachable and named for the keyboard and a screen reader (axe); tooltips show the shortcut; the mini-toolbar never leaves the canvas at 390 px; existing select-move-undo e2e stays green.
+
+### T243 Board reference frame: origin, sheet ghost, fit   [status: todo]
+Spec: §4.2, §2.4 · Depends: T124, T196 · Decision: D-039
+Acceptance:
+- [ ] the origin is a clear marker (X axis to the right and Y axis up, 24 px arms with "X" / "Y" in mono, the same glyph as the layout canvas origin) instead of a 4 px dot
+- [ ] the project's stock sheet is drawn as a **reference outline** from the origin (dashed `sheet` stroke, label "Plaka 2.800 × 2.070" in mono at its top edge); it is view-only (not selectable, never exported, never a nesting constraint) and has a toggle next to "Izgara" ("Plaka")
+- [ ] entering the board and the fit button frame the parts' bounding box with 48 px padding, so the parts fill the canvas (today 5 parts use about a quarter of it); with no parts, fit frames the sheet outline
+- [ ] the grid toggle is an icon toggle button with a tooltip (like zoom/fit) at every width, not a checkbox + text
+Tester focus: coordinates still correct at 3 zoom levels; the sheet outline is absent from project data and from all exports (unit test: toggling it creates no command); visual both themes, 1440 and 390.
+
+### Review #2 riders: T244–T247 (not a batch; each rides with the batch named in its title; no reorder)
+
+### T244 Dizilim panels: less prose, one summary (rides with B6)   [status: todo]
+Spec: §3.6 · Depends: T197
+Acceptance:
+- [ ] left panel: the "Dizilim" card's two paragraphs become one line of chips ("Boşluk 8 mm · Kenar 10 mm · Takım Ø8") with the rest in an info popover; the three KPI tiles do not wrap their labels at the panel width ("Plaka", "Fire", "Kullanım")
+- [ ] the per-plate summary exists once (left list); the right inspector shows only the selected plate/part, and with nothing selected a 2-line hint, not three cards
+- [ ] the grid/zoom toolbar shares the row with the plate tabs (tabs left, tools right) and the sheet is centred in the remaining canvas (today it hangs at the top with an empty band below)
+Tester focus: no sentence with a safety meaning is removed (string list); sheet centred at 1440 × 900 and 1024 × 768; baselines.
+
+### T245 Simulation transport and summary polish (rides with B6)   [status: todo]
+Spec: §8.2 · Depends: T197
+Acceptance:
+- [ ] "Oynat" is a solid accent button in its idle state (today it is a pale tint that reads as disabled); while playing it becomes "Duraklat" in the secondary style
+- [ ] one info text per region (T199): the reduced-motion note under the transport becomes an info icon with a popover; the "air cut'ın yerine geçmez" callout stays, unchanged in text
+- [ ] "Özet" is a 2-column definition list in compact density (6 values in ≤ 150 px height) instead of six tiles; the dashed table outline is never clipped by the canvas edge at fit zoom
+Tester focus: **safety**: the air-cut sentence is still visible without a click; play/pause e2e green; contrast of the idle "Oynat" ≥ 4.5:1.
+
+### T246 Cut list feedback and empty warnings (rides with B7, with T118)   [status: todo]
+Spec: §4.1 · Depends: T105
+Acceptance:
+- [ ] "5 satır eklendi. Geri almak için …" is a toast with a "Geri al" action (sonner), not a persistent full-width green banner above the table
+- [ ] the "Uyarılar" panel with no issues collapses to a single "Sorun yok" chip in the table header and the table uses the full width; with issues the panel returns (count in the chip)
+- [ ] the helper sentence next to the Liste / Çizim switch moves into the table's empty state and the import dialog
+Tester focus: the toast action undoes the paste in one step; chip ↔ panel switch when a warning appears; axe (toast is announced).
+
+### T247 Shell tidy: one save state, no duplicate nav (rides with B8)   [status: todo]
+Spec: §3.4, §3.7 · Depends: T103 · Owner: FQ4 decided by the reviewer (design delegated 2026-11-18)
+Acceptance:
+- [ ] the save state is shown once per screen: in the wizard the footer keeps "Kaydedildi" and the top-bar chip is hidden (≥ 1024 px); on phones the top-bar dot stays and the footer text is dropped
+- [ ] "Oluştur" is removed from the nav (same target as "Yeni proje"); it returns with the AI chat in M11
+- [ ] wizard header at ≥ 1280 px: the "Proje adı" caption is dropped and the project name is an inline-editable title on every step (pencil on hover, Enter saves, Esc cancels)
+Tester focus: nav item count and active state through a new-project flow; a rename from step 3 persists after reload; baselines updated on purpose.
 
 ---
 
