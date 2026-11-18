@@ -173,7 +173,7 @@ Source: Fable design review #1 (`docs/reviews/2026-11-18-fable-design-review-1.m
 
 ### Batch B4a: T194, T194a, T195 (brand, shell, type)
 
-### T194 Brand identity: mark, wordmark, favicon, shell placement   [status: todo]
+### T194 Brand identity: mark, wordmark, favicon, shell placement   [status: done]
 Spec: §3.7 · Depends: T103 · Decision: D-032 · Owner: FQ1, FQ2
 Acceptance:
 - [ ] `Logo` component in `packages/ui` (inline SVG, `currentColor` + accent token, no image download): **mark** (monogram "N" drawn as a toolpath: lead-in, two plunges, one diagonal pass, a tool dot at the end) and **wordmark** "NittCam" (Inter 600, tight tracking, "Cam" in `accent-text`); sizes 20/24/32 px; mark-only variant for the collapsed sidebar
@@ -182,7 +182,7 @@ Acceptance:
 - [ ] brand section in `/dev/ui` (mark, wordmark, clear space, on light/dark/accent backgrounds); `ui-conventions` skill gains a short "Brand" paragraph (where the logo may appear, never recoloured outside tokens)
 Tester focus: logo crisp at 1× and 2× in both themes; collapsed sidebar shows the mark only; favicon visible in the tab; axe (logo link has an accessible name "NittCam, ana sayfa"); shell baselines updated on purpose.
 
-### T194a Shell and home declutter, domain icons   [status: todo]
+### T194a Shell and home declutter, domain icons   [status: done]
 Spec: §3.4, §3.7 · Depends: T194 · Owner: FQ4 ("Oluştur" removal only)
 Acceptance:
 - [ ] one primary "Yeni proje" per screen: the sidebar button stays; the Ana sayfa header button is removed while the sidebar is visible (kept below 768 px, where the sidebar is a drawer); the empty state keeps its own CTA
@@ -192,7 +192,7 @@ Acceptance:
 - [ ] wording: "export" in UI text becomes "dışa aktarma" everywhere ("Bu hafta dışa aktarma", "Henüz dışa aktarma yok"); new projects are named "Adsız proje" + counter instead of a date-time string, and the name field is focused and selected on the first wizard step
 Tester focus: exactly one accent-filled "Yeni proje" on Ana sayfa at 1440; nav item count and active state through a new-project flow; no "export" word left in `tr.json` values (grep); icons readable at 16/20/24 px in both themes.
 
-### T195 Typography: mono numerics, type scale tune   [status: todo]
+### T195 Typography: mono numerics, type scale tune   [status: done]
 Spec: §3.7 · Depends: T100 · Decision: D-032 (OFL fonts allowed)
 Acceptance:
 - [ ] a mono family via `next/font` (Geist Mono or JetBrains Mono, OFL-1.1, Turkish glyphs İ ı Ş ğ checked) as `--font-mono`; used for G-code, file names/hashes, canvas dimension labels and the coordinate read-outs; no fallback to Consolas/Courier on Windows
@@ -263,7 +263,7 @@ The owner wants the drawing board early. B9 and B10 depend only on T110 (and on 
 
 ### Batch B9: T124–T126 (canvas foundation)
 
-### T199b B4b follow-ups   [status: review]
+### T199b B4b follow-ups   [status: done]
 Spec: §3.6, §3.7 · Depends: T196–T198 · Owner: B4b tester + PO review 2026-11-18
 Acceptance:
 - [ ] desktop plate tabs never cut off the last tab (e.g. "Plaka 3" at 1440): the strip scrolls with fade edges, or the overflow goes into a "+N" menu
@@ -271,7 +271,7 @@ Acceptance:
 - [ ] tool-order markers in the simulation never cover part labels (markers offset to the part corner, or labels under markers hidden at low zoom)
 Tester focus: 1440 with 3+ plates (last tab fully visible / reachable); 390 simulation with 2+ plates; simulation screenshot at fit zoom, labels readable.
 
-### T124 Editor canvas foundation   [status: review]
+### T124 Editor canvas foundation   [status: done]
 Spec: §4.2 · Depends: T110
 Acceptance:
 - [ ] "Çizim" view in the Parts step (tabs: Liste / Çizim, same data, §3.6); Konva stage in mm, Y up, pan (space-drag, middle mouse, two-finger), zoom to cursor (wheel, pinch), fit-to-content
@@ -280,14 +280,14 @@ Acceptance:
 - [ ] editor store: tool, selection, hover, viewport; project data only through commands
 Tester focus: pan/zoom with mouse + touch emulation; coordinates correct at 3 zoom levels; visual both themes.
 
-### T125 Selection, move, clipboard, mirror, rotate   [status: review]
+### T125 Selection, move, clipboard, mirror, rotate   [status: done]
 Spec: §4.2, §4.4 · Depends: T124
 Acceptance:
 - [ ] click / Shift-click / box select; move by drag and arrows (1 mm, Shift 10 mm); Delete; Ctrl+C/V/D; mirror H/V; rotate 90°
 - [ ] all through commands (`movePart` in the drawing frame, `mirrorPart`, `rotatePart`) with undo; Ctrl+Z / Ctrl+Y
 Tester focus: e2e select-move-undo; clipboard paste offsets; mirror keeps outline orientation rules (outer CCW).
 
-### T126 Snap engine (core)   [status: review]
+### T126 Snap engine (core)   [status: done]
 Spec: §4.4 · Depends: T124
 Acceptance:
 - [ ] pure `snap(point, context)`: endpoint, midpoint, centre, intersection, grid, perpendicular, 45°/90° angle lock; priority order and screen-space tolerance; returns kind + point
@@ -305,7 +305,7 @@ Tester focus: property tests; e2e drawing a line onto an endpoint ends exactly t
 - **Phone (390 px):** tools are usable with one finger (tap-tap, not drag-only); the dynamic input chip docks above the keyboard as a one-row bar with a numeric keypad (`inputmode="decimal"`); two-finger pan/zoom keeps working while a tool is active.
 - Visual baselines per tool: one "in progress" capture (preview + chip + hint) at 1440 light and 390 dark.
 
-### T127 Rectangle and circle tools   [status: todo]
+### T127 Rectangle and circle tools   [status: review]
 Spec: §4.3, §4.4 · Depends: T125, T126
 Acceptance:
 - [ ] rectangle: drag or click + typed "W;H" → parametric rect part (corner radius in properties); circle: centre + radius → freeform round part (bulge arcs)
@@ -314,7 +314,7 @@ Acceptance:
 - [ ] a new part gets the next free name ("Parça 6") and is selected after creation, so the inspector shows it at once
 Tester focus: typed sizes exact; new parts appear in the cut list; undo; rail has no dead button; in-progress baseline (1440 light, 390 dark); a rectangle can be drawn with taps only at 390 px.
 
-### T128 Line / polyline tool with typed length   [status: todo]
+### T128 Line / polyline tool with typed length   [status: review]
 Spec: §4.4, §6.1 · Depends: T126
 Acceptance:
 - [ ] click-click polyline; type a length + Enter for the current segment, Tab to type the angle; 45°/90° lock with Shift
@@ -322,7 +322,7 @@ Acceptance:
 - [ ] look and feel per the B10 block above: chip shows "Uzunluk" and "Açı" (Tab switches), rubber-band segment dashed in accent, placed vertices as 6 px square nodes, the start node grows and shows a "Kapat" snap glyph when the cursor is within JOIN_TOL; Backspace removes the last vertex; an open shape is drawn in `warning` stroke with **one** chip on the shape ("Kapalı değil"), not a callout (T199 rule)
 Tester focus: e2e drawing an L-shape by typed lengths → exact outline; open shape blocked from nesting with the Turkish warning; Backspace/Esc behaviour; in-progress baseline.
 
-### T129 Arc tool and segment bulge   [status: todo]
+### T129 Arc tool and segment bulge   [status: review]
 Spec: §4.4, §6.1 · Depends: T128
 Acceptance:
 - [ ] 3-point arc and "drag segment middle to bend" (`setSegmentBulge`); typed radius

@@ -171,6 +171,64 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expectNoA11yViolations(page);
         await snap(page, `t124-editor-board-${vp}-${theme}`, { fullPage: false });
       });
+
+      // B10 (D-039): one "in progress" capture per drawing tool (preview + chip + hint), at
+      // 1440 light and 390 dark only.
+      const inProgress =
+        (vp === 'desktop' && theme === 'light') || (vp === 'mobile' && theme === 'dark');
+      test('drawing tools in progress: rectangle, line, arc (T127–T129)', async ({ page }) => {
+        test.skip(!inProgress, 'captured at 1440 light and 390 dark only');
+        await openNewProject(page, 'parcalar');
+        await paste(page, KITCHEN, 5);
+        await page.waitForURL(`**/projeler/${ID}?*`);
+        await page.getByTestId('parts-view-drawing').click();
+        const canvas = page.getByTestId('editor-canvas');
+        await expect(canvas).toHaveAttribute('data-view', /\d/);
+        const b = await canvas.boundingBox();
+        if (!b) throw new Error('no canvas');
+        const at = (fx: number, fy: number) => ({ x: b.x + b.width * fx, y: b.y + b.height * fy });
+
+        // rectangle: first corner placed, cursor at the opposite corner, "596" typed in En
+        await page.getByTestId('editor-tool-rect').click();
+        let p = at(0.35, 0.3);
+        await page.mouse.click(p.x, p.y);
+        p = at(0.6, 0.55);
+        await page.mouse.move(p.x, p.y, { steps: 4 });
+        if (vp === 'desktop') await page.keyboard.type('596');
+        await expect(page.getByTestId('editor-dynamic-input')).toBeVisible();
+        // axe of this state: e2e/tests/b10-draw-tester.spec.ts
+        await snap(page, `t127-draw-rect-progress-${vp}-${theme}`, { fullPage: false });
+        await page.keyboard.press('Escape');
+        await page.keyboard.press('Escape');
+
+        // line: two segments placed, rubber band to the cursor
+        await page.getByTestId('editor-tool-line').click();
+        for (const [fx, fy] of [
+          [0.3, 0.7],
+          [0.6, 0.7],
+          [0.6, 0.45],
+        ] as const) {
+          p = at(fx, fy);
+          await page.mouse.click(p.x, p.y);
+        }
+        p = at(0.42, 0.4);
+        await page.mouse.move(p.x, p.y, { steps: 4 });
+        await expect(page.getByTestId('editor-dynamic-input')).toBeVisible();
+        await snap(page, `t128-draw-line-progress-${vp}-${theme}`, { fullPage: false });
+        await page.keyboard.press('Escape');
+        await page.keyboard.press('Escape');
+
+        // arc: start and end placed, bending through the cursor
+        await page.getByTestId('editor-tool-arc').click();
+        p = at(0.3, 0.6);
+        await page.mouse.click(p.x, p.y);
+        p = at(0.65, 0.6);
+        await page.mouse.click(p.x, p.y);
+        p = at(0.48, 0.42);
+        await page.mouse.move(p.x, p.y, { steps: 4 });
+        await expect(page.getByTestId('editor-input-r')).toBeVisible();
+        await snap(page, `t129-draw-arc-progress-${vp}-${theme}`, { fullPage: false });
+      });
     });
   }
 }

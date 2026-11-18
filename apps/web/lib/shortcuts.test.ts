@@ -5,8 +5,10 @@ import {
   SHORTCUTS,
   SHORTCUT_GROUPS,
   ariaKeyShortcuts,
+  claimPageKeys,
   createShortcutMatcher,
   formatShortcut,
+  isPageClaimedKey,
   isTypingTarget,
   type KeyLike,
 } from './shortcuts';
@@ -114,5 +116,21 @@ describe('formatting', () => {
     expect(ariaKeyShortcuts('mod+k', true)).toBe('Meta+K');
     expect(ariaKeyShortcuts('shift+t', false)).toBe('Shift+T');
     expect(ariaKeyShortcuts('g p', false)).toBeUndefined();
+  });
+});
+
+describe('claimPageKeys (B10-1)', () => {
+  it('hides claimed plain keys from the global handler until released', () => {
+    expect(isPageClaimedKey(key('c'))).toBe(false);
+    const release = claimPageKeys(['c', 'v']);
+    const again = claimPageKeys(['c']);
+    expect(isPageClaimedKey(key('C', { shiftKey: true }))).toBe(true);
+    expect(isPageClaimedKey(key('c', { ctrlKey: true }))).toBe(false);
+    expect(isPageClaimedKey(key('k', { metaKey: true }))).toBe(false);
+    release();
+    expect(isPageClaimedKey(key('v'))).toBe(false);
+    expect(isPageClaimedKey(key('c'))).toBe(true);
+    again();
+    expect(isPageClaimedKey(key('c'))).toBe(false);
   });
 });

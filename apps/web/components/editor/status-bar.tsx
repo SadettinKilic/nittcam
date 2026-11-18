@@ -23,12 +23,18 @@ export function StatusBar({
   scale,
   snap,
   onSnap,
+  hint = null,
+  snapName = null,
 }: {
   t: Messages['editor'];
   cursor: Pt | null;
   scale: number;
   snap: Record<SnapToggle, boolean>;
   onSnap: (kind: SnapToggle, on: boolean) => void;
+  /** Next-step hint of the active drawing tool (D-039); replaces the "İmleç" label. */
+  hint?: string | null;
+  /** Name of the snapped kind while drawing ("Uç nokta"). */
+  snapName?: string | null;
 }) {
   const id = useId();
   const on = SNAP_TOGGLES.filter((k) => snap[k]).length;
@@ -40,10 +46,21 @@ export function StatusBar({
       className="flex h-9 items-center gap-3 px-3 font-mono text-2xs text-fg-muted tabular-nums"
       data-testid="editor-status"
     >
-      <span className="flex min-w-0 items-center gap-2" data-testid="editor-cursor">
-        <span className="font-sans">{t.status.cursor}</span>
-        <span>X {cursor ? fmt(cursor.x) : '—'}</span>
-        <span>Y {cursor ? fmt(cursor.y) : '—'}</span>
+      <span className="flex min-w-0 flex-1 items-center gap-2" data-testid="editor-cursor">
+        {hint ? (
+          <span className="truncate font-sans text-fg" title={hint} data-testid="editor-hint">
+            {hint}
+          </span>
+        ) : (
+          <span className="font-sans">{t.status.cursor}</span>
+        )}
+        {snapName ? (
+          <span className="shrink-0 font-sans text-info-text" data-testid="editor-snap-name">
+            {snapName}
+          </span>
+        ) : null}
+        <span className="shrink-0">X {cursor ? fmt(cursor.x) : '—'}</span>
+        <span className="shrink-0">Y {cursor ? fmt(cursor.y) : '—'}</span>
       </span>
       <span className="ml-auto" />
       <Popover>

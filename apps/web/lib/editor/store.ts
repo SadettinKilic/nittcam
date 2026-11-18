@@ -2,9 +2,10 @@
  * Editor store (T124, spec §4.2): tool, selection, hover, viewport and snap toggles. UI state
  * only; project data changes go through commands (`run`), never through this store.
  */
+import type { DrawTool } from './draw-tool';
 import { panBy, zoomAt, type Pt, type Viewport } from './viewport';
 
-export type EditorTool = 'select' | 'pan';
+export type EditorTool = 'select' | 'pan' | DrawTool;
 
 /** Snap kinds the status bar toggles (T126); the engine lives in `@nittcam/core`. */
 export const SNAP_TOGGLES = [

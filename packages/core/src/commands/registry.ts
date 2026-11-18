@@ -8,6 +8,8 @@ import { formatPath, projectSchema, type Project } from '../schema';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
 import {
   addPart,
+  drawPart,
+  setSegmentBulge,
   duplicatePart,
   importCutList,
   mirrorPart,
@@ -40,6 +42,8 @@ export const COMMANDS = {
   setSheetSize,
   setGrain,
   addPart,
+  drawPart,
+  setSegmentBulge,
   updatePart,
   removePart,
   duplicatePart,

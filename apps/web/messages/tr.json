@@ -1490,7 +1490,7 @@
   },
   "editor": {
     "canvasLabel": "Çizim tahtası: {count} parça. Tıklayarak seçin, sürükleyerek taşıyın; ok tuşları 1 mm (Shift ile 10 mm) kaydırır.",
-    "empty": "Henüz parça yok. Liste görünümünde parça ekleyin ya da Excel'den yapıştırın; parçalar burada çizim olarak görünür.",
+    "empty": "Henüz parça yok. Soldaki araçlarla çizin ya da liste görünümünde parça ekleyin; Excel'den yapıştırılan parçalar da burada görünür.",
     "toList": "Listeye git",
     "workspace": {
       "left": "Parçalar",
@@ -1510,8 +1510,7 @@
       "rect": "Dikdörtgen",
       "circle": "Çember",
       "line": "Çizgi",
-      "arc": "Yay",
-      "soon": "{tool} · yakında"
+      "arc": "Yay"
     },
     "view": {
       "zoomIn": "Yakınlaştır",
@@ -1549,6 +1548,7 @@
       "many": "{count} parça seçili",
       "size": "Ölçü",
       "position": "Konum",
+      "radius": "Köşe yarıçapı",
       "qty": "Adet",
       "kind": {
         "title": "Tür",
@@ -1564,6 +1564,36 @@
       "keys": "Kısayollar: Ctrl+C kopyala · Ctrl+V yapıştır · Ctrl+D çoğalt · Delete sil · Shift+X / Shift+Y aynala · Shift+R döndür"
     },
     "copied": "{count} parça kopyalandı",
-    "copyName": "{name} kopya"
+    "copyName": "{name} kopya",
+    "defaultName": "Parça {n}",
+    "draw": {
+      "fields": {
+        "w": "En",
+        "h": "Boy",
+        "r": "R",
+        "length": "Uzunluk",
+        "angle": "Açı"
+      },
+      "hints": {
+        "rectStart": "İlk köşeyi tıklayın",
+        "rectEnd": "Karşı köşeyi tıklayın ya da En;Boy yazın",
+        "circleStart": "Merkezi tıklayın",
+        "circleEnd": "Yarıçap kadar uzağı tıklayın ya da R yazın",
+        "lineStart": "Başlangıç noktasını tıklayın",
+        "lineNext": "Sonraki noktayı tıklayın ya da uzunluk yazın (Tab: açı)",
+        "lineClose": "Tıklayın: şekil kapanır ve parça olur",
+        "arcStart": "Yayın başlangıcını tıklayın",
+        "arcEnd": "Yayın bitiş noktasını tıklayın",
+        "arcBend": "Yayın üstünde bir nokta tıklayın ya da R yazın",
+        "open": "Kesilemez, kapalı değil: başlangıca bağlayın ya da Esc",
+        "bend": "Kavisi sürükleyin; R canlı gösterilir"
+      },
+      "close": "Kapat",
+      "open": "Kapalı değil",
+      "chip": "Ölçü girişi",
+      "apply": "Uygula",
+      "cancel": "Vazgeç",
+      "bendHandle": "Kavis tutamağı"
+    }
   }
 }

@@ -24,7 +24,12 @@ import {
   type ReactNode,
 } from 'react';
 import { NEW_PROJECT_HREF } from '../../lib/shell-nav';
-import { SHORTCUTS, createShortcutMatcher, isTypingTarget } from '../../lib/shortcuts';
+import {
+  SHORTCUTS,
+  createShortcutMatcher,
+  isPageClaimedKey,
+  isTypingTarget,
+} from '../../lib/shortcuts';
 import { isSidebarCollapsed, setSidebarCollapsed, subscribeSidebar } from '../../lib/sidebar-state';
 import { CommandMenu, type CommandActions } from './command-menu';
 import { ShortcutKeys, useIsMac } from './keys';
@@ -95,7 +100,8 @@ export function AppShell({ t, company, children }: AppShellProps) {
     if (bare) return;
     const match = createShortcutMatcher(SHORTCUTS, isMac);
     function onKey(e: KeyboardEvent) {
-      if (e.defaultPrevented || e.isComposing || e.repeat) return;
+      // Keys a page already handled, or owns while open (board tools V/H/R/C/L/A/F), stay there.
+      if (e.defaultPrevented || e.isComposing || e.repeat || isPageClaimedKey(e)) return;
       const hit = match(e, isTypingTarget(e.target as Element | null), e.timeStamp);
       if (!hit) return;
       // Inside an open dialog (palette, help, forms) only the palette toggle works.

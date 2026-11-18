@@ -12,6 +12,10 @@ export interface EditorColors {
   selectionText: string;
   /** Snap guides and glyphs (canvas language: `info`). */
   snap: string;
+  /** Drawing tools (D-039): in-progress preview and its chips. */
+  accent: string;
+  /** Open (not closed) drawn shape: "kapalı değil". */
+  warning: string;
   text: string;
   dim: string;
   ruler: string;
@@ -28,6 +32,8 @@ const TOKENS: Record<keyof EditorColors, string> = {
   selectionFill: '--color-accent-subtle',
   selectionText: '--color-accent-fg',
   snap: '--color-info',
+  accent: '--color-accent',
+  warning: '--color-warning',
   text: '--color-fg',
   dim: '--color-fg-muted',
   ruler: '--color-surface',

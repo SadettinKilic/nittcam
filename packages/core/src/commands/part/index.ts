@@ -230,3 +230,4 @@ export const duplicatePart = defineCommand({
 });
 
 export { mirrorPart, movePart, pasteParts, removeParts, rotatePart } from './board';
+export { drawPart, setSegmentBulge } from './draw';

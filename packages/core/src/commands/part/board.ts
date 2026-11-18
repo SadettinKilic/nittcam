@@ -26,7 +26,7 @@ function missing(project: Project, ids: readonly string[]): string | undefined {
 }
 
 /** Writes the auto positions of unplaced parts into `draw` (see D-037). */
-function freezeBoard(draft: Draft<Project>): void {
+export function freezeBoard(draft: Draft<Project>): void {
   const pos = boardPositions(draft as Project);
   for (const part of draft.parts) {
     if (part.draw) continue;
