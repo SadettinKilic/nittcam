@@ -37,11 +37,33 @@ export async function applyTheme(page: Page, theme: Theme): Promise<void> {
   await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
 }
 
-/** Waits until web fonts are loaded and layout is stable, so captures are deterministic. */
+/** Freezes transitions, animations and the caret for captures (on top of reduced motion). */
+const FREEZE_CSS =
+  '*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}';
+
+/**
+ * Waits until the page is stable so captures are deterministic (T199a; B4a lost hours to flaky
+ * captures): network idle, web fonts loaded, no pending autosave (the wizard's save badge),
+ * canvases sized (data-scale set), animations frozen, the page (window and the shell content) scrolled to 0,0,
+ * then two quiet frames.
+ */
 export async function settle(page: Page): Promise<void> {
   await page.waitForLoadState('networkidle');
+  await page.addStyleTag({ content: FREEZE_CSS });
+  await page.waitForFunction(() => {
+    const save = document.querySelector('[data-testid=save-status]');
+    const state = save?.getAttribute('data-state');
+    if (state === 'saving' || state === 'pending' || state === 'dirty') return false;
+    const canvases = document.querySelectorAll(
+      '[data-testid=layout-canvas],[data-testid=sim-canvas]',
+    );
+    return Array.from(canvases).every((c) => c.getAttribute('data-scale'));
+  });
   await page.evaluate(async () => {
     await document.fonts.ready;
+    window.scrollTo(0, 0);
+    document.getElementById('content')?.scrollTo(0, 0);
+    (document.activeElement as HTMLElement | null)?.blur?.();
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   });
 }
