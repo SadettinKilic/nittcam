@@ -33,7 +33,8 @@
       "noExport": "Henüz export yok",
       "noLayout": "Dizilim yok",
       "thumb": "{name} dizilim önizlemesi",
-      "updated": "Güncellendi {date}"
+      "updated": "Güncellendi {date}",
+      "utilisation": "Kullanım %{value}"
     },
     "machines": "Makineler",
     "machinesDescription": "Doğrulama durumu",
@@ -1409,12 +1410,7 @@
       "placeholder": "Komut ara…",
       "empty": "Sonuç yok.",
       "group": "Sayfalar",
-      "items": [
-        "Ana sayfa",
-        "Projeler",
-        "Makineler",
-        "Şablonlar"
-      ]
+      "items": ["Ana sayfa", "Projeler", "Makineler", "Şablonlar"]
     }
   }
 }
