@@ -47,7 +47,11 @@ const FREEZE_CSS =
  * canvases sized (data-scale set), animations frozen, the page (window and the shell content) scrolled to 0,0,
  * then two quiet frames.
  */
-export async function settle(page: Page): Promise<void> {
+/**
+ * keepScroll: anchored overlays (menu, popover, select) open next to a trigger far down the page
+ * and stay there; scrolling to the top would capture the page without them (B4b round 4).
+ */
+export async function settle(page: Page, keepScroll = false): Promise<void> {
   await page.waitForLoadState('networkidle');
   await page.addStyleTag({ content: FREEZE_CSS });
   await page.waitForFunction(() => {
@@ -59,13 +63,15 @@ export async function settle(page: Page): Promise<void> {
     );
     return Array.from(canvases).every((c) => c.getAttribute('data-scale'));
   });
-  await page.evaluate(async () => {
+  await page.evaluate(async (keep) => {
     await document.fonts.ready;
-    window.scrollTo(0, 0);
-    document.getElementById('content')?.scrollTo(0, 0);
+    if (!keep) {
+      window.scrollTo(0, 0);
+      document.getElementById('content')?.scrollTo(0, 0);
+    }
     (document.activeElement as HTMLElement | null)?.blur?.();
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  });
+  }, keepScroll);
 }
 
 /**
@@ -75,10 +81,10 @@ export async function settle(page: Page): Promise<void> {
 export async function snap(
   page: Page,
   name: string,
-  opts: { fullPage?: boolean; baseline?: boolean } = {},
+  opts: { fullPage?: boolean; baseline?: boolean; keepScroll?: boolean } = {},
 ): Promise<void> {
   const fullPage = opts.fullPage ?? true;
-  await settle(page);
+  await settle(page, opts.keepScroll);
   mkdirSync(SCREENSHOT_DIR, { recursive: true });
   await page.screenshot({
     path: join(SCREENSHOT_DIR, `${name}.png`),
