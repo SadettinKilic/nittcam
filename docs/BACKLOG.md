@@ -55,7 +55,7 @@ Goal: a modern, corporate, professional look before any new screen is built (D-0
 
 ### Batch B1: T100–T102 (design foundation)
 
-### T100 Design tokens, theme and `packages/ui` setup   [status: todo]
+### T100 Design tokens, theme and `packages/ui` setup   [status: done]
 Spec: §3.7, §8.3 · Depends: none
 Acceptance:
 - [ ] tokens as CSS variables in one file (`packages/ui/src/tokens.css`) mapped to Tailwind v4 `@theme`: colour scales (neutral, brand, success, warning, danger, info), semantic roles (bg, surface, border, text, muted, accent, focus), radius, spacing, shadow/elevation, typography scale, motion durations; light and dark values
@@ -65,7 +65,7 @@ Acceptance:
 - [ ] `ui-conventions` skill updated with token names and usage rules
 Tester focus: licence check output; theme switch without flash (reload in dark); token contrast pairs text/bg ≥ 4.5:1 in both themes (script or axe).
 
-### T101 Core primitive components   [status: todo]
+### T101 Core primitive components   [status: done]
 Spec: §3.7 · Depends: T100
 Acceptance:
 - [ ] Button (primary/secondary/ghost/destructive/outline; sm/md/lg; loading), IconButton (required aria-label), Input, Textarea, **NumberInput** (mm unit suffix, Turkish decimal comma, min/max, step with arrows, invalid state), Select, Checkbox, Switch, RadioGroup, Label, FormField (label + hint + error)
@@ -74,7 +74,7 @@ Acceptance:
 - [ ] unit tests for NumberInput parsing (`"12,5"` → 12.5, `"1.200,5"` → 1200.5, invalid → error)
 Tester focus: keyboard-only pass over every component; NumberInput edge cases; focus visible in light and dark.
 
-### T102 UI gallery route + visual QA harness   [status: todo]
+### T102 UI gallery route + visual QA harness   [status: done]
 Spec: §11 · Depends: T101
 Acceptance:
 - [ ] dev-only route `/dev/ui` shows every component in every variant and state (hidden in production build)
@@ -85,7 +85,7 @@ Tester focus: run the visual suite twice → zero diff (deterministic: fonts loa
 
 ### Batch B2: T103–T105 (app shell)
 
-### T103 App shell: sidebar, top bar, mobile drawer   [status: todo]
+### T103 App shell: sidebar, top bar, mobile drawer   [status: done]
 Spec: §3.3, §3.7 · Depends: T101
 Acceptance:
 - [ ] left sidebar: logo + company name (default company), operator name placeholder, nav (Ana sayfa, Projeler, Makineler, Şablonlar, Ayarlar) with lucide icons and active state, prominent "+ Yeni proje"; collapsible to icons (state remembered)
@@ -94,7 +94,7 @@ Acceptance:
 - [ ] all existing pages render inside the shell; nav works with keyboard; skip-to-content link
 Tester focus: screenshots of shell at 1440/390 × light/dark; keyboard nav order; collapsed state persists after reload.
 
-### T104 Command palette + keyboard shortcuts   [status: todo]
+### T104 Command palette + keyboard shortcuts   [status: done]
 Spec: §3.7 · Depends: T103
 Acceptance:
 - [ ] `Ctrl/Cmd+K` palette (cmdk): go to page, new project, recent projects (from API), toggle theme, open shortcuts help; fuzzy search with Turkish characters (ı/i, ş/s folding)
@@ -102,7 +102,7 @@ Acceptance:
 - [ ] Turkish labels in `tr.json`
 Tester focus: e2e open palette → search "makine" → navigates; "?" dialog lists shortcuts; shortcuts do not fire inside inputs.
 
-### T105 Feedback states: toasts, empty, error, loading   [status: todo]
+### T105 Feedback states: toasts, empty, error, loading   [status: done]
 Spec: §3.7 · Depends: T101
 Acceptance:
 - [ ] sonner toasts (success/error/info, action button, themed); helper `notify.*`
@@ -113,14 +113,14 @@ Tester focus: force API error (route mock) → toast + retry; empty project list
 
 ### Batch B3: T106–T108 (redesign: home, machines, verification)
 
-### T106 Ana sayfa redesign   [status: todo]
+### T106 Ana sayfa redesign   [status: done]
 Spec: §3.4 · Depends: T103, T105
 Acceptance:
 - [ ] cards: recent projects (with status badge), machines needing verification, quick actions (Yeni proje, Makine ekle, Kesim listesi yapıştır); waste summary placeholder card (real data in T180)
 - [ ] EmptyState when there is no project/machine
 Tester focus: visual 1440/390 light/dark; empty vs filled state (seed); links work.
 
-### T107 Makineler list + profile form redesign   [status: todo]
+### T107 Makineler list + profile form redesign   [status: done]
 Spec: §3.4, §7.1 · Depends: T103, T105
 Acceptance:
 - [ ] list as cards/table with verification badge (Taslak / Air cut onaylandı / Test kesimi onaylandı / Doğrulanmış / Yeniden doğrulama gerekli)
@@ -129,7 +129,7 @@ Acceptance:
 - [ ] existing machine e2e still passes (selectors updated)
 Tester focus: create/edit profile e2e; version increments on save; dirty-guard; visual + axe.
 
-### T108 Doğrulama (verification) page redesign   [status: todo]
+### T108 Doğrulama (verification) page redesign   [status: done]
 Spec: §7.3 · Depends: T107
 Acceptance:
 - [ ] stage stepper (draft → air cut → test cut → verified) with current stage; download cards for air-cut and test-part programs with the acceptance checkbox (rule 10)
@@ -138,7 +138,7 @@ Tester focus: full verification e2e still green; rule-10 acceptance cannot be by
 
 ### Batch B4: T109–T111 (redesign: wizard, layout, simulation, export, projects)
 
-### T109 Wizard shell redesign   [status: todo]
+### T109 Wizard shell redesign   [status: done]
 Spec: §3.6 · Depends: T103
 Acceptance:
 - [ ] stepper header (5 steps, done/current/blocked states), left panel for fields, right panel for preview, sticky footer with Geri / İleri and autosave indicator (Kaydedildi / Kaydediliyor / Kaydedilemedi)
@@ -146,7 +146,7 @@ Acceptance:
 - [ ] browser back/forward between steps still works (D-030)
 Tester focus: wizard e2e (T024 flow) green; 390 px: panels stack, footer stays reachable; visual all steps.
 
-### T110 Layout view + simulation screens restyle   [status: todo]
+### T110 Layout view + simulation screens restyle   [status: done]
 Spec: §3.6, §6.5 · Depends: T109
 Acceptance:
 - [ ] canvas palette from tokens (light and dark: sheet, parts, waste, selection, rapids, cuts, depth colours); toolbars as icon buttons with tooltips; sheet tabs as Tabs
@@ -154,7 +154,7 @@ Acceptance:
 - [ ] banner "Simülasyon air cut'ın yerine geçmez" kept and visible in both themes
 Tester focus: layout drag/lock e2e and simulation-to-end e2e green; dark-mode canvas readability (screenshot review); reduced motion.
 
-### T111 Export step + Projeler list restyle; screen baselines   [status: todo]
+### T111 Export step + Projeler list restyle; screen baselines   [status: done]
 Spec: §3.4, §6.6 · Depends: T109
 Acceptance:
 - [ ] export step: checklist as a card list, unverified warning as a danger callout, file list with hash, history table in the new Table component
