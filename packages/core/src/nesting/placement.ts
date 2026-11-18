@@ -5,7 +5,7 @@
  */
 import { EPS } from '../geometry/constants';
 import type { Placement, Project } from '../schema';
-import { partBoxSize } from './fit';
+import { partShape, type PartShape } from './fit';
 import { placementRect } from './nest';
 import type { Rect } from './types';
 
@@ -47,9 +47,9 @@ export function rectClearance(a: Rect, b: Rect): number {
   return Math.max(dx, dy);
 }
 
-/** Part bounding-box sizes by id at rotation 0. */
-export function partSizes(project: Project): Map<string, { w: number; h: number }> {
-  return new Map(project.parts.map((p) => [p.id, partBoxSize(p)]));
+/** Part shapes by id: bounding-box size at rotation 0 plus the outline for any other angle. */
+export function partSizes(project: Project): Map<string, PartShape> {
+  return new Map(project.parts.map((p) => [p.id, partShape(p)]));
 }
 
 /**
@@ -64,7 +64,7 @@ export function checkPlacement(
   sheetIndex: number,
   candidate: Placement,
   options: PlacementCheckOptions,
-  sizes: ReadonlyMap<string, { w: number; h: number }> = partSizes(project),
+  sizes: ReadonlyMap<string, PartShape> = partSizes(project),
 ): PlacementCheck {
   const r = placementRect(candidate, sizes);
   if (!r) return { outsideSheet: true, inMargin: false, conflicts: [] };

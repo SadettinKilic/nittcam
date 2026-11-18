@@ -2,7 +2,13 @@
  * Ana sayfa (spec §3.4, T106): pure helpers that turn the company's projects, machines and exports
  * into the dashboard's numbers, the machine list order and the layout thumbnails.
  */
-import { partBoxSize, summarizeLayout, type Project, type VerificationState } from '@nittcam/core';
+import {
+  partShape,
+  rotatedBoxSize,
+  summarizeLayout,
+  type Project,
+  type VerificationState,
+} from '@nittcam/core';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -82,9 +88,9 @@ export function layoutThumb(project: Project): LayoutThumb | null {
     if (out.length >= THUMB_MAX_PARTS) break;
     const part = parts.get(pl.partId);
     if (!part) continue;
-    const size = partBoxSize(part);
-    const turned = pl.rot === 90 || pl.rot === 270;
-    out.push({ x: pl.x, y: pl.y, w: turned ? size.h : size.w, h: turned ? size.w : size.h });
+    // Footprint = bbox of the rotated outline (quarter turns swap w × h exactly, D-034).
+    const size = rotatedBoxSize(partShape(part), pl.rot);
+    out.push({ x: pl.x, y: pl.y, w: size.w, h: size.h });
   }
   if (out.length === 0) return null;
   return {

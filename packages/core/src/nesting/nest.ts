@@ -6,7 +6,7 @@
  */
 import type { Placement, Project } from '../schema';
 import { compareScore, GuillotineBin, MaxRectsBin, type Bin, type Fit } from './bins';
-import { fitsUsable, partBoxSize, usableSize } from './fit';
+import { fitsUsable, partBoxSize, rotatedBoxSize, usableSize, type PartShape } from './fit';
 import {
   MODE_WEIGHTS,
   type NestingInput,
@@ -49,18 +49,20 @@ export function partSpacing(toolDiameter: number, gap: number): number {
 
 /** Size of a placed part's bounding box after rotation. */
 function rotatedSize(w: number, h: number, rot: Placement['rot']): { w: number; h: number } {
-  return rot === 90 || rot === 270 ? { w: h, h: w } : { w, h };
+  return rotatedBoxSize({ w, h }, rot);
 }
 
-/** Footprint of a placement on its sheet (not inflated); null when the part is unknown. */
+/**
+ * Footprint of a placement on its sheet (not inflated): the axis-aligned bbox of the rotated
+ * outline (D-034; for quarter turns the swapped w × h); null when the part is unknown.
+ */
 export function placementRect(
   placement: Placement,
-  parts: ReadonlyMap<string, { w: number; h: number }>,
+  parts: ReadonlyMap<string, PartShape>,
 ): Rect | null {
   const part = parts.get(placement.partId);
   if (!part) return null;
-  const size = rotatedSize(part.w, part.h, placement.rot);
-  return { x: placement.x, y: placement.y, ...size };
+  return { x: placement.x, y: placement.y, ...rotatedBoxSize(part, placement.rot) };
 }
 
 interface Item {

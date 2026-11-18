@@ -5,7 +5,7 @@
  */
 import { EPS } from '../geometry/constants';
 import { distanceTo } from '../geometry/offset.testing';
-import { orientation } from '../geometry/polyline';
+import { bbox, forEachSegment, orientation } from '../geometry/polyline';
 import { arcOf, sampleSegment } from '../geometry/segment';
 import type { Point, Polyline, Vertex } from '../geometry/types';
 import { defaultMachineProfile, type MachineProfile } from '../machine';
@@ -27,14 +27,14 @@ export interface ProjectSpec {
   thickness?: number;
   gap?: number;
   margin?: number;
-  placements?: { partId: string; index: number; x: number; y: number; rot: 0 | 90 | 180 | 270 }[][];
+  placements?: { partId: string; index: number; x: number; y: number; rot: number }[][];
   leadIn?: 'arc' | 'line';
   direction?: 'climb' | 'conventional';
 }
 
 export function projectOf(spec: ProjectSpec): Project {
   const r = parseProject({
-    schemaVersion: 1,
+    schemaVersion: 2,
     machine: { machineId: 'm', profileVersion: 1 },
     stock: {
       material: 'mdf',
@@ -46,7 +46,7 @@ export function projectOf(spec: ProjectSpec): Project {
       id: p.id,
       name: p.id,
       qty: p.qty ?? 1,
-      grainLock: false,
+      grain: { mode: 'free', angle: 0 },
       kind: 'rect',
       params: { w: p.w, h: p.h, r: p.r ?? 0 },
       inners: [],
@@ -125,8 +125,32 @@ export function sheetOutline(
     (p) => p.partId === op.partId && p.index === op.copy,
   );
   if (!part || part.kind !== 'rect' || !pl) throw new Error(`no rect placement for ${op.partId}`);
-  const turned = pl.rot === 90 || pl.rot === 270;
   const { w, h, r } = part.params;
+  if (pl.rot % 90 !== 0) {
+    // Any other angle (T113): rotate the rect outline with its own cos/sin (not the builder's
+    // transform), then move its arc-aware bounding-box minimum to (x, y).
+    const rad = (pl.rot * Math.PI) / 180;
+    const c = Math.cos(rad);
+    const s = Math.sin(rad);
+    const turnedOutline: Polyline = {
+      closed: true,
+      vertices: rectOutline({ w, h, r }).map((v) => ({
+        x: v.x * c - v.y * s,
+        y: v.x * s + v.y * c,
+        bulge: v.bulge,
+      })),
+    };
+    const box = bbox(turnedOutline);
+    return {
+      closed: true,
+      vertices: turnedOutline.vertices.map((v) => ({
+        x: v.x - box.minX + pl.x,
+        y: v.y - box.minY + pl.y,
+        bulge: v.bulge,
+      })),
+    };
+  }
+  const turned = pl.rot === 90 || pl.rot === 270;
   const vs = rectOutline({ w: turned ? h : w, h: turned ? w : h, r });
   return {
     closed: true,
@@ -134,8 +158,34 @@ export function sheetOutline(
   };
 }
 
+/**
+ * Strictly inside an outline at any rotation: ray casting over the outline sampled into chords
+ * (32 per arc). The sliver between a chord and its arc is thinner than the tool radius, which the
+ * caller's distance test covers.
+ */
+function insideOutline(p: Point, outline: Polyline): boolean {
+  const pts: Point[] = [];
+  forEachSegment(outline, (a, b, bulge) => {
+    pts.push(...sampleSegment(a, b, bulge, 32).slice(0, -1));
+  });
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i] as Point;
+    const b = pts[j] as Point;
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside;
+    }
+  }
+  return inside && distanceTo(p, outline) > EPS;
+}
+
 /** Strictly inside a (rounded) rectangle outline: closer than r to the rectangle shrunk by r. */
 function insideRectOutline(p: Point, outline: Polyline): boolean {
+  const axisAligned = outline.vertices.every((v, i) => {
+    const n = outline.vertices[(i + 1) % outline.vertices.length] as Vertex;
+    return v.bulge !== 0 || Math.abs(v.x - n.x) <= EPS || Math.abs(v.y - n.y) <= EPS;
+  });
+  if (!axisAligned) return insideOutline(p, outline);
   const xs = outline.vertices.map((v) => v.x);
   const ys = outline.vertices.map((v) => v.y);
   const n = outline.vertices.length;
