@@ -16,7 +16,8 @@ test.describe('T194 tester: brand', () => {
         await page.setViewportSize(size);
         await applyTheme(page, theme);
         await page.goto('/');
-        await expect(page.locator('main:not([aria-busy])')).toBeVisible();
+        await expect(page.locator('main[aria-busy]')).toHaveCount(0);
+        await expect(page.locator('main').first()).toBeVisible();
         const overflow = await page.evaluate(
           () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
         );
