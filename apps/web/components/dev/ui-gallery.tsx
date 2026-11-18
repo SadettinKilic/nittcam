@@ -2,6 +2,8 @@
 
 import {
   AlertDialog,
+  Logo,
+  LogoMark,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
@@ -149,6 +151,42 @@ export function UiGallery({ t }: { t: T }) {
           </div>
           <ThemeSwitcher labels={t.theme} />
         </header>
+
+        <Section id="brand" title={t.sections.brand}>
+          <div className="flex flex-col gap-6" data-testid="gallery-brand">
+            <Row label={t.brand.full}>
+              <Logo size={32} />
+            </Row>
+            <Row label={t.brand.sizes}>
+              <Logo size={20} />
+              <Logo size={24} />
+              <Logo size={32} />
+              <Logo size={24} variant="mark" />
+            </Row>
+            <Row label={t.brand.variants}>
+              <LogoMark size={32} />
+              <LogoMark size={32} variant="plain" className="text-fg" />
+              <LogoMark size={32} variant="mono" className="text-fg" />
+              <LogoMark size={16} />
+            </Row>
+            <Row label={t.brand.backgrounds}>
+              <span className="rounded-lg border border-border bg-bg p-4">
+                <Logo size={24} />
+              </span>
+              <span className="rounded-lg border border-border bg-surface-subtle p-4">
+                <Logo size={24} />
+              </span>
+              <span className="rounded-lg bg-accent p-4 text-accent-fg">
+                <Logo size={24} tone="mono" />
+              </span>
+            </Row>
+            <Row label={t.brand.clearSpace}>
+              <span className="rounded-md p-3 outline-1 outline-border-strong outline-dashed">
+                <Logo size={32} />
+              </span>
+            </Row>
+          </div>
+        </Section>
 
         <Section id="colors" title={t.sections.colors}>
           <div className="grid gap-6 sm:grid-cols-2">

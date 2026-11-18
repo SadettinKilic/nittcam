@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Button, TooltipContent, TooltipRoot, TooltipTrigger, cn } from '@nittcam/ui';
+import { Badge, Button, Logo, TooltipContent, TooltipRoot, TooltipTrigger, cn } from '@nittcam/ui';
 import {
   Drill,
   FolderKanban,
@@ -58,6 +58,43 @@ function RailTip({
   );
 }
 
+/** Company / operator row at the bottom of the sidebar: the account and workspace (T194). */
+function WorkspaceRow({
+  t,
+  company,
+  collapsed,
+}: {
+  t: ShellText;
+  company: string;
+  collapsed: boolean;
+}) {
+  return (
+    <div className="px-3 pb-3 rail-collapsed:px-0">
+      <RailTip label={`${company} · ${t.shell.operator}`} show={collapsed}>
+        <div
+          data-testid="shell-workspace"
+          className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface px-2.5 py-2 rail-collapsed:justify-center rail-collapsed:border-transparent rail-collapsed:bg-transparent rail-collapsed:px-0"
+        >
+          <span
+            aria-hidden="true"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-active text-xs font-semibold text-fg-muted"
+          >
+            {company.slice(0, 1).toLocaleUpperCase('tr-TR')}
+          </span>
+          <div className="min-w-0 rail-collapsed:sr-only">
+            <p className="truncate text-sm font-medium text-fg" data-testid="shell-company">
+              {company}
+            </p>
+            <p className="truncate text-xs text-fg-muted" data-testid="shell-operator">
+              {t.shell.operator}
+            </p>
+          </div>
+        </div>
+      </RailTip>
+    </div>
+  );
+}
+
 export interface SidebarContentProps {
   t: ShellText;
   company: string;
@@ -80,21 +117,19 @@ export function SidebarContent({
   const pathname = usePathname();
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 px-3 pt-4 pb-3 rail-collapsed:justify-center rail-collapsed:px-0">
-        <span
-          aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-sm font-semibold text-accent-fg shadow-xs"
-        >
-          {company.slice(0, 1).toLocaleUpperCase('tr-TR')}
-        </span>
-        <div className="min-w-0 rail-collapsed:sr-only">
-          <p className="truncate text-sm font-semibold text-fg" data-testid="shell-company">
-            {company}
-          </p>
-          <p className="truncate text-xs text-fg-muted" data-testid="shell-operator">
-            {t.shell.operator}
-          </p>
-        </div>
+      <div className="flex h-14 shrink-0 items-center px-4 rail-collapsed:justify-center rail-collapsed:px-0">
+        <RailTip label={t.shell.brandHome} show={collapsed}>
+          <Link
+            href="/"
+            onClick={onNavigate}
+            aria-label={t.shell.brandHome}
+            data-testid="shell-brand"
+            className={cn('-mx-1 flex items-center rounded-md p-1', focus)}
+          >
+            <Logo size={24} className="rail-collapsed:hidden" />
+            <Logo size={24} variant="mark" className="hidden rail-collapsed:inline-flex" />
+          </Link>
+        </RailTip>
       </div>
 
       <div className="px-3 pb-3 rail-collapsed:px-3">
@@ -169,6 +204,7 @@ export function SidebarContent({
           })}
         </ul>
       </nav>
+      <WorkspaceRow t={t} company={company} collapsed={collapsed} />
       {footer}
     </div>
   );

@@ -77,6 +77,7 @@
   "shell": {
     "skipToContent": "İçeriğe geç",
     "operator": "Operatör",
+    "brandHome": "NittCam, ana sayfa",
     "workspace": "Çalışma alanı",
     "breadcrumb": "Sayfa yolu",
     "openMenu": "Menüyü aç",
@@ -1240,6 +1241,7 @@
       "dark": "Koyu"
     },
     "sections": {
+      "brand": "Marka",
       "colors": "Renkler",
       "type": "Yazı",
       "buttons": "Butonlar",
@@ -1259,6 +1261,13 @@
       "text": "Metin",
       "accent": "Vurgu",
       "status": "Durum"
+    },
+    "brand": {
+      "full": "İşaret ve yazı markası",
+      "sizes": "Boyutlar (20 / 24 / 32 px) ve yalnız işaret",
+      "variants": "İşaret biçimleri: karo, sade, tek renk",
+      "backgrounds": "Sayfa, kenar çubuğu ve vurgu zemininde (koyu tema için temayı değiştirin)",
+      "clearSpace": "Boşluk payı: işaret yüksekliğinin yarısı; logo token dışı renge boyanmaz"
     },
     "typeSample": "Plaka 1.220 × 2.440 mm, 18 mm MDF",
     "typeBody": "Kesim listesi, dizilim ve G-code tek akışta. Ölçüler eşit genişlikte rakamlarla hizalanır.",

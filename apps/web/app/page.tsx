@@ -11,6 +11,7 @@ import {
   Recycle,
   ShieldCheck,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PageSkeleton } from '../components/feedback/page-skeleton';
@@ -42,6 +43,10 @@ import { toListItem as machineItem } from '../lib/server/machines';
 import { machineNames, toListItem } from '../lib/server/projects';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: `${getMessages().nav.home} · ${getMessages().meta.title}`,
+};
 
 /** Recent project cards on the home page (a 2 × 2 grid on wide screens). */
 const RECENT = 4;

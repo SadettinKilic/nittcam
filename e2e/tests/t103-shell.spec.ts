@@ -19,6 +19,46 @@ test.describe('app shell', () => {
     await expect(page.getByTestId('shell-title')).toHaveText(tr.nav.machines);
   });
 
+  test('brand logo top-left links home; the workspace row sits at the bottom (T194)', async ({
+    page,
+  }) => {
+    await page.goto('/makineler');
+    const sidebar = page.getByTestId('shell-sidebar');
+    const brand = sidebar.getByRole('link', { name: tr.shell.brandHome });
+    await expect(brand).toBeVisible();
+    const top = async (l: ReturnType<Page['getByTestId']>) =>
+      (await l.boundingBox())?.y ?? Number.NaN;
+    const brandY = await top(brand);
+    const rowY = await top(sidebar.getByTestId('shell-workspace'));
+    expect(brandY).toBeLessThan(20);
+    expect(rowY).toBeGreaterThan(brandY + 300);
+    expect(rowY).toBeLessThan(await top(page.getByTestId('sidebar-toggle')));
+    await brand.click();
+    await expect(page).toHaveURL(/\/$/);
+    // Collapsed rail: mark only.
+    await page.getByTestId('sidebar-toggle').click();
+    await expect(sidebar.getByTestId('brand-logo').first()).toBeHidden();
+    await expect(sidebar.locator('[data-testid=brand-logo]:visible')).toHaveCount(1);
+    await expect(sidebar.locator('[data-testid=brand-logo]:visible')).not.toContainText('Nitt');
+    await page.getByTestId('sidebar-toggle').click();
+  });
+
+  test('favicon, app icons, theme colour and page titles (T194)', async ({ page, request }) => {
+    await page.goto('/');
+    await expect(page).toHaveTitle(`${tr.nav.home} · NittCam`);
+    const icons = await page
+      .locator('link[rel=icon]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('href') ?? ''));
+    expect(icons.some((h) => h.includes('icon.svg'))).toBe(true);
+    await expect(page.locator('link[rel=apple-touch-icon]')).toHaveCount(1);
+    await expect(page.locator('meta[name=theme-color]')).toHaveCount(2);
+    for (const href of [...icons, '/brand/icon-512-light.png', '/manifest.webmanifest']) {
+      expect((await request.get(href)).ok(), href).toBe(true);
+    }
+    await page.goto('/makineler');
+    await expect(page).toHaveTitle(`${tr.machines.title} · NittCam`);
+  });
+
   test('breadcrumb links back to the parent page', async ({ page }) => {
     await page.goto('/projeler/yeni');
     await expect(page.getByTestId('wizard-step-title')).toBeVisible({ timeout: 30_000 });
@@ -42,6 +82,8 @@ test.describe('app shell', () => {
   test('menu works with the keyboard', async ({ page }) => {
     await page.goto('/');
     await page.keyboard.press('Tab'); // skip link
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('link', { name: tr.shell.brandHome })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(page.getByTestId('nav-new-project')).toBeFocused();
     await page.keyboard.press('Tab'); // Ana sayfa
@@ -76,9 +118,12 @@ test.describe('app shell', () => {
     test('the menu is a drawer that closes after navigating', async ({ page }) => {
       await page.goto('/');
       await expect(page.getByTestId('shell-sidebar')).toBeHidden();
+      await expect(page.getByTestId('shell-brand-mobile')).toBeVisible();
       await page.getByRole('button', { name: tr.shell.openMenu }).click();
       const drawer = page.getByTestId('shell-drawer');
       await expect(drawer).toBeVisible();
+      await expect(drawer.getByRole('link', { name: tr.shell.brandHome })).toBeVisible();
+      await expect(drawer.getByTestId('shell-company')).toBeVisible();
       await drawer.getByRole('link', { name: tr.nav.projects }).click();
       await expect(page).toHaveURL(/\/projeler$/);
       await expect(drawer).toBeHidden();

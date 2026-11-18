@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { ThemeProvider } from '@nittcam/ui';
@@ -22,6 +22,15 @@ const inter = Inter({ subsets: ['latin', 'latin-ext'], display: 'swap', variable
 export const metadata: Metadata = {
   title: messages.meta.title,
   description: messages.meta.description,
+  applicationName: messages.meta.title,
+};
+
+// Browser chrome follows the page background of each theme (tokens bg: neutral-25 / neutral-1000).
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fcfcfd' },
+    { media: '(prefers-color-scheme: dark)', color: '#08090b' },
+  ],
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
