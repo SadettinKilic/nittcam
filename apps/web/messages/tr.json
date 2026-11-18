@@ -1,4 +1,12 @@
 {
+  "grainDial": {
+    "label": "Damar açısı",
+    "valueText": "{deg} derece",
+    "noGrain": "Damar yok",
+    "input": "Damar açısı (derece)",
+    "note": "Damarın yönü yoktur: 30° ile 210° aynı damardır.",
+    "quick": "Hızlı açılar"
+  },
   "meta": {
     "title": "NittCam",
     "description": "CNC router için web tabanlı kesim programı"
@@ -1337,7 +1345,15 @@
       "feedback": "Yükleme ve kısayollar",
       "states": "Boş, hata ve bildirim",
       "command": "Komut listesi",
-      "density": "Yoğunluk"
+      "density": "Yoğunluk",
+      "grainDial": "Damar kadranı"
+    },
+    "grainDemo": {
+      "md": "Varsayılan (120 px)",
+      "sm": "Küçük (72 px, açılır pencere ve tablo hücresi)",
+      "none": "Damar yok",
+      "disabled": "Devre dışı",
+      "value": "Değer"
     },
     "density": {
       "comfortable": "Rahat (varsayılan, 40 px)",

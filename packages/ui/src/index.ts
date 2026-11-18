@@ -156,3 +156,13 @@ export {
   type DomainIconProps,
 } from './components/domain-icons';
 export { Measure, formatMeasure, type MeasureProps } from './components/measure';
+export { GrainDial, type GrainDialLabels, type GrainDialProps } from './components/grain-dial';
+export {
+  GRAIN_SNAP_STEP,
+  GRAIN_SNAP_TOLERANCE,
+  isSnappedGrainAngle,
+  normalizeGrainAngle,
+  pointerToGrainAngle,
+  snapGrainAngle,
+  stepGrainAngle,
+} from './lib/angle';
