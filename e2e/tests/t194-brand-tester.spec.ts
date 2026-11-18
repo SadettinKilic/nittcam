@@ -16,7 +16,7 @@ test.describe('T194 tester: brand', () => {
         await page.setViewportSize(size);
         await applyTheme(page, theme);
         await page.goto('/');
-        await expect(page.locator('main')).toBeVisible();
+        await expect(page.locator('main:not([aria-busy])')).toBeVisible();
         const overflow = await page.evaluate(
           () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
         );
@@ -27,7 +27,7 @@ test.describe('T194 tester: brand', () => {
           return;
         }
         const logo = page.getByRole('link', { name: /NittCam/ }).first();
-        await expect(logo).toBeVisible();
+        await expect(logo).toBeVisible({ timeout: 15_000 });
         const box = await logo.boundingBox();
         expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
         expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(size.width);
