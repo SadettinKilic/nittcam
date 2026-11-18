@@ -331,6 +331,7 @@ Acceptance:
 - [ ] commands `setGrain(angle|null)` (sheet), `setPartGrain(id, {mode, angle})`, undoable; `updatePart` keeps accepting `grainLock` as an alias for one release
 - [ ] pure `allowedRotations(part, sheet, policy)`: fixed → {g, g+180} with g = sheetGrain − partGrain (mod 360); free → {0, 90, 180, 270} (+ policy steps later, T166)
 - [ ] fast-check: for every fixed part and every rotation from `allowedRotations`, (partGrain + rot) ≡ sheetGrain (mod 180)
+- [ ] D-038: `rotatePart` / `mirrorPart` turn `part.grain.angle` with the shape via `turnGrain` / `mirrorGrain` (core, B9); unit tests: 4 × rotate 90° = identity incl. grain, mirror twice = identity
 Tester focus: migration on every existing fixture + saved projects in PGlite; undo round-trip; property test review.
 
 ### T113 Arbitrary-angle rotation through geometry, toolpath, post and checks   [status: todo]

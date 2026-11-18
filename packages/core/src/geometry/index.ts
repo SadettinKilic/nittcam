@@ -5,3 +5,4 @@ export * from './segment';
 export * from './polyline';
 export * from './transform';
 export * from './offset';
+export * from './grain';

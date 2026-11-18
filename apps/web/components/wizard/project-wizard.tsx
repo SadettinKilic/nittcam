@@ -348,11 +348,12 @@ function WizardSession({
 
   const created = useCallback(
     (id: string) => {
-      window.history.replaceState(
-        { [STEP_STATE]: stepRef.current },
-        '',
-        stepUrl(id, stepRef.current),
-      );
+      // Keep the step's other query params (e.g. `?gorunum=cizim`, T124) across the first save.
+      const url = new URL(stepUrl(id, stepRef.current), window.location.origin);
+      new URLSearchParams(window.location.search).forEach((value, key) => {
+        if (key !== 'adim') url.searchParams.set(key, value);
+      });
+      window.history.replaceState({ [STEP_STATE]: stepRef.current }, '', url.pathname + url.search);
       onCreated(id);
     },
     [onCreated],

@@ -400,17 +400,17 @@ export function DrawingBoard({
           const pos = at.get(p.id) ?? { x: 0, y: 0 };
           return { ...structuredClone(p), draw: { x: pos.x, y: pos.y } };
         });
-    const paste = (src: readonly Part[], offset: number) => {
-      if (src.length === 0) return;
+    const paste = (src: readonly Part[], offset: number): boolean => {
+      if (src.length === 0) return false;
       const copies = src.map((p) => ({
         ...structuredClone(p),
         id: newPartId(),
         name: p.name.trim() ? t.copyName.replace('{name}', p.name.trim()) : p.name,
         draw: { x: (p.draw?.x ?? 0) + offset, y: (p.draw?.y ?? 0) - offset },
       }));
-      if (run('pasteParts', { parts: copies })) {
-        dispatch({ type: 'select', ids: copies.map((c) => c.id) });
-      }
+      if (!run('pasteParts', { parts: copies })) return false;
+      dispatch({ type: 'select', ids: copies.map((c) => c.id) });
+      return true;
     };
     const has = ids.length > 0;
     return {
@@ -422,15 +422,19 @@ export function DrawingBoard({
       rotate: () => has && run('rotatePart', { ids, turns: 270 }),
       remove: () => has && run('removeParts', { ids }),
       duplicate: () => has && paste(snapshot(), PASTE_OFFSET),
-      copy: () => {
-        if (!has) return;
+      /** False when nothing is selected, so the browser keeps its own copy (T125). */
+      copy: (): boolean => {
+        if (!has) return false;
         clipboard.current = snapshot();
         pastes.current = 0;
         notify.success(t.copied.replace('{count}', String(ids.length)));
+        return true;
       },
-      paste: () => {
+      /** False when the board clipboard is empty, so the browser keeps its own paste (T125). */
+      paste: (): boolean => {
+        if (clipboard.current.length === 0) return false;
         pastes.current += 1;
-        paste(clipboard.current, PASTE_OFFSET * pastes.current);
+        return paste(clipboard.current, PASTE_OFFSET * pastes.current);
       },
       selectAll: () => dispatch({ type: 'select', ids: parts.map((p) => p.id) }),
     };
@@ -450,9 +454,9 @@ export function DrawingBoard({
       const k = e.key.toLowerCase();
       const step = e.shiftKey ? 10 : 1;
       let done = true;
-      if (mod && !e.altKey && k === 'c') actions.copy();
-      else if (mod && !e.altKey && k === 'v') actions.paste();
-      else if (mod && !e.altKey && k === 'd') actions.duplicate();
+      if (mod && !e.altKey && k === 'c') done = actions.copy();
+      else if (mod && !e.altKey && k === 'v') done = actions.paste();
+      else if (mod && !e.altKey && k === 'd') done = actions.duplicate();
       else if (mod && !e.altKey && k === 'a') actions.selectAll();
       else if (mod || e.altKey) done = false;
       else if (k === 'delete' || k === 'backspace')

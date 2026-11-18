@@ -503,84 +503,87 @@ export function LayoutView({
   );
 
   // Floating canvas toolbar (T197): plate tabs top-left, grid/zoom/fit top-right, legend
-  // bottom-left (popover), cursor + scale bottom-right. Below 640 px the plate tabs get their own
-  // full-width row above the toolbar (B4b), so each tab keeps its "Plaka N" label.
+  // bottom-left (popover), cursor + scale bottom-right. When the canvas is narrower than 768 px
+  // (phone, or desktop with both side panels open) the plate tabs get their own full-width row
+  // above the toolbar (B4b, B9), so 3–4 "Plaka N" tabs stay visible.
   const floating =
     'pointer-events-auto rounded-lg border border-border bg-surface/95 shadow-sm backdrop-blur-sm';
   const overlay = (
     <>
-      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-end gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <PlateTabStrip
-          active={String(sheet)}
-          className={`${floating} max-w-full min-w-0 p-0.5 max-sm:self-stretch`}
-          testId="sheet-tabs-scroll"
-        >
-          <TabsList
-            variant="segmented"
-            aria-label={t.sheetTabs}
-            className="h-auto w-max flex-nowrap justify-start"
+      <div className="pointer-events-none absolute inset-x-2 top-2 z-10 @container">
+        <div className="flex flex-col items-end gap-2 @3xl:flex-row @3xl:items-start @3xl:justify-between">
+          <PlateTabStrip
+            active={String(sheet)}
+            className={`${floating} max-w-full min-w-0 self-stretch p-0.5 @3xl:self-auto`}
+            testId="sheet-tabs-scroll"
           >
-            {project.layout.sheets.map((_, i) => {
-              const st = summary.sheets[i];
-              return (
-                <TabsTrigger
-                  key={i}
-                  value={String(i)}
-                  className="relative h-8 shrink-0 gap-1.5 px-2.5 whitespace-nowrap"
-                >
-                  {fill(t.sheetTab, { n: i + 1 })}
-                  {st ? (
-                    <span className="text-xs font-normal text-fg-subtle tabular-nums">
-                      {fill(t.sheetTabWaste, { waste: pctFormat.format(st.wastePercent) })}
-                    </span>
-                  ) : null}
-                  {st ? <UsageBar used={100 - st.wastePercent} /> : null}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </PlateTabStrip>
-        <div className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}>
-          <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-fg-muted">
-            <Checkbox id={gridId} checked={grid} onCheckedChange={(v) => setGrid(v === true)} />
-            <label htmlFor={gridId} className="flex cursor-pointer items-center" title={t.grid}>
-              <Grid3x3 aria-hidden className="size-4 sm:hidden" />
-              <span className="max-sm:sr-only">{t.grid}</span>
-            </label>
+            <TabsList
+              variant="segmented"
+              aria-label={t.sheetTabs}
+              className="h-auto w-max flex-nowrap justify-start"
+            >
+              {project.layout.sheets.map((_, i) => {
+                const st = summary.sheets[i];
+                return (
+                  <TabsTrigger
+                    key={i}
+                    value={String(i)}
+                    className="relative h-8 shrink-0 gap-1 px-2 whitespace-nowrap"
+                  >
+                    {fill(t.sheetTab, { n: i + 1 })}
+                    {st ? (
+                      <span className="text-xs font-normal text-fg-subtle tabular-nums">
+                        {fill(t.sheetTabWaste, { waste: pctFormat.format(st.wastePercent) })}
+                      </span>
+                    ) : null}
+                    {st ? <UsageBar used={100 - st.wastePercent} /> : null}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </PlateTabStrip>
+          <div className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}>
+            <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-fg-muted">
+              <Checkbox id={gridId} checked={grid} onCheckedChange={(v) => setGrid(v === true)} />
+              <label htmlFor={gridId} className="flex cursor-pointer items-center" title={t.grid}>
+                <Grid3x3 aria-hidden className="size-4 sm:hidden" />
+                <span className="max-sm:sr-only">{t.grid}</span>
+              </label>
+            </div>
+            <Tooltip content={t.zoomOut}>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                aria-label={t.zoomOut}
+                onClick={() => zoomButton(1 / 1.25)}
+                aria-keyshortcuts="-"
+              >
+                <ZoomOut aria-hidden />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content={t.zoomIn}>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                aria-label={t.zoomIn}
+                onClick={() => zoomButton(1.25)}
+                aria-keyshortcuts="+"
+              >
+                <ZoomIn aria-hidden />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content={t.fit}>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                aria-label={t.fit}
+                onClick={fit}
+                aria-keyshortcuts="0"
+              >
+                <Maximize aria-hidden />
+              </IconButton>
+            </Tooltip>
           </div>
-          <Tooltip content={t.zoomOut}>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              aria-label={t.zoomOut}
-              onClick={() => zoomButton(1 / 1.25)}
-              aria-keyshortcuts="-"
-            >
-              <ZoomOut aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t.zoomIn}>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              aria-label={t.zoomIn}
-              onClick={() => zoomButton(1.25)}
-              aria-keyshortcuts="+"
-            >
-              <ZoomIn aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t.fit}>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              aria-label={t.fit}
-              onClick={fit}
-              aria-keyshortcuts="0"
-            >
-              <Maximize aria-hidden />
-            </IconButton>
-          </Tooltip>
         </div>
       </div>
       {/* B4b: on phones the sticky panel bar may cover the canvas foot until the page scrolls. */}

@@ -405,3 +405,8 @@ The editor (T124–T125) needs a place for each part on the board, and `movePart
 - **Field:** optional `part.draw = { x, y }` (mm, board coordinates of the part's local origin). Additive and optional, so schema v1 projects stay valid; nesting, toolpath, export and G-code ignore it (editor-only placement; the layout stays the derived nesting result).
 - **Auto arrangement:** parts without `draw` are arranged by `boardPositions()` (`packages/core/src/editor/board.ts`, pure): rows of ≤ 2 800 mm, 50 mm gap, list order, starting at the origin or below the placed parts. A fresh cut list therefore shows as a tidy board without any command.
 - **Edits freeze the board:** the board edit commands (`movePart`, `mirrorPart`, `rotatePart`, `pasteParts`) first write the current auto positions into `draw` for every part that lacks one, so editing one part never makes the others jump; one command = one undo step.
+
+## D-038 Grain follows the piece on board edits (2026-11-18, B9 fix round 1, PO decision)
+Grain is a property of the physical piece. `rotatePart` and `mirrorPart` turn the part's grain together with its shape, so the grain relative to the part's geometry never changes; still one command = one undo step.
+- **Rule (pure, `packages/core/src/geometry/grain.ts`):** CCW quarter turn t → part grain angle + t; mirror (`h` or `v`) → −angle; all mod 180 (D-034). Tested: 4 × 90° = identity, mirror twice = identity.
+- **Schema v1 today:** a part has only `grainLock` (its grain = the sheet grain, 0 or 90, in the part frame). Mirror and 180° already keep that grain exactly. A 90°/270° turn of a grain-locked part cannot be stored until the part grain angle exists, so T112 (schema v2, `part.grain.angle`) wires `turnGrain`/`mirrorGrain` into both commands.
