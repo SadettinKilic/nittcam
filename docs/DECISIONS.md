@@ -466,7 +466,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - The profile stays an unverified example (`example: true`, "doğrulanmadı"); the unverified first-line warning and the air cut requirement are unchanged.
 - Default stock of a new project (PO, 2026-11-19): among the library entries the machine can cut, MDF first, then Melamin, then Kontrplak (18 mm preferred), else the first cuttable entry; not alphabetical.
 - Only newly seeded companies get the sets (existing databases keep their saved profile). Golden G-code files are unchanged.
-/^>>>>>>> origin/main$/d
+
 ## D-047 Review findings are triaged; polish waits; small batches (2026-11-19, owner)
 - Design/CTO reviews keep finding things; they must not slow delivery. The PO triages every finding:
   - **Must-fix now** (next batch, at most 3 tasks per review): machine safety, wrong output, a flow that blocks or dead-ends, data loss, accessibility blockers, a core-workflow usability blocker.
