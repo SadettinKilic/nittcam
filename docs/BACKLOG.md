@@ -44,6 +44,8 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 
 **Order note (2026-11-19, CTO review #6, D-047):** **B13a** (T269–T270 + rider T271) runs now, in parallel with B13 and B14/B16. The rest of review #6 is in the Polish queue. No other batch moves.
 
+**Order note (2026-11-19, CTO review #7, D-047):** **B14a** (T274–T276) runs on the first free dev, before B18.
+
 **Order note (2026-11-19, CTO review #5, D-047):** **B12a** (T264–T266) runs right after B12 and before B13. Everything else from that review is in "Polish queue (M9; D-047)". No other batch moves.
 
 ---
@@ -864,6 +866,44 @@ Acceptance:
 - [ ] properties: no move below target depth; pocket wall at d/2 ± EPS
 Tester focus: safety review; pocket depth vs Z reference both modes (table / material top).
 
+### Batch B14a: T274–T276 (CTO review #7 must-fixes, D-047)
+
+Runs before B18. Review and full evidence: `docs/reviews/2026-11-19-cto-design-review-7.md` ("Şimdi düzelt" A, B, C).
+
+### T274 Multi-tool program: checklist asks for every tool, manual change reminds to re-zero Z (must-fix: safety)   [status: todo]
+Spec: §7.2, §3.7, §6.4 · Depends: T139, T021 · Decision: D-050, D-051
+Found: door panel NC runs T2 → T3 → T2 (two manual changes); the profile has no tool length offset, yet neither the pause message nor the export checklist says to re-zero Z; the checklist asks only "Takım doğru mu? (T2 Ø8 mm)" (`apps/web/lib/server/exports.ts`, `checklistOf`).
+Acceptance:
+- [ ] "Takım doğru mu?" lists every tool of the program in order of use (T2 Ø8 → T3 Ø5 → T2 Ø8); the list comes from the toolpath
+- [ ] with a manual change, a separate confirmation line: "Program içinde N kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayacağım."; İndir stays disabled without it; the same information is in the Simülasyon summary
+- [ ] manual change + no length offset: the comment reads "(TAKIM DEGISTIR: T3 D5.000 - Z SIFIRLA - SONRA CYCLE START)"; automatic-change and offset profiles keep their text
+- [ ] Simülasyon "Takım değişimi" counts in-program changes (door panel: 2; today 3)
+- [ ] golden diff is that comment line only (`mach3/v1/golden/holes-through_S1.tap`); reader checks pass; PR label `needs-human`, approval per D-051
+- [ ] if over half a day: checklist now, comment + golden as a follow-up task
+Tester focus: safety review; a 1-tool and a 3-tool program; profile with and without manual change.
+
+### T275 Hole errors are caught where the hole is drawn (must-fix: late, unnamed block)   [status: todo]
+Spec: §4.5, §3.7 · Depends: T138, T270 · Decision: D-045, D-050
+Found: a Ø5 hole with the Ø8 tool, a tool number the machine does not have (T9) and blind depth 18 / 30 are accepted silently on the board; Simülasyon blocks with "Tüm program · Delik çapı takım çapından küçük." four times, linking only to "Makineler"; Parçalar shows as complete.
+Acceptance:
+- [ ] error under the faulty hole's panel row (d < tool, tool missing, blind depth ≥ thickness, groove < tool); same core rule as the toolpath
+- [ ] red dot on Parçalar, visible on every step (T270 pattern)
+- [ ] cut list, Dizilim, Simülasyon and Dışa aktar say "Kapak · Delik 3: …", one line per hole; button "Çizimde aç"; "Makineler sayfası" only as a second link when the fix is on the machine
+- [ ] "Takım no" shows the diameter ("3 · Ø5"); a missing number looks invalid
+- [ ] D-050, thresholds and golden files unchanged
+Tester focus: each of the four errors; link target and selected part; deleting/fixing the hole clears the error everywhere; 1440 and 1024; axe.
+
+### T276 A hole lands where it is clicked: a centre near the edge is not refused (must-fix: dead-end flow)   [status: todo]
+Spec: §4.2, §4.5 · Depends: T138, T126
+Found: at %18 the grid is 100 mm; every centre closer than 50 mm to an edge snaps onto the edge and is refused with "Delik buraya eklenemedi"; a hinge cup (22,5 mm from the edge) cannot be placed with the mouse.
+Acceptance:
+- [ ] when snapping would move the centre onto or outside the edge but the clicked point is inside, the clicked point (whole mm) is used
+- [ ] a hole that really does not fit is refused with the reason; the toast does not cover the panel
+- [ ] after the centre, typing a number + Enter finishes the hole with that diameter; the hint fits the status bar; snap to the centre is off while sizing (B14 tester note)
+- [ ] no second hole on the same centre
+- [ ] if over half a day: the first two items
+Tester focus: hinge cup at 22,5 mm at %18 and %100; typed diameter; refusal texts.
+
 ### Batch B15: T141–T143 (more operations)
 
 ### T141 Toolpath: inner contours   [status: todo]
@@ -1274,6 +1314,22 @@ From B16 tester (2026-11-19, #80):
 - DXF report: "İç kontur / delik" is one number; show holes separately so the drill mapping is visible
 - Hole tool: second click snaps to the centre when zoomed out, hole comes out at tool diameter (B14 tester)
 - Editor tour card covers the board bottom at 1440 and the toolbar at 390 (B13 tester)
+
+From CTO review #7 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-7.md`):
+- Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi" mode); golden impact; best candidate to pull forward
+- Holes cannot be selected or dragged on the canvas and have no number
+- Holes group sits at the bottom of the panel, 1.488 px for 6 holes; use collapsed summary rows
+- No hole copy / "continue with the same values" (16 of 27 typed values repeat on the door panel)
+- Circle tool asks for a radius, hole tool for a diameter
+- Hint texts: hole hint cut off and worded "tıkla / bitir"; Seç hint cut at 1440, Kaydır at 1024
+- Blind and through holes look the same on the board; Dizilim draws no holes or inner cuts
+- From the Simülasyon box to Makineler there is no "Projeye dön"; the Çizim view is not remembered on reopen
+- Clicking the project name field appends to "Adsız proje"
+- Shortcut sheet lacks Alt; the tour has no sentence for hole properties
+- Small part at %45: the short edge handle is picked instead of the corner
+- Hole tool runs with the Ø8 tool's rpm and plunge values; note it on Simülasyon
+- Field-test list (not a task): manual tool change happens 20 mm above the material, no park position; decide on the owner's machine
+- Baselines (D-045): kitchen cabinet 16 / 5, L bracket 22 / 12, hinged door 38 / 27 (58 / 28 first time). DXF sign walkthrough moves to review #8
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
