@@ -6,7 +6,8 @@
  * Draws the DOM view cube (keyboard operable buttons) in the top-right corner and falls back to
  * the 2D view (via `onFallback`) when the scene crashes or WebGL is lost.
  */
-import { Skeleton, cn } from '@nittcam/ui';
+import { Button, Skeleton, Tooltip, cn } from '@nittcam/ui';
+import { Gauge } from 'lucide-react';
 import type { Project } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
@@ -21,6 +22,7 @@ import {
   type ViewPreset,
 } from '../../lib/preview3d/camera';
 import type { TableSpec } from '../../lib/preview3d/stage';
+import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
 import { useMediaQuery } from '../../lib/use-media-query';
 import type { CameraCommand, SceneColors } from './scene';
 
@@ -28,7 +30,9 @@ type Text = Messages['layout']['preview3d'];
 
 const Scene = dynamic(() => import('./scene'), { ssr: false, loading: () => <Loading /> });
 
-const TOKENS: Record<keyof SceneColors, string> = {
+type FlatColors = Omit<SceneColors, 'materials'>;
+
+const TOKENS: Record<keyof FlatColors, string> = {
   sheet: '--color-sheet',
   sheetEdge: '--color-sheet-edge',
   part: '--color-part',
@@ -38,11 +42,33 @@ const TOKENS: Record<keyof SceneColors, string> = {
   table: '--color-sim-envelope',
   grid: '--color-grid',
   gridSection: '--color-border-strong',
-  shadow: '--color-fg',
+  shadow: '--color-mat-shadow',
+  band: '--color-mat-band',
+  simTool: '--color-sim-tool',
+  simRapid: '--color-sim-rapid',
 };
 
 function readColors(): SceneColors {
-  return readTokenColors(TOKENS, getComputedStyle(document.documentElement));
+  const style = getComputedStyle(document.documentElement);
+  return { ...readTokenColors(TOKENS, style), materials: readTokenColors(MATERIAL_TOKEN, style) };
+}
+
+const SIMPLE_KEY = 'nittcam-3d-simple';
+
+function readSimple(): boolean {
+  try {
+    return window.localStorage.getItem(SIMPLE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeSimple(on: boolean): void {
+  try {
+    window.localStorage.setItem(SIMPLE_KEY, on ? '1' : '0');
+  } catch {
+    // storage blocked: the choice lasts for this view only
+  }
 }
 
 export interface Preview3DProps {
@@ -75,6 +101,14 @@ export function Preview3D({
   );
   const host = useRef<HTMLDivElement>(null);
   const cube = useRef<HTMLDivElement>(null);
+  // "Basit mod" (T154, spec §3.8): remembered per browser; turned on by itself when slow.
+  const [simple, setSimple] = useState(() => typeof window !== 'undefined' && readSimple());
+  const [autoSimple, setAutoSimple] = useState(false);
+  function toggleSimple() {
+    setSimple(!simple);
+    setAutoSimple(false);
+    writeSimple(!simple);
+  }
 
   useEffect(() => onThemeChange(() => setColors(readColors())), []);
 
@@ -106,6 +140,8 @@ export function Preview3D({
       data-testid="preview3d"
       data-view={command.preset}
       data-reduced-motion={reduced ? 'true' : 'false'}
+      data-simple={simple ? 'true' : 'false'}
+      data-material={materialLook(project.stock.material)}
       role="application"
       aria-label={fill(t.canvasLabel, { n: sheet + 1, count: partCount })}
       tabIndex={0}
@@ -119,6 +155,12 @@ export function Preview3D({
             table={table}
             colors={colors}
             reduced={reduced}
+            simple={simple}
+            onSlow={() => {
+              if (simple) return;
+              setSimple(true);
+              setAutoSimple(true);
+            }}
             command={command}
             onCamera={onCamera}
             onStats={onStats}
@@ -128,6 +170,33 @@ export function Preview3D({
         <Loading />
       )}
       <ViewCube t={t} cubeRef={cube} onPreset={onPreset} />
+      <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex flex-col items-start gap-2 max-sm:bottom-8">
+        {autoSimple ? (
+          <p
+            role="status"
+            data-testid="preview3d-auto-simple"
+            className="pointer-events-auto max-w-72 rounded-lg border border-border bg-surface/95 px-2.5 py-1.5 text-xs text-fg-muted shadow-sm"
+          >
+            {t.simpleAuto}
+          </p>
+        ) : null}
+        <Tooltip content={t.simpleTip}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={simple}
+            data-testid="preview3d-simple"
+            onClick={toggleSimple}
+            className={cn(
+              'pointer-events-auto bg-surface/95 shadow-sm',
+              simple && 'border-accent-border bg-accent-subtle text-accent-text',
+            )}
+          >
+            <Gauge aria-hidden />
+            {t.simple}
+          </Button>
+        </Tooltip>
+      </div>
     </div>
   );
 }

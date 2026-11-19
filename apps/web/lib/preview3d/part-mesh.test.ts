@@ -332,3 +332,51 @@ describe('sheet scene (T153)', () => {
     expect(closedVolume(staggered)).toBeCloseTo((1000 * 500 - 2 * 100 * 50) * T, 2);
   });
 });
+
+describe('edge bands and grain data (T154)', () => {
+  it('flags only the walls of banded rectangle sides', () => {
+    const m = partMesh(
+      rect(100, 50, { edgeBand: { top: 1, right: 0, bottom: 2, left: 0 } } as never),
+      T,
+    );
+    const flagged = Array.from(m.bands).filter((b) => b === 1).length;
+    expect(flagged).toBe(8); // two wall quads
+    // Banded vertices lie on y = 0 or y = 50 (bottom and top sides).
+    for (let i = 0; i < m.bands.length; i++)
+      if (m.bands[i] === 1) expect([0, 50]).toContain(vert(m, i)[1]);
+    expect(partMesh(rect(100, 50), T).bands.every((b) => b === 0)).toBe(true);
+  });
+
+  it('a different band splits the geometry cache', () => {
+    const banded = rect(100, 50, { edgeBand: { top: 1, right: 0, bottom: 0, left: 0 } } as never);
+    expect(shapeKey(banded, T)).not.toBe(shapeKey(rect(100, 50), T));
+  });
+
+  it('carries the effective grain per copy and per merged vertex', () => {
+    const fixed = rect(100, 50, { grain: { mode: 'fixed', angle: 0 } } as never, 'f');
+    const free = rect(80, 40, {}, 'g');
+    const p = {
+      stock: { thickness: T, sheet: { width: 2800, height: 2070, grain: 30 } },
+      parts: [fixed, free],
+      layout: {
+        sheets: [
+          {
+            placements: [
+              { partId: 'f', index: 0, x: 0, y: 0, rot: 90, locked: false },
+              { partId: 'g', index: 0, x: 500, y: 0, rot: 90, locked: false },
+            ],
+          },
+        ],
+      },
+    } as unknown as Project;
+    const s = buildSheetScene(p, 0);
+    expect(s.mergedRefs.map((r) => [r.key, r.grain])).toEqual([
+      ['f#0', 90],
+      ['g#0', 30],
+    ]);
+    expect(s.wasteGrain).toBe(30);
+    const g = s.mergedGrain ?? new Float32Array();
+    expect(g.length).toBe((s.merged?.positions.length ?? 0) / 3);
+    expect(new Set(g)).toEqual(new Set([90, 30]));
+  });
+});

@@ -149,3 +149,25 @@ test('without WebGL2 the view stays 2D with a Turkish note', async ({ page }) =>
   await expect(page.getByTestId('layout-canvas')).toBeVisible();
   await expect(page.getByTestId('view-2d')).toHaveAttribute('aria-pressed', 'true');
 });
+
+test('Basit mod: flat colours without shadows, remembered, cheaper to draw', async ({ page }) => {
+  await nestShelfSet(page);
+  const host = await open3d(page);
+  await expect(host).toHaveAttribute('data-simple', 'false');
+  await page.getByTestId('preview3d-preset-top').click();
+  await expect(host).toHaveAttribute('data-polar', '0');
+  const full = Number(await host.getAttribute('data-draw-calls'));
+  await page.getByTestId('preview3d-simple').click();
+  await expect(page.getByTestId('preview3d-simple')).toHaveAttribute('aria-pressed', 'true');
+  await expect(host).toHaveAttribute('data-simple', 'true');
+  // A camera change renders a frame with the simple materials (no contact-shadow passes).
+  await page.getByTestId('preview3d-preset-iso').click();
+  await expect(host).toHaveAttribute('data-azimuth', '45');
+  await expect
+    .poll(async () => Number(await host.getAttribute('data-draw-calls')))
+    .toBeLessThan(full);
+  // Remembered when the 3D view opens again.
+  await page.getByTestId('view-2d').click();
+  await open3d(page);
+  await expect(page.getByTestId('preview3d')).toHaveAttribute('data-simple', 'true');
+});

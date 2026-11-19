@@ -906,7 +906,10 @@
       "presetTip": "{view} görünümü",
       "reset": "Görünümü sıfırla",
       "cube": "Görünüm küpü",
-      "bottom": "Alt"
+      "bottom": "Alt",
+      "simple": "Basit mod",
+      "simpleTip": "Düz renkler, doku ve gölge yok: eski bilgisayarlarda daha akıcı döner.",
+      "simpleAuto": "Görüntü yavaş kaldığı için basit moda geçildi. Düğmeyle geri açabilirsiniz."
     }
   },
   "simulation": {

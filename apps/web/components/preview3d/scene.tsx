@@ -13,7 +13,10 @@ import { ContactShadows, Grid, OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { Project } from '@nittcam/core';
 import { useEffect, useMemo, useRef, type ComponentRef } from 'react';
-import { MeshStandardMaterial, NeutralToneMapping, type PerspectiveCamera } from 'three';
+import { NeutralToneMapping, type PerspectiveCamera } from 'three';
+import { FpsWatch } from '../../lib/preview3d/fps';
+import { materialLook, type MaterialLook } from '../../lib/preview3d/textures';
+import { stockMaterials } from './materials';
 type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
 import {
   INTRO_MS,
@@ -38,6 +41,13 @@ export interface SceneColors {
   grid: string;
   gridSection: string;
   shadow: string;
+  /** Edge band colour (T154). */
+  band: string;
+  /** Base tone per stock material (T154). */
+  materials: Record<MaterialLook, string>;
+  /** Tool and rapid colours shared with the 2D simulation (T154; used by T156/T157). */
+  simTool: string;
+  simRapid: string;
 }
 
 export interface CameraCommand {
@@ -56,6 +66,10 @@ export interface SceneProps {
   table: TableSpec | null;
   colors: SceneColors;
   reduced: boolean;
+  /** "Basit mod" (T154): flat colours, no texture, no shadows. */
+  simple: boolean;
+  /** The frame rate stayed under 30 fps for 3 s (D-033): the host turns on Basit mod. */
+  onSlow?: () => void;
   command: CameraCommand;
   /** Every camera change: the world-inverse matrix (view cube) and the pose (read-outs). */
   onCamera: (viewInverse: ArrayLike<number>, pose: CameraPose) => void;
@@ -66,23 +80,19 @@ export interface SceneProps {
 const FOV = 35;
 
 export default function Scene(props: SceneProps) {
-  const { project, sheet, table, colors } = props;
+  const { project, sheet, table, colors, simple } = props;
   const stock = project.stock;
   const stage = useMemo(
     () => buildStage(stock.sheet, stock.thickness, table),
     [stock.sheet, stock.thickness, table],
   );
+  const look = materialLook(stock.material);
+  const base = colors.materials[look];
   const materials = useMemo(
-    () => ({ part: matte(colors.part), waste: matte(colors.sheet) }),
-    [colors.part, colors.sheet],
+    () => stockMaterials(look, base, colors.band, simple),
+    [look, base, colors.band, simple],
   );
-  useEffect(
-    () => () => {
-      materials.part.dispose();
-      materials.waste.dispose();
-    },
-    [materials],
-  );
+  useEffect(() => () => materials.dispose(), [materials]);
   const { width: W, height: H } = stage.sheet;
   const T = stage.thickness;
   const tb = stage.table;
@@ -135,32 +145,22 @@ export default function Scene(props: SceneProps) {
         fadeStrength={1.5}
         followCamera={false}
       />
-      <ContactShadows
-        key={`${W}x${H}x${T}`}
-        position={[0, 0.5, 0]}
-        scale={[W * 1.15, H * 1.15]}
-        far={Math.max(T * 4, 60)}
-        blur={2.2}
-        opacity={0.45}
-        resolution={512}
-        frames={1}
-        color={colors.shadow}
-      />
+      {simple ? null : (
+        <ContactShadows
+          key={`${W}x${H}x${T}`}
+          position={[0, 0.5, 0]}
+          scale={[W * 1.15, H * 1.15]}
+          far={Math.max(T * 4, 60)}
+          blur={2.2}
+          opacity={0.45}
+          resolution={512}
+          frames={1}
+          color={colors.shadow}
+        />
+      )}
       <Rig {...props} box={sheetFrameBox(stage.sheet, T)} />
     </Canvas>
   );
-}
-
-/** Matte, non-glossy surface; pushed back a hair so the edge lines draw on top. */
-function matte(color: string): MeshStandardMaterial {
-  return new MeshStandardMaterial({
-    color,
-    roughness: 0.92,
-    metalness: 0,
-    polygonOffset: true,
-    polygonOffsetFactor: 1,
-    polygonOffsetUnits: 1,
-  });
 }
 
 /**
@@ -172,6 +172,7 @@ function Rig({
   reduced,
   onCamera,
   onStats,
+  onSlow,
   box,
 }: SceneProps & { box: ReturnType<typeof sheetFrameBox> }) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
@@ -179,6 +180,7 @@ function Rig({
   const invalidate = useThree((s) => s.invalidate);
   const gl = useThree((s) => s.gl);
   const controls = useRef<OrbitControlsImpl>(null);
+  const fps = useRef(new FpsWatch());
   const anim = useRef<{ from: CameraPose; to: CameraPose; start: number; ms: number } | null>(null);
   const aspect = size.width / Math.max(1, size.height);
 
@@ -249,6 +251,7 @@ function Rig({
       if (k < 1) invalidate();
       else anim.current = null;
     }
+    if (fps.current.frame(performance.now())) onSlow?.();
     onStats?.(gl.info.render.calls);
   });
 

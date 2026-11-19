@@ -25,6 +25,8 @@ import { flatten } from './outlines';
 export interface MeshData {
   positions: Float32Array;
   normals: Float32Array;
+  /** Per vertex: 1 on an edge-banded wall (spec §4.8, coloured in 3D, T154), else 0. */
+  bands: Float32Array;
   indices: Uint32Array;
   /** Line segments (pairs of points) along the visible contours (technical-drawing edges). */
   edges: Float32Array;
@@ -69,6 +71,7 @@ export function ringArea(flat: readonly number[]): number {
 class Builder {
   pos: number[] = [];
   nor: number[] = [];
+  band: number[] = [];
   idx: number[] = [];
   edges: number[] = [];
 
@@ -82,6 +85,7 @@ class Builder {
     for (const v of all) {
       this.pos.push(v.x, v.y, z);
       this.nor.push(0, 0, up ? 1 : -1);
+      this.band.push(0);
     }
     for (const t of tris) {
       const [a, b, c] = t as [number, number, number];
@@ -100,7 +104,7 @@ class Builder {
    * A vertical wall along a closed ring from `z0` to `z1`. The normal points to the right of
    * travel, i.e. out of the material for a CCW outer ring and a CW hole ring (spec §6.1).
    */
-  wall(ring: number[], z0: number, z1: number) {
+  wall(ring: number[], z0: number, z1: number, banded?: (nx: number, ny: number) => boolean) {
     const n = ring.length / 2;
     if (n < 2 || z1 - z0 <= 0) return;
     const en: [number, number][] = [];
@@ -135,6 +139,9 @@ class Builder {
       const base = this.pos.length / 3;
       this.pos.push(ax, ay, z0, bx, by, z0, bx, by, z1, ax, ay, z1);
       this.nor.push(na[0], na[1], 0, nb[0], nb[1], 0, nb[0], nb[1], 0, na[0], na[1], 0);
+      const e = en[i] ?? [0, 0];
+      const f = banded?.(e[0], e[1]) ? 1 : 0;
+      this.band.push(f, f, f, f);
       this.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     }
   }
@@ -159,6 +166,7 @@ class Builder {
     return {
       positions: new Float32Array(this.pos),
       normals: new Float32Array(this.nor),
+      bands: new Float32Array(this.band),
       indices: new Uint32Array(this.idx),
       edges: new Float32Array(this.edges),
       openings,
@@ -231,7 +239,7 @@ export function partMesh(part: Part, thickness: number): MeshData {
 
   b.face(outline, topHoles, T, true);
   b.face(outline, bottomHoles, 0, false);
-  b.wall(outline, 0, T);
+  b.wall(outline, 0, T, bandedSide(part));
   b.loop(outline, T);
   b.loop(outline, 0);
   return b.done(inners.length + part.holes.length, through);
@@ -279,7 +287,8 @@ export function shapeKey(part: Part, thickness: number): string {
         ? ['p', h.d, h.cx, h.cy, h.depth]
         : ['t', h.d, h.cx, h.cy],
   );
-  return JSON.stringify([thickness, deriveOutline(part), part.inners, holes]);
+  const band = part.kind === 'rect' ? part.edgeBand : null;
+  return JSON.stringify([thickness, deriveOutline(part), part.inners, holes, band]);
 }
 
 function toVecs(flat: readonly number[]): Vector2[] {
@@ -319,4 +328,21 @@ export function reverseRing(flat: readonly number[]): number[] {
   const out: number[] = [];
   for (let i = flat.length - 2; i >= 0; i -= 2) out.push(at(flat, i), at(flat, i + 1));
   return out;
+}
+
+/**
+ * Edge band test of a rectangle's outline wall by its outward normal (spec §4.8): the band
+ * sides top/right/bottom/left are the sides of the rectangle in its own frame (Y up). Rounded
+ * corners stay unbanded. Freeform parts have no named sides: none.
+ */
+function bandedSide(part: Part): ((nx: number, ny: number) => boolean) | undefined {
+  if (part.kind !== 'rect') return undefined;
+  const eb = part.edgeBand;
+  if (eb.top <= 0 && eb.right <= 0 && eb.bottom <= 0 && eb.left <= 0) return undefined;
+  const axis = 0.999;
+  return (nx, ny) =>
+    (ny > axis && eb.top > 0) ||
+    (nx > axis && eb.right > 0) ||
+    (ny < -axis && eb.bottom > 0) ||
+    (nx < -axis && eb.left > 0);
 }

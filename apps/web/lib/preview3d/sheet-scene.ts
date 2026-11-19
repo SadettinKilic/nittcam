@@ -7,6 +7,7 @@
  */
 import { placedOutline, type Project } from '@nittcam/core';
 import { flatten } from './outlines';
+import { effectiveGrain } from './textures';
 import {
   applyTransform,
   partMesh,
@@ -22,6 +23,8 @@ export interface InstanceRef {
   key: string;
   partId: string;
   transform: PlacementTransform;
+  /** Effective grain of this copy in the sheet frame, degrees [0, 180) (T154, D-034). */
+  grain: number;
 }
 
 export interface ShapeGroup {
@@ -37,6 +40,10 @@ export interface SheetScene {
   merged: MeshData | null;
   /** Copies inside `merged`, in order. */
   mergedRefs: InstanceRef[];
+  /** Per vertex of `merged`: effective grain in degrees (the texture direction). */
+  mergedGrain: Float32Array | null;
+  /** Grain of the waste (the sheet grain; 0 without one). */
+  wasteGrain: number;
   waste: MeshData;
   /** Edge lines of every part in the sheet frame (one draw call). */
   edges: Float32Array;
@@ -89,6 +96,7 @@ export function buildSheetScene(project: Project, sheet: number): SheetScene {
       key: `${pl.partId}#${pl.index}`,
       partId: pl.partId,
       transform: placementTransform(part, pl),
+      grain: effectiveGrain(part, pl.rot, project.stock.sheet.grain),
     });
     outlines.push(flatten(placedOutline(part, pl)));
   }
@@ -98,9 +106,12 @@ export function buildSheetScene(project: Project, sheet: number): SheetScene {
   const edges: number[] = [];
   for (const g of groups.values())
     for (const inst of g.instances) bakeEdges(g.mesh.edges, inst.transform, edges);
+  const merged = singles.length > 0 ? mergeBaked(singles) : null;
   return {
     instanced,
-    merged: singles.length > 0 ? mergeBaked(singles) : null,
+    merged: merged?.mesh ?? null,
+    mergedGrain: merged?.grain ?? null,
+    wasteGrain: project.stock.sheet.grain ?? 0,
     mergedRefs: singles.map((g) => g.instances[0]).filter((r): r is InstanceRef => !!r),
     waste: wasteMesh(project.stock.sheet, T, outlines),
     edges: new Float32Array(edges),
@@ -121,7 +132,7 @@ function bakeEdges(src: Float32Array, t: PlacementTransform, out: number[]) {
 }
 
 /** Bakes single-copy shapes into one mesh in the sheet frame. */
-function mergeBaked(groups: ShapeGroup[]): MeshData {
+function mergeBaked(groups: ShapeGroup[]): { mesh: MeshData; grain: Float32Array } {
   let nv = 0;
   let ni = 0;
   for (const g of groups) {
@@ -130,14 +141,19 @@ function mergeBaked(groups: ShapeGroup[]): MeshData {
   }
   const positions = new Float32Array(nv);
   const normals = new Float32Array(nv);
+  const bands = new Float32Array(nv / 3);
+  const grain = new Float32Array(nv / 3);
   const indices = new Uint32Array(ni);
   let pv = 0;
   let pi = 0;
   let openings = 0;
   let throughOpenings = 0;
   for (const g of groups) {
-    const t = g.instances[0]?.transform;
-    if (!t) continue;
+    const inst = g.instances[0];
+    if (!inst) continue;
+    const t = inst.transform;
+    bands.set(g.mesh.bands, pv / 3);
+    grain.fill(inst.grain, pv / 3, pv / 3 + g.mesh.bands.length);
     const { positions: P, normals: N, indices: I } = g.mesh;
     const r = (t.rot * Math.PI) / 180;
     const c = Math.cos(r);
@@ -161,5 +177,16 @@ function mergeBaked(groups: ShapeGroup[]): MeshData {
     openings += g.mesh.openings;
     throughOpenings += g.mesh.throughOpenings;
   }
-  return { positions, normals, indices, edges: new Float32Array(0), openings, throughOpenings };
+  return {
+    mesh: {
+      positions,
+      normals,
+      bands,
+      indices,
+      edges: new Float32Array(0),
+      openings,
+      throughOpenings,
+    },
+    grain,
+  };
 }

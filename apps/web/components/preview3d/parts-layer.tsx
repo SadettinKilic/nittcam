@@ -12,6 +12,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   Float32BufferAttribute,
+  InstancedBufferAttribute,
   Matrix4,
   Quaternion,
   Vector3,
@@ -19,6 +20,7 @@ import {
   type Material,
 } from 'three';
 import type { MeshData } from '../../lib/preview3d/part-mesh';
+import { BAND_ATTRIBUTE, GRAIN_ATTRIBUTE } from './materials';
 import { buildSheetScene, type InstanceRef } from '../../lib/preview3d/sheet-scene';
 
 export interface PartsLayerProps {
@@ -45,9 +47,19 @@ export function PartsLayer({
   }, [scene]);
   return (
     <group>
-      <MeshFromData data={scene.waste} material={wasteMaterial} name="waste" />
+      <MeshFromData
+        data={scene.waste}
+        grain={scene.wasteGrain}
+        material={wasteMaterial}
+        name="waste"
+      />
       {scene.merged ? (
-        <MeshFromData data={scene.merged} material={partMaterial} name="parts-merged" />
+        <MeshFromData
+          data={scene.merged}
+          grain={scene.mergedGrain ?? 0}
+          material={partMaterial}
+          name="parts-merged"
+        />
       ) : null}
       {scene.instanced.map((g) => (
         <Instanced key={g.shape} data={g.mesh} refs={g.instances} material={partMaterial} />
@@ -57,29 +69,54 @@ export function PartsLayer({
   );
 }
 
-function useGeometry(data: MeshData): BufferGeometry {
+const RAD = Math.PI / 180;
+
+/**
+ * GPU geometry of a mesh plus the shader attributes of the stock material: the edge-band flag
+ * per vertex and the grain direction (degrees in the data, radians on the GPU), either per
+ * vertex (`Float32Array`, merged parts), constant (waste) or per instance (`instanced`).
+ */
+function useGeometry(
+  data: MeshData,
+  grain: Float32Array | number,
+  instanced?: readonly InstanceRef[],
+): BufferGeometry {
   const geometry = useMemo(() => {
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(data.positions, 3));
     g.setAttribute('normal', new BufferAttribute(data.normals, 3));
+    g.setAttribute(BAND_ATTRIBUTE, new BufferAttribute(data.bands, 1));
+    if (instanced) {
+      const a = new Float32Array(instanced.map((r) => r.grain * RAD));
+      g.setAttribute(GRAIN_ATTRIBUTE, new InstancedBufferAttribute(a, 1));
+    } else {
+      const n = data.positions.length / 3;
+      const a =
+        typeof grain === 'number'
+          ? new Float32Array(n).fill(grain * RAD)
+          : Float32Array.from(grain, (d) => d * RAD);
+      g.setAttribute(GRAIN_ATTRIBUTE, new BufferAttribute(a, 1));
+    }
     g.setIndex(new BufferAttribute(data.indices, 1));
     g.computeBoundingSphere();
     return g;
-  }, [data]);
+  }, [data, grain, instanced]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return geometry;
 }
 
 function MeshFromData({
   data,
+  grain,
   material,
   name,
 }: {
   data: MeshData;
+  grain: Float32Array | number;
   material: Material;
   name: string;
 }) {
-  const geometry = useGeometry(data);
+  const geometry = useGeometry(data, grain);
   return <mesh geometry={geometry} material={material} name={name} />;
 }
 
@@ -94,7 +131,7 @@ function Instanced({
   refs: InstanceRef[];
   material: Material;
 }) {
-  const geometry = useGeometry(data);
+  const geometry = useGeometry(data, 0, refs);
   const mesh = useRef<InstancedMesh>(null);
   useLayoutEffect(() => {
     const m = mesh.current;
