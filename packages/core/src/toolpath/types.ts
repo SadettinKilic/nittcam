@@ -92,10 +92,13 @@ export interface Tab {
 }
 
 /**
- * `outerContour`: a part's outer contour (T014). `innerContour`: a cut-out (T134), cut before it. `pocket`: a circular pocket cleared from its centre
- * with concentric rings (the test part of T022, D-031); down to the target depth it is a hole.
+ * `outerContour`: a part's outer contour (T014). `innerContour`: a cut-out (T134), cut before it.
+ * `pocket`: a circular pocket cleared from its centre
+ * with concentric rings (the test part of T022, D-031, and the holes of §4.5: through and blind,
+ * T139–T140); down to the target depth it is a through hole. `drill`: a hole as wide as the tool,
+ * one plunge per pass (peck, D-050). `groove`: a ring groove around the hole's centreline (T140).
  */
-export type OperationKind = 'outerContour' | 'innerContour' | 'pocket';
+export type OperationKind = 'outerContour' | 'innerContour' | 'pocket' | 'drill' | 'groove';
 
 export interface Operation {
   /** `<partId>#<copy>` (unique in the toolpath). */
@@ -105,6 +108,8 @@ export interface Operation {
   partId: string;
   /** Copy index of the part (placement index). */
   copy: number;
+  /** The part's hole this operation cuts (hole operations only). */
+  holeId?: string;
   tool: number;
   toolDiameter: number;
   rpm: number;
@@ -153,7 +158,10 @@ export type ToolpathCode =
   | 'INNER_OFFSET_FAILED'
   | 'INNER_SPLIT'
   | 'INNER_CONTOUR_INVALID'
-  | 'HOLES_NOT_SUPPORTED'
+  | 'HOLE_OUTSIDE_PART'
+  | 'HOLE_SMALLER_THAN_TOOL'
+  | 'GROOVE_NARROWER_THAN_TOOL'
+  | 'HOLE_DEPTH_INVALID'
   | 'NO_PLACEMENTS'
   | 'SAFETY_VIOLATION'
   | 'INVALID_TAB'

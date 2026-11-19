@@ -145,7 +145,7 @@ export const postConfigSchema = z
       chordTolerance: z.number().min(0.0005).max(1),
     }),
 
-    /** Drill cycles (hook only in M1: no drill operations yet). */
+    /** Drill operations as G81 (one per peck) when not "none" and the profile allows cycles; G83 is never written (D-050). */
     drill: z.strictObject({
       cycles: z.enum(['none', 'G81', 'G83']),
     }),
