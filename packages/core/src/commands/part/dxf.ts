@@ -8,7 +8,13 @@ import { BOARD_GAP, boardBox, boardParts } from '../../editor/board';
 import { placeOutline, tidy } from '../../editor/draw';
 import { normalizeInner } from '../../editor/inners';
 import { bbox, contour } from '../../geometry/polyline';
-import { contourSchema, rectPartSchema, type FreeformPart, type Project } from '../../schema';
+import {
+  contourSchema,
+  holeSchema,
+  rectPartSchema,
+  type FreeformPart,
+  type Project,
+} from '../../schema';
 import { defineCommand } from '../types';
 import { freezeBoard } from './board';
 
@@ -24,6 +30,8 @@ const dxfPartSchema = z.strictObject({
   outline: contourSchema,
   /** Inner contours in drawing millimetres (stored CW). */
   inners: z.array(contourSchema).default([]),
+  /** Holes from circles on a `drill` layer; centres in drawing millimetres (stored part-local). */
+  holes: z.array(holeSchema).default([]),
 });
 
 export const importDxfParamsSchema = z.strictObject({
@@ -56,7 +64,8 @@ export const importDxf = defineCommand({
     const seen = new Set<string>();
     for (const p of params.parts) {
       if (seen.has(p.id)) return `part id "${p.id}" appears twice in the DXF import`;
-      if (project.parts.some((x) => x.id === p.id)) return `a part with id "${p.id}" already exists`;
+      if (project.parts.some((x) => x.id === p.id))
+        return `a part with id "${p.id}" already exists`;
       seen.add(p.id);
     }
     return undefined;
@@ -82,10 +91,18 @@ export const importDxf = defineCommand({
         outline: placed.outline,
         inners: p.inners.map((inner) =>
           normalizeInner(
-            inner.map((v) => ({ x: tidy(v.x - placed.at.x), y: tidy(v.y - placed.at.y), bulge: v.bulge })),
+            inner.map((v) => ({
+              x: tidy(v.x - placed.at.x),
+              y: tidy(v.y - placed.at.y),
+              bulge: v.bulge,
+            })),
           ),
         ),
-        holes: [],
+        holes: p.holes.map((h) => ({
+          ...h,
+          cx: tidy(h.cx - placed.at.x),
+          cy: tidy(h.cy - placed.at.y),
+        })),
         edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
         templates: [],
         draw: { x: tidy(origin.x + placed.at.x - minX), y: tidy(origin.y + placed.at.y - minY) },

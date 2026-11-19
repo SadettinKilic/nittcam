@@ -88,6 +88,18 @@ class EndGrid {
   }
 }
 
+/**
+ * Circle marker of a closed polyline drawn as two half arcs (how many CAD and sign programs write
+ * a circle as a polyline); undefined for any other shape.
+ */
+export function circleOf(poly: Polyline): { cx: number; cy: number; d: number } | undefined {
+  const [a, b] = poly.vertices;
+  if (!poly.closed || poly.vertices.length !== 2 || !a || !b) return undefined;
+  if (Math.abs(Math.abs(a.bulge) - 1) > 1e-9 || Math.abs(b.bulge - a.bulge) > 1e-9)
+    return undefined;
+  return { cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, d: dist(a, b) };
+}
+
 /** True when a closed polyline with these vertices encloses an area worth cutting. */
 function canClose(vs: readonly Vertex[]): boolean {
   if (vs.length >= 3) return true;
@@ -114,7 +126,8 @@ export function joinPaths(paths: readonly DxfPath[], tol: number = JOIN_TOL): Dx
     }
     seen.add(key);
     if (p.poly.closed) {
-      contours.push({ layer: p.layer, poly: p.poly, pieces: 1, ...(p.circle ? { circle: p.circle } : {}) });
+      const circle = p.circle ?? circleOf(p.poly);
+      contours.push({ layer: p.layer, poly: p.poly, pieces: 1, ...(circle ? { circle } : {}) });
       continue;
     }
     const list = byLayer.get(p.layer);
@@ -123,7 +136,10 @@ export function joinPaths(paths: readonly DxfPath[], tol: number = JOIN_TOL): Dx
   }
   for (const [layer, pieces] of byLayer) {
     const result = joinLayer(pieces, tol);
-    for (const c of result.closed) contours.push({ layer, poly: c.poly, pieces: c.pieces });
+    for (const c of result.closed) {
+      const circle = circleOf(c.poly);
+      contours.push({ layer, poly: c.poly, pieces: c.pieces, ...(circle ? { circle } : {}) });
+    }
     for (const c of result.open) open.push({ layer, poly: c.poly, pieces: c.pieces });
   }
   return { contours, open, duplicates };
@@ -168,7 +184,9 @@ function joinLayer(pieces: readonly Polyline[], tol: number): { closed: Chain[];
     const vs: Vertex[] = (pieces[i] as Polyline).vertices.map((v) => ({ ...v }));
     let count = 1;
     const isClosedNow = () =>
-      vs.length >= 2 && dist(vs[0] as Vertex, vs[vs.length - 1] as Vertex) <= tol && canClose(vs.slice(0, -1));
+      vs.length >= 2 &&
+      dist(vs[0] as Vertex, vs[vs.length - 1] as Vertex) <= tol &&
+      canClose(vs.slice(0, -1));
     // Grow at the end.
     while (!isClosedNow()) {
       const tail = vs[vs.length - 1] as Vertex;

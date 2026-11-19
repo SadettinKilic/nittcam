@@ -86,7 +86,10 @@ function probeOf(poly: Polyline): Point {
 /**
  * Builds parts from joined contours under a layer mapping (unmapped layers = `auto`).
  */
-export function recognizeParts(joined: DxfJoinResult, map: Readonly<DxfLayerMap> = {}): DxfRecognition {
+export function recognizeParts(
+  joined: DxfJoinResult,
+  map: Readonly<DxfLayerMap> = {},
+): DxfRecognition {
   let ignored = 0;
   const pending: DxfContour[] = [];
   const nodes: Node[] = [];
@@ -119,7 +122,9 @@ export function recognizeParts(joined: DxfJoinResult, map: Readonly<DxfLayerMap>
     return !skip;
   });
   // Largest first, so every parent is decided before its children.
-  const order = nodes.map((_, i) => i).sort((a, b) => (nodes[b] as Node).area - (nodes[a] as Node).area || a - b);
+  const order = nodes
+    .map((_, i) => i)
+    .sort((a, b) => (nodes[b] as Node).area - (nodes[a] as Node).area || a - b);
   for (let k = 0; k < order.length; k++) {
     const node = nodes[order[k] as number] as Node;
     // Parent = the smallest larger contour that contains this one.
@@ -133,7 +138,8 @@ export function recognizeParts(joined: DxfJoinResult, map: Readonly<DxfLayerMap>
     }
     const parent = node.parent === undefined ? undefined : (nodes[node.parent] as Node);
     if (node.op === 'outside') node.role = 'part';
-    else if (node.op === 'inside' || node.op === 'drill') node.role = parent?.role === 'part' ? 'inner' : 'orphan';
+    else if (node.op === 'inside' || node.op === 'drill')
+      node.role = parent?.role === 'part' ? 'inner' : 'orphan';
     else node.role = parent?.role === 'part' ? 'inner' : 'part';
   }
   const parts: DxfPart[] = [];
@@ -141,7 +147,12 @@ export function recognizeParts(joined: DxfJoinResult, map: Readonly<DxfLayerMap>
   for (const idx of order) {
     const node = nodes[idx] as Node;
     if (node.role !== 'part') continue;
-    const part: DxfPart = { outline: normalize(node.c.poly, 'outer'), layer: node.c.layer, inners: [], box: node.box };
+    const part: DxfPart = {
+      outline: normalize(node.c.poly, 'outer'),
+      layer: node.c.layer,
+      inners: [],
+      box: node.box,
+    };
     partOf.set(idx, part);
     parts.push(part);
   }

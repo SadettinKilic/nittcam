@@ -1,9 +1,9 @@
 /**
  * From a converted drawing to `importDxf` params (T145): join → recognise → plain vertex arrays.
- * Also the small circle → hole mapping kept apart until hole objects (B14) are wired in. Pure.
+ * Circles on a `drill` layer can become hole objects. Pure.
  */
 import type { Vertex } from '../geometry/types';
-import type { ThroughHole } from '../schema';
+import type { Hole, ThroughHole } from '../schema';
 import { joinPaths, type DxfJoinResult } from './join';
 import type { DxfLayerMap } from './layers';
 import { recognizeParts, type DxfRecognition } from './recognize';
@@ -20,32 +20,52 @@ export function planDxfImport(drawing: DxfDrawing, map: Readonly<DxfLayerMap> = 
   return { ...recognizeParts(joined, map), duplicates: joined.duplicates };
 }
 
-const copy = (vs: readonly Vertex[]): Vertex[] => vs.map((v) => ({ x: v.x, y: v.y, bulge: v.bulge }));
+const copy = (vs: readonly Vertex[]): Vertex[] =>
+  vs.map((v) => ({ x: v.x, y: v.y, bulge: v.bulge }));
 
-/** `importDxf` part entries for a plan; ids and names come from the caller (UI). */
+/** One `importDxf` part entry (drawing millimetres). */
+export interface DxfImportPart {
+  id: string;
+  name: string;
+  outline: Vertex[];
+  inners: Vertex[][];
+  holes: Hole[];
+}
+
+/**
+ * `importDxf` part entries for a plan; ids and names come from the caller (UI). With
+ * `holeTool` (tool number), circles on a `drill` layer become through holes (spec §4.6
+ * "Daireler delik nesnesine çevrilebilir"); without it, or for any other circle, they stay inner
+ * contours.
+ */
 export function dxfImportParts(
   plan: Pick<DxfPlan, 'parts'>,
   idFor: (index: number) => string,
   nameFor: (index: number) => string,
-): { id: string; name: string; outline: Vertex[]; inners: Vertex[][] }[] {
-  return plan.parts.map((p, i) => ({
-    id: idFor(i),
-    name: nameFor(i),
-    outline: copy(p.outline.vertices),
-    inners: p.inners.map((inner) => copy(inner.poly.vertices)),
-  }));
+  holeTool?: number,
+): DxfImportPart[] {
+  return plan.parts.map((p, i) => {
+    const inners: Vertex[][] = [];
+    const holes: Hole[] = [];
+    for (const inner of p.inners) {
+      if (holeTool !== undefined && inner.drill && inner.circle) {
+        holes.push(dxfCircleToHole(inner.circle, `h${holes.length + 1}`, holeTool));
+      } else {
+        inners.push(copy(inner.poly.vertices));
+      }
+    }
+    return { id: idFor(i), name: nameFor(i), outline: copy(p.outline.vertices), inners, holes };
+  });
 }
 
 /**
- * A DXF circle as a through hole (spec §4.6 "Daireler delik nesnesine çevrilebilir"). `origin` is
- * the part's lower-left corner in drawing mm (hole centres are part-local). Not used by the import
- * yet: hole objects and their tool choice arrive with B14; until then circles stay inner contours.
+ * A DXF circle as a through hole, centre in drawing mm (`importDxf` makes it part-local). The
+ * one place that decides how a circle becomes a hole object.
  */
 export function dxfCircleToHole(
   circle: { cx: number; cy: number; d: number },
-  origin: { x: number; y: number },
   id: string,
   tool: number,
 ): ThroughHole {
-  return { type: 'through', id, d: circle.d, cx: circle.cx - origin.x, cy: circle.cy - origin.y, tool };
+  return { type: 'through', id, d: circle.d, cx: circle.cx, cy: circle.cy, tool };
 }

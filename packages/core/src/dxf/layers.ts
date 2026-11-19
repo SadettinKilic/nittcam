@@ -14,12 +14,26 @@ import { z } from 'zod';
  *   then these contours are reported and not imported
  * - `ignore`: not imported
  */
-export const DXF_LAYER_OPS = ['auto', 'outside', 'inside', 'drill', 'pocket', 'online', 'ignore'] as const;
+export const DXF_LAYER_OPS = [
+  'auto',
+  'outside',
+  'inside',
+  'drill',
+  'pocket',
+  'online',
+  'ignore',
+] as const;
 export const dxfLayerOpSchema = z.enum(DXF_LAYER_OPS, { error: 'unknown layer operation' });
 export type DxfLayerOp = z.infer<typeof dxfLayerOpSchema>;
 
 /** Operations the import can apply today (the others wait for T142 per-contour operations). */
-export const DXF_LAYER_OPS_READY: readonly DxfLayerOp[] = ['auto', 'outside', 'inside', 'drill', 'ignore'];
+export const DXF_LAYER_OPS_READY: readonly DxfLayerOp[] = [
+  'auto',
+  'outside',
+  'inside',
+  'drill',
+  'ignore',
+];
 
 /** Most layers one company keeps a mapping for. */
 export const MAX_DXF_LAYER_MAP = 500;
@@ -57,19 +71,26 @@ export function mergeLayerMap(
   stored: Readonly<DxfLayerMap>,
   chosen: Readonly<Record<string, DxfLayerOp>>,
 ): DxfLayerMap {
-  const out: DxfLayerMap = {};
   const fresh = new Map<string, DxfLayerOp>();
   for (const [name, op] of Object.entries(chosen)) {
     const key = layerKey(name);
     if (key) fresh.set(key, op);
   }
-  for (const [key, op] of Object.entries(stored)) {
-    if (!fresh.has(key) && op !== 'auto') out[key] = op;
-  }
-  for (const [key, op] of fresh) if (op !== 'auto') out[key] = op;
-  const keys = Object.keys(out);
-  if (keys.length > MAX_DXF_LAYER_MAP) {
-    for (const key of keys.slice(0, keys.length - MAX_DXF_LAYER_MAP)) delete out[key];
-  }
-  return out;
+  const entries: [string, DxfLayerOp][] = [
+    ...Object.entries(stored).filter(([key]) => !fresh.has(key)),
+    ...fresh,
+  ].filter(([, op]) => op !== 'auto');
+  // Over the limit: the oldest stored entries go first.
+  return Object.fromEntries(entries.slice(Math.max(0, entries.length - MAX_DXF_LAYER_MAP)));
 }
+
+/** The operations chosen in one import, by layer name as written in the file (API body). */
+export const dxfLayerChoiceSchema = z.strictObject({
+  layers: z.record(
+    z
+      .string()
+      .min(1, { error: 'layer name must not be empty' })
+      .max(255, { error: 'layer name is at most 255 characters' }),
+    dxfLayerOpSchema,
+  ),
+});
