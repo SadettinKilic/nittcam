@@ -53,6 +53,7 @@ describe('cut-list grid cells (T118)', () => {
       'edge-left',
       'edge-right',
       'note',
+      'group',
       'actions',
     ]);
     expect(navColumns(false)).toContain('band');

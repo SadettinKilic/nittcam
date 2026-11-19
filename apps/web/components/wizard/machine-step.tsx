@@ -5,17 +5,20 @@ import {
   materialHasGrain,
   materialKindOf,
   profileThicknesses,
+  stockFromLibrary,
   type MachineProfile,
   type MaterialKind,
   type Project,
   type ValidationIssue,
 } from '@nittcam/core';
 import Link from 'next/link';
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { fill } from '../../lib/draft-project';
 import { fillRich } from '../../lib/fill-rich';
 import { grainDialLabels } from '../../lib/grain-labels';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
+import type { MaterialItem } from '../../lib/materials-api';
+import { MaterialSwatch } from '../materials/swatch';
 import type { Messages } from '../../lib/messages';
 import { focusRing } from '../page/page-header';
 import {
@@ -50,8 +53,23 @@ export const SHEET_PRESETS = [
 const WOOD: readonly MaterialKind[] = ['mdf', 'plywood', 'melamine', 'solidWood'];
 const PLASTIC: readonly MaterialKind[] = ['acrylic', 'pvc'];
 
-function presetIndex(sheet: { width: number; height: number }): number {
-  return SHEET_PRESETS.findIndex((p) => sheet.width === p.b && sheet.height === p.a);
+type Preset = { a: number; b: number };
+
+function presetIndex(presets: readonly Preset[], sheet: { width: number; height: number }): number {
+  return presets.findIndex((p) => sheet.width === p.b && sheet.height === p.a);
+}
+
+/** Select value of a library entry (raw kinds use the kind itself). */
+const LIB = 'lib:';
+
+/** The library entry the stock was picked from, when it still exists and still matches the kind. */
+export function libraryEntryOf(
+  library: readonly MaterialItem[],
+  stock: Project['stock'],
+): MaterialItem | undefined {
+  if (stock.libraryId === undefined) return undefined;
+  const entry = library.find((m) => m.id === stock.libraryId);
+  return entry && entry.kind === materialKindOf(stock.material) ? entry : undefined;
 }
 
 type Run = (name: string, params: unknown) => boolean;
@@ -66,16 +84,17 @@ export function MachineFields({
   materials,
   project,
   machines,
+  library,
   detail,
   issues,
   run,
   machinesLink,
-  onGrainPreview,
 }: {
   t: Text;
   machinesLink: string;
-  onGrainPreview?: (angle: number | null) => void;
   materials: MaterialText;
+  /** Company material library (T121); empty while loading or when it failed. */
+  library: readonly MaterialItem[];
   project: Project;
   machines: readonly MachineListItem[];
   detail: MachineDetail | null;
@@ -87,10 +106,19 @@ export function MachineFields({
   const kind = materialKindOf(stock.material);
   const profile = detail?.profile ?? null;
   const known = machines.some((m) => m.id === project.machine.machineId);
-  const preset = presetIndex(stock.sheet);
+  const entry = libraryEntryOf(library, stock);
+  // T121: a library pick offers its own thicknesses and sheet sizes; else the profile's and §3.6.
+  const presets: readonly Preset[] = entry
+    ? entry.sheetSizes.map((s) => ({ a: s.height, b: s.width }))
+    : SHEET_PRESETS;
+  const preset = presetIndex(presets, stock.sheet);
   const [customOpen, setCustomOpen] = useState(false);
   const custom = preset < 0 || customOpen;
-  const thicknesses = profile && kind ? profileThicknesses(profile, kind) : [];
+  const thicknesses = entry
+    ? entry.thicknesses
+    : profile && kind
+      ? profileThicknesses(profile, kind)
+      : [];
   const set = profile ? findMaterialParams(profile, stock) : undefined;
   const tableIssue = issues.find((i) => i.code === 'SHEET_LARGER_THAN_TABLE');
   const errors = t.errors;
@@ -160,17 +188,43 @@ export function MachineFields({
           {t.material}
         </label>
         <Select
-          value={kind ?? stock.material}
-          onValueChange={(v) => run('setMaterial', { material: v })}
+          value={entry ? `${LIB}${entry.id}` : (kind ?? stock.material)}
+          onValueChange={(v) => {
+            const pick = v.startsWith(LIB) ? library.find((m) => `${LIB}${m.id}` === v) : null;
+            if (pick) {
+              run('applyLibraryMaterial', { libraryId: pick.id, ...stockFromLibrary(pick, stock) });
+              setCustomOpen(false);
+            } else run('setMaterial', { material: v });
+          }}
         >
           <SelectTrigger
             id={ids.material}
             data-testid="wizard-material"
             data-value={kind ?? stock.material}
+            data-library-id={entry?.id}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {library.length > 0 ? (
+              <>
+                <SelectGroup data-testid="wizard-material-library">
+                  <SelectLabel>{t.libraryGroup}</SelectLabel>
+                  {library.map((m) => (
+                    <SelectItem key={m.id} value={`${LIB}${m.id}`}>
+                      <span className="flex items-center gap-2">
+                        <MaterialSwatch tone={m.tone} />
+                        {m.name}
+                      </span>
+                      <span className="ml-2 text-xs text-fg-muted tabular-nums">
+                        {fill(t.libraryThicknesses, { list: m.thicknesses.map(mm).join(' · ') })}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectSeparator />
+              </>
+            ) : null}
             {kind === null ? (
               <SelectItem value={stock.material}>
                 {fill(materials.unknown, { id: stock.material })}
@@ -218,7 +272,9 @@ export function MachineFields({
             </datalist>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-fg-muted">
-                {fill(t.thicknessHint, { list: thicknesses.map(mm).join(', ') })}
+                {fill(entry ? t.libraryThicknessHint : t.thicknessHint, {
+                  list: thicknesses.map(mm).join(', '),
+                })}
               </span>
               {thicknesses.map((v) => (
                 <button
@@ -265,7 +321,7 @@ export function MachineFields({
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1.5 text-sm font-medium text-fg">{t.sheet}</legend>
         <div className="flex flex-wrap gap-2">
-          {SHEET_PRESETS.map((p, i) => {
+          {presets.map((p, i) => {
             const on = !custom && preset === i;
             return (
               <label
@@ -332,25 +388,47 @@ export function MachineFields({
           </p>
         ) : null}
       </fieldset>
-
-      {materialHasGrain(kind) ? (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1.5 text-sm font-medium text-fg">{t.grain}</legend>
-          <GrainDial
-            value={stock.sheet.grain}
-            onValueChange={(a) => onGrainPreview?.(a)}
-            onValueCommit={(a) => {
-              onGrainPreview?.(null);
-              if (a !== stock.sheet.grain) run('setGrain', { grain: a });
-            }}
-            labels={grainDialLabels()}
-            data-testid="sheet-grain-dial"
-          />
-        </fieldset>
-      ) : (
-        <p className="text-xs text-fg-muted">{t.grainNone}</p>
-      )}
     </div>
+  );
+}
+
+/**
+ * Sheet grain block (spec §3.6 "Damar yönü", T252): sits in the Önizleme card right under the
+ * sheet preview (dial left, angle input and presets right), so both are seen together.
+ */
+export function SheetGrain({
+  t,
+  project,
+  run,
+  onGrainPreview,
+}: {
+  t: Text;
+  project: Project;
+  run: Run;
+  onGrainPreview?: (angle: number | null) => void;
+}) {
+  const { stock } = project;
+  if (!materialHasGrain(materialKindOf(stock.material))) {
+    return (
+      <p className="text-xs text-fg-muted" data-testid="sheet-grain-none">
+        {t.grainNone}
+      </p>
+    );
+  }
+  return (
+    <fieldset className="flex flex-col gap-2" data-testid="sheet-grain">
+      <legend className="mb-1.5 text-sm font-medium text-fg">{t.grain}</legend>
+      <GrainDial
+        value={stock.sheet.grain}
+        onValueChange={(a) => onGrainPreview?.(a)}
+        onValueCommit={(a) => {
+          onGrainPreview?.(null);
+          if (a !== stock.sheet.grain) run('setGrain', { grain: a });
+        }}
+        labels={grainDialLabels()}
+        data-testid="sheet-grain-dial"
+      />
+    </fieldset>
   );
 }
 
@@ -360,11 +438,14 @@ export function SheetPreview({
   project,
   profile,
   grainPreview = null,
+  footer,
 }: {
   t: Text;
   project: Project;
   profile: MachineProfile | null;
   grainPreview?: number | null;
+  /** Shown under the legend (T252: the sheet grain dial). */
+  footer?: ReactNode;
 }) {
   const { sheet } = project.stock;
   // While the grain dial is dragged the preview follows the live angle (T116).
@@ -401,7 +482,7 @@ export function SheetPreview({
         role="img"
         aria-label={label}
         viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad}`}
-        className="h-auto max-h-[62vh] w-full rounded-lg bg-canvas"
+        className={`h-auto w-full rounded-lg bg-canvas ${footer ? 'max-h-[62vh] lg:max-h-[calc(100dvh-31rem)] lg:min-h-48' : 'max-h-[62vh]'}`}
       >
         {profile ? (
           <rect
@@ -515,6 +596,7 @@ export function SheetPreview({
           {t.legendSheet} {fill(t.preset, { a: mm(sheet.width), b: mm(sheet.height) })}
         </span>
       </div>
+      {footer ? <div className="border-t border-border-subtle pt-3">{footer}</div> : null}
     </figure>
   );
 }

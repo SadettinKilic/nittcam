@@ -26,6 +26,7 @@ function crumbText(t: ShellText, crumb: Crumb): string {
     case 'newProject':
     case 'project':
     case 'verification':
+    case 'materials':
     case 'notFound':
       return t.shell.crumbs[crumb.key];
     default:

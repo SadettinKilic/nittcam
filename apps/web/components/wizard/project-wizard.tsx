@@ -23,7 +23,9 @@ import { DrawingBoard } from '../editor/drawing-board';
 import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
-import { MachineFields, SheetPreview } from './machine-step';
+import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
+import { IssuesOkChip } from './issues-ok-chip';
+import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ValidationPanel } from './validation-panel';
 import {
@@ -51,6 +53,7 @@ import {
   CloudCheck,
   Info,
   Loader2,
+  Pencil,
   Lock,
   Redo2,
   TriangleAlert,
@@ -372,6 +375,17 @@ function WizardSession({
   // The session needs the profile for validation; it is read from the latest state each render.
   const [machineId, setMachineId] = useState(init.project.machine.machineId);
   const [sheetGrainPreview, setSheetGrainPreview] = useState<number | null>(null);
+  // T121: the company material library for step 1 (empty until loaded or when it fails).
+  const [library, setLibrary] = useState<readonly MaterialItem[]>([]);
+  useEffect(() => {
+    let live = true;
+    void fetchMaterials().then((items) => {
+      if (live && items) setLibrary(items);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
   const detail = details[machineId] ?? null;
   const session = useProjectSession({
     initial: init,
@@ -538,21 +552,31 @@ function WizardSession({
             </p>
           </Callout>
         ) : (
-          <Panel>
+          <Panel
+            title={t.machine.cardTitle}
+            titleId="machine-card-title"
+            data-testid="machine-card"
+            action={
+              session.issues.length === 0 ? (
+                <IssuesOkChip label={messages.cutList.issueChip.ok} testId="machine-issue-chip" />
+              ) : undefined
+            }
+          >
             <MachineFields
               t={t.machine}
               materials={messages.materials}
               machinesLink={t.machinesLink}
-              onGrainPreview={setSheetGrainPreview}
               project={project}
               machines={machines}
+              library={library}
               detail={detail}
               issues={session.issues}
               run={session.run}
             />
           </Panel>
         )}
-        {validation}
+        {/* T252: no issues = the "Sorun yok" chip in the card header instead of the card. */}
+        {session.issues.length > 0 ? validation : null}
       </div>
     );
     right = (
@@ -561,6 +585,14 @@ function WizardSession({
         project={project}
         profile={profile}
         grainPreview={sheetGrainPreview}
+        footer={
+          <SheetGrain
+            t={t.machine}
+            project={project}
+            run={session.run}
+            onGrainPreview={setSheetGrainPreview}
+          />
+        }
       />
     );
   } else if (drawing) {
@@ -581,24 +613,13 @@ function WizardSession({
         issues={session.issues}
         run={session.run}
         onUndo={session.undo}
-        onShowIssues={() =>
-          document
-            .querySelector<HTMLButtonElement>('[data-testid=validation-panel] h2 button')
-            ?.focus()
-        }
+        issuesPanel={validation}
       />
     );
-    // T246: no issues = no Uyarılar panel (a 'Sorun yok' chip in the table header); the table
-    // takes the full width. With issues the panel returns on the left.
-    if (session.issues.length === 0) {
-      partsFullWidth = true;
-      both = editor;
-    } else {
-      left = (
-        <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-20">{validation}</aside>
-      );
-      right = editor;
-    }
+    // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats
+    // from the issue chip, so the grid never moves or changes its columns while the user types.
+    partsFullWidth = true;
+    both = editor;
   } else if (step === 'dizilim') {
     both = (
       <LayoutStep
@@ -682,6 +703,8 @@ function WizardSession({
           machineId={simMachine.id}
         />
       ) : null}
+      {/* T247: the save state shows once per screen: the top-bar dot on phones, the footer text
+          from 640 px (the badge stays in the DOM for its data attributes). */}
       <ShellStatus>
         <Badge
           dot
@@ -697,7 +720,7 @@ function WizardSession({
           data-testid="save-status"
           data-state={session.saveState}
           data-revision={session.revision}
-          className="max-w-full min-w-0 shrink"
+          className="max-w-full min-w-0 shrink sm:hidden"
         >
           <span className="truncate max-[399px]:sr-only">{saveText}</span>
         </Badge>
@@ -908,7 +931,9 @@ function AutosaveIndicator({
     <span
       data-testid="autosave-indicator"
       data-state={state}
-      className={`flex items-center gap-1.5 whitespace-nowrap ${state === 'error' ? 'font-medium text-danger-text' : 'text-fg-muted'}`}
+      role="status"
+      // T247: phones keep the top-bar dot instead (one save state per screen).
+      className={`flex items-center gap-1.5 whitespace-nowrap max-sm:hidden ${state === 'error' ? 'font-medium text-danger-text' : 'text-fg-muted'}`}
     >
       {icon}
       {t[state]}
@@ -1203,24 +1228,32 @@ function NameField({
   return (
     // B4b: in the one-row header (≥ 1400 px) the name yields first, down to 10rem (ellipsis + title).
     <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:max-[1399px]:min-w-64 min-[1400px]:min-w-40 min-[1400px]:flex-[0_1_20rem]">
-      <span className="px-2 text-xs font-medium text-fg-subtle">{label}</span>
-      <input
-        ref={input}
-        type="text"
-        data-testid="project-name"
-        title={text ?? value}
-        value={text ?? value}
-        maxLength={120}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            commit();
-          } else if (e.key === 'Escape') setText(null);
-        }}
-        className="h-10 w-full max-w-xl rounded-md border text-ellipsis border-transparent bg-transparent px-2 text-lg font-semibold tracking-tight text-fg transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid hover:border-border focus-visible:border-border-strong focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus sm:text-xl"
-      />
+      {/* T247: from 1280 px the caption goes; the name is the title (the label stays for AT). */}
+      <span className="px-2 text-xs font-medium text-fg-subtle min-[1280px]:sr-only">{label}</span>
+      <span className="group/name relative w-full max-w-xl">
+        <input
+          ref={input}
+          type="text"
+          data-testid="project-name"
+          title={text ?? value}
+          value={text ?? value}
+          maxLength={120}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commit();
+            } else if (e.key === 'Escape') setText(null);
+          }}
+          className="peer h-10 w-full rounded-md border text-ellipsis border-transparent bg-transparent pr-8 pl-2 text-lg font-semibold tracking-tight text-fg transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid hover:border-border focus-visible:border-border-strong focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus sm:text-xl"
+        />
+        <Pencil
+          aria-hidden
+          data-testid="project-name-pencil"
+          className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-fg-subtle opacity-0 transition-opacity duration-(--duration-fast) group-hover/name:opacity-100 peer-focus:opacity-0"
+        />
+      </span>
     </label>
   );
 }

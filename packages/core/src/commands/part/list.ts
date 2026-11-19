@@ -40,7 +40,8 @@ export const updateParts = defineCommand({
   area: 'part',
   description:
     'Change several parts by id in one step: qty, grain ({ mode, angle }), edgeBand (only the ' +
-    'given edges, millimetres) and namePrefix (text put in front of every name).',
+    'given edges, millimetres), namePrefix (text put in front of every name) and group (a label; ' +
+    '"" removes it).',
   aiTool: true,
   params: z
     .strictObject({
@@ -49,13 +50,16 @@ export const updateParts = defineCommand({
       grain: partGrainSchema.optional(),
       edgeBand: edgeBandSchema.partial().optional(),
       namePrefix: z.string().min(1).max(60).optional(),
+      /** Group label (T123 bulk edit); '' removes it. */
+      group: z.string().trim().max(60).optional(),
     })
     .refine(
       (p) =>
         p.qty !== undefined ||
         p.grain !== undefined ||
         (p.edgeBand !== undefined && Object.keys(p.edgeBand).length > 0) ||
-        p.namePrefix !== undefined,
+        p.namePrefix !== undefined ||
+        p.group !== undefined,
       { error: 'give at least one field to change' },
     ),
   check: (project, params) => missing(project, params.ids),
@@ -76,6 +80,10 @@ export const updateParts = defineCommand({
         }
       }
       if (params.namePrefix !== undefined) part.name = `${params.namePrefix}${part.name}`;
+      if (params.group !== undefined) {
+        if (params.group === '') delete part.group;
+        else if (part.group !== params.group) part.group = params.group;
+      }
     }
     if (params.qty !== undefined) dropStalePlacements(draft);
   },

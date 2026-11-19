@@ -1,6 +1,13 @@
 export * from './types';
 export * from './registry';
-export { setMachine, setMaterial, setThickness, setSheetSize, setGrain } from './plate';
+export {
+  setMachine,
+  setMaterial,
+  applyLibraryMaterial,
+  setThickness,
+  setSheetSize,
+  setGrain,
+} from './plate';
 export * from './log';
 export {
   addPart,
