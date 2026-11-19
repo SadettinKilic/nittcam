@@ -2083,8 +2083,11 @@
         }
       }
     },
-    "holeHint": "Parçanın üstünde merkeze tıkla, çapı sürükleyerek büyüt, ikinci tıklamayla bitir.",
-    "holeRefused": "Delik buraya eklenemedi: parçanın içinde kalmalı ve iç boşluklara değmemeli."
+    "holeHint": "Merkezi tıklayın; çapı sürükleyin ya da yazın",
+    "holeRefused": "Delik için merkezi bir parçanın üstüne tıklayın.",
+    "holeEdge": "Delik kenara çok yakın: çapı küçültün ya da merkezi içeri alın.",
+    "holeCutout": "Delik bir iç kesime değiyor: çapı küçültün ya da merkezi kaydırın.",
+    "holeDuplicate": "Bu merkezde zaten Delik {n} var; onu Seç aracıyla düzenleyin."
   },
   "materialLibrary": {
     "title": "Malzemeler",

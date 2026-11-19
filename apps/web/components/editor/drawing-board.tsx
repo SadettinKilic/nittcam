@@ -66,7 +66,15 @@ import { claimPageGroup, claimPageKeys } from '../../lib/shortcuts';
 import { EditorTour } from './editor-tour';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
-import { addHoleParams, liveDiameter, type HoleDraft } from '../../lib/editor/hole-tool';
+import {
+  addHoleParams,
+  holeCentre,
+  holeOnCentre,
+  holeRefusal,
+  liveDiameter,
+  typedDiameter,
+  type HoleDraft,
+} from '../../lib/editor/hole-tool';
 import { dimOwner, segmentLabels } from '../../lib/editor/dims';
 import { innerHost, shapeVertices } from '../../lib/editor/inner-host';
 import { InnerPrompt } from './inner-prompt';
@@ -121,6 +129,9 @@ const RAIL_LEFT = RULER_PX + 8;
 const SNAP_PX = 10;
 /** Pointer movement that turns a click into a drag, px. */
 const DRAG_PX = 3;
+
+/** Hole tool toasts sit under the canvas, off the properties panel (T276, like T266). */
+const HOLE_TOAST = { position: 'bottom-center', id: 'board-hole' } as const;
 
 /** No typed values: every chip field shows its live value. */
 const NO_TYPED = { values: [] as string[], active: 0 };
@@ -274,11 +285,14 @@ export function DrawingBoard({
   const [dimA, setDimA] = useState<Pt | null>(null);
   const docked = useMediaQuery('(max-width: 639px)', false);
   // Hole tool (T138): first click sets the centre on a part, the diameter follows the cursor,
-  // the second click adds the hole (one `addHole`).
+  // the second click adds the hole (one `addHole`). T276: or type the diameter and press Enter.
   const holeOn = state.tool === 'hole';
   const [holeDraft, setHoleDraft] = useState<HoleDraft | null>(null);
+  const [holeTyped, setHoleTyped] = useState('');
   const holeToolDia = holeTool?.diameter ?? toolDiameter ?? 0;
-  const holeD = holeDraft && drawAt ? liveDiameter(holeDraft.c, drawAt, holeToolDia) : null;
+  const holeTypedD = holeDraft ? typedDiameter(holeTyped) : null;
+  const holeD =
+    holeTypedD ?? (holeDraft && drawAt ? liveDiameter(holeDraft.c, drawAt, holeToolDia) : null);
   const holeView: DraftView | null =
     holeDraft && holeD !== null
       ? {
@@ -485,6 +499,7 @@ export function DrawingBoard({
   const setTool = useCallback((tool: EditorTool) => {
     dispatch({ type: 'tool', tool });
     setHoleDraft(null);
+    setHoleTyped('');
     setTyped(NO_TYPED);
     setSnapMark(null);
     setDimA(null);
@@ -617,13 +632,27 @@ export function DrawingBoard({
     return () => window.removeEventListener('keydown', onKey, true);
   });
 
-  // Hole tool: Esc drops the centre in progress, a second Esc returns to Seç.
+  // Hole tool: Esc clears the typed diameter, then drops the centre in progress, then returns to
+  // Seç. T276: after the centre, digits type the diameter and Enter finishes the hole with it.
   useEffect(() => {
     if (!holeOn) return;
     function onKey(e: KeyboardEvent) {
-      if (typing(e.target) || e.key !== 'Escape') return;
-      if (holeDraft) setHoleDraft(null);
-      else setTool('select');
+      if (typing(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+      const k = e.key;
+      if (holeDraft && (/^[0-9]$/.test(k) || k === ',' || k === '.')) {
+        setHoleTyped((v) => v + k);
+      } else if (holeDraft && k === 'Backspace') {
+        if (holeTyped === '') return;
+        setHoleTyped((v) => v.slice(0, -1));
+      } else if (holeDraft && k === 'Enter') {
+        const d = typedDiameter(holeTyped);
+        if (d === null) return;
+        finishHole(holeDraft, d);
+      } else if (k === 'Escape') {
+        if (holeTyped !== '') setHoleTyped('');
+        else if (holeDraft) setHoleDraft(null);
+        else setTool('select');
+      } else return;
       e.preventDefault();
       e.stopImmediatePropagation();
     }
@@ -711,22 +740,30 @@ export function DrawingBoard({
     }
     if (e.button !== 0) return;
     if (holeOn) {
-      const { point } = drawPoint(w, e.altKey);
-      setDrawAt(point);
       if (!holeDraft) {
-        const id = hitPart(parts, point, 0);
-        if (id) setHoleDraft({ partId: id, c: point });
-        else notify.error(t.holeRefused);
+        const { point } = drawPoint(w, e.altKey);
+        setDrawAt(point);
+        // T276: a snap that lands on or past the edge does not move a centre clicked inside.
+        const at = holeCentre(parts, w, point, holeToolDia / 2);
+        if (!at) {
+          notify.error(t.holeRefused, HOLE_TOAST);
+          return;
+        }
+        const same = holeOnCentre(
+          parts.find((p) => p.id === at.partId),
+          at.c,
+        );
+        if (same !== null) {
+          notify.error(fill(t.holeDuplicate, { n: same + 1 }), HOLE_TOAST);
+          return;
+        }
+        setHoleTyped('');
+        setHoleDraft(at);
         return;
       }
-      const params = addHoleParams(
-        project,
-        holeDraft,
-        liveDiameter(holeDraft.c, point, holeToolDia),
-        holeTool?.number ?? 1,
-      );
-      if (!params || !run('addHole', params)) notify.error(t.holeRefused);
-      setHoleDraft(null);
+      // Sizing: the cursor is free (no snap to the centre or the grid), T276.
+      setDrawAt(w);
+      finishHole(holeDraft, holeTypedD ?? liveDiameter(holeDraft.c, w, holeToolDia));
       return;
     }
     if (dimTool) {
@@ -777,6 +814,17 @@ export function DrawingBoard({
       e.pointerType === 'touch'
         ? { kind: 'pan', last: s }
         : { kind: 'marquee', start: w, startScreen: s, additive: e.shiftKey, moved: false };
+  }
+
+  /** Adds the hole in progress with diameter `d`; a refusal names its reason (T276). */
+  function finishHole(at: HoleDraft, d: number) {
+    const params = addHoleParams(project, at, d, holeTool?.number ?? 1);
+    if (!params || !run('addHole', params)) {
+      const why = params ? holeRefusal(project, params) : 'outside';
+      notify.error(why === 'cutout' ? t.holeCutout : t.holeEdge, HOLE_TOAST);
+    } else notify.dismiss(HOLE_TOAST.id);
+    setHoleDraft(null);
+    setHoleTyped('');
   }
 
   /**
@@ -869,7 +917,8 @@ export function DrawingBoard({
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, s);
     const g = gesture.current;
     if (((drawTool || dimTool) && (!g || g.kind === 'draw')) || (holeOn && !g)) {
-      const r = drawPoint(w, e.altKey);
+      // T276: while a hole is sized the cursor is free (the diameter is to 0.1 mm or typed).
+      const r = holeOn && holeDraft ? { point: w, kind: 'none' as const } : drawPoint(w, e.altKey);
       setDrawAt(r.point);
       setLock(e.shiftKey);
       setSnapMark(
@@ -1428,7 +1477,13 @@ export function DrawingBoard({
             }
             colors={colors}
             draft={bendView ?? holeView ?? draftView}
-            draftLabel={bendView ? null : holeD !== null ? `Ø ${formatMm(holeD)}` : draftLabel}
+            draftLabel={
+              bendView
+                ? null
+                : holeD !== null
+                  ? `Ø ${holeTyped !== '' ? holeTyped : formatMm(holeD)}`
+                  : draftLabel
+            }
             handles={bendHandles.map((h) => h.at)}
             corners={vertexHandles}
             grains={grains}
