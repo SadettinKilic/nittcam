@@ -47,11 +47,9 @@ test.describe('T012 nesting', () => {
     await expect(run).toBeDisabled();
     await goStep(page, 'parcalar');
     await paste(page, KITCHEN, 5);
-    await goStep(page, 'dizilim');
-    await expect(page.getByText(n.none)).toBeVisible();
-
+    // T261: entering Dizilim with parts and no layout runs the nesting by itself (no click).
     const worker = page.waitForEvent('worker');
-    await run.click();
+    await goStep(page, 'dizilim');
     await worker;
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
     await expect(page.getByTestId('nesting-waste')).toHaveText(/^%\d+(,\d)?$/);

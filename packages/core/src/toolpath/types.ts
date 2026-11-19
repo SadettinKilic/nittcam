@@ -92,10 +92,10 @@ export interface Tab {
 }
 
 /**
- * `outerContour`: a part's outer contour (T014). `pocket`: a circular pocket cleared from its centre
+ * `outerContour`: a part's outer contour (T014). `innerContour`: a cut-out (T134), cut before it. `pocket`: a circular pocket cleared from its centre
  * with concentric rings (the test part of T022, D-031); down to the target depth it is a hole.
  */
-export type OperationKind = 'outerContour' | 'pocket';
+export type OperationKind = 'outerContour' | 'innerContour' | 'pocket';
 
 export interface Operation {
   /** `<partId>#<copy>` (unique in the toolpath). */
@@ -151,12 +151,13 @@ export type ToolpathCode =
   | 'OFFSET_FAILED'
   | 'INNER_OFFSET_FAILED'
   | 'INNER_SPLIT'
-  | 'INNER_CONTOURS_NOT_SUPPORTED'
+  | 'INNER_CONTOUR_INVALID'
   | 'HOLES_NOT_SUPPORTED'
   | 'NO_PLACEMENTS'
   | 'SAFETY_VIOLATION'
   | 'INVALID_TAB'
   | 'SMALL_PART_UNSECURED'
+  | 'SMALL_SLUG_UNSECURED'
   // warnings
   | 'ARC_COLLAPSED'
   | 'LEAD_SHORTENED'
@@ -165,6 +166,7 @@ export type ToolpathCode =
   | 'CLEARANCE_CLAMPED'
   | 'UNPLACED_COPIES'
   | 'SMALL_PART_AUTO_TABS'
+  | 'SMALL_SLUG_AUTO_TABS'
   | 'TABS_REDUCED'
   | 'TABS_NOT_PLACED';
 

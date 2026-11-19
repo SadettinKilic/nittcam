@@ -10,7 +10,8 @@ import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } fr
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
-import { formatPath } from '../schema';
+import { deriveOutline, formatPath } from '../schema';
+import { checkInnerContour, innerFitsTool } from '../editor/inners';
 
 export type ValidationSeverity = 'error' | 'warning';
 
@@ -24,7 +25,9 @@ export type ValidationCode =
   | 'LOCKED_PLACEMENT_GRAIN'
   | 'PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
-  | 'SHEET_LARGER_THAN_TABLE';
+  | 'SHEET_LARGER_THAN_TABLE'
+  | 'INNER_CONTOUR_INVALID'
+  | 'INNER_CONTOUR_TOO_SMALL';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -297,6 +300,43 @@ export const sheetLargerThanTable: ValidationRule = (project, context) => {
   ];
 };
 
+/**
+ * (g) Inner contours (T134, spec §4.3, D-045 "catch it where it is caused"): each cut-out must lie
+ * inside the outline and not touch an earlier one (an outline edit can break that after the
+ * cut-out was added), and the cutting tool of the selected machine must fit through it
+ * (the same offset the toolpath uses). Both are errors: the toolpath could not cut the part.
+ */
+export const innerContourRules: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  const params = machine ? findMaterialParams(machine, project.stock) : undefined;
+  const tool = machine && params ? findTool(machine, params.tool) : undefined;
+  const issues: ValidationIssue[] = [];
+  project.parts.forEach((part, i) => {
+    if (part.inners.length === 0) return;
+    const outline = deriveOutline(part);
+    part.inners.forEach((inner, k) => {
+      const path = formatPath(['parts', i, 'inners', k]);
+      const err = checkInnerContour(outline, part.inners.slice(0, k), inner, 0);
+      if (err) {
+        issues.push({
+          code: 'INNER_CONTOUR_INVALID',
+          severity: 'error',
+          path,
+          message: `inner contour ${k + 1} of part "${part.name}" is invalid (${err})`,
+        });
+      } else if (tool && !innerFitsTool(inner, tool.diameter)) {
+        issues.push({
+          code: 'INNER_CONTOUR_TOO_SMALL',
+          severity: 'error',
+          path,
+          message: `inner contour ${k + 1} of part "${part.name}" is too small or too narrow for the ${mm(tool.diameter)} mm tool`,
+        });
+      }
+    });
+  });
+  return issues;
+};
+
 /** Rules run after every command, in this order. */
 export const VALIDATION_RULES: readonly ValidationRule[] = [
   partLargerThanSheet,
@@ -306,6 +346,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   placementGrain,
   noCuttingParams,
   sheetLargerThanTable,
+  innerContourRules,
 ];
 
 /** Runs every rule and returns the combined list (errors and warnings, in rule order). */

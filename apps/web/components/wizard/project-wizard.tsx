@@ -321,6 +321,8 @@ function WizardSession({
   const router = useRouter();
   const [step, setStep] = useState<StepKey>(initialStep);
   // Parts step view (T124, §3.6): "Liste" (cut list) or "Çizim" (drawing board), same data.
+  // One part selection for both views of the Parçalar step (T135): Liste ↔ Çizim keep it.
+  const [partsSelection, setPartsSelection] = useState<string[]>([]);
   const [partsView, setPartsViewState] = useState<PartsView>(() =>
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('gorunum') === 'cizim'
@@ -632,6 +634,8 @@ function WizardSession({
         onToList={() => setPartsView('list')}
         viewSwitch={switchInCanvas ? viewSwitch : undefined}
         toolDiameter={toolDiameter}
+        initialSelection={partsSelection}
+        onSelectionChange={setPartsSelection}
       />
     );
   } else if (step === 'parcalar') {
@@ -644,6 +648,8 @@ function WizardSession({
         onUndo={session.undo}
         issuesPanel={validation}
         issuesKey={session.projectId ?? undefined}
+        initialSelection={partsSelection}
+        onSelectionChange={setPartsSelection}
       />
     );
     // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats
@@ -759,6 +765,7 @@ function WizardSession({
         <IconButton
           aria-label={messages.cutList.undo}
           data-testid="wizard-undo"
+          data-history=""
           variant="ghost"
           onClick={session.undo}
           disabled={!session.canUndo}
@@ -771,6 +778,7 @@ function WizardSession({
         <IconButton
           aria-label={messages.cutList.redo}
           data-testid="wizard-redo"
+          data-history=""
           variant="ghost"
           onClick={session.redo}
           disabled={!session.canRedo}

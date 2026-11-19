@@ -81,6 +81,11 @@ export interface ExpectedPart {
   copy: number;
   cx: number;
   cy: number;
+  /**
+   * Its cut-outs (T134), each a closed through cut of its own: the centre of the tool-centre
+   * loop's bounding box, sheet frame. Omitted = none.
+   */
+  inners?: readonly { cx: number; cy: number }[];
 }
 
 export interface GcodeCheckTolerance {
@@ -129,7 +134,7 @@ export interface GcodeCheckSummary {
   matchedOperations: number;
   /** Through cuts (closed loops at the target depth) found in the read path. */
   partsCut: number;
-  /** Parts the layout expects (null when the layout check was skipped). */
+  /** Closed through cuts the layout expects: parts plus their cut-outs (null = layout check skipped). */
   partsExpected: number | null;
 }
 
