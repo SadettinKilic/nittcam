@@ -42,6 +42,12 @@ import {
 } from './part';
 import { lockPlacement, runNesting, setNestingOptions } from './nesting';
 import {
+  addTemplate,
+  removeTemplateInstance,
+  updateTemplateInstance,
+  updateTemplateVersion,
+} from './part/templates';
+import {
   applyLibraryMaterial,
   setGrain,
   setMachine,
@@ -106,6 +112,10 @@ export const COMMANDS = {
   setNestingOptions,
   runNesting,
   lockPlacement,
+  addTemplate,
+  updateTemplateInstance,
+  removeTemplateInstance,
+  updateTemplateVersion,
 } as const satisfies Record<string, CommandDefinition>;
 
 export type CommandName = keyof typeof COMMANDS;

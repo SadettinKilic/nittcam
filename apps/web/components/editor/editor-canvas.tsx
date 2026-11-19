@@ -17,6 +17,7 @@ import {
   type Viewport,
 } from '../../lib/editor/viewport';
 import type { DraftView } from '../../lib/editor/draw-tool';
+import type { TemplateGhost } from '../../lib/editor/template-place';
 import { dimText, type SegmentLabel } from '../../lib/editor/dims';
 import type { EditorColors } from './colors';
 
@@ -46,6 +47,8 @@ export interface EditorCanvasProps {
   colors: EditorColors;
   /** In-progress drawing (T127–T129), board mm. */
   draft?: DraftView | null;
+  /** Template ghost while placing (T148): holes, contours and lines in board mm. */
+  ghost?: TemplateGhost | null;
   /** Live dimension label of the draft ("596 × 716", "R 150"). */
   draftLabel?: string | null;
   /** Canvas words of the drawing tools: the close glyph and the open-shape chip. */
@@ -595,6 +598,37 @@ function chip(ctx: Ctx, text: string, x: number, y: number, bg: string, fg: stri
  * 6 px square vertex nodes, a grown start node with "Kapat" when the cursor closes the path, the
  * arc centre as a small cross, and an open finished path in `warning` with one "Kapalı değil" chip.
  */
+function drawGhost(ctx: Ctx, p: EditorCanvasProps) {
+  const g = p.ghost;
+  if (!g) return;
+  const { view: v, colors } = p;
+  ctx.save();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = colors.accent;
+  ctx.fillStyle = colors.accent;
+  ctx.setLineDash([5, 3]);
+  for (const c of g.circles) {
+    const s = toScreen(v, c);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, Math.max(c.r * v.scale, 1.5), 0, Math.PI * 2);
+    ctx.globalAlpha = 0.15;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.stroke();
+  }
+  for (const vs of g.contours) {
+    ctx.beginPath();
+    traceContour(ctx, vs, v);
+    ctx.stroke();
+  }
+  for (const vs of g.lines) {
+    ctx.beginPath();
+    traceOpen(ctx, vs, v);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawDraft(ctx: Ctx, p: EditorCanvasProps) {
   const d = p.draft;
   if (!d) return;
@@ -751,6 +785,7 @@ export default function EditorCanvas(props: EditorCanvasProps) {
             drawMarquee(ctx, props);
             drawHandles(ctx, props);
             drawCorners(ctx, props);
+            drawGhost(ctx, props);
             drawDraft(ctx, props);
             drawSnap(ctx, props);
             drawRulers(ctx, props);
