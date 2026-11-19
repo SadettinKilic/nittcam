@@ -40,7 +40,7 @@ import {
   updatePart,
   updateParts,
 } from './part';
-import { lockPlacement, runNesting, setNestingOptions } from './nesting';
+import { lockPlacement, runNesting, setNestingMode, setNestingOptions } from './nesting';
 import {
   addTemplate,
   removeTemplateInstance,
@@ -53,6 +53,7 @@ import {
   setMachine,
   setMaterial,
   setSheetSize,
+  setStockSheets,
   setThickness,
   setThinSkin,
 } from './plate';
@@ -76,6 +77,7 @@ export const COMMANDS = {
   setThickness,
   setThinSkin,
   setSheetSize,
+  setStockSheets,
   setGrain,
   addPart,
   drawPart,
@@ -110,6 +112,7 @@ export const COMMANDS = {
   duplicateParts,
   reorderParts,
   setNestingOptions,
+  setNestingMode,
   runNesting,
   lockPlacement,
   addTemplate,
@@ -260,6 +263,11 @@ export class CommandStack {
 
   get canRedo(): boolean {
     return this.redoSteps.length > 0;
+  }
+
+  /** Command name of the step a redo would apply next, or null when there is none. */
+  get redoCommand(): string | null {
+    return this.redoSteps[this.redoSteps.length - 1]?.entry.command ?? null;
   }
 
   execute<N extends CommandName>(

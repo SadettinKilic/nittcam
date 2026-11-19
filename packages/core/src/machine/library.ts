@@ -23,8 +23,20 @@ const mm = z
   .positive({ error: 'must be a positive length in mm' })
   .max(10_000, { error: 'at most 10.000 mm' });
 
-/** A stock sheet size, stored with the long side along X (`width ≥ height` is not required). */
-export const stockSheetSizeSchema = z.strictObject({ width: mm, height: mm });
+/**
+ * A stock sheet size, stored with the long side along X (`width ≥ height` is not required).
+ * `qty` (T164, D-056): how many sheets of this size are in stock; absent = no limit.
+ */
+export const stockSheetSizeSchema = z.strictObject({
+  width: mm,
+  height: mm,
+  qty: z
+    .number({ error: 'must be a number' })
+    .int({ error: 'must be an integer' })
+    .min(1, { error: 'must be an integer >= 1' })
+    .max(100_000, { error: 'at most 100.000' })
+    .optional(),
+});
 export type StockSheetSize = z.infer<typeof stockSheetSizeSchema>;
 
 /** Most thicknesses / sheet sizes per entry (a sanity bound for the form and the API). */
@@ -69,7 +81,7 @@ function uniqueSizes(sizes: StockSheetSize[]): StockSheetSize[] {
     const dup = out.some(
       (o) => Math.abs(o.width - s.width) <= EPS && Math.abs(o.height - s.height) <= EPS,
     );
-    if (!dup) out.push({ width: s.width, height: s.height });
+    if (!dup) out.push({ width: s.width, height: s.height, ...(s.qty ? { qty: s.qty } : {}) });
   }
   return out;
 }

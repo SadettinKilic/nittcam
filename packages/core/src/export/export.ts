@@ -19,6 +19,7 @@ import {
   type PostProfileVersion,
 } from '../post';
 import type { Project } from '../schema';
+import { defaultSheet, sheetSizeOf } from '../schema';
 import {
   buildToolpath,
   type Toolpath,
@@ -83,12 +84,29 @@ export function exportNc(
     stock: {
       material: project.stock.material,
       thickness: project.stock.thickness,
-      sheetWidth: project.stock.sheet.width,
-      sheetHeight: project.stock.sheet.height,
+      sheetWidth: defaultSheet(project).width,
+      sheetHeight: defaultSheet(project).height,
+      ...ownSheetSizes(project),
     },
     // one cutting tool per project (D-021): the cut-out loops are offset by its radius
     layout: expectedLayouts(project, tp.toolpath.operations[0]?.toolDiameter ?? 0),
   });
+}
+
+/**
+ * The own size of every layout sheet that has one (T164); nothing when no sheet has a size, so a
+ * single-size project gives the same meta (and byte-identical programs) as before.
+ */
+function ownSheetSizes(project: Project): Pick<PostMeta['stock'], 'sheets'> {
+  const sheets: Record<number, { sheetWidth: number; sheetHeight: number }> = {};
+  let any = false;
+  project.layout.sheets.forEach((s, i) => {
+    if (!s.size) return;
+    const own = sheetSizeOf(project, i);
+    sheets[i] = { sheetWidth: own.width, sheetHeight: own.height };
+    any = true;
+  });
+  return any ? { sheets } : {};
 }
 
 /** What `postAndCheck` needs besides the toolpath: the post meta plus the expected layout. */
@@ -130,6 +148,13 @@ export function postAndCheck(
     toolpath,
     stock,
     ...(layout ? { layout } : {}),
+    ...(meta.stock.sheets
+      ? {
+          sheetSizes: new Map(
+            Object.entries(meta.stock.sheets).map(([k, v]) => [Number(k), { ...v }] as const),
+          ),
+        }
+      : {}),
     ...(zFloor !== undefined ? { zFloor } : {}),
   };
   let checked: { files: readonly PostFile[]; result: GcodeCheckFilesResult } | null = null;

@@ -685,10 +685,11 @@ test.describe('T023 tester: wizard flow', () => {
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3', { timeout: 20_000 });
     // T249 (D-039): the developer note about the modes is not shown.
     await expect(page.getByText(/Şimdilik üç mod/)).toHaveCount(0);
-    const mode = page.getByLabel(w.layout.mode);
-    await pickOption(mode, w.layout.modes.fastest);
+    // T163: the mode is a group of cards (radios), no longer a select.
+    const mode = page.getByTestId('layout-mode');
+    await page.getByRole('radio', { name: w.layout.modes.fastest, exact: true }).click();
     await expect(mode).toHaveAttribute('data-value', 'fastest');
-    await pickOption(mode, w.layout.modes.minToolChanges);
+    await page.getByRole('radio', { name: w.layout.modes.minToolChanges, exact: true }).click();
     await expect(mode).toHaveAttribute('data-value', 'minToolChanges');
     await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3', { timeout: 20_000 });

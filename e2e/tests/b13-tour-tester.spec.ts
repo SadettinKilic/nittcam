@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { KITCHEN, openNewProject, paste, watchConsole } from './wizard-helpers';
+import { KITCHEN, openNewProject, paste, toastsSettled, watchConsole } from './wizard-helpers';
 
 /**
  * Tester B13 (T136): the first-use tour with a real first visit (empty storage). The config marks
@@ -19,6 +19,8 @@ async function openBoard(page: Page, width: number) {
 }
 
 async function seriousAxe(page: Page) {
+  // A toast still fading in or out is measured at part opacity (false contrast failures).
+  await toastsSettled(page);
   const res = await new AxeBuilder({ page }).analyze();
   return res.violations
     .filter((v) => ['serious', 'critical'].includes(v.impact ?? ''))

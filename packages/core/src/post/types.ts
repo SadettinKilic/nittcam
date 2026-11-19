@@ -21,6 +21,11 @@ export interface PostMeta {
     thickness: number;
     sheetWidth: number;
     sheetHeight: number;
+    /**
+     * Own size of a sheet, keyed by toolpath sheet index (T164, D-056). A sheet without an entry
+     * (or no `sheets` at all) has `sheetWidth` × `sheetHeight`, so single-size output is unchanged.
+     */
+    sheets?: Readonly<Record<number, { sheetWidth: number; sheetHeight: number }>>;
   };
   /** File-name stem; default `projectName`. */
   fileStem?: string;

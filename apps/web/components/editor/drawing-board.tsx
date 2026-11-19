@@ -15,6 +15,7 @@ import {
   type Part,
   type Project,
   type SnapKind,
+  defaultSheet,
 } from '@nittcam/core';
 import { Button, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
@@ -434,7 +435,7 @@ export function DrawingBoard({
   useEffect(() => dispatch({ type: 'prune', ids }), [ids]);
 
   // The project's stock sheet as a reference outline (T243, D-039): view only.
-  const stock = project.stock.sheet;
+  const stock = defaultSheet(project);
   const sheetBox = useMemo(
     () => ({ minX: 0, minY: 0, maxX: stock.width, maxY: stock.height }),
     [stock.width, stock.height],

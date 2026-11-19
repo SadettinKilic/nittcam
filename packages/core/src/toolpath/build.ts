@@ -18,6 +18,7 @@ import {
   type Project,
 } from '../schema';
 import { deriveOutline } from '../schema/outline';
+import { defaultSheet, sheetSizeOf } from '../schema/sheet-size';
 import { checkInnerContour } from '../editor/inners';
 import { passDepths, throughCutTarget } from './depth';
 import {
@@ -902,7 +903,7 @@ export function buildToolpath(
     plunge,
     // CW spindle (M3): climb on an outer contour = CW travel around the part (D-021).
     travel: direction === 'climb' ? 'cw' : 'ccw',
-    sheet: project.stock.sheet,
+    sheet: defaultSheet(project),
     tabs: {
       all: to.auto ?? pt.auto,
       count: tabCount,
@@ -1282,7 +1283,15 @@ export function buildToolpath(
     const ctx = prepared[k] as (typeof prepared)[number];
     ctx.startEdge = (edges[k] as number[])[o.start] ?? -1;
     operations.push(
-      buildOuterOperation(ctx, params, ctx.warnings, ctx.errors, smallWarned, cleanups),
+      buildOuterOperation(
+        ctx,
+        // each sheet's own size bounds its leads (T164, several stock sizes)
+        { ...params, sheet: sheetSizeOf(project, ctx.sheetIndex) },
+        ctx.warnings,
+        ctx.errors,
+        smallWarned,
+        cleanups,
+      ),
     );
   }
   // Thin-skin cleanup passes (T143) are the last cuts of their sheet, in cut order.

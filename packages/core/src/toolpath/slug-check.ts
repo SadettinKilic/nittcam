@@ -1,6 +1,7 @@
 import { bbox } from '../geometry/polyline';
 import type { MachineProfile } from '../machine';
 import type { Project } from '../schema';
+import { defaultSheet } from '../schema';
 import { buildToolpath, placedOutline } from './build';
 
 /** A cut-out whose slug has no room for the 2 tabs that hold it (D-049). */
@@ -32,9 +33,9 @@ export function unsecuredSlugs(project: Project, machine: MachineProfile): Unsec
     const w = box.maxX - box.minX;
     const h = box.maxY - box.minY;
     const sheet = {
-      ...project.stock.sheet,
-      width: Math.max(project.stock.sheet.width, w + 2 * (margin + ROOM)),
-      height: Math.max(project.stock.sheet.height, h + 2 * (margin + ROOM)),
+      ...defaultSheet(project),
+      width: Math.max(defaultSheet(project).width, w + 2 * (margin + ROOM)),
+      height: Math.max(defaultSheet(project).height, h + 2 * (margin + ROOM)),
     };
     const alone: Project = {
       ...project,

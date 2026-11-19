@@ -197,8 +197,18 @@ export function checkGcodeFiles(
     let lastResult: { analysis: Analysis; d: Derived; index: number } | null = null;
     group.forEach((file, gi) => {
       const isLast = gi === group.length - 1;
+      const own = context.sheetSizes?.get(sheet);
       const ctx: GcodeCheckContext = {
         ...context,
+        ...(own
+          ? {
+              stock: {
+                ...context.stock,
+                sheetWidth: own.sheetWidth,
+                sheetHeight: own.sheetHeight,
+              },
+            }
+          : {}),
         sheet,
         operations: sheetOps.slice(cursor),
         layout: null,

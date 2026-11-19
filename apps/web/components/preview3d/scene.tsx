@@ -11,7 +11,7 @@
  */
 import { ContactShadows, Grid, OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import type { Project } from '@nittcam/core';
+import { sheetSizeOf, type Project } from '@nittcam/core';
 import { useEffect, useMemo, useRef, type ComponentRef } from 'react';
 import { NeutralToneMapping, type PerspectiveCamera } from 'three';
 import { FpsWatch } from '../../lib/preview3d/fps';
@@ -82,9 +82,12 @@ const FOV = 35;
 export default function Scene(props: SceneProps) {
   const { project, sheet, table, colors, simple } = props;
   const stock = project.stock;
+  // each layout sheet has its own size with several stock sizes (T164)
+  const size = sheetSizeOf(project, sheet);
   const stage = useMemo(
-    () => buildStage(stock.sheet, stock.thickness, table),
-    [stock.sheet, stock.thickness, table],
+    () => buildStage(size, stock.thickness, table),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the size's values, not its identity
+    [size.width, size.height, size.grain, stock.thickness, table],
   );
   const look = materialLook(stock.material);
   const base = colors.materials[look];

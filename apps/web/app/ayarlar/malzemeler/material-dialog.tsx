@@ -82,7 +82,7 @@ export function MaterialDialog({
 
   const setThickness = (i: number, v: number | null) =>
     setD((x) => ({ ...x, thicknesses: x.thicknesses.map((o, j) => (j === i ? v : o)) }));
-  const setSheet = (i: number, key: 'width' | 'height', v: number | null) =>
+  const setSheet = (i: number, key: 'width' | 'height' | 'qty', v: number | null) =>
     setD((x) => ({ ...x, sheets: x.sheets.map((s, j) => (j === i ? { ...s, [key]: v } : s)) }));
 
   return (
@@ -232,6 +232,18 @@ export function MaterialDialog({
                   maxDecimals={1}
                   onValueChange={(n) => setSheet(i, 'height', n)}
                 />
+                <NumberInput
+                  aria-label={fill(f.sheetQty, { n: i + 1 })}
+                  className="w-28"
+                  inputSize="sm"
+                  value={s.qty}
+                  unit={f.qtyUnit}
+                  placeholder={f.qtyUnlimited}
+                  min={1}
+                  max={100000}
+                  maxDecimals={0}
+                  onValueChange={(n) => setSheet(i, 'qty', n)}
+                />
                 {d.sheets.length > 1 ? (
                   <IconButton
                     size="sm"
@@ -253,7 +265,10 @@ export function MaterialDialog({
                 size="sm"
                 className="self-start"
                 onClick={() =>
-                  setD((x) => ({ ...x, sheets: [...x.sheets, { width: null, height: null }] }))
+                  setD((x) => ({
+                    ...x,
+                    sheets: [...x.sheets, { width: null, height: null, qty: null }],
+                  }))
                 }
               >
                 <Plus aria-hidden />

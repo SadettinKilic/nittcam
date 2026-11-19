@@ -4,7 +4,7 @@
  * exactly the drops the rule would flag. Pure.
  */
 import { EPS } from '../geometry/constants';
-import type { Placement, Project } from '../schema';
+import { sheetSizeOf, type Placement, type Project } from '../schema';
 import { partShape, type PartShape } from './fit';
 import { placementRect } from './nest';
 import type { Rect } from './types';
@@ -68,7 +68,7 @@ export function checkPlacement(
 ): PlacementCheck {
   const r = placementRect(candidate, sizes);
   if (!r) return { outsideSheet: true, inMargin: false, conflicts: [] };
-  const { width, height } = project.stock.sheet;
+  const { width, height } = sheetSizeOf(project, sheetIndex);
   const { margin, gap } = project.nesting;
   const outsideSheet =
     r.x < -EPS || r.y < -EPS || r.x + r.w > width + EPS || r.y + r.h > height + EPS;

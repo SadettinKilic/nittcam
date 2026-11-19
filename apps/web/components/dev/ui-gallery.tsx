@@ -71,6 +71,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  Progress,
   Skeleton,
   Spinner,
   Switch,
@@ -764,6 +765,7 @@ export function UiGallery({ t }: { t: T }) {
                 <Skeleton className="h-3 w-72 max-w-full" />
               </div>
             </div>
+            <Progress value={40} aria-label={t.feedback.progress} className="max-w-72" />
             <div className="flex items-center gap-2 text-sm text-fg-muted">
               <span>{t.feedback.shortcut}</span>
               <Kbd>Ctrl</Kbd>

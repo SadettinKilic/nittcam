@@ -46,6 +46,17 @@ export interface RotationPolicy {
 const QUARTER_TURNS: readonly number[] = [0, 90, 180, 270];
 
 /**
+ * The rotation policy of a project's nesting options (T163, D-055): `none` keeps free parts in
+ * their drawn orientation (0°/180°); `free` or absent = quarter turns. Fixed-grain parts on a
+ * sheet with grain are unaffected (the grain rule wins).
+ */
+export function rotationPolicyOf(nesting: {
+  rotation?: 'free' | 'none' | undefined;
+}): RotationPolicy {
+  return nesting.rotation === 'none' ? { freeRotations: [0, 180] } : {};
+}
+
+/**
  * The rotations (CCW degrees, [0, 360), 3 decimals, ascending) at which a part may be placed on a
  * sheet (D-034). The single source for the placer, layout drag and validation.
  * - fixed grain on a sheet with grain: exactly g and g + 180 with g = sheet − part (mod 360), so

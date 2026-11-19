@@ -2,7 +2,13 @@
  * Pure helpers of the cut-list grid (T118, T119; spec §4.1): cell text ↔ values, validation and
  * spreadsheet-style keyboard navigation. No React here, so the rules are unit-tested.
  */
-import { parseCutListNumber, signedArea, type Part, type Project } from '@nittcam/core';
+import {
+  defaultSheet,
+  parseCutListNumber,
+  signedArea,
+  type Part,
+  type Project,
+} from '@nittcam/core';
 
 export type EdgeKey = 'top' | 'right' | 'bottom' | 'left';
 
@@ -155,8 +161,8 @@ export function cutListSummary(
   const area = parts.reduce((sum, p) => sum + partArea(p) * p.qty, 0);
   const m = project.nesting.margin;
   const usable =
-    Math.max(0, project.stock.sheet.width - 2 * m) *
-    Math.max(0, project.stock.sheet.height - 2 * m);
+    Math.max(0, defaultSheet(project).width - 2 * m) *
+    Math.max(0, defaultSheet(project).height - 2 * m);
   const sheets = area > 0 && usable > 0 ? Math.ceil(area / usable - 1e-9) : 0;
   return { rows: parts.length, pieces, areaM2: area / 1e6, sheets };
 }
