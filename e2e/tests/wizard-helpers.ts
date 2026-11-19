@@ -46,6 +46,31 @@ export async function openNewProject(page: Page, step: StepKey = 'makine') {
   await wizardReady(page, step);
 }
 
+/**
+ * Step 1: gives the sheet a grain of 0° when it has none (D-046: a new project starts on library
+ * MDF 18, which has no grain). For specs about the sheet grain dial or grain rules. The click is
+ * one command (one undo step) and the first edit, so it also creates the project.
+ */
+export async function giveSheetGrain(page: Page) {
+  const on = page.getByTestId('sheet-grain-on');
+  await expect(on.or(page.getByTestId('sheet-grain-dial'))).toBeVisible();
+  if (await on.isVisible()) await on.click();
+  await expect(page.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '0');
+}
+
+/**
+ * Opens a new project with a grained (0°) sheet, as new projects were before D-046, then goes to
+ * `step`. The project is saved and reopened, so it starts with an empty undo history.
+ */
+export async function openGrainedProject(page: Page, step: StepKey = 'makine') {
+  await openNewProject(page, 'makine');
+  await giveSheetGrain(page);
+  await saved(page);
+  const id = await projectId(page);
+  await page.goto(`/projeler/${id}?adim=${step}`);
+  await wizardReady(page, step);
+}
+
 /** Opens the phone step list (T240: below 640 px the steps live in a popover). */
 export async function openStepList(page: Page) {
   const trigger = page.getByTestId('wizard-steps-trigger');
@@ -81,6 +106,23 @@ export async function paste(page: Page, text: string, count: number) {
   await page.getByLabel(t.paste.textLabel).fill(text);
   await page.getByRole('button', { name: fill(t.paste.applyCount, { count }) }).click();
   await expect(page.getByLabel(t.paste.textLabel)).toHaveCount(0);
+}
+
+/**
+ * Waits until every toast has finished its enter transition. axe measures colours as rendered, so
+ * a toast caught mid-fade (e.g. "5 satır eklendi · Geri al" right after a paste) reads as a false
+ * low contrast.
+ */
+export async function toastsSettled(page: Page) {
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-sonner-toast]')
+        .evaluateAll((els) =>
+          els.every((e) => getComputedStyle(e).opacity === '1' && e.getAnimations().length === 0),
+        ),
+    )
+    .toBe(true);
 }
 
 /** Waits for the autosave indicator to say "Kaydedildi". */

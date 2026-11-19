@@ -35,6 +35,8 @@ import {
   nextStepTime,
   playbackRate,
   positionAt,
+  materialHasGrain,
+  materialKindOf,
   prevStepTime,
   simPlayheadAt,
   timeForLine,
@@ -396,6 +398,8 @@ function Player({
   const timeRef = useRef(0);
   const duration = sim.duration;
   const stock = project.stock.sheet;
+  // T259: no grain chip or legend line when the sheet has no grain (or the material has none).
+  const sheetGrain = materialHasGrain(materialKindOf(project.stock.material)) ? stock.grain : null;
   const bounds = useMemo(() => simBounds(stock, machine), [stock, machine]);
   // Fit keeps the sheet clear of the floating plate tabs (top) and the grain label (bottom).
   const hasTabs = Boolean(tabs);
@@ -608,7 +612,7 @@ function Player({
           </PopoverTrigger>
           <PopoverContent align="start" side="top" className="w-auto max-w-96">
             <div className="flex flex-col gap-3">
-              <Legend t={t} ramp={ramp} zBottom={sim.zBottom} grain={stock.grain} />
+              <Legend t={t} ramp={ramp} zBottom={sim.zBottom} grain={sheetGrain} />
               <p className="text-xs text-fg-subtle">{t.controls.shortcuts}</p>
             </div>
           </PopoverContent>
@@ -644,27 +648,30 @@ function Player({
           data-part-color={colors?.part}
           className={`absolute inset-0 ${canvasTouchClass(zoomed)} overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
         >
-          <span
-            data-testid="sim-grain"
-            data-grain={stock.grain ?? 'none'}
-            className="pointer-events-none absolute right-2 bottom-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-surface/90 px-2 py-1 text-xs text-fg shadow-xs backdrop-blur-sm"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="size-4"
-              style={{ transform: `rotate(${-(stock.grain ?? 0)}deg)` }}
-              aria-hidden="true"
+          {/* T259: no grain chip on a sheet without grain. */}
+          {sheetGrain !== null ? (
+            <span
+              data-testid="sim-grain"
+              data-grain={stock.grain ?? 'none'}
+              className="pointer-events-none absolute right-2 bottom-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-surface/90 px-2 py-1 text-xs text-fg shadow-xs backdrop-blur-sm"
             >
-              <path
-                d="M3 12h18M16 7l5 5-5 5M8 7l-5 5 5 5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-            </svg>
-            <span className="hidden sm:inline">{t.legend.grain}</span>
-            <span className="sr-only sm:hidden">{t.legend.grain}</span>
-          </span>
+              <svg
+                viewBox="0 0 24 24"
+                className="size-4"
+                style={{ transform: `rotate(${-(stock.grain ?? 0)}deg)` }}
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 12h18M16 7l5 5-5 5M8 7l-5 5 5 5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+              </svg>
+              <span className="hidden sm:inline">{t.legend.grain}</span>
+              <span className="sr-only sm:hidden">{t.legend.grain}</span>
+            </span>
+          ) : null}
           {width > 0 && view && colors ? (
             <CanvasBoundary>
               <SimulationCanvas
@@ -928,22 +935,24 @@ function Legend({
           <span className="inline-block size-2.5 rounded-full bg-sim-zero" aria-hidden="true" />
           {l.zero}
         </li>
-        <li className="flex items-center gap-1.5" data-grain={grain ?? 'none'}>
-          <svg
-            viewBox="0 0 24 24"
-            className="size-4 text-grain"
-            style={{ transform: `rotate(${-(grain ?? 0)}deg)` }}
-            aria-hidden="true"
-          >
-            <path
-              d="M3 12h18M16 7l5 5-5 5M8 7l-5 5 5 5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-          </svg>
-          {l.grain}
-        </li>
+        {grain === null || grain === undefined ? null : (
+          <li className="flex items-center gap-1.5" data-grain={grain}>
+            <svg
+              viewBox="0 0 24 24"
+              className="size-4 text-grain"
+              style={{ transform: `rotate(${-(grain ?? 0)}deg)` }}
+              aria-hidden="true"
+            >
+              <path
+                d="M3 12h18M16 7l5 5-5 5M8 7l-5 5 5 5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+            </svg>
+            {l.grain}
+          </li>
+        )}
       </ul>
     </div>
   );

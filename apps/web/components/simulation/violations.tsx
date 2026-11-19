@@ -83,6 +83,10 @@ export function findings(result: SimulateResult): Finding[] {
   return out;
 }
 
+export function knownCode(t: SimText, code: string): boolean {
+  return code in (t.codes as Record<string, string>);
+}
+
 export function codeText(t: SimText, code: string): string {
   return (t.codes as Record<string, string>)[code] ?? fill(t.codeFallback, { code });
 }
@@ -125,10 +129,13 @@ function FindingList({ t, items }: { t: SimText; items: readonly Finding[] }) {
                     : t.blocked.wholeProgram}
                 </span>
                 <span className="min-w-0">
-                  {codeText(t, f.code)}{' '}
-                  <span className="block text-xs break-words text-fg-muted">
-                    {fill(t.blocked.detail, { message: f.message })}
-                  </span>
+                  {codeText(t, f.code)}
+                  {/* D-045: the engine's English sentence only for a code without Turkish text. */}
+                  {knownCode(t, f.code) ? null : (
+                    <span className="block text-xs break-words text-fg-muted">
+                      {fill(t.blocked.detail, { message: f.message })}
+                    </span>
+                  )}
                 </span>
               </li>
             ))}

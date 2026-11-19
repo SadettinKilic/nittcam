@@ -7,6 +7,7 @@ import {
   TOOLPATH_DEFAULTS,
   type MachineProfile,
   type MachineProfileIssue,
+  type MaterialKind,
   type MaterialParams,
   type Tool,
 } from '@nittcam/core';
@@ -31,7 +32,14 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { focusRing } from '../../components/page/page-header';
 import type { ApiError, MachineDetail } from '../../lib/machines-api';
-import { FORM_SECTIONS, isDirty, parseErrorText, type FormSection } from '../../lib/machine-form';
+import {
+  FORM_SECTIONS,
+  isDirty,
+  newParamSet,
+  parseErrorText,
+  withParamSet,
+  type FormSection,
+} from '../../lib/machine-form';
 import type { Messages } from '../../lib/messages';
 import { CornerPicker } from './corner-picker';
 import { CheckField, fieldId, NumberField, SelectField, TextField } from './fields';
@@ -48,6 +56,11 @@ export interface MachineFormProps {
   initial: MachineProfile;
   onSaved: (detail: MachineDetail) => void;
   onCancel: () => void;
+  /**
+   * T258: open with a new parameter set for this kind and thickness (step 1 "Kesim ayarı ekle"),
+   * scrolled to "Malzeme parametreleri". The set stays unsaved until the user saves the form.
+   */
+  addParams?: { material: MaterialKind; thickness: number } | null | undefined;
 }
 
 function Section({
@@ -124,12 +137,14 @@ export function MachineForm({
   initial,
   onSaved,
   onCancel,
+  addParams = null,
 }: MachineFormProps) {
   const f = t.form.fields;
   const o = t.form.options;
   const u = t.form.units;
   const router = useRouter();
-  const [profile, setProfile] = useState<MachineProfile>(initial);
+  const [start] = useState(() => (addParams ? withParamSet(initial, addParams) : null));
+  const [profile, setProfile] = useState<MachineProfile>(start?.profile ?? initial);
   const [submitted, setSubmitted] = useState(false);
   const [serverIssues, setServerIssues] = useState<MachineProfileIssue[]>([]);
   const [parseErrors, setParseErrors] = useState<Record<string, NumberParseError>>({});
@@ -141,9 +156,23 @@ export function MachineForm({
   // Set right before a confirmed navigation, so the history guard does not undo it.
   const leavingNow = useRef(false);
   const toolRows = useRowKeys(initial.tools.length);
-  const materialRows = useRowKeys(initial.materials.length);
+  const materialRows = useRowKeys((start?.profile ?? initial).materials.length);
   const active = useActiveSection();
   const formRef = useRef<HTMLFormElement>(null);
+
+  // T258: opened to add a parameter set: show "Malzeme parametreleri" and focus the set's feed.
+  // After the page's own scroll-to-top (MachinesView), hence the next frame.
+  const startIndex = start?.index ?? null;
+  useEffect(() => {
+    if (startIndex === null) return;
+    const raf = requestAnimationFrame(() => {
+      document.getElementById('sec-materials')?.scrollIntoView({ block: 'start' });
+      document
+        .getElementById(fieldId(`materials[${startIndex}].feed`))
+        ?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [startIndex]);
 
   const dirty = isDirty(initial, profile) || Object.keys(parseErrors).length > 0;
 
@@ -771,18 +800,7 @@ export function MachineForm({
               testId="materials-table"
               onAdd={() => {
                 materialRows.add();
-                update(
-                  (p) =>
-                    void p.materials.push({
-                      material: 'mdf',
-                      thickness: 18,
-                      feed: 5000,
-                      plungeFeed: 1500,
-                      rpm: Math.min(Math.max(18000, p.spindle.minRpm), p.spindle.maxRpm),
-                      stepDown: 6,
-                      tool: p.tools[0]?.number ?? 1,
-                    }),
-                );
+                update((p) => void p.materials.push(newParamSet(p)));
               }}
               onRemove={(i) => {
                 materialRows.remove(i);
@@ -791,8 +809,13 @@ export function MachineForm({
               renderRow={(i) => {
                 const m = profile.materials[i] as MaterialParams;
                 const path = (k: keyof MaterialParams) => `materials[${i}].${k}`;
+                // D-046: an edited row is the user's own; the "copied from" mark goes away.
                 const set = (fn: (x: MaterialParams) => void) =>
-                  update((p) => fn(p.materials[i] as MaterialParams));
+                  update((p) => {
+                    const x = p.materials[i] as MaterialParams;
+                    fn(x);
+                    delete x.copiedFrom;
+                  });
                 const cell = (
                   k: 'thickness' | 'feed' | 'plungeFeed' | 'rpm' | 'stepDown' | 'tool',
                   label: string,
@@ -811,16 +834,31 @@ export function MachineForm({
                   />
                 );
                 return [
-                  <SelectField
-                    key="m"
-                    compact
-                    path={path('material')}
-                    label={f.material}
-                    value={m.material}
-                    options={o.material}
-                    error={e(path('material'))}
-                    onChange={(v) => set((x) => void (x.material = v))}
-                  />,
+                  <div key="m" className="flex min-w-0 flex-col gap-1">
+                    <SelectField
+                      compact
+                      path={path('material')}
+                      label={f.material}
+                      value={m.material}
+                      options={o.material}
+                      error={e(path('material'))}
+                      onChange={(v) => set((x) => void (x.material = v))}
+                    />
+                    {m.copiedFrom ? (
+                      <p
+                        className="flex items-start gap-1 text-xs text-warning-text"
+                        data-testid="material-copied-note"
+                      >
+                        <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                        {t.form.copiedFrom
+                          .replace(
+                            '{from}',
+                            (o.material as Record<string, string>)[m.copiedFrom] ?? m.copiedFrom,
+                          )
+                          .replace('{thickness}', String(m.thickness).replace('.', ','))}
+                      </p>
+                    ) : null}
+                  </div>,
                   cell('thickness', f.thickness, u.mm),
                   cell('feed', f.feed, u.feed),
                   cell('plungeFeed', f.plungeFeed, u.feed),

@@ -1,7 +1,15 @@
 import { defaultMachineProfile } from '@nittcam/core';
 import { describe, expect, it } from 'vitest';
 import tr from '../messages/tr.json';
-import { FORM_SECTIONS, isDirty, parseErrorText } from './machine-form';
+import {
+  FORM_SECTIONS,
+  isDirty,
+  paramFixHref,
+  parseErrorText,
+  parseParamFix,
+  safeReturnPath,
+  withParamSet,
+} from './machine-form';
 
 describe('machine form helpers (T107)', () => {
   it('lists the sections of spec §7.1 in order, each with a title and hint', () => {
@@ -38,5 +46,49 @@ describe('machine form helpers (T107)', () => {
     expect(parseErrorText('empty', e)).toBe(e.required);
     expect(parseErrorText('invalid', e)).toBe(e.number);
     expect(parseErrorText('max', e)).toBe(e.number);
+  });
+});
+
+describe('"Kesim ayarı ekle" link (T258, D-045)', () => {
+  it('round-trips machine, set and return path through the query', () => {
+    const href = paramFixHref({
+      machineId: 'm1',
+      set: { material: 'melamine', thickness: 18 },
+      returnTo: '/projeler/p1?adim=makine&profil=son',
+    });
+    expect(href.startsWith('/makineler?')).toBe(true);
+    const q = Object.fromEntries(new URL(href, 'http://x').searchParams);
+    expect(parseParamFix(q)).toEqual({
+      machineId: 'm1',
+      set: { material: 'melamine', thickness: 18 },
+      returnTo: '/projeler/p1?adim=makine&profil=son',
+    });
+  });
+
+  it('keeps decimal thicknesses and drops unknown kinds', () => {
+    expect(parseParamFix({ duzenle: 'm', ayar: 'acrylic-4.5' })?.set).toEqual({
+      material: 'acrylic',
+      thickness: 4.5,
+    });
+    expect(parseParamFix({ duzenle: 'm', ayar: 'granite-20' })?.set).toBeNull();
+    expect(parseParamFix({ ayar: 'mdf-18' })).toBeNull();
+  });
+
+  it('accepts only same-origin return paths', () => {
+    expect(safeReturnPath('/projeler/1?adim=makine')).toBe('/projeler/1?adim=makine');
+    for (const bad of ['//evil.com', 'https://evil.com', '/\\evil', 'projeler', '', null])
+      expect(safeReturnPath(bad)).toBeNull();
+  });
+
+  it('appends a new set once, or points at the existing one', () => {
+    const p = defaultMachineProfile();
+    const before = p.materials.length;
+    const added = withParamSet(p, { material: 'acrylic', thickness: 7 });
+    expect(added.added).toBe(true);
+    expect(added.index).toBe(before);
+    expect(added.profile.materials[before]).toMatchObject({ material: 'acrylic', thickness: 7 });
+    expect(p.materials.length).toBe(before);
+    const again = withParamSet(added.profile, { material: 'acrylic', thickness: 7 });
+    expect(again).toEqual({ profile: added.profile, index: before, added: false });
   });
 });

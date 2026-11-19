@@ -5,7 +5,6 @@ import {
   goStep,
   openNewProject,
   paste,
-  pickOption,
   projectId,
   saved,
   watchConsole,
@@ -47,6 +46,15 @@ const body = (p: StoredPart) => JSON.stringify({ ...p, id: undefined });
 const cell = (page: Page, n: number, column: string) =>
   page.getByLabel(fill(t.cellLabel, { n, column }), { exact: true });
 
+/** T260: the closed "Arkalık" field shows a short label; the list keeps the long one. */
+async function pickBack(page: Page, mode: 'none' | 'inset' | 'overlay') {
+  const trigger = page.getByTestId('cabinet-back');
+  await trigger.click();
+  await page.getByRole('listbox').getByRole('option', { name: c.backModes[mode] }).click();
+  await expect(trigger).toHaveAttribute('data-value', mode);
+  await expect(trigger).toHaveText(c.backModesShort[mode]);
+}
+
 async function addCabinet(page: Page, values: Record<string, string>, extra?: () => Promise<void>) {
   await page.getByTestId('cabinet-open').click();
   const dialog = page.getByTestId('cabinet-dialog');
@@ -55,6 +63,10 @@ async function addCabinet(page: Page, values: Record<string, string>, extra?: ()
     await page.getByTestId(`cabinet-${key}`).fill(value);
   }
   if (extra) await extra();
+  // T260: parts in another thickness (a 4 or 8 mm back, a 16 mm box on 18 mm stock) are added
+  // only on purpose; this hand calculation keeps every part.
+  const other = page.getByTestId('cabinet-include-other');
+  if ((await other.count()) > 0) await other.click();
   await page.getByTestId('cabinet-add').click();
   await expect(dialog).toHaveCount(0);
 }
@@ -113,7 +125,7 @@ test.describe('B8 tester: T122 three cabinets (D-041)', () => {
         group: 'Uzun dolap',
       },
       async () => {
-        await pickOption(page.getByTestId('cabinet-back'), c.backModes.overlay);
+        await pickBack(page, 'overlay');
         await page.getByTestId('cabinet-back-thickness').fill('4');
         await page
           .getByTestId('cabinet-dialog')
@@ -126,7 +138,7 @@ test.describe('B8 tester: T122 three cabinets (D-041)', () => {
       page,
       { width: '450', height: '900', depth: '300', thickness: '16', shelves: '2', band: '0' },
       async () => {
-        await pickOption(page.getByTestId('cabinet-back'), c.backModes.none);
+        await pickBack(page, 'none');
         await page
           .getByTestId('cabinet-dialog')
           .getByRole('radio', { name: c.doorCount[0] })
@@ -136,17 +148,17 @@ test.describe('B8 tester: T122 three cabinets (D-041)', () => {
     );
     let parts = await storedParts(page);
     expect(summary(parts)).toEqual([...CAB1, ...CAB2, ...CAB3]);
-    // Grain: sides and doors vertical (90°), the rest along the width; open shelf has no band.
+    // Grain: a new project is on MDF 18 without grain (D-046), so every part is free (T260) and
+    // its row says "Serbest"; the open shelf has no band.
     for (const p of parts) {
-      if (p.name === c.roles.back) expect(p.grain.mode).toBe('free');
-      else
-        expect(p.grain).toEqual({
-          mode: 'fixed',
-          angle: p.name === c.roles.side || p.name === c.roles.door ? 90 : 0,
-        });
+      expect(p.grain.mode, p.name).toBe('free');
       if (p.group === 'Açık raf')
         expect(Object.values(p.edgeBand).every((x) => x === 0)).toBe(true);
     }
+    await expect(page.getByTestId('grain-cell-1')).toHaveAttribute(
+      'aria-label',
+      fill(t.grainCell.edit, { n: 1, angle: t.grainCell.free }),
+    );
 
     // One undo removes exactly the last cabinet; redo brings it back.
     await page.getByTestId('wizard-undo').click();

@@ -1,7 +1,15 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { KITCHEN, goStep, openNewProject, paste, pasteAndNest, saved } from './wizard-helpers';
+import {
+  KITCHEN,
+  goStep,
+  openNewProject,
+  paste,
+  pasteAndNest,
+  saved,
+  toastsSettled,
+} from './wizard-helpers';
 
 // B9 tester (T124–T126, T199b): what the dev specs leave out. Redo, persistence after reload,
 // click hit-testing at three zoom levels, multi-part paste offsets, rotate about the centre,
@@ -17,6 +25,7 @@ async function openBoard(page: Page, width = 1440): Promise<Locator> {
   await page.getByTestId('parts-view-drawing').click();
   const canvas = page.getByTestId('editor-canvas');
   await expect(canvas).toHaveAttribute('data-view', /\d/);
+  await toastsSettled(page); // the paste toast fades in; axe would read it mid-fade
   return canvas;
 }
 

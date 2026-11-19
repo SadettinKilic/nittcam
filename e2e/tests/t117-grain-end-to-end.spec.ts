@@ -10,7 +10,7 @@ import {
   type Project,
   type VerificationState,
 } from '../../packages/core/src/index';
-import { goStep, openNewProject, paste, projectId, saved, wizardReady } from './wizard-helpers';
+import { goStep, openGrainedProject, paste, projectId, saved, wizardReady } from './wizard-helpers';
 
 /**
  * T117 (spec §11, D-034): sheet grain 0°, part A fixed 0°, B fixed 90°, C fixed 30°. Nesting turns
@@ -40,7 +40,7 @@ test('T117 grain end to end: 0° / 90° / 30° parts → nesting → simulation 
   page,
 }) => {
   test.setTimeout(180_000);
-  await openNewProject(page, 'makine');
+  await openGrainedProject(page);
   await expect(page.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '0');
   await goStep(page, 'parcalar');
   await paste(page, PARTS, 3);

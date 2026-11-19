@@ -319,6 +319,8 @@ test.describe('T020 tester: simulation UX', () => {
       else if (o && typeof o === 'object') Object.values(o).forEach(walk);
     };
     walk(tr);
+    // A new project's suggested name: "Adsız proje" or "Adsız proje 3" (T194a).
+    leaves.push(`${tr.wizard.defaultName} {n}`);
     const esc = (x: string) => x.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
     const patterns = leaves.map(
       (l) =>

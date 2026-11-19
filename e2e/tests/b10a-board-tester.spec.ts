@@ -10,6 +10,7 @@ import {
   openWorkspacePanel,
   paste,
   pasteAndNest,
+  toastsSettled,
 } from './wizard-helpers';
 
 // B10a tester (T240–T243, D-039): the gaps next to the dev spec b10a-board.spec.ts.
@@ -40,6 +41,7 @@ async function openBoard(page: Page, width: number, height: number): Promise<Loc
   await page.getByTestId('parts-view-drawing').click();
   const canvas = page.getByTestId('editor-canvas');
   await expect(canvas).toHaveAttribute('data-view', /\d/);
+  await toastsSettled(page); // the paste toast fades in; axe would read it mid-fade
   return canvas;
 }
 
