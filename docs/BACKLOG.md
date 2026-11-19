@@ -866,7 +866,7 @@ Acceptance:
 - [ ] properties: no move below target depth; pocket wall at d/2 ± EPS
 Tester focus: safety review; pocket depth vs Z reference both modes (table / material top).
 
-### Batch B14a: T274–T276 (CTO review #7 must-fixes, D-047)
+### Batch B14a: T274–T276 + rider T277 (CTO review #7 must-fixes, D-047)
 
 Runs before B18. Review and full evidence: `docs/reviews/2026-11-19-cto-design-review-7.md` ("Şimdi düzelt" A, B, C).
 
@@ -903,6 +903,15 @@ Acceptance:
 - [ ] no second hole on the same centre
 - [ ] if over half a day: the first two items
 Tester focus: hinge cup at 22,5 mm at %18 and %100; typed diameter; refusal texts.
+
+### T277 Rider: open lines stay inside their part; DXF on-line layers connect to T142   [status: todo]
+Spec: §4.6, §6.3, §7.2 · Depends: T142, T145
+Found by the B15 tester: an open line (`part.lines`) from (100,100) to (600,100) on a 300 mm wide part exports without error and engraves 5 mm into the neighbour part. Only reachable through project JSON today; DXF on-line layers (pending in B16) will make it reachable.
+Acceptance:
+- [ ] validation error + toolpath backstop when any point of an open line (tool radius included) leaves its part outline; named like T270 ("Kapak · Çizgi 2: …")
+- [ ] DXF layer operation "Çizgi üzerinden" is offered and imports open and closed contours as on-line operations with a depth (default 1 mm, < thickness); a line outside every part is reported, not imported
+- [ ] on-line default depth on stock ≤ 1 mm: half the thickness, never a silent refusal; picker wide enough for "Çizgi üzerinden"; "Tabaka kalınlığı" shows mm
+Tester focus: line crossing the outline by 0.1 mm; DXF sign with an engraved line; NC read-back depth.
 
 ### Batch B15: T141–T143 (more operations)
 
