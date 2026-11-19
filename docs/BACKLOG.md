@@ -921,21 +921,21 @@ Tester focus: line crossing the outline by 0.1 mm; DXF sign with an engraved lin
 
 ### Batch B15: T141–T143 (more operations)
 
-### T141 Toolpath: inner contours   [status: todo]
+### T141 Toolpath: inner contours   [status: done]
 Spec: §6.3, D-013 · Depends: T134, T139
 Acceptance:
 - [ ] inside offset for inners (SPLIT → export-blocking error, ARC_COLLAPSED warning), lead-in inside the waste side, multi-pass, tabs optional
 - [ ] cut order verified with drawn parts having holes + inners
 Tester focus: safety review; SPLIT case blocks the export in the UI; cut-order property test with inners.
 
-### T142 On-line operation and per-contour operations   [status: todo]
+### T142 On-line operation and per-contour operations   [status: done]
 Spec: §4.6, §6.3 · Depends: T141
 Acceptance:
 - [ ] `setOperation(contour, 'outside' | 'inside' | 'online' | 'none', depth)`; on-line = tool centre on the line at depth (open contours allowed)
 - [ ] properties panel shows the operation per contour; layer mapping (T145) feeds the same field
 Tester focus: on-line open path G-code passes checks; depth never below thickness + allowance.
 
-### T143 Thin-skin option for small parts   [status: todo]
+### T143 Thin-skin option for small parts   [status: done]
 Spec: §2.4, §6.3 · Depends: T141
 Acceptance:
 - [ ] option "son pasoda ince tabaka bırak" (skin thickness): small parts keep a skin, a final cleanup pass after all parts removes it; tabs and skin are alternatives per project
@@ -943,7 +943,7 @@ Tester focus: safety review of the cleanup pass order (last); depth properties.
 
 ### Batch B16: T144–T146 (DXF import)
 
-### T144 DXF reader wrapper and entity conversion   [status: todo]
+### T144 DXF reader wrapper and entity conversion   [status: done]
 Spec: §4.6, §8.3 · Depends: T128
 Acceptance:
 - [ ] `dxf-parser` (licence verified, MIT) wrapped in core-compatible pure conversion: LINE, ARC, CIRCLE, LWPOLYLINE (bulge), POLYLINE, one-level INSERT; SPLINE/ELLIPSE approximated within tolerance; TEXT/MTEXT/DIMENSION/HATCH counted and ignored
@@ -951,14 +951,14 @@ Acceptance:
 - [ ] fixtures incl. real messy files (`dxf-io` skill)
 Tester focus: fixture report counts; arc direction preserved (bulge sign); spline deviation within tolerance.
 
-### T145 DXF join, part recognition and layer mapping   [status: todo]
+### T145 DXF join, part recognition and layer mapping   [status: done]
 Spec: §4.6 · Depends: T144
 Acceptance:
 - [ ] join ends within 0.05 mm into closed contours; unclosed ones flagged; outermost closed = part, inside = inner or hole (circles → hole object optional)
 - [ ] layer → operation mapping, saved as a company setting; `importDxf` command (one undo step)
 Tester focus: property test (random segment soup of a known shape rejoins); mapping persists per company.
 
-### T146 DXF import dialog   [status: todo]
+### T146 DXF import dialog   [status: done]
 Spec: §4.6 · Depends: T145
 Acceptance:
 - [ ] upload → preview canvas + report (supported / converted / ignored counts, open contours) → unit question when needed → layer mapping table → confirm
