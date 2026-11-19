@@ -1170,16 +1170,27 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       return c.key==='po' ? {spot:'poDesk'} : {spot:'meet', i:mi};
     }
     if(st==='testing') return {spot:'bench'};
-    if(st==='coding') return {spot: c.key==='tester' ? 'bench' : 'devDesk'};
-    return {spot: c.key==='po'?'poDesk' : c.key==='dev'||c.key==='dev2'||c.key==='dev3'?'devDesk' : 'bench'};
+    if(st==='coding') return {spot: c.key==='tester'||c.seat==='tester' ? 'bench' : 'devDesk'};
+    return {spot: c.key==='po'?'poDesk' : c.seat==='tester' ? 'bench' : c.key==='dev'||c.key==='dev2'||c.key==='dev3'?'devDesk' : 'bench'};
   }
   function agentView(){
     const lim = limitInfo(), A = S.agents||{};
     const fa = A.fable, fableOn = !!fa && fa.state && fa.state!=='idle' && fa.updated && (Date.now()-new Date(fa.updated)) < 12*3600e3;
     const d2 = A.dev2, dev2On = !!d2 && !!d2.updated && (Date.now()-new Date(d2.updated)) < 12*3600e3; // optional 2nd dev: shown while it has reported in the last 12 h
     const d3 = A.dev3, dev3On = !!d3 && !!d3.updated && d3.state!=='idle' && (Date.now()-new Date(d3.updated)) < 12*3600e3; // 3rd dev: only while working (uses the CTO slot)
-    CREW.find(c=>c.key==='dev').name = (dev2On||dev3On) ? 'Dev 1' : 'Dev';
-    return CREW.filter(c=>c.key==='dev2' ? dev2On : c.key==='dev3' ? dev3On : (!c.visitor || fableOn)).map(c=>{
+    // D-052 flexible seats: dev2/dev3 carry a role (dev | tester | cto) set by "status.mjs role"
+    const seatRole = (k)=> (A[k] && A[k].role) || 'dev';
+    const extraDevs = [['dev2',dev2On],['dev3',dev3On]].filter(([k,on])=>on && seatRole(k)==='dev').length;
+    CREW.find(c=>c.key==='dev').name = extraDevs ? 'Dev 1' : 'Dev';
+    let devNo = 1, testNo = 1;
+    const seated = (c)=>{
+      if(c.key!=='dev2' && c.key!=='dev3') return c;
+      const r = seatRole(c.key), why = (A[c.key] && A[c.key].roleWhy) || '';
+      if(r==='tester') return {...c, seat:'tester', name:'Tester '+(++testNo), role:'Test (esnek koltuk'+(why?': '+why:'')+')'};
+      if(r==='cto') return {...c, seat:'cto', name:'CTO (esnek koltuk)', role:'İnceleme'+(why?': '+why:'')};
+      return {...c, seat:'dev', name:'Dev '+(++devNo), role:'Geliştirici (esnek koltuk'+(why?': '+why:'')+')'};
+    };
+    return CREW.filter(c=>c.key==='dev2' ? dev2On : c.key==='dev3' ? dev3On : (!c.visitor || fableOn)).map(seated).map(c=>{
       const raw = A[c.key] || {state:'idle'};
       const a = lim.blocked ? {...raw, state:'idle', message:'Limit doldu, mola. '+(lim.reset?lim.reset+"'de dönüyoruz.":'')} : raw;
       return {c, a, st: STATE_TR[a.state] ? a.state : 'idle'};
@@ -1199,7 +1210,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
         const s = spotFor(c, st, cx), A = actors[c.key], g = s.spot, n = L.SP[g].length; let i;
         if(g==='meet') i = s.i;
         else { i = A.grp===g && !taken.has(g+A.idx) ? A.idx : [...Array(n).keys()].find(k=>!taken.has(g+k)); if(i==null) i = n-1; }
-        taken.add(g+i); A.st = st; A.a = a; goTo(A, g, i);
+        taken.add(g+i); A.c = c; A.st = st; A.a = a; goTo(A, g, i);
         const o = OV[c.key], txt = (a.task ? `<b>${esc(a.task)}</b> ` : '') + esc(a.message || STATE_TR[st]);
         if(o.txt!==txt){ o.txt = txt; o.t.innerHTML = '<span class="ct">'+txt+'</span>'; o.bw = 0; o.last = ''; }
         o.w.classList.toggle('blocked', st==='blocked');
