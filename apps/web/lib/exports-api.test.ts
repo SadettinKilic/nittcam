@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { formatFileSize, shortHash, splitFileName } from './exports-api';
+import tr from '../messages/tr.json';
+import { formatFileSize, ruleLabel, shortHash, splitFileName } from './exports-api';
 
 describe('export file rows (T250)', () => {
   it('formats sizes the Turkish way', () => {
@@ -28,5 +29,17 @@ describe('export file rows (T250)', () => {
         expect(t.length).toBe(Math.min(tail, name.length));
       }),
     );
+  });
+});
+
+describe('violation group label (T258, D-045)', () => {
+  const labels = tr.wizard.export.ruleLabels;
+  it('names every check group in Turkish, never the internal code', () => {
+    expect(ruleLabel(labels, 'TOOLPATH')).toBe('Takım yolu');
+    expect(ruleLabel(labels, 'R3')).toBe('Kural 3');
+    expect(ruleLabel(labels, 'R10')).toBe('Kural 10');
+    for (const code of ['TOOLPATH', 'POST', 'INPUT', 'MODEL', 'LAYOUT', 'TOOLS', 'XYZ']) {
+      expect(ruleLabel(labels, code)).not.toMatch(/^[A-Z]{3,}$/);
+    }
   });
 });

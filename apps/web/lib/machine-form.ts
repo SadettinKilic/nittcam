@@ -1,5 +1,10 @@
 /** Pure helpers of the machine profile form (spec §7.1, T107). */
-import type { MachineProfile } from '@nittcam/core';
+import {
+  MATERIAL_KINDS,
+  type MachineProfile,
+  type MaterialKind,
+  type MaterialParams,
+} from '@nittcam/core';
 import type { NumberParseError } from '@nittcam/ui';
 import type { Messages } from './messages';
 
@@ -41,4 +46,87 @@ export function parseErrorText(
   t: Pick<Messages['machines']['errors'], 'required' | 'number'>,
 ): string {
   return code === 'empty' ? t.required : t.number;
+}
+
+/**
+ * A new parameter set as the form's "Ekle" adds it (T107): the given kind and thickness, the
+ * form's starting values for feed, plunge, rpm (clamped to the spindle) and step-down, and the
+ * profile's first tool. The user reviews and saves it; nothing is written without the form.
+ */
+export function newParamSet(
+  profile: Pick<MachineProfile, 'spindle' | 'tools'>,
+  material: MaterialKind = 'mdf',
+  thickness = 18,
+): MaterialParams {
+  return {
+    material,
+    thickness,
+    feed: 5000,
+    plungeFeed: 1500,
+    rpm: Math.min(Math.max(18000, profile.spindle.minRpm), profile.spindle.maxRpm),
+    stepDown: 6,
+    tool: profile.tools[0]?.number ?? 1,
+  };
+}
+
+/**
+ * "Kesim ayarı ekle" (T258, D-045): the step 1 error box opens the machine form with a new set
+ * for the stock and a way back to the project. Query: `duzenle` = machine id, `ayar` =
+ * `<kind>-<thickness>`, `donus` = the project path to return to (same-origin paths only).
+ */
+export interface ParamFix {
+  machineId: string;
+  set: { material: MaterialKind; thickness: number } | null;
+  returnTo: string | null;
+}
+
+export function paramFixHref(fix: ParamFix): string {
+  const q = new URLSearchParams({ duzenle: fix.machineId });
+  if (fix.set) q.set('ayar', `${fix.set.material}-${fix.set.thickness}`);
+  if (fix.returnTo) q.set('donus', fix.returnTo);
+  return `/makineler?${q.toString()}`;
+}
+
+/** A safe in-app return path: starts with one `/`, never `//` or a scheme. */
+export function safeReturnPath(value: string | undefined | null): string | null {
+  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\'))
+    return null;
+  return value;
+}
+
+export function parseParamFix(q: Record<string, string | string[] | undefined>): ParamFix | null {
+  const one = (k: string) => (typeof q[k] === 'string' ? q[k] : undefined);
+  const machineId = one('duzenle');
+  if (!machineId) return null;
+  let set: ParamFix['set'] = null;
+  const m = /^([A-Za-z]+)-(\d+(?:\.\d+)?)$/.exec(one('ayar') ?? '');
+  if (m) {
+    const material = m[1] as MaterialKind;
+    const thickness = Number(m[2]);
+    if ((MATERIAL_KINDS as readonly string[]).includes(material) && thickness > 0)
+      set = { material, thickness };
+  }
+  return { machineId, set, returnTo: safeReturnPath(one('donus')) };
+}
+
+/**
+ * The profile with a new set for `set` appended, and the set's row index; when the profile already
+ * has a set for that kind and thickness, the profile unchanged and that row's index.
+ */
+export function withParamSet(
+  profile: MachineProfile,
+  set: { material: MaterialKind; thickness: number },
+): { profile: MachineProfile; index: number; added: boolean } {
+  const existing = profile.materials.findIndex(
+    (m) => m.material === set.material && Math.abs(m.thickness - set.thickness) <= 1e-6,
+  );
+  if (existing >= 0) return { profile, index: existing, added: false };
+  return {
+    profile: {
+      ...profile,
+      materials: [...profile.materials, newParamSet(profile, set.material, set.thickness)],
+    },
+    index: profile.materials.length,
+    added: true,
+  };
 }

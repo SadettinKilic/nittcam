@@ -11,17 +11,20 @@ import {
   type Project,
   type ValidationIssue,
 } from '@nittcam/core';
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState, type ReactNode } from 'react';
 import { fill } from '../../lib/draft-project';
 import { fillRich } from '../../lib/fill-rich';
 import { grainDialLabels } from '../../lib/grain-labels';
+import { paramFixHref } from '../../lib/machine-form';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { MaterialItem } from '../../lib/materials-api';
 import { MaterialSwatch } from '../materials/swatch';
 import type { Messages } from '../../lib/messages';
 import { focusRing } from '../page/page-header';
 import {
+  Button,
   GrainDial,
   Measure,
   Select,
@@ -88,10 +91,11 @@ export function MachineFields({
   detail,
   issues,
   run,
-  machinesLink,
+  returnTo,
 }: {
   t: Text;
-  machinesLink: string;
+  /** Where "Kesim ayarı ekle" comes back to after saving (this project, step 1; T258). */
+  returnTo: string | null;
   materials: MaterialText;
   /** Company material library (T121); empty while loading or when it failed. */
   library: readonly MaterialItem[];
@@ -293,19 +297,32 @@ export function MachineFields({
           <p className="text-xs text-fg-muted">{t.thicknessNone}</p>
         ) : null}
         {profile && !set ? (
-          <p
+          <div
             role="alert"
             data-testid="no-cutting-params"
-            className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
+            className="flex flex-col items-start gap-2.5 rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
           >
-            {fill(t.noParams, {
-              material: kind ? materialName(kind) : stock.material,
-              thickness: mm(stock.thickness),
-            })}{' '}
-            <Link href="/makineler" className={`font-medium underline ${focusRing}`}>
-              {machinesLink}
-            </Link>
-          </p>
+            <p>
+              {fill(t.noParams, {
+                material: kind ? materialName(kind) : stock.material,
+                thickness: mm(stock.thickness),
+              })}
+            </p>
+            {/* D-045: one action that leads to the fix and back (T258). */}
+            <Button asChild size="sm" variant="outline">
+              <Link
+                data-testid="add-cutting-params"
+                href={paramFixHref({
+                  machineId: project.machine.machineId,
+                  set: kind ? { material: kind, thickness: stock.thickness } : null,
+                  returnTo,
+                })}
+              >
+                <Plus aria-hidden />
+                {t.addParams}
+              </Link>
+            </Button>
+          </div>
         ) : null}
         {set ? (
           <p className="text-xs text-fg-muted" data-testid="cutting-params">

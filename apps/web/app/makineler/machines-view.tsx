@@ -13,11 +13,13 @@ import {
   notify,
 } from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
-import { Pencil, Plus, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CircleCheck, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MachineStateBadge } from '../../components/machines/state-badge';
-import { PageHeader, pageContainer } from '../../components/page/page-header';
+import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
+import { Callout } from '../../components/wizard/panels';
+import type { ParamFix } from '../../lib/machine-form';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { MachineForm } from './machine-form';
@@ -37,6 +39,7 @@ type Mode =
       version?: number;
       initial: MachineProfile;
       key: number;
+      addParams?: ParamFix['set'];
     };
 
 /** A new machine starts from the generic profile, not marked as an example, with no name. */
@@ -52,7 +55,18 @@ function TableSize({ m, className }: { m: MachineListItem; className?: string })
   return <Measure value={[m.table.width, m.table.depth]} unit="mm" className={className} />;
 }
 
-export function MachinesView({ t, startNew = false }: { t: Text; startNew?: boolean }) {
+export function MachinesView({
+  t,
+  startNew = false,
+  fix = null,
+}: {
+  t: Text;
+  startNew?: boolean;
+  /** T258: open this machine with a new parameter set; after saving, offer the way back. */
+  fix?: ParamFix | null;
+}) {
+  // T258: shown after the fix was saved: the link back to the project and step.
+  const [returnTo, setReturnTo] = useState<string | null>(null);
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [mode, setMode] = useState<Mode>(() =>
     startNew ? { kind: 'form', machineId: null, initial: newProfile(), key: 0 } : { kind: 'list' },
@@ -81,7 +95,7 @@ export function MachinesView({ t, startNew = false }: { t: Text; startNew?: bool
     window.scrollTo({ top: 0 });
   }, [mode.kind]);
 
-  async function openEdit(machineId: string) {
+  async function openEdit(machineId: string, addParams: ParamFix['set'] = null) {
     setMode({ kind: 'loading', machineId });
     try {
       const res = await fetch(`/api/machines/${machineId}`, { cache: 'no-store' });
@@ -94,11 +108,24 @@ export function MachinesView({ t, startNew = false }: { t: Text; startNew?: bool
         version: detail.version,
         initial: detail.profile,
         key: formKey + 1,
+        addParams,
       });
     } catch {
       setMode({ kind: 'loadError', machineId });
     }
   }
+
+  // T258: `?duzenle=` opens that machine straight away (once, on mount).
+  const fixMachine = fix?.machineId ?? null;
+  const fixSet = fix?.set ?? null;
+  const [fixOpened, setFixOpened] = useState(false);
+  useEffect(() => {
+    if (fixMachine === null || fixOpened) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFixOpened(true);
+    void openEdit(fixMachine, fixSet);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixMachine, fixOpened]);
 
   function openNew() {
     setFormKey((k) => k + 1);
@@ -108,6 +135,7 @@ export function MachinesView({ t, startNew = false }: { t: Text; startNew?: bool
   function onSaved(detail: MachineDetail) {
     setMode({ kind: 'list' });
     notify.success(t.form.saved.replace('{version}', String(detail.version)));
+    if (fix?.returnTo && detail.id === fix.machineId) setReturnTo(fix.returnTo);
     void loadList();
   }
 
@@ -126,6 +154,24 @@ export function MachinesView({ t, startNew = false }: { t: Text; startNew?: bool
         }
       />
 
+      {returnTo && mode.kind === 'list' ? (
+        <Callout
+          tone="success"
+          role="status"
+          icon={<CircleCheck aria-hidden />}
+          data-testid="param-fix-saved"
+          className="items-center"
+        >
+          <p className="min-w-0 flex-1">{t.paramFix.saved}</p>
+          <Button asChild size="sm" variant="outline">
+            <Link href={returnTo} data-testid="param-fix-return" className={focusRing}>
+              <ArrowLeft aria-hidden />
+              {t.paramFix.back}
+            </Link>
+          </Button>
+        </Callout>
+      ) : null}
+
       {mode.kind === 'form' ? (
         <MachineForm
           key={mode.key}
@@ -135,6 +181,7 @@ export function MachinesView({ t, startNew = false }: { t: Text; startNew?: bool
           initial={mode.initial}
           onSaved={onSaved}
           onCancel={() => setMode({ kind: 'list' })}
+          addParams={mode.addParams}
         />
       ) : mode.kind === 'loading' ? (
         <div role="status" className="flex flex-col gap-4">

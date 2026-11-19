@@ -152,3 +152,13 @@ export function splitFileName(name: string, tail = 12): [string, string] {
 export function downloadUrl(exportId: string, name: string): string {
   return `/api/exports/${encodeURIComponent(exportId)}/files/${encodeURIComponent(name)}`;
 }
+
+/**
+ * The check group of a violation in the user's language ("Takım yolu", "Kural 3"), never the
+ * internal code such as `TOOLPATH` (D-045, T258). `labels.rule` holds "{n}" for `R1`–`R10`.
+ */
+export function ruleLabel(labels: Readonly<Record<string, string>>, rule: string): string {
+  const n = /^R([0-9]+)$/.exec(rule);
+  if (n) return (labels.rule ?? '{n}').replace('{n}', n[1] ?? '');
+  return labels[rule] ?? labels.unknown ?? '';
+}
