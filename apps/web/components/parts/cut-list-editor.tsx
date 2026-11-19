@@ -1341,7 +1341,9 @@ export function CutListEditor({
   // step, so it is taken back with undo (no extra history step to undo later).
   const phantomParts = useRef<readonly Part[] | null>(null);
   const undoRef = useRef(onUndo);
-  undoRef.current = onUndo;
+  useEffect(() => {
+    undoRef.current = onUndo;
+  });
   useEffect(() => {
     const id = phantom.current;
     if (id && phantomParts.current === null && parts.some((p) => p.id === id)) {
@@ -1359,7 +1361,6 @@ export function CutListEditor({
     if (latest.current.parts === at && undoRef.current) undoRef.current();
     else latest.current.run('removeParts', { ids: [id] });
   }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- refs only
   useEffect(() => () => dropPhantom(), []);
 
   function addRow(col = 'name', fromEnter = false) {

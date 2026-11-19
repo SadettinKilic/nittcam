@@ -674,6 +674,8 @@ test.describe('T023 tester: wizard flow', () => {
     await openNewProject(page, 'parcalar');
     await paste(page, KITCHEN, 5);
     await goStep(page, 'dizilim');
+    // T261: the first entry nests by itself; wait for it before changing the mode.
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('3', { timeout: 20_000 });
     // T249 (D-039): the developer note about the modes is not shown.
     await expect(page.getByText(/Şimdilik üç mod/)).toHaveCount(0);
     const mode = page.getByLabel(w.layout.mode);

@@ -29,7 +29,9 @@ function useNest(session: ProjectSession, toolDiameter: number, t: Messages['cut
   const [nested, setNested] = useState(0);
   // The latest session: an automatic run (T261) starts after a render that may be stale.
   const latest = useRef(session);
-  latest.current = session;
+  useEffect(() => {
+    latest.current = session;
+  });
 
   async function nest() {
     const session = latest.current;
@@ -85,13 +87,16 @@ export function LayoutStep({
   // same command as "Diz", one undo step). An existing layout (or a locked part) is never
   // re-nested by entering the step. Deferred one tick so a row the cut list drops on leaving
   // (phantom row) is gone first.
-  const autoNest = useRef({ done: false, nest, session });
-  autoNest.current = { done: autoNest.current.done, nest, session };
+  const autoNest = useRef({ nest, session });
+  const autoDone = useRef(false);
+  useEffect(() => {
+    autoNest.current = { nest, session };
+  });
   useEffect(() => {
     const timer = setTimeout(() => {
       const a = autoNest.current;
-      if (a.done) return;
-      a.done = true;
+      if (autoDone.current) return;
+      autoDone.current = true;
       const p = a.session.project;
       const hasLayout = p.layout.sheets.some((s) => s.placements.length > 0);
       if (p.parts.length > 0 && !hasLayout) void a.nest();
