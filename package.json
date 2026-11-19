@@ -16,6 +16,11 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "e2e": "pnpm build && pnpm --filter @nittcam/e2e e2e",
     "e2e:visual": "pnpm build && pnpm --filter @nittcam/e2e e2e:visual",
+    "e2e:local": "node scripts/e2e-local.mjs",
+    "e2e:changed": "node scripts/e2e-local.mjs --only-changed=origin/main",
+    "ci:full": "gh workflow run CI --ref",
+    "ci:baselines": "gh workflow run CI -f baselines=update --ref",
+    "ci:gate": "node tools/ci/full-run-ok.mjs",
     "licenses:check": "node scripts/check-licenses.mjs",
     "team": "node tools/team-dashboard/server.mjs"
   },

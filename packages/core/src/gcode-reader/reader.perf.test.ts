@@ -6,6 +6,9 @@
 import { describe, expect, it } from 'vitest';
 import { readGcode } from './reader';
 
+/** Timing budgets apply as written in CI; local runs on a loaded PC get PERF_BUDGET_SCALE (default 3, D-048). */
+const BUDGET = process.env.CI ? 1 : Number(process.env.PERF_BUDGET_SCALE ?? 3);
+
 function bigProgram(lines: number): string {
   const out = ['G21 G90 G91.1 G17 G54', 'M3 S18000', 'G4 P2', 'G0 X0 Y0 Z5', 'G1 Z-3 F1500'];
   let i = 0;
@@ -33,6 +36,6 @@ describe('readGcode performance', () => {
     expect(r.errors).toEqual([]);
     expect(r.lines).toHaveLength(100_000);
     expect(r.moves.length).toBeGreaterThan(99_000);
-    expect(ms).toBeLessThan(2000);
+    expect(ms).toBeLessThan(2000 * BUDGET);
   });
 });

@@ -3,6 +3,9 @@ import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { applyTheme, expectNoA11yViolations, snap } from './visual/helpers';
 import { fill } from './wizard-helpers';
 
+/** Perf budgets apply as written in CI; local runs on a loaded PC get PERF_BUDGET_SCALE (default 3, D-048). */
+const BUDGET = process.env.CI ? 1 : Number(process.env.PERF_BUDGET_SCALE ?? 3);
+
 /** B7 tester round 2 (T118 light rows, LiteCheckbox, tablet columns): regressions of the perf fix. */
 
 const t = tr.cutList;
@@ -225,7 +228,7 @@ test.describe('T118 light rows: no regressions', () => {
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     test.info().annotations.push({ type: 'fps', description: out.join(' | ') });
     console.log('B7 r2 perf:', out.join(' | '));
-    expect(base).toBeGreaterThanOrEqual(50);
+    expect(base).toBeGreaterThanOrEqual(50 / BUDGET);
   });
 });
 
