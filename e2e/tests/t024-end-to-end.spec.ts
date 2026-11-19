@@ -189,6 +189,29 @@ async function runFlow(page: Page, mobile: boolean) {
   if (mobile) await closeWorkspacePanel(page);
   if (mobile) await noHorizontalScroll(page);
 
+  // T262: the G-code panel shows the header of the file the export step will download.
+  let panelHead: { name: string; lines: string[] } | null = null;
+  if (!mobile) {
+    const panel = page.getByTestId('gcode-panel');
+    const savedRevision = await page.getByTestId('save-status').getAttribute('data-revision');
+    const headLines = () =>
+      panel.locator('button[data-file="0"]').evaluateAll((els) =>
+        els
+          .map((e) => ({ n: Number(e.getAttribute('data-line')), t: e.getAttribute('data-text') }))
+          .sort((a, b) => a.n - b.n)
+          .filter((r) => r.n <= 12)
+          .map((r) => r.t ?? ''),
+      );
+    await expect
+      .poll(async () => (await headLines()).join('\n'))
+      .toMatch(new RegExp(`\\(REV[İI]ZYON: ${savedRevision}\\)`));
+    panelHead = {
+      name: (await panel.getByTestId('gcode-file').first().getAttribute('data-name')) ?? '',
+      lines: await headLines(),
+    };
+    expect(panelHead.lines).toHaveLength(12);
+  }
+
   // --- Step 5: checklist + acceptance → download ---------------------------------------------
   await page.getByTestId('wizard-next').click();
   await wizardReady(page, 'export');
@@ -236,6 +259,13 @@ async function runFlow(page: Page, mobile: boolean) {
   if (!record) throw new Error('no export record');
   expect(record.revision).toBe(revision);
   expect(record.files).toHaveLength(sheets);
+  if (panelHead) {
+    const head = panelHead;
+    const file = downloaded.find((d) => d.name === head.name);
+    expect(file, `panel file ${head.name} is downloaded`).toBeDefined();
+    const lines = (file?.bytes.toString('utf8') ?? '').split('\n').slice(0, 12);
+    expect(lines.map((l) => l.replace(/\r$/, ''))).toEqual(head.lines);
+  }
 
   const checkFiles = downloaded.map((d) => {
     const stored = record.files.find((f) => f.name === d.name);

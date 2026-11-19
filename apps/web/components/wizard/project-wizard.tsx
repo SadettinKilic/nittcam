@@ -666,6 +666,11 @@ function WizardSession({
         t={messages.simulation}
         project={project}
         machine={simMachine}
+        header={{
+          projectName: session.name,
+          revision: session.revision,
+          saved: session.projectId !== null && !session.dirty,
+        }}
         empty={{
           noLayout: (
             <section
