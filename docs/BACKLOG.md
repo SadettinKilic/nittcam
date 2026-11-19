@@ -20,6 +20,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M2.5 Marka ve çalışma alanı cilası (Fable review #1) | T194–T199, T194a, T194b (8) | B4a–B4b | brand mark in the shell, mono numerics, canvas-first workspace on steps 3–4, calmer notices |
 | Fable review #2 follow-ups | T240–T247 (8) | B10a (T240–T243) + riders (T244–T247) | board usable on a phone, canvas gets the space, one tool-state language (D-039) |
 | Fable review #3 follow-ups | T248–T254 (7) | B8a (T248–T251) + riders (T252–T254) | phone cut list and simulation usable, one inspector pattern, download is the last step's primary action, canvas has a material tone (D-040) |
+| CTO review #4 follow-ups | T257–T263 (7) | B11a (T257–T260) + riders (T261–T263) | the default path cuts out of the box, blocking errors are caught at step 1, the cabinet generator adds only parts the stock can make, laptop widths keep the canvas (D-045) |
 | M3 Kesim listesi, malzeme, damar kadranı | T112–T123 (12) | B5–B8 | free-angle grain respected from cut list to G-code; cut list editable without Excel |
 | M4 Çizim tahtası I: editör | T124–T137 (14) | B9–B13 | a drawn freeform part with fillets is nested and gives checked G-code |
 | M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
@@ -32,11 +33,13 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
 | M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
 
-**Before the field test: 117 tasks in 35 batches** (94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11; + 7 from review #3, `docs/reviews/2026-11-19-fable-design-review-3.md`: T248–T254). The "~90 % / field-test ready" line is the end of M9 (T193).
+**Before the field test: 124 tasks in 36 batches** (+ 7 from CTO review #4, `docs/reviews/2026-11-19-cto-design-review-4.md`: T257–T263, one new batch B11a; T255 and T256 were added on 2026-11-19 and are not in this count; before that: 117 tasks in 35 batches = 94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11; + 7 from review #3, `docs/reviews/2026-11-19-fable-design-review-3.md`: T248–T254). The "~90 % / field-test ready" line is the end of M9 (T193).
 
 **Order note (2026-11-18, D-035 amendment):** after B4b come B9–B10 (drawing board foundation, T124–T129), then **B10a** (Fable review #2 must-fixes, T240–T243), then M3 B5–B8, then B11+.
 
 **Order note (2026-11-19, Fable review #3):** **B8a** (T248–T251) runs right after B8 and before B11. T252 and T253 ride with B8, T254 rides with B11. No other batch moves.
+
+**Order note (2026-11-19, CTO review #4):** **B11a** (T257–T260) runs right after B11 and before B12. T261 rides with B12, T262 and T263 ride with B13. No other batch moves.
 
 ---
 
@@ -605,6 +608,68 @@ Acceptance:
 - [ ] the canvas focus indicator is a full 2 px inset ring on all four sides (today only the right and bottom edges show while drawing), or none when the pointer is in use (`:focus-visible` rule)
 Tester focus: sheet edges inside the canvas box at 1440 × 900, 1024 × 768 and 390 × 844; glyph angle after rotate 90° and mirror on 2 parts; focus ring with keyboard only; baselines.
 
+### Batch B11a: T257–T260 (CTO review #4 must-fixes: ease of use; runs right after B11, before B12)
+
+Source: `docs/reviews/2026-11-19-cto-design-review-4.md` (operator walkthrough). Rule: D-045. Each task is at most half a day. Desktop-first (D-043): checks at 1440 and 1024; 390 is a smoke check.
+
+### T257 Seeded materials cut out of the box   [status: todo]
+Spec: §3.7, §2.4 · Depends: T121 · Decision: D-045, D-044
+Acceptance:
+- [ ] the seeded example machine profile has a parameter set for Melamin 18 mm and Kontrplak 18 mm (same values as its MDF 18 mm set; the profile stays "Taslak / Örnek" and unverified); Akrilik 5 mm stays without a set; existing golden G-code files stay byte-identical
+- [ ] step 1 material list: a library entry that has no parameter set on the selected machine shows a small amber "ayar yok" mark (icon + text) in the list, before it is picked
+- [ ] Ayarlar → Malzemeler: the per-machine chip shows a short status ("Tamam" / "Ayar yok") after the machine name and is never cut with "…" at 1440 or 1024; the full sentence is in the tooltip
+- [ ] on a fresh database a project with library "Melamin 18 mm" goes from step 1 to "İndir" with no error
+Tester focus: fresh PGlite DB, Melamin 18 and Kontrplak 18 end to end (checks green, file downloads); golden files unchanged; Akrilik shows the mark; chip text at 1440 and 1024.
+
+### T258 "No cutting parameters" is caught at step 1, with one action to fix it   [status: todo]
+Spec: §3.7, §9 · Depends: T257 · Decision: D-045
+Acceptance:
+- [ ] the step 1 error box has a button "Kesim ayarı ekle": it opens the machine form scrolled to "Malzeme parametreleri" with the material kind and thickness prefilled in a new set; after saving, a "Projeye dön" link returns to the same project and step
+- [ ] while this error exists the step indicator marks step 1 with an error dot, visible from every step (today the user learns that nothing can be downloaded only on step 4, after nesting)
+- [ ] user-facing text only: "Makineler → Malzemeler" becomes "Makineler → Malzeme parametreleri" (Malzemeler is now a page under Ayarlar); the line "Teknik ayrıntı: No cutting parameters for …" is not shown; the raw "TOOLPATH" chip on the export step becomes "Takım yolu"
+Tester focus: Akrilik 5 mm project: button → set saved → back in the project, error gone, export reachable; no English sentence and no upper-case internal code on steps 1, 4 and 5 (text scan); keyboard path.
+
+### T259 Step 1 material field and sheet preview polish   [status: todo]
+Spec: §3.7, §2.4 · Depends: T121, T252
+Acceptance:
+- [ ] the closed Malzeme select shows a library entry on one line (swatch, "MDF · 18 mm"); today the second line is clipped at the bottom edge at 1440 and 1024
+- [ ] the list shows the library first; the generic kinds sit below under one heading "Kütüphane dışı" (today "MDF" appears twice with no explanation); a new project starts on the library's first usable entry for the machine, not on a bare kind
+- [ ] with a material that has no grain ("Yok") the sheet preview has no grain hatch and the dial block says "Bu malzemede damar yok" (today the preview is striped while the dial shows "–"); the "Plaka damar yönü" legend chip on Simülasyon is hidden in the same case
+- [ ] the thickness field has no native datalist arrow next to the number
+Tester focus: bounding box of the select value inside the trigger at 1440 and 1024, both themes; MDF vs Melamin preview (hatch off/on); step 1 e2e (T121, T252) green.
+
+### T260 Cabinet generator: only parts this stock can make, calmer form   [status: todo]
+Spec: §4.1 · Depends: T122 · Decision: D-045, D-041
+Acceptance:
+- [ ] when "Arkalık kalınlığı" differs from the project's plate thickness the back panel is **not** added to the cut list by default: the summary shows it as "1 × Arkalık 564 × 720 · 8 mm · ayrı plaka" with a checkbox "Yine de listeye ekle"; when added it carries the note "8 mm" (today an 8 mm back lands silently in the 18 mm list and is nested on the 18 mm sheet)
+- [ ] generated rows get a fixed grain only when the project's stock has a grain; on a material without grain they are "Serbest"
+- [ ] the dialog remembers the last used values per browser (shelves, back, door, band, gap); width/height/depth keep their defaults
+- [ ] at 1440 and 1024 the door radios are on one line each ("Tek kapak", "Çift kapak" do not wrap) and the "Arkalık" select shows its value in full
+Tester focus: a cabinet with 2 shelves on an 18 mm project adds 7 pieces without the back and 8 with the checkbox ticked; MDF project rows are "Serbest", Melamin rows keep grain; one undo still removes the whole set (D-041); axe.
+
+### CTO review #4 riders: T261–T263 (not a batch; each rides with the batch named in its title; no reorder)
+
+### T261 Parçalar → Dizilim flow: no phantom row, nesting runs on first entry (rides with B12, with T135)   [status: todo]
+Spec: §4.1, §3.7 · Depends: T118 · Decision: D-045
+Acceptance:
+- [ ] a row created by pressing Enter on the last row and never edited ("Parça N", 100 × 100) is removed when focus leaves it or the step changes; a row added with "Satır ekle" is kept (today the leftover row is nested and cut as a 100 × 100 part)
+- [ ] entering Dizilim with parts and no layout runs the nesting once automatically (same command as "Diz", one undo step); after that "Diz" works as today; nothing runs automatically when a layout exists
+Tester focus: type a row, press Enter, click İleri: the count has no extra row; first entry to Dizilim shows a layout without a click; locked parts and an existing layout are never re-nested by entering the step.
+
+### T262 Simülasyon G-code panel shows the real file header (rides with B13, with T137)   [status: todo]
+Spec: §3.7, §9 · Depends: T020, T021
+Acceptance:
+- [ ] the G-code panel on Simülasyon shows the same file name, project name and revision as the file the export step downloads (today: "NittCam_S1.tap", "(PROJE: NittCam)", "(REVIZYON: 0)" against "Mutfak_alt_dolap_60_S1.tap", "(PROJE: Mutfak alt dolap 60)", "(REVIZYON: 3)"); if the revision is only known after saving, the panel says "kaydedilince" instead of 0
+Tester focus: compare the first 12 lines of the panel with the downloaded file on a saved project.
+
+### T263 Laptop widths: canvas budget at 1280 and 1024, Malzemeler row fits (rides with B13, with T137)   [status: todo]
+Spec: §3.6, §8.3 · Depends: T197, T240 · Decision: D-039, D-045
+Acceptance:
+- [ ] below 1440 px the app sidebar opens as the icon rail on the workspace steps (board, Dizilim, Simülasyon); the user's own toggle wins and is remembered
+- [ ] with that, the wizard header is one row at 1280 (as at 1440) and the canvases measure at least: board and Dizilim 640 × 520 at 1280 × 800 and 580 × 480 at 1024 × 768; Simülasyon 640 × 380 at 1280 × 800 and 580 × 300 at 1024 × 768 (measured today: board 494 × 509 and 430 × 457, Simülasyon 494 × 346 and 430 × 250)
+- [ ] Ayarlar → Malzemeler has no page-level horizontal scroll at 1024 and both row actions (edit, delete) are visible (today the page overflows by 37 px and the delete button is off screen)
+Tester focus: bounding boxes at 1280 × 800 and 1024 × 768; sidebar toggle remembered after reload; 1440 baselines unchanged.
+
 ---
 
 ## M4: Çizim tahtası I: editör (exit: a freeform part drawn with lines, arcs and fillets is nested and gives checked G-code)
@@ -644,6 +709,8 @@ Tester focus: toolpath test that the corner point is cut; visual check of both s
 
 ### Batch B12: T133–T135 (dimensions, cutouts, sync)
 
+Rider in this batch: T261 with T135 (CTO review #4; text in "CTO review #4 riders" in the M3 section).
+
 ### T133 Dimension labels and annotations   [status: todo]
 Spec: §4.2, §4.4 · Depends: T130
 Acceptance:
@@ -665,6 +732,8 @@ Acceptance:
 Tester focus: e2e create in grid → visible in editor and back; freeform W/H not editable in grid.
 
 ### Batch B13: T136–T137 (editor polish and tests)
+
+Riders in this batch: T262 and T263 with T137 (CTO review #4; text in "CTO review #4 riders" in the M3 section).
 
 ### T136 First-use tour and hints   [status: todo]
 Spec: §4.2 · Depends: T135
@@ -987,6 +1056,7 @@ Tester focus: round trip; opens in a free viewer (LibreCAD) without errors (manu
 
 ### T176 Export step: all formats, records, history   [status: todo]
 Spec: §6.6 · Depends: T173, T174, T175
+> Note from CTO review #4 (2026-11-19): at 1440 the left column is half empty while the right one scrolls and the history table is below the fold; when this step is rebuilt, balance the two columns so the history is visible without scrolling.
 Acceptance:
 - [ ] export step offers NC, DXF, PDF, labels; each regenerated on the server and stored in `exports` with type, hash, revision; history shows all types; NC rules unchanged (checks, acceptance)
 Tester focus: NC gate cannot be bypassed by the new UI; hashes stable; history entries per type.
@@ -1051,6 +1121,11 @@ Spec: §3.7 · Depends: T249 · Decision: D-043
 Acceptance:
 - [ ] the T249 phone bullet: below 640 px the whole transport (scrubber, time, speed chips, position line) is visible above the "Ayarlar / G-code" button bar; the wizard header shows the short label "Simülasyon" below 640 px
 Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
+
+### Notes for the mobile pass from CTO review #4 (2026-11-19; no task numbers yet, the PO writes them when the pass is scheduled)
+- "Dolap ekle" dialog at 390: the "Çift kapak" radio label runs under the "Kapak boşluğu" field; labels wrap to two and three lines. Stack the door row and the gap field.
+- Ayarlar → Malzemeler cards at 390: the "Kesim ayarı" chip is cut after the machine name ("Örnek router (Mach3):…"); the status itself is not readable (T257 shortens the chip text; check it here).
+- Smoke result at 390 × 844: no page-level horizontal scroll on home, Malzemeler, steps 1–5 and the cabinet dialog; "İleri" / "İndir" reachable on every step.
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
