@@ -88,8 +88,7 @@ test.describe('T118 light rows: no regressions', () => {
   test('the first click on a row mounted mid-scroll lands in the clicked cell', async ({
     page,
   }) => {
-    // BUG (B7 tester r2): a click on a light row is lost. Remove test.fail once fixed.
-    test.fail();
+    // Fixed in B7 round 3: a press on a light row renders it in full and focuses the cell.
     const scroll = page.getByTestId('cut-list-scroll');
     // Flick for 300 ms, then return the centre of a name cell in a row that is light right now.
     const target = await scroll.evaluate(
@@ -248,8 +247,7 @@ test.describe('round-2 axe: light rows and tablet columns', () => {
 
 test.describe('T118 light rows: click right after a mouse wheel', () => {
   test('wheel 1 200 px, click a name cell 60 ms later: focus lands there', async ({ page }) => {
-    // BUG (B7 tester r2): a click on a light row is lost. Remove test.fail once fixed.
-    test.fail();
+    // Fixed in B7 round 3: a press on a light row renders it in full and focuses the cell.
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(URL);
     await pasteMany(page, 300);

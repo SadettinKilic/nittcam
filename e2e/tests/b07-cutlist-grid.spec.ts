@@ -217,6 +217,98 @@ test.describe('T118 grid v2', () => {
   });
 });
 
+/** Flicks the grid for 300 ms and returns a light row (text only, mounted mid-scroll) in view. */
+async function flickToLightRow(page: Page, column: number) {
+  return page.getByTestId('cut-list-scroll').evaluate(
+    (el, col) =>
+      new Promise<{ row: number; y: number; tdLeft: number; textLeft: number; textRight: number }>(
+        (resolve, reject) => {
+          const start = performance.now();
+          const from = el.scrollTop;
+          const step = (now: number) => {
+            el.scrollTop = from + ((now - start) / 1000) * 3000;
+            if (now - start < 300) {
+              requestAnimationFrame(step);
+              return;
+            }
+            const box = el.getBoundingClientRect();
+            const light = [...el.querySelectorAll('[data-testid="cut-list-row"]')].find((r) => {
+              const b = r.getBoundingClientRect();
+              return b.top > box.top + 60 && b.bottom < box.bottom && !r.querySelector('input');
+            });
+            if (!light) {
+              reject(new Error('no light row in view'));
+              return;
+            }
+            const td = light.children[col] as HTMLElement;
+            const range = document.createRange();
+            range.selectNodeContents(td);
+            const text = range.getBoundingClientRect();
+            const b = td.getBoundingClientRect();
+            resolve({
+              row: Number(light.getAttribute('aria-rowindex')) - 1,
+              y: b.top + b.height / 2,
+              tdLeft: b.left,
+              textLeft: text.left,
+              textRight: text.right,
+            });
+          };
+          requestAnimationFrame(step);
+        },
+      ),
+    column,
+  );
+}
+
+test.describe('B7 r3: a press on a light row', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(URL);
+    const lines = ['Ad\tEn\tBoy\tAdet'];
+    for (let i = 1; i <= 300; i++) lines.push(`Parça ${i}\t${100 + i}\t200\t1`);
+    await pasteRows(page, lines.join('\n'), 300);
+  });
+
+  test('puts the caret where the click was (start / end of the name), in edit mode', async ({
+    page,
+  }) => {
+    const a = await flickToLightRow(page, 1);
+    await page.mouse.click(a.textLeft + 1, a.y);
+    const nameA = cell(page, a.row, t.columns.name);
+    await expect(nameA).toBeFocused();
+    expect(
+      await nameA.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd]),
+    ).toEqual([0, 0]);
+    // Edit mode: ArrowRight moves the caret instead of leaving the cell.
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.type('X');
+    await page.keyboard.press('Tab');
+    await expect(nameA).toHaveValue(`PXarça ${a.row}`);
+
+    const b = await flickToLightRow(page, 1);
+    await page.mouse.click(b.textRight + 2, b.y);
+    const nameB = cell(page, b.row, t.columns.name);
+    await expect(nameB).toBeFocused();
+    const len = `Parça ${b.row}`.length;
+    expect(
+      await nameB.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd]),
+    ).toEqual([len, len]);
+  });
+
+  test('a press on a light row number toggles its checkbox; a numeric cell gets focus', async ({
+    page,
+  }) => {
+    const a = await flickToLightRow(page, 0);
+    await page.mouse.click(a.tdLeft + 12, a.y);
+    await expect(page.getByTestId(`row-select-${a.row}`)).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByTestId(`row-select-${a.row}`)).toBeFocused();
+
+    const b = await flickToLightRow(page, 2);
+    await page.mouse.click(b.textRight - 1, b.y);
+    await expect(cell(page, b.row, t.columns.w)).toBeFocused();
+  });
+});
+
 test.describe('T246 feedback', () => {
   test('paste toast has Geri al: one step undoes the paste', async ({ page }) => {
     await page.goto(URL);

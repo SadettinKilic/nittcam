@@ -57,8 +57,10 @@ import {
   useState,
   type ComponentType,
   type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
+import { flushSync } from 'react-dom';
 import {
   EDGES,
   NARROW_GRID_MAX,
@@ -76,6 +78,7 @@ import {
 } from '../../lib/cut-list-grid';
 import { downloadText } from '../../lib/cut-list-file';
 import { fill, newPartId } from '../../lib/draft-project';
+import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
 import {
   BandCell,
@@ -522,6 +525,8 @@ interface GridRowProps {
   selected: boolean;
   /** Mounted during a fast scroll: a text-only row until scrolling stops (T118 perf). */
   light: boolean;
+  /** A press on a light cell: render the row in full and focus the pressed control (stable). */
+  onLightPress: (e: ReactMouseEvent<HTMLTableCellElement>, rowId: string) => void;
   t: Text;
   Render: ComponentType<{ cell: unknown }>;
 }
@@ -564,6 +569,7 @@ const GridRow = memo(function GridRow({
   part,
   selected,
   light,
+  onLightPress,
   t,
   Render,
 }: GridRowProps) {
@@ -586,6 +592,8 @@ const GridRow = memo(function GridRow({
               cell.column.id === 'index' && 'text-xs text-fg-subtle',
               (cell.column.id === 'grain' || cell.column.id === 'band') && 'text-fg-subtle',
             )}
+            // The first click on a row mounted mid-scroll must not be lost (B7 r2).
+            onMouseDown={(e) => onLightPress(e, row.id)}
           >
             {lightText(t, part, index, cell.column.id)}
           </td>
@@ -664,6 +672,19 @@ function Grid({
     rerender();
     virtualizer.scrollToIndex(row, { align: 'auto' });
   };
+  // A press on a light cell (B7 r2): the browser would focus nothing, so keep it from moving focus,
+  // render the row in full right now and focus the control under the pointer.
+  const [onLightPress] = useState(
+    () => (e: ReactMouseEvent<HTMLTableCellElement>, rowId: string) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const td = e.currentTarget;
+      const { clientX, clientY } = e;
+      lightState.full.add(rowId);
+      flushSync(rerender);
+      activateAt(td, clientX, clientY);
+    },
+  );
   if (!virtualizer.isScrolling) lightState.nav = false;
   const lightAllowed = virtualizer.isScrolling && !lightState.nav;
   const nextFull = new Set<string>();
@@ -693,6 +714,7 @@ function Grid({
         columns={columns}
         selected={ctxNow.isSelected(row.id)}
         light={light}
+        onLightPress={onLightPress}
         t={t}
         Render={table.FlexRender as ComponentType<{ cell: unknown }>}
       />
