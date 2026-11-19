@@ -42,7 +42,7 @@ import {
   notify,
 } from '@nittcam/ui';
 import { LayoutTemplate, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { memo, useId, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import {
   addTemplateParams,
@@ -364,7 +364,7 @@ function SaveDialog({
   );
 }
 
-export function TemplateProperties({
+export const TemplateProperties = memo(function TemplateProperties({
   t,
   part,
   run,
@@ -380,6 +380,14 @@ export function TemplateProperties({
 }) {
   const [items, setItems] = useState<TemplateItem[] | null | 'loading' | 'error'>(null);
   const [saving, setSaving] = useState(false);
+  const [menuMounted, setMenuMounted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const addButton = (props: { onClick?: () => void }) => (
+    <Button size="sm" variant="secondary" data-testid="template-add" {...props}>
+      <Plus aria-hidden />
+      {t.add}
+    </Button>
+  );
   const mine = pending?.partId === part.id ? pending : null;
 
   async function load() {
@@ -402,36 +410,48 @@ export function TemplateProperties({
   return (
     <InspectorGroup title={t.title} data-testid="prop-group-templates">
       <div className="flex flex-wrap gap-2 pb-1">
-        <DropdownMenu onOpenChange={(open) => open && void load()}>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="secondary" data-testid="template-add">
-              <Plus aria-hidden />
-              {t.add}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" data-testid="template-menu">
-            {items === 'loading' || items === null ? (
-              <DropdownMenuItem disabled>{t.loading}</DropdownMenuItem>
-            ) : items === 'error' ? (
-              <DropdownMenuItem disabled>{t.loadError}</DropdownMenuItem>
-            ) : items.length === 0 ? (
-              <DropdownMenuItem disabled className="max-w-64 whitespace-normal">
-                {t.empty}
-              </DropdownMenuItem>
-            ) : (
-              items.map((item) => (
-                <DropdownMenuItem
-                  key={item.id}
-                  data-testid="template-menu-item"
-                  onSelect={() => onPending(startPlacement(part.id, item, localBox(part)))}
-                >
-                  <LayoutTemplate aria-hidden />
-                  {fill(t.instance, { name: item.name, v: item.version })}
+        {/* T137 budget: the Radix menu mounts on the first click, not with every selection. */}
+        {!menuMounted ? (
+          addButton({
+            onClick: () => {
+              setMenuMounted(true);
+              setMenuOpen(true);
+              void load();
+            },
+          })
+        ) : (
+          <DropdownMenu
+            open={menuOpen}
+            onOpenChange={(open) => {
+              setMenuOpen(open);
+              if (open) void load();
+            }}
+          >
+            <DropdownMenuTrigger asChild>{addButton({})}</DropdownMenuTrigger>
+            <DropdownMenuContent align="start" data-testid="template-menu">
+              {items === 'loading' || items === null ? (
+                <DropdownMenuItem disabled>{t.loading}</DropdownMenuItem>
+              ) : items === 'error' ? (
+                <DropdownMenuItem disabled>{t.loadError}</DropdownMenuItem>
+              ) : items.length === 0 ? (
+                <DropdownMenuItem disabled className="max-w-64 whitespace-normal">
+                  {t.empty}
                 </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              ) : (
+                items.map((item) => (
+                  <DropdownMenuItem
+                    key={item.id}
+                    data-testid="template-menu-item"
+                    onSelect={() => onPending(startPlacement(part.id, item, localBox(part)))}
+                  >
+                    <LayoutTemplate aria-hidden />
+                    {fill(t.instance, { name: item.name, v: item.version })}
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {canSave ? (
           <Button
             size="sm"
@@ -515,4 +535,4 @@ export function TemplateProperties({
       ) : null}
     </InspectorGroup>
   );
-}
+});
