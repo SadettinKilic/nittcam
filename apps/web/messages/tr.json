@@ -960,6 +960,7 @@
       "HOLES_NOT_SUPPORTED": "Delikler bu sürümde kesilmiyor.",
       "INNER_OFFSET_FAILED": "İç kesim bu takım için çok küçük; takım boşluğa girmiyor.",
       "INNER_SPLIT": "Takım iç kesimin dar bir boğazından geçemiyor.",
+      "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor, dış hatla kesişiyor ya da başka bir iç kesime değiyor; parça bu haliyle kesilemez.",
       "SPINDLE_INVALID": "Devir spindle aralığının dışında.",
       "SPINDLE_RPM_RANGE": "Devir spindle aralığının dışında.",
       "SPINDLE_NO_RPM": "Spindle devir yazılmadan çalıştırılıyor.",

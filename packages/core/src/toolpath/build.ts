@@ -11,6 +11,7 @@ import type { BBox, Point, Polyline } from '../geometry/types';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
 import type { Part, Placement, Project } from '../schema';
 import { deriveOutline } from '../schema/outline';
+import { checkInnerContour } from '../editor/inners';
 import { passDepths, throughCutTarget } from './depth';
 import { leadSegments, leadsClear, obstacle, type Leads, type Obstacle } from './lead';
 import {
@@ -711,9 +712,25 @@ export function buildToolpath(
   // Inner contours (T134): an opening the tool cannot cut blocks export (once per part; the
   // copies only turn it). Features not cut yet: block export instead of silently leaving them out.
   const toolRadius = tool.diameter / 2;
+  // The geometry rules of validation `INNER_CONTOUR_INVALID` (§7.2): a cut-out crossing the outline,
+  // outside it or overlapping an earlier one would cut into the part edge, the sheet or a
+  // neighbour, so it stops the toolpath here too (the server export never relies on the panel).
   for (const part of project.parts) {
     if (part.inners.length > 0) {
-      for (const inner of part.inners) {
+      const outline = deriveOutline(part);
+      for (const [k, inner] of part.inners.entries()) {
+        const invalid = checkInnerContour(outline, part.inners.slice(0, k), inner, 0);
+        if (invalid) {
+          errors.push(
+            issue(
+              'INNER_CONTOUR_INVALID',
+              'error',
+              part.id,
+              `Inner contour ${k + 1} is invalid (${invalid}): it must lie inside the outline and not touch another inner contour.`,
+            ),
+          );
+          continue;
+        }
         for (const it of innerContourPath(contour(inner), toolRadius).issues) {
           (it.severity === 'error' ? errors : warnings).push(
             issue(it.code, it.severity, part.id, it.message),

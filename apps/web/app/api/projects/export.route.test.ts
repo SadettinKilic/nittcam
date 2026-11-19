@@ -358,6 +358,32 @@ describe('POST /api/projects/:id/export', () => {
     expect(await scope.exports.listForProject(d.id)).toEqual([]);
   });
 
+  it('any blocking validation error refuses the export: a cut-out crossing the outline → 422 INNER_CONTOUR_INVALID', async () => {
+    const scope = await companyScope();
+    const v = (x: number, y: number) => ({ x, y, bulge: 0 });
+    // Kapak is 400 × 600: the cut-out runs past its right edge (B12 round 1, B2).
+    const nested = await nestedProject();
+    const bad: Project = {
+      ...nested,
+      parts: nested.parts.map((x) =>
+        x.id === 'kapak'
+          ? { ...x, inners: [[v(350, 100), v(350, 200), v(450, 200), v(450, 100)]] }
+          : x,
+      ),
+    };
+    const d = await createProject('Taşan iç kesim', bad);
+    const r = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d.id }));
+    expect(r.status).toBe(422);
+    const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
+    expect(e.stage).toBe('toolpath');
+    expect(e.violations.map((x) => x.code)).toContain('INNER_CONTOUR_INVALID');
+    expect(e.violations.every((x) => x.severity === 'error')).toBe(true);
+    expect(e.violations.find((x) => x.code === 'INNER_CONTOUR_INVALID')?.message).toMatch(
+      /İç kesim/,
+    );
+    expect(await scope.exports.listForProject(d.id)).toEqual([]);
+  });
+
   it('bad input', async () => {
     const project = await nestedProject();
     const d = await createProject('Girdi', project);
