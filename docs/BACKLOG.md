@@ -1127,6 +1127,10 @@ Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
 - Ayarlar → Malzemeler cards at 390: the "Kesim ayarı" chip is cut after the machine name ("Örnek router (Mach3):…"); the status itself is not readable (T257 shortens the chip text; check it here).
 - Smoke result at 390 × 844: no page-level horizontal scroll on home, Malzemeler, steps 1–5 and the cabinet dialog; "İleri" / "İndir" reachable on every step.
 
+## Polish queue (M9; D-047)
+
+Non-blocking review findings parked here by the PO (review ref + one line each). The M9 polish phase turns them into tasks.
+
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
 ### Batch B29: T184–T186 (onboarding, accessibility, performance)
