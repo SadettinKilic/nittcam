@@ -324,7 +324,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   const GLY = {A:'010101111101101',B:'110101110101110',C:'011100100100011',D:'110101101101110',E:'111100110100111',F:'111100110100100',
     G:'011100101101011',H:'101101111101101',I:'111010010010111',J:'001001001101010',K:'101101110101101',L:'100100100100111',
     M:'101111111101101',N:'110101101101101',O:'010101101101010',P:'110101110100100',R:'110101110101101',S:'011100010001110',
-    T:'111010010010010',U:'101101101101111',V:'101101101101010',Y:'101101010010010',Z:'111001010100111','?':'111001010000010','1':'010110010010111','2':'110001010100111','·':'000000010000000','.':'000000000000010'};
+    T:'111010010010010',U:'101101101101111',V:'101101101101010',Y:'101101010010010',Z:'111001010100111','?':'111001010000010','1':'010110010010111','2':'110001010100111','·':'000000010000000','.':'000000000000010','!':'010010010000010'};
   const MARK = {'İ':['I',[[1,-2]]],'Ş':['S',[[1,5]]],'Ç':['C',[[1,5]]],'Ö':['O',[[0,-2],[2,-2]]],'Ü':['U',[[0,-2],[2,-2]]],'Ğ':['G',[[0,-2],[2,-2]]]};
   const ptw = (s) => [...s].length*4-1;
   function ptext(c, s, x, y, col){
@@ -384,6 +384,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     if(v==='type2'){ g[8] = 'sccccccd'.split(''); g[7] = 'dccccccs'.split(''); }
     if(v==='raise1'){ g[4][7]='s'; g[5][7]='c'; g[8][7]='.'; }
     if(v==='raise2'){ g[3][7]='s'; g[4][7]='c'; g[5][7]='c'; g[8][7]='.'; }
+    if(v==='call' || v==='sitcall'){ g[4][7]='s'; g[5][7]='c'; g[8][7]='.'; } // hand up to the ear (phone is drawn on top)
     if(v==='point'){ g[6][6]='c'; g[6][7]='s'; g[8][3]='c'; }
     const set = (r,c,ch)=>{ if(g[r] && c>=0 && c<8) g[r][c] = ch; };
     if(lk.acc==='tie' && view==='front'){ set(5,3,'a'); set(5,4,'a'); set(6,3,'a'); set(7,3,'a'); set(7,4,'a'); }
@@ -628,6 +629,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       if(s.entrance) A.vis = false; else { A.x = s.x; A.y = s.y; } });
   }
   function update(dt){
+    callTick();
     ambTick(dt);
     for(const A of [...Object.values(actors), ...NPCS]){
       if(!A.vis || !A.path.length) continue;
@@ -645,6 +647,11 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   }
   // current pose of an actor: view (front/back/left/right), sprite variant, top-left y offset, sitting flag
   function poseOf(A, t){
+    const p = poseBase(A, t);
+    if(A.phone && !A.path.length && !A.free && p.view!=='left' && p.view!=='right') return {...p, v: p.sit ? 'sitcall' : 'call'};
+    return p;
+  }
+  function poseBase(A, t){
     if(A.path.length){ const f = (A.walkT*8|0)%4, side = A.dir==='left'||A.dir==='right'; return {view: A.dir==='up'?'back':A.dir==='down'?'front':A.dir, v: side ? (f%2?'walk2':'walk1') : ['walk1','stand','walk2','stand'][f], sit:false}; }
     if(A.free){ const f = A.free; return {view:f.view, v:typeof f.v==='function' ? f.v(t) : f.v, sit:!!f.sit}; } // ambient pose away from the home spot
     const s = spotOf(A.grp, A.idx), st = A.st, rm = reduced();
@@ -748,7 +755,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       for(let i=0;i<Math.min(prog,n);i++){ const yy = b.y+3+Math.round(2+1.6*Math.sin(i*.7+AMB.seed*1.9)); F(c,b.dx+i,yy,1,1,'#2f56e3'); if(i%4===0 && i<n-2) F(c,b.dx+i,b.y+8,2,1,'#d92d20'); } }
     // CNC spindle position
     if(L.cnc){ const k = L.cnc, span = k.w-7; L.cncX = S.testing && !rm ? k.x+2+Math.abs(((t*10|0)%(span*2))-span) : null; }
-    drawClock(c);
+    drawClock(c); drawPoPhone(c);
     for(const q of AMB.cups) drawCup(c, q);
     for(const A of Object.values(actors)){
       if(!A.vis || A.path.length || A.amb || !A.grp || A.grp==='door') continue;
@@ -789,6 +796,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       if(A.st==='blocked'){ const y = b.top-1+(reduced()?0:Math.round(Math.sin(t*5+A.ph))); F(c,x,y,7,9,'#7a1410'); F(c,x+1,y+1,5,7,'#ef3b2c'); F(c,x+3,y+2,1,3,'#fff'); F(c,x+3,y+6,1,1,'#fff'); F(c,x+5,y+9,1,1,'#7a1410'); }
       else { const pop = !reduced() && ((t+A.ph)%3) < .35, y = b.top-(pop?2:0); F(c,x,y,8,8,'#0b5e35'); F(c,x+1,y+1,6,6,'#22b464'); [[2,4],[3,5],[4,4],[5,3],[6,2]].forEach(([a,d])=>F(c,x+a-(a>5?1:0),y+d,1,1,'#fff')); if(pop){ F(c,x-1,y-1,1,1,'#ffe66d'); F(c,x+8,y-1,1,1,'#ffe66d'); } }
     }
+    drawCall(c, t);
     // ambient bubbles: the tea lady's call, a dev's thought while pacing (state bubbles stay HTML and untouched)
     for(const A of [...Object.values(actors), ...NPCS]){ if(!A.vis) continue;
       if(A.say && !A.path.length){ const b = actorBox(A,t); bubble(c, b.x, b.top, A.say, false); }
@@ -1027,10 +1035,73 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     }
     if(!AMB.agent){
       if(T>=nx.dev){ const D = devsReady(); if(D.length) paceStart(D[Math.random()*D.length|0]); else nx.dev = T+retry; }
-      else if(T>=nx.po){ const P = actors.po; if(!(P.st==='reviewing' && P.grp==='poDesk' && ready(P) && boardStart(P))) nx.po = T+retry; }
+      else if(T>=nx.po && !CALL.phase){ const P = actors.po; if(!(P.st==='reviewing' && P.grp==='poDesk' && ready(P) && boardStart(P))) nx.po = T+retry; }
     }
     if(!AMB.cto && T>=nx.cto && !ctoStart()) nx.cto = T+(FAST ? 3 : 60);
   }
+  // ---------- PO phone call (cosmetic only) ----------
+  // The owner writes to the PO -> `status.mjs call` sets state.call.at. The desk phone rings ~1.5 s, the PO answers (hand-held
+  // phone at the ear wherever they stand), short Turkish lines cycle every ~2.5 s, and 10 s after the last call.at the PO says
+  // goodbye and hangs up. Blocked / usage limit / "PC'ye bak" alert win over it; reduced motion shows a static phone icon only.
+  const CALL = {phase:null, last:0, seen:0, fresh:false, t0:0, lineAt:0, idx:0, line:'', byeAt:0};
+  const CALL_LINES = ['Buyrun efendim','...','Evet hemen bakıyorum','Hı hı','Tamam not aldım','...','Ekibe iletiyorum','Hı hı','Hallederiz','...','Başka bir şey var mı?','Hı hı'].map(s=>s.toLocaleUpperCase('tr-TR'));
+  const callNow = ()=>Date.now();
+  function callSignal(){ // from state: a newer call.at than before
+    const at = S.call && S.call.at ? Date.parse(S.call.at) : 0;
+    if(!at || at<=CALL.seen) return; CALL.seen = at;
+    if(callNow()-at > 10000*TS) return; // stale (page opened long after the call)
+    CALL.last = at; CALL.fresh = true; callTick();
+  }
+  function callEnd(){ const P = actors.po; if(P) P.phone = false; CALL.phase = null; CALL.line = ''; if(AMB.next.po!=null) sched('po', 120, 240); kick(true); }
+  function callTick(){
+    if(!L) return; const P = actors.po, now = callNow(), ph = CALL.phase;
+    if(!P) return;
+    const ok = P.vis && P.placed && !AMB.block && Object.keys(S.agents||{}).length;
+    if(ph && !ok){ callEnd(); CALL.fresh = false; return; }
+    if(!ph){
+      if(!CALL.fresh) return; CALL.fresh = false; if(!ok) return;
+      if(P.amb){ const s = spotOf(P.grp, P.idx); if(!s.entrance){ P.x = s.x; P.y = s.y; } P.path = []; agentDone(P); if(P.want){ const w = P.want; P.want = null; goTo(P, w.g, w.i); } }
+      CALL.phase = reduced() ? 'talk' : 'ring'; CALL.t0 = now; CALL.lineAt = 0; CALL.idx = 0; P.phone = CALL.phase==='talk'; kick(true); return;
+    }
+    if(CALL.fresh){ CALL.fresh = false; if(ph==='bye'){ CALL.phase = 'talk'; CALL.line = ''; CALL.lineAt = 0; P.phone = true; } }
+    if(CALL.phase==='ring' && now-CALL.t0 >= 1500*TS && !P.path.length){ CALL.phase = 'talk'; P.phone = true; CALL.lineAt = 0; kick(true); }
+    if(CALL.phase==='talk'){
+      if(now-CALL.last > 10000*TS){ CALL.phase = 'bye'; CALL.line = 'GÖRÜŞÜRÜZ!'; CALL.byeAt = now+1700*TS; return; }
+      if(!reduced() && now>=CALL.lineAt){ CALL.line = CALL_LINES[CALL.idx++ % CALL_LINES.length]; CALL.lineAt = now+2500*TS; kick(true); }
+    } else if(CALL.phase==='bye' && now>=CALL.byeAt) callEnd();
+  }
+  function drawDeskPhone(c, x, y, shake, off){ // base + handset (handset gone while someone holds it)
+    F(c,x,y+2,7,3,'#2b2f3a'); F(c,x+1,y+3,1,1,'#7d93b2'); F(c,x+3,y+3,1,1,'#7d93b2'); F(c,x+5,y+3,1,1,'#7d93b2');
+    if(!off){ F(c,x+shake,y,7,2,'#3b4150'); F(c,x+shake,y,2,3,'#3b4150'); F(c,x+5+shake,y,2,3,'#3b4150'); F(c,x+1+shake,y,5,1,'#5a6275'); }
+  }
+  function drawPoPhone(c){ // the desk phone is always on the PO desk (handset off while the PO is on the call)
+    const sp = L.SP.poDesk && L.SP.poDesk[0]; if(!sp || !sp.paper) return;
+    const P = actors.po, held = !!(P && P.phone && P.grp==='poDesk' && !P.path.length) && CALL.phase!=='ring';
+    drawDeskPhone(c, sp.x+(L.tall?7:9), sp.paper.y+1, 0, held);
+  }
+  function drawCall(c, t){
+    const P = actors.po, ph = CALL.phase; if(!ph || !P || !P.vis) return;
+    const b = actorBox(P, t), atDesk = P.grp==='poDesk' && !P.path.length, sp = L.SP.poDesk[0];
+    const dx = sp.x+(L.tall?7:9), dy = sp.paper.y+1;
+    const ring = ph==='ring' && !reduced(), sh = ring && (t*14|0)%2 ? 1 : 0;
+    if(ring){
+      const px = atDesk ? dx : b.x+5, py = atDesk ? dy : b.top+3; // desk phone, or a handheld one where the PO stands
+      if(atDesk) drawDeskPhone(c, dx, dy, sh, false); else { F(c,px+sh,py,3,5,'#23262e'); F(c,px+1+sh,py+1,1,3,'#7d93b2'); }
+      const k = (t*5|0)%3, rc = '#ff5a4f';
+      for(let i=0;i<=k;i++){ F(c,px-2-i*2,py-1-i,1,2,rc); F(c,px+8+i*2,py-1-i,1,2,rc); }
+      return;
+    }
+    if(!P.path.length && (ph==='talk' || ph==='bye')){
+      if(reduced()){ F(c,b.x+6,b.top+1,4,7,'#23262e'); F(c,b.x+7,b.top+2,2,5,'#7d93b2'); F(c,b.x+6,b.top+1,4,1,'#ff5a4f'); return; } // static phone icon
+      F(c,b.x+3,b.top+2,2,4,'#23262e'); F(c,b.x+3,b.top+2,1,1,'#7d93b2'); // phone at the ear
+      if(CALL.line){ // bubble to the left of the head, so it never overlaps the HTML status bubble above
+        const w = ptw(CALL.line)+5, h = 10; let x = b.x-9-w, side = 1; if(x<1){ x = b.x+10; side = 0; } const y = b.top+1;
+        F(c,x,y,w,h,'#23262e'); F(c,x+1,y+1,w-2,h-2,'#ffffff'); ptext(c, CALL.line, x+3, y+3, '#23262e');
+        const tx = side ? x+w : x-2; F(c,tx,y+4,2,2,'#23262e'); F(c,side?tx-1:tx+1,y+4,1,2,'#ffffff');
+      }
+    }
+  }
+  setInterval(()=>{ if(L && (CALL.phase || CALL.fresh)){ callTick(); if(reduced()) kick(true); } }, 500);
   // drawing helpers
   function bubble(c, cx, ty, text, thought){ // pixel speech/thought bubble above a head (ty = sprite top)
     const w = ptw(text)+5, h = 10, x = Math.max(1, Math.min(Math.round(cx-w/2), L.W-w-1)), y = Math.max(1, ty-h-4);
@@ -1298,7 +1369,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     const tstat = {}; (S.tasks||[]).forEach(t=>{ tstat[t.id] = t.status; });
     if(prevTask && Object.keys(tstat).some(id=>prevTask[id] && prevTask[id]!=='done' && tstat[id]==='done')) confetti();
     prevTask = tstat;
-    drawQuota(Li); renderOffice(); renderPhases(); renderTasks(); renderAsks(); renderLog(); drawAlarm(Li);
+    drawQuota(Li); renderOffice(); renderPhases(); renderTasks(); renderAsks(); renderLog(); drawAlarm(Li); callSignal();
   }
 
   // ---------- data ----------
