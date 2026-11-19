@@ -7,6 +7,7 @@ import {
   checkInnerContour,
   bulgeFromSagitta,
   circleOutline,
+  localBox,
   nextPartName,
   segmentMidpoint,
   snap,
@@ -94,6 +95,12 @@ import { RULER_PX, type EditorFocus, type SnapGlyph } from './editor-canvas';
 import { BoardActionBar, EditorInspector } from './inspector';
 import type { SubSelection } from './properties';
 import { boardSummary } from '../../lib/editor/summary';
+import {
+  addTemplateParams,
+  snapPlacement,
+  templateGhost,
+  type PendingTemplate,
+} from '../../lib/editor/template-place';
 import { BoardPartList } from './part-list';
 import { StatusBar } from './status-bar';
 
@@ -231,6 +238,16 @@ export function DrawingBoard({
 
   const parts = useMemo(() => boardParts(project), [project]);
   const bounds = useMemo(() => boardBox(parts), [parts]);
+  // T148: a template being placed; its ghost follows the cursor and snaps to the part edges.
+  const [pendingTpl, setPendingTpl] = useState<PendingTemplate | null>(null);
+  const tplPart = pendingTpl ? project.parts.find((p) => p.id === pendingTpl.partId) : undefined;
+  const tplAt = pendingTpl ? parts.find((p) => p.id === pendingTpl.partId)?.at : undefined;
+  const tplBox = useMemo(() => (tplPart ? localBox(tplPart) : null), [tplPart]);
+  const placing = pendingTpl && tplPart && tplAt && tplBox ? pendingTpl : null;
+  const ghost = useMemo(
+    () => (placing && tplBox && tplAt ? templateGhost(placing, tplBox, tplAt) : null),
+    [placing, tplBox, tplAt],
+  );
   const names = useMemo(
     () =>
       new Map(
@@ -611,6 +628,19 @@ export function DrawingBoard({
     return () => window.removeEventListener('keydown', onKey, true);
   });
 
+  // T148: Esc drops the template being placed.
+  useEffect(() => {
+    if (!pendingTpl) return;
+    function onKey(e: KeyboardEvent) {
+      if (typing(e.target) || e.key !== 'Escape') return;
+      setPendingTpl(null);
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  });
+
   // Hole tool: Esc drops the centre in progress, a second Esc returns to Seç.
   useEffect(() => {
     if (!holeOn) return;
@@ -704,6 +734,11 @@ export function DrawingBoard({
       return;
     }
     if (e.button !== 0) return;
+    if (placing) {
+      if (run('addTemplate', addTemplateParams(placing))) setPendingTpl(null);
+      else notify.error(t.inspector.template.refused);
+      return;
+    }
     if (holeOn) {
       const { point } = drawPoint(w, e.altKey);
       setDrawAt(point);
@@ -862,6 +897,13 @@ export function DrawingBoard({
     setCursor(w);
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, s);
     const g = gesture.current;
+    if (placing && tplBox && tplAt && !g) {
+      const local = { x: w.x - tplAt.x, y: w.y - tplAt.y };
+      const tol = 12 / view.scale;
+      const pl = snapPlacement(local, tplBox, placing.placement, placing.params.edgeDistance, tol);
+      setPendingTpl({ ...placing, placement: { ...pl, x: tidy(pl.x), y: tidy(pl.y) } });
+      return;
+    }
     if (((drawTool || dimTool) && (!g || g.kind === 'draw')) || (holeOn && !g)) {
       const r = drawPoint(w, e.altKey);
       setDrawAt(r.point);
@@ -1381,6 +1423,7 @@ export function DrawingBoard({
             }
             colors={colors}
             draft={bendView ?? holeView ?? draftView}
+            ghost={ghost}
             draftLabel={bendView ? null : holeD !== null ? `Ø ${formatMm(holeD)}` : draftLabel}
             handles={bendHandles.map((h) => h.at)}
             corners={vertexHandles}
@@ -1440,6 +1483,8 @@ export function DrawingBoard({
           sub={subShown}
           onSub={setSub}
           toolRadius={toolDiameter ? toolDiameter / 2 : 0}
+          pendingTemplate={pendingTpl}
+          onPendingTemplate={setPendingTpl}
         />
       }
       canvas={canvas}
@@ -1452,20 +1497,22 @@ export function DrawingBoard({
           snap={state.snap}
           onSnap={(kind, on) => dispatch({ type: 'snap', kind, on })}
           hint={
-            bend
-              ? t.draw.hints.bend
-              : holeOn
-                ? t.holeHint
-                : drawTool
-                  ? t.draw.hints[hintFor(drawTool, draft, draftView)]
-                  : dimTool
-                    ? dimA
-                      ? t.dim.hintSecond
-                      : t.dim.hintFirst
-                    : // T136: the hint bar speaks for every tool, not only the drawing ones.
-                      state.tool === 'pan'
-                      ? t.draw.hints.pan
-                      : t.draw.hints.select
+            placing
+              ? t.inspector.template.placingHint
+              : bend
+                ? t.draw.hints.bend
+                : holeOn
+                  ? t.holeHint
+                  : drawTool
+                    ? t.draw.hints[hintFor(drawTool, draft, draftView)]
+                    : dimTool
+                      ? dimA
+                        ? t.dim.hintSecond
+                        : t.dim.hintFirst
+                      : // T136: the hint bar speaks for every tool, not only the drawing ones.
+                        state.tool === 'pan'
+                        ? t.draw.hints.pan
+                        : t.draw.hints.select
           }
           snapName={draftView?.closing ? t.draw.close : snapMark ? t.snap[snapMark.kind] : null}
         />
