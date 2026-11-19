@@ -378,12 +378,17 @@ function WizardSession({
 
   const created = useCallback(
     (id: string) => {
-      // Keep the step's other query params (e.g. `?gorunum=cizim`, T124) across the first save.
-      const url = new URL(stepUrl(id, stepRef.current), window.location.origin);
-      new URLSearchParams(window.location.search).forEach((value, key) => {
-        if (key !== 'adim') url.searchParams.set(key, value);
-      });
-      window.history.replaceState({ [STEP_STATE]: stepRef.current }, '', url.pathname + url.search);
+      // T264: a save that lands after the user left the wizard (e.g. for the machine form) must
+      // not rewrite that page's address.
+      if (window.location.pathname === NEW_PATH) {
+        // Keep the step's other query params (e.g. `?gorunum=cizim`, T124) across the first save.
+        const url = new URL(stepUrl(id, stepRef.current), window.location.origin);
+        new URLSearchParams(window.location.search).forEach((value, key) => {
+          if (key !== 'adim') url.searchParams.set(key, value);
+        });
+        const next = url.pathname + url.search;
+        window.history.replaceState({ [STEP_STATE]: stepRef.current }, '', next);
+      }
       onCreated(id);
     },
     [onCreated],
@@ -462,8 +467,14 @@ function WizardSession({
 
   const profile = detail?.profile ?? null;
   // D-045 / T258: a problem that blocks G-code is marked on the step that causes it, on every step.
-  const noParams = profile !== null && findMaterialParams(profile, project.stock) === undefined;
-  const stepErrors: StepErrors = noParams ? { makine: t.steps.errors.noParams } : {};
+  const params = profile !== null ? findMaterialParams(profile, project.stock) : undefined;
+  const noParams = profile !== null && params === undefined;
+  // T265: a set with unconfirmed starting values blocks like a missing one.
+  const stepErrors: StepErrors = noParams
+    ? { makine: t.steps.errors.noParams }
+    : params?.unverified
+      ? { makine: t.steps.errors.unverifiedParams }
+      : {};
   const simMachine: SimMachine | null = useMemo(() => {
     const d = details[machineId];
     return d
@@ -494,6 +505,14 @@ function WizardSession({
       );
     }
   }, []);
+
+  // T264: "Kesim ayarı ekle" leaves only after the project is saved, so the way back always names
+  // this project (also when clicked before the first autosave of a new project finished).
+  const settle = session.settle;
+  const resolveFixReturn = useCallback(async () => {
+    const id = await settle();
+    return `${stepUrl(id, 'makine')}&${LATEST_PARAM}=${LATEST_VALUE}`;
+  }, [settle]);
 
   // Browser Back/forward between steps: follow the URL's `?adim=` (no new entry).
   const projectIdRef = useRef(session.projectId);
@@ -604,6 +623,7 @@ function WizardSession({
               t={t.machine}
               materials={messages.materials}
               returnTo={`${stepUrl(session.projectId, 'makine')}&${LATEST_PARAM}=${LATEST_VALUE}`}
+              resolveReturnTo={resolveFixReturn}
               project={project}
               machines={machines}
               library={library}

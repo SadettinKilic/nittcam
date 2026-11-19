@@ -490,3 +490,18 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - **Large slugs** follow the project's tab setting (tabs on → tabs on the cut-out too; off → none).
 - Order unchanged: every cut-out of a copy before its outer contour (D-023).
 - Tests: `toolpath.slug-tabs.property.test.ts` (round and rectangular small slugs held by ≥ 2 tabs or refused; the export passes every rule-9 check), `toolpath.inner.property.test.ts`, tester `b12-cutouts.tester.test.ts` (adjusted from "no tabs").
+
+## D-051 Golden-file approval delegated to PO + tester (2026-11-19, owner)
+- The owner: "daha önceki golden dosyaları nasıl test ettiyseniz buna da öyle bakın, siz bilirsiniz." New or changed golden G-code files are approved by the PO after the tester verifies them the same way as before: read back by the independent G-code reader, all §7.2 safety rules, gcode-safety review, existing goldens byte-identical unless the change is intended and explained.
+- PRs still carry `needs-human` for traceability; the PO notes "approved per D-051". Machine tests (air cut, test cut, field test) remain the owner's.
+- Tester queue: if more than 2 PRs wait for testing, the next free dev slot becomes a second tester until the queue is ≤ 1 (team max 5 unchanged).
+
+## D-052 Flexible seats: the PO picks CTO, tester or dev by a fixed order (2026-11-19, owner)
+- The owner: "cto işi varsa cto olacak. cto yoksa dev gerekliyse dev getir, tester gerekliyse tester getir. Onlar arasındaki seçimi belirle, ben dashboarddan görebileyim."
+- Team max 5 stays. Fixed seats: PO, tester, dev (always at least one dev). Two flexible seats (dashboard keys `dev2` and `dev3`; the CTO uses `fable`). Whenever a flexible seat is free, the PO fills it in this order:
+  1. **CTO** if a CTO review is due (2 merged batches since the last one). It waits for the first seat that frees up; running agents are never stopped for it.
+  2. **Tester 2** if at least one PR is ready (`ci:gate` OK) and waiting while the tester is busy. Finishing work beats starting work: open PRs collect merge conflicts. It stays a tester while PRs wait, then goes back to dev.
+  3. **Dev** if a backlog batch can start (parallelism on, D-042).
+  4. **Empty** if nothing fits (saves usage).
+- Replaces the D-051 rule "more than 2 PRs wait". Usage near the limit: max 2 devs (unchanged). Roles switch only at a task boundary.
+- The dashboard shows each flexible seat's current role: `node tools/team/status.mjs role <dev2|dev3> <dev|tester|cto> ["why"]`. A seat with role `tester` is shown as "Tester 2" at the second test bench.

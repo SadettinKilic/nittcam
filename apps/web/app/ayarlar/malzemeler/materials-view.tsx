@@ -290,27 +290,40 @@ function MaterialRow({
               <span className="text-fg-muted">{t.paramsNoMachine}</span>
             ) : (
               machines.map(({ name, profile }) => {
-                const missing = libraryParamLinks(m, profile)
+                const links = libraryParamLinks(m, profile);
+                const missing = links
                   .filter((l) => !l.params)
                   .map((l) => mmFormat.format(l.thickness));
+                // T265: unconfirmed starting values are never a green "Tamam".
+                const unverified = links
+                  .filter((l) => l.params?.unverified)
+                  .map((l) => mmFormat.format(l.thickness));
+                const status =
+                  missing.length > 0 ? 'missing' : unverified.length > 0 ? 'unverified' : 'ok';
                 const sentence =
-                  missing.length === 0
+                  status === 'ok'
                     ? fill(t.paramsOk, { machine: name })
-                    : fill(t.paramsMissing, { machine: name, list: missing.join(', ') });
+                    : status === 'missing'
+                      ? fill(t.paramsMissing, { machine: name, list: missing.join(', ') })
+                      : fill(t.paramsUnverified, { machine: name, list: unverified.join(', ') });
                 // T257: the status is short and always readable; only the name may shorten.
                 return (
                   <Tooltip key={name} content={sentence}>
                     <Badge
                       tabIndex={0}
                       aria-label={sentence}
-                      data-status={missing.length === 0 ? 'ok' : 'missing'}
-                      variant={missing.length === 0 ? 'success' : 'warning'}
+                      data-status={status}
+                      variant={status === 'ok' ? 'success' : 'warning'}
                       className="max-w-full"
                     >
                       <span className="min-w-0 truncate">{name}</span>
                       <span aria-hidden className="shrink-0">
                         {' · '}
-                        {missing.length === 0 ? t.statusOk : t.statusMissing}
+                        {status === 'ok'
+                          ? t.statusOk
+                          : status === 'missing'
+                            ? t.statusMissing
+                            : t.statusUnverified}
                       </span>
                     </Badge>
                   </Tooltip>

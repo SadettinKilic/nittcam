@@ -32,13 +32,13 @@ Windows shell PATH: `export PATH="$PATH:/c/Users/sadik/AppData/Roaming/npm:/c/Pr
 ## Invariant rules
 - AI never produces geometry or G-code; `packages/core` has no AI dependency.
 - `packages/core` is pure: no network, database, clock, randomness or UI code. Same input, same output.
-- Golden G-code files change only with the owner's approval (PR label `needs-human`).
+- Golden G-code files change only after PO + tester verification (owner delegated, D-051; PR label `needs-human` kept for traceability).
 - No direct push to `main`. Every task gets a branch and a PR; squash merge.
 - Code, identifiers and commits are in English. UI text is in Turkish and lives in translation files.
 - No GPL/AGPL dependencies (MIT, BSD, Apache-2.0, BSL-1.0 are OK; MPL-2.0 only as a devDependency, OFL-1.1 for fonts, D-032).
 
 ## Human gates (ask the owner)
-Machine tests, scope decisions, pricing, golden file changes, anything in spec §14.2 "Açık maddeler". PO merges normal PRs after green CI and tester approval. **Lean CI (owner, 2026-11-18; D-048):** PR pushes run only fast checks. The full check (5 e2e shards + visual/axe + build + db, ~5 min) runs after every merge on main and before a merge on demand: `pnpm ci:full <branch>`, or `pnpm ci:baselines <branch>` when the batch changes screens on purpose (same full run, and it commits the changed Linux baselines to the branch). The PO merges only when `pnpm ci:gate <pr>` says OK (all required jobs green on the PR head; a CI baseline commit on top is accepted). Docs-only changes run nothing.
+Machine tests, scope decisions, pricing, anything in spec §14.2 "Açık maddeler". PO merges normal PRs after green CI and tester approval. **Lean CI (owner, 2026-11-18; D-048):** PR pushes run only fast checks. The full check (5 e2e shards + visual/axe + build + db, ~5 min) runs after every merge on main and before a merge on demand: `pnpm ci:full <branch>`, or `pnpm ci:baselines <branch>` when the batch changes screens on purpose (same full run, and it commits the changed Linux baselines to the branch). The PO merges only when `pnpm ci:gate <pr>` says OK (all required jobs green on the PR head; a CI baseline commit on top is accepted). Docs-only changes run nothing.
 
 ## Git
 - Identity: `sadi.kilicc@gmail.com` (repo-local config). Remote: `SadettinKilic/nittcam`.

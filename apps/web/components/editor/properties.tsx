@@ -38,7 +38,7 @@ import {
   Tooltip,
 } from '@nittcam/ui';
 import { X } from 'lucide-react';
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { formatMm, sizeText } from '../../lib/canvas-labels';
 import { fill } from '../../lib/draft-project';
 import { grainDialLabels } from '../../lib/grain-labels';
@@ -281,8 +281,21 @@ export function PartProperties({
   const segName = (i: number) => fill(t.segmentN, { n: i + 1 });
   const verName = (i: number) => fill(t.vertexN, { n: i + 1 });
 
+  // T266: a corner picked on the canvas or in the list brings the "Köşe" group (radius,
+  // "Köşeyi yuvarla", "Taşma aç") into the panel's view; it is the last group.
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ver === null) return;
+    const raf = requestAnimationFrame(() => {
+      root.current
+        ?.querySelector('[data-testid="prop-group-vertex"]')
+        ?.scrollIntoView({ block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [ver, part.id]);
+
   return (
-    <div className="flex flex-col gap-1" data-testid="editor-properties">
+    <div ref={root} className="flex flex-col gap-1" data-testid="editor-properties">
       {toolRadius > 0 ? (
         <TightCornerNotice t={t} part={part} toolRadius={toolRadius} run={run} />
       ) : null}

@@ -16,6 +16,11 @@ export interface NotifyOptions {
   duration?: number;
   /** Same id = the toast is updated instead of stacked. */
   id?: string | number;
+  /**
+   * Where this toast shows (default: the Toaster's, bottom right). `bottom-center` keeps a toast
+   * off the right-hand inspector while the user works in it (T266).
+   */
+  position?: 'bottom-right' | 'bottom-center';
 }
 
 function options(opts: NotifyOptions, fallbackDuration: number) {
@@ -24,6 +29,7 @@ function options(opts: NotifyOptions, fallbackDuration: number) {
     ...(opts.description !== undefined ? { description: opts.description } : {}),
     ...(opts.action ? { action: opts.action } : {}),
     ...(opts.id !== undefined ? { id: opts.id } : {}),
+    ...(opts.position ? { position: opts.position } : {}),
   };
 }
 
