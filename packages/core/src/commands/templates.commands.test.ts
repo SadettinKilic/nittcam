@@ -400,3 +400,50 @@ describe('template update flow (T149)', () => {
     expect(JSON.stringify(stack.project)).toBe(before);
   });
 });
+
+describe('updateTemplateVersion (T149)', () => {
+  const v2 = {
+    templateId: 'tpl-hinge',
+    version: 2,
+    geometry: hinge,
+    defaults: { ...hingeDefaults, edgeDistance: 30 },
+  };
+
+  it('upgrades every older instance of the template in one undo step', () => {
+    const p1 = placeHinge(load());
+    const p2 = run(p1, 'addTemplate', {
+      id: 'side',
+      template: {
+        templateId: 'tpl-hinge',
+        version: 1,
+        name: 'Menteşe',
+        geometry: hinge,
+        defaults: hingeDefaults,
+        params: { ...hingeDefaults, count: 1 },
+        placement: defaultPlacement('right', { x: 0, y: 900 }),
+      },
+    });
+    const stack = new CommandStack(p2);
+    const before = JSON.stringify(stack.project);
+    expect(stack.execute('updateTemplateVersion', v2, ctx).ok).toBe(true);
+    const side = part(stack.project);
+    expect(side.templates.map((t) => t.version)).toEqual([2, 2]);
+    // The second instance overrides count (1): kept; edge distance follows the new default.
+    expect(side.templates[1]?.params).toMatchObject({ count: 1, edgeDistance: 30 });
+    expect(side.holes.find((h) => h.id === 't1/cup/1')).toMatchObject({ cx: 30 });
+    expect(side.holes.find((h) => h.id === 't2/cup/1')).toMatchObject({ cx: 270 });
+    stack.undo();
+    expect(JSON.stringify(stack.project)).toBe(before);
+  });
+
+  it('refuses when nothing is older or the new version does not fit', () => {
+    const p1 = placeHinge(load());
+    expect(refused(p1, 'updateTemplateVersion', { ...v2, version: 1 })).toMatch(/no instance/);
+    expect(
+      refused(p1, 'updateTemplateVersion', {
+        ...v2,
+        defaults: { ...hingeDefaults, spacing: 5000 },
+      }),
+    ).toMatch(/inside the part outline/);
+  });
+});

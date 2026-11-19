@@ -232,3 +232,63 @@ export const removeTemplateInstance = defineCommand({
     part.templates.splice(at, 1);
   },
 });
+
+const versionParams = z.strictObject({
+  templateId: templateRefSchema.shape.templateId,
+  version: templateRefSchema.shape.version,
+  geometry: templateGeometrySchema,
+  defaults: templateParamsSchema,
+});
+
+/** Every instance of `templateId` older than `version`, as [part, ref] pairs. */
+function outdated(project: Project, p: z.output<typeof versionParams>) {
+  return project.parts.flatMap((part) =>
+    part.templates
+      .filter((t) => t.templateId === p.templateId && t.version < p.version)
+      .map((ref) => [part, ref] as const),
+  );
+}
+
+/**
+ * Accepts a newer version of a template in the whole project (T149, "Evet: ölçüler güncellenir,
+ * geri alınabilir"): every older instance of it gets the new geometry and defaults; params the
+ * user changed by hand keep their value (see `upgradeInstance`). One undo step.
+ */
+export const updateTemplateVersion = defineCommand({
+  name: 'updateTemplateVersion',
+  area: 'part',
+  description:
+    'Update every instance of a template to a newer version (new geometry and defaults; ' +
+    'hand-changed params are kept).',
+  aiTool: false,
+  params: versionParams,
+  check: (project, p) => {
+    const list = outdated(project, p);
+    if (list.length === 0)
+      return `no instance of template "${p.templateId}" is older than ${p.version}`;
+    // Instances on one part are checked one after another (each sees the ones before).
+    const byPart = new Map<string, Part>();
+    for (const [part, ref] of list) {
+      const cur = byPart.get(part.id) ?? (structuredClone(part) as Part);
+      const next = upgradeInstance(ref, p).ref;
+      const problem = fitProblem(cur, next, ref);
+      if (problem) return `${ref.name} (${part.name || part.id}): ${problem}`;
+      removeDerived(cur, ref);
+      cur.templates = cur.templates.map((t) => (t.instanceId === ref.instanceId ? next : t));
+      addDerived(cur, next);
+      byPart.set(part.id, cur);
+    }
+    return undefined;
+  },
+  apply: (draft, p) => {
+    for (const part of draft.parts) {
+      part.templates.forEach((ref, i) => {
+        if (ref.templateId !== p.templateId || ref.version >= p.version) return;
+        const next = upgradeInstance(ref as TemplateRef, p).ref;
+        removeDerived(part as Part, ref as TemplateRef);
+        part.templates[i] = next;
+        addDerived(part as Part, next);
+      });
+    }
+  },
+});

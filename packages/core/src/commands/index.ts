@@ -29,5 +29,6 @@ export {
   addTemplate,
   updateTemplateInstance,
   removeTemplateInstance,
+  updateTemplateVersion,
   nextInstanceId,
 } from './part/templates';

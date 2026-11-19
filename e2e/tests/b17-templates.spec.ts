@@ -1,6 +1,14 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { KITCHEN, openNewProject, paste, pickOption } from './wizard-helpers';
+import {
+  KITCHEN,
+  openNewProject,
+  paste,
+  pickOption,
+  projectId,
+  saved,
+  wizardReady,
+} from './wizard-helpers';
 
 // B17 / T147–T148: save a template, place it with the ghost (edge snap), typed edge distance,
 // mirrored door, undo.
@@ -43,7 +51,7 @@ async function selectFirst(page: Page) {
 }
 
 /** A hinge template (one 35 mm cup, 2 copies 400 apart, 22.5 mm from the edge) via the API. */
-async function hingeTemplate(page: Page, name: string) {
+async function hingeTemplate(page: Page, name: string): Promise<string> {
   const res = await page.request.post('/api/templates', {
     data: {
       template: {
@@ -57,6 +65,7 @@ async function hingeTemplate(page: Page, name: string) {
     },
   });
   expect(res.status()).toBe(201);
+  return ((await res.json()) as { id: string }).id;
 }
 
 async function holeX(page: Page, i: number) {
@@ -146,5 +155,65 @@ test.describe('T148 place a template', () => {
     const item = list.find((t) => t.name === saved);
     expect(item?.params.edgeDistance).toBe(40);
     expect(item?.geometry.holes).toHaveLength(2);
+  });
+});
+
+test.describe('T149 template update flow', () => {
+  async function placed(page: Page, name: string) {
+    await openBoard(page);
+    const id = await hingeTemplate(page, name);
+    await selectFirst(page);
+    await page.getByTestId('template-add').click();
+    await page.getByTestId('template-menu-item').filter({ hasText: name }).click();
+    // A hand change: count 1 (an override), then place.
+    const count = page.getByTestId('template-pending-count');
+    await count.fill('1');
+    await count.press('Enter');
+    await page.getByTestId('template-place').click();
+    await saved(page);
+    const project = await projectId(page);
+    // Version 2: edge distance 30, count 3 (conflicts with the hand-set count).
+    const res = await page.request.post(`/api/templates/${id}/versions`, {
+      data: {
+        template: {
+          name,
+          geometry: {
+            holes: [{ id: 'h1', type: 'pocket', d: 35, cx: 0, cy: 0, depth: 12, tool: 1 }],
+            inners: [],
+          },
+          params: { count: 3, spacing: 200, edgeDistance: 30, d: {} },
+        },
+      },
+    });
+    expect(res.status()).toBe(201);
+    await page.goto(`/projeler/${project}?adim=parcalar&gorunum=cizim`);
+    await wizardReady(page, 'parcalar');
+  }
+
+  test('yes updates (conflict kept, undoable)', async ({ page }) => {
+    const name = `Menteşe güncel ${Date.now()}`;
+    await placed(page, name);
+    const dialog = page.getByTestId('template-update-dialog');
+    await expect(dialog).toContainText(tpl.update.question.replace('{name}', name));
+    await expect(page.getByTestId('template-update-conflicts')).toContainText(tpl.count);
+    await page.getByTestId('template-update-yes').click();
+    await expect(dialog).toBeHidden();
+    await selectFirst(page);
+    await expect(page.getByTestId('template-instance-0')).toContainText(`${name} · sürüm 2`);
+    expect(await holeX(page, 0)).toBe(30);
+    await expect(page.getByTestId('prop-hole-1')).toHaveCount(0);
+    await page.getByTestId('editor-canvas').focus();
+    await page.keyboard.press('Control+z');
+    await expect.poll(() => holeX(page, 0)).toBe(22.5);
+  });
+
+  test('"Aynı kalsın" keeps version 1', async ({ page }) => {
+    const name = `Menteşe sabit ${Date.now()}`;
+    await placed(page, name);
+    await page.getByTestId('template-update-no').click();
+    await expect(page.getByTestId('template-update-dialog')).toBeHidden();
+    await selectFirst(page);
+    await expect(page.getByTestId('template-instance-0')).toContainText(`${name} · sürüm 1`);
+    expect(await holeX(page, 0)).toBe(22.5);
   });
 });
