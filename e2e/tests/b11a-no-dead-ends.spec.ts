@@ -123,6 +123,44 @@ test.describe('B11a no dead ends', () => {
     await expect(page.getByTestId('no-cutting-params')).toHaveCount(0);
     await expect(page.getByTestId('wizard-step-makine')).not.toHaveAttribute('data-error', '');
     await expect(page).not.toHaveURL(/profil=son/);
+    // T264: really this project, not one that happens to look the same.
+    await expect(page.getByTestId('wizard-material')).toContainText(tr.materials.pvc);
+    expect(await projectId(page)).toBe(id);
+    expect(problems).toEqual([]);
+  });
+
+  test('T264: "Kesim ayarı ekle" right after the first edit still returns to that project', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(90_000);
+    const problems = watchConsole(page);
+    // The material is the new project's first edit; the click follows at once (no wait for the
+    // first autosave). The seeded machine has no PVC set (D-046); nothing is saved on it here.
+    await openNewProject(page, 'makine');
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.pvc);
+    await page.getByTestId('add-cutting-params').click();
+
+    await expect(page).toHaveURL(/\/makineler\?duzenle=/);
+    await expect(page.getByTestId('machine-form')).toBeVisible({ timeout: 30_000 });
+    const back = new URL(page.url()).searchParams.get('donus') ?? '';
+    const m = /^\/projeler\/([0-9a-f-]{36})\?adim=makine/.exec(back);
+    expect(m, back).not.toBeNull();
+    const id = m?.[1] ?? '';
+    // The project is on the server with the pick, and a late save does not rewrite this address.
+    const saved = (await (await request.get(`/api/projects/${id}`)).json()) as {
+      project: { stock: { material: string } };
+    };
+    expect(saved.project.stock.material).toBe('pvc');
+    await page.waitForTimeout(1500);
+    await expect(page).toHaveURL(/\/makineler\?duzenle=/);
+
+    // The way back is the same project with the same material (not a new empty MDF one).
+    await page.goto(back);
+    await wizardReady(page, 'makine');
+    expect(await projectId(page)).toBe(id);
+    await expect(page.getByTestId('wizard-material')).toContainText(tr.materials.pvc);
+    await expect(page.getByTestId('no-cutting-params')).toBeVisible();
     expect(problems).toEqual([]);
   });
 

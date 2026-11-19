@@ -14,6 +14,7 @@ import {
 } from '@nittcam/core';
 import { Plus, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useId, useState, type ReactNode } from 'react';
 import { fill } from '../../lib/draft-project';
 import { fillRich } from '../../lib/fill-rich';
@@ -93,10 +94,16 @@ export function MachineFields({
   issues,
   run,
   returnTo,
+  resolveReturnTo,
 }: {
   t: Text;
   /** Where "Kesim ayarı ekle" comes back to after saving (this project, step 1; T258). */
   returnTo: string | null;
+  /**
+   * T264: saves the project first and gives the return path with its id; the link waits for it,
+   * so a click right after the first edit of a new project never returns to `/projeler/yeni`.
+   */
+  resolveReturnTo?: () => Promise<string | null>;
   materials: MaterialText;
   /** Company material library (T121); empty while loading or when it failed. */
   library: readonly MaterialItem[];
@@ -107,6 +114,8 @@ export function MachineFields({
   run: Run;
 }) {
   const ids = { machine: useId(), material: useId() };
+  const router = useRouter();
+  const [leaving, setLeaving] = useState(false);
   const { stock } = project;
   const kind = materialKindOf(stock.material);
   const profile = detail?.profile ?? null;
@@ -128,6 +137,10 @@ export function MachineFields({
   // T265: unconfirmed starting values do not count as a configured set.
   const unverified = found?.unverified === true;
   const set = unverified ? undefined : found;
+  const fix = {
+    machineId: project.machine.machineId,
+    set: kind ? { material: kind, thickness: stock.thickness } : null,
+  };
   const tableIssue = issues.find((i) => i.code === 'SHEET_LARGER_THAN_TABLE');
   const errors = t.errors;
 
@@ -356,11 +369,19 @@ export function MachineFields({
             <Button asChild size="sm" variant="outline">
               <Link
                 data-testid="add-cutting-params"
-                href={paramFixHref({
-                  machineId: project.machine.machineId,
-                  set: kind ? { material: kind, thickness: stock.thickness } : null,
-                  returnTo,
-                })}
+                aria-busy={leaving || undefined}
+                href={paramFixHref({ ...fix, returnTo })}
+                onClick={(e) => {
+                  if (!resolveReturnTo || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
+                    return;
+                  e.preventDefault();
+                  if (leaving) return;
+                  setLeaving(true);
+                  void resolveReturnTo().then(
+                    (back) => router.push(paramFixHref({ ...fix, returnTo: back })),
+                    () => setLeaving(false),
+                  );
+                }}
               >
                 {unverified ? null : <Plus aria-hidden />}
                 {unverified ? t.verifyParams : t.addParams}
