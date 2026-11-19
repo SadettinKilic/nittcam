@@ -11,6 +11,7 @@
  */
 import {
   contour,
+  innerOperation,
   deriveOutline,
   normalize,
   placedOutline,
@@ -20,7 +21,7 @@ import {
   type Placement,
 } from '@nittcam/core';
 import { ShapeUtils, Vector2 } from 'three';
-import { flatten } from './outlines';
+import { flatten, flattenOpen } from './outlines';
 
 export interface MeshData {
   positions: Float32Array;
@@ -146,6 +147,12 @@ class Builder {
     }
   }
 
+  /** Open chain of edge lines at height `z`. */
+  polyline(flat: number[], z: number) {
+    for (let i = 0; i + 3 < flat.length; i += 2)
+      this.edges.push(at(flat, i), at(flat, i + 1), z, at(flat, i + 2), at(flat, i + 3), z);
+  }
+
   /** Closed loop of edge lines at height `z`. */
   loop(ring: number[], z: number) {
     const n = ring.length / 2;
@@ -196,7 +203,19 @@ export function partMesh(part: Part, thickness: number): MeshData {
   const T = thickness;
   const b = new Builder();
   const outline = localOutline(part);
-  const inners = part.inners.map((c) => flatten(normalize(contour(c), 'inner')));
+  // T142 operations: only cut inner contours (`inside`) open the part; `online` ones and open
+  // lines are engraved marks on the top face (drawn as lines; a recessed groove needs the tool
+  // width, B20); `none` is not cut at all.
+  const inners: number[][] = [];
+  part.inners.forEach((c, k) => {
+    const op = innerOperation(part, k).kind;
+    const ring = flatten(normalize(contour(c), 'inner'));
+    if (op === 'inside' || op === 'outside') inners.push(ring);
+    else if (op === 'online') b.loop(ring, T);
+  });
+  for (const line of part.lines ?? []) {
+    if (line.op.kind === 'online') b.polyline(flattenOpen(line.vertices), T);
+  }
 
   const topHoles: number[][] = [...inners];
   const bottomHoles: number[][] = [...inners];
@@ -288,7 +307,15 @@ export function shapeKey(part: Part, thickness: number): string {
         : ['t', h.d, h.cx, h.cy],
   );
   const band = part.kind === 'rect' ? part.edgeBand : null;
-  return JSON.stringify([thickness, deriveOutline(part), part.inners, holes, band]);
+  return JSON.stringify([
+    thickness,
+    deriveOutline(part),
+    part.inners,
+    holes,
+    band,
+    part.ops ?? null,
+    part.lines ?? null,
+  ]);
 }
 
 function toVecs(flat: readonly number[]): Vector2[] {

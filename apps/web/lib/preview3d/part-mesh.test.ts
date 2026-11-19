@@ -380,3 +380,56 @@ describe('edge bands and grain data (T154)', () => {
     expect(new Set(g)).toEqual(new Set([90, 30]));
   });
 });
+
+describe('contour operations (T142 on main, B19 rider)', () => {
+  const window = [
+    { x: 20, y: 20, bulge: 0 },
+    { x: 20, y: 40, bulge: 0 },
+    { x: 60, y: 40, bulge: 0 },
+    { x: 60, y: 20, bulge: 0 },
+  ];
+  it('only cut inner contours open the part; online is an engraved mark, none is solid', () => {
+    const base = rect(100, 60, { inners: [window] } as never);
+    const cut = partMesh(base, T);
+    expect(cut.openings).toBe(1);
+    const online = partMesh(
+      { ...base, ops: { inners: [{ kind: 'online', depth: 2 }] } } as Part,
+      T,
+    );
+    expect(online.openings).toBe(0);
+    expect(online.edges.length / 6).toBe(8 + 4); // outline loops + the engraved window
+    expect(closedVolume(online)).toBeCloseTo(100 * 60 * T, 3);
+    const none = partMesh({ ...base, ops: { inners: [{ kind: 'none' }] } } as Part, T);
+    expect(none.openings).toBe(0);
+    expect(none.edges.length / 6).toBe(8);
+    expect(shapeKey({ ...base, ops: { inners: [{ kind: 'none' }] } } as Part, T)).not.toBe(
+      shapeKey(base, T),
+    );
+  });
+
+  it('open online lines are drawn on the top face; unmarked lines are not', () => {
+    const lines = [
+      {
+        vertices: [
+          { x: 10, y: 10, bulge: 0 },
+          { x: 50, y: 10, bulge: 0 },
+          { x: 50, y: 30, bulge: 0 },
+        ],
+        op: { kind: 'online', depth: 1 },
+      },
+      {
+        vertices: [
+          { x: 0, y: 0, bulge: 0 },
+          { x: 5, y: 5, bulge: 0 },
+        ],
+        op: { kind: 'none' },
+      },
+    ];
+    const m = partMesh(rect(100, 60, { lines } as never), T);
+    expect(m.edges.length / 6).toBe(8 + 2);
+    let top = 0;
+    for (let i = 0; i < m.edges.length; i += 6)
+      if (m.edges[i + 2] === T && m.edges[i + 5] === T) top++;
+    expect(top).toBe(4 + 2); // top outline + the engraved line
+  });
+});
