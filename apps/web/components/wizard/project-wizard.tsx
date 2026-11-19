@@ -29,6 +29,7 @@ import { IssuesOkChip } from './issues-ok-chip';
 import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
+import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
 import { ValidationPanel } from './validation-panel';
 import {
   STEPS,
@@ -505,11 +506,19 @@ function WizardSession({
   const params = profile !== null ? findMaterialParams(profile, project.stock) : undefined;
   const noParams = profile !== null && params === undefined;
   // T265: a set with unconfirmed starting values blocks like a missing one.
-  const stepErrors: StepErrors = noParams
-    ? { makine: t.steps.errors.noParams }
+  const machineError = noParams
+    ? t.steps.errors.noParams
     : params?.unverified
-      ? { makine: t.steps.errors.unverifiedParams }
-      : {};
+      ? t.steps.errors.unverifiedParams
+      : undefined;
+  // T270: a cut-out whose slug has no room for 2 tabs is caught on Parçalar, where it is drawn.
+  const slugError = session.issues.some((i) => i.code === 'INNER_SLUG_UNSECURED')
+    ? t.steps.errors.slugUnsecured
+    : undefined;
+  const stepErrors: StepErrors = {
+    ...(machineError ? { makine: machineError } : {}),
+    ...(slugError ? { parcalar: slugError } : {}),
+  };
   const simMachine: SimMachine | null = useMemo(
     () =>
       pinned
@@ -545,6 +554,27 @@ function WizardSession({
         window.history.pushState({ [STEP_STATE]: next }, '', stepUrl(session.projectId, next));
       }
       stepRef.current = next;
+    },
+    [session.projectId],
+  );
+  const innerIssues = useMemo(
+    () => unsecuredInners(project, session.issues),
+    [project, session.issues],
+  );
+  // T270: "Çizimde aç" on a blocked cut-out opens Parçalar → Çizim with that part selected.
+  const openPart = useCallback(
+    (partId: string) => {
+      setPartsSelection([partId]);
+      setPartsViewState('drawing');
+      setStep('parcalar');
+      focusHeading.current = true;
+      // One history entry for the step and the view (Back returns to the step it came from).
+      window.history.pushState(
+        { [STEP_STATE]: 'parcalar' },
+        '',
+        `${stepUrl(session.projectId, 'parcalar')}&gorunum=cizim`,
+      );
+      stepRef.current = 'parcalar';
     },
     [session.projectId],
   );
@@ -710,20 +740,22 @@ function WizardSession({
     );
   } else if (drawing) {
     both = (
-      <DrawingBoard
-        t={messages.editor}
-        project={project}
-        run={session.run}
-        onToList={() => setPartsView('list')}
-        viewSwitch={switchInCanvas ? viewSwitch : undefined}
-        toolDiameter={toolDiameter}
-        holeTool={{
-          number: holeToolNo,
-          diameter: (profile && findTool(profile, holeToolNo)?.diameter) ?? toolDiameter,
-        }}
-        initialSelection={partsSelection}
-        onSelectionChange={setPartsSelection}
-      />
+      <InnerIssuesContext.Provider value={innerIssues}>
+        <DrawingBoard
+          t={messages.editor}
+          project={project}
+          run={session.run}
+          onToList={() => setPartsView('list')}
+          viewSwitch={switchInCanvas ? viewSwitch : undefined}
+          toolDiameter={toolDiameter}
+          holeTool={{
+            number: holeToolNo,
+            diameter: (profile && findTool(profile, holeToolNo)?.diameter) ?? toolDiameter,
+          }}
+          initialSelection={partsSelection}
+          onSelectionChange={setPartsSelection}
+        />
+      </InnerIssuesContext.Provider>
     );
   } else if (step === 'parcalar') {
     const editor = (
@@ -760,6 +792,7 @@ function WizardSession({
         project={project}
         machine={simMachine}
         notice={versionNotice}
+        onOpenPart={openPart}
         header={{
           projectName: session.name,
           revision: session.revision,
@@ -795,6 +828,7 @@ function WizardSession({
         project={project}
         machine={simMachine}
         notice={versionNotice}
+        onOpenPart={openPart}
         projectId={session.projectId}
         revision={session.revision}
         saved={!session.dirty}

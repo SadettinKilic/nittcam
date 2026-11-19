@@ -514,7 +514,8 @@
       "other": "Bu satırda bir sorun var.",
       "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde.",
       "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
-      "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin."
+      "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
+      "INNER_SLUG_UNSECURED": "Bir iç kesimin göbeğine 2 köprü sığmıyor; açıklığı büyütün ya da delik aracıyla çizin."
     },
     "paste": {
       "title": "İçe aktar",
@@ -923,7 +924,9 @@
       "line": "Satır {line}",
       "wholeProgram": "Tüm program",
       "detail": "Teknik ayrıntı: {message}",
-      "machinesHint": "Makine ayarlarını Makineler sayfasından düzeltebilirsiniz."
+      "machinesHint": "Makine ayarlarını Makineler sayfasından düzeltebilirsiniz.",
+      "innerPlace": "{name} · İç kesim {n}",
+      "openPart": "Çizimde aç"
     },
     "rules": {
       "R1": "Kural 1 · Birim, mutlak koordinat, düzlem ve iş ofseti baştan yazılır",
@@ -1216,7 +1219,8 @@
       "error": "hata var",
       "errors": {
         "noParams": "Bu malzeme ve kalınlık için kesim ayarı yok; G-code üretilemez.",
-        "unverifiedParams": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı; G-code üretilemez."
+        "unverifiedParams": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı; G-code üretilemez.",
+        "slugUnsecured": "Bir iç kesimin göbeğine 2 köprü sığmıyor; G-code üretilemez."
       },
       "nextStep": "Sonraki: {name}",
       "counter": "{n} / {total}"
@@ -1342,6 +1346,8 @@
         "unknown": "Kontrol"
       },
       "violationAt": "{file} · satır {line}",
+      "innerPlace": "{name} · İç kesim {n}",
+      "openPart": "Çizimde aç",
       "noLayout": "Önce Dizilim adımında parçaları yerleştirin.",
       "noMachine": "Önce bir makine seçin.",
       "notCreated": "Proje henüz kaydedilmedi. Bir değişiklik yapınca kaydedilir, sonra dışa aktarılabilir.",
@@ -1411,6 +1417,7 @@
       },
       "row": "Satır {n}",
       "rowNamed": "Satır {n} · {name}",
+      "innerNamed": "{name} · İç kesim {k}",
       "sheet": "Plaka {n}",
       "codes": {
         "PART_LARGER_THAN_SHEET": "Parça plakaya sığmıyor (kenar payı dahil).",
@@ -1427,7 +1434,8 @@
         "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
         "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
-        "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar."
+        "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
+        "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin."
       },
       "other": "Kontrol {code}"
     }
@@ -1885,6 +1893,7 @@
       "segmentN": "Kenar {n}",
       "dimN": "Ölçü {n}",
       "innerN": "İç kesim {n}",
+      "innerSlugUnsecured": "İç kesim {n}: göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün ya da delik aracıyla çizin.",
       "innerRemove": "İç kesim {n} sil",
       "dimRemove": "Ölçü {n} sil",
       "vertexN": "Köşe {n}",

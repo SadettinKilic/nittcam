@@ -149,6 +149,7 @@ export function SimulationView({
   empty,
   left,
   notice,
+  onOpenPart,
 }: {
   t: SimText;
   project: Project;
@@ -158,6 +159,8 @@ export function SimulationView({
   left?: ReactNode;
   /** T269: the "Son sürüme geç" box when the machine has a newer profile version. */
   notice?: ReactNode;
+  /** T270: opens a part on the drawing board (a blocked cut-out links there). */
+  onOpenPart?: (partId: string) => void;
   /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
   empty: { noLayout: React.ReactNode; noMachine: React.ReactNode };
 }) {
@@ -239,7 +242,9 @@ export function SimulationView({
       </p>
     );
   } else if (!response.result.ok || !result?.summary) {
-    body = <Violations t={t} result={response.result} />;
+    body = (
+      <Violations t={t} result={response.result} parts={project.parts} onOpenPart={onOpenPart} />
+    );
   } else if (sim) {
     player = (
       <>

@@ -11,6 +11,8 @@ export {
   FASTEST_START_EDGE_FRACTION,
 } from './build';
 export type { ContourPathResult } from './build';
+export { unsecuredSlugs } from './slug-check';
+export type { UnsecuredSlug } from './slug-check';
 export { toolpathSafetyViolations, operationMoves, toolpathMoves } from './safety';
 export { summarizeToolpath, moveLength } from './stats';
 export {

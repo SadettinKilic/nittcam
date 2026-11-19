@@ -24,6 +24,9 @@ function placeOf(t: Text, project: Project, path: string): string | null {
   if (part) {
     const i = Number(part[1]);
     const name = project.parts[i]?.name ?? '';
+    // T270: a cut-out is named by its part and number ("Kapak · İç kesim 3").
+    const inner = /^parts\[\d+\]\.inners\[(\d+)\]/.exec(path);
+    if (inner && name) return fill(t.innerNamed, { name, k: Number(inner[1]) + 1 });
     return name ? fill(t.rowNamed, { n: i + 1, name }) : fill(t.row, { n: i + 1 });
   }
   const sheet = /^layout\.sheets\[(\d+)\]/.exec(path);
