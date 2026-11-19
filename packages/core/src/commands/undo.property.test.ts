@@ -133,7 +133,15 @@ const commandArb = fc.oneof(
   }),
   fc.record({
     name: fc.constant('runNesting'),
-    params: fc.record({ toolDiameter: fc.constantFrom(0, 3, 6, 8, 60) }),
+    params: fc.record(
+      { toolDiameter: fc.constantFrom(0, 3, 6, 8, 60), contourTool: fc.constantFrom(1, 2) },
+      { requiredKeys: ['toolDiameter'] },
+    ),
+  }),
+  // T162 nesting mode.
+  fc.record({
+    name: fc.constant('setNestingMode'),
+    params: fc.record({ mode: fc.constantFrom('minWaste', 'fastest', 'minToolChanges') }),
   }),
   // T013 manual placement.
   fc.record({

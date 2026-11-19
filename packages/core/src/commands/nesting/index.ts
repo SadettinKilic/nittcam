@@ -30,6 +30,23 @@ export const setNestingOptions = defineCommand({
   },
 });
 
+/**
+ * Sets the nesting goal (spec §6.2, T162): one objective, the modes are weight presets
+ * (`MODE_WEIGHTS`): least waste, fastest production (shortest cutting + travel path) or fewest
+ * tool changes. The next `runNesting` uses it.
+ */
+export const setNestingMode = defineCommand({
+  name: 'setNestingMode',
+  area: 'nesting',
+  description:
+    'Set the nesting goal: "minWaste" (least waste), "fastest" (shortest cutting and travel path) or "minToolChanges" (fewest tool changes). Run nesting afterwards to apply it.',
+  aiTool: true,
+  params: z.strictObject({ mode: nestingSchema.shape.mode }),
+  apply: (draft, params) => {
+    if (draft.nesting.mode !== params.mode) draft.nesting.mode = params.mode;
+  },
+});
+
 export const runNestingParamsSchema = z.strictObject({
   /** Cutting tool diameter in mm; the caller takes it from the selected machine profile. */
   toolDiameter: z
@@ -38,6 +55,15 @@ export const runNestingParamsSchema = z.strictObject({
     .max(PROFILE_BOUNDS.toolDiameter.max, {
       error: `must be at most ${PROFILE_BOUNDS.toolDiameter.max} mm`,
     }),
+  /**
+   * Tool number of the outer contours (the material set's tool) for the tool-change term (T162);
+   * absent = a contour tool distinct from every hole tool.
+   */
+  contourTool: z
+    .number({ error: 'must be a tool number' })
+    .int({ error: 'must be an integer' })
+    .positive({ error: 'must be a tool number >= 1' })
+    .optional(),
 });
 
 /**
@@ -50,13 +76,16 @@ export const runNesting = defineCommand({
   name: 'runNesting',
   area: 'nesting',
   description:
-    'Run nesting: place all part copies on sheets with the current nesting options. Locked placements are kept. toolDiameter is the cutting tool diameter in millimetres from the machine profile.',
+    'Run nesting: place all part copies on sheets with the current nesting options. Locked placements are kept. toolDiameter is the cutting tool diameter in millimetres from the machine profile; contourTool (optional) is its tool number.',
   aiTool: true,
   params: runNestingParamsSchema,
   apply: (draft, params) => {
     // Nothing is changed on the draft before this point, so the original is the current project.
     const project = original(draft) as Project;
-    const layout = nestProject(project, { toolDiameter: params.toolDiameter }).layout;
+    const layout = nestProject(project, {
+      toolDiameter: params.toolDiameter,
+      contourTool: params.contourTool,
+    }).layout;
     // Same layout as stored (a re-run without changes): leave the draft untouched, so the command
     // records no undo step.
     if (JSON.stringify(layout) !== JSON.stringify(project.layout)) draft.layout = layout;

@@ -29,6 +29,11 @@ export interface NestPart {
   grainLock?: boolean | undefined;
   /** Local outline (for the footprint at non-axis angles); absent = the w × h rectangle. */
   outline?: Polyline | undefined;
+  /**
+   * Tools of the part's holes, pockets and grooves (tool numbers, T162). With the input's
+   * `contourTool` they are the tools one copy needs (μ·N_toolchange). Absent = none.
+   */
+  holeTools?: readonly number[] | undefined;
 }
 
 /**
@@ -58,14 +63,21 @@ export interface ObjectiveWeights {
 }
 
 /**
- * Weight presets per mode. T012 implements min-waste only: cut length, tool changes and handling
- * are not measured yet (toolpath is T014+), so their terms are 0 and every mode ranks like
- * min-waste until those terms exist. The λ/μ/ν values are placeholders to be tuned then.
+ * Weight presets per mode (T162, spec §6.2: one objective, the modes are weights). Units: waste in
+ * mm², cut length in mm, tool changes as a count, handling as sheets loaded.
+ *
+ * - `minWaste`: waste only (the D-019 placer, unchanged).
+ * - `fastest`: λ = 1000 mm² per mm, so 1 m of estimated path weighs like 1 m² of board.
+ * - `minToolChanges`: μ = 10⁸ mm² (100 m²) per tool change, more than any sheet's waste, so the
+ *   fewest tool changes win and the waste decides between equals.
+ *
+ * Unplaced copies and the sheet count are compared before the objective in every mode, so no
+ * mode opens an extra sheet to win its own term. ν (handling) is 0 in every preset for now.
  */
 export const MODE_WEIGHTS: Readonly<Record<NestingMode, Readonly<ObjectiveWeights>>> = {
   minWaste: { waste: 1, cutLength: 0, toolChanges: 0, handling: 0 },
-  fastest: { waste: 1, cutLength: 0, toolChanges: 0, handling: 0 },
-  minToolChanges: { waste: 1, cutLength: 0, toolChanges: 0, handling: 0 },
+  fastest: { waste: 1, cutLength: 1000, toolChanges: 0, handling: 0 },
+  minToolChanges: { waste: 1, cutLength: 0, toolChanges: 1e8, handling: 0 },
 };
 
 /** Everything the placer needs. Built from a project by `nestingInputFromProject`. */
@@ -81,6 +93,11 @@ export interface NestingInput {
   mode: NestingMode;
   /** Locked placements per sheet index; they are obstacles and are copied unchanged. */
   locked: readonly (readonly Placement[])[];
+  /**
+   * Tool number of the outer contours (the material set's tool, T162); absent = a contour tool
+   * that differs from every hole tool.
+   */
+  contourTool?: number | undefined;
   /** Overrides of the mode's weight preset. */
   weights?: Partial<ObjectiveWeights> | undefined;
 }
@@ -95,7 +112,14 @@ export interface UnplacedPart {
 }
 
 /** Part orderings tried (all descending; ties by part id, then copy index). */
-export type PartOrdering = 'area' | 'longestSide' | 'perimeter' | 'height' | 'width';
+export type PartOrdering =
+  | 'area'
+  | 'longestSide'
+  | 'perimeter'
+  | 'height'
+  | 'width'
+  /** By tool set (fewest tools first, then the set), area descending inside a set (T162). */
+  | 'toolGroup';
 
 /** Placement heuristics tried. */
 export type PlacerHeuristic =
@@ -119,11 +143,15 @@ export interface SheetStats {
 export interface ObjectiveCost {
   /** Consumed material minus part area, mm² (D-019: the last sheet counts only its used strip). */
   wasteArea: number;
-  /** Not measured yet (T014+): 0. */
+  /**
+   * Estimated XY path, mm (T162): outer contour lengths of all placed copies plus the travel
+   * between them in the cut order of the toolpath model (`cutOrder` from the sheet origin, no
+   * 2-opt). Only the travel depends on the layout.
+   */
   cutLength: number;
-  /** Not measured yet: 0. */
+  /** Per sheet the distinct tools its copies need minus one (each sheet is its own program). */
   toolChanges: number;
-  /** Not measured yet: 0. */
+  /** Sheets loaded. */
   handling: number;
   /** Weighted sum. */
   total: number;

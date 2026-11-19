@@ -25,6 +25,7 @@ export {
 } from './part';
 export {
   setNestingOptions,
+  setNestingMode,
   runNesting,
   runNestingParamsSchema,
   lockPlacement,

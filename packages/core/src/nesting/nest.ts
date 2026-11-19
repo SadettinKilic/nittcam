@@ -8,6 +8,8 @@ import { allowedRotations } from '../geometry/grain';
 import { contour, signedArea } from '../geometry/polyline';
 import { isQuarterTurn } from '../geometry/transform';
 import { deriveOutline, type Placement, type Project } from '../schema';
+import { cutOrder, type OrderItem } from '../toolpath/order';
+import { loopSegments, pathLength } from '../toolpath/path';
 import { compareScore, GuillotineBin, MaxRectsBin, type Bin, type Fit } from './bins';
 import {
   fitsUsableAny,
@@ -76,6 +78,9 @@ export function placementRect(
 interface Item {
   partId: string;
   index: number;
+  /** Tool set key (sorted tool numbers) and its size, for the `toolGroup` ordering. */
+  group: string;
+  groupSize: number;
   /** Footprint of the first option (orderings use it). */
   w: number;
   h: number;
@@ -93,6 +98,7 @@ export function nestPartRotations(part: NestPart): readonly number[] {
 function orderKey(item: Item, ordering: PartOrdering): number {
   switch (ordering) {
     case 'area':
+    case 'toolGroup':
       return item.w * item.h;
     case 'longestSide':
       return Math.max(item.w, item.h);
@@ -111,6 +117,10 @@ function ordered(items: readonly Item[], ordering: PartOrdering): Item[] {
     .map((item) => ({ item, key: orderKey(item, ordering) }))
     .sort(
       (a, b) =>
+        (ordering === 'toolGroup'
+          ? a.item.groupSize - b.item.groupSize ||
+            (a.item.group < b.item.group ? -1 : a.item.group > b.item.group ? 1 : 0)
+          : 0) ||
         b.key - a.key ||
         (a.item.partId < b.item.partId ? -1 : a.item.partId > b.item.partId ? 1 : 0) ||
         a.item.index - b.item.index,
@@ -140,6 +150,11 @@ interface Context {
   s: number;
   /** The bin area: usable area grown by `s` (so an inflated part inside it = part inside usable). */
   area: Rect;
+  /** Tools one copy of each part needs, sorted (the contour tool included, T162). */
+  tools: ReadonlyMap<string, readonly number[]>;
+  /** Outer contour length of each part, mm. */
+  perimeters: ReadonlyMap<string, number>;
+  contourTool: number;
 }
 
 interface Packed {
@@ -277,6 +292,75 @@ function wasteArea(
   return waste;
 }
 
+/**
+ * Estimated XY path of a layout, mm (T162, "from the toolpath model"): the outer contour lengths
+ * plus the travel between copies in the order `cutOrder` gives (holes per tool, then the outer
+ * contour; small parts first; tools grouped; from the sheet origin; no 2-opt). Every copy is
+ * entered at its footprint centre: an estimate, the toolpath computes the real path.
+ */
+function pathEstimate(ctx: Context, layout: readonly (readonly Placement[])[]): number {
+  let length = 0;
+  const items: OrderItem[] = [];
+  layout.forEach((placements, sheet) => {
+    for (const pl of placements) {
+      const r = placementRect(pl, ctx.sizes);
+      if (!r) continue;
+      length += ctx.perimeters.get(pl.partId) ?? 2 * (r.w + r.h);
+      const centre = { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+      const part = `${pl.partId}#${pl.index}`;
+      for (const tool of ctx.tools.get(pl.partId) ?? []) {
+        if (tool === ctx.contourTool) continue;
+        items.push({ sheet, part, cls: 'drill', tool, area: 0, starts: [centre] });
+      }
+      items.push({
+        sheet,
+        part,
+        cls: 'outer',
+        tool: ctx.contourTool,
+        area: r.w * r.h,
+        starts: [centre],
+      });
+    }
+  });
+  if (items.length > 0) {
+    length += cutOrder(items, { mode: ctx.input.mode, maxEvaluations: 0 }).rapid;
+  }
+  return length;
+}
+
+/** Tool changes of a layout: per sheet, the distinct tools of its copies minus one. */
+function toolChangeCount(ctx: Context, layout: readonly (readonly Placement[])[]): number {
+  let n = 0;
+  for (const placements of layout) {
+    const tools = new Set<number>();
+    for (const pl of placements) for (const t of ctx.tools.get(pl.partId) ?? []) tools.add(t);
+    if (tools.size > 1) n += tools.size - 1;
+  }
+  return n;
+}
+
+/**
+ * The objective (spec §6.2): `waste·A + λ·L + μ·N + ν·C`. A term whose weight is 0 adds nothing;
+ * with `all` false it is not even measured (min-waste stays as fast as before T162).
+ */
+function objective(
+  ctx: Context,
+  layout: readonly (readonly Placement[])[],
+  stats: readonly SheetStats[],
+  weights: ObjectiveWeights,
+  all: boolean,
+): ObjectiveCost {
+  const waste = wasteArea(ctx, layout, stats);
+  const cut = all || weights.cutLength !== 0 ? pathEstimate(ctx, layout) : 0;
+  const changes = all || weights.toolChanges !== 0 ? toolChangeCount(ctx, layout) : 0;
+  const handling = layout.length;
+  let total = weights.waste * waste;
+  if (weights.cutLength !== 0) total += weights.cutLength * cut;
+  if (weights.toolChanges !== 0) total += weights.toolChanges * changes;
+  if (weights.handling !== 0) total += weights.handling * handling;
+  return { wasteArea: waste, cutLength: cut, toolChanges: changes, handling, total };
+}
+
 function weightsOf(input: NestingInput): ObjectiveWeights {
   return { ...MODE_WEIGHTS[input.mode], ...stripUndefined(input.weights ?? {}) };
 }
@@ -315,7 +399,22 @@ export function nest(input: NestingInput): NestingResult {
   }
   const s = partSpacing(input.toolDiameter, input.gap);
   const usable = usableSize(input.sheet, input.margin);
+  // Tool numbers are positive; -1 stands for an unknown contour tool distinct from every hole tool.
+  const contourTool = input.contourTool ?? -1;
+  const tools = new Map<string, readonly number[]>();
+  const perimeters = new Map<string, number>();
+  for (const p of input.parts) {
+    if (tools.has(p.id)) continue;
+    tools.set(
+      p.id,
+      [...new Set([contourTool, ...(p.holeTools ?? [])])].sort((a, b) => a - b),
+    );
+    perimeters.set(p.id, p.outline ? pathLength(loopSegments(p.outline)) : 2 * (p.w + p.h));
+  }
   const ctx: Context = {
+    tools,
+    perimeters,
+    contourTool,
     input,
     sizes,
     s,
@@ -348,14 +447,27 @@ export function nest(input: NestingInput): NestingResult {
         continue;
       }
       const first = options[0] as RotationOption;
-      items.push({ partId: part.id, index, w: first.w, h: first.h, options });
+      const set = tools.get(part.id) ?? [];
+      items.push({
+        partId: part.id,
+        index,
+        w: first.w,
+        h: first.h,
+        options,
+        group: set.join(','),
+        groupSize: set.length,
+      });
     }
   });
 
   const weights = weightsOf(input);
   let best: Candidate | null = null;
   let count = 0;
-  for (const ordering of PART_ORDERINGS) {
+  // `toolGroup` only differs from `area` when the copies need different tool sets (T162).
+  const groups = new Set(items.map((it) => it.group));
+  const orderings: readonly PartOrdering[] =
+    groups.size > 1 ? [...PART_ORDERINGS, 'toolGroup'] : PART_ORDERINGS;
+  for (const ordering of orderings) {
     const list = ordered(items, ordering);
     for (const heuristic of PLACER_HEURISTICS) {
       count++;
@@ -365,14 +477,7 @@ export function nest(input: NestingInput): NestingResult {
         ...added,
       ]);
       const stats = layout.map((pls, i) => sheetStats(i, pls, input.sheet, sizes));
-      const waste = wasteArea(ctx, layout, stats);
-      const cost: ObjectiveCost = {
-        wasteArea: waste,
-        cutLength: 0,
-        toolChanges: 0,
-        handling: 0,
-        total: weights.waste * waste,
-      };
+      const cost = objective(ctx, layout, stats, weights, false);
       const cand: Candidate = {
         ordering,
         heuristic,
@@ -402,7 +507,8 @@ export function nest(input: NestingInput): NestingResult {
     wastePercent,
     utilisationPercent: sheetArea > 0 ? 100 - wastePercent : 0,
     unplaced,
-    cost: win.cost,
+    // Every term measured for the report; the total (and so the choice) is unchanged.
+    cost: objective(ctx, win.layout, win.stats, weights, true),
     strategy: { ordering: win.ordering, heuristic: win.heuristic },
     candidates: count,
     info: rotatedBboxInfo(win.layout, sizes),
@@ -439,6 +545,8 @@ function rotatedBboxInfo(
 export interface NestProjectOptions {
   /** Cutting tool diameter in mm, from the selected machine profile. */
   toolDiameter: number;
+  /** Tool number of the outer contours (the material set's tool); absent = unknown (T162). */
+  contourTool?: number | undefined;
   weights?: Partial<ObjectiveWeights> | undefined;
 }
 
@@ -462,12 +570,14 @@ export function nestingInputFromProject(
       // The grain rule (D-034): the single source of allowed rotations.
       rotations: allowedRotations(part, project.stock.sheet),
       outline: contour(deriveOutline(part)),
+      holeTools: part.holes.map((h) => h.tool),
     })),
     gap: project.nesting.gap,
     margin: project.nesting.margin,
     toolDiameter: options.toolDiameter,
     mode: project.nesting.mode,
     locked,
+    contourTool: options.contourTool,
     weights: options.weights,
   };
 }
