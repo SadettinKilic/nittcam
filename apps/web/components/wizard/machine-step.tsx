@@ -11,6 +11,7 @@ import {
   type MaterialKind,
   type Project,
   type ValidationIssue,
+  defaultSheet,
 } from '@nittcam/core';
 import { Plus, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
@@ -124,6 +125,7 @@ export function MachineFields({
   const router = useRouter();
   const [leaving, setLeaving] = useState(false);
   const { stock } = project;
+  const sheet = defaultSheet(project);
   const kind = materialKindOf(stock.material);
   const profile = detail?.profile ?? null;
   const known = machines.some((m) => m.id === project.machine.machineId);
@@ -132,7 +134,7 @@ export function MachineFields({
   const presets: readonly Preset[] = entry
     ? entry.sheetSizes.map((s) => ({ a: s.height, b: s.width }))
     : SHEET_PRESETS;
-  const preset = presetIndex(presets, stock.sheet);
+  const preset = presetIndex(presets, sheet);
   const [customOpen, setCustomOpen] = useState(false);
   const custom = preset < 0 || customOpen;
   const thicknesses = entry
@@ -444,17 +446,17 @@ export function MachineFields({
           <div className="grid grid-cols-2 gap-2">
             <NumberField
               label={t.width}
-              value={stock.sheet.width}
+              value={sheet.width}
               testId="wizard-sheet-width"
               errors={errors}
-              onCommit={(width) => run('setSheetSize', { width, height: stock.sheet.height })}
+              onCommit={(width) => run('setSheetSize', { width, height: sheet.height })}
             />
             <NumberField
               label={t.height}
-              value={stock.sheet.height}
+              value={sheet.height}
               testId="wizard-sheet-height"
               errors={errors}
-              onCommit={(height) => run('setSheetSize', { width: stock.sheet.width, height })}
+              onCommit={(height) => run('setSheetSize', { width: sheet.width, height })}
             />
           </div>
         ) : null}
@@ -465,8 +467,8 @@ export function MachineFields({
             className="rounded-lg border border-warning-border bg-warning-subtle px-3 py-2.5 text-sm text-warning-text"
           >
             {fill(t.tableWarning, {
-              w: mm(stock.sheet.width),
-              h: mm(stock.sheet.height),
+              w: mm(sheet.width),
+              h: mm(sheet.height),
               tw: mm(profile.table.width),
               td: mm(profile.table.depth),
             })}
@@ -545,6 +547,7 @@ export function SheetGrain({
   onGrainPreview?: (angle: number | null) => void;
 }) {
   const { stock } = project;
+  const sheet = defaultSheet(project);
   if (!materialHasGrain(materialKindOf(stock.material))) {
     return (
       <p className="text-xs text-fg-muted" data-testid="sheet-grain-none">
@@ -553,7 +556,7 @@ export function SheetGrain({
     );
   }
   // T259: a wood stock without grain ("Yok", e.g. library MDF): say so; one click gives it one.
-  if (stock.sheet.grain === null) {
+  if (sheet.grain === null) {
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5" data-testid="sheet-grain-off">
         <p className="text-xs text-fg-muted">{t.grainOff}</p>
@@ -572,11 +575,11 @@ export function SheetGrain({
     <fieldset className="flex flex-col gap-2" data-testid="sheet-grain">
       <legend className="mb-1.5 text-sm font-medium text-fg">{t.grain}</legend>
       <GrainDial
-        value={stock.sheet.grain}
+        value={sheet.grain}
         onValueChange={(a) => onGrainPreview?.(a)}
         onValueCommit={(a) => {
           onGrainPreview?.(null);
-          if (a !== stock.sheet.grain) run('setGrain', { grain: a });
+          if (a !== sheet.grain) run('setGrain', { grain: a });
         }}
         labels={grainDialLabels()}
         data-testid="sheet-grain-dial"

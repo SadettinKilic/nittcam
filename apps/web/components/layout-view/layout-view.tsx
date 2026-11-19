@@ -8,6 +8,7 @@ import {
   type PlacementCheck,
   type Project,
   type ValidationIssue,
+  sheetSizeOf,
 } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import {
@@ -212,7 +213,7 @@ export function LayoutView({
     setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true }));
   }
 
-  const stock = project.stock.sheet;
+  const stock = useMemo(() => sheetSizeOf(project, sheet), [project, sheet]);
   const height = size.h;
   const parts = useMemo(() => drawnParts(project, sheet), [project, sheet]);
   const byKey = useMemo(() => new Map(parts.map((p) => [p.key, p])), [parts]);

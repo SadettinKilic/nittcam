@@ -1,5 +1,5 @@
 /** Helpers of the `/api/projects` route handlers (T023, D-029). */
-import { parseCommandLog, type CommandLogEntry } from '@nittcam/core';
+import { defaultSheet, parseCommandLog, type CommandLogEntry } from '@nittcam/core';
 import {
   IdTaken,
   InvalidProject,
@@ -47,7 +47,7 @@ export function toListItem(
     machine: machineNames.get(p.machine.machineId) ?? null,
     material: p.stock.material,
     thickness: p.stock.thickness,
-    sheet: { width: p.stock.sheet.width, height: p.stock.sheet.height },
+    sheet: { width: defaultSheet(p).width, height: defaultSheet(p).height },
     pieces: p.parts.reduce((sum, part) => sum + part.qty, 0),
     lastExport: last ? toRecord(last, versions.get(last.machineProfileVersionId) ?? null) : null,
   };
