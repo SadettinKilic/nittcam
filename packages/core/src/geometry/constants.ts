@@ -6,6 +6,14 @@
 /** Length epsilon in millimetres: two values closer than this are equal. */
 export const EPS = 0.001;
 
+/**
+ * Floating-point noise in millimetres (T273): the same geometry computed in a different frame (a
+ * part alone vs placed on a sheet) differs by far less than this. Exact-fit decisions (does a tab
+ * fit exactly between two corners?) allow it, so they never depend on where a part lies. Far
+ * below EPS: it never makes something fit that does not.
+ */
+export const NOISE = 1e-9;
+
 /** Join tolerance in millimetres: open ends closer than this are joined into a closed contour. */
 export const JOIN_TOL = 0.05;
 

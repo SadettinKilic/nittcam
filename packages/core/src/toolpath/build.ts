@@ -307,6 +307,25 @@ interface OperationContext {
   neighbours: readonly Obstacle[];
 }
 
+/**
+ * T273: the start edges of a cut-out from which its slug can be held. Tabs keep clear of the lead
+ * and the ramp around the start point, so whether a small slug gets its 2 tabs depends on the
+ * start edge. The cut order (nearest neighbour, D-023) may only pick such an edge, so the refusal
+ * (SMALL_SLUG_UNSECURED) depends on the cut-out alone, never on where the part lies or what else
+ * is on the sheet (D-049; `unsecuredSlugs` relies on it). When no edge fits, all stay and the
+ * slug is refused as before. Contours that are not small slugs keep every candidate.
+ */
+function holdableStarts(ctx: OperationContext, cand: number[], p: Params): number[] {
+  if (cand.length < 2 || !ctx.slug) return cand;
+  if (!isSmallPart(ctx.slug, p.tabs.smallPartArea, p.tabs.smallPartMinSide)) return cand;
+  const held = cand.filter((edge) => {
+    const errors: ToolpathIssue[] = [];
+    buildOuterOperation({ ...ctx, startEdge: edge }, p, [], errors, new Set(), []);
+    return !errors.some((e) => e.code === 'SMALL_SLUG_UNSECURED');
+  });
+  return held.length > 0 ? held : cand;
+}
+
 function buildOuterOperation(
   ctx: OperationContext,
   p: Params,
@@ -349,6 +368,8 @@ function buildOuterOperation(
   const sheetBox: BBox = { minX: 0, minY: 0, maxX: p.sheet.width, maxY: p.sheet.height };
   const bounds = unionBox(sheetBox, bbox(loop));
   let leads: Leads = { leadIn: null, leadOut: null };
+  /** Length of the chosen leads (0 = none). */
+  let leadLen = 0;
   if (p.lead !== 'none' && p.leadLength > 0) {
     const tIn = tangent(firstSeg, 0);
     const tOut = tangent(lastSeg, 1);
@@ -360,6 +381,7 @@ function buildOuterOperation(
       if (leadsClear(cand, own, ctx.neighbours, toolRadius, bounds, waste)) {
         leads = cand;
         chosen = f;
+        leadLen = p.leadLength * f;
         break;
       }
     }
@@ -447,8 +469,8 @@ function buildOuterOperation(
     }
     // Small parts (tabs on or off) need at least 2 tabs; one tab lets the part pivot.
     const count = small ? Math.max(p.tabs.count, TAB_DEFAULTS.smallPartMinCount) : p.tabs.count;
-    const leadIn = leads.leadIn ? leadReach(leads.leadIn) : 0;
-    const leadOut = leads.leadOut ? leadReach(leads.leadOut) : 0;
+    const leadIn = leads.leadIn ? leadReach(p.lead, leadLen) : 0;
+    const leadOut = leads.leadOut ? leadReach(p.lead, leadLen) : 0;
     tabs = placeTabs(segs, {
       count,
       width: p.tabs.width,
@@ -625,9 +647,11 @@ function skinCleanup(
 /**
  * How far a lead reaches from the start point: its chord. A quarter arc of radius L (chord L·√2)
  * and a 45° line of length L both stay within it, so this bounds the lead's reach along the contour.
+ * T273: from the lead's definition, not from its sheet coordinates, so the tab keep-out (and with
+ * it whether a small slug can be held) does not change with where the part lies.
  */
-function leadReach(seg: PathSeg): number {
-  return Math.hypot(seg.p0.x - seg.p1.x, seg.p0.y - seg.p1.y);
+function leadReach(type: LeadType, len: number): number {
+  return type === 'arc' ? len * Math.SQRT2 : len;
 }
 
 function positive(x: number | undefined): x is number {
@@ -1190,7 +1214,11 @@ export function buildToolpath(
           warnings: opWarnings,
           errors: opErrors,
         });
-        const cand = startEdgeCandidates(innerRaw, startFraction);
+        const cand = holdableStarts(
+          prepared[prepared.length - 1] as OperationContext,
+          startEdgeCandidates(innerRaw, startFraction),
+          params,
+        );
         edges.push(cand);
         items.push({
           sheet: sheetIndex,

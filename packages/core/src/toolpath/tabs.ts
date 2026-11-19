@@ -10,7 +10,7 @@
  * - **height**: the material left in the bridge (what the user types stays, as in VCarve); the
  *   **tab top** is `−(thickness − height)`, independent of the spoilboard allowance.
  */
-import { EPS } from '../geometry/constants';
+import { EPS, NOISE } from '../geometry/constants';
 import { bbox, signedArea } from '../geometry/polyline';
 import type { Polyline } from '../geometry/types';
 import { pathMoves, segLength, slicePath, type PathSeg } from './path';
@@ -74,7 +74,8 @@ export function tabCentreIntervals(
     if (s.bulge === 0 || onArcs) {
       const lo = Math.max(s0 + half, keepFwd + half);
       const hi = Math.min(s0 + l - half, total - keepBack - half);
-      if (hi >= lo) out.push({ lo, hi });
+      // an exact fit (hi = lo) must not depend on rounding (T273)
+      if (hi >= lo - NOISE) out.push({ lo, hi: Math.max(hi, lo) });
     }
     s0 += l;
   }
@@ -91,7 +92,7 @@ function intersect(a: readonly Interval[], b: readonly Interval[]): Interval[] {
     const y = b[j] as Interval;
     const lo = Math.max(x.lo, y.lo);
     const hi = Math.min(x.hi, y.hi);
-    if (hi >= lo) out.push({ lo, hi });
+    if (hi >= lo - NOISE) out.push({ lo, hi: Math.max(hi, lo) });
     if (x.hi < y.hi) i++;
     else j++;
   }
@@ -116,7 +117,8 @@ export function evenTabCentres(
     const shift = k * sp;
     const shifted = allowed
       .map((iv) => ({ lo: Math.max(iv.lo - shift, 0), hi: Math.min(iv.hi - shift, sp) }))
-      .filter((iv) => iv.hi >= iv.lo);
+      .filter((iv) => iv.hi >= iv.lo - NOISE)
+      .map((iv) => ({ lo: iv.lo, hi: Math.max(iv.hi, iv.lo) }));
     feasible = intersect(feasible, shifted);
   }
   if (feasible.length === 0) return null;

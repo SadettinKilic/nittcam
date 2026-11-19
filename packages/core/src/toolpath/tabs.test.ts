@@ -59,7 +59,11 @@ function loopEdges(project: Project, op: Operation): { edges: Edge[]; total: num
   const y0 = Math.min(...ys);
   const y1 = Math.max(...ys);
   const part = project.parts.find((p) => p.id === op.partId)!;
-  const r = part.kind === 'rect' ? part.params.r : 0;
+  // A corner radius below EPS cannot be machined: the part has sharp corners (D-012, spec §6.1).
+  // T273: using the raw radius here shortened every straight edge by r ∈ (0, EPS), so a tab that
+  // legitimately ends at the tangent point of the tool's corner arc was reported as off the edge.
+  const rawR = part.kind === 'rect' ? part.params.r : 0;
+  const r = rawR < EPS ? 0 : rawR;
   const tr = op.toolDiameter / 2;
   const edges: Edge[] = [
     { dir: 'h', at: y0 - tr, lo: x0 + r, hi: x1 - r },
@@ -340,6 +344,54 @@ describe('tabs (fast-check)', () => {
               direction: 'climb',
               auto: false,
               count: 1,
+              width: 1,
+              heightFrac: 0.05,
+            },
+          ],
+          // T273, seed 858170589: two 20 × 20 parts, p1 a hair taller with a 1e-6 corner radius
+          [
+            {
+              parts: [
+                { id: 'p0', w: 20, h: 20, r: 0, qty: 1 },
+                { id: 'p1', w: 20, h: 20.00000000000001, r: 0.0000010000000000000002, qty: 1 },
+              ],
+              gap: 0,
+              margin: 0,
+              toolDiameter: 6,
+              thickness: 3,
+              spoilboard: 0,
+              passDepth: 1,
+              lead: 'arc',
+              leadLength: undefined,
+              plunge: { type: 'ramp', angleDeg: 2.4444633761218317 },
+              direction: 'climb',
+              auto: false,
+              count: 4,
+              width: 1,
+              heightFrac: 0.05,
+            },
+          ],
+          // T273, seed 1440540300 (integration/2): four 20 × 20 parts, p3 with a 1e-6 corner radius
+          [
+            {
+              parts: [
+                { id: 'p0', w: 20, h: 20, r: 0, qty: 1 },
+                { id: 'p1', w: 20, h: 20, r: 0, qty: 1 },
+                { id: 'p2', w: 20, h: 20, r: 0, qty: 1 },
+                { id: 'p3', w: 20, h: 20, r: 0.0000010000000000000002, qty: 1 },
+              ],
+              gap: 0,
+              margin: 0,
+              toolDiameter: 6,
+              thickness: 3,
+              spoilboard: 0,
+              passDepth: 1,
+              lead: 'arc',
+              leadLength: undefined,
+              plunge: { type: 'straight' },
+              direction: 'climb',
+              auto: false,
+              count: 4,
               width: 1,
               heightFrac: 0.05,
             },
