@@ -36,6 +36,19 @@ describe('/api/templates (T147)', () => {
     expect(created).toMatchObject({ name: 'Menteşe', version: 1, params: hinge.params });
     const list = (await (await GET()).json()) as TemplateItem[];
     expect(list.map((t) => t.id)).toContain(created.id);
+    // T150: the ready library follows the company templates, read-only and unverified.
+    const ready = list.filter((t) => t.ready);
+    expect(ready.map((t) => t.id)).toContain('ready-hinge-35-2');
+    expect(ready.every((t) => t.verified === false)).toBe(true);
+    expect(list.slice(list.findIndex((t) => t.ready)).every((t) => t.ready)).toBe(true);
+    const one = await GET_ONE(new Request('http://test'), ctx('ready-handle-128'));
+    expect(((await one.json()) as TemplateItem).params.spacing).toBe(128);
+    expect(
+      (await GET_ONE(new Request('http://test?version=2'), ctx('ready-handle-128'))).status,
+    ).toBe(404);
+    expect(
+      (await POST_VERSION(json('POST', { template: hinge }), ctx('ready-handle-128'))).status,
+    ).toBe(404);
 
     const v2 = await POST_VERSION(
       json('POST', { template: { ...hinge, params: { ...hinge.params, spacing: 600 } } }),

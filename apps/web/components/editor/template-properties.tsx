@@ -445,7 +445,16 @@ export const TemplateProperties = memo(function TemplateProperties({
                     onSelect={() => onPending(startPlacement(part.id, item, localBox(part)))}
                   >
                     <LayoutTemplate aria-hidden />
-                    {fill(t.instance, { name: item.name, v: item.version })}
+                    {item.ready ? (
+                      <span className="flex flex-col">
+                        <span>{fill(t.instance, { name: item.name, v: item.version })}</span>
+                        {item.verified === false ? (
+                          <span className="text-xs text-fg-muted">{t.readyUnverified}</span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      fill(t.instance, { name: item.name, v: item.version })
+                    )}
                   </DropdownMenuItem>
                 ))
               )}

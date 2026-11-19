@@ -2085,6 +2085,7 @@
         "empty": "Henüz şablon yok. Bir parçanın deliklerini seçip \"Şablon olarak kaydet\" ile oluşturun.",
         "loadError": "Şablonlar yüklenemedi.",
         "instance": "{name} · sürüm {v}",
+        "readyUnverified": "Hazır şablon · ölçüler üretici verisiyle doğrulanacak",
         "count": "Adet",
         "spacing": "Aralık",
         "edgeDistance": "Kenardan mesafe",

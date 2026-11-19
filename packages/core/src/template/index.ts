@@ -442,3 +442,4 @@ export function templateFromPart(
 export function defaultPlacement(edge: TemplateEdge | null, at: Point): TemplatePlacement {
   return { x: at.x, y: at.y, rot: edge ? EDGE_ROTATION[edge] : 0, mirror: false, edge };
 }
+export * from './library';

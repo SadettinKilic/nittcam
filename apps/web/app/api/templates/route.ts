@@ -3,6 +3,7 @@ import { companyScope } from '../../../lib/server/company';
 import {
   handleTemplateError,
   readTemplate,
+  readyItems,
   templateError,
   toItem,
 } from '../../../lib/server/templates';
@@ -10,12 +11,15 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** GET /api/templates → the company templates, each at its latest version (T148). */
+/**
+ * GET /api/templates → the company templates, each at its latest version (T148), then the ready
+ * library (T150, `ready: true`).
+ */
 export async function GET() {
   try {
     const scope = await companyScope();
     const rows = await scope.templates.listLatest();
-    return NextResponse.json(rows.map((r) => toItem(r.template, r.version)));
+    return NextResponse.json([...rows.map((r) => toItem(r.template, r.version)), ...readyItems()]);
   } catch (err) {
     return handleTemplateError(err);
   }

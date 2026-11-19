@@ -8,6 +8,10 @@ export interface TemplateItem {
   version: number;
   geometry: TemplateGeometry;
   params: TemplateParams;
+  /** Ready library template (T150): read-only, shared by every company. */
+  ready?: true;
+  /** Ready templates: false until checked against manufacturer data (spec §14.2). */
+  verified?: boolean;
 }
 
 /** Body of POST /api/templates (new template) and POST /api/templates/:id/versions (new version). */
