@@ -26,6 +26,8 @@ import {
   type PathSeg,
 } from './path';
 import { toolpathSafetyViolations } from './safety';
+import { buildHoleOperation, holeOperationKind, holeStart, placedHoleCentre } from './holes';
+import { checkHolePlacement } from '../editor/holes';
 import { summarizeToolpath } from './stats';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
 
@@ -696,15 +698,53 @@ export function buildToolpath(
         }
       }
     }
-    if (part.holes.length > 0) {
-      errors.push(
-        issue(
-          'HOLES_NOT_SUPPORTED',
-          'error',
-          part.id,
-          'Holes are not cut yet (M1: outer contours only).',
-        ),
-      );
+  }
+
+  // Holes (T139–T140, D-050): each hole uses its own tool's diameter and flute length with the
+  // stock's material set feeds, rpm and step-down. Checked once per part; cut per placed copy.
+  const holeTools = new Map<string, { tool: number; diameter: number; depths: number[] }>();
+  for (const part of project.parts) {
+    const outline = deriveOutline(part);
+    for (const h of part.holes) {
+      const bad = (code: ToolpathCode, message: string) =>
+        errors.push(issue(code, 'error', part.id, `Hole ${h.id}: ${message}`));
+      const ht = findTool(machine, h.tool);
+      if (!ht) {
+        bad('TOOL_NOT_IN_PROFILE', `tool T${h.tool} is not in the machine profile.`);
+        continue;
+      }
+      if (checkHolePlacement(outline, part.inners, h)) {
+        bad('HOLE_OUTSIDE_PART', 'it does not lie inside the part (clear of inner contours).');
+        continue;
+      }
+      if (h.d < ht.diameter - EPS) {
+        bad('HOLE_SMALLER_THAN_TOOL', `Ø${h.d} mm is smaller than the tool Ø${ht.diameter} mm.`);
+        continue;
+      }
+      if (h.type === 'groove' && h.grooveWidth < ht.diameter - EPS) {
+        bad(
+          'GROOVE_NARROWER_THAN_TOOL',
+          `groove width ${h.grooveWidth} mm is narrower than the tool Ø${ht.diameter} mm.`,
+        );
+        continue;
+      }
+      const depth = h.type === 'through' ? target : -h.depth;
+      if (h.type !== 'through' && !(h.depth < thickness - EPS)) {
+        bad('HOLE_DEPTH_INVALID', `blind depth ${h.depth} mm must be less than the thickness.`);
+        continue;
+      }
+      if (-depth > ht.fluteLength + EPS) {
+        bad(
+          'DEPTH_EXCEEDS_FLUTE_LENGTH',
+          `depth ${(-depth).toFixed(3)} mm exceeds the flute length ${ht.fluteLength} mm of T${ht.number}.`,
+        );
+        continue;
+      }
+      holeTools.set(`${part.id}/${h.id}`, {
+        tool: ht.number,
+        diameter: ht.diameter,
+        depths: passDepths(depth, passDepth),
+      });
     }
   }
 
@@ -742,8 +782,10 @@ export function buildToolpath(
   const prepared: (OperationContext & { warnings: ToolpathIssue[]; errors: ToolpathIssue[] })[] =
     [];
   const items: OrderItem[] = [];
-  /** Index into `prepared` of each order item. */
+  /** Index into `prepared` of each order item (−1 for a hole). */
   const itemCtx: number[] = [];
+  /** The prebuilt operation of each hole item (holes have one start point). */
+  const itemHole: (Operation | null)[] = [];
   const edges: number[][] = [];
   project.layout.sheets.forEach((sheet, sheetIndex) => {
     const placed = sheet.placements.flatMap((placement) => {
@@ -763,6 +805,39 @@ export function buildToolpath(
           issue(it.code, it.severity, x.part.id, it.message, where),
         );
       }
+      // Holes of this copy first in the list (the cut order puts them before the contours).
+      for (const h of x.part.holes) {
+        const ht = holeTools.get(`${x.part.id}/${h.id}`);
+        if (!ht) continue;
+        const op = buildHoleOperation({
+          id: `${x.part.id}#${x.placement.index}/${h.id}`,
+          sheet: sheetIndex,
+          partId: x.part.id,
+          copy: x.placement.index,
+          hole: h,
+          centre: placedHoleCentre(x.part, x.placement, h),
+          tool: ht.tool,
+          toolDiameter: ht.diameter,
+          feed: params.feed,
+          plungeFeed: params.plungeFeed,
+          rpm: params.rpm,
+          passDepths: ht.depths,
+          safeZ,
+          clearanceZ,
+          // Climb inside a hole (CW spindle) = CCW travel (D-021).
+          travel: direction === 'climb' ? 'ccw' : 'cw',
+        });
+        items.push({
+          sheet: sheetIndex,
+          part: `${x.part.id}#${x.placement.index}`,
+          cls: holeOperationKind(h, ht.diameter),
+          tool: ht.tool,
+          area: 0,
+          starts: [holeStart(op)],
+        });
+        itemCtx.push(-1);
+        itemHole.push(op);
+      }
       const raw = contourRes.paths[0];
       const ctx = {
         ...x,
@@ -781,6 +856,7 @@ export function buildToolpath(
       }
       const cand = startEdgeCandidates(raw, startFraction);
       edges.push(cand);
+      itemHole.push(null);
       items.push({
         sheet: sheetIndex,
         part: `${x.part.id}#${x.placement.index}`,
@@ -807,6 +883,11 @@ export function buildToolpath(
   const operations: Operation[] = [];
   const smallWarned = new Set<string>();
   for (const o of order.sequence) {
+    const hole = itemHole[o.item];
+    if (hole) {
+      operations.push(hole);
+      continue;
+    }
     const k = itemCtx[o.item] as number;
     const ctx = prepared[k] as (typeof prepared)[number];
     ctx.startEdge = (edges[k] as number[])[o.start] ?? -1;
