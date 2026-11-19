@@ -114,11 +114,12 @@ describe('thin skin (T143)', () => {
     expect(res.warnings.map((w) => w.code)).not.toContain('SMALL_PART_AUTO_TABS');
   });
 
-  it('all-arc small part (disc): refused with tabs, pointing at the skin option; secured with skin and exported', () => {
+  it('all-arc small part (disc): held by arc tabs (T272); the skin stays the alternative and exports', () => {
     const tabs = buildToolpath(project({ sheets: [0], discs: 2 }), machine);
-    const err = tabs.errors.find((e) => e.code === 'SMALL_PART_UNSECURED');
-    expect(err?.message).toMatch(/ince tabaka/);
-    expect(tabs.ok).toBe(false);
+    expect(tabs.errors).toEqual([]);
+    const discOps = tabs.toolpath.operations.filter((o) => o.partId === 'o');
+    expect(discOps).toHaveLength(2);
+    for (const o of discOps) expect(o.tabs.length).toBeGreaterThanOrEqual(2);
 
     const p = project({ sheets: [0], discs: 2, skin: 0.4 });
     const skin = buildToolpath(p, machine);

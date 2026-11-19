@@ -472,7 +472,7 @@ function buildOuterOperation(
     const count = small ? Math.max(p.tabs.count, TAB_DEFAULTS.smallPartMinCount) : p.tabs.count;
     const leadIn = leads.leadIn ? leadReach(p.lead, leadLen) : 0;
     const leadOut = leads.leadOut ? leadReach(p.lead, leadLen) : 0;
-    tabs = placeTabs(segs, {
+    const tabOpts = {
       count,
       width: p.tabs.width,
       toolDiameter: p.toolDiameter,
@@ -480,8 +480,14 @@ function buildOuterOperation(
       keepBack: leadIn + toolRadius,
       minCount: small ? TAB_DEFAULTS.smallPartMinCount : 1,
       z: p.tabs.top,
-      onArcs: isInner,
-    });
+    };
+    tabs = placeTabs(segs, { ...tabOpts, onArcs: isInner });
+    // T272: an outer contour keeps straight-edge tabs; only when none fit there (all-arc outlines
+    // such as discs and the sign letter "O") may tabs sit on arcs, each inside one arc segment
+    // long enough for the whole raised span (clear of corners and joins), as for slugs (D-049).
+    // The arc the tool rolls around a sharp corner (radius = tool radius) is a corner: never used.
+    if (tabs.length === 0 && !isInner)
+      tabs = placeTabs(segs, { ...tabOpts, onArcs: true, minArcRadius: toolRadius });
     if (tabs.length === 0 && small) {
       // An unheld small part can fly off the vacuum: refused; thin skin (T143) is the way out.
       errors.push(
