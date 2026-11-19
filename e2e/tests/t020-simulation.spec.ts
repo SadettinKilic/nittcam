@@ -212,12 +212,21 @@ test.describe('T020 simulation', () => {
         y: Math.min(ch, y + h * scale) - Math.max(0, y),
       };
     };
-    const before = await visible();
+    // T268: CI read 0.15 / 0.19 once (flaky). Start from a settled fit (the first fit can still
+    // change while the panels lay out) and wait for the four zoom steps instead of one read.
+    let before = await visible();
+    await expect
+      .poll(async () => {
+        const prev = before.scale;
+        before = await visible();
+        return before.scale === prev;
+      })
+      .toBe(true);
     for (let i = 0; i < 4; i += 1) {
       await page.getByRole('button', { name: s.controls.zoomIn }).click();
     }
+    await expect.poll(async () => (await visible()).scale).toBeGreaterThan(before.scale * 2);
     const zoomed = await visible();
-    expect(zoomed.scale).toBeGreaterThan(before.scale * 2);
     expect(zoomed.x).toBeGreaterThan(40);
     expect(zoomed.y).toBeGreaterThan(40);
     // Wheel zoom at a corner, then drag far away: the sheet never leaves the canvas.
