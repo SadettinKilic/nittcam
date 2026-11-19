@@ -7,6 +7,7 @@ export {
   setThickness,
   setThinSkin,
   setSheetSize,
+  setStockSheets,
   setGrain,
 } from './plate';
 export * from './log';

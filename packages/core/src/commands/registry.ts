@@ -53,6 +53,7 @@ import {
   setMachine,
   setMaterial,
   setSheetSize,
+  setStockSheets,
   setThickness,
   setThinSkin,
 } from './plate';
@@ -76,6 +77,7 @@ export const COMMANDS = {
   setThickness,
   setThinSkin,
   setSheetSize,
+  setStockSheets,
   setGrain,
   addPart,
   drawPart,

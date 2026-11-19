@@ -729,6 +729,19 @@ export interface LayoutSummary {
   utilisationPercent: number;
   /** Part copies with no placement, by part id then copy index. */
   unplaced: { partId: string; index: number }[];
+  /** The report per sheet size (T164), in the order sizes first appear in the layout. */
+  bySize: SizeSummary[];
+}
+
+/** Sheets of one size in a layout (T164). */
+export interface SizeSummary {
+  width: number;
+  height: number;
+  /** Layout sheets of this size. */
+  sheets: number;
+  partArea: number;
+  sheetArea: number;
+  wastePercent: number;
 }
 
 /** Sheet count, waste % and unplaced copies of a project's current layout. Pure. */
@@ -753,7 +766,26 @@ export function summarizeLayout(project: Project): LayoutSummary {
   const partArea = sheets.reduce((sum, st) => sum + st.partArea, 0);
   const sheetArea = sheets.reduce((sum, st) => sum + st.sheetArea, 0);
   const wastePercent = sheetArea > 0 ? (100 * (sheetArea - partArea)) / sheetArea : 0;
+  const bySize = new Map<string, SizeSummary>();
+  sheets.forEach((st, i) => {
+    const { width, height } = sheetSizeOf(project, i);
+    const key = `${width}x${height}`;
+    const s = bySize.get(key) ?? {
+      width,
+      height,
+      sheets: 0,
+      partArea: 0,
+      sheetArea: 0,
+      wastePercent: 0,
+    };
+    s.sheets += 1;
+    s.partArea += st.partArea;
+    s.sheetArea += st.sheetArea;
+    s.wastePercent = s.sheetArea > 0 ? (100 * (s.sheetArea - s.partArea)) / s.sheetArea : 0;
+    bySize.set(key, s);
+  });
   return {
+    bySize: [...bySize.values()],
     sheetCount: sheets.length,
     sheets,
     partArea,
