@@ -178,6 +178,9 @@ test.describe('T118 light rows: no regressions', () => {
       await expect(page.getByTestId(`row-select-${n}`)).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press('Space');
     await expect(page.getByTestId('row-select-4')).toHaveAttribute('aria-checked', 'false');
+    // Enter does not toggle it (a native checkbox toggles on Space only).
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('row-select-4')).toHaveAttribute('aria-checked', 'false');
   });
 
   test('perf: 4 000 px/s flick at 1x / 4x CPU (recorded, budget only at 1x)', async ({ page }) => {

@@ -13,4 +13,18 @@ describe('LiteCheckbox', () => {
     expect(off).toContain('data-state="unchecked"');
     expect(off).not.toContain('<svg');
   });
+
+  it('Enter does not activate it (a native checkbox toggles on Space only); onKeyDown still runs', () => {
+    const seen: string[] = [];
+    const el = LiteCheckbox({ checked: false, onKeyDown: (e) => seen.push(e.key) });
+    const press = (key: string) => {
+      let prevented = false;
+      const e = { key, preventDefault: () => (prevented = true) };
+      (el.props as { onKeyDown: (e: unknown) => void }).onKeyDown(e);
+      return prevented;
+    };
+    expect(press('Enter')).toBe(true);
+    expect(press(' ')).toBe(false);
+    expect(seen).toEqual(['Enter', ' ']);
+  });
 });
