@@ -156,7 +156,14 @@ interface GridContext {
 type RowAction = 'duplicate' | 'remove' | 'up' | 'down';
 
 function issueText(t: Text, issue: ValidationIssue): string {
-  return issue.code in t.issues ? t.issues[issue.code as keyof Text['issues']] : t.issues.other;
+  const text =
+    issue.code in t.issues ? t.issues[issue.code as keyof Text['issues']] : t.issues.other;
+  // T275: a hole error names its hole, one line per hole ("Delik 3: Delik, takımdan küçük.").
+  const hole = /^parts\[\d+\]\.holes\[(\d+)\]/.exec(issue.path);
+  if (hole) return fill(t.issues.holeN, { n: Number(hole[1]) + 1, text });
+  // T277: an open line likewise.
+  const line = /^parts\[\d+\]\.lines\[(\d+)\]/.exec(issue.path);
+  return line ? fill(t.issues.lineN, { n: Number(line[1]) + 1, text }) : text;
 }
 
 function NameCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
@@ -1874,6 +1881,7 @@ export function CutListEditor({
               onImport={addDxf}
               newId={newPartId}
               {...(holeTool !== undefined ? { holeTool } : {})}
+              thickness={project.stock.thickness}
             />
           ) : null}
           {cabinetOpen > 0 ? (

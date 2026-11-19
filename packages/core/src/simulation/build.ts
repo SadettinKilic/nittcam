@@ -103,16 +103,20 @@ export function buildSimSheet(input: SimSheetInput): SimSheet {
     // Events before move k (dwell time, tool changes), keyed by move index.
     const dwellBefore = new Map<number, number>();
     const toolBefore = new Map<number, number | null>();
+    // Only changes inside the program count (T274): the first tool (M6 or "takılı mı?" stop before
+    // the first cutting move) is the set-up, not a change.
+    const firstCut = moves.findIndex((m) => m.type !== 'rapid');
+    const inProgram = (k: number) => firstCut !== -1 && k > firstCut;
     for (const e of events) {
       if (e.kind === 'dwell') {
         dwellBefore.set(e.moveIndex, (dwellBefore.get(e.moveIndex) ?? 0) + e.seconds);
         dwellSeconds += e.seconds;
       } else if (e.kind === 'toolChange') {
-        toolChanges += 1;
+        if (inProgram(e.moveIndex)) toolChanges += 1;
         toolBefore.set(e.moveIndex, e.tool);
       } else if (e.kind === 'pause') {
         // Our manual posts stop with M0 and name the tool in a comment (D-025).
-        toolChanges += 1;
+        if (inProgram(e.moveIndex)) toolChanges += 1;
         const named = promptTool(lines, e.line);
         if (named !== null) toolBefore.set(e.moveIndex, named);
       }

@@ -22,6 +22,10 @@ export interface ExportViolation {
   partId?: string;
   /** Its inner contour (0-based), for an issue about a cut-out (T270). */
   inner?: number;
+  /** Its hole (0-based), for an issue about a hole (T275). */
+  hole?: number;
+  /** Its open line (0-based), for an issue about a line (T277). */
+  openLine?: number;
 }
 
 /** What the pre-export checklist shows (spec §6.5), taken from the profile and the stock. */
@@ -33,8 +37,12 @@ export interface ExportChecklistInfo {
     sheetOffset: { x: number; y: number };
   };
   zReference: 'table' | 'materialTop';
-  /** Tools the program uses (number, diameter mm, type). */
+  /** Tools the program uses in order of use, from the toolpath; a tool repeats when it comes back (T274). */
   tools: { number: number; diameter: number; type: string }[];
+  /** Operator tool-change stops inside the program (manual changer); 0 = none (T274). */
+  toolChanges: number;
+  /** After each manual change Z must be re-zeroed (no tool length offset). */
+  rezeroZ: boolean;
 }
 
 export interface ExportProfileInfo {

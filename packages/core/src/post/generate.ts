@@ -305,7 +305,13 @@ class Writer {
         this.block(['G43', `H${op.tool}`]);
       }
     } else if (mode === 'manual' && !first) {
-      this.comment(`TAKIM DEĞİŞTİR: ${label}, sonra cycle start`);
+      // No tool length offset: the new tool sticks out a different length, so Z must be re-zeroed (T274, K2).
+      const offset = cfg.toolChange.lengthOffset && this.c.profile.toolChanger.lengthCompensation;
+      this.comment(
+        offset
+          ? `TAKIM DEĞİŞTİR: ${label}, sonra cycle start`
+          : `TAKIM DEĞİŞTİR: ${label} - Z SIFIRLA - SONRA CYCLE START`,
+      );
       this.block([cfg.toolChange.manualStop]);
     } else if (mode === 'manual' && cfg.toolChange.pauseForFirstTool) {
       this.comment(`TAKIM ${label} TAKILI MI? DEVAM İÇİN CYCLE START`);

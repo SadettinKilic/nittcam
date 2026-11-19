@@ -210,6 +210,7 @@ export function EditorInspector({
               sub={sub}
               onSub={onSub}
               toolRadius={toolRadius ?? 0}
+              thickness={project.stock.thickness}
             />
           ) : null}
           {selected.length === 1 && part && run ? (

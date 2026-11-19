@@ -78,7 +78,7 @@ test.describe('B14 tester: hole tool', () => {
     const part = await firstPart(page);
     // Centre 20 mm in from the left edge, radius 40 mm: crosses the edge.
     await drawHole(page, canvas, { x: part.x + 20, y: part.cy }, 40);
-    await expect(page.getByText(tr.editor.holeRefused)).toBeVisible();
+    await expect(page.getByText(tr.editor.holeEdge)).toBeVisible();
     await page.keyboard.press('Escape');
     await selectFirst(page);
     await expect(page.getByTestId('prop-group-holes')).toHaveCount(0);

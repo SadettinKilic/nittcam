@@ -51,7 +51,10 @@ describe.each(['generic', 'mach3'] as const)('%s', (post) => {
     // Lengths agree with the toolpath model; time = model estimate + warm-up dwell (± rounding).
     const model = summarizeToolpath(g.toolpath, r.summary.rapidFeed);
     expect(r.summary.cutLength).toBeCloseTo(model.cutLength, 0);
-    expect(r.summary.toolChanges).toBe(1);
+    // one tool: the first tool is set-up, not an in-program change (T274)
+    expect(r.summary.toolChanges).toBe(0);
+    expect(r.export.tools?.manualChanges).toBe(0);
+    expect(r.export.tools?.rezeroZ).toBe(false);
     expect(r.summary.dwellSeconds).toBe(5);
     expect(Math.abs(r.summary.seconds - 5 - model.estimatedSeconds)).toBeLessThan(
       model.estimatedSeconds * 0.05,
@@ -74,6 +77,22 @@ describe.each(['generic', 'mach3'] as const)('%s', (post) => {
     if (!last) throw new Error('no steps');
     const t = timeForLine(sheet.steps, 0, last.line, sheet.duration);
     expect(simPlayheadAt(sheet.steps, t).done).toBe(sheet.steps.length);
+  });
+
+  it('holes-through (T2 → T1 → T2): two in-program changes, tools in order of use (T274)', () => {
+    const g = golden(post, 'holes-through');
+    const r = simulateProject(g.project, pv(post), postConfig(post));
+    expect(r.ok).toBe(true);
+    expect(r.summary?.toolChanges).toBe(2);
+    const tools = r.export.tools;
+    expect(tools?.sheets[0]?.tools.map((t) => `T${t.number} D${t.diameter}`)).toEqual([
+      'T2 D8',
+      'T1 D6',
+      'T2 D8',
+    ]);
+    expect(tools?.mode).toBe(post === 'mach3' ? 'manual' : 'auto');
+    expect(tools?.manualChanges).toBe(post === 'mach3' ? 2 : 0);
+    expect(tools?.rezeroZ).toBe(post === 'mach3');
   });
 });
 

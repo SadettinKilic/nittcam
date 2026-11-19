@@ -18,6 +18,7 @@ import { Callout } from './panels';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fill } from '../../lib/draft-project';
+import { itemPlace, machineRelated } from '../../lib/part-items';
 import {
   downloadBlocker,
   EMPTY_CHECKLIST,
@@ -107,7 +108,7 @@ export function ExportStep({
   /** T269: the "Son sürüme geç" box when the machine has a newer profile version. */
   notice?: React.ReactNode;
   /** T270: opens a part on the drawing board (a blocked cut-out links there). */
-  onOpenPart?: (partId: string) => void;
+  onOpenPart?: (partId: string, hole?: number) => void;
   projectId: string | null;
   revision: number;
   /** False while changes wait for the autosave. */
@@ -459,11 +460,21 @@ export function ExportStep({
                   ? fill(t.checkTool, {
                       tools: preview.checklist.tools
                         .map((tool) => `T${tool.number} Ø${tool.diameter} mm`)
-                        .join(', '),
+                        .join(' → '),
                     })
                   : t.checkToolNone
               }
             />
+            {preview.checklist && preview.checklist.toolChanges > 0 ? (
+              <ChecklistItem
+                testId="export-check-toolchange"
+                checked={f.checks.toolChange}
+                onChange={(v) => update({ checks: { ...f.checks, toolChange: v } })}
+                label={fill(preview.checklist.rezeroZ ? t.checkToolChangeZ : t.checkToolChange, {
+                  count: preview.checklist.toolChanges,
+                })}
+              />
+            ) : null}
             <ChecklistItem
               testId="export-check-aircut"
               checked={f.checks.airCut}
@@ -632,14 +643,11 @@ function Violations({
   t: Text;
   violations: ExportViolation[];
   parts: readonly { id: string; name: string }[];
-  onOpenPart?: ((partId: string) => void) | undefined;
+  onOpenPart?: ((partId: string, hole?: number) => void) | undefined;
 }) {
   // T270: "Kapak · İç kesim 3" for a cut-out of a known part.
-  const place = (v: ExportViolation) => {
-    if (v.inner === undefined || v.partId === undefined) return null;
-    const name = parts.find((p) => p.id === v.partId)?.name;
-    return name ? fill(t.innerPlace, { name, n: v.inner + 1 }) : null;
-  };
+  // T270 / T275: "Kapak · İç kesim 3", "Kapak · Delik 3".
+  const place = (v: ExportViolation) => itemPlace(v, parts, t, fill);
   const errors = violations.filter((v) => v.severity === 'error');
   if (errors.length === 0) return null;
   return (
@@ -664,11 +672,23 @@ function Violations({
                 <button
                   type="button"
                   data-testid="export-violation-open-part"
-                  onClick={() => onOpenPart(v.partId as string)}
+                  onClick={() => onOpenPart(v.partId as string, v.hole)}
                   className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   {t.openPart}
                 </button>
+              </>
+            ) : null}
+            {v.hole !== undefined && machineRelated(v) ? (
+              <>
+                {' · '}
+                <Link
+                  href="/makineler"
+                  data-testid="export-violation-machines"
+                  className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {t.machinesLink}
+                </Link>
               </>
             ) : null}
             {v.file && v.line ? (

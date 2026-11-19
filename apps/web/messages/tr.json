@@ -526,7 +526,15 @@
       "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde.",
       "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
       "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
-      "INNER_SLUG_UNSECURED": "Bir iç kesimin göbeğine 2 köprü sığmıyor; açıklığı büyütün ya da delik aracıyla çizin."
+      "INNER_SLUG_UNSECURED": "Bir iç kesimin göbeğine 2 köprü sığmıyor; açıklığı büyütün ya da delik aracıyla çizin.",
+      "HOLE_SMALLER_THAN_TOOL": "Delik, takımdan küçük.",
+      "GROOVE_NARROWER_THAN_TOOL": "Kanal, takımdan dar.",
+      "TOOL_NOT_IN_PROFILE": "Deliğin takımı bu makinede yok.",
+      "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Kör delik derinliği plaka kalınlığından az olmalı.",
+      "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
+      "holeN": "Delik {n}: {text}",
+      "lineN": "Çizgi {n}: {text}",
+      "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor."
     },
     "paste": {
       "title": "İçe aktar",
@@ -967,6 +975,8 @@
       "detail": "Teknik ayrıntı: {message}",
       "machinesHint": "Makine ayarlarını Makineler sayfasından düzeltebilirsiniz.",
       "innerPlace": "{name} · İç kesim {n}",
+      "holePlace": "{name} · Delik {n}",
+      "linePlace": "{name} · Çizgi {n}",
       "openPart": "Çizimde aç"
     },
     "rules": {
@@ -1013,6 +1023,7 @@
       "INNER_OFFSET_FAILED": "İç kesim bu takım için çok küçük; takım boşluğa girmiyor.",
       "INNER_SPLIT": "Takım iç kesimin dar bir boğazından geçemiyor.",
       "ONLINE_DEPTH_INVALID": "Çizgi üzerinden işlem derinliği malzeme kalınlığından az olmalı.",
+      "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
       "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor, dış hatla kesişiyor ya da başka bir iç kesime değiyor; parça bu haliyle kesilemez.",
       "SPINDLE_INVALID": "Devir spindle aralığının dışında.",
       "SPINDLE_RPM_RANGE": "Devir spindle aralığının dışında.",
@@ -1101,7 +1112,10 @@
       "checksOk": "Tüm kontroller geçti",
       "checksFail": "{count} kontrol geçmedi",
       "warnings": "{count} uyarı",
-      "noDownloadHere": "İndirme, kontrol listesiyle birlikte Dışa aktar adımında yapılır."
+      "noDownloadHere": "İndirme, kontrol listesiyle birlikte Dışa aktar adımında yapılır.",
+      "toolOrder": "Takımlar: {tools}",
+      "manualChange": "Program içinde {count} kez durup takım ister.",
+      "manualChangeZ": "Program içinde {count} kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayın."
     },
     "time": {
       "hours": "{h} sa {m} dk",
@@ -1264,7 +1278,9 @@
       "errors": {
         "noParams": "Bu malzeme ve kalınlık için kesim ayarı yok; G-code üretilemez.",
         "unverifiedParams": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı; G-code üretilemez.",
-        "slugUnsecured": "Bir iç kesimin göbeğine 2 köprü sığmıyor; G-code üretilemez."
+        "slugUnsecured": "Bir iç kesimin göbeğine 2 köprü sığmıyor; G-code üretilemez.",
+        "holeInvalid": "Bir delik bu makineyle delinemiyor ya da parçaya uymuyor; G-code üretilemez.",
+        "lineOutside": "Bir çizgi parçanın dışına taşıyor; G-code üretilemez."
       },
       "nextStep": "Sonraki: {name}",
       "counter": "{n} / {total}"
@@ -1396,7 +1412,10 @@
       },
       "violationAt": "{file} · satır {line}",
       "innerPlace": "{name} · İç kesim {n}",
+      "holePlace": "{name} · Delik {n}",
+      "linePlace": "{name} · Çizgi {n}",
       "openPart": "Çizimde aç",
+      "machinesLink": "Makineler sayfası",
       "noLayout": "Önce Dizilim adımında parçaları yerleştirin.",
       "noMachine": "Önce bir makine seçin.",
       "notCreated": "Proje henüz kaydedilmedi. Bir değişiklik yapınca kaydedilir, sonra dışa aktarılabilir.",
@@ -1416,6 +1435,8 @@
       "checkOrigin": "Orijin doğru mu? ({corner})",
       "checkTool": "Takım doğru mu? ({tools})",
       "checkToolNone": "Takım doğru mu?",
+      "checkToolChange": "Program içinde {count} kez durup takım ister.",
+      "checkToolChangeZ": "Program içinde {count} kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayacağım.",
       "checkAirCut": "Air cut yapılacak mı?",
       "airCutNote": "Simülasyon air cut'ın yerine geçmez: ilk çalıştırmada takımı malzemenin üstünde boşta çalıştırın.",
       "unverifiedTitle": "Bu makine profili doğrulanmadı",
@@ -1467,6 +1488,8 @@
       "row": "Satır {n}",
       "rowNamed": "Satır {n} · {name}",
       "innerNamed": "{name} · İç kesim {k}",
+      "holeNamed": "{name} · Delik {k}",
+      "lineNamed": "{name} · Çizgi {k}",
       "sheet": "Plaka {n}",
       "codes": {
         "PART_LARGER_THAN_SHEET": "Parça plakaya sığmıyor (kenar payı dahil).",
@@ -1484,7 +1507,8 @@
         "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
         "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
-        "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin."
+        "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
+        "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın."
       },
       "other": "Kontrol {code}"
     }
@@ -2016,6 +2040,16 @@
         "depth": "Derinlik",
         "grooveWidth": "Kanal genişliği",
         "tool": "Takım no",
+        "toolDiameter": "· Ø{d}",
+        "toolMissing": "· yok",
+        "errors": {
+          "HOLE_SMALLER_THAN_TOOL": "Delik {n}: Ø{d}, T{tool} takımından (Ø{td}) küçük. Daha ince bir takım seçin ya da çapı büyütün.",
+          "TOOL_NOT_IN_PROFILE": "Delik {n}: T{tool} bu makinede yok.",
+          "GROOVE_NARROWER_THAN_TOOL": "Delik {n}: kanal genişliği {w} mm, T{tool} takımından (Ø{td}) dar. Daha ince bir takım seçin ya da kanalı genişletin.",
+          "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Delik {n}: kör derinlik {depth} mm, plaka kalınlığından ({t} mm) az olmalı. Derinliği azaltın ya da Boydan boya açın.",
+          "HOLE_OUTSIDE_PART": "Delik {n}: parçanın içinde kalmıyor ya da bir iç kesime değiyor. Merkezi içeri alın ya da çapı küçültün.",
+          "other": "Delik {n}: bu delik G-code'a yazılamıyor."
+        },
         "invalid": "Geçerli bir değer girin.",
         "refused": "Bu değer uygulanamadı: delik parçanın içinde kalmalı, derinlik ve kanal genişliği geçerli olmalı."
       },
@@ -2140,8 +2174,11 @@
         }
       }
     },
-    "holeHint": "Parçanın üstünde merkeze tıkla, çapı sürükleyerek büyüt, ikinci tıklamayla bitir.",
-    "holeRefused": "Delik buraya eklenemedi: parçanın içinde kalmalı ve iç boşluklara değmemeli."
+    "holeHint": "Merkezi tıklayın; çapı sürükleyin ya da yazın",
+    "holeRefused": "Delik için merkezi bir parçanın üstüne tıklayın.",
+    "holeEdge": "Delik kenara çok yakın: çapı küçültün ya da merkezi içeri alın.",
+    "holeCutout": "Delik bir iç kesime değiyor: çapı küçültün ya da merkezi kaydırın.",
+    "holeDuplicate": "Bu merkezde zaten Delik {n} var; onu Seç aracıyla düzenleyin."
   },
   "materialLibrary": {
     "title": "Malzemeler",
@@ -2243,7 +2280,7 @@
     "legend": {
       "part": "Parça",
       "open": "Kapalı değil",
-      "pending": "Henüz desteklenmiyor"
+      "pending": "Eklenmeyecek (cep ya da parça dışında)"
     },
     "report": {
       "title": "Rapor",
@@ -2255,8 +2292,10 @@
       "skipped": "Atlanan (iç içe blok, 3B, bozuk)",
       "duplicates": "Üst üste binen kopya (atıldı)",
       "open": "Kapanmayan çizgi (eklenmez)",
-      "pending": "Cep / çizgi üzerinden (yakında, eklenmez)",
-      "orphans": "Parça dışında kalan iç kontur (eklenmez)"
+      "pending": "Cep (yakında, eklenmez)",
+      "orphans": "Parça dışında kalan iç kontur (eklenmez)",
+      "lines": "Çizgi üzerinden çizgi",
+      "lineOrphans": "Parça dışında kalan çizgi (eklenmez)"
     },
     "openWarning": "{count} çizgi kapalı bir şekil oluşturmuyor; bunlar eklenmez. Uçlar 0,05 mm içinde birleştirilir.",
     "unit": {

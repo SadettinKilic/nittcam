@@ -426,6 +426,7 @@ export function testProgram(
       postErrors: [],
       postWarnings: [],
       check: null,
+      tools: null,
     };
   }
   const toolpath = kind === 'airCut' ? airCutToolpath(tp.toolpath) : tp.toolpath;

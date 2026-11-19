@@ -61,7 +61,7 @@ export interface SimTotals {
   seconds: number;
   cutLength: number;
   rapidLength: number;
-  /** M6 tool changes plus manual tool change stops (M0/M1). */
+  /** Tool changes inside the program (M6 or manual stop after the first cut; the first tool is set-up, T274). */
   toolChanges: number;
   dwellSeconds: number;
   moves: number;

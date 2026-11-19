@@ -30,6 +30,8 @@ export interface DxfImportPart {
   outline: Vertex[];
   inners: Vertex[][];
   holes: Hole[];
+  /** On-line (engraving) lines, drawing mm (T277). */
+  lines: { vertices: Vertex[]; op: { kind: 'online'; depth: number } }[];
 }
 
 /**
@@ -39,10 +41,16 @@ export interface DxfImportPart {
  * contours.
  */
 export function dxfImportParts(
-  plan: Pick<DxfPlan, 'parts'>,
+  plan: {
+    parts: readonly (Omit<DxfPlan['parts'][number], 'lines'> & {
+      lines?: DxfPlan['parts'][number]['lines'];
+    })[];
+  },
   idFor: (index: number) => string,
   nameFor: (index: number) => string,
   holeTool?: number,
+  /** Depth of the lines from `online` layers, mm (T277; `defaultOnlineDepth`). */
+  onlineDepth = 1,
 ): DxfImportPart[] {
   return plan.parts.map((p, i) => {
     const inners: Vertex[][] = [];
@@ -54,7 +62,18 @@ export function dxfImportParts(
         inners.push(copy(inner.poly.vertices));
       }
     }
-    return { id: idFor(i), name: nameFor(i), outline: copy(p.outline.vertices), inners, holes };
+    const lines = (p.lines ?? []).map((l) => ({
+      vertices: copy(l.poly.vertices),
+      op: { kind: 'online' as const, depth: onlineDepth },
+    }));
+    return {
+      id: idFor(i),
+      name: nameFor(i),
+      outline: copy(p.outline.vertices),
+      inners,
+      holes,
+      lines,
+    };
   });
 }
 

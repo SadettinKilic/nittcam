@@ -69,6 +69,9 @@ export interface DxfReportSummary {
   inners: number;
   pending: number;
   orphans: number;
+  /** On-line (engraving) lines imported into parts, and those in no part (T277). */
+  lines: number;
+  lineOrphans: number;
 }
 
 export function summarize(drawing: DxfDrawing, plan: DxfPlan): DxfReportSummary {
@@ -85,6 +88,8 @@ export function summarize(drawing: DxfDrawing, plan: DxfPlan): DxfReportSummary 
     inners: plan.parts.reduce((s, p) => s + p.inners.length, 0),
     pending: plan.pending.length,
     orphans: plan.orphans.length,
+    lines: plan.parts.reduce((s, p) => s + p.lines.length, 0),
+    lineOrphans: plan.lineOrphans.length,
   };
 }
 
@@ -149,6 +154,8 @@ export function importParams(
   baseName: string,
   newId: () => string,
   holeTool?: number,
+  /** Depth of the "Çizgi üzerinden" lines, mm (T277, `defaultOnlineDepth`). */
+  onlineDepth?: number,
 ): { plan: DxfPlan; parts: ReturnType<typeof dxfImportParts> } {
   const plan = planDxfImport(drawing, map);
   const parts = dxfImportParts(
@@ -156,6 +163,7 @@ export function importParams(
     () => newId(),
     (i) => (plan.parts.length === 1 ? baseName : `${baseName} ${i + 1}`),
     holeTool,
+    onlineDepth,
   );
   return { plan, parts };
 }

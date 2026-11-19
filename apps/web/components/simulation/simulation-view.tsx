@@ -160,7 +160,7 @@ export function SimulationView({
   /** T269: the "Son sürüme geç" box when the machine has a newer profile version. */
   notice?: ReactNode;
   /** T270: opens a part on the drawing board (a blocked cut-out links there). */
-  onOpenPart?: (partId: string) => void;
+  onOpenPart?: (partId: string, hole?: number) => void;
   /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
   empty: { noLayout: React.ReactNode; noMachine: React.ReactNode };
 }) {
@@ -251,6 +251,7 @@ export function SimulationView({
         <SummaryCard
           t={t}
           summary={result.summary}
+          program={result.export.tools}
           checksOk={errorCount === 0}
           errorCount={errorCount}
           warnings={warnings}

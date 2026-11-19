@@ -164,6 +164,7 @@ export type ToolpathCode =
   | 'INNER_OFFSET_FAILED'
   | 'INNER_SPLIT'
   | 'ONLINE_DEPTH_INVALID'
+  | 'LINE_OUTSIDE_PART'
   | 'INVALID_SKIN'
   | 'SMALL_PART_SKIN'
   | 'INNER_CONTOUR_INVALID'
@@ -199,6 +200,10 @@ export interface ToolpathIssue {
   sheet?: number;
   /** Inner contour index (0-based) of the part, for issues about a cut-out (T270). */
   inner?: number;
+  /** Hole index (0-based) of the part, for issues about a hole (T275). */
+  hole?: number;
+  /** Open line index (0-based) of the part, for issues about a line (T277). */
+  openLine?: number;
 }
 
 export type LeadType = 'arc' | 'line' | 'none';
