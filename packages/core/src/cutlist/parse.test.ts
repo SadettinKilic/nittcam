@@ -84,8 +84,26 @@ describe('parseCutList: delimiters and quotes', () => {
       confidence: 'high',
     });
     expect(values(r.rows)).toEqual([
-      { name: 'Kapak', w: 396.5, h: 716, qty: 4, grainLock: false, edgeBand: allEdges(0) },
-      { name: 'Raf', w: 564, h: 300, qty: 2, grainLock: false, edgeBand: allEdges(0) },
+      {
+        name: 'Kapak',
+        w: 396.5,
+        h: 716,
+        qty: 4,
+        grainLock: false,
+        edgeBand: allEdges(0),
+        grainAngle: null,
+        note: '',
+      },
+      {
+        name: 'Raf',
+        w: 564,
+        h: 300,
+        qty: 2,
+        grainLock: false,
+        edgeBand: allEdges(0),
+        grainAngle: null,
+        note: '',
+      },
     ]);
     expect(r.rows.map((row) => row.line)).toEqual([2, 3]);
     expect(r.unitAmbiguous).toBe(false);
@@ -199,8 +217,26 @@ describe('parseCutList: header and mapping', () => {
     );
     expect(r.columns.fields).toEqual(['qty', 'h', 'w', 'name', 'grain', 'edge']);
     expect(values(r.rows)).toEqual([
-      { name: 'Door', w: 396, h: 716, qty: 2, grainLock: true, edgeBand: allEdges(0.8) },
-      { name: 'Shelf', w: 564, h: 300, qty: 1, grainLock: false, edgeBand: allEdges(0) },
+      {
+        name: 'Door',
+        w: 396,
+        h: 716,
+        qty: 2,
+        grainLock: true,
+        edgeBand: allEdges(0.8),
+        grainAngle: null,
+        note: '',
+      },
+      {
+        name: 'Shelf',
+        w: 564,
+        h: 300,
+        qty: 1,
+        grainLock: false,
+        edgeBand: allEdges(0),
+        grainAngle: null,
+        note: '',
+      },
     ]);
   });
 

@@ -13,12 +13,15 @@ import {
   type LengthUnit,
   type LongShortField,
 } from '@nittcam/core';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { FileUp } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState, type DragEvent } from 'react';
+import { readCutListFile, type CutListFileError } from '../../lib/cut-list-file';
 import { fill, newPartId } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import {
   Button,
   Checkbox,
+  cn,
   fieldBase,
   fieldFocus,
   Select,
@@ -61,6 +64,10 @@ export interface PastePanelProps {
 export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
   const uid = useId();
   const [text, setText] = useState('');
+  const [file, setFile] = useState<{ name: string; state: 'reading' | 'loaded' } | null>(null);
+  const [fileError, setFileError] = useState<CutListFileError | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [delimiter, setDelimiter] = useState<DelimiterChoice>('auto');
   const [decimal, setDecimal] = useState<DecimalChoice>('auto');
   const [header, setHeader] = useState<boolean | null>(null);
@@ -118,6 +125,29 @@ export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
   const textId = `${uid}-text`;
   const sourceText = t.source[result.columns.source];
 
+  /** Reads a chosen or dropped file into the text box (T120); the preview below does the rest. */
+  async function loadFile(f: File) {
+    setFileError(null);
+    setFile({ name: f.name, state: 'reading' });
+    const result = await readCutListFile(f);
+    if (!result.ok) {
+      setFile(null);
+      setFileError(result.error);
+      return;
+    }
+    setText(result.text);
+    setHeader(null);
+    resetDerived();
+    setFile({ name: f.name, state: 'loaded' });
+  }
+
+  function onDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) void loadFile(f);
+  }
+
   return (
     <section
       id="paste-panel"
@@ -132,6 +162,63 @@ export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
           {intro ? `${intro} ` : ''}
           {t.help}
         </p>
+      </div>
+
+      <div
+        data-testid="import-drop"
+        data-dragging={dragging || undefined}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        className={cn(
+          'flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-border-strong bg-surface-subtle px-4 py-3 transition-colors duration-(--duration-fast)',
+          dragging && 'border-accent-border bg-accent-subtle',
+        )}
+      >
+        <FileUp aria-hidden className="size-5 shrink-0 text-fg-muted" />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="text-sm text-fg">{t.file.drop}</p>
+          <p className="text-xs text-fg-muted">{t.file.limits}</p>
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".csv,.txt,.tsv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          data-testid="import-file"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            if (f) void loadFile(f);
+          }}
+        />
+        <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
+          {t.file.choose}
+        </Button>
+        <div aria-live="polite" className="w-full empty:hidden">
+          {fileError ? (
+            <p
+              role="alert"
+              className="text-sm font-medium text-danger-text"
+              data-testid="import-error"
+            >
+              {t.file.errors[fileError]}
+            </p>
+          ) : file ? (
+            <p
+              className="text-sm text-fg-muted"
+              data-testid="import-file-state"
+              data-state={file.state}
+            >
+              {fill(file.state === 'loaded' ? t.file.loaded : t.file.reading, { name: file.name })}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1">

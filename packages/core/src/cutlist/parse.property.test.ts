@@ -139,6 +139,9 @@ const HEADERS: Record<Field, readonly string[]> = {
   edgeLong2: ['Uzun2', 'Uzun 2', 'U2'],
   edgeShort1: ['Kısa1', 'Kısa 1', 'K1'],
   edgeShort2: ['Kısa2', 'KISA 2', 'K2'],
+  // T120 columns; not generated here (see export.test.ts for their round trip).
+  grainAngle: ['Damar açısı'],
+  note: ['Not'],
 };
 
 const layoutArb = fc
@@ -168,6 +171,9 @@ function cellOf(field: Field, row: GenRow, f: Format, grainWords: [string, strin
       return row.grainLock ? grainWords[0] : grainWords[1];
     case 'edge':
       return formatNumber(row.edgeBand, f);
+    case 'grainAngle':
+    case 'note':
+      return '';
     default: {
       const v = row.edges[field];
       return typeof v === 'string' ? v : formatNumber(v, f);
@@ -186,7 +192,9 @@ function expected(row: GenRow, fields: readonly Field[]): CutListRowValues {
     h: row.h,
     qty: fields.includes('qty') ? (row.qty ?? 1) : 1,
     grainLock: fields.includes('grain') ? row.grainLock : false,
+    grainAngle: null,
     edgeBand: expectedBand(row, fields),
+    note: '',
   };
 }
 
@@ -294,7 +302,9 @@ describe('cut-list round trip (fast-check)', () => {
             rows.map((r) => ({
               ...r,
               grainLock: false,
+              grainAngle: null,
               edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+              note: '',
             })),
           );
         },

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { expectNoA11yViolations } from './visual/helpers';
@@ -340,5 +343,92 @@ test.describe('T119 row actions, multi-select, bulk edit', () => {
     );
     await expect(cell(page, 1, t.columns.name)).toHaveValue('P1');
     await expectNoA11yViolations(page, { exclude: ['[data-sonner-toaster]'] });
+  });
+});
+
+test.describe('T120 import and export', () => {
+  const XLSX = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'kesim-listesi.xlsx');
+
+  test('İçe aktar: a real .xlsx (title row, empty row, Turkish text) → mapping preview → rows', async ({
+    page,
+  }) => {
+    const problems = watchConsole(page);
+    await page.goto(URL);
+    await page.getByRole('button', { name: t.pasteOpen }).click();
+    await page.getByTestId('import-file').setInputFiles(XLSX);
+    await expect(page.getByTestId('import-file-state')).toHaveAttribute('data-state', 'loaded');
+    await expect(page.getByLabel(p.textLabel)).toHaveValue(/^Parça adı\tEn\tBoy/);
+    await page.getByRole('button', { name: fill(p.applyCount, { count: 2 }) }).click();
+    await expect(cell(page, 1, t.columns.name)).toHaveValue('Çekmece önü');
+    await expect(cell(page, 1, t.columns.w)).toHaveValue('596,5');
+    await expect(cell(page, 2, t.columns.qty)).toHaveValue('2');
+    expect(problems).toEqual([]);
+  });
+
+  test('wrong type and oversized files are rejected with a Turkish message', async ({ page }) => {
+    await page.goto(URL);
+    await page.getByRole('button', { name: t.pasteOpen }).click();
+    const input = page.getByTestId('import-file');
+    await input.setInputFiles({
+      name: 'resim.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('x'),
+    });
+    await expect(page.getByTestId('import-error')).toHaveText(p.file.errors.type);
+    await input.setInputFiles({
+      name: 'buyuk.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.alloc(5 * 1024 * 1024 + 1, 65),
+    });
+    await expect(page.getByTestId('import-error')).toHaveText(p.file.errors.size);
+    await expect(page.getByLabel(p.textLabel)).toHaveValue('');
+  });
+
+  test('Dışa aktar CSV → re-import gives the same rows', async ({ page }) => {
+    await page.goto(URL);
+    await pasteRows(page, THREE, 3);
+    await cell(page, 1, t.columns.note).fill('Beyaz; parlak');
+    await cell(page, 1, t.columns.note).press('Tab');
+    await page.getByTestId('band-cell-2').click();
+    await page
+      .getByLabel(fill(t.edgeLabel, { n: 2, edge: t.edge.left }), { exact: true })
+      .fill('0,8');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+
+    const values = async () =>
+      page
+        .getByTestId('cut-list-row')
+        .evaluateAll((rows) =>
+          rows.map((r) =>
+            [...r.querySelectorAll('input[type=text]')].map((i) => (i as HTMLInputElement).value),
+          ),
+        );
+    const before = await values();
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByTestId('cut-list-export').click(),
+    ]);
+    expect(download.suggestedFilename()).toBe(t.exportFile);
+    const file = await download.path();
+
+    await page.getByTestId('row-select-all').click();
+    await page.getByTestId('selection-remove').click();
+    await expect(page.getByText(t.empty)).toBeVisible();
+
+    await page.getByRole('button', { name: t.pasteOpen }).click();
+    // The saved download has no extension; give the file its real name back.
+    await page.getByTestId('import-file').setInputFiles({
+      name: download.suggestedFilename(),
+      mimeType: 'text/csv',
+      buffer: readFileSync(file),
+    });
+    await expect(page.getByTestId('import-file-state')).toHaveAttribute('data-state', 'loaded');
+    await page.getByRole('button', { name: fill(p.applyCount, { count: 3 }) }).click();
+    await expect(page.getByTestId('cut-list-count')).toHaveText(
+      fill(t.count, { rows: 3, pieces: 8 }),
+    );
+    expect(await values()).toEqual(before);
   });
 });

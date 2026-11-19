@@ -1,6 +1,12 @@
 'use client';
 
-import type { CutListPartInput, Part, Project, ValidationIssue } from '@nittcam/core';
+import {
+  cutListToCsv,
+  type CutListPartInput,
+  type Part,
+  type Project,
+  type ValidationIssue,
+} from '@nittcam/core';
 import {
   columnResizingFeature,
   columnSizingFeature,
@@ -30,6 +36,7 @@ import {
   CircleCheck,
   ClipboardPaste,
   Copy,
+  Download,
   Keyboard,
   MoreHorizontal,
   Pencil,
@@ -62,6 +69,7 @@ import {
   validateQty,
   type NavDirection,
 } from '../../lib/cut-list-grid';
+import { downloadText } from '../../lib/cut-list-file';
 import { fill, newPartId } from '../../lib/draft-project';
 import { useMediaQuery } from '../../lib/use-media-query';
 import {
@@ -925,6 +933,14 @@ export function CutListEditor({
     return ok;
   }
 
+  /** CSV download of the rectangle parts (T120): semicolon, decimal comma, UTF-8 BOM. */
+  function exportCsv() {
+    const csv = cutListToCsv(parts);
+    downloadText(t.exportFile, csv.text);
+    if (csv.skipped > 0) notify.info(fill(t.exportSkipped, { count: csv.skipped }));
+    else notify.success(fill(t.exported, { count: csv.rows }));
+  }
+
   const problemCount = issues.length;
   const s = t.select;
 
@@ -1008,6 +1024,18 @@ export function CutListEditor({
               <Plus aria-hidden />
               {t.addRow}
             </Button>
+            <Tooltip content={t.exportCsvHint}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportCsv}
+                disabled={parts.length === 0}
+                data-testid="cut-list-export"
+              >
+                <Download aria-hidden />
+                {t.exportCsv}
+              </Button>
+            </Tooltip>
             <Button
               ref={pasteButton}
               size="sm"

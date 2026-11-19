@@ -450,7 +450,7 @@
     "tableLabel": "Kesim listesi",
     "empty": "Henüz parça yok.",
     "addRow": "Satır ekle",
-    "pasteOpen": "Excel'den yapıştır",
+    "pasteOpen": "İçe aktar",
     "undo": "Geri al",
     "redo": "Yinele",
     "shortcuts": "Enter alt satıra, Tab sonraki hücreye geçer; oklarla gezinin, F2 ile düzenleyin, Esc vazgeçer. Satır numarasına Ctrl/Shift ile tıklayarak çoklu seçin; Ctrl+D çoğaltır, Delete seçili satırları siler (hücre dışında). Tablo dışında Ctrl+Z geri alır.",
@@ -504,7 +504,7 @@
       "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin."
     },
     "paste": {
-      "title": "Excel'den yapıştır",
+      "title": "İçe aktar",
       "help": "Excel'de satırları seçip kopyalayın (Ctrl+C) ve buraya yapıştırın (Ctrl+V). Noktalı virgül veya virgülle ayrılmış CSV metni de olur.",
       "textLabel": "Yapıştırılan satırlar",
       "placeholder": "Ad\tEn\tBoy\tAdet\nKapak\t396\t716\t4",
@@ -594,7 +594,20 @@
         "EDGE_BAND_CONFLICT": "Hem tek \"Bant\" sütunu hem kenar başına bant sütunları var; kenar başına sütunlar kullanıldı, tek \"Bant\" sütunu yok sayıldı.",
         "EDGE_BAND_MIXED": "Hem Üst/Alt/Sol/Sağ hem Uzun/Kısa (U1, U2, K1, K2) sütunları var; aynı kenara düşerse Üst/Alt/Sol/Sağ sütunu kullanıldı."
       },
-      "edgeHelp": "Uzun/Kısa sütunları (U1, U2, K1, K2) parçanın yönüne göre kenarlara dağıtılır: uzun kenarlar uzun ölçüye paraleldir. En ≥ Boy ise U1 = Alt, U2 = Üst, K1 = Sol, K2 = Sağ; En < Boy ise U1 = Sol, U2 = Sağ, K1 = Alt, K2 = Üst."
+      "edgeHelp": "Uzun/Kısa sütunları (U1, U2, K1, K2) parçanın yönüne göre kenarlara dağıtılır: uzun kenarlar uzun ölçüye paraleldir. En ≥ Boy ise U1 = Alt, U2 = Üst, K1 = Sol, K2 = Sağ; En < Boy ise U1 = Sol, U2 = Sağ, K1 = Alt, K2 = Üst.",
+      "file": {
+        "choose": "Dosya seç",
+        "drop": "CSV veya Excel (.xlsx) dosyasını buraya bırakın ya da seçin.",
+        "limits": ".csv, .xlsx · en fazla 5 MB",
+        "loaded": "{name} okundu. Sütunları ve satırları aşağıda kontrol edin.",
+        "reading": "{name} okunuyor…",
+        "errors": {
+          "type": "Bu dosya okunamıyor. .csv ya da .xlsx dosyası seçin.",
+          "size": "Dosya çok büyük; en fazla 5 MB.",
+          "empty": "Dosyada satır yok.",
+          "read": "Dosya okunamadı. Excel'de .xlsx ya da CSV olarak yeniden kaydedip deneyin."
+        }
+      }
     },
     "nesting": {
       "title": "Dizilim",
@@ -679,7 +692,12 @@
       "sheetsHint": "Tahmin: toplam parça alanı / plakanın kenar payı içindeki alanı. Kesin sayı dizilimden sonra.",
       "label": "Kesim listesi özeti",
       "shortcuts": "Kısayollar"
-    }
+    },
+    "exportCsv": "Dışa aktar",
+    "exportCsvHint": "Kesim listesini CSV dosyası olarak indir (Excel ile açılır)",
+    "exported": "Kesim listesi indirildi ({count} satır).",
+    "exportSkipped": "{count} çizim parçası dosyaya yazılmadı; yalnızca dikdörtgen parçalar yazılır.",
+    "exportFile": "kesim-listesi.csv"
   },
   "layout": {
     "workspace": {

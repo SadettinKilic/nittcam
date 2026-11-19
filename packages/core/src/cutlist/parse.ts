@@ -18,6 +18,7 @@ export type CutListField =
   | 'h'
   | 'qty'
   | 'grain'
+  | 'grainAngle'
   | 'edge'
   | 'edgeTop'
   | 'edgeBottom'
@@ -27,6 +28,7 @@ export type CutListField =
   | 'edgeLong2'
   | 'edgeShort1'
   | 'edgeShort2'
+  | 'note'
   | 'ignore';
 
 export const CUT_LIST_FIELDS: readonly CutListField[] = [
@@ -44,6 +46,8 @@ export const CUT_LIST_FIELDS: readonly CutListField[] = [
   'edgeLong2',
   'edgeShort1',
   'edgeShort2',
+  'grainAngle',
+  'note',
   'ignore',
 ];
 
@@ -120,6 +124,7 @@ export type CutListErrorCode =
   | 'NOT_POSITIVE'
   | 'INVALID_QTY'
   | 'INVALID_GRAIN'
+  | 'INVALID_GRAIN_ANGLE'
   | 'INVALID_EDGE_BAND';
 
 export interface CutListCellError {
@@ -138,8 +143,12 @@ export interface CutListRowValues {
   h: number | null;
   qty: number | null;
   grainLock: boolean;
+  /** Grain angle in degrees [0, 180) from a "Damar açısı" column (T120); `null` = none. */
+  grainAngle: number | null;
   /** Edge band thickness per edge in mm; 0 = none (D-024). */
   edgeBand: EdgeBandValues;
+  /** Workshop note (T118 "Not" column); empty = none. */
+  note: string;
 }
 
 export interface CutListRow {
@@ -400,6 +409,8 @@ const HEADER_NAMES: Record<Exclude<CutListField, 'ignore'>, readonly string[]> =
     'desen',
     'desenyonu',
   ],
+  grainAngle: ['damaraci', 'damaracisi', 'graininangle', 'grainangle', 'damaraciderece'],
+  note: ['not', 'notlar', 'note', 'notes', 'malzemenotu', 'malzeme', 'material', 'remark'],
   edge: ['bant', 'kenarbandi', 'kenarbant', 'bantkalinligi', 'edge', 'edgeband', 'band'],
   edgeTop: edgeNames(['ust', 'top']),
   edgeBottom: edgeNames(['alt', 'bottom']),
@@ -540,6 +551,7 @@ const MESSAGES: Record<CutListErrorCode, string> = {
   NOT_POSITIVE: 'must be greater than zero',
   INVALID_QTY: 'quantity must be a whole number of at least 1',
   INVALID_GRAIN: 'grain lock must be yes/no (evet/hayır, 1/0, x)',
+  INVALID_GRAIN_ANGLE: 'grain angle must be degrees from 0 to below 180',
   INVALID_EDGE_BAND: 'edge band must be a thickness in mm (0 or more)',
 };
 
@@ -632,6 +644,8 @@ export function parseCutList(text: string, options: ParseCutListOptions = {}): C
     qty: colOf('qty'),
     grain: colOf('grain'),
     edge: colOf('edge'),
+    grainAngle: colOf('grainAngle'),
+    note: colOf('note'),
   };
   const explicitCols = (Object.keys(EXPLICIT_EDGE_FIELDS) as ExplicitEdgeField[]).flatMap(
     (field) => {
@@ -702,6 +716,17 @@ export function parseCutList(text: string, options: ParseCutListOptions = {}): C
       else grainLock = g;
     }
 
+    let grainAngle: number | null = null;
+    const angleRaw = cell(cols.grainAngle);
+    if (angleRaw !== '' && angleRaw !== '-') {
+      const n = parseCutListNumber(angleRaw.replace(/°$/, ''), decimal);
+      if (n === null || n < 0 || n >= 180) {
+        errors.push(error(cols.grainAngle, 'grainAngle', 'INVALID_GRAIN_ANGLE'));
+      } else {
+        grainAngle = n;
+      }
+    }
+
     const edgeBand: EdgeBandValues = { top: 0, right: 0, bottom: 0, left: 0 };
     if (!perEdge && cols.edge !== null) {
       // Single column (D-018): one thickness for all four edges; "yok", "-" and empty = none.
@@ -736,7 +761,16 @@ export function parseCutList(text: string, options: ParseCutListOptions = {}): C
     return {
       line: record.line,
       cells,
-      values: { name: cell(cols.name), w, h, qty, grainLock, edgeBand },
+      values: {
+        name: cell(cols.name),
+        w,
+        h,
+        qty,
+        grainLock,
+        grainAngle,
+        edgeBand,
+        note: cell(cols.note).slice(0, 200),
+      },
       errors,
     };
   });
@@ -783,8 +817,11 @@ export interface CutListPartInput {
   name: string;
   qty: number;
   grainLock: boolean;
+  /** Set when the list had a grain angle column (T120): the exact grain, not the lock alias. */
+  grain?: { mode: 'free' | 'fixed'; angle: number };
   params: { w: number; h: number; r: number };
   edgeBand: { top: number; right: number; bottom: number; left: number };
+  note?: string;
 }
 
 /** Sizes in `unit` → mm, rounded to 1 µm so 39.6 cm gives exactly 396 mm. */
@@ -807,7 +844,7 @@ export function cutListToParts(
     throw new Error(`cutListToParts: ${valid.length} ids needed, ${ids.length} given`);
   }
   return valid.map((row, i) => {
-    const { name, w, h, qty, grainLock, edgeBand } = row.values;
+    const { name, w, h, qty, grainLock, grainAngle, edgeBand, note } = row.values;
     if (w === null || h === null || qty === null) throw new Error('cutListToParts: invalid row');
     return {
       id: ids[i] as string,
@@ -816,6 +853,10 @@ export function cutListToParts(
       grainLock,
       params: { w: toMillimetres(w, unit), h: toMillimetres(h, unit), r: 0 },
       edgeBand: { ...edgeBand },
+      ...(grainAngle !== null
+        ? { grain: { mode: grainLock ? ('fixed' as const) : ('free' as const), angle: grainAngle } }
+        : {}),
+      ...(note !== '' ? { note } : {}),
     };
   });
 }
