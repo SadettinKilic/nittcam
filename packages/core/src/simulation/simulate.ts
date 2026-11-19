@@ -9,6 +9,7 @@ import { readGcode, type GcodeReadResult } from '../gcode-reader';
 import type { MachineProfile } from '../machine';
 import { parsePostConfig, type PostProfileVersion } from '../post';
 import type { Project } from '../schema';
+import { defaultSheet } from '../schema';
 import { buildToolpath } from '../toolpath';
 import { buildSimSheet } from './build';
 import type { SimMachineFrame, SimSheet, SimSummary } from './types';
@@ -92,8 +93,8 @@ export function simulateProject(
 
   const stock = {
     thickness: project.stock.thickness,
-    sheetWidth: project.stock.sheet.width,
-    sheetHeight: project.stock.sheet.height,
+    sheetWidth: defaultSheet(project).width,
+    sheetHeight: defaultSheet(project).height,
   };
   const frame = checkFrame(profile, stock);
   const opts = readerOptions(profile, post);

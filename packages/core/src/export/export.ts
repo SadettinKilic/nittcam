@@ -19,6 +19,7 @@ import {
   type PostProfileVersion,
 } from '../post';
 import type { Project } from '../schema';
+import { defaultSheet } from '../schema';
 import {
   buildToolpath,
   type Toolpath,
@@ -83,8 +84,8 @@ export function exportNc(
     stock: {
       material: project.stock.material,
       thickness: project.stock.thickness,
-      sheetWidth: project.stock.sheet.width,
-      sheetHeight: project.stock.sheet.height,
+      sheetWidth: defaultSheet(project).width,
+      sheetHeight: defaultSheet(project).height,
     },
     // one cutting tool per project (D-021): the cut-out loops are offset by its radius
     layout: expectedLayouts(project, tp.toolpath.operations[0]?.toolDiameter ?? 0),

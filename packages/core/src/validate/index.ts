@@ -10,7 +10,7 @@ import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } fr
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
-import { deriveOutline, formatPath, innerOperation } from '../schema';
+import { defaultSheet, deriveOutline, formatPath, innerOperation } from '../schema';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { lineLeavesPart } from '../editor/lines';
@@ -78,20 +78,20 @@ function mm(v: number): string {
  * outline (T006). The gap and tool diameter only matter between parts and are not counted.
  */
 export const partLargerThanSheet: ValidationRule = (project) => {
-  const { width, height } = project.stock.sheet;
+  const { width, height } = defaultSheet(project);
   const { margin } = project.nesting;
-  const usable = usableSize(project.stock.sheet, margin);
+  const usable = usableSize(defaultSheet(project), margin);
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     const size = partBoxSize(part);
     // The forced grain rotation counts (D-034): the same footprints the placer tries.
     const rotations = allowedRotations(
       part,
-      project.stock.sheet,
+      defaultSheet(project),
       rotationPolicyOf(project.nesting),
     );
     if (fitsUsableAny(rotationOptions(partShape(part), rotations), usable)) return;
-    const locked = part.grain.mode === 'fixed' && project.stock.sheet.grain !== null;
+    const locked = part.grain.mode === 'fixed' && defaultSheet(project).grain !== null;
     const how = !locked
       ? 'in any orientation'
       : rotations.every((r) => r === 0 || r === 180)
@@ -268,8 +268,8 @@ export const placementGrain: ValidationRule = (project) => {
     sheet.placements.forEach((pl, p) => {
       const part = parts.get(pl.partId);
       const policy = rotationPolicyOf(project.nesting);
-      if (!part || rotationAllowed(part, project.stock.sheet, pl.rot, policy)) return;
-      const allowed = allowedRotations(part, project.stock.sheet, policy);
+      if (!part || rotationAllowed(part, defaultSheet(project), pl.rot, policy)) return;
+      const allowed = allowedRotations(part, defaultSheet(project), policy);
       const what = pl.locked ? 'locked copy' : 'copy';
       issues.push({
         code: pl.locked ? 'LOCKED_PLACEMENT_GRAIN' : 'PLACEMENT_GRAIN',
@@ -336,7 +336,7 @@ export const unverifiedCuttingParams: ValidationRule = (project, context) => {
 export const sheetLargerThanTable: ValidationRule = (project, context) => {
   const machine = context?.machine;
   if (!machine) return [];
-  const { width, height } = project.stock.sheet;
+  const { width, height } = defaultSheet(project);
   const off = machine.origin.sheetOffset;
   const fits =
     off.x + width <= machine.table.width + EPS && off.y + height <= machine.table.depth + EPS;

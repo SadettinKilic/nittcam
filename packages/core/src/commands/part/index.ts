@@ -2,6 +2,7 @@
 import type { Draft } from 'immer';
 import { z } from 'zod';
 import {
+  defaultSheet,
   edgeBandSchema,
   partGrainSchema,
   rectParamsSchema,
@@ -44,7 +45,7 @@ export function grainFromLock(grainLock: boolean, sheetGrain: number | null): Pa
 }
 
 function pushRectPart(draft: Draft<Project>, p: RectPartInput): void {
-  const grain = p.grain ?? grainFromLock(p.grainLock ?? false, draft.stock.sheet.grain);
+  const grain = p.grain ?? grainFromLock(p.grainLock ?? false, defaultSheet(draft).grain);
   draft.parts.push({
     id: p.id,
     name: p.name,
@@ -206,7 +207,7 @@ export const updatePart = defineCommand({
     if (params.grain !== undefined) {
       part.grain = { mode: params.grain.mode, angle: params.grain.angle };
     } else if (params.grainLock !== undefined) {
-      part.grain = grainFromLock(params.grainLock, draft.stock.sheet.grain);
+      part.grain = grainFromLock(params.grainLock, defaultSheet(draft).grain);
     }
     if (params.params !== undefined && part.kind === 'rect') {
       const { w, h, r } = params.params;

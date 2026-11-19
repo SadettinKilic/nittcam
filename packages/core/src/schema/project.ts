@@ -379,6 +379,13 @@ export const machineRefSchema = z.strictObject({
   profileVersion: positiveInt,
 });
 
+/** One stock sheet size the nesting may use (T164, D-056); `qty` absent = no limit. */
+export const projectSheetSizeSchema = z.strictObject({
+  width: positiveMm,
+  height: positiveMm,
+  qty: positiveInt.optional(),
+});
+
 export const stockSchema = z.strictObject({
   material: nonEmptyId,
   /**
@@ -393,6 +400,12 @@ export const stockSchema = z.strictObject({
     /** Sheet grain angle in degrees [0, 180) (0 = along X); `null` = the sheet has no grain. */
     grain: grainAngleSchema.nullable(),
   }),
+  /**
+   * Stock sheet sizes the nesting may use, in order (T164, D-056). Absent = `[sheet]` (one size,
+   * no limit), so projects before T164 need no migration. Grain always comes from `sheet.grain`.
+   * Read it only through `stockSheetSizes(project)`.
+   */
+  sheets: z.array(projectSheetSizeSchema).min(1, { error: 'at least one sheet size' }).optional(),
   useOffcuts: z.boolean({ error: 'must be true or false' }),
 });
 
@@ -436,7 +449,16 @@ export const placementSchema = z.strictObject({
 
 /** Derived but stored, so manually locked placements survive (spec §9.2). */
 export const layoutSchema = z.strictObject({
-  sheets: z.array(z.strictObject({ placements: z.array(placementSchema) })),
+  sheets: z.array(
+    z.strictObject({
+      /**
+       * Size of this layout sheet (T164, D-056). Absent = `stock.sheet`. Read it only through
+       * `sheetSizeOf(project, sheetIndex)`.
+       */
+      size: z.strictObject({ width: positiveMm, height: positiveMm }).optional(),
+      placements: z.array(placementSchema),
+    }),
+  ),
 });
 
 export const cuttingSchema = z.strictObject({
@@ -597,6 +619,7 @@ export type Part = z.infer<typeof partSchema>;
 export type PartGrain = z.infer<typeof partGrainSchema>;
 export type MachineRef = z.infer<typeof machineRefSchema>;
 export type Stock = z.infer<typeof stockSchema>;
+export type ProjectSheetSize = z.infer<typeof projectSheetSizeSchema>;
 export type NestingMode = z.infer<typeof nestingModeSchema>;
 export type NestingRotation = z.infer<typeof nestingRotationSchema>;
 export type Nesting = z.infer<typeof nestingSchema>;

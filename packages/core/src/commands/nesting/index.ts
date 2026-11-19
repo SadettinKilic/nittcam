@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../../geometry/grain';
 import { nestProject, type NestHooks } from '../../nesting/nest';
-import { nestingRotationSchema, nestingSchema, placementSchema, type Project } from '../../schema';
+import { defaultSheet, nestingRotationSchema, nestingSchema, placementSchema, type Project } from '../../schema';
 import { defineCommand } from '../types';
 
 /** Sets the nesting goal, part gap and sheet margin. At least one field is required. */
@@ -185,8 +185,8 @@ export const lockPlacement = defineCommand({
       // The grain rule (D-034): only rotations from `allowedRotations` may be set by hand.
       const part = project.parts.find((p) => p.id === params.partId);
       const policy = rotationPolicyOf(project.nesting);
-      if (!part || !rotationAllowed(part, project.stock.sheet, params.rot, policy)) {
-        const allowed = part ? allowedRotations(part, project.stock.sheet, policy) : [];
+      if (!part || !rotationAllowed(part, defaultSheet(project), params.rot, policy)) {
+        const allowed = part ? allowedRotations(part, defaultSheet(project), policy) : [];
         return `rotation ${params.rot}° is not allowed for part "${params.partId}" (allowed: ${allowed.join(', ')})`;
       }
     }

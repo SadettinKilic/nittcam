@@ -18,6 +18,7 @@ import {
   type Project,
 } from '../schema';
 import { deriveOutline } from '../schema/outline';
+import { defaultSheet } from '../schema/sheet-size';
 import { checkInnerContour } from '../editor/inners';
 import { passDepths, throughCutTarget } from './depth';
 import {
@@ -902,7 +903,7 @@ export function buildToolpath(
     plunge,
     // CW spindle (M3): climb on an outer contour = CW travel around the part (D-021).
     travel: direction === 'climb' ? 'cw' : 'ccw',
-    sheet: project.stock.sheet,
+    sheet: defaultSheet(project),
     tabs: {
       all: to.auto ?? pt.auto,
       count: tabCount,

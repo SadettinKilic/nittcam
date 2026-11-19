@@ -7,7 +7,7 @@
 import { allowedRotations, rotationPolicyOf } from '../geometry/grain';
 import { contour, signedArea } from '../geometry/polyline';
 import { isQuarterTurn } from '../geometry/transform';
-import { deriveOutline, type Placement, type Project } from '../schema';
+import { defaultSheet, deriveOutline, sheetSizeOf, type Placement, type Project } from '../schema';
 import { cutOrder, type OrderItem } from '../toolpath/order';
 import { loopSegments, pathLength } from '../toolpath/path';
 import { compareScore, GuillotineBin, MaxRectsBin, type Bin, type Fit } from './bins';
@@ -574,13 +574,13 @@ export function nestingInputFromProject(
   const locked = project.layout.sheets.map((sheet) => sheet.placements.filter((p) => p.locked));
   while (locked.length > 0 && locked[locked.length - 1]?.length === 0) locked.pop();
   return {
-    sheet: { width: project.stock.sheet.width, height: project.stock.sheet.height },
+    sheet: { width: defaultSheet(project).width, height: defaultSheet(project).height },
     parts: project.parts.map((part) => ({
       id: part.id,
       ...partBoxSize(part),
       qty: part.qty,
       // The grain rule (D-034): the single source of allowed rotations.
-      rotations: allowedRotations(part, project.stock.sheet, rotationPolicyOf(project.nesting)),
+      rotations: allowedRotations(part, defaultSheet(project), rotationPolicyOf(project.nesting)),
       outline: contour(deriveOutline(part)),
       holeTools: part.holes.map((h) => h.tool),
     })),
@@ -618,8 +618,9 @@ export interface LayoutSummary {
 /** Sheet count, waste % and unplaced copies of a project's current layout. Pure. */
 export function summarizeLayout(project: Project): LayoutSummary {
   const sizes = new Map(project.parts.map((p) => [p.id, partShape(p)]));
-  const sheet = project.stock.sheet;
-  const sheets = project.layout.sheets.map((sh, i) => sheetStats(i, sh.placements, sheet, sizes));
+  const sheets = project.layout.sheets.map((sh, i) =>
+    sheetStats(i, sh.placements, sheetSizeOf(project, i), sizes),
+  );
   const placed = new Set<string>();
   for (const sh of project.layout.sheets) {
     for (const pl of sh.placements) placed.add(`${pl.partId}#${pl.index}`);
