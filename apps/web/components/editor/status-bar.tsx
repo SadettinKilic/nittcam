@@ -11,7 +11,7 @@ import {
   formatMeasure,
 } from '@nittcam/ui';
 import { CircleHelp, Magnet } from 'lucide-react';
-import { OPEN_SHORTCUTS_EVENT } from '../../lib/shortcuts';
+import { openShortcuts } from '../../lib/shortcuts';
 import { useId } from 'react';
 import type { Messages } from '../../lib/messages';
 import { SNAP_TOGGLES, type SnapToggle } from '../../lib/editor/store';
@@ -111,7 +111,7 @@ export function StatusBar({
           aria-haspopup="dialog"
           className="-mr-2 size-7"
           data-testid="editor-shortcuts"
-          onClick={() => window.dispatchEvent(new Event(OPEN_SHORTCUTS_EVENT))}
+          onClick={() => openShortcuts('board')}
         >
           <CircleHelp aria-hidden />
         </IconButton>

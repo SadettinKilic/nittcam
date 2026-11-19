@@ -62,7 +62,8 @@ import {
   type DrawnShape,
   type Typed,
 } from '../../lib/editor/draw-tool';
-import { claimPageKeys } from '../../lib/shortcuts';
+import { claimPageGroup, claimPageKeys } from '../../lib/shortcuts';
+import { EditorTour } from './editor-tour';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
 import { addHoleParams, liveDiameter, type HoleDraft } from '../../lib/editor/hole-tool';
@@ -408,6 +409,12 @@ export function DrawingBoard({
     [stock.width, stock.height],
   );
   const touched = useRef(false);
+  // Stable for the memoised part list rows (T137).
+  const selectFromList = useCallback(
+    (id: string, additive: boolean) =>
+      dispatch(additive ? { type: 'toggle', id } : { type: 'select', ids: [id] }),
+    [],
+  );
   const fit = useCallback(() => {
     touched.current = false;
     if (size.w > 0 && size.h > 0) {
@@ -656,10 +663,13 @@ export function DrawingBoard({
     }
     // The claim keeps the shell's global handler off these keys whichever listener runs first.
     const release = claimPageKeys(BOARD_KEYS);
+    // T136: "?" on the board opens the board's own shortcut sheet.
+    const releaseGroup = claimPageGroup('board');
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onUp);
     return () => {
       release();
+      releaseGroup();
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onUp);
     };
@@ -1178,6 +1188,7 @@ export function DrawingBoard({
 
   const overlay = (
     <>
+      <EditorTour t={t.tour} onClose={() => canvasEl?.focus({ preventScroll: true })} />
       <div
         role="toolbar"
         aria-label={t.tools.label}
@@ -1462,9 +1473,7 @@ export function DrawingBoard({
           t={t.parts}
           project={project}
           selection={selection}
-          onSelect={(id, additive) =>
-            dispatch(additive ? { type: 'toggle', id } : { type: 'select', ids: [id] })
-          }
+          onSelect={selectFromList}
           action={parts.length > 0 ? dxfButton : null}
         />
       }
@@ -1501,7 +1510,10 @@ export function DrawingBoard({
                     ? dimA
                       ? t.dim.hintSecond
                       : t.dim.hintFirst
-                    : null
+                    : // T136: the hint bar speaks for every tool, not only the drawing ones.
+                      state.tool === 'pan'
+                      ? t.draw.hints.pan
+                      : t.draw.hints.select
           }
           snapName={draftView?.closing ? t.draw.close : snapMark ? t.snap[snapMark.kind] : null}
         />

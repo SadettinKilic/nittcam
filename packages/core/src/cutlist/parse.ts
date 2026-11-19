@@ -5,6 +5,7 @@
  * Messages are English; the UI translates by `code`.
  */
 import { MAX_IMPORT_ROWS } from '../commands/part';
+import { EPS } from '../geometry/constants';
 
 /**
  * What a source column holds. `ignore` = not imported.
@@ -122,6 +123,7 @@ export type CutListErrorCode =
   | 'REQUIRED'
   | 'INVALID_NUMBER'
   | 'NOT_POSITIVE'
+  | 'TOO_SMALL'
   | 'INVALID_QTY'
   | 'INVALID_GRAIN'
   | 'INVALID_GRAIN_ANGLE'
@@ -557,6 +559,7 @@ const MESSAGES: Record<CutListErrorCode, string> = {
   REQUIRED: 'value is required',
   INVALID_NUMBER: 'not a number',
   NOT_POSITIVE: 'must be greater than zero',
+  TOO_SMALL: `must be at least ${EPS} mm, the smallest part size`,
   INVALID_QTY: 'quantity must be a whole number of at least 1',
   INVALID_GRAIN: 'grain lock must be yes/no (evet/hayır, 1/0, x)',
   INVALID_GRAIN_ANGLE: 'grain angle must be degrees from 0 to below 180',
@@ -698,6 +701,11 @@ export function parseCutList(text: string, options: ParseCutListOptions = {}): C
       }
       if (n <= 0) {
         errors.push(error(col, field, 'NOT_POSITIVE'));
+        return null;
+      }
+      // T267: a size below the smallest part size (EPS) is refused, never rounded up silently.
+      if (n < EPS) {
+        errors.push(error(col, field, 'TOO_SMALL'));
         return null;
       }
       return n;

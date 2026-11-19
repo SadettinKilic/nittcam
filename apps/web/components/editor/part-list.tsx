@@ -1,9 +1,9 @@
 'use client';
 
-import { partBoxSize, type Project } from '@nittcam/core';
+import { partBoxSize, type Part, type Project } from '@nittcam/core';
 import { Input, Measure, cn } from '@nittcam/ui';
 import { Search } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import type { Messages } from '../../lib/messages';
 import { matchesPart } from '../../lib/editor/part-search';
 import { focusRing } from '../page/page-header';
@@ -69,45 +69,69 @@ export function BoardPartList({
         </p>
       ) : null}
       <ul className="flex flex-col gap-0.5" data-testid="editor-part-list">
-        {rows.map(({ p, i }) => {
-          const size = partBoxSize(p);
-          const on = selection.has(p.id);
-          const name = p.name.trim() || t.unnamed;
-          return (
-            <li key={p.id}>
-              <button
-                type="button"
-                aria-pressed={on}
-                onClick={(e) => onSelect(p.id, e.shiftKey)}
-                className={cn(
-                  'flex h-row w-full items-center gap-2 rounded-md px-2 text-left text-sm',
-                  focusRing,
-                  on ? 'bg-accent-subtle text-accent-text' : 'hover:bg-surface-hover',
-                )}
-              >
-                <span
-                  aria-hidden
-                  className="w-6 shrink-0 font-mono text-xs text-fg-subtle tabular-nums"
-                >
-                  {i + 1}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{name}</span>
-                <Measure
-                  aria-hidden
-                  value={[size.w, size.h]}
-                  mono
-                  className="shrink-0 text-xs text-fg-muted"
-                />
-                {p.qty > 1 ? (
-                  <span aria-hidden className="shrink-0 font-mono text-xs text-fg-subtle">
-                    {t.qty.replace('{qty}', String(p.qty))}
-                  </span>
-                ) : null}
-              </button>
-            </li>
-          );
-        })}
+        {rows.map(({ p, i }) => (
+          <PartRow
+            key={p.id}
+            part={p}
+            index={i}
+            on={selection.has(p.id)}
+            t={t}
+            onSelect={onSelect}
+          />
+        ))}
       </ul>
     </section>
   );
 }
+
+/**
+ * One list row. Memoised (T137 performance budget): with 500 parts the board re-renders on every
+ * pointer move and selection, and only the rows whose part or selected state changed redraw.
+ * `onSelect` must be stable (the board passes a callback).
+ */
+const PartRow = memo(function PartRow({
+  part: p,
+  index: i,
+  on,
+  t,
+  onSelect,
+}: {
+  part: Part;
+  index: number;
+  on: boolean;
+  t: Messages['editor']['parts'];
+  onSelect: (id: string, additive: boolean) => void;
+}) {
+  const size = partBoxSize(p);
+  const name = p.name.trim() || t.unnamed;
+  return (
+    <li>
+      <button
+        type="button"
+        aria-pressed={on}
+        onClick={(e) => onSelect(p.id, e.shiftKey)}
+        className={cn(
+          'flex h-row w-full items-center gap-2 rounded-md px-2 text-left text-sm',
+          focusRing,
+          on ? 'bg-accent-subtle text-accent-text' : 'hover:bg-surface-hover',
+        )}
+      >
+        <span aria-hidden className="w-6 shrink-0 font-mono text-xs text-fg-subtle tabular-nums">
+          {i + 1}
+        </span>
+        <span className="min-w-0 flex-1 truncate">{name}</span>
+        <Measure
+          aria-hidden
+          value={[size.w, size.h]}
+          mono
+          className="shrink-0 text-xs text-fg-muted"
+        />
+        {p.qty > 1 ? (
+          <span aria-hidden className="shrink-0 font-mono text-xs text-fg-subtle">
+            {t.qty.replace('{qty}', String(p.qty))}
+          </span>
+        ) : null}
+      </button>
+    </li>
+  );
+});

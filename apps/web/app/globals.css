@@ -13,3 +13,11 @@ html:has([data-wizard-footer]) {
   scroll-padding-top: 4.5rem;
   scroll-padding-bottom: 5.5rem;
 }
+
+/* Editor tour (T136): the element the current step points at. An outline, so it shows in
+   forced-colors mode and never shifts the layout. */
+[data-tour-target] {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
