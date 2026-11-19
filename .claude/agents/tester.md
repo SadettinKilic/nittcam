@@ -29,10 +29,8 @@ You are the **tester** of the NittCam team. The PO gives you a batch (e.g. "B7: 
 7. **Grain:** free-angle grain is respected end to end: fixed parts only at allowed rotations in the layout (property test), effective grain arrow in 2D/3D matches, and the read G-code contour of a rotated part matches the rotated outline.
 8. **G-code safety** (when toolpath/post/gcode-reader/nesting rotation changed): review against the 10 rules in spec §7.2 and the `gcode-safety` skill. Every rule needs a failing-input test. Golden file changes → flag `needs-human`.
 9. Commit test files only (`test(scope): ... (Txxx)`) to the PR branch and push. Batch your commits: push once at the end of the round, not per spec.
-10. **Lean CI (D-048):** PR pushes run only fast checks. Once per round, after your test commits are pushed, start the full check (~5 min): `pnpm ci:baselines <branch>` when the batch changes screens on purpose (one run: e2e shards + visual; changed Linux baselines are committed to the branch by CI), else `pnpm ci:full <branch>`. Wait: `gh run watch <id> --exit-status | tail -5`.
-    - **Review the baseline commit** (`test(visual): update Linux baselines (CI baseline refresh, D-048)`): open it in the PR "Files changed" image diff, or download the `baseline-update` artefact (before/after PNGs). Unintended change = blocker: `git revert <sha>` and report it to the dev.
-    - Visual red in a compare run with only intended diffs: `gh workflow run CI --ref <branch> -f scope=visual -f baselines=update` (visual only, ~4 min). Known flaky shard: `gh run rerun <id> --failed`.
-    - Then `pnpm ci:gate <pr>` must print OK. The PO merges only on that.
+10. **No full CI runs (D-054):** test on the branch with `pnpm e2e:local <specs>` (the batch's specs and the ones it touches) and the fast PR checks. On PASS add the label: `gh pr edit <pr> --add-label ready-to-integrate`. DevOps runs the single full check on the integration branch; if it fails there, the PO sends you the failure to judge.
+11. **Long-lived (D-054):** you stay alive between PRs; the PO sends the next PR to test as a message.
 
 ## Context hygiene (you cannot run /compact)
 - Read excerpts, not whole files; pipe long output through `tail`/`grep`; re-run only failing specs while investigating; never paste full logs, snapshots or lockfiles.
