@@ -66,6 +66,9 @@ const G_GROUP: Record<number, string> = {
   610: 'pathMode',
   640: 'pathMode',
   800: 'cycle',
+  810: 'motion', // G81 drill cycle: expanded into rapid / feed / rapid moves (D-050)
+  980: 'cycleReturn',
+  990: 'cycleReturn',
   940: 'feedMode',
 };
 
@@ -93,9 +96,8 @@ const G_UNSUPPORTED: Record<number, string> = {
   680: 'G68 (rotation)',
   730: 'G73 (drill cycle)',
   760: 'G76 (cycle)',
-  810: 'G81 (drill cycle)',
   820: 'G82 (drill cycle)',
-  830: 'G83 (drill cycle)',
+  830: 'G83 (peck drill cycle: its rapid re-entry cannot be checked, D-050)',
   840: 'G84 (tap cycle)',
   850: 'G85 (cycle)',
   860: 'G86 (cycle)',
@@ -280,6 +282,8 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
   let afterEndWarned = false;
   let anyWords = false;
   let inchWarned = false;
+  /** G98 (back to the initial Z) or G99 (back to R) after a drill cycle. */
+  let cycleReturn: 'G98' | 'G99' = 'G98';
   /** A lone "%" after code and before the end (some controllers stop there). */
   let midPercentLine: number | null = null;
   let midPercentWarned = false;
@@ -577,7 +581,10 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
       st.explicit.wcs = true;
     }
 
-    if (dwell) {
+    if (has(980) || has(990)) cycleReturn = has(990) ? 'G99' : 'G98';
+    if (has(810)) {
+      executeDrill(lineNo, block, val, k, f !== undefined);
+    } else if (dwell) {
       const p = val.get('P');
       const seconds = p
         ? dwellUnit === 'ms'
@@ -620,6 +627,72 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
       }
     }
     record();
+  }
+
+  /**
+   * G81 (D-050), absolute mode only: XY rapid at the current Z, rapid to R, feed to Z, rapid back
+   * to R (G99) or to the initial Z (G98). The cycle is not kept modal: axis words after it need a
+   * new motion code (a controller would drill again; the reader reports them instead).
+   */
+  function executeDrill(
+    lineNo: number,
+    block: number | null,
+    val: Map<string, Word>,
+    k: number,
+    feedExplicit: boolean,
+  ): void {
+    st.motion = null;
+    const z = val.get('Z');
+    const r = val.get('R');
+    if (st.distance !== 'G90' || !z || !r || val.has('I') || val.has('J')) {
+      issue(
+        'UNSUPPORTED_CODE',
+        lineNo,
+        'G81 is read only in absolute mode (G90) with Z and R and without I/J',
+      );
+      return;
+    }
+    const x = val.has('X') ? (val.get('X')?.value ?? 0) * k : st.position.x;
+    const y = val.has('Y') ? (val.get('Y')?.value ?? 0) * k : st.position.y;
+    const rz = r.value * k;
+    const bottom = z.value * k;
+    if (bottom > rz) {
+      issue('INVALID_VALUE', lineNo, 'G81 Z above the R plane');
+      return;
+    }
+    const initialZ = st.position.z;
+    const assumed = new Set<GcodeAxis>(st.assumedAxes);
+    if (val.has('X')) assumed.delete('x');
+    if (val.has('Y')) assumed.delete('y');
+    if (st.feed === null) {
+      issue('FEED_UNDEFINED', lineNo, 'G81 without a feed (no F yet)');
+      events.push({ kind: 'missingFeed', line: lineNo, moveIndex: moves.length });
+    }
+    const go = (to: GcodePoint, type: 'rapid' | 'feed'): void => {
+      const from = { ...st.position };
+      if (samePoint(from, to, 0)) return;
+      if (to.z !== from.z) assumed.delete('z');
+      const assumedAxes = (['x', 'y', 'z'] as const).filter((a) => assumed.has(a));
+      moves.push({
+        type,
+        from,
+        to,
+        spindleOn: st.spindle !== 'off',
+        rpm: st.rpm,
+        tool: st.tool,
+        line: lineNo,
+        block,
+        assumedAxes,
+        feed: type === 'rapid' ? null : st.feed,
+        feedExplicit: type === 'rapid' ? false : feedExplicit,
+      });
+      st.position = to;
+      st.assumedAxes = assumedAxes;
+    };
+    go({ x, y, z: st.position.z }, 'rapid');
+    go({ x, y, z: rz }, 'rapid');
+    go({ x, y, z: bottom }, 'feed');
+    go({ x, y, z: cycleReturn === 'G99' ? rz : Math.max(initialZ, rz) }, 'rapid');
   }
 
   function executeMotion(

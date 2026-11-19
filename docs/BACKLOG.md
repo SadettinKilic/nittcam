@@ -42,6 +42,8 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 
 **Order note (2026-11-19, CTO review #4):** **B11a** (T257–T260) runs right after B11 and before B12. T261 rides with B12, T262 and T263 ride with B13. No other batch moves.
 
+**Order note (2026-11-19, CTO review #6, D-047):** **B13a** (T269–T270 + rider T271) runs now, in parallel with B13 and B14/B16. The rest of review #6 is in the Polish queue. No other batch moves.
+
 **Order note (2026-11-19, CTO review #5, D-047):** **B12a** (T264–T266) runs right after B12 and before B13. Everything else from that review is in "Polish queue (M9; D-047)". No other batch moves.
 
 ---
@@ -798,6 +800,40 @@ Acceptance:
 - [ ] `pnpm test` green 5 times in a row under full parallel load
 Tester focus: none beyond CI (test-only change).
 
+### Batch B13a: T269–T270 + rider T271 (CTO review #6 must-fixes, D-047)
+
+Runs in parallel with B13 (different screens). Review: `docs/reviews/2026-11-19-cto-design-review-6.md`.
+
+### T269 Simülasyon and step 1 show the profile version the file is made with (must-fix: wrong output)   [status: todo]
+Spec: §3.7, §9, §2.4 · Depends: T258, T262 · Decision: D-045
+Found: the project is bound to a profile version and the export uses it, but step 1 and Simülasyon use the machine's latest version (`apps/web/components/wizard/project-wizard.tsx`, `details[machineId]`). MDF step-down 6 → 9 on the machine: Simülasyon shows "surum 4", `G1 Z-6.1666`, 24 passes; the downloaded file is "surum 1", `G1 Z-4.6250`, 32 passes.
+Acceptance:
+- [ ] project bound to version N, machine at N+1 with a changed MDF 18 step-down: the Simülasyon G-code panel's first 12 lines, pass count and estimated time equal the downloaded file
+- [ ] the machine row and "Kesim ayarı: …" sentence in step 1 show the values of the project's version; the "Takım Ø" chip on Dizilim comes from the same version
+- [ ] with a version gap the step 1 box "Makine profili güncellendi … [Son sürüme geç]" also shows on Simülasyon and Dışa aktar (same button, one undo step); after it all three steps show the latest version and the file uses it
+- [ ] if this exceeds half a day, smallest fix: with a version gap Simülasyon makes no preview and shows the box with "Son sürüme geç"
+- [ ] golden files and "the file is made with the project's version" stay unchanged
+Tester focus: create a project, change MDF step-down on the machine, reopen the project; panel text vs first 12 lines and pass count of the downloaded file, before and after "Son sürüme geç"; `?profil=son` return still works.
+
+### T270 An inner cut with no room for 2 tabs is caught where it is drawn (must-fix: late, blocking flow)   [status: todo]
+Spec: §4.3, §6.3, §3.7 · Depends: T134, T258 · Decision: D-049, D-045
+Found: with an 8 mm tool a Ø24 circle is added without warning; cut list "Sorun yok", Dizilim "Sorun bulunmadı", four ticks; only Simülasyon says "Bu dosya indirilemez … 2 köprü sığmıyor" without part name, linking to "Makineler", with "Uyarılar: Sorun bulunmadı" below. The block itself is right (D-049).
+Acceptance:
+- [ ] an inner cut whose slug has no room for 2 tabs shows an error on Parçalar: on that inner cut's row in the properties panel and in the cut list issue chip; the text names part and inner cut ("Kapak · İç kesim 3: …"); the rule comes from the same core function as `SMALL_SLUG_UNSECURED` in the toolpath
+- [ ] the step indicator puts the red dot on Parçalar and keeps it visible on Dizilim, Simülasyon, Dışa aktar (same as the unverified cutting set)
+- [ ] the red box on Simülasyon and Dışa aktar names part and inner cut; its link opens Parçalar → Çizim with that part selected; the "Uyarılar" card on the same screen never says "Sorun bulunmadı." while it is shown
+- [ ] no solution that does not exist yet is offered (remove "cep boşaltma yakında"; the hole tool from B14 may be named once it is on main)
+- [ ] D-049, thresholds and golden files unchanged; Ø35 and 80 × 80 pass with tabs as today
+Tester focus: Ø24 and Ø35 circle, 80 × 80 square; dot and text on every step; the view the link opens and the selected part; deleting the inner cut clears the error everywhere; 1440 and 1024; axe.
+
+### T271 Rider: a new project never defaults to an unverified cutting set   [status: todo]
+Spec: §2.4 · Depends: T265
+Found by the B12a tester: `apps/web/lib/draft-project.ts:60` `newProject` falls back to `profile.materials[0]` without skipping `unverified` sets (G-code stays blocked, but the T265 rule does not hold in this edge case).
+Acceptance:
+- [ ] the fallback picks the first verified set; if none is verified, the project starts without a set and step 1 shows the existing "Kesim ayarını doğrula" box
+- [ ] unit test for both cases
+Tester focus: machine whose only set came from the fix flow (unverified) → new project.
+
 ---
 
 ## M5: Çizim tahtası II: delik, cep, şablon, DXF (exit: a hinge-door project built with a template and a DXF sign job both give checked G-code)
@@ -1198,6 +1234,21 @@ From CTO review #5 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-5.md`
 - Step 1: "Kütüphanedeki kalınlıklar: 18 mm [18]" says nothing when the library has one thickness and it is already selected; show the row only when there is a choice (`docs/reviews/2026-11-19-cto-5/wizard-step1-default-1440-light.png`)
 - Step 1: with the red "kesim ayarı yok" box open, "Plaka ölçüsü" drops under the footer at 1440 × 900; tighten the box or the spacing (`docs/reviews/2026-11-19-cto-5/wizard-step1-no-params-1440-light.png`)
 - Cut list: the opened "Uyarılar" panel covers the band / Not / Grup cells and row menus of the first rows at 1440; clicking an issue should scroll to and focus its row, then the panel can close (`docs/reviews/2026-11-19-cto-5/cutlist-issues-1440-light.png`)
+
+From CTO review #6 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-6.md`):
+- Board: an inner cut cannot be selected, moved, sized or positioned relative to the part after it is added; only delete and redraw (best candidate to pull forward)
+- "İç kesim olarak ekle?" dialog: main button overflows the dialog by 18 px; focus on "Vazgeç" and Enter does not run the button; blur hides the drawn shape; asked again for every inner cut
+- Board, Dizilim, Simülasyon: inner cut filled with the part colour, does not read as a hole; part label sits over the opening
+- Board: edge length labels of a small selected part overlap each other and the part (%39 on a 200 × 150 bracket; %18 window)
+- Cut list: no marker on a row that has inner cuts
+- Simülasyon: "Köprü sayısı azaltıldı." names no part or inner cut
+- Toolpath: no lead-in arc / ramp on inner contours, the plunge mark stays on the visible edge of the opening (decide with golden impact)
+- Toolpath: passes above tab height still lift 0,25 mm over tab gaps (acrylic 5 mm); needless moves
+- Machine form, 1024: arriving from the fix flow, "Değerleri doğruladım" is under the sticky save bar
+- Cut list: cabinet toast says "5 satır eklendi", button says "7 parça ekle"; use one unit
+- Dışa aktar: profile version gap is a small yellow line; after T269 keep it as the box
+- Wizard header: two rows on Makine / Dışa aktar at 1400–1410 (sidebar open, scrollbar), 1280 and 1024; container threshold ~1095 px (B13r tester, CTO #6)
+- Ayarlar → Malzemeler at 1024: the table scrolls inside its box (Paso, Takım no on the right); "Kesim ayarı" label cuts the machine name (B12a/B13r testers)
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 

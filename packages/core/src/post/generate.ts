@@ -89,6 +89,8 @@ interface Ctx {
   verification: string;
   unverified: boolean;
   arcsOn: boolean;
+  /** Drill operations as G81 cycles (post `drill.cycles` ≠ none and the profile allows it, D-050). */
+  drillCycles: boolean;
   lineNumbers: boolean;
   vacuum: { on: string; off: string } | null;
   comment: CommentFormat;
@@ -101,6 +103,14 @@ interface FilePlan {
   tool: number | null;
   ops: Operation[];
 }
+
+const OPERATION_KINDS: ReadonlySet<string> = new Set([
+  'outerContour',
+  'innerContour',
+  'pocket',
+  'drill',
+  'groove',
+]);
 
 /** Writes one program; holds the modal state and enforces the rules move by move. */
 class Writer {
@@ -316,8 +326,8 @@ class Writer {
   operation(op: Operation): void {
     this.op = op;
     const profile = this.c.profile;
-    // Pockets come only from the test part (T022); the moves are checked like any other.
-    if (op.kind !== 'outerContour' && op.kind !== 'innerContour' && op.kind !== 'pocket') {
+    // Every operation kind is written from its moves and checked like any other (drill cycles below).
+    if (!OPERATION_KINDS.has(op.kind)) {
       this.fail('UNSUPPORTED_OPERATION', `Operation kind ${String(op.kind)} is not supported.`);
     }
     if (!profile.tools.some((t) => t.number === op.tool)) {
@@ -342,8 +352,81 @@ class Writer {
     }
     if (op.tool !== this.tool) this.toolChange(op);
     if (this.spindleRpm !== op.rpm) this.spindleOn(op.rpm);
-    for (const move of operationMoves(op)) this.move(op, move);
+    if (op.kind === 'drill' && this.c.drillCycles) this.drillCycle(op);
+    else for (const move of operationMoves(op)) this.move(op, move);
     this.op = null;
+  }
+
+  /**
+   * A drill operation as canned cycles (D-050): one `G99 G81 X Y Z R F` per peck (R = the clearance
+   * height the model retracts to), then G80. Never G83: its rapid re-entry to a controller-specific
+   * distance above the last peck cannot be checked by the reader. The approach and the final
+   * retract are ordinary moves. The model must be the drill shape: per pass a plunge at the plunge
+   * feed straight down at the hole centre, then a Z-only rapid back to the clearance height.
+   */
+  private drillCycle(op: Operation): void {
+    const tp = this.c.toolpath;
+    let cycles = 0;
+    for (const seg of op.segments) {
+      if (seg.role !== 'pass') {
+        for (const move of seg.moves) this.move(op, move);
+        continue;
+      }
+      const [down, up, ...rest] = seg.moves;
+      if (
+        rest.length > 0 ||
+        down?.kind !== 'plunge' ||
+        up?.kind !== 'rapid' ||
+        Math.abs(down.x - this.pos.x) > EPS ||
+        Math.abs(down.y - this.pos.y) > EPS ||
+        Math.abs(up.x - down.x) > EPS ||
+        Math.abs(up.y - down.y) > EPS ||
+        Math.abs(up.z - tp.clearanceZ) > EPS ||
+        Math.abs(this.pos.z - tp.clearanceZ) > EPS
+      ) {
+        this.fail(
+          'UNSUPPORTED_OPERATION',
+          'Drill pass is not a plunge and a retract to clearance.',
+        );
+      }
+      if (!this.ready || this.spindleRpm !== op.rpm) {
+        this.fail('SPINDLE_NOT_READY', 'Cutting move before spindle start and warm-up.', 4);
+      }
+      if (!Number.isFinite(down.feed) || Math.abs(down.feed - op.plungeFeed) > EPS) {
+        this.fail(
+          'PLUNGE_TOO_FAST',
+          `Drill peck at ${down.feed} mm/min, plunge feed is ${op.plungeFeed}.`,
+          3,
+        );
+      }
+      const bottom: Point3 = { x: down.x, y: down.y, z: down.z };
+      this.finite(bottom);
+      this.checkEnvelope(bottom);
+      const m = toMachine(this.c.frame, bottom);
+      const d = this.c.cfg.decimals;
+      const r = this.numZ(tp.clearanceZ + this.c.frame.zOffset, d.z);
+      const words = [
+        'G99',
+        'G81',
+        `X${this.num(m.x, d.xy, 'X')}`,
+        `Y${this.num(m.y, d.xy, 'Y')}`,
+        `Z${this.numZ(m.z, d.z)}`,
+        `R${r}`,
+        `F${this.num(down.feed, d.feed, 'F')}`,
+      ];
+      this.block(words);
+      this.feed = words[6]?.slice(1) ?? null;
+      this.wz = r;
+      this.pos = { x: up.x, y: up.y, z: up.z };
+      this.atSafeZOnly = false;
+      cycles++;
+    }
+    if (cycles > 0) {
+      this.block(['G80']);
+      // The cycle mode is cancelled: the next move writes its motion code and feed again.
+      this.motion = null;
+      this.forceFeed = true;
+    }
   }
 
   private move(op: Operation, move: ReturnType<typeof operationMoves>[number]): void {
@@ -717,6 +800,7 @@ export function generateGcode(
     verification: state,
     unverified: state !== 'verified' || profile.example || cfg.status !== 'verified',
     arcsOn: cfg.arcs.enabled && profile.constraints.arcs,
+    drillCycles: cfg.drill.cycles !== 'none' && profile.constraints.drillCycles,
     lineNumbers: cfg.lineNumbers.enabled || profile.constraints.lineNumbers,
     vacuum,
     comment: cfg.comments,

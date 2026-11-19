@@ -285,6 +285,9 @@ describe('commandToolDefinitions (future AI tools)', () => {
   it('exports one JSON Schema per AI-callable command', () => {
     expect(tools.map((t) => t.name).sort()).toEqual(
       [
+        'addHole',
+        'updateHole',
+        'removeHole',
         'addPart',
         'duplicatePart',
         'importCutList',

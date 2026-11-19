@@ -18,6 +18,7 @@ export type ShortcutId =
   | 'boardCircle'
   | 'boardLine'
   | 'boardArc'
+  | 'boardHole'
   | 'boardDim'
   | 'boardTypeLength'
   | 'boardCancel'
@@ -68,6 +69,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'boardCircle', keys: 'c', group: 'board', page: true },
   { id: 'boardLine', keys: 'l', group: 'board', page: true },
   { id: 'boardArc', keys: 'a', group: 'board', page: true },
+  { id: 'boardHole', keys: 'o', group: 'board', page: true },
   { id: 'boardDim', keys: 'd', group: 'board', page: true },
   // T136: drawing keys of the editor tools, so the shortcut sheet covers every board key.
   { id: 'boardTypeLength', keys: 'enter', group: 'board', page: true },
