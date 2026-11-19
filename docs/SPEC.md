@@ -394,7 +394,7 @@ Kullanıcı hedef seçer: en az fire, en hızlı üretim (kısa kesim yolu), en 
 - **Kesim sırası:** önce delik ve cep, sonra iç kontur, en son dış kontur. Küçük parçalar büyüklerden önce kesilir (vakum hâlâ güçlüyken).
 - **Derinlik:** paso derinliğine göre çok paso. Geçme kesimde hedef = kalınlık + fire tabla payı.
 - **Giriş/çıkış:** lead-in ve lead-out (yay veya düz). Dalma düz veya rampalı.
-- **Tab:** tutucu köprüler; adet, genişlik ve yükseklik ayarlanır. Tab köşeye ve yay üstüne konmaz.
+- **Tab:** tutucu köprüler; adet, genişlik ve yükseklik ayarlanır. Tab köşeye konmaz; düz kenar tercih edilir, düz kenara sığmayan küçük parçada (disk, "O" harfi) tab, yarıçapı takım yarıçapından büyük tek bir yayın üstüne konur (T272, D-058).
 - **Küçük parça güvenliği:** alanı eşiğin altındaki parçaya otomatik tab eklenir. İkinci seçenek: son pasoda ince tabaka bırakıp en sonda temizleme pasosu.
 - **Yön:** climb / conventional seçimi.
 - **Rapid sıralama:** aynı takımın işlemleri gruplanır; kesimler arası boş hareket en yakın komşu sezgisiyle kısaltılır.

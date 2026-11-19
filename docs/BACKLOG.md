@@ -989,20 +989,20 @@ Tester focus: both answers; override conflict case; undo after update.
 
 ### Batch B18: T150–T151 + T272, rider T273 (template library; tabs on arcs)
 
-### T150 Ready template library   [status: todo]
+### T150 Ready template library   [status: done]
 Spec: §4.7, §14.2 · Depends: T148
 Acceptance:
 - [ ] seed: hinge cup Ø35 (2 and 3 hinges by door height), handle holes (96/128/160 mm), drawer rail holes; values marked "üretici verisiyle doğrulanacak" (open item §14.2)
 - [ ] e2e: hinge-door project with template → nest → NC passes checks (other half of the M5 exit)
 Tester focus: e2e; G-code safety review of pockets near the edge.
 
-### T151 Şablonlar page   [status: todo]
+### T151 Şablonlar page   [status: done]
 Spec: §3.4 · Depends: T150
 Acceptance:
 - [ ] list (company + ready library), preview thumbnail, edit params, version history, duplicate, archive
 Tester focus: visual + axe; edit creates a new version; old projects unchanged.
 
-### T272 Small all-arc parts can be secured with tabs (sign letters "O", discs)   [status: todo]
+### T272 Small all-arc parts can be secured with tabs (sign letters "O", discs)   [status: done]
 Spec: §2.4, §6.3 · Depends: T015, T143 · Decision: D-049
 Found by B16 (#80): a small part whose outline is only arcs (letter O, disc) gets no tabs, because outer-contour tabs are placed only on straight edges, so the export is blocked with `SMALL_PART_UNSECURED`. Sign shops hit this with DXF letters.
 Acceptance:
