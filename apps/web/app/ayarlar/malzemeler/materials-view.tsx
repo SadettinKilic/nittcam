@@ -293,18 +293,27 @@ function MaterialRow({
                 const missing = libraryParamLinks(m, profile)
                   .filter((l) => !l.params)
                   .map((l) => mmFormat.format(l.thickness));
+                const sentence =
+                  missing.length === 0
+                    ? fill(t.paramsOk, { machine: name })
+                    : fill(t.paramsMissing, { machine: name, list: missing.join(', ') });
+                // T257: the status is short and always readable; only the name may shorten.
                 return (
-                  <Badge
-                    key={name}
-                    variant={missing.length === 0 ? 'success' : 'warning'}
-                    className="max-w-full"
-                  >
-                    <span className="truncate">
-                      {missing.length === 0
-                        ? fill(t.paramsOk, { machine: name })
-                        : fill(t.paramsMissing, { machine: name, list: missing.join(', ') })}
-                    </span>
-                  </Badge>
+                  <Tooltip key={name} content={sentence}>
+                    <Badge
+                      tabIndex={0}
+                      aria-label={sentence}
+                      data-status={missing.length === 0 ? 'ok' : 'missing'}
+                      variant={missing.length === 0 ? 'success' : 'warning'}
+                      className="max-w-full"
+                    >
+                      <span className="min-w-0 truncate">{name}</span>
+                      <span aria-hidden className="shrink-0">
+                        {' · '}
+                        {missing.length === 0 ? t.statusOk : t.statusMissing}
+                      </span>
+                    </Badge>
+                  </Tooltip>
                 );
               })
             )}

@@ -7,6 +7,7 @@
 //   (the status line writes .team/limits.json; it is merged into state.json on every write)
 //   node tools/team/status.mjs ask "<question>" ["option" ...]  |  answered <Qxxx> "<answer>"
 //   node tools/team/status.mjs alert "<message>" | alert off   ("PC'ye bak" popup)
+//   node tools/team/status.mjs call   (owner wrote to the PO: desk phone rings on the dashboard, hangs up 10 s after the last call; silent on any error)
 //   node tools/team/status.mjs print
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -34,6 +35,15 @@ try { s = JSON.parse(readFileSync(file, 'utf8')); } catch { s = empty(); }
 const now = new Date().toISOString();
 const [cmd, ...rest] = process.argv.slice(2);
 const die = (m) => { console.error(m); process.exit(1); };
+if (cmd === 'call') { // hook-safe: sets state.call.at, never fails loudly
+  try {
+    s.call = { at: now };
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file + '.tmp', JSON.stringify(s, null, 2) + '\n');
+    renameSync(file + '.tmp', file);
+  } catch {}
+  process.exit(0);
+}
 
 if (AGENTS.includes(cmd)) {
   const [state, task = '', message = ''] = rest;
@@ -91,7 +101,7 @@ if (AGENTS.includes(cmd)) {
 } else if (cmd === 'print') {
   process.stdout.write(JSON.stringify(s, null, 2) + '\n'); process.exit(0);
 } else {
-  die('usage: status.mjs <po|dev|dev2|tester|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | milestone "<name>" | print');
+  die('usage: status.mjs <po|dev|dev2|tester|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | milestone "<name>" | call | print');
 }
 
 s.updated = now;

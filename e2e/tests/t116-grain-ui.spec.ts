@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { fill, openNewProject, paste } from './wizard-helpers';
+import { fill, openGrainedProject, openNewProject, paste } from './wizard-helpers';
 
 // T116: grain in the UI. Sheet dial with live preview (one undo step per drag), cut-list grain
 // cell with popover dial, fixed/free switch and "apply to all" (one undo step).
 const PARTS = ['Parça adı\tEn\tBoy\tAdet', 'Kapak\t400\t700\t1', 'Raf\t500\t300\t2'].join('\n');
 
 test('sheet dial: live preview while dragging, one undo step per drag', async ({ page }) => {
-  await openNewProject(page, 'makine');
+  await openGrainedProject(page);
   const dial = page.getByTestId('sheet-grain-dial');
   const preview = page.getByTestId('sheet-preview-grain');
   await expect(dial).toHaveAttribute('aria-valuenow', '0');

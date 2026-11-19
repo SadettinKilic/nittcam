@@ -4,12 +4,14 @@ import {
   cabinetFrontView,
   cabinetParamsSchema,
   cabinetParts,
+  cabinetPartsForStock,
   DEFAULT_CABINET,
   type CabinetParams,
   type CabinetPart,
 } from '@nittcam/core';
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -28,6 +30,7 @@ import {
   SelectValue,
 } from '@nittcam/ui';
 import { useId, useMemo, useState, type FormEvent } from 'react';
+import { loadCabinetMemory, saveCabinetMemory } from '../../lib/cabinet-memory';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 
@@ -42,18 +45,25 @@ export function nextCabinetName(pattern: string, groups: readonly (string | unde
   }
 }
 
-/** Generated rows as `importCutList` input: a plain row each (D-041), the group only a label. */
+/**
+ * Generated rows as `importCutList` input: a plain row each (D-041), the group only a label. A part
+ * in another thickness than the stock (added on purpose, T260) carries it as a note ("8 mm").
+ */
 export function cabinetRows(
   parts: readonly CabinetPart[],
   names: Text['roles'],
   group: string,
   newId: () => string,
+  stockThickness?: number,
 ) {
   return parts.map((p) => ({
     id: newId(),
     name: names[p.role],
     qty: p.qty,
     ...(group.trim() ? { group: group.trim() } : {}),
+    ...(stockThickness !== undefined && Math.abs(p.thickness - stockThickness) > 1e-6
+      ? { note: `${fmt(p.thickness)} mm` }
+      : {}),
     grain: p.grain,
     params: { w: p.w, h: p.h, r: 0 },
     edgeBand: p.edgeBand,
@@ -72,6 +82,7 @@ export function CabinetDialog({
   open,
   onOpenChange,
   thickness,
+  hasGrain,
   defaultGroup,
   onAdd,
 }: {
@@ -80,24 +91,34 @@ export function CabinetDialog({
   onOpenChange: (open: boolean) => void;
   /** The project's board thickness (the default carcass thickness). */
   thickness: number;
+  /** Does the project's stock have a grain? Without one the rows are free to rotate (T260). */
+  hasGrain: boolean;
   defaultGroup: string;
   /** Adds the rows; false when the command was rejected. */
   onAdd: (parts: CabinetPart[], group: string) => boolean;
 }) {
-  const ids = { group: useId(), back: useId() };
+  const ids = { group: useId(), back: useId(), other: useId() };
+  // T260: the last used shelves, back, doors, band and gap (per browser); the box size is fresh.
+  const [memory] = useState(() => loadCabinetMemory());
   const [v, setV] = useState<Record<NumKey, number | null>>({
     width: DEFAULT_CABINET.width,
     height: DEFAULT_CABINET.height,
     depth: DEFAULT_CABINET.depth,
     thickness,
-    shelves: DEFAULT_CABINET.shelves,
-    doorGap: DEFAULT_CABINET.doorGap,
+    shelves: memory?.shelves ?? DEFAULT_CABINET.shelves,
+    doorGap: memory?.doorGap ?? DEFAULT_CABINET.doorGap,
     plinth: DEFAULT_CABINET.plinth,
-    band: DEFAULT_CABINET.band,
+    band: memory?.band ?? DEFAULT_CABINET.band,
   });
-  const [back, setBack] = useState<CabinetParams['back']>({ ...DEFAULT_CABINET.back });
-  const [doors, setDoors] = useState<CabinetParams['doors']>(DEFAULT_CABINET.doors);
+  const [back, setBack] = useState<CabinetParams['back']>({
+    ...(memory?.back ?? DEFAULT_CABINET.back),
+  });
+  const [doors, setDoors] = useState<CabinetParams['doors']>(
+    memory?.doors ?? DEFAULT_CABINET.doors,
+  );
   const [group, setGroup] = useState(defaultGroup);
+  // T260 (D-045): parts in another thickness are added only on purpose.
+  const [includeOther, setIncludeOther] = useState(false);
 
   const parsed = useMemo(
     () => cabinetParamsSchema.safeParse({ ...v, back, doors }),
@@ -110,10 +131,19 @@ export function CabinetDialog({
       ? t.errors[result.error]
       : null;
   const view = parsed.success ? cabinetFrontView(parsed.data) : [];
+  const split = result?.ok
+    ? cabinetPartsForStock(result.parts, { thickness, hasGrain }, includeOther)
+    : null;
+  const addCount = split ? split.rows.reduce((s, p) => s + p.qty, 0) : 0;
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (result?.ok && onAdd(result.parts, group)) onOpenChange(false);
+    if (!split || !parsed.success || split.rows.length === 0) return;
+    if (onAdd(split.rows, group)) {
+      const { shelves, back: b, doors: d, band, doorGap } = parsed.data;
+      saveCabinetMemory({ shelves, back: b, doors: d, band, doorGap });
+      onOpenChange(false);
+    }
   }
 
   const num = (key: NumKey, label: string, unit = 'mm', opts: { int?: boolean } = {}) => (
@@ -137,7 +167,7 @@ export function CabinetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl" data-testid="cabinet-dialog">
+      <DialogContent className="max-w-4xl" data-testid="cabinet-dialog">
         <form onSubmit={submit} noValidate className="flex flex-col gap-5">
           <DialogHeader>
             <DialogTitle>{t.title}</DialogTitle>
@@ -172,7 +202,8 @@ export function CabinetDialog({
                       data-testid="cabinet-back"
                       data-value={back.mode}
                     >
-                      <SelectValue />
+                      {/* T260: the short label fits the field; the list explains each mode. */}
+                      <SelectValue>{t.backModesShort[back.mode]}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {(['none', 'inset', 'overlay'] as const).map((m) => (
@@ -210,12 +241,15 @@ export function CabinetDialog({
                   <RadioGroup
                     value={String(doors)}
                     onValueChange={(d) => setDoors(Number(d) as CabinetParams['doors'])}
-                    className="flex h-control-sm items-center gap-4"
+                    className="flex min-h-control-sm flex-wrap items-center gap-x-4 gap-y-1"
                     aria-label={t.fields.doors}
                     data-testid="cabinet-doors"
                   >
                     {([0, 1, 2] as const).map((d) => (
-                      <label key={d} className="flex items-center gap-1.5 text-sm text-fg">
+                      <label
+                        key={d}
+                        className="flex items-center gap-1.5 text-sm whitespace-nowrap text-fg"
+                      >
                         <RadioGroupItem value={String(d)} aria-label={t.doorCount[d]} />
                         {t.doorCount[d]}
                       </label>
@@ -242,17 +276,48 @@ export function CabinetDialog({
                   className="flex flex-col gap-0.5 text-xs text-fg-muted"
                   data-testid="cabinet-summary"
                 >
-                  {result.parts.map((p) => (
-                    <li key={p.role} className="flex justify-between gap-2 tabular-nums">
-                      <span>
-                        {p.qty} × {t.roles[p.role]}
-                      </span>
-                      <span className="font-mono">
-                        {fill(t.size, { w: fmt(p.w), h: fmt(p.h) })}
-                      </span>
-                    </li>
-                  ))}
+                  {result.parts.map((p) => {
+                    const other = split?.other.some((o) => o.role === p.role) ?? false;
+                    return (
+                      <li
+                        key={p.role}
+                        data-part={p.role}
+                        data-other={other ? '' : undefined}
+                        className={`flex justify-between gap-2 tabular-nums ${other && !includeOther ? 'text-fg-subtle' : ''}`}
+                      >
+                        <span>
+                          {p.qty} × {t.roles[p.role]}
+                        </span>
+                        <span className="text-right font-mono">
+                          {fill(t.size, { w: fmt(p.w), h: fmt(p.h) })}
+                          {other ? (
+                            <span className="font-sans">
+                              {' · '}
+                              {fill(t.otherBoard, { t: fmt(p.thickness) })}
+                            </span>
+                          ) : null}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
+              ) : null}
+              {split && split.other.length > 0 ? (
+                <div
+                  className="flex flex-col gap-1.5 rounded-md border border-border bg-surface-subtle px-2.5 py-2 text-xs"
+                  data-testid="cabinet-other"
+                >
+                  <p className="text-fg-muted">{fill(t.otherNote, { t: fmt(thickness) })}</p>
+                  <label htmlFor={ids.other} className="flex items-center gap-2 text-sm text-fg">
+                    <Checkbox
+                      id={ids.other}
+                      data-testid="cabinet-include-other"
+                      checked={includeOther}
+                      onCheckedChange={(c) => setIncludeOther(c === true)}
+                    />
+                    {t.includeOther}
+                  </label>
+                </div>
               ) : null}
             </figure>
           </div>
@@ -265,10 +330,8 @@ export function CabinetDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t.cancel}
             </Button>
-            <Button type="submit" disabled={!result?.ok} data-testid="cabinet-add">
-              {result?.ok
-                ? fill(t.add, { count: result.parts.reduce((s, p) => s + p.qty, 0) })
-                : t.addDisabled}
+            <Button type="submit" disabled={addCount === 0} data-testid="cabinet-add">
+              {addCount > 0 ? fill(t.add, { count: addCount }) : t.addDisabled}
             </Button>
           </DialogFooter>
         </form>

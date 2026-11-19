@@ -12,6 +12,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { findMaterialParams } from '@nittcam/core';
 import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
@@ -83,6 +84,10 @@ import { PageSkeleton } from '../feedback/page-skeleton';
 import { ShellStatus, useShellTitle } from '../shell/shell-context';
 
 const NEW_PATH = '/projeler/yeni';
+
+/** `?profil=son`: move the project to the machine's latest profile version on entry (T258). */
+const LATEST_PARAM = 'profil';
+const LATEST_VALUE = 'son';
 
 function stepUrl(id: string | null, step: StepKey): string {
   return `${id ? `/projeler/${id}` : NEW_PATH}?adim=${step}`;
@@ -206,11 +211,13 @@ export function ProjectWizard({
             (r) => (r.body ?? []).map((p) => p.name),
             () => [],
           );
+          // T259: a new project starts on the library's first entry the machine can cut.
+          const library = firstDetail ? ((await fetchMaterials()) ?? []) : [];
           init = {
             id: null,
             revision: 0,
             name: untitledName(t.defaultName, names),
-            project: newProject(firstDetail ?? undefined),
+            project: newProject(firstDetail ?? undefined, library),
           };
         }
         if (live) setLoaded({ status: 'ready', machines: machines.body, init, firstDetail });
@@ -395,6 +402,24 @@ function WizardSession({
     onCreated: created,
   });
   const project = session.project;
+  // T258: back from "Kesim ayarı ekle" (`?profil=son`): the project moves to the machine's
+  // latest profile version, which has the new parameter set (export uses the project's version).
+  const [takeLatest, setTakeLatest] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get(LATEST_PARAM) === LATEST_VALUE,
+  );
+  useEffect(() => {
+    if (!takeLatest || !detail) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTakeLatest(false);
+    const pinned = session.project.machine;
+    if (detail.id === pinned.machineId && detail.version !== pinned.profileVersion)
+      session.run('setMachine', { machineId: detail.id, profileVersion: detail.version });
+    const url = new URL(window.location.href);
+    url.searchParams.delete(LATEST_PARAM);
+    window.history.replaceState(window.history.state, '', url);
+  }, [takeLatest, detail, session]);
   // Save failures are announced once as a toast (T105); autosave keeps retrying.
   const saveFailed = session.saveState === 'error';
   useEffect(() => {
@@ -428,6 +453,9 @@ function WizardSession({
   }, [machineId, known, details]);
 
   const profile = detail?.profile ?? null;
+  // D-045 / T258: a problem that blocks G-code is marked on the step that causes it, on every step.
+  const noParams = profile !== null && findMaterialParams(profile, project.stock) === undefined;
+  const stepErrors: StepErrors = noParams ? { makine: t.steps.errors.noParams } : {};
   const simMachine: SimMachine | null = useMemo(() => {
     const d = details[machineId];
     return d
@@ -567,7 +595,7 @@ function WizardSession({
             <MachineFields
               t={t.machine}
               materials={messages.materials}
-              machinesLink={t.machinesLink}
+              returnTo={`${stepUrl(session.projectId, 'makine')}&${LATEST_PARAM}=${LATEST_VALUE}`}
               project={project}
               machines={machines}
               library={library}
@@ -779,6 +807,7 @@ function WizardSession({
               current={step}
               statuses={wizardStepStatuses(step, progress)}
               progress={progress}
+              errors={stepErrors}
               onGo={go}
             />
             <div className="flex shrink-0 items-center gap-0.5">{headerActions}</div>
@@ -822,6 +851,7 @@ function WizardSession({
                   current={step}
                   statuses={wizardStepStatuses(step, progress)}
                   progress={progress}
+                  errors={stepErrors}
                   onGo={go}
                 />
               </div>
@@ -970,6 +1000,7 @@ function StepIndicator({
   current,
   statuses,
   progress,
+  errors,
   onGo,
 }: {
   t: Messages['wizard']['steps'];
@@ -977,6 +1008,7 @@ function StepIndicator({
   current: StepKey;
   statuses: readonly WizardStepStatus[];
   progress: WizardProgress;
+  errors: StepErrors;
   onGo: (step: StepKey) => void;
 }) {
   const index = STEPS.indexOf(current);
@@ -1027,11 +1059,18 @@ function StepIndicator({
                   aria-current={active ? 'step' : undefined}
                   data-testid={`wizard-step-${s}`}
                   data-status={status}
-                  title={blocker && !active ? `${t[s]}: ${t.blocked[blocker]}` : t[s]}
+                  data-error={errors[s] ? '' : undefined}
+                  title={
+                    errors[s]
+                      ? `${t[s]}: ${errors[s]}`
+                      : blocker && !active
+                        ? `${t[s]}: ${t.blocked[blocker]}`
+                        : t[s]
+                  }
                   onClick={() => onGo(s)}
                   className={`group flex min-h-10 min-w-8 items-center gap-2 rounded-lg px-0.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:min-w-11 sm:px-2 ${focusRing}`}
                 >
-                  <StepDot status={status} n={i + 1} />
+                  <StepDot status={status} n={i + 1} error={Boolean(errors[s])} />
                   {active ? null : (
                     <span
                       aria-hidden="true"
@@ -1043,6 +1082,7 @@ function StepIndicator({
                   <span className="sr-only">{t[s]}</span>
                   <span className="sr-only">
                     {` (${t.status[status]}${blocker && !active ? `: ${t.blocked[blocker]}` : ''})`}
+                    {errors[s] ? ` (${t.error}: ${errors[s]})` : ''}
                   </span>
                 </button>
                 {i < STEPS.length - 1 ? (
@@ -1060,12 +1100,26 @@ function StepIndicator({
   );
 }
 
-/** The round step marker: number, check (done) or lock (blocked); accent when current. */
-function StepDot({ status, n }: { status: WizardStepStatus; n: number }) {
+/** Problems that block G-code, per step that causes them (D-045, T258): shown as an error dot. */
+type StepErrors = Partial<Record<StepKey, string>>;
+
+/**
+ * The round step marker: number, check (done) or lock (blocked); accent when current. A step
+ * with a blocking problem gets a small danger dot on its corner (T258).
+ */
+function StepDot({
+  status,
+  n,
+  error = false,
+}: {
+  status: WizardStepStatus;
+  n: number;
+  error?: boolean;
+}) {
   return (
     <span
       aria-hidden="true"
-      className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums ${
+      className={`relative flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums ${
         status === 'current'
           ? 'border-accent bg-accent text-accent-fg shadow-xs'
           : status === 'done'
@@ -1082,6 +1136,12 @@ function StepDot({ status, n }: { status: WizardStepStatus; n: number }) {
       ) : (
         n
       )}
+      {error ? (
+        <span
+          data-testid="step-error-dot"
+          className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-surface bg-danger"
+        />
+      ) : null}
     </span>
   );
 }
@@ -1097,6 +1157,7 @@ function CompactStepper({
   current,
   statuses,
   progress,
+  errors,
   onGo,
 }: {
   t: Messages['wizard']['steps'];
@@ -1104,6 +1165,7 @@ function CompactStepper({
   current: StepKey;
   statuses: readonly WizardStepStatus[];
   progress: WizardProgress;
+  errors: StepErrors;
   onGo: (step: StepKey) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1178,6 +1240,7 @@ function CompactStepper({
                     aria-current={active ? 'step' : undefined}
                     data-testid={`wizard-step-${s}`}
                     data-status={status}
+                    data-error={errors[s] ? '' : undefined}
                     onClick={() => {
                       chosen.current = true;
                       setOpen(false);
@@ -1185,14 +1248,16 @@ function CompactStepper({
                     }}
                     className={`flex min-h-11 w-full items-center gap-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover ${active ? 'bg-accent-subtle/60' : ''} ${focusRing}`}
                   >
-                    <StepDot status={status} n={i + 1} />
+                    <StepDot status={status} n={i + 1} error={Boolean(errors[s])} />
                     <span className="flex min-w-0 flex-col">
                       <span
                         className={`truncate ${active ? 'font-semibold text-fg' : status === 'blocked' ? 'text-fg-subtle' : 'text-fg'}`}
                       >
                         {t[s]}
                       </span>
-                      {blocker && !active ? (
+                      {errors[s] ? (
+                        <span className="text-xs text-danger-text">{errors[s]}</span>
+                      ) : blocker && !active ? (
                         <span className="text-xs text-fg-subtle">{t.blocked[blocker]}</span>
                       ) : null}
                     </span>

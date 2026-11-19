@@ -226,6 +226,12 @@ export const materialParamsSchema = z.strictObject({
   tool: int().min(PROFILE_BOUNDS.toolNumber.min).max(PROFILE_BOUNDS.toolNumber.max),
   /** Tab defaults (optional; added in T015, older profiles stay valid). */
   tabs: tabParamsSchema.optional(),
+  /**
+   * The set's values were copied from another kind's set and not measured for this material
+   * (D-046: the example machine's Melamin / Kontrplak 18 from MDF 18). The form shows a note and
+   * drops the mark once the user edits the row. Optional; older profiles stay valid.
+   */
+  copiedFrom: materialKindSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------

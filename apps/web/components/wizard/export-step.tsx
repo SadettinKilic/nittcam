@@ -26,6 +26,7 @@ import {
 } from '../../lib/export-gate';
 import {
   formatFileSize,
+  ruleLabel,
   shortHash,
   splitFileName,
   type ExportApiError,
@@ -630,7 +631,8 @@ function Violations({ t, violations }: { t: Text; violations: ExportViolation[] 
             key={`${v.code}-${i}`}
             className="min-w-0 rounded-md border border-border-subtle bg-surface-subtle px-2.5 py-1.5 break-words"
           >
-            <span className="font-mono text-danger-text">{v.rule}</span> {v.message}
+            <span className="font-medium text-danger-text">{ruleLabel(t.ruleLabels, v.rule)}</span>{' '}
+            {v.message}
             {v.file && v.line ? (
               <span className="text-fg-muted">
                 {' '}
