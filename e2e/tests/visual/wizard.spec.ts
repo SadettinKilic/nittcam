@@ -137,7 +137,7 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.getByRole('heading', { name: tr.cutList.tableLabel })).toBeVisible();
 
         await goStep(page, 'dizilim');
-        await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+        // T261: the first entry nests by itself.
         await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
         await page.mouse.move(0, 0);
         await expectNoA11yViolations(page);

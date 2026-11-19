@@ -331,6 +331,8 @@ function drawSelection(ctx: Ctx, p: EditorCanvasProps) {
   ] as const) {
     ctx.fillRect(x - 3, y - 3, 6, 6);
   }
+  // With segment length labels (T133) the top edge carries its own length: no second chip there.
+  if (p.segmentLabels && p.segmentLabels.length > 0) return;
   const text = sizeText(box.maxX - box.minX, box.maxY - box.minY);
   ctx.font = `11px ${canvasMonoFont()}`;
   ctx.textAlign = 'center';

@@ -10,7 +10,7 @@ import type { Pt } from './viewport';
 /** Font size of the dimension chips on screen, px (same as the selection size chip). */
 export const DIM_FONT_PX = 11;
 /** Distance of a segment label from its segment, px on screen. */
-export const LABEL_GAP_PX = 14;
+export const LABEL_GAP_PX = 18;
 
 export interface SegmentLabel {
   /** Board mm, already moved off the segment to the outside. */

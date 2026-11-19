@@ -22,14 +22,14 @@ describe('segmentLabels (T133)', () => {
   it('one label per segment, outside the CCW outline, Turkish digits', () => {
     const labels = segmentLabels(SQUARE, [], 1);
     expect(labels.map((l) => l.text)).toEqual(['600', '400', '600', '400']);
-    // bottom edge: label below it (outside), 14 px = 14 mm at scale 1
-    expect(labels[0]?.at).toEqual({ x: 300, y: -14 });
-    expect(labels[1]?.at).toEqual({ x: 614, y: 200 });
+    // bottom edge: label below it (outside), 18 px = 18 mm at scale 1
+    expect(labels[0]?.at).toEqual({ x: 300, y: -18 });
+    expect(labels[1]?.at).toEqual({ x: 618, y: 200 });
   });
 
   it('keeps a constant screen size: the offset shrinks in mm as the zoom grows', () => {
     const near = segmentLabels(SQUARE, [], 4);
-    expect(near[0]?.at.y).toBeCloseTo(-3.5, 9);
+    expect(near[0]?.at.y).toBeCloseTo(-4.5, 9);
   });
 
   it('leaves out labels that do not fit at this zoom, but never the active segment', () => {
@@ -44,7 +44,7 @@ describe('segmentLabels (T133)', () => {
     const labels = segmentLabels(SQUARE, [hole], 1);
     expect(labels).toHaveLength(8);
     // first inner segment runs up the left side: right of travel = +x, into the opening
-    expect(labels[4]?.at).toEqual({ x: 114, y: 200 });
+    expect(labels[4]?.at).toEqual({ x: 118, y: 200 });
   });
 
   it('arc length for a bent segment', () => {
