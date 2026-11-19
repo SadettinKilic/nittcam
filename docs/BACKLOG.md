@@ -765,7 +765,7 @@ Tester focus: scrollWidth = clientWidth of the panel scroller at both widths; bo
 
 ### Batch B13: T136–T137 (editor polish and tests)
 
-Riders in this batch: T262 and T263 with T137 (CTO review #4; text in "CTO review #4 riders" in the M3 section).
+Riders in this batch: T262 and T263 with T137 (CTO review #4; text in "CTO review #4 riders" in the M3 section). **Update 2026-11-19:** T262 and T263 shipped early as B13r (#71). B13 is now T136, T137, T267 (must-fix: wrong output) + rider T268.
 
 ### T136 First-use tour and hints   [status: todo]
 Spec: §4.2 · Depends: T135
@@ -780,6 +780,23 @@ Acceptance:
 - [ ] e2e: draw L-shape with arc and fillet → nest → simulate → NC download passes checks (= M4 exit)
 - [ ] perf: 500 entities, pan/zoom ≥ 50 fps, selection < 50 ms (trace in CI artefact)
 Tester focus: run suite; review perf numbers; G-code safety review of the drawn part's NC.
+
+### T267 Cut list CSV export → import keeps small sizes (must-fix, D-047: wrong output)   [status: todo]
+Spec: §4.1 · Depends: T118
+Found by: B12a full CI run 44536903810, fast-check property `export → import = same parts` in `packages/core/src/cutlist/export.test.ts` (seed -1727248701): a part with w = 0.001 comes back as w = 1.
+Acceptance:
+- [ ] export writes every size with enough decimals (decimal comma) that import gives back the same value within EPS; no rounding to whole millimetres and no value read as a thousands separator
+- [ ] import of a value that is not a valid size (0, negative, below the minimum part size) is refused with a row error instead of being changed silently
+- [ ] the property test runs with the failing seed pinned as an example, plus the default random runs; green 20 times in a row locally (`--repeat`)
+Tester focus: export a list with 0.5 mm and 1234.25 mm parts and re-import it; open the CSV in a spreadsheet: values readable in Turkish locale.
+
+### T268 Rider: flaky core test under load (`b11-corners.tester`)   [status: todo]
+Spec: §11 · Depends: none
+Found by: B13r dev, 2026-11-19: `packages/core/src/commands/b11-corners.tester.test.ts` timed out once while the whole suite ran in parallel; passes alone 5/5.
+Acceptance:
+- [ ] find the slow case (profile it); make it fast (smaller fast-check size, shared fixture) or give that one test an explicit timeout with a comment; no blanket timeout increase
+- [ ] `pnpm test` green 5 times in a row under full parallel load
+Tester focus: none beyond CI (test-only change).
 
 ---
 
