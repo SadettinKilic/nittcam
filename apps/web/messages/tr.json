@@ -909,7 +909,10 @@
       "bottom": "Alt",
       "simple": "Basit mod",
       "simpleTip": "Düz renkler, doku ve gölge yok: eski bilgisayarlarda daha akıcı döner.",
-      "simpleAuto": "Görüntü yavaş kaldığı için basit moda geçildi. Düğmeyle geri açabilirsiniz."
+      "simpleAuto": "Görüntü yavaş kaldığı için basit moda geçildi. Düğmeyle geri açabilirsiniz.",
+      "view2dTip": "2D görünüm",
+      "view3dTip": "3D önizleme",
+      "presetsLabel": "Hazır görünümler"
     }
   },
   "simulation": {

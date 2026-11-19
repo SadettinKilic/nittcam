@@ -171,3 +171,39 @@ test('Basit mod: flat colours without shadows, remembered, cheaper to draw', asy
   await open3d(page);
   await expect(page.getByTestId('preview3d')).toHaveAttribute('data-simple', 'true');
 });
+
+/** Tabs of the plate strip that are fully inside it. */
+async function fullTabs(page: Page): Promise<number> {
+  const strip = page.getByTestId('sheet-tabs-scroll');
+  const sb = await strip.boundingBox();
+  if (!sb) return 0;
+  let n = 0;
+  for (const tab of await strip.getByRole('tab').all()) {
+    const tb = await tab.boundingBox();
+    if (tb && tb.x >= sb.x - 0.5 && tb.x + tb.width <= sb.x + sb.width + 0.5) n += 1;
+  }
+  return n;
+}
+
+test('the 2D/3D switch keeps the tab row (T249): ≥ 3 full tabs at 1440, a full first tab at 1024', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(URL);
+  await page.getByRole('button', { name: t.pasteOpen }).click();
+  await page
+    .getByLabel(t.paste.textLabel)
+    .fill(['Parça adı\tEn\tBoy\tAdet\tDamar', 'Büyük\t1300\t1000\t40\thayır'].join('\n'));
+  await page.getByRole('button', { name: fill(t.paste.applyCount, { count: 1 }) }).click();
+  await nest(page);
+  await expect(page.getByTestId('sheet-tabs-scroll').getByRole('tab')).toHaveCount(10, {
+    timeout: 20_000,
+  });
+  expect(await fullTabs(page)).toBeGreaterThanOrEqual(3);
+  await open3d(page);
+  expect(await fullTabs(page)).toBeGreaterThanOrEqual(3);
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await expect.poll(() => fullTabs(page)).toBeGreaterThanOrEqual(1);
+  await page.getByTestId('view-2d').click();
+  await expect.poll(() => fullTabs(page)).toBeGreaterThanOrEqual(1);
+});

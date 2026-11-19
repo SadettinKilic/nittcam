@@ -6,8 +6,8 @@
  * Draws the DOM view cube (keyboard operable buttons) in the top-right corner and falls back to
  * the 2D view (via `onFallback`) when the scene crashes or WebGL is lost.
  */
-import { Button, Skeleton, Tooltip, cn } from '@nittcam/ui';
-import { Gauge } from 'lucide-react';
+import { Button, IconButton, Skeleton, Tooltip, cn } from '@nittcam/ui';
+import { Gauge, RotateCcw } from 'lucide-react';
 import type { Project } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
@@ -15,6 +15,7 @@ import { onThemeChange, readTokenColors } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import {
+  TOOLBAR_PRESETS,
   azimuthDeg,
   cubeMatrix,
   polarDeg,
@@ -145,7 +146,7 @@ export function Preview3D({
       role="application"
       aria-label={fill(t.canvasLabel, { n: sheet + 1, count: partCount })}
       tabIndex={0}
-      className="absolute inset-0 touch-none overflow-hidden bg-linear-to-b from-surface-subtle to-canvas outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+      className="@container absolute inset-0 touch-none overflow-hidden bg-linear-to-b from-surface-subtle to-canvas outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
     >
       {colors ? (
         <SceneBoundary onError={onFallback}>
@@ -170,6 +171,44 @@ export function Preview3D({
         <Loading />
       )}
       <ViewCube t={t} cubeRef={cube} onPreset={onPreset} />
+      {/* Presets inside the 3D view (bottom right, where the 2D read-out sits), so the shared
+          tab row of the canvas keeps its room (T249). */}
+      <div
+        role="group"
+        aria-label={t.presetsLabel}
+        data-testid="preview3d-presets"
+        className="absolute right-2 bottom-2 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm max-sm:bottom-8"
+      >
+        {TOOLBAR_PRESETS.map((p) => (
+          <Tooltip key={p} content={fill(t.presetTip, { view: t.presets[p] })}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={cn(
+                'h-7 px-2',
+                command.preset === p && 'bg-accent-subtle text-accent-text hover:text-accent-text',
+              )}
+              aria-pressed={command.preset === p}
+              data-testid={`preview3d-preset-${p}`}
+              onClick={() => onPreset(p)}
+            >
+              {t.presets[p]}
+            </Button>
+          </Tooltip>
+        ))}
+        <Tooltip content={t.reset}>
+          <IconButton
+            size="sm"
+            variant="ghost"
+            className="size-7"
+            aria-label={t.reset}
+            data-testid="preview3d-reset"
+            onClick={() => onPreset('iso')}
+          >
+            <RotateCcw aria-hidden />
+          </IconButton>
+        </Tooltip>
+      </div>
       <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex flex-col items-start gap-2 max-sm:bottom-8">
         {autoSimple ? (
           <p
@@ -185,6 +224,7 @@ export function Preview3D({
             variant="outline"
             size="sm"
             aria-pressed={simple}
+            aria-label={t.simple}
             data-testid="preview3d-simple"
             onClick={toggleSimple}
             className={cn(
@@ -193,7 +233,7 @@ export function Preview3D({
             )}
           >
             <Gauge aria-hidden />
-            {t.simple}
+            <span className="hidden @md:inline">{t.simple}</span>
           </Button>
         </Tooltip>
       </div>

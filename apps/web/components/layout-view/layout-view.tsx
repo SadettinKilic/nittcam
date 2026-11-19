@@ -48,14 +48,13 @@ import {
   LockOpen,
   Maximize,
   RefreshCw,
-  RotateCcw,
   Square,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
 import { Preview3D } from '../preview3d/preview3d';
 import type { CameraCommand } from '../preview3d/scene';
-import { TOOLBAR_PRESETS, type ViewPreset } from '../../lib/preview3d/camera';
+import type { ViewPreset } from '../../lib/preview3d/camera';
 import { hasWebGL2 } from '../../lib/preview3d/capability';
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { onThemeChange } from '../../lib/canvas-theme';
@@ -601,63 +600,35 @@ export function LayoutView({
             data-testid="layout-tools"
           >
             {preview3d ? (
-              <>
-                <div
-                  role="group"
-                  aria-label={pt.switchLabel}
-                  className="flex items-center gap-0.5 rounded-md bg-surface-subtle p-0.5"
-                  data-testid="view-switch"
-                >
-                  {(['2d', '3d'] as const).map((m) => (
-                    <Button
-                      key={m}
+              // Compact icon switch (B19 fix): the tab row keeps its room (T249, ≥ 3 full tabs).
+              // The 3D presets live in the 3D view itself, so 3D adds nothing to this row.
+              <div
+                role="group"
+                aria-label={pt.switchLabel}
+                className="flex items-center gap-px rounded-md bg-surface-subtle p-px"
+                data-testid="view-switch"
+              >
+                {(['2d', '3d'] as const).map((m) => (
+                  <Tooltip key={m} content={m === '2d' ? pt.view2dTip : pt.view3dTip}>
+                    <IconButton
                       size="sm"
                       variant="ghost"
+                      aria-label={m === '2d' ? pt.view2dTip : pt.view3dTip}
                       aria-pressed={mode === m}
                       data-testid={`view-${m}`}
                       onClick={() => chooseMode(m)}
                       className={cn(
-                        'h-7 gap-1 px-2',
+                        'size-7',
                         mode === m && 'bg-surface text-fg shadow-xs hover:bg-surface',
                       )}
                     >
                       {m === '2d' ? <Square aria-hidden /> : <Box aria-hidden />}
-                      {m === '2d' ? pt.view2d : pt.view3d}
-                    </Button>
-                  ))}
-                </div>
-                <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-border-subtle" />
-              </>
-            ) : null}
-            {show3d ? (
-              <>
-                {TOOLBAR_PRESETS.map((p) => (
-                  <Tooltip key={p} content={fill(pt.presetTip, { view: pt.presets[p] })}>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2"
-                      aria-pressed={camera.preset === p}
-                      data-testid={`preview3d-preset-${p}`}
-                      onClick={() => preset(p)}
-                    >
-                      {pt.presets[p]}
-                    </Button>
+                    </IconButton>
                   </Tooltip>
                 ))}
-                <Tooltip content={pt.reset}>
-                  <IconButton
-                    size="sm"
-                    variant="ghost"
-                    aria-label={pt.reset}
-                    data-testid="preview3d-reset"
-                    onClick={() => preset('iso')}
-                  >
-                    <RotateCcw aria-hidden />
-                  </IconButton>
-                </Tooltip>
-              </>
-            ) : (
+              </div>
+            ) : null}
+            {show3d ? null : (
               <>
                 {/* T249: the same icon toggle as the board (T243); the text is its tooltip. */}
                 <Tooltip content={t.grid}>
