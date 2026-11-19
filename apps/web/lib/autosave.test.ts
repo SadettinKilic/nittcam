@@ -321,3 +321,46 @@ describe('AutosaveQueue: unsent queue in sessionStorage (§8.2)', () => {
     expect(q.state).toBe('saved');
   });
 });
+
+describe('AutosaveQueue: settle (T264)', () => {
+  it('a new project: waits for the save in flight and the change after it, then has the id', async () => {
+    let release: (() => void) | undefined;
+    const { q, c, sent, created } = setup(
+      (req, n) =>
+        n === 1
+          ? new Promise<SendResult>((r) => (release = () => r(okRev(req))))
+          : okRev({ ...req, id: req.id }),
+      { id: null, revision: 0 },
+    );
+    q.push({ entries: [e('a')], project: P(1) });
+    await c.advance(1000); // the first create is in flight
+    expect(sent).toHaveLength(1);
+    q.push({ entries: [e('b')], project: P(2) }); // the material pick, still pending
+    const id = q.settle();
+    await settle();
+    release?.();
+    await expect(id).resolves.toBe('created');
+    expect(created).toEqual(['created']);
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toMatchObject({ id: 'created', commands: [e('b')] });
+    expect(q.dirty).toBe(false);
+    expect(c.pending).toBe(0);
+  });
+
+  it('nothing pending: resolves at once with the id; nothing is sent', async () => {
+    const { q, sent } = setup(okRev);
+    await expect(q.settle()).resolves.toBe('p1');
+    expect(sent).toHaveLength(0);
+  });
+
+  it('a failed create resolves with null and leaves the retry to the timer', async () => {
+    const { q, c, sent } = setup(() => ({ ok: false, kind: 'network' }), {
+      id: null,
+      revision: 0,
+    });
+    q.push({ entries: [e('a')], project: P(1) });
+    await expect(q.settle()).resolves.toBeNull();
+    expect(sent).toHaveLength(1);
+    expect(c.pending).toBe(1);
+  });
+});

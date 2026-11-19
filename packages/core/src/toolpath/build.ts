@@ -567,6 +567,18 @@ export function buildToolpath(
     );
     return fail();
   }
+  // T265: unconfirmed starting values (fix flow) never reach a machine.
+  if (set?.unverified) {
+    errors.push(
+      issue(
+        'CUTTING_PARAMS_UNVERIFIED',
+        'error',
+        null,
+        `The cutting parameters for ${project.stock.material} ${project.stock.thickness} mm are unconfirmed starting values.`,
+      ),
+    );
+    return fail();
+  }
   if (!positive(feed) || !positive(plungeFeed) || !positive(rpm) || !positive(passDepth)) {
     errors.push(
       issue(

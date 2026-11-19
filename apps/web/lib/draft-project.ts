@@ -30,7 +30,10 @@ export function firstUsableLibraryStock(
   profile: Pick<MachineProfile, 'materials'>,
 ): { entry: LibraryMaterial & { id: string }; thickness: number } | undefined {
   const usable = library.flatMap((entry) => {
-    const cut = libraryParamLinks(entry, profile).filter((l) => l.params !== undefined);
+    // T265: a set with unconfirmed starting values is not "cuttable" yet.
+    const cut = libraryParamLinks(entry, profile).filter(
+      (l) => l.params !== undefined && !l.params.unverified,
+    );
     const link = cut.find((l) => Math.abs(l.thickness - 18) <= 1e-6) ?? cut[0];
     return link ? [{ entry, thickness: link.thickness }] : [];
   });
@@ -98,9 +101,10 @@ export function toolDiameterFor(project: Project, profile: MachineProfile | null
   return (profile && nestingToolDiameter(profile, project.stock)) ?? FALLBACK_TOOL_DIAMETER;
 }
 
-/** Does the machine have cutting parameters for the project's stock? */
+/** Does the machine have confirmed cutting parameters for the project's stock (T265)? */
 export function hasCuttingParams(project: Project, profile: MachineProfile | null): boolean {
-  return profile !== null && findMaterialParams(profile, project.stock) !== undefined;
+  const set = profile !== null ? findMaterialParams(profile, project.stock) : undefined;
+  return set !== undefined && !set.unverified;
 }
 
 let counter = 0;
