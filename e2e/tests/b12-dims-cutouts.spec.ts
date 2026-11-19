@@ -194,3 +194,53 @@ test.describe('T135 cut list ↔ editor sync', () => {
     await expect(w.locator('input')).toHaveCount(0);
   });
 });
+
+test.describe('T261 Parçalar → Dizilim', () => {
+  const t = tr.cutList;
+  const cell = (page: Page, n: number, column: string) =>
+    page.getByLabel(t.cellLabel.replace('{n}', String(n)).replace('{column}', column), {
+      exact: true,
+    });
+
+  test('no phantom row from Enter; Dizilim nests itself on first entry (one undo step)', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openNewProject(page, 'parcalar');
+    await paste(page, KITCHEN, 5);
+    // Edit the last row's name, Enter commits and appends an untouched row 6.
+    await cell(page, 5, t.columns.name).click();
+    await page.keyboard.type('Çekmece önü');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('cut-list-row')).toHaveCount(6);
+    await expect(cell(page, 6, t.columns.name)).toBeFocused();
+    // İleri: the untouched row is dropped, and the layout appears without "Diz".
+    await page.getByTestId('wizard-next').click();
+    await expect(page.getByTestId('wizard-step-title')).toHaveAttribute('data-step', 'dizilim');
+    await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
+    // One undo step takes the automatic layout back.
+    await page.keyboard.press('Control+z');
+    await expect(page.getByTestId('layout-canvas')).toHaveCount(0);
+    await page.keyboard.press('Control+y');
+    await expect(page.getByTestId('layout-canvas')).toBeVisible();
+    await page.getByTestId('wizard-back').click();
+    await expect(page.getByTestId('cut-list-row')).toHaveCount(5);
+  });
+
+  test('a row added with "Satır ekle" is kept; an edited Enter row is kept', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openNewProject(page, 'parcalar');
+    await paste(page, KITCHEN, 5);
+    await page.getByRole('button', { name: t.addRow }).click();
+    await expect(page.getByTestId('cut-list-row')).toHaveCount(6);
+    await cell(page, 6, t.columns.name).click();
+    await page.keyboard.type('Arkalık');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('cut-list-row')).toHaveCount(7);
+    await page.keyboard.type('Ek raf');
+    await page.keyboard.press('Tab');
+    // Focus leaves row 7 only after an edit: nothing is dropped.
+    await cell(page, 1, t.columns.name).click();
+    await expect(page.getByTestId('cut-list-row')).toHaveCount(7);
+  });
+});

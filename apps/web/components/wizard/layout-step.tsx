@@ -1,7 +1,7 @@
 'use client';
 
 import type { NestingMode, Project, ValidationIssue } from '@nittcam/core';
-import { useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import type { ProjectSession } from '../../lib/project-session';
@@ -27,8 +27,12 @@ function useNest(session: ProjectSession, toolDiameter: number, t: Messages['cut
   const [message, setMessage] = useState<NestMessage>(null);
   // Counts new "Diz" results so the layout plays its fade/settle-in once per result (T196).
   const [nested, setNested] = useState(0);
+  // The latest session: an automatic run (T261) starts after a render that may be stale.
+  const latest = useRef(session);
+  latest.current = session;
 
   async function nest() {
+    const session = latest.current;
     const base = session.project;
     setRunning(true);
     setMessage(null);
@@ -77,6 +81,23 @@ export function LayoutStep({
   const modeId = useId();
   const { nest, running, message, nested } = useNest(session, toolDiameter, nt);
   const project: Project = session.project;
+  // T261 (D-045): entering Dizilim with parts and no layout runs the nesting once by itself (the
+  // same command as "Diz", one undo step). An existing layout (or a locked part) is never
+  // re-nested by entering the step. Deferred one tick so a row the cut list drops on leaving
+  // (phantom row) is gone first.
+  const autoNest = useRef({ done: false, nest, session });
+  autoNest.current = { done: autoNest.current.done, nest, session };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const a = autoNest.current;
+      if (a.done) return;
+      a.done = true;
+      const p = a.session.project;
+      const hasLayout = p.layout.sheets.some((s) => s.placements.length > 0);
+      if (p.parts.length > 0 && !hasLayout) void a.nest();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
   const issues: readonly ValidationIssue[] = session.issues;
   const errors = messages.wizard.machine.errors;
   const run = session.run;

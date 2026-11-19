@@ -737,6 +737,7 @@ function WizardSession({
         <IconButton
           aria-label={messages.cutList.undo}
           data-testid="wizard-undo"
+          data-history=""
           variant="ghost"
           onClick={session.undo}
           disabled={!session.canUndo}
@@ -749,6 +750,7 @@ function WizardSession({
         <IconButton
           aria-label={messages.cutList.redo}
           data-testid="wizard-redo"
+          data-history=""
           variant="ghost"
           onClick={session.redo}
           disabled={!session.canRedo}
