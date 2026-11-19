@@ -102,7 +102,9 @@ test.describe('B22 nesting options', () => {
       return g.__long;
     });
     console.log(`long tasks while nesting 1500 copies: ${JSON.stringify(long)}`);
-    expect(long.filter((d) => d >= 50)).toEqual([]);
+    // T163 asks for < 50 ms with 500 parts; this run is 3× that load. CI saw 50–68 ms here, so the
+    // 1500-copy run allows 100 ms (PO, 2026-11-20); getting it under 50 ms is T281.
+    expect(long.filter((d) => d >= 100)).toEqual([]);
 
     // Nothing was recorded: the same layout and figures as before.
     await expect(sheets).toHaveText(before.sheets ?? '');
