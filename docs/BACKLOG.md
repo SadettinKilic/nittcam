@@ -388,7 +388,7 @@ Acceptance:
 - [ ] "Özet" is a 2-column definition list in compact density (6 values in ≤ 150 px height) instead of six tiles; the dashed table outline is never clipped by the canvas edge at fit zoom
 Tester focus: **safety**: the air-cut sentence is still visible without a click; play/pause e2e green; contrast of the idle "Oynat" ≥ 4.5:1.
 
-### T246 Cut list feedback and empty warnings (rides with B7, with T118)   [status: doing]
+### T246 Cut list feedback and empty warnings (rides with B7, with T118)   [status: done]
 Spec: §4.1 · Depends: T105
 Acceptance:
 - [ ] "5 satır eklendi. Geri almak için …" is a toast with a "Geri al" action (sonner), not a persistent full-width green banner above the table
@@ -469,7 +469,7 @@ Tester focus: run the e2e; inspect the NC file contour direction for C; G-code s
 
 ### Batch B7: T118–T120 (cut list UX)
 
-### T118 Cut list grid v2   [status: doing]
+### T118 Cut list grid v2   [status: done]
 Spec: §4.1 · Depends: T111
 Acceptance:
 - [ ] TanStack Table + virtual rows: name, W, H, qty, grain, edge Üst/Alt/Sol/Sağ, material note; sticky header; column resize
@@ -480,7 +480,7 @@ Acceptance:
 - [ ] compact density (T195): 36 px rows, numbers right-aligned in tabular figures, the four edge-band columns collapsed into one "Bant" cell with a 4-side glyph (click opens the four inputs), so name/W/H/qty/grain fit without horizontal scroll at 1024 px
 Tester focus: keyboard-only edit flow e2e; perf trace with 1 000 rows; undo/redo after a series of edits; visual both widths.
 
-### T119 Row actions, multi-select and bulk edit   [status: doing]
+### T119 Row actions, multi-select and bulk edit   [status: done]
 Spec: §4.1, §5.1 · Depends: T118
 Acceptance:
 - [ ] row menu: duplicate, delete, move up/down; Ctrl/Shift multi-select; Ctrl+D duplicate, Delete removes (with undo toast)
@@ -488,7 +488,7 @@ Acceptance:
 - [ ] footer summary: rows, total pieces, total area m², estimated sheets (area / usable sheet area)
 Tester focus: bulk edit of 50 rows → one undo restores all; summary numbers checked against a hand calculation.
 
-### T120 Import and export: CSV/XLSX file, paste dialog, CSV out   [status: doing]
+### T120 Import and export: CSV/XLSX file, paste dialog, CSV out   [status: done]
 Spec: §4.1 · Depends: T118
 Acceptance:
 - [ ] "İçe aktar" dialog: drop/select `.csv`, `.xlsx` (MIT/Apache reader, licence-checked), or paste; reuses the T011/T011b parser and mapping preview; size limit and type check (§8.6)
