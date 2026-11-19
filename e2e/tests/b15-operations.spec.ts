@@ -52,3 +52,31 @@ test('the outline operation: on-line with a depth, not cut, back to the outside 
   await expect(picker).toHaveAttribute('data-value', 'online');
   await expect(page.getByTestId('prop-op-outline-depth')).toHaveValue('3');
 });
+
+// B15: T143 thin skin switch on the machine step (setThinSkin, one undo step each).
+test('"Son pasoda ince tabaka bırak": on with 0,5 mm, thickness edited, off; undo', async ({
+  page,
+}) => {
+  const skin = tr.wizard.machine.skin;
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page);
+  const box = page.getByTestId('thin-skin');
+  await expect(box).toContainText(skin.label);
+  const sw = page.getByTestId('thin-skin-switch');
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByTestId('thin-skin-thickness')).toHaveCount(0);
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  const thick = page.getByTestId('thin-skin-thickness');
+  await expect(thick).toHaveValue('0,5');
+  await thick.click();
+  await thick.fill('0,8');
+  await thick.press('Enter');
+  await expect(thick).toHaveValue('0,8');
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  await expect(thick).toHaveCount(0);
+  await page.keyboard.press('Control+z');
+  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('thin-skin-thickness')).toHaveValue('0,8');
+});

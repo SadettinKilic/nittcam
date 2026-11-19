@@ -37,6 +37,7 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
+  Switch,
 } from '@nittcam/ui';
 import { NumberField } from './number-field';
 
@@ -398,6 +399,7 @@ export function MachineFields({
             })}
           </p>
         ) : null}
+        <ThinSkin t={t} project={project} errors={errors} run={run} />
       </div>
 
       <fieldset className="flex flex-col gap-2">
@@ -478,6 +480,57 @@ export function MachineFields({
  * Sheet grain block (spec §3.6 "Damar yönü", T252): sits in the Önizleme card right under the
  * sheet preview (dial left, angle input and presets right), so both are seen together.
  */
+/** Default skin left under small parts when the option is switched on, mm (T143). */
+const SKIN_DEFAULT = 0.5;
+
+/**
+ * T143: "Son pasoda ince tabaka bırak" — small parts keep a thin skin instead of tabs; a cleanup
+ * pass at the end of each sheet cuts it through. Tabs and skin are alternatives per project.
+ */
+function ThinSkin({
+  t,
+  project,
+  errors,
+  run,
+}: {
+  t: Text;
+  project: Project;
+  errors: { number: string; positive: string; rejected: string };
+  run: Run;
+}) {
+  const id = useId();
+  const skin = project.cutting.skin;
+  return (
+    <div className="flex flex-col gap-2" data-testid="thin-skin">
+      <div className="flex items-center gap-2">
+        <Switch
+          id={id}
+          checked={skin !== undefined}
+          data-testid="thin-skin-switch"
+          onCheckedChange={(on) =>
+            run('setThinSkin', {
+              thickness: on ? Math.min(SKIN_DEFAULT, project.stock.thickness / 2) : null,
+            })
+          }
+        />
+        <label htmlFor={id} className="text-sm text-fg">
+          {t.skin.label}
+        </label>
+      </div>
+      <p className="text-xs text-fg-muted">{t.skin.hint}</p>
+      {skin ? (
+        <NumberField
+          label={t.skin.thickness}
+          value={skin.thickness}
+          testId="thin-skin-thickness"
+          errors={errors}
+          onCommit={(thickness) => run('setThinSkin', { thickness })}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function SheetGrain({
   t,
   project,

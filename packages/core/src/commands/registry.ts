@@ -47,6 +47,7 @@ import {
   setMaterial,
   setSheetSize,
   setThickness,
+  setThinSkin,
 } from './plate';
 import {
   commandContextSchema,
@@ -66,6 +67,7 @@ export const COMMANDS = {
   setMaterial,
   applyLibraryMaterial,
   setThickness,
+  setThinSkin,
   setSheetSize,
   setGrain,
   addPart,

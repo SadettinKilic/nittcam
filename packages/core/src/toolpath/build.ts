@@ -236,6 +236,14 @@ interface Params {
   travel: 'cw' | 'ccw';
   sheet: { width: number; height: number };
   tabs: TabParams;
+  /**
+   * Thin skin (T143, §6.3 "ince tabaka"): null = small parts are held by tabs. Otherwise small
+   * parts stop `thickness` mm above the material bottom (`z`, `depths`) and a cleanup pass
+   * at the end of the sheet cuts the skin through.
+   */
+  skin: { thickness: number; z: number; depths: number[] } | null;
+  /** Maximum depth per pass (material set step-down), mm. */
+  stepDown: number;
 }
 
 /** Resolved tab settings (D-022). */
@@ -304,6 +312,7 @@ function buildOuterOperation(
   warnings: ToolpathIssue[],
   errors: ToolpathIssue[],
   smallWarned: Set<string>,
+  cleanups: Operation[],
 ): Operation {
   const where = { copy: ctx.placement.index, sheet: ctx.sheetIndex };
   const partId = ctx.part.id;
@@ -316,6 +325,14 @@ function buildOuterOperation(
   // Leads stay clear of the own outline, or for an opening inside the cut-out (T141).
   const waste: WasteSide = isInner ? 'inside' : 'outside';
   const own = isInner && ctx.slug ? obstacle(ctx.slug) : ctx.own;
+  // Thin skin (T143): a small part (not a slug: D-049 tabs keep slugs held while the part is
+  // still attached) stops above the bottom; the skin is cut through by a cleanup pass at the end.
+  const through = p.target;
+  const skinned =
+    !isInner &&
+    p.skin !== null &&
+    isSmallPart(ctx.outline, p.tabs.smallPartArea, p.tabs.smallPartMinSide);
+  if (skinned && p.skin) p = { ...p, passDepths: p.skin.depths, target: p.skin.z };
 
   // Start at the midpoint of the chosen straight edge (cut order, D-023), then set the travel
   // direction (CCW as offset returns it). Leads and tabs below are computed for this start.
@@ -412,7 +429,7 @@ function buildOuterOperation(
   );
   const what = isInner ? `Small slug of inner contour ${(ctx.inner ?? 0) + 1}` : 'Small part';
   let tabs: Tab[] = [];
-  if (p.tabs.all || small) {
+  if ((p.tabs.all || small) && !skinned) {
     const warnKey = isInner ? `${partId}/inner${ctx.inner}` : partId;
     if (small && !p.tabs.all && !smallWarned.has(warnKey)) {
       smallWarned.add(warnKey);
@@ -442,7 +459,7 @@ function buildOuterOperation(
       onArcs: isInner,
     });
     if (tabs.length === 0 && small) {
-      // No thin-skin fallback in M1 (§2.4: M3): an unheld small part can fly off the vacuum.
+      // An unheld small part can fly off the vacuum: refused; thin skin (T143) is the way out.
       errors.push(
         issue(
           isInner ? 'SMALL_SLUG_UNSECURED' : 'SMALL_PART_UNSECURED',
@@ -450,7 +467,7 @@ function buildOuterOperation(
           partId,
           isInner
             ? `${what}: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs; it would be cut free. Make the opening larger or clear it as a pocket.`
-            : `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free.`,
+            : `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free. Turn on the thin skin option ("son pasoda ince tabaka bırak").`,
           where,
         ),
       );
@@ -514,6 +531,24 @@ function buildOuterOperation(
   }
   segments.push({ role: 'retract', moves: [rapid(exit, p.safeZ)] });
 
+  const id = isInner
+    ? `${partId}#${ctx.placement.index}/inner${ctx.inner}`
+    : `${partId}#${ctx.placement.index}`;
+  if (skinned) {
+    if (!smallWarned.has(`${partId}/skin`)) {
+      smallWarned.add(`${partId}/skin`);
+      warnings.push(
+        issue(
+          'SMALL_PART_SKIN',
+          'warning',
+          partId,
+          'Small part: a thin skin is left and cut through by a cleanup pass at the end of the sheet.',
+        ),
+      );
+    }
+    cleanups.push(skinCleanup(id, ctx, p, segs, start, through));
+  }
+
   return {
     id: isInner
       ? `${partId}#${ctx.placement.index}/inner${ctx.inner}`
@@ -530,6 +565,58 @@ function buildOuterOperation(
     travel: p.travel,
     passDepths: [...p.passDepths],
     tabs,
+    segments,
+  };
+}
+
+/**
+ * Cleanup pass of a skinned small part (T143): the same tool-centre loop and start point, from
+ * the skin top down to the through-cut target. The tool goes down in its own kerf at the start
+ * point (plunge feed), no leads, no tabs; it is the last thing cut on the sheet.
+ */
+function skinCleanup(
+  id: string,
+  ctx: OperationContext,
+  p: Params,
+  segs: readonly PathSeg[],
+  start: Point,
+  through: number,
+): Operation {
+  const skinZ = p.target;
+  const left = skinZ - through;
+  const n = Math.max(1, Math.ceil((left - EPS) / p.stepDown));
+  const depths = Array.from({ length: n }, (_, i) =>
+    i === n - 1 ? through : skinZ - (left * (i + 1)) / n,
+  );
+  const approach: Move[] = [rapid(start, p.safeZ)];
+  if (p.clearanceZ < p.safeZ - EPS) approach.push(rapid(start, p.clearanceZ));
+  approach.push(plungeTo(start, skinZ, p.plungeFeed));
+  const segments: MoveSegment[] = [{ role: 'approach', moves: approach }];
+  depths.forEach((z, i) => {
+    segments.push({
+      role: 'pass',
+      pass: i,
+      depth: z,
+      final: i === depths.length - 1,
+      moves: [plungeTo(start, z, p.plungeFeed), ...pathMoves(segs, z, z, p.feed)],
+    });
+  });
+  segments.push({ role: 'retract', moves: [rapid(start, p.safeZ)] });
+  return {
+    id: `${id}/skin`,
+    kind: 'outerContour',
+    skinCleanup: true,
+    sheet: ctx.sheetIndex,
+    partId: ctx.part.id,
+    copy: ctx.placement.index,
+    tool: p.tool,
+    toolDiameter: p.toolDiameter,
+    rpm: p.rpm,
+    feed: p.feed,
+    plungeFeed: p.plungeFeed,
+    travel: p.travel,
+    passDepths: depths,
+    tabs: [],
     segments,
   };
 }
@@ -752,6 +839,19 @@ export function buildToolpath(
     );
     return fail(clearanceZ);
   }
+  // Thin skin (T143): project setting; the skin must be thinner than the material.
+  const skinThickness = project.cutting.skin?.thickness;
+  if (skinThickness !== undefined && !(skinThickness > 0 && skinThickness < thickness - EPS)) {
+    errors.push(
+      issue(
+        'INVALID_SKIN',
+        'error',
+        null,
+        `Skin thickness ${skinThickness} mm must be > 0 and less than the thickness (${thickness} mm).`,
+      ),
+    );
+    return fail(clearanceZ);
+  }
 
   const params: Params = {
     tool: tool.number,
@@ -760,6 +860,15 @@ export function buildToolpath(
     plungeFeed,
     rpm,
     passDepths: passDepths(target, passDepth),
+    stepDown: passDepth,
+    skin:
+      skinThickness === undefined
+        ? null
+        : {
+            thickness: skinThickness,
+            z: 0 - (thickness - skinThickness),
+            depths: passDepths(0 - (thickness - skinThickness), passDepth),
+          },
     target,
     safeZ,
     clearanceZ,
@@ -1114,6 +1223,7 @@ export function buildToolpath(
 
   // 3. Operations in cut order, built for the chosen start (leads and tabs follow it).
   const operations: Operation[] = [];
+  const cleanups: Operation[] = [];
   const smallWarned = new Set<string>();
   for (const o of order.sequence) {
     const hole = itemHole[o.item];
@@ -1124,7 +1234,20 @@ export function buildToolpath(
     const k = itemCtx[o.item] as number;
     const ctx = prepared[k] as (typeof prepared)[number];
     ctx.startEdge = (edges[k] as number[])[o.start] ?? -1;
-    operations.push(buildOuterOperation(ctx, params, ctx.warnings, ctx.errors, smallWarned));
+    operations.push(
+      buildOuterOperation(ctx, params, ctx.warnings, ctx.errors, smallWarned, cleanups),
+    );
+  }
+  // Thin-skin cleanup passes (T143) are the last cuts of their sheet, in cut order.
+  if (cleanups.length > 0) {
+    const sheets = [...new Set([...operations, ...cleanups].map((op) => op.sheet))].sort(
+      (a, b) => a - b,
+    );
+    const merged = sheets.flatMap((s) => [
+      ...operations.filter((op) => op.sheet === s),
+      ...cleanups.filter((op) => op.sheet === s),
+    ]);
+    operations.splice(0, operations.length, ...merged);
   }
   // Issues stay in placement order whatever the cut order.
   // A copy's inner and outer operations share one issue list: add each list once.

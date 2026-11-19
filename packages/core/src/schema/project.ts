@@ -342,6 +342,16 @@ export const cuttingSchema = z.strictObject({
     width: z.number({ error: 'must be a number' }).positive({ error: 'must be > 0' }).optional(),
     height: z.number({ error: 'must be a number' }).positive({ error: 'must be > 0' }).optional(),
   }),
+  /**
+   * Thin skin (T143, §6.3 "son pasoda ince tabaka bırak"): present = small parts are held by a
+   * skin of `thickness` mm instead of tabs, removed by a cleanup pass at the end of each sheet.
+   * Absent = tabs (the default). Tabs and skin are alternatives per project.
+   */
+  skin: z
+    .strictObject({
+      thickness: z.number({ error: 'must be a number' }).positive({ error: 'must be > 0' }),
+    })
+    .optional(),
   leadIn: z.enum(['arc', 'line'], { error: 'leadIn must be "arc" or "line"' }),
   direction: z.enum(['climb', 'conventional'], {
     error: 'direction must be "climb" or "conventional"',

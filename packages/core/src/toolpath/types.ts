@@ -109,6 +109,11 @@ export interface Operation {
   partId: string;
   /** Copy index of the part (placement index). */
   copy: number;
+  /**
+   * Thin-skin cleanup pass (T143): cuts the skin left under a small part through; the last
+   * operations of the sheet. Absent = a normal operation.
+   */
+  skinCleanup?: true;
   /** The part's hole this operation cuts (hole operations only). */
   holeId?: string;
   tool: number;
@@ -159,6 +164,8 @@ export type ToolpathCode =
   | 'INNER_OFFSET_FAILED'
   | 'INNER_SPLIT'
   | 'ONLINE_DEPTH_INVALID'
+  | 'INVALID_SKIN'
+  | 'SMALL_PART_SKIN'
   | 'INNER_CONTOUR_INVALID'
   | 'HOLE_OUTSIDE_PART'
   | 'HOLE_SMALLER_THAN_TOOL'

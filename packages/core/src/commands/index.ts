@@ -5,6 +5,7 @@ export {
   setMaterial,
   applyLibraryMaterial,
   setThickness,
+  setThinSkin,
   setSheetSize,
   setGrain,
 } from './plate';
