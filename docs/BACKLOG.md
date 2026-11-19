@@ -932,7 +932,7 @@ Acceptance:
 - [ ] opening a project whose template has a newer version asks "Kullanılan … şablonu değişti. Güncellensin mi?"; yes = update (undoable), no = keep; overridden fields show a conflict warning
 Tester focus: both answers; override conflict case; undo after update.
 
-### Batch B18: T150–T151 (template library)
+### Batch B18: T150–T151 + T272, rider T273 (template library; tabs on arcs)
 
 ### T150 Ready template library   [status: todo]
 Spec: §4.7, §14.2 · Depends: T148
@@ -952,6 +952,23 @@ Tester focus: visual + axe; edit creates a new version; old projects unchanged.
 ## M6: 3D önizleme (exit: 360° preview with cutting playback; 300 parts within the perf budget; 2D fallback on weak devices)
 
 three + @react-three/fiber + @react-three/drei (MIT), lazy-loaded, in `apps/web` only (core stays pure). Decision D-033.
+
+### T272 Small all-arc parts can be secured with tabs (sign letters "O", discs)   [status: todo]
+Spec: §2.4, §6.3 · Depends: T015, T143 · Decision: D-049
+Found by B16 (#80): a small part whose outline is only arcs (letter O, disc) gets no tabs, because outer-contour tabs are placed only on straight edges, so the export is blocked with `SMALL_PART_UNSECURED`. Sign shops hit this with DXF letters.
+Acceptance:
+- [ ] outer-contour tabs may sit on arcs (centre of the tab on the arc, tab length measured along the arc, clear of corners and joins); straight edges stay preferred when they exist
+- [ ] a Ø60 disc and the letters of `sign-letters.dxf` at 1× size export with tabs and pass the checks; thin skin (T143) stays the alternative
+- [ ] property test: every tab lies on the contour, its length within ± EPS, never on a corner; existing golden files byte-identical (or a new golden approved per D-051)
+Tester focus: safety review of a tabbed disc NC (tab height, no gouge at tab edges); letters O, e, a.
+
+### T273 Rider: tab placement edge case found by fast-check   [status: todo]
+Spec: §6.3 · Depends: T015
+Found by the B16 tester: `packages/core/src/toolpath/tabs.test.ts:309` failed once in CI: two 20 × 20 parts, p1 `h = 20.00000000000001`, `r = 1e-6`, seed 858170589 → "tab not on a straight edge clear of the corners".
+Acceptance:
+- [ ] counter-example pinned as a regression test; root cause found (real placement bug at tiny corner radius vs. too aggressive generator) and fixed at the cause, explained in the PR
+- [ ] the property passes 20 runs in a row with random seeds
+Tester focus: none beyond CI.
 
 ### Batch B19: T152–T154 (3D foundation)
 
@@ -1249,6 +1266,14 @@ From CTO review #6 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-6.md`
 - Dışa aktar: profile version gap is a small yellow line; after T269 keep it as the box
 - Wizard header: two rows on Makine / Dışa aktar at 1400–1410 (sidebar open, scrollbar), 1280 and 1024; container threshold ~1095 px (B13r tester, CTO #6)
 - Ayarlar → Malzemeler at 1024: the table scrolls inside its box (Paso, Takım no on the right); "Kesim ayarı" label cuts the machine name (B12a/B13r testers)
+
+From B16 tester (2026-11-19, #80):
+- DXF dialog: focus goes to <body> on close instead of "DXF içe aktar"; first focus lands on the hidden file input (no visible focus)
+- DXF dialog: `data-testid="dxf-open"` used twice (toolbar button and the "kapalı değil" note, `dxf-import-dialog.tsx:301`)
+- DXF join: a single LINE drawn over an edge of a closed LWPOLYLINE is not treated as a duplicate and shows as an open chain warning
+- DXF report: "İç kontur / delik" is one number; show holes separately so the drill mapping is visible
+- Hole tool: second click snaps to the centre when zoomed out, hole comes out at tool diameter (B14 tester)
+- Editor tour card covers the board bottom at 1440 and the toolbar at 390 (B13 tester)
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 

@@ -513,3 +513,9 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
   4. **Empty** if nothing fits (saves usage).
 - Replaces the D-051 rule "more than 2 PRs wait". Usage near the limit: max 2 devs (unchanged). Roles switch only at a task boundary.
 - The dashboard shows each flexible seat's current role: `node tools/team/status.mjs role <dev2|dev3> <dev|tester|cto> ["why"]`. A seat with role `tester` is shown as "Tester 2" at the second test bench.
+
+## D-053 DXF import rules (2026-11-19, PO, B16 #80)
+- Join per layer within JOIN_TOL; exact duplicates dropped; open chains are reported, never imported. Outermost closed contour = part, inside = inner contour, island inside a cut-out = part again.
+- Layer operations: auto, outside, inside, drill, ignore (pocket and on-line after T142). Drill-layer circles become through holes with the wizard's hole tool; all other circles stay inner contours.
+- Mapping stored per company (`companies.dxf_layer_map`, keys upper-cased). Missing, unitless or implausible units are always asked. Parser: `dxf-parser` (MIT); CIRCLE/ELLIPSE/SPLINE read from raw groups; parsing on the main thread with a 10 MB limit.
+- `PUT /api/settings/dxf-layers` has no role check yet, like every route before auth; the auth/roles task must cover it.
