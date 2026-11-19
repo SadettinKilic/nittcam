@@ -211,11 +211,13 @@ export function ProjectWizard({
             (r) => (r.body ?? []).map((p) => p.name),
             () => [],
           );
+          // T259: a new project starts on the library's first entry the machine can cut.
+          const library = firstDetail ? ((await fetchMaterials()) ?? []) : [];
           init = {
             id: null,
             revision: 0,
             name: untitledName(t.defaultName, names),
-            project: newProject(firstDetail ?? undefined),
+            project: newProject(firstDetail ?? undefined, library),
           };
         }
         if (live) setLoaded({ status: 'ready', machines: machines.body, init, firstDetail });

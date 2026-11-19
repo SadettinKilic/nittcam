@@ -2,6 +2,7 @@
 
 import {
   findMaterialParams,
+  libraryParamLinks,
   materialHasGrain,
   materialKindOf,
   profileThicknesses,
@@ -11,7 +12,7 @@ import {
   type Project,
   type ValidationIssue,
 } from '@nittcam/core';
-import { Plus } from 'lucide-react';
+import { Plus, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState, type ReactNode } from 'react';
 import { fill } from '../../lib/draft-project';
@@ -105,7 +106,7 @@ export function MachineFields({
   issues: readonly ValidationIssue[];
   run: Run;
 }) {
-  const ids = { machine: useId(), material: useId(), thicknesses: useId() };
+  const ids = { machine: useId(), material: useId() };
   const { stock } = project;
   const kind = materialKindOf(stock.material);
   const profile = detail?.profile ?? null;
@@ -207,24 +208,55 @@ export function MachineFields({
             data-value={kind ?? stock.material}
             data-library-id={entry?.id}
           >
-            <SelectValue />
+            {/* T259: a library pick shows on one line (swatch, "MDF · 18 mm"), never clipped. */}
+            <SelectValue>
+              {entry ? (
+                <span
+                  className="flex min-w-0 items-center gap-2"
+                  data-testid="wizard-material-value"
+                >
+                  <MaterialSwatch tone={entry.tone} />
+                  <span className="truncate">
+                    {fill(t.libraryValue, { name: entry.name, thickness: mm(stock.thickness) })}
+                  </span>
+                </span>
+              ) : undefined}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {library.length > 0 ? (
               <>
                 <SelectGroup data-testid="wizard-material-library">
                   <SelectLabel>{t.libraryGroup}</SelectLabel>
-                  {library.map((m) => (
-                    <SelectItem key={m.id} value={`${LIB}${m.id}`}>
-                      <span className="flex items-center gap-2">
-                        <MaterialSwatch tone={m.tone} />
-                        {m.name}
-                      </span>
-                      <span className="ml-2 text-xs text-fg-muted tabular-nums">
-                        {fill(t.libraryThicknesses, { list: m.thicknesses.map(mm).join(' · ') })}
-                      </span>
-                    </SelectItem>
-                  ))}
+                  {library.map((m) => {
+                    // T257: an entry this machine cannot cut is marked before it is picked.
+                    const cuttable =
+                      !profile || libraryParamLinks(m, profile).some((l) => l.params !== undefined);
+                    return (
+                      <SelectItem
+                        key={m.id}
+                        value={`${LIB}${m.id}`}
+                        data-no-params={cuttable ? undefined : ''}
+                      >
+                        <span className="flex items-center gap-2">
+                          <MaterialSwatch tone={m.tone} />
+                          {m.name}
+                        </span>
+                        <span className="ml-2 text-xs text-fg-muted tabular-nums">
+                          {fill(t.libraryThicknesses, { list: m.thicknesses.map(mm).join(' · ') })}
+                        </span>
+                        {cuttable ? null : (
+                          <span
+                            className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-warning-text"
+                            data-testid="library-no-params"
+                          >
+                            <TriangleAlert aria-hidden className="size-3.5" />
+                            {t.libraryNoParams}
+                          </span>
+                        )}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectGroup>
                 <SelectSeparator />
               </>
@@ -234,22 +266,36 @@ export function MachineFields({
                 {fill(materials.unknown, { id: stock.material })}
               </SelectItem>
             ) : null}
-            <SelectGroup>
-              <SelectLabel>{materials.groupWood}</SelectLabel>
-              {WOOD.map((k) => (
-                <SelectItem key={k} value={k}>
-                  {materialName(k)}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel>{materials.groupPlastic}</SelectLabel>
-              {PLASTIC.map((k) => (
-                <SelectItem key={k} value={k}>
-                  {materialName(k)}
-                </SelectItem>
-              ))}
-            </SelectGroup>
+            {library.length > 0 ? (
+              // T259 (review #4 K7): with a library, the generic kinds sit under one heading.
+              <SelectGroup data-testid="wizard-material-generic">
+                <SelectLabel>{t.genericGroup}</SelectLabel>
+                {[...WOOD, ...PLASTIC].map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {materialName(k)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ) : (
+              <>
+                <SelectGroup>
+                  <SelectLabel>{materials.groupWood}</SelectLabel>
+                  {WOOD.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {materialName(k)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectGroup>
+                  <SelectLabel>{materials.groupPlastic}</SelectLabel>
+                  {PLASTIC.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {materialName(k)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </>
+            )}
             <SelectSeparator />
             <SelectItem value="__stone" disabled>
               {materials.stone}
@@ -263,17 +309,12 @@ export function MachineFields({
           label={t.thickness}
           value={stock.thickness}
           testId="wizard-thickness"
-          list={thicknesses.length > 0 ? ids.thicknesses : undefined}
           errors={errors}
           onCommit={(thickness) => run('setThickness', { thickness })}
         />
         {thicknesses.length > 0 ? (
           <>
-            <datalist id={ids.thicknesses}>
-              {thicknesses.map((v) => (
-                <option key={v} value={String(v).replace('.', ',')} />
-              ))}
-            </datalist>
+            {/* T259: the chips are the list; no native datalist arrow next to the number. */}
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-fg-muted">
                 {fill(entry ? t.libraryThicknessHint : t.thicknessHint, {
@@ -432,6 +473,22 @@ export function SheetGrain({
       </p>
     );
   }
+  // T259: a wood stock without grain ("Yok", e.g. library MDF): say so; one click gives it one.
+  if (stock.sheet.grain === null) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5" data-testid="sheet-grain-off">
+        <p className="text-xs text-fg-muted">{t.grainOff}</p>
+        <button
+          type="button"
+          data-testid="sheet-grain-on"
+          onClick={() => run('setGrain', { grain: 0 })}
+          className={`h-control-sm rounded-md border border-border-strong bg-surface px-2.5 text-xs font-medium text-fg shadow-xs hover:bg-surface-hover ${focusRing}`}
+        >
+          {t.grainOn}
+        </button>
+      </div>
+    );
+  }
   return (
     <fieldset className="flex flex-col gap-2" data-testid="sheet-grain">
       <legend className="mb-1.5 text-sm font-medium text-fg">{t.grain}</legend>
@@ -487,7 +544,8 @@ export function SheetPreview({
   });
   const cx = off.x + sheet.width / 2;
   const cy = sy(off.y, sheet.height) + sheet.height / 2;
-  const showGrain = materialHasGrain(materialKindOf(project.stock.material));
+  // T259: no hatch on a sheet without grain (the dial block says so).
+  const showGrain = materialHasGrain(materialKindOf(project.stock.material)) && grain !== null;
   return (
     <figure
       className={`${canvasWellClass} flex flex-col gap-3 p-4 sm:p-5`}

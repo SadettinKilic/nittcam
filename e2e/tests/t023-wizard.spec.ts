@@ -233,7 +233,8 @@ test.describe('T023 wizard', () => {
     await expect(row.getByTestId('project-status')).toHaveText(tr.projects.status.draft);
     await expect(row).toContainText(SEEDED);
     await expect(row).toContainText(
-      fill(tr.projects.material, { material: tr.materials.mdf, thickness: '18' }),
+      // T259: the new project's material is the library's first usable entry; the size is fixed.
+      fill(tr.projects.material, { material: '', thickness: '18' }).trim(),
     );
     await expect(row).toContainText(fill(tr.projects.pieces, { count: 30 }));
     await shot(page, 't023-projeler');
@@ -305,7 +306,7 @@ test.describe('T023 wizard', () => {
     await saved(page);
 
     // B is still on revision 2: its save is rejected.
-    await b.getByLabel(fill(w.machine.preset, { a: '2.100', b: '2.800' })).check();
+    await b.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' })).check();
     const conflict = b.getByTestId('conflict');
     await expect(conflict).toBeVisible({ timeout: 15_000 });
     await expect(conflict).toContainText(w.conflict.title);
@@ -318,7 +319,7 @@ test.describe('T023 wizard', () => {
       (u) => /\/projeler\/[0-9a-f-]{36}$/.test(u.pathname) && !u.pathname.includes(id),
     );
     await wizardReady(b, 'makine');
-    await expect(b.getByLabel(fill(w.machine.preset, { a: '2.100', b: '2.800' }))).toBeChecked();
+    await expect(b.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' }))).toBeChecked();
     await expect(b.getByTestId('project-name')).toHaveValue(/benim kopyam/);
 
     // Reload: B goes back to the original, edits again on a stale revision, then reloads.
@@ -326,7 +327,7 @@ test.describe('T023 wizard', () => {
     await wizardReady(b, 'makine');
     await page.getByTestId('sheet-grain-dial-quick-0').click();
     await saved(page);
-    await b.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' })).check();
+    await b.getByTestId('sheet-grain-dial-quick-0').click();
     await expect(b.getByTestId('conflict')).toBeVisible({ timeout: 15_000 });
     await b.getByRole('button', { name: w.conflict.reload }).click();
     await wizardReady(b, 'makine');

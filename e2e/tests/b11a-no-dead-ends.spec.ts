@@ -9,12 +9,14 @@ import {
   goStep,
   openNewProject,
   pickOption,
+  saved,
   projectId,
   watchConsole,
   wizardReady,
 } from './wizard-helpers';
 
 const w = tr.wizard;
+const c = tr.cutList.cabinet;
 
 /** A private copy of the seeded machine, so saving a parameter set touches no other spec. */
 async function newMachine(request: APIRequestContext, name: string) {
@@ -85,6 +87,121 @@ test.describe('B11a no dead ends', () => {
     await expect(page.getByTestId('no-cutting-params')).toHaveCount(0);
     await expect(page.getByTestId('wizard-step-makine')).not.toHaveAttribute('data-error', '');
     await expect(page).not.toHaveURL(/profil=son/);
+    expect(problems).toEqual([]);
+  });
+
+  test('T257/T259: library list marks, one-line value, no-grain stock, copied sets', async ({
+    page,
+  }) => {
+    const problems = watchConsole(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openNewProject(page, 'makine');
+    const material = page.getByTestId('wizard-material');
+    // T259: a new project starts on a cuttable library entry, shown on one line.
+    await expect(material).toHaveAttribute('data-library-id', /.+/);
+    const value = page.getByTestId('wizard-material-value');
+    await expect(value).toHaveText(/· 18 mm$/);
+    const tb = await material.boundingBox();
+    const vb = await value.boundingBox();
+    expect(tb && vb).toBeTruthy();
+    if (tb && vb) {
+      expect(vb.y).toBeGreaterThanOrEqual(tb.y);
+      expect(vb.y + vb.height).toBeLessThanOrEqual(tb.y + tb.height + 0.5);
+    }
+    // No native datalist next to the thickness.
+    await expect(page.locator('datalist')).toHaveCount(0);
+    // The list: library first, generic kinds under one heading; Akrilik is marked before a pick.
+    await material.click();
+    const listbox = page.getByRole('listbox');
+    await expect(listbox.getByText(w.machine.genericGroup, { exact: true })).toBeVisible();
+    const akrilik = listbox.getByRole('option', { name: /^Akrilik[^a-z]*5 mm/ });
+    await expect(akrilik.getByTestId('library-no-params')).toHaveText(w.machine.libraryNoParams);
+    await expect(
+      listbox
+        .getByRole('option', { name: /^Melamin[^a-z]*18 mm$/ })
+        .getByTestId('library-no-params'),
+    ).toHaveCount(0);
+    // MDF in the library has no grain: no hatch, the dial block says so.
+    await listbox.getByRole('option', { name: /^MDF[^a-z]*18 mm$/ }).click();
+    await expect(page.getByTestId('sheet-preview-grain')).toHaveCount(0);
+    await expect(page.getByTestId('sheet-grain-off')).toContainText(w.machine.grainOff);
+    // D-046: Melamin 18 cuts out of the box.
+    await material.click();
+    await page
+      .getByRole('listbox')
+      .getByRole('option', { name: /^Melamin[^a-z]*18 mm$/ })
+      .click();
+    await expect(page.getByTestId('cutting-params')).toBeVisible();
+    await expect(page.getByTestId('no-cutting-params')).toHaveCount(0);
+    await expect(page.getByTestId('sheet-preview-grain')).toHaveCount(1);
+    expect(problems).toEqual([]);
+  });
+
+  test('T257: Malzemeler chips show a short status that is never cut', async ({ page }) => {
+    for (const width of [1440, 1024]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/ayarlar/malzemeler');
+      const chips = page.getByTestId('material-params').locator('[data-status]');
+      await expect(chips.first()).toBeVisible({ timeout: 30_000 });
+      const statuses = await chips.evaluateAll((els) =>
+        els.map((e) => {
+          const s = e.lastElementChild as HTMLElement;
+          return { text: s.textContent ?? '', cut: s.scrollWidth > s.clientWidth + 1 };
+        }),
+      );
+      for (const s of statuses) {
+        const ok = [tr.materialLibrary.statusOk, tr.materialLibrary.statusMissing];
+        expect(
+          ok.some((x) => s.text.includes(x)),
+          s.text,
+        ).toBe(true);
+        expect(s.cut).toBe(false);
+      }
+    }
+  });
+
+  test('T260: no grain lock on a stock without grain; the dialog remembers its last values', async ({
+    page,
+    request,
+  }) => {
+    const problems = watchConsole(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openNewProject(page, 'makine');
+    const material = page.getByTestId('wizard-material');
+    await material.click();
+    await page
+      .getByRole('listbox')
+      .getByRole('option', { name: /^MDF[^a-z]*18 mm$/ })
+      .click();
+    await expect(page.getByTestId('sheet-grain-off')).toBeVisible();
+    const id = await projectId(page);
+    await goStep(page, 'parcalar');
+    await page.getByTestId('cabinet-open').click();
+    await page.getByTestId('cabinet-shelves').fill('3');
+    await page.getByTestId('cabinet-dialog').getByRole('radio', { name: c.doorCount[2] }).click();
+    await page.getByTestId('cabinet-add').click();
+    await expect(page.getByTestId('cabinet-dialog')).toHaveCount(0);
+    await saved(page);
+    const body = (await (await request.get(`/api/projects/${id}`)).json()) as {
+      project: { parts: { grain: { mode: string } }[] };
+    };
+    expect(body.project.parts.length).toBeGreaterThan(0);
+    for (const p of body.project.parts) expect(p.grain.mode).toBe('free');
+    // Reopen: shelves and doors come back, the box size starts from the defaults.
+    await page.getByTestId('cabinet-open').click();
+    await expect(page.getByTestId('cabinet-shelves')).toHaveValue('3');
+    await expect(
+      page.getByTestId('cabinet-dialog').getByRole('radio', { name: c.doorCount[2] }),
+    ).toBeChecked();
+    await expect(page.getByTestId('cabinet-width')).toHaveValue('600');
+    // Labels fit: the door radios stay on one line each and the back value is not cut.
+    for (const d of [1, 2] as const) {
+      const label = page.getByTestId('cabinet-dialog').getByText(c.doorCount[d], { exact: true });
+      const box = await label.boundingBox();
+      expect(box?.height ?? 99).toBeLessThan(28);
+    }
+    const back = page.getByTestId('cabinet-back').locator('span').first();
+    expect(await back.evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
     expect(problems).toEqual([]);
   });
 });

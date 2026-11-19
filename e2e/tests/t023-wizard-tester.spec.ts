@@ -270,8 +270,9 @@ test.describe('T023 tester: autosave, offline, restore', () => {
     await expect(status).toHaveText(w.save.retrying, { timeout: 15_000 });
     await expect(status).toContainText(w.save.error);
     await expect(status).toHaveAttribute('data-state', 'error');
-    // A second edit while offline goes into the same queue.
-    await page.getByLabel(fill(w.machine.preset, { a: '2.100', b: '2.800' })).check();
+    // A second edit while offline goes into the same queue (T259: a new project starts on a
+    // library entry, whose sheet sizes are 2.070 × 2.800 and 1.220 × 2.440).
+    await page.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' })).check();
     const queued = await page.evaluate((k) => sessionStorage.getItem(k), `nittcam.unsent.${id}`);
     expect(queued, 'unsent queue is mirrored to sessionStorage').toBeTruthy();
     expect(queued).toContain('setGrain');
@@ -285,7 +286,7 @@ test.describe('T023 tester: autosave, offline, restore', () => {
     const server = await (await request.get(`/api/projects/${id}`)).json();
     expect(server.revision).toBeGreaterThan(base);
     expect(server.project.stock.sheet.grain).toBe(90);
-    expect(server.project.stock.sheet.height).toBe(2100);
+    expect(server.project.stock.sheet.height).toBe(1220);
     // Queue emptied after the save.
     const after = await page.evaluate((k) => sessionStorage.getItem(k), `nittcam.unsent.${id}`);
     expect(after === null || after === '[]' || !after.includes('setGrain')).toBe(true);
@@ -343,7 +344,7 @@ test.describe('T023 tester: autosave, offline, restore', () => {
     b.on('request', (r) => {
       if (r.method() === 'PUT') puts += 1;
     });
-    await b.getByLabel(fill(w.machine.preset, { a: '2.100', b: '2.800' })).check();
+    await b.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' })).check();
     await expect(b.getByTestId('conflict')).toBeVisible({ timeout: 15_000 });
     const afterConflict = puts;
     await b.getByLabel(w.machine.custom).check();
@@ -383,6 +384,9 @@ test.describe('T023 tester: wizard step 1', () => {
     const machine = page.getByTestId('wizard-machine');
     await expect(machine).toHaveText(/Örnek router/);
     await expect(page.getByTestId('cutting-params')).toBeVisible();
+    // T259 (D-045): a new project starts on the library's first entry the machine can cut.
+    await expect(page.getByTestId('wizard-material')).toHaveAttribute('data-library-id', /.+/);
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.mdf);
     await expect(page.getByTestId('wizard-material')).toHaveAttribute('data-value', 'mdf');
     // The thickness hint lists the profile's thicknesses; a listed one has cutting params.
     await expect(page.getByText(/Bu makinede kesim ayarı olan kalınlıklar/)).toBeVisible();
@@ -411,6 +415,8 @@ test.describe('T023 tester: wizard step 1', () => {
     page,
   }) => {
     await openNewProject(page, 'makine');
+    // The generic kind offers the §3.6 presets (a library entry offers its own sizes, T121).
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.mdf);
     for (const [a, b, ww, hh] of [
       ['1.220', '2.440', 2440, 1220],
       ['2.100', '2.800', 2800, 2100],

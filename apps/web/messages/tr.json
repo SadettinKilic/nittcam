@@ -253,6 +253,7 @@
     },
     "form": {
       "createTitle": "Yeni makine",
+      "copiedFrom": "{from} {thickness} mm ayarından kopyalandı; kendi makinenizde doğrulayın.",
       "editTitle": "Makineyi düzenle",
       "exampleNote": "Bu bir örnek profildir. Değerleri kendi makinenize göre kontrol edin; üretimden önce air cut ve test kesimi yapın.",
       "versionNote": "Her kayıt yeni bir profil sürümü oluşturur. Makine, takım veya post sürümü değişirse doğrulama yeniden gerekir.",
@@ -732,6 +733,14 @@
         "inset": "İçte (yanlar arasında)",
         "overlay": "Dışta (arkaya çakılı)"
       },
+      "backModesShort": {
+        "none": "Yok",
+        "inset": "İçte",
+        "overlay": "Dışta"
+      },
+      "otherBoard": "{t} mm · ayrı plaka",
+      "otherNote": "Bu parça {t} mm plakadan kesilmez; listeye kendiliğinden eklenmez.",
+      "includeOther": "Yine de listeye ekle",
       "doorCount": {
         "0": "Kapaksız",
         "1": "Tek kapak",
@@ -1247,6 +1256,8 @@
       "height": "Boy, Y yönü (mm)",
       "grain": "Damar yönü",
       "grainNone": "Plastik malzemede damar yönü yoktur.",
+      "grainOff": "Bu malzemede damar yok.",
+      "grainOn": "Damar yönü ver",
       "tableWarning": "Plaka tablaya sığmıyor: {w} × {h} mm plaka, {tw} × {td} mm tabla. Dışa aktarma kontrolü bu plakayı durdurur.",
       "noParams": "Bu makinede {material} {thickness} mm için kesim ayarı (besleme, devir, paso) yok. Bu haliyle G-code üretilemez: kesim ayarını ekleyin ya da başka bir malzeme veya kalınlık seçin.",
       "addParams": "Kesim ayarı ekle",
@@ -1268,6 +1279,9 @@
       "cardTitle": "Makine ve malzeme",
       "libraryGroup": "Malzeme kütüphanesi",
       "libraryThicknesses": "{list} mm",
+      "libraryValue": "{name} · {thickness} mm",
+      "libraryNoParams": "ayar yok",
+      "genericGroup": "Kütüphane dışı",
       "libraryThicknessHint": "Kütüphanedeki kalınlıklar: {list} mm"
     },
     "parts": {
@@ -1865,6 +1879,8 @@
     "paramsOk": "{machine}: tamam",
     "paramsMissing": "{machine}: {list} mm için ayar yok",
     "paramsNoMachine": "Makine yok",
+    "statusOk": "Tamam",
+    "statusMissing": "Ayar yok",
     "edit": "Düzenle",
     "editNamed": "{name} malzemesini düzenle",
     "remove": "Sil",

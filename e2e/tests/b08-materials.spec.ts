@@ -74,6 +74,8 @@ test.describe('T121 material library', () => {
   test('wizard step 1 picks material → thickness → sheet from the library', async ({ page }) => {
     const problems = watchConsole(page);
     await openNewProject(page, 'makine');
+    // T259: a new project starts on a library entry; start from the generic kind here.
+    await pickOption(page.getByTestId('wizard-material'), tr.materials.mdf);
     await libraryOption(page, /^Kontrplak\s*18 mm$/);
     const material = page.getByTestId('wizard-material');
     await expect(material).toHaveAttribute('data-value', 'plywood');
