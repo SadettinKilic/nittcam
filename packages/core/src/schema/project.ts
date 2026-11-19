@@ -401,8 +401,19 @@ export const nestingModeSchema = z.enum(['minWaste', 'fastest', 'minToolChanges'
   error: 'nesting mode must be "minWaste", "fastest" or "minToolChanges"',
 });
 
+/**
+ * Rotation policy of parts without a grain rule (T163, D-055): `free` = quarter turns (the
+ * default), `none` = only 0°/180° (the drawn orientation). The grain rule always wins. T166 may
+ * add step values (e.g. `step45`) to this enum.
+ */
+export const nestingRotationSchema = z.enum(['free', 'none'], {
+  error: 'rotation must be "free" or "none"',
+});
+
 export const nestingSchema = z.strictObject({
   mode: nestingModeSchema,
+  /** Absent = `free` (projects before T163 need no migration). */
+  rotation: nestingRotationSchema.optional(),
   /** Gap between parts, mm. */
   gap: nonNegativeMm,
   /** Sheet edge margin, mm. */
@@ -587,6 +598,7 @@ export type PartGrain = z.infer<typeof partGrainSchema>;
 export type MachineRef = z.infer<typeof machineRefSchema>;
 export type Stock = z.infer<typeof stockSchema>;
 export type NestingMode = z.infer<typeof nestingModeSchema>;
+export type NestingRotation = z.infer<typeof nestingRotationSchema>;
 export type Nesting = z.infer<typeof nestingSchema>;
 export type Placement = z.infer<typeof placementSchema>;
 export type Layout = z.infer<typeof layoutSchema>;

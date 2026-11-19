@@ -4,7 +4,7 @@
  * Pure and deterministic: no randomness, stable sorts with id/index tie-breakers, first candidate
  * wins ties, so the same input gives a byte-identical result.
  */
-import { allowedRotations } from '../geometry/grain';
+import { allowedRotations, rotationPolicyOf } from '../geometry/grain';
 import { contour, signedArea } from '../geometry/polyline';
 import { isQuarterTurn } from '../geometry/transform';
 import { deriveOutline, type Placement, type Project } from '../schema';
@@ -391,8 +391,17 @@ function better(a: Candidate, b: Candidate): boolean {
   );
 }
 
+/** Optional callbacks of a placer run (T163). They never change the result. */
+export interface NestHooks {
+  /**
+   * Called after every ordering × heuristic candidate with the number done and the total, so a
+   * worker can report progress. Deterministic: the same calls for the same input.
+   */
+  onProgress?: ((done: number, total: number) => void) | undefined;
+}
+
 /** Runs the placer. Locked placements are copied unchanged and act as obstacles on their sheet. */
-export function nest(input: NestingInput): NestingResult {
+export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult {
   const sizes = new Map<string, PartShape>();
   for (const p of input.parts) {
     if (!sizes.has(p.id)) sizes.set(p.id, { w: p.w, h: p.h, outline: p.outline });
@@ -467,10 +476,12 @@ export function nest(input: NestingInput): NestingResult {
   const groups = new Set(items.map((it) => it.group));
   const orderings: readonly PartOrdering[] =
     groups.size > 1 ? [...PART_ORDERINGS, 'toolGroup'] : PART_ORDERINGS;
+  const total = orderings.length * PLACER_HEURISTICS.length;
   for (const ordering of orderings) {
     const list = ordered(items, ordering);
     for (const heuristic of PLACER_HEURISTICS) {
       count++;
+      if (count > 1) hooks.onProgress?.(count - 1, total);
       const packed = pack(ctx, list, heuristic);
       const layout = packed.sheets.map((added, i) => [
         ...(input.locked[i] ?? []).map((pl) => ({ ...pl })),
@@ -489,6 +500,7 @@ export function nest(input: NestingInput): NestingResult {
       if (best === null || better(cand, best)) best = cand;
     }
   }
+  hooks.onProgress?.(count, total);
   // At least one ordering × heuristic always runs, so `best` is set.
   if (best === null) throw new Error('nest: no candidate was tried');
   const win: Candidate = best;
@@ -568,7 +580,7 @@ export function nestingInputFromProject(
       ...partBoxSize(part),
       qty: part.qty,
       // The grain rule (D-034): the single source of allowed rotations.
-      rotations: allowedRotations(part, project.stock.sheet),
+      rotations: allowedRotations(part, project.stock.sheet, rotationPolicyOf(project.nesting)),
       outline: contour(deriveOutline(part)),
       holeTools: part.holes.map((h) => h.tool),
     })),
@@ -583,8 +595,12 @@ export function nestingInputFromProject(
 }
 
 /** Nests a project's parts. */
-export function nestProject(project: Project, options: NestProjectOptions): NestingResult {
-  return nest(nestingInputFromProject(project, options));
+export function nestProject(
+  project: Project,
+  options: NestProjectOptions,
+  hooks: NestHooks = {},
+): NestingResult {
+  return nest(nestingInputFromProject(project, options), hooks);
 }
 
 /** Summary of a stored layout (for the UI after `runNesting`). */

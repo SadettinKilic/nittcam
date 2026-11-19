@@ -127,6 +127,7 @@ const commandArb = fc.oneof(
         mode: fc.constantFrom('minWaste', 'fastest', 'minToolChanges'),
         gap: fc.double({ min: 0, max: 30, noNaN: true }),
         margin: fc.double({ min: 0, max: 50, noNaN: true }),
+        rotation: fc.constantFrom('free', 'none'),
       },
       { requiredKeys: [] },
     ),

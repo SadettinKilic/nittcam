@@ -814,6 +814,7 @@ function WizardSession({
         messages={messages}
         session={session}
         toolDiameter={toolDiameter}
+        contourTool={(profile && findMaterialParams(profile, project.stock)?.tool) ?? undefined}
         side={validation}
         table={tableSpecOf(profile)}
       />

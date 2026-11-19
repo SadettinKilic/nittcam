@@ -1,22 +1,25 @@
 /**
- * Nesting Web Worker (spec §8.2 "Ağır iş arayüzü kilitlemez"). Runs the core `runNesting` command on
- * a copy of the project off the main thread and returns its params and patches; the page records
- * them with `CommandStack.executeApplied`, so the placer runs once.
+ * Nesting Web Worker (spec §8.2 "Ağır iş arayüzü kilitlemez"). Runs `runNesting` on a copy of the
+ * project off the main thread, reports progress after every placer candidate (T163) and returns
+ * the command's params and patches; the page records them with `CommandStack.executeApplied`, so
+ * the placer runs once. "İptal" terminates the worker: nothing is recorded.
  */
-import { applyCommand, summarizeLayout } from '@nittcam/core';
-import type { NestingRequest, NestingResponse } from './nesting-messages';
+import { runNestingWithProgress, summarizeLayout } from '@nittcam/core';
+import type { NestingRequest, NestingWorkerMessage } from './nesting-messages';
 
 const scope = self as unknown as {
   addEventListener(type: 'message', listener: (e: MessageEvent<NestingRequest>) => void): void;
-  postMessage(message: NestingResponse): void;
+  postMessage(message: NestingWorkerMessage): void;
 };
 
 scope.addEventListener('message', (e) => {
-  const { id, project, toolDiameter } = e.data;
+  const { id, project, params } = e.data;
   try {
-    const result = applyCommand(project, 'runNesting', { toolDiameter });
+    const result = runNestingWithProgress(project, params, {
+      onProgress: (done, total) => scope.postMessage({ id, kind: 'progress', done, total }),
+    });
     if (!result.ok) {
-      scope.postMessage({ id, ok: false, error: result.error.message });
+      scope.postMessage({ id, ok: false, error: result.error });
       return;
     }
     scope.postMessage({

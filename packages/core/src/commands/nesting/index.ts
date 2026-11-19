@@ -1,10 +1,10 @@
 /** Nesting commands (spec §5.1 "Dizilim", §6.2, D-019). */
-import { original } from 'immer';
+import { original, produceWithPatches, type Patch } from 'immer';
 import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
-import { allowedRotations, rotationAllowed } from '../../geometry/grain';
-import { nestProject } from '../../nesting/nest';
-import { nestingSchema, placementSchema, type Project } from '../../schema';
+import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../../geometry/grain';
+import { nestProject, type NestHooks } from '../../nesting/nest';
+import { nestingRotationSchema, nestingSchema, placementSchema, type Project } from '../../schema';
 import { defineCommand } from '../types';
 
 /** Sets the nesting goal, part gap and sheet margin. At least one field is required. */
@@ -12,21 +12,31 @@ export const setNestingOptions = defineCommand({
   name: 'setNestingOptions',
   area: 'nesting',
   description:
-    'Set nesting options: mode ("minWaste", "fastest" or "minToolChanges"), the gap between parts in millimetres and the sheet edge margin in millimetres. Pass only the fields to change.',
+    'Set nesting options: mode ("minWaste", "fastest" or "minToolChanges"), the gap between parts in millimetres, the sheet edge margin in millimetres and the rotation policy of parts without grain ("free" = quarter turns, "none" = keep the drawn orientation, only 0°/180°). Pass only the fields to change.',
   aiTool: true,
   params: z
     .strictObject({
       mode: nestingSchema.shape.mode.optional(),
       gap: nestingSchema.shape.gap.optional(),
       margin: nestingSchema.shape.margin.optional(),
+      rotation: nestingRotationSchema.optional(),
     })
-    .refine((p) => p.mode !== undefined || p.gap !== undefined || p.margin !== undefined, {
-      error: 'pass at least one of mode, gap, margin',
-    }),
+    .refine(
+      (p) =>
+        p.mode !== undefined ||
+        p.gap !== undefined ||
+        p.margin !== undefined ||
+        p.rotation !== undefined,
+      { error: 'pass at least one of mode, gap, margin, rotation' },
+    ),
   apply: (draft, params) => {
     if (params.mode !== undefined) draft.nesting.mode = params.mode;
     if (params.gap !== undefined) draft.nesting.gap = params.gap;
     if (params.margin !== undefined) draft.nesting.margin = params.margin;
+    // Absent and "free" mean the same; only a real change records an undo step.
+    if (params.rotation !== undefined && (draft.nesting.rotation ?? 'free') !== params.rotation) {
+      draft.nesting.rotation = params.rotation;
+    }
   },
 });
 
@@ -86,11 +96,55 @@ export const runNesting = defineCommand({
       toolDiameter: params.toolDiameter,
       contourTool: params.contourTool,
     }).layout;
-    // Same layout as stored (a re-run without changes): leave the draft untouched, so the command
-    // records no undo step.
-    if (JSON.stringify(layout) !== JSON.stringify(project.layout)) draft.layout = layout;
+    setLayout(draft, project, layout);
   },
 });
+
+/**
+ * Same layout as stored (a re-run without changes): leave the draft untouched, so the command
+ * records no undo step.
+ */
+function setLayout(draft: Project, project: Project, layout: Project['layout']): void {
+  if (JSON.stringify(layout) !== JSON.stringify(project.layout)) draft.layout = layout;
+}
+
+/** A `runNesting` computed off the main thread with progress (T163). */
+export type RunNestingApplied =
+  | {
+      ok: true;
+      project: Project;
+      params: RunNestingParams;
+      patches: Patch[];
+      inversePatches: Patch[];
+    }
+  | { ok: false; error: string };
+
+export type RunNestingParams = z.infer<typeof runNestingParamsSchema>;
+
+/**
+ * `runNesting` exactly as the command applies it, with a progress callback (T163; the Web Worker
+ * reports it and can be terminated for "İptal"). Record the result with
+ * `CommandStack.executeApplied('runNesting', …)`: the log holds the plain command, and replaying
+ * it gives the same layout (the placer is deterministic). Pure apart from the callback.
+ */
+export function runNestingWithProgress(
+  project: Project,
+  rawParams: unknown,
+  hooks: NestHooks = {},
+): RunNestingApplied {
+  const parsed = runNestingParamsSchema.safeParse(rawParams);
+  if (!parsed.success) return { ok: false, error: 'invalid params for runNesting' };
+  const params = parsed.data;
+  const layout = nestProject(
+    project,
+    { toolDiameter: params.toolDiameter, contourTool: params.contourTool },
+    hooks,
+  ).layout;
+  const [next, patches, inversePatches] = produceWithPatches(project, (draft) => {
+    setLayout(draft as Project, project, layout);
+  });
+  return { ok: true, project: next, params, patches, inversePatches };
+}
 
 export const lockPlacementParamsSchema = z
   .strictObject({
@@ -130,8 +184,9 @@ export const lockPlacement = defineCommand({
     if (params.rot !== undefined) {
       // The grain rule (D-034): only rotations from `allowedRotations` may be set by hand.
       const part = project.parts.find((p) => p.id === params.partId);
-      if (!part || !rotationAllowed(part, project.stock.sheet, params.rot)) {
-        const allowed = part ? allowedRotations(part, project.stock.sheet) : [];
+      const policy = rotationPolicyOf(project.nesting);
+      if (!part || !rotationAllowed(part, project.stock.sheet, params.rot, policy)) {
+        const allowed = part ? allowedRotations(part, project.stock.sheet, policy) : [];
         return `rotation ${params.rot}° is not allowed for part "${params.partId}" (allowed: ${allowed.join(', ')})`;
       }
     }

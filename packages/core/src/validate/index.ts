@@ -5,7 +5,7 @@
  */
 import { EPS } from '../geometry';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
-import { allowedRotations, rotationAllowed } from '../geometry/grain';
+import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../geometry/grain';
 import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
@@ -85,7 +85,11 @@ export const partLargerThanSheet: ValidationRule = (project) => {
   project.parts.forEach((part, i) => {
     const size = partBoxSize(part);
     // The forced grain rotation counts (D-034): the same footprints the placer tries.
-    const rotations = allowedRotations(part, project.stock.sheet);
+    const rotations = allowedRotations(
+      part,
+      project.stock.sheet,
+      rotationPolicyOf(project.nesting),
+    );
     if (fitsUsableAny(rotationOptions(partShape(part), rotations), usable)) return;
     const locked = part.grain.mode === 'fixed' && project.stock.sheet.grain !== null;
     const how = !locked
@@ -263,8 +267,9 @@ export const placementGrain: ValidationRule = (project) => {
   project.layout.sheets.forEach((sheet, s) => {
     sheet.placements.forEach((pl, p) => {
       const part = parts.get(pl.partId);
-      if (!part || rotationAllowed(part, project.stock.sheet, pl.rot)) return;
-      const allowed = allowedRotations(part, project.stock.sheet);
+      const policy = rotationPolicyOf(project.nesting);
+      if (!part || rotationAllowed(part, project.stock.sheet, pl.rot, policy)) return;
+      const allowed = allowedRotations(part, project.stock.sheet, policy);
       const what = pl.locked ? 'locked copy' : 'copy';
       issues.push({
         code: pl.locked ? 'LOCKED_PLACEMENT_GRAIN' : 'PLACEMENT_GRAIN',

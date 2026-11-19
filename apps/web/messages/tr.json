@@ -649,7 +649,11 @@
       "title": "Dizilim",
       "run": "Diz",
       "running": "Diziliyor…",
-      "help": "Parçaları plakalara yerleştirir (en az fire). Parça arası boşluk {gap} mm, kenar payı {margin} mm, takım çapı {tool} mm.",
+      "cancel": "İptal",
+      "progress": "Dizilim ilerlemesi",
+      "progressText": "{done} / {total} deneme",
+      "cancelled": "Dizilim iptal edildi; önceki dizilim aynen duruyor.",
+      "help": "Parçaları seçilen hedefe göre plakalara yerleştirir. Parça arası boşluk {gap} mm, kenar payı {margin} mm, takım çapı {tool} mm.",
       "toolNote": "Takım çapı, seçilen makinenin bu malzeme ve kalınlık için önerdiği takımdan gelir.",
       "about": "Dizilim hakkında",
       "toolChip": "Takım Ø{value}",
@@ -1381,6 +1385,18 @@
         "fastest": "En hızlı",
         "minToolChanges": "En az takım değişimi"
       },
+      "modeHints": {
+        "minWaste": "Plakadan en çok parçayı çıkarır.",
+        "fastest": "Kesim ve boşta gidiş yolu en kısa olan dizilim.",
+        "minToolChanges": "Aynı takımla işlenen parçaları aynı plakada toplar."
+      },
+      "modeResult": "{sheets} plaka · fire {waste}",
+      "rotation": "Parça döndürme",
+      "rotations": {
+        "free": "Serbest (90° adımlarla)",
+        "none": "Döndürme yok (çizildiği gibi)"
+      },
+      "rotationHint": "Damar yönü sabit parçalar her zaman damara göre yerleşir.",
       "gap": "Parça arası boşluk (mm)",
       "margin": "Kenar payı (mm)",
       "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
@@ -1816,6 +1832,7 @@
     },
     "feedback": {
       "loading": "Yükleniyor",
+      "progress": "İlerleme",
       "shortcut": "Komut paleti"
     },
     "feedbackStates": {

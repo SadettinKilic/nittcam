@@ -28,6 +28,9 @@ export {
   setNestingMode,
   runNesting,
   runNestingParamsSchema,
+  runNestingWithProgress,
+  type RunNestingApplied,
+  type RunNestingParams,
   lockPlacement,
   lockPlacementParamsSchema,
 } from './nesting';

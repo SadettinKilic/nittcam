@@ -3,7 +3,8 @@
 import { summarizeLayout, type Project } from '@nittcam/core';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
-import { Button, IconButton, Popover, PopoverContent, PopoverTrigger } from '@nittcam/ui';
+import { useNestProgress, type NestProgressStore } from '../../lib/nesting-progress';
+import { Button, IconButton, Popover, PopoverContent, PopoverTrigger, Progress } from '@nittcam/ui';
 import { Info, LayoutGrid, TriangleAlert } from 'lucide-react';
 
 type Text = Messages['cutList']['nesting'];
@@ -20,15 +21,21 @@ export function NestingPanel({
   project,
   toolDiameter,
   running,
+  progress = null,
   message,
   onRun,
+  onCancel,
 }: {
   t: Text;
   project: Project;
   toolDiameter: number;
   running: boolean;
+  /** Placer candidates done / total while running (T163), read by the bar only. */
+  progress?: NestProgressStore | null;
   message: { kind: 'error' | 'info'; text: string } | null;
   onRun: () => void;
+  /** "İptal" while running (T163): stops the worker, the old layout stays. */
+  onCancel?: (() => void) | undefined;
 }) {
   const summary = summarizeLayout(project);
   const pct = (v: number) => fill(t.percent, { value: percent.format(v) });
@@ -72,15 +79,23 @@ export function NestingPanel({
             </li>
           ))}
         </ul>
-        <Button
-          onClick={onRun}
-          disabled={running || project.parts.length === 0}
-          aria-busy={running}
-          className="w-full"
-        >
-          <LayoutGrid aria-hidden />
-          {running ? t.running : t.run}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={onRun}
+            disabled={running || project.parts.length === 0}
+            aria-busy={running}
+            className="min-w-0 flex-1"
+          >
+            <LayoutGrid aria-hidden />
+            {running ? t.running : t.run}
+          </Button>
+          {running && onCancel ? (
+            <Button variant="outline" onClick={onCancel} data-testid="nesting-cancel">
+              {t.cancel}
+            </Button>
+          ) : null}
+        </div>
+        {running ? <NestProgressBar t={t} store={progress} /> : null}
       </div>
 
       <div aria-live="polite" className="flex flex-col gap-2">
@@ -140,5 +155,18 @@ export function NestingPanel({
         ) : null}
       </div>
     </section>
+  );
+}
+
+/** The progress bar of a running nesting (T163); subscribes to the store by itself. */
+function NestProgressBar({ t, store }: { t: Text; store: NestProgressStore | null }) {
+  const progress = useNestProgress(store);
+  return (
+    <div className="flex flex-col gap-1" data-testid="nesting-progress">
+      <Progress value={progress?.done ?? 0} max={progress?.total ?? 1} aria-label={t.progress} />
+      <span className="text-xs text-fg-muted tabular-nums">
+        {progress ? fill(t.progressText, { done: progress.done, total: progress.total }) : ' '}
+      </span>
+    </div>
   );
 }
