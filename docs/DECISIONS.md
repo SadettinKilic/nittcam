@@ -473,4 +473,3 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
   - **Polish queue** (everything else, e.g. visual polish, spacing, wording, nice-to-haves): noted in BACKLOG "Polish queue (M9)" with the review reference; done in the M9 polish phase.
 - Batches: at most 3 tasks plus 1 small rider, so one dev context lasts the whole batch.
 - Field test stays after M9 (owner cannot do one earlier).
->>>>>>> origin/main
