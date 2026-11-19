@@ -50,7 +50,10 @@ interface Edge {
 }
 
 /** Straight edges of the tool-centre loop of a placed rounded rectangle. */
-function loopEdges(project: Project, op: Operation): { edges: Edge[]; total: number } {
+function loopEdges(
+  project: Project,
+  op: Operation,
+): { edges: Edge[]; total: number; corners: Corner[] } {
   const outline = sheetOutline(project, op);
   const xs = outline.vertices.map((v) => v.x);
   const ys = outline.vertices.map((v) => v.y);
@@ -72,7 +75,36 @@ function loopEdges(project: Project, op: Operation): { edges: Edge[]; total: num
     { dir: 'v', at: x1 + tr, lo: y0 + r, hi: y1 - r },
   ];
   const total = 2 * (x1 - x0 - 2 * r) + 2 * (y1 - y0 - 2 * r) + 2 * Math.PI * (r + tr);
-  return { edges, total };
+  // T272: rounded corners (r ≥ EPS) are outline arcs; the tool-centre arc has radius r + tr
+  const corners: Corner[] =
+    r > 0
+      ? [
+          { cx: x0 + r, cy: y0 + r, sx: -1, sy: -1, R: r + tr },
+          { cx: x1 - r, cy: y0 + r, sx: 1, sy: -1, R: r + tr },
+          { cx: x1 - r, cy: y1 - r, sx: 1, sy: 1, R: r + tr },
+          { cx: x0 + r, cy: y1 - r, sx: -1, sy: 1, R: r + tr },
+        ]
+      : [];
+  return { edges, total, corners };
+}
+
+interface Corner {
+  cx: number;
+  cy: number;
+  /** Outward quadrant signs. */
+  sx: number;
+  sy: number;
+  /** Tool-centre arc radius. */
+  R: number;
+}
+
+/** On the tool-centre arc of one rounded corner (inside its quadrant). */
+function onCorner(k: Corner, x: number, y: number, tol = 1e-6): boolean {
+  return (
+    Math.abs(Math.hypot(x - k.cx, y - k.cy) - k.R) <= tol &&
+    (x - k.cx) * k.sx >= -tol &&
+    (y - k.cy) * k.sy >= -tol
+  );
 }
 
 function onEdge(e: Edge, x: number, y: number, tol = 1e-6): boolean {
@@ -219,7 +251,7 @@ function tabViolations(project: Project, res: ToolpathResult, c: Case, height: n
   const tabTop = -(c.thickness - height);
   for (const op of res.toolpath.operations) {
     const tr = op.toolDiameter / 2;
-    const { edges, total } = loopEdges(project, op);
+    const { edges, total, corners } = loopEdges(project, op);
     const isSmall = small(project, op);
     const want = isSmall ? Math.max(c.count, 2) : c.auto ? c.count : 0;
     const n = op.tabs.length;
@@ -254,12 +286,17 @@ function tabViolations(project: Project, res: ToolpathResult, c: Case, height: n
     for (const t of op.tabs) {
       // exact Z
       if (t.z !== tabTop) out.push(`${op.id}: tab z ${t.z}, want ${tabTop}`);
-      // on one straight edge entirely (not on an arc, not within w/2 + tr of a corner)
-      if (!edges.some((e) => onEdge(e, t.x0, t.y0) && onEdge(e, t.x1, t.y1)))
-        out.push(`${op.id}: tab not on a straight edge clear of the corners`);
+      // on one straight edge entirely (not within w/2 + tr of a corner), or (T272, only when no
+      // tab fits on a straight edge) wholly on the arc of one rounded corner
+      const straight = edges.some((e) => onEdge(e, t.x0, t.y0) && onEdge(e, t.x1, t.y1));
+      const arc = corners.find((k) => onCorner(k, t.x0, t.y0) && onCorner(k, t.x1, t.y1));
+      if (!straight && !arc) out.push(`${op.id}: tab not on a straight edge clear of the corners`);
+      const L = c.width + op.toolDiameter;
       const span = Math.hypot(t.x1 - t.x0, t.y1 - t.y0);
-      if (Math.abs(span - (c.width + op.toolDiameter)) > 1e-6)
+      const wantSpan = arc ? 2 * arc.R * Math.sin(L / (2 * arc.R)) : L;
+      if (Math.abs(span - wantSpan) > 1e-6)
         out.push(`${op.id}: raised span ${span}, want width + D`);
+      if (Math.abs(t.end - t.start - L) > EPS) out.push(`${op.id}: tab length ${t.end - t.start}`);
       // not over the start point (lead-in/out, plunge)
       if (!(t.start > tr - EPS && t.end < total - tr + EPS))
         out.push(`${op.id}: tab over the start point`);

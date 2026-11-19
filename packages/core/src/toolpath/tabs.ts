@@ -53,9 +53,10 @@ export interface Interval {
 
 /**
  * Where a tab centre may go on a closed loop that starts at P (`segs`, in travel order):
- * - only on straight segments (with `onArcs`, D-049 cut-out slugs: also on arcs), at least `half`
- *   (= raised span / 2 = w/2 + tool radius) from both ends, so the raised span never touches a
- *   corner or another segment and an arc too short for a tab gets none;
+ * - only on straight segments (with `onArcs`, D-049 cut-out slugs and T272 all-arc outer contours:
+ *   also on arcs), at least `half` (= raised span / 2 = w/2 + tool radius) from both ends, so the
+ *   raised span never touches a corner or another segment and an arc too short for a tab gets none;
+ *   with `minArcRadius` (outer contours: the tool radius) the tool-rounded sharp corners are skipped;
  * - the raised span stays out of `[0, keepFwd]` and `[total − keepBack, total]` (lead-in/out, the
  *   ramp and the plunge point around P).
  */
@@ -65,13 +66,14 @@ export function tabCentreIntervals(
   keepFwd: number,
   keepBack: number,
   onArcs = false,
+  minArcRadius = 0,
 ): Interval[] {
   const total = segs.reduce((s, x) => s + segLength(x), 0);
   const out: Interval[] = [];
   let s0 = 0;
   for (const s of segs) {
     const l = segLength(s);
-    if (s.bulge === 0 || onArcs) {
+    if (s.bulge === 0 || (onArcs && arcRadius(s) > minArcRadius + EPS)) {
       const lo = Math.max(s0 + half, keepFwd + half);
       const hi = Math.min(s0 + l - half, total - keepBack - half);
       // an exact fit (hi = lo) must not depend on rounding (T273)
@@ -142,13 +144,25 @@ export function placeTabs(
     keepBack: number;
     minCount: number;
     z: number;
-    /** Tabs may sit on arcs too (D-049: cut-out slugs, often round openings). */
+    /** Tabs may sit on arcs too (D-049 round openings; T272 all-arc outer contours). */
     onArcs?: boolean;
+    /**
+     * With `onArcs`: only arcs whose radius exceeds this by more than EPS (T272: an outer contour
+     * passes the tool radius, so the arc the tool rolls around a sharp corner is never used).
+     */
+    minArcRadius?: number;
   },
 ): Tab[] {
   const total = segs.reduce((s, x) => s + segLength(x), 0);
   const half = (o.width + o.toolDiameter) / 2;
-  const allowed = tabCentreIntervals(segs, half, o.keepFwd, o.keepBack, o.onArcs ?? false);
+  const allowed = tabCentreIntervals(
+    segs,
+    half,
+    o.keepFwd,
+    o.keepBack,
+    o.onArcs ?? false,
+    o.minArcRadius ?? 0,
+  );
   for (let n = o.count; n >= Math.max(1, o.minCount); n--) {
     // neighbouring raised spans must not touch (n = 1 has no neighbour)
     if (n > 1 && total / n <= 2 * half + EPS) continue;
@@ -212,4 +226,10 @@ export function passMovesWithTabs(
   }
   moves.push(...pathMoves(slicePath(segs, at, total), z, z, feed));
   return moves;
+}
+
+/** Radius of an arc segment (bulge ≠ 0): chord · (1 + b²) / (4 |b|). */
+function arcRadius(s: PathSeg): number {
+  const b = Math.abs(s.bulge);
+  return (Math.hypot(s.p1.x - s.p0.x, s.p1.y - s.p0.y) * (1 + b * b)) / (4 * b);
 }

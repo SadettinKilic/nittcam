@@ -53,6 +53,15 @@ describe('/api/templates multi-tenancy and immutability (B17 tester)', () => {
     expect((await one.GET(new Request('http://test'), ctx(id))).status).toBe(404);
     expect((await one.GET(new Request('http://test?version=1'), ctx(id))).status).toBe(404);
     expect((await versions.POST(json({ template: hinge }), ctx(id))).status).toBe(404);
+    // T151: archiving a foreign template is a 404 and leaves it active; its history is invisible.
+    const patch = new Request('http://test', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ archived: true }),
+    });
+    expect((await one.PATCH(patch, ctx(id))).status).toBe(404);
+    expect((await other.templates.get(id))?.archivedAt).toBeNull();
+    expect((await versions.GET(new Request('http://test'), ctx(id))).status).toBe(404);
 
     // Untouched in its own company: still one version with the original name.
     const vs = await other.templates.listVersions(id);
@@ -89,10 +98,10 @@ describe('/api/templates multi-tenancy and immutability (B17 tester)', () => {
       expect(r.status, q).toBe(400);
     }
     expect((await one.GET(new Request('http://test?version=9'), ctx(created.id))).status).toBe(404);
-    // No route writes or deletes a version in place.
+    // No route writes or deletes a version in place (T151: PATCH /:id only archives the template).
     for (const mod of [one, versions, root] as Record<string, unknown>[]) {
+      if (mod !== one) expect(mod['PATCH']).toBeUndefined();
       expect(mod['PUT']).toBeUndefined();
-      expect(mod['PATCH']).toBeUndefined();
       expect(mod['DELETE']).toBeUndefined();
     }
   });

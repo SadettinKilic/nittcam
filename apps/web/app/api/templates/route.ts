@@ -3,6 +3,7 @@ import { companyScope } from '../../../lib/server/company';
 import {
   handleTemplateError,
   readTemplate,
+  readyItems,
   templateError,
   toItem,
 } from '../../../lib/server/templates';
@@ -10,12 +11,19 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** GET /api/templates → the company templates, each at its latest version (T148). */
-export async function GET() {
+/**
+ * GET /api/templates[?archived=1] → the company templates, each at its latest version (T148), then
+ * the ready library (T150, `ready: true`). Archived templates (T151) only with `archived=1`.
+ */
+export async function GET(request?: Request) {
+  const withArchived = request ? new URL(request.url).searchParams.get('archived') === '1' : false;
   try {
     const scope = await companyScope();
     const rows = await scope.templates.listLatest();
-    return NextResponse.json(rows.map((r) => toItem(r.template, r.version)));
+    const items = rows
+      .filter((r) => withArchived || r.template.archivedAt === null)
+      .map((r) => toItem(r.template, r.version));
+    return NextResponse.json([...items, ...readyItems()]);
   } catch (err) {
     return handleTemplateError(err);
   }

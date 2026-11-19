@@ -228,6 +228,8 @@ export const templates = pgTable(
     id: id(),
     companyId: companyId(),
     name: text('name').notNull(),
+    /** Archived (T151): hidden from "Şablon ekle", kept for the projects that use it; null = active. */
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

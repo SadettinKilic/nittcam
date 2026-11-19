@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { companyScope } from '../../../../../lib/server/company';
 import {
   handleTemplateError,
+  readyItemOf,
   readTemplate,
   templateError,
   toItem,
@@ -36,6 +37,24 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
         ? template
         : ((await scope.templates.update(id, { name: draft.name })) ?? template);
     return NextResponse.json(toItem(named, version), { status: 201 });
+  } catch (err) {
+    return handleTemplateError(err);
+  }
+}
+
+/** GET /api/templates/:id/versions → every version, oldest first (T151 version history). */
+export async function GET(_request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  if (!UUID.test(id)) {
+    const ready = readyItemOf(id, null);
+    return ready ? NextResponse.json([ready]) : templateError({ error: 'not_found' }, 404);
+  }
+  try {
+    const scope = await companyScope();
+    const template = await scope.templates.get(id);
+    if (!template) return templateError({ error: 'not_found' }, 404);
+    const versions = await scope.templates.listVersions(id);
+    return NextResponse.json(versions.map((v) => toItem(template, v)));
   } catch (err) {
     return handleTemplateError(err);
   }
