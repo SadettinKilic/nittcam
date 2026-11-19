@@ -103,7 +103,15 @@ describe('unsecuredSlugs (T270)', () => {
           expect(flagged).toEqual(refusedByToolpath(p));
         },
       ),
-      { numRuns: 60 },
+      {
+        numRuns: 60,
+        examples: [
+          // T273 (CI seed -1772635311): the cut order started this opening on its long edge, where
+          // the lead/ramp keep-out left no room for 2 tabs, while the part alone started on the
+          // short edge and held. The order now only offers start edges that hold a small slug.
+          [{ kind: 'rect', a: 22, b: 35 }, false],
+        ],
+      },
     );
   });
 });
