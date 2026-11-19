@@ -8,7 +8,7 @@
   --accent:#2f56e3; --accent-subtle:#eff4ff; --accent-border:#c0d2fd; --accent-text:#2443c8;
   --ok:#039855; --ok-subtle:#ecfdf3; --warn:#b54708; --warn-c:#f79009; --warn-subtle:#fffaeb; --bad:#d92d20; --bad-subtle:#fef3f2; --bad-border:#fecdca;
   --floor:#e8ebef; --room:#fcfcfd; --wall:#9da5b3; --glass:#c0d2fd; --desk:#d9dee6; --desk-edge:#b3bac6; --screen:#1e2229; --sofa:#c0d2fd; --plant:#12b76a; --rack:#3f4652; --chair:#586170; --skin:#f2c9a4;
-  --c-po:#2f56e3; --c-dev:#0e9384; --c-dev2:#5f8f16; --c-tester:#dc6803; --c-fable:#7a5af8;
+  --c-po:#2f56e3; --c-dev:#0e9384; --c-dev2:#5f8f16; --c-dev3:#c11574; --c-tester:#dc6803; --c-fable:#7a5af8;
   --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --f-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",monospace;
   color-scheme:light;
@@ -19,7 +19,7 @@
   --accent:#4470f0; --accent-subtle:#141c38; --accent-border:#26356e; --accent-text:#94b3fb;
   --ok:#32d583; --ok-subtle:#052e1d; --warn:#fdb022; --warn-c:#fdb022; --warn-subtle:#2b1d05; --bad:#f97066; --bad-subtle:#2a0f0c; --bad-border:#571d16;
   --floor:#0d0f12; --room:#16191e; --wall:#3f4652; --glass:#26356e; --desk:#2a2f38; --desk-edge:#3f4652; --screen:#08090b; --sofa:#213380; --plant:#12b76a; --rack:#2a2f38; --chair:#3f4652; --skin:#e9b98f;
-  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-tester:#f79009; --c-fable:#9b8afb;
+  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-dev3:#ee46bc; --c-tester:#f79009; --c-fable:#9b8afb;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
@@ -28,7 +28,7 @@
   --accent:#4470f0; --accent-subtle:#141c38; --accent-border:#26356e; --accent-text:#94b3fb;
   --ok:#32d583; --ok-subtle:#052e1d; --warn:#fdb022; --warn-c:#fdb022; --warn-subtle:#2b1d05; --bad:#f97066; --bad-subtle:#2a0f0c; --bad-border:#571d16;
   --floor:#0d0f12; --room:#16191e; --wall:#3f4652; --glass:#26356e; --desk:#2a2f38; --desk-edge:#3f4652; --screen:#08090b; --sofa:#213380; --plant:#12b76a; --rack:#2a2f38; --chair:#3f4652; --skin:#e9b98f;
-  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-tester:#f79009; --c-fable:#9b8afb;
+  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-dev3:#ee46bc; --c-tester:#f79009; --c-fable:#9b8afb;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -293,6 +293,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     {key:'po', name:'PO', role:'Ürün sahibi', hair:'#3b2a20'},
     {key:'dev', name:'Dev', role:'Geliştirici', hair:'#1e1a17'},
     {key:'dev2', name:'Dev 2', role:'Geliştirici (2. dev)', hair:'#b5651d', optional:true},
+    {key:'dev3', name:'Dev 3', role:'Geliştirici (3. dev, CTO yokken)', hair:'#1f1f1f', optional:true},
     {key:'tester', name:'Tester', role:'Test', hair:'#7a4a24'},
     {key:'fable', name:'CTO', role:'Tasarım ve ürün incelemesi', hair:'#c9c3b8', visitor:true},
   ];
@@ -324,7 +325,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   const GLY = {A:'010101111101101',B:'110101110101110',C:'011100100100011',D:'110101101101110',E:'111100110100111',F:'111100110100100',
     G:'011100101101011',H:'101101111101101',I:'111010010010111',J:'001001001101010',K:'101101110101101',L:'100100100100111',
     M:'101111111101101',N:'110101101101101',O:'010101101101010',P:'110101110100100',R:'110101110101101',S:'011100010001110',
-    T:'111010010010010',U:'101101101101111',V:'101101101101010',Y:'101101010010010',Z:'111001010100111','?':'111001010000010','1':'010110010010111','2':'110001010100111','·':'000000010000000','.':'000000000000010','!':'010010010000010'};
+    T:'111010010010010',U:'101101101101111',V:'101101101101010',Y:'101101010010010',Z:'111001010100111','?':'111001010000010','1':'010110010010111','2':'110001010100111','0':'111101101101111','3':'111001011001111','4':'101101111001001','5':'111100111001111','6':'111100111101111','7':'111001010010010','8':'111101111101111','9':'111101111001111','·':'000000010000000','.':'000000000000010','!':'010010010000010'};
   const MARK = {'İ':['I',[[1,-2]]],'Ş':['S',[[1,5]]],'Ç':['C',[[1,5]]],'Ö':['O',[[0,-2],[2,-2]]],'Ü':['U',[[0,-2],[2,-2]]],'Ğ':['G',[[0,-2],[2,-2]]]};
   const ptw = (s) => [...s].length*4-1;
   function ptext(c, s, x, y, col){
@@ -362,6 +363,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     po:{c:'#3d63e6', d:'#2949b8', h:'#3b2a20', a:'#1b2140', b:'#1b2140', acc:'tie', tag:'#2f56e3'},
     dev:{c:'#14a693', d:'#0b7a6d', h:'#1e1a17', a:'#30343c', b:'#30343c', acc:'phones', tag:'#0e9384'},
     dev2:{c:'#7fb52a', d:'#587f14', h:'#b5651d', a:'#30343c', b:'#30343c', acc:'phones', tag:'#5f8f16'},
+    dev3:{c:'#dd2590', d:'#9e165f', h:'#1f1f1f', a:'#30343c', b:'#30343c', acc:'phones', tag:'#c11574'},
     tester:{c:'#f08a1c', d:'#c45f07', h:'#7a4a24', a:'#d9480f', b:'#a8370a', acc:'cap', tag:'#dc6803'},
     fable:{c:'#8466f9', d:'#5d40d8', h:'#e4dfd6', a:'#f4c542', b:'#f4c542', acc:'scarf', tag:'#7a5af8'},
     tea:{c:'#d65a8a', d:'#a33a63', h:'#5a3a2a', a:'#f4f1ea', b:'#e3d9c6', acc:'cap', tag:'#c2417a'}, // ambient tea lady: headscarf + apron colours
@@ -473,9 +475,9 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     { const r = R.dev, pw = plaque(r,'dev'), wx = r.x+3+pw+6;
       if(wx+18 <= r.x+r.w-3) L.wins.push({x:wx, y:r.y-12, w:tall?Math.min(18, r.x+r.w-3-wx):20, h:9, r});
       if(!tall) L.clock = {x:wx+28, y:r.y-11};
-      const dw = tall?56:92, dx = r.x+((r.w-dw)>>1), dy = r.y+14, off = tall?14:22, s0 = dx+off, s1 = dx+dw-off;
-      desk(dx, dy, dw, [{x:s0, id:'dev0'}, {x:s1, id:'dev1'}], tall?null:{lamp:dx+(dw>>1), mug:dx+(dw>>1)+6});
-      SP.devDesk = [{room:'dev', x:s0, y:dy+16, face:'up', pose:'sit', scr:'dev0'}, {room:'dev', x:s1, y:dy+16, face:'up', pose:'sit', scr:'dev1'}];
+      const dw = tall?72:120, dx = r.x+((r.w-dw)>>1), dy = r.y+14, off = tall?12:20, s0 = dx+off, s1 = dx+dw-off, s2 = dx+(dw>>1);
+      desk(dx, dy, dw, [{x:s0, id:'dev0'}, {x:s1, id:'dev1'}, {x:s2, id:'dev2'}], tall?null:{lamp:dx+4, mug:dx+dw-6});
+      SP.devDesk = [{room:'dev', x:s0, y:dy+16, face:'up', pose:'sit', scr:'dev0'}, {room:'dev', x:s1, y:dy+16, face:'up', pose:'sit', scr:'dev1'}, {room:'dev', x:s2, y:dy+16, face:'up', pose:'sit', scr:'dev2'}];
       SP.devDesk.forEach(chairB);
       plant(r.x+r.w-7, r.y+r.h-3);
     }
@@ -923,7 +925,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   const hourNow = ()=>{ if(QH!=null) return +QH; const d = new Date(); return d.getHours()+d.getMinutes()/60; };
   const daylight = ()=>{ const h = hourNow(); return h>=9 && h<=17 ? 1 : h>=6 && h<9 ? (h-6)/3 : h>17 && h<20 ? (20-h)/3 : 0; };
   const ready = (A)=>A.vis && A.placed && !A.path.length && !A.amb && !A.want;
-  const devsReady = ()=>[actors.dev, actors.dev2].filter(D=>D.st==='coding' && D.grp==='devDesk' && ready(D));
+  const devsReady = ()=>[actors.dev, actors.dev2, actors.dev3].filter(D=>D.st==='coding' && D.grp==='devDesk' && ready(D));
   const mkNPC = (key, name)=>({c:{name}, key, x:L.entrance.x, y:L.entrance.y, path:[], dir:L.tall?'up':'right', vis:true, walkT:0, ph:0, dest:null, st:'npc', free:null, at:{entrance:true}});
   function walk(A, pts, fn){ // follow waypoints, then call fn
     let px = A.x, py = A.y; A.path = pts.filter(p=>{ const keep = p.x!==px || p.y!==py; px = p.x; py = p.y; return keep; });
@@ -1139,20 +1141,21 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     if(st==='idle') return {spot:'brk'};
     if(st==='planning') return {spot:'board'};
     if(st==='reviewing'){
-      const mi = {po:1, dev:2, tester:3, dev2:4}[c.key]; // meeting-room seats
+      const mi = {po:1, dev:2, tester:3, dev2:4, dev3:0}[c.key]; // meeting-room seats
       if(ctx.fable) return {spot:'meet', i:mi};
       return c.key==='po' ? {spot:'poDesk'} : {spot:'meet', i:mi};
     }
     if(st==='testing') return {spot:'bench'};
     if(st==='coding') return {spot: c.key==='tester' ? 'bench' : 'devDesk'};
-    return {spot: c.key==='po'?'poDesk' : c.key==='dev'||c.key==='dev2'?'devDesk' : 'bench'};
+    return {spot: c.key==='po'?'poDesk' : c.key==='dev'||c.key==='dev2'||c.key==='dev3'?'devDesk' : 'bench'};
   }
   function agentView(){
     const lim = limitInfo(), A = S.agents||{};
     const fa = A.fable, fableOn = !!fa && fa.state && fa.state!=='idle' && fa.updated && (Date.now()-new Date(fa.updated)) < 12*3600e3;
     const d2 = A.dev2, dev2On = !!d2 && !!d2.updated && (Date.now()-new Date(d2.updated)) < 12*3600e3; // optional 2nd dev: shown while it has reported in the last 12 h
-    CREW.find(c=>c.key==='dev').name = dev2On ? 'Dev 1' : 'Dev';
-    return CREW.filter(c=>c.key==='dev2' ? dev2On : (!c.visitor || fableOn)).map(c=>{
+    const d3 = A.dev3, dev3On = !!d3 && !!d3.updated && d3.state!=='idle' && (Date.now()-new Date(d3.updated)) < 12*3600e3; // 3rd dev: only while working (uses the CTO slot)
+    CREW.find(c=>c.key==='dev').name = (dev2On||dev3On) ? 'Dev 1' : 'Dev';
+    return CREW.filter(c=>c.key==='dev2' ? dev2On : c.key==='dev3' ? dev3On : (!c.visitor || fableOn)).map(c=>{
       const raw = A[c.key] || {state:'idle'};
       const a = lim.blocked ? {...raw, state:'idle', message:'Limit doldu, mola. '+(lim.reset?lim.reset+"'de dönüyoruz.":'')} : raw;
       return {c, a, st: STATE_TR[a.state] ? a.state : 'idle'};

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Team status CLI. Writes .team/state.json, which the dashboard (pnpm team) reads.
-//   node tools/team/status.mjs <po|dev|dev2|tester|fable> <state> "<task>" "<message>"
+//   node tools/team/status.mjs <po|dev|dev2|dev3|tester|fable> <state> "<task>" "<message>"
 //   node tools/team/status.mjs task <Txxx> <todo|doing|review|done|blocked> ["title"] [owner]
 //   node tools/team/status.mjs milestone "<M0 — Temel>"
 //   node tools/team/status.mjs limit on "<19:40>" | limit off
@@ -19,8 +19,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 let root = join(here, '..', '..');
 try { root = dirname(execSync('git rev-parse --path-format=absolute --git-common-dir', { cwd: here, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()); } catch {}
 const file = join(root, '.team', 'state.json');
-// fable = visiting design reviewer, dev2 = optional second developer; both shown in the office only while active
-const AGENTS = ['po', 'dev', 'dev2', 'tester', 'fable'];
+// fable = visiting design reviewer, dev2/dev3 = optional extra developers (dev3 uses the CTO slot when no review runs); both shown in the office only while active
+const AGENTS = ['po', 'dev', 'dev2', 'dev3', 'tester', 'fable'];
 const STATES = ['idle', 'planning', 'coding', 'testing', 'reviewing', 'blocked', 'done'];
 const TASK_STATES = ['todo', 'doing', 'review', 'done', 'blocked'];
 
@@ -101,7 +101,7 @@ if (AGENTS.includes(cmd)) {
 } else if (cmd === 'print') {
   process.stdout.write(JSON.stringify(s, null, 2) + '\n'); process.exit(0);
 } else {
-  die('usage: status.mjs <po|dev|dev2|tester|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | milestone "<name>" | call | print');
+  die('usage: status.mjs <po|dev|dev2|dev3|tester|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | milestone "<name>" | call | print');
 }
 
 s.updated = now;
