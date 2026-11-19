@@ -967,6 +967,7 @@
       "HOLE_DEPTH_INVALID": "Kör delik derinliği malzeme kalınlığından küçük olmalı.",
       "INNER_OFFSET_FAILED": "İç kesim bu takım için çok küçük; takım boşluğa girmiyor.",
       "INNER_SPLIT": "Takım iç kesimin dar bir boğazından geçemiyor.",
+      "ONLINE_DEPTH_INVALID": "Çizgi üzerinden işlem derinliği malzeme kalınlığından az olmalı.",
       "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor, dış hatla kesişiyor ya da başka bir iç kesime değiyor; parça bu haliyle kesilemez.",
       "SPINDLE_INVALID": "Devir spindle aralığının dışında.",
       "SPINDLE_RPM_RANGE": "Devir spindle aralığının dışında.",
@@ -1896,9 +1897,17 @@
       "pickHint": "Tuvalde bir kenarın ortasına ya da bir köşeye tıklayın.",
       "operation": {
         "outer": "Dış kontur",
-        "outerCut": "Dıştan kesim",
         "inners": "İç kontur",
-        "holes": "Delik"
+        "holes": "Delik",
+        "lineN": "Çizgi {n}",
+        "depth": "Derinlik",
+        "depthError": "Derinlik malzeme kalınlığından az olmalı.",
+        "kinds": {
+          "outside": "Dıştan kesim",
+          "inside": "İçten kesim",
+          "online": "Çizgi üzerinden",
+          "none": "Kesilmez"
+        }
       },
       "convert": "Serbest şekle dönüştür",
       "convertHint": "Dikdörtgen çizgi ve yaylara çevrilir; en, boy ve yarıçap alanları kalkar.",

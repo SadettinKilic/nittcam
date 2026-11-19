@@ -9,7 +9,14 @@ import { bbox, contour, normalize, reverse, signedArea } from '../geometry/polyl
 import { rotate, translate } from '../geometry/transform';
 import type { BBox, Point, Polyline } from '../geometry/types';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
-import type { Part, Placement, Project } from '../schema';
+import {
+  innerOperation,
+  outlineOperation,
+  type ContourOperation,
+  type Part,
+  type Placement,
+  type Project,
+} from '../schema';
 import { deriveOutline } from '../schema/outline';
 import { checkInnerContour } from '../editor/inners';
 import { passDepths, throughCutTarget } from './depth';
@@ -37,6 +44,7 @@ import { toolpathSafetyViolations } from './safety';
 import { buildHoleOperation, holeOperationKind, holeStart, placedHoleCentre } from './holes';
 import { checkHolePlacement } from '../editor/holes';
 import { summarizeToolpath } from './stats';
+import { buildOnlineOperation, onlineStart } from './online';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
 
 import { TAB_DEFAULTS, defaultTabHeight, isSmallPart, passMovesWithTabs, placeTabs } from './tabs';
@@ -113,6 +121,27 @@ export function placedInners(
       placement.y - box.minY,
     ),
   );
+}
+
+/**
+ * A placed part's open lines (T142) in the sheet frame: the same rotation and shift as
+ * `placedOutline`; the line direction is kept.
+ */
+export function placedLines(
+  part: Part,
+  placement: Pick<Placement, 'x' | 'y' | 'rot'>,
+): { poly: Polyline; op: ContourOperation }[] {
+  const lines = part.lines ?? [];
+  if (lines.length === 0) return [];
+  const box = bbox(rotate(normalize(contour(deriveOutline(part)), 'outer'), placement.rot));
+  return lines.map((l) => ({
+    poly: translate(
+      rotate({ closed: false, vertices: l.vertices }, placement.rot),
+      placement.x - box.minX,
+      placement.y - box.minY,
+    ),
+    op: l.op,
+  }));
 }
 
 export interface ContourPathResult {
@@ -775,11 +804,52 @@ export function buildToolpath(
           );
           continue;
         }
+        // Only a through cut inside the line needs the tool to fit (T142: online / none do not).
+        if (innerOperation(part, k).kind !== 'inside') continue;
         for (const it of innerContourPath(contour(inner), toolRadius).issues) {
           (it.severity === 'error' ? errors : warnings).push(
             issue(it.code, it.severity, part.id, it.message),
           );
         }
+      }
+    }
+  }
+
+  // On-line operations (T142): engraving depth below the top, never a through cut, within the
+  // flute length. Checked once per part; cut per placed copy.
+  const onlineDepths = new Map<string, number[]>();
+  for (const part of project.parts) {
+    const ops: { what: string; op: ContourOperation }[] = [
+      { what: 'Outline', op: outlineOperation(part) },
+      ...part.inners.map((_, k) => ({
+        what: `Inner contour ${k + 1}`,
+        op: innerOperation(part, k),
+      })),
+      ...(part.lines ?? []).map((l, k) => ({ what: `Line ${k + 1}`, op: l.op })),
+    ];
+    for (const { what, op } of ops) {
+      if (op.kind !== 'online') continue;
+      const key = `${part.id}/${op.depth}`;
+      if (!(op.depth < thickness - EPS)) {
+        errors.push(
+          issue(
+            'ONLINE_DEPTH_INVALID',
+            'error',
+            part.id,
+            `${what}: on-line depth ${op.depth} mm must be less than the thickness (${thickness} mm).`,
+          ),
+        );
+      } else if (op.depth > tool.fluteLength + EPS) {
+        errors.push(
+          issue(
+            'DEPTH_EXCEEDS_FLUTE_LENGTH',
+            'error',
+            part.id,
+            `${what}: depth ${op.depth} mm exceeds the flute length ${tool.fluteLength} mm of T${tool.number}.`,
+          ),
+        );
+      } else if (!onlineDepths.has(key)) {
+        onlineDepths.set(key, passDepths(0 - op.depth, passDepth));
       }
     }
   }
@@ -883,7 +953,43 @@ export function buildToolpath(
       const neighbours = obstacles.filter((_, j) => j !== i);
       const opWarnings: ToolpathIssue[] = [];
       const opErrors: ToolpathIssue[] = [];
-      const contourRes = outerContourPath(x.outline, toolRadius);
+      // T142: the outline's operation; only `outside` is a through cut around the part.
+      const outlineOp = outlineOperation(x.part);
+      const contourRes: ContourPathResult =
+        outlineOp.kind === 'outside'
+          ? outerContourPath(x.outline, toolRadius)
+          : { ok: false, paths: [], issues: [] };
+      const copyKey = `${x.part.id}#${x.placement.index}`;
+      // On-line operations (T142): prebuilt like holes (one start point), cut with the holes.
+      const addOnline = (line: Polyline, tag: string, depth: number) => {
+        const depths = onlineDepths.get(`${x.part.id}/${depth}`);
+        if (!depths) return;
+        const op = buildOnlineOperation({
+          id: `${copyKey}/${tag}`,
+          sheet: sheetIndex,
+          partId: x.part.id,
+          copy: x.placement.index,
+          line,
+          tool: params.tool,
+          toolDiameter: params.toolDiameter,
+          feed: params.feed,
+          plungeFeed: params.plungeFeed,
+          rpm: params.rpm,
+          passDepths: depths,
+          safeZ,
+          clearanceZ,
+        });
+        items.push({
+          sheet: sheetIndex,
+          part: copyKey,
+          cls: 'online',
+          tool: params.tool,
+          area: 0,
+          starts: [onlineStart(op)],
+        });
+        itemCtx.push(-1);
+        itemHole.push(op);
+      };
       for (const it of contourRes.issues) {
         (it.severity === 'error' ? opErrors : opWarnings).push(
           issue(it.code, it.severity, x.part.id, it.message, where),
@@ -937,6 +1043,9 @@ export function buildToolpath(
       // order's hard constraint inner → outer within a part copy). Failures are reported per part
       // above, so a failed opening simply has no operation (and the toolpath is not ok).
       placedInners(x.part, x.placement).forEach((innerPoly, k) => {
+        const innerOp = innerOperation(x.part, k);
+        if (innerOp.kind === 'online') addOnline(innerPoly, `inner${k}`, innerOp.depth);
+        if (innerOp.kind !== 'inside') return;
         const res = innerContourPath(innerPoly, toolRadius);
         const loop = res.paths[0];
         if (!res.ok || !loop) return;
@@ -969,6 +1078,10 @@ export function buildToolpath(
         itemCtx.push(prepared.length - 1);
         itemHole.push(null);
       });
+      placedLines(x.part, x.placement).forEach((line, k) => {
+        if (line.op.kind === 'online') addOnline(line.poly, `line${k}`, line.op.depth);
+      });
+      if (outlineOp.kind === 'online') addOnline(x.outline, 'outline', outlineOp.depth);
       prepared.push(ctx);
       if (!contourRes.ok || !raw) {
         edges.push([]);

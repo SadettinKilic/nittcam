@@ -11,7 +11,7 @@
 import { offset } from '../geometry/offset';
 import { bbox, normalize } from '../geometry/polyline';
 import type { Polyline } from '../geometry/types';
-import type { Project } from '../schema';
+import { innerOperation, outlineOperation, type Project } from '../schema';
 import { placedHoleCentre, placedInners, placedOutline } from '../toolpath';
 import type { ExpectedPart } from './types';
 
@@ -43,7 +43,12 @@ export function expectedLayout(project: Project, sheet: number, toolDiameter = 0
       partId: pl.partId,
       copy: pl.index,
       ...centre(placedOutline(part, pl)),
-      inners: placedInners(part, pl).map((c) => innerCentre(c, toolDiameter / 2)),
+      // T142: only through cuts are closed loops at the target depth.
+      ...(outlineOperation(part).kind === 'outside' ? {} : { outlineCut: false }),
+      inners: placedInners(part, pl)
+        .map((c, k) => ({ c, k }))
+        .filter(({ k }) => innerOperation(part, k).kind === 'inside')
+        .map(({ c }) => innerCentre(c, toolDiameter / 2)),
       holes: part.holes
         .filter((h) => h.type === 'through')
         .map((h) => {

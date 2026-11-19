@@ -110,6 +110,7 @@ const OPERATION_KINDS: ReadonlySet<string> = new Set([
   'pocket',
   'drill',
   'groove',
+  'online',
 ]);
 
 /** Writes one program; holds the modal state and enforces the rules move by move. */

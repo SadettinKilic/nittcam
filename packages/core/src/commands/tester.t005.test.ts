@@ -159,6 +159,7 @@ describe('T005 tester: AI tool definitions', () => {
         'addHole',
         'updateHole',
         'removeHole',
+        'setOperation',
         'addPart',
         'duplicatePart',
         'importCutList',

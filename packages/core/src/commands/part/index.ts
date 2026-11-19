@@ -314,3 +314,4 @@ export { duplicateParts, reorderParts, updateParts } from './list';
 export { addHole, removeHole, updateHole } from './holes';
 export { addDimension, removeDimension } from './annotate';
 export { addInnerContour, removeInnerContour } from './inners';
+export { setOperation } from './operation';

@@ -87,6 +87,15 @@ export const removeInnerContour = defineCommand({
   },
   apply: (draft, p) => {
     const part = draft.parts.find((x) => x.id === p.id);
-    if (part && p.index < part.inners.length) part.inners.splice(p.index, 1);
+    if (!part || p.index >= part.inners.length) return;
+    part.inners.splice(p.index, 1);
+    // The operation overrides (T142) stay with their contours.
+    const ops = part.ops?.inners;
+    if (part.ops && ops) {
+      if (p.index < ops.length) ops.splice(p.index, 1);
+      while (ops.length > 0 && ops[ops.length - 1] === null) ops.pop();
+      if (ops.length === 0) delete part.ops.inners;
+      if (part.ops.outline === undefined && part.ops.inners === undefined) delete part.ops;
+    }
   },
 });

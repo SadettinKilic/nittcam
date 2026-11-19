@@ -288,6 +288,7 @@ describe('commandToolDefinitions (future AI tools)', () => {
         'addHole',
         'updateHole',
         'removeHole',
+        'setOperation',
         'addPart',
         'duplicatePart',
         'importCutList',

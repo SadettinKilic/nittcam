@@ -5,6 +5,7 @@ export {
   buildToolpath,
   placedOutline,
   placedInners,
+  placedLines,
   outerContourPath,
   innerContourPath,
   TOOLPATH_DEFAULTS,
@@ -48,3 +49,4 @@ export {
   placedHoleCentre,
   pocketRings,
 } from './holes';
+export { buildOnlineOperation, openSegments, type OnlineInput } from './online';

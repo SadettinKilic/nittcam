@@ -8,7 +8,14 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { cutOrder, type CutClass, type CutOrderMode, type OrderItem } from './order';
 
-const RANK: Record<CutClass, number> = { drill: 0, pocket: 0, groove: 0, inner: 1, outer: 2 };
+const RANK: Record<CutClass, number> = {
+  drill: 0,
+  pocket: 0,
+  groove: 0,
+  online: 0,
+  inner: 1,
+  outer: 2,
+};
 const MODES: CutOrderMode[] = ['minWaste', 'fastest', 'minToolChanges'];
 
 interface Gen {

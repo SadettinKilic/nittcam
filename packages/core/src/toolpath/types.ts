@@ -98,7 +98,8 @@ export interface Tab {
  * T139–T140); down to the target depth it is a through hole. `drill`: a hole as wide as the tool,
  * one plunge per pass (peck, D-050). `groove`: a ring groove around the hole's centreline (T140).
  */
-export type OperationKind = 'outerContour' | 'innerContour' | 'pocket' | 'drill' | 'groove';
+export type OperationKind =
+  'outerContour' | 'innerContour' | 'pocket' | 'drill' | 'groove' | 'online';
 
 export interface Operation {
   /** `<partId>#<copy>` (unique in the toolpath). */
@@ -157,6 +158,7 @@ export type ToolpathCode =
   | 'OFFSET_FAILED'
   | 'INNER_OFFSET_FAILED'
   | 'INNER_SPLIT'
+  | 'ONLINE_DEPTH_INVALID'
   | 'INNER_CONTOUR_INVALID'
   | 'HOLE_OUTSIDE_PART'
   | 'HOLE_SMALLER_THAN_TOOL'
