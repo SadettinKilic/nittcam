@@ -141,6 +141,25 @@ export function NestingPanel({
                 </dd>
               </div>
             </dl>
+            {summary.bySize.length > 1 ? (
+              // T164: several stock sizes in the layout: one line per size.
+              <ul
+                className="flex flex-col gap-0.5 text-xs text-fg-muted tabular-nums"
+                aria-label={t.bySizeLabel}
+                data-testid="nesting-by-size"
+              >
+                {summary.bySize.map((b) => (
+                  <li key={`${b.width}x${b.height}`}>
+                    {fill(t.bySize, {
+                      w: String(b.width),
+                      h: String(b.height),
+                      count: String(b.sheets),
+                      waste: pct(b.wastePercent),
+                    })}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             {/* T249: no per-plate lines; the plate tabs carry "fire %" once. */}
           </>
         )}

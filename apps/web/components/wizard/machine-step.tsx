@@ -12,6 +12,7 @@ import {
   type Project,
   type ValidationIssue,
   defaultSheet,
+  stockSheetSizes,
 } from '@nittcam/core';
 import { Plus, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
@@ -28,6 +29,7 @@ import type { Messages } from '../../lib/messages';
 import { focusRing } from '../page/page-header';
 import {
   Button,
+  Checkbox,
   GrainDial,
   Measure,
   Select,
@@ -460,6 +462,9 @@ export function MachineFields({
             />
           </div>
         ) : null}
+        {entry && entry.sheetSizes.length > 1 ? (
+          <SheetSizesPick t={t} project={project} library={entry.sheetSizes} run={run} />
+        ) : null}
         {tableIssue && profile ? (
           <p
             role="alert"
@@ -490,6 +495,81 @@ const SKIN_DEFAULT = 0.5;
  * T143: "Son pasoda ince tabaka bırak" — small parts keep a thin skin instead of tabs; a cleanup
  * pass at the end of each sheet cuts it through. Tabs and skin are alternatives per project.
  */
+type LibrarySize = { width: number; height: number; qty?: number | undefined };
+
+/**
+ * T164: further library sheet sizes the nesting may use besides the chosen sheet (always used and
+ * listed first). One `setStockSheets` per change, so every tick is one undo step.
+ */
+function SheetSizesPick({
+  t,
+  project,
+  library,
+  run,
+}: {
+  t: Text;
+  project: Project;
+  library: readonly LibrarySize[];
+  run: Run;
+}) {
+  const id = useId();
+  const sheet = defaultSheet(project);
+  const listed = stockSheetSizes(project);
+  const same = (a: { width: number; height: number }, b: { width: number; height: number }) =>
+    a.width === b.width && a.height === b.height;
+  const isDefault = (s: LibrarySize) => same(s, sheet);
+  const isOn = (s: LibrarySize) => isDefault(s) || listed.some((l) => same(l, s));
+  const toggle = (s: LibrarySize, on: boolean) => {
+    const first = library.find(isDefault) ?? { width: sheet.width, height: sheet.height };
+    const rest = library.filter((x) => !isDefault(x) && (same(x, s) ? on : isOn(x)));
+    const sheets = [first, ...rest].map((x) => ({
+      width: x.width,
+      height: x.height,
+      ...(x.qty !== undefined ? { qty: x.qty } : {}),
+    }));
+    run('setStockSheets', { sheets });
+  };
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="wizard-sheet-sizes">
+      <p className="text-sm font-medium text-fg" id={`${id}-label`}>
+        {t.sheetsMulti}
+      </p>
+      <p className="text-xs text-fg-muted" id={`${id}-hint`}>
+        {t.sheetsMultiHint}
+      </p>
+      <ul
+        className="flex flex-col gap-1.5"
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-hint`}
+      >
+        {library.map((s, i) => {
+          const box = `${id}-${i}`;
+          return (
+            <li key={`${s.width}x${s.height}`} className="flex min-h-8 items-center gap-2 text-sm">
+              <Checkbox
+                id={box}
+                checked={isOn(s)}
+                disabled={isDefault(s)}
+                onCheckedChange={(v) => toggle(s, v === true)}
+              />
+              <label htmlFor={box} className="text-fg tabular-nums">
+                {fill(t.preset, { a: mm(s.height), b: mm(s.width) })}
+                <span className="ml-1.5 text-xs text-fg-muted">
+                  {isDefault(s)
+                    ? t.sheetsDefault
+                    : s.qty !== undefined
+                      ? fill(t.sheetsStock, { n: String(s.qty) })
+                      : ''}
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function ThinSkin({
   t,
   project,
