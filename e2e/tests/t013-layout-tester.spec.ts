@@ -290,7 +290,7 @@ test.describe('T013 tester: locks and re-nest', () => {
 });
 
 test.describe('T013 tester: sheet tabs', () => {
-  test('3 sheets: waste % on every tab equals the summary line', async ({ page }) => {
+  test('3 sheets: every tab carries its waste %; plate part counts add up', async ({ page }) => {
     const problems = watchConsole(page);
     await page.goto(URL);
     await paste(page, KITCHEN, 5);
@@ -304,17 +304,9 @@ test.describe('T013 tester: sheet tabs', () => {
       await expect(tab).toHaveAttribute('aria-selected', 'true');
       const tabText = await tab.innerText();
       const tabWaste = /fire %([\d.,]+)/.exec(tabText)?.[1];
-      // T244: the per-plate summary lives once, in the left list.
-      const summary = await page
-        .getByTestId('nesting-sheet-lines')
-        .getByRole('listitem')
-        .nth(i)
-        .innerText();
-      const m = new RegExp(`Plaka ${i + 1}: (\\d+) parça, fire %([\\d.,]+)`).exec(summary);
-      expect(m, summary).not.toBeNull();
-      expect(tabWaste).toBe(m?.[2]);
-      expect(await page.getByTestId('layout-canvas').getAttribute('data-part-count')).toBe(m?.[1]);
-      sums.push(Number(m?.[1]));
+      // T249: the tabs carry the per-plate waste once (no per-plate lines in the left panel).
+      expect(tabWaste, tabText).toMatch(/^\d+(,\d)?$/);
+      sums.push(Number(await page.getByTestId('layout-canvas').getAttribute('data-part-count')));
     }
     expect(sums.reduce((a, b) => a + b, 0)).toBe(30);
     expect(problems).toEqual([]);

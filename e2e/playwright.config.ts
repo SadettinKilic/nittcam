@@ -2,7 +2,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 3100;
+// E2E_PORT: a second checkout (parallel worktree, D-042) runs its own server beside the first.
+const PORT = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = `http://localhost:${PORT}`;
 // A fresh PGlite database per run, so the Makineler tests start from the seeded example only.
 const PGLITE_DIR = process.env.E2E_PGLITE_DIR ?? join(tmpdir(), `nittcam-e2e-${Date.now()}`);

@@ -262,6 +262,8 @@ const PartShape = memo(function PartShape({
   if (selected) stroke = colors.selected;
   if (conflict) stroke = colors.conflict;
   const strokeWidth = (selected || conflict ? 3 : 1) * hair;
+  // A locked part is told apart by a dashed outline too, not by its colour alone (T251).
+  const dash = part.locked && !selected && !conflict ? [6 * hair, 4 * hair] : [];
   const label = partLabel({ number: part.label, name: part.name, w, h, scale });
   const font = label.font;
   // Grain arrow of a fixed-grain part at its sheet-frame angle (D-034: part grain + rotation).
@@ -318,6 +320,7 @@ const PartShape = memo(function PartShape({
             closed
             stroke={stroke}
             strokeWidth={strokeWidth}
+            dash={dash}
             fill={conflict ? colors.conflictFill : fill}
             opacity={pending ? 0.85 : 1}
             perfectDrawEnabled={false}
@@ -330,6 +333,7 @@ const PartShape = memo(function PartShape({
           height={h}
           stroke={stroke}
           strokeWidth={strokeWidth}
+          dash={dash}
           fill={conflict ? colors.conflictFill : fill}
           opacity={pending ? 0.85 : 1}
           perfectDrawEnabled={false}

@@ -1,9 +1,16 @@
 'use client';
 
 import type { BoardPart, Project } from '@nittcam/core';
-import { IconButton, Measure, Tooltip, cn, formatMeasure } from '@nittcam/ui';
+import {
+  IconButton,
+  InspectorRow as Row,
+  InspectorRows,
+  Measure,
+  Tooltip,
+  cn,
+  formatMeasure,
+} from '@nittcam/ui';
 import { Copy, FlipHorizontal2, FlipVertical2, RotateCw, Trash2 } from 'lucide-react';
-import type { ReactNode } from 'react';
 import type { BoardSummary } from '../../lib/editor/summary';
 import type { Messages } from '../../lib/messages';
 import { ariaKeyShortcuts, shortcutById, shortcutText, type ShortcutId } from '../../lib/shortcuts';
@@ -15,15 +22,6 @@ export interface InspectorActions {
   rotate: () => void;
   duplicate: () => void;
   remove: () => void;
-}
-
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex h-row items-center justify-between gap-3 text-sm">
-      <span className="text-fg-muted">{label}</span>
-      <span className="min-w-0 truncate text-right">{children}</span>
-    </div>
-  );
 }
 
 const ACTIONS: readonly {
@@ -134,10 +132,7 @@ export function EditorInspector({
       {selected.length === 0 ? (
         <>
           {summary && summary.parts > 0 ? (
-            <div
-              className="flex flex-col divide-y divide-border-subtle"
-              data-testid="editor-summary"
-            >
+            <InspectorRows data-testid="editor-summary">
               <Row label={t.summary.parts}>
                 <span className="font-mono tabular-nums">{summary.parts}</span>
               </Row>
@@ -159,15 +154,17 @@ export function EditorInspector({
                   />
                 </Row>
               ) : null}
-            </div>
+            </InspectorRows>
           ) : null}
           <p className="text-xs text-fg-subtle">{t.none}</p>
         </>
       ) : (
         <>
-          <div className="flex flex-col divide-y divide-border-subtle">
+          <InspectorRows>
             {selected.length === 1 && part ? (
-              <Row label={t.kind.title}>{t.kind[part.kind]}</Row>
+              <Row label={t.kind.title} mono={false}>
+                {t.kind[part.kind]}
+              </Row>
             ) : null}
             <Row label={t.size}>
               <Measure
@@ -188,7 +185,7 @@ export function EditorInspector({
               </Row>
             ) : null}
             {selected.length === 1 && part ? <Row label={t.qty}>{part.qty}</Row> : null}
-          </div>
+          </InspectorRows>
           {actions ? (
             <div className="flex flex-col gap-1.5">
               <h3 className="text-xs font-medium text-fg-muted">{t.actions}</h3>

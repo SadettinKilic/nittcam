@@ -437,7 +437,7 @@ test.describe('B9 tester: plate tabs (T199b)', () => {
   }
 
   for (const scheme of ['light', 'dark'] as const) {
-    test(`1440 ${scheme}, both panels open, 10 plates: own tab row, ≥ 3 tabs fully visible`, async ({
+    test(`1440 ${scheme}, both panels open, 10 plates: tabs and tools share one row (T249), ≥ 3 tabs fully visible`, async ({
       page,
     }) => {
       await page.emulateMedia({ colorScheme: scheme });
@@ -454,7 +454,7 @@ test.describe('B9 tester: plate tabs (T199b)', () => {
         .info()
         .annotations.push({ type: 'tabs', description: `canvas ${canvasW}px, ${visible} visible` });
       expect(visible).toBeGreaterThanOrEqual(3);
-      // Own row under 768 px of canvas: nothing in the strip's parent shares its vertical band.
+      // T249 (D-040): from 1024 px the tools share the tab row, whatever the canvas width.
       const overlap = await strip.evaluate((el) => {
         const r = el.getBoundingClientRect();
         const parent = el.parentElement;
@@ -464,7 +464,7 @@ test.describe('B9 tester: plate tabs (T199b)', () => {
           .map((c) => c.getBoundingClientRect())
           .filter((b) => b.width > 0 && b.top < r.bottom - 1 && b.bottom > r.top + 1).length;
       });
-      if (canvasW < 768) expect(overlap).toBe(0);
+      expect(overlap).toBeGreaterThan(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );

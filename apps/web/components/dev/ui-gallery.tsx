@@ -3,6 +3,8 @@
 import {
   AlertDialog,
   GrainDial,
+  InspectorRow,
+  InspectorRows,
   Measure,
   DOMAIN_ICONS,
   Logo,
@@ -291,6 +293,14 @@ export function UiGallery({ t }: { t: T }) {
                     </div>
                   ))}
                 </div>
+                {/* T249 (D-040): the inspector row of every canvas screen. */}
+                <InspectorRows className="max-w-[264px]" data-testid={`inspector-rows-${d}`}>
+                  {t.density.rows.slice(0, 3).map((name, i) => (
+                    <InspectorRow key={name} label={name}>
+                      <Measure value={[596 - i * 36, 716 - i * 20]} unit="mm" mono />
+                    </InspectorRow>
+                  ))}
+                </InspectorRows>
               </div>
             ))}
           </div>

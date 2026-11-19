@@ -72,6 +72,13 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['accent-text', 'accent-subtle'],
   ['fg', 'accent-subtle'],
   ['danger-fg', 'danger-hover'],
+  // Canvas material tone (T251): part labels and measures on the wood fills.
+  ...['part', 'part-locked', 'sim-part', 'sheet-waste', 'sheet'].flatMap(
+    (bg): Array<[string, string]> => [
+      ['fg', bg],
+      ['fg-muted', bg],
+    ],
+  ),
   // ErrorState (T105): title and text on the danger tint
   ['fg', 'danger-subtle'],
   ['fg-muted', 'danger-subtle'],
@@ -96,7 +103,47 @@ const UI_PAIRS: Array<[string, string]> = [
   ['part-stroke', 'part'],
   ['sim-part-stroke', 'sheet-waste'],
   ['sim-part-stroke', 'sim-part'],
+  // Material tone (T251): ink outlines and the cobalt selection read on the wood fills.
+  ['sheet-edge', 'sheet'],
+  ['part-stroke', 'canvas'],
+  ['part-locked-stroke', 'part-locked'],
+  ['part-locked-stroke', 'sheet-waste'],
+  ['selection', 'part'],
+  ['selection', 'part-locked'],
+  ['selection', 'sheet-waste'],
+  ['danger', 'sheet-waste'],
 ];
+
+// Material tone (T251, D-040): the stock sheet and parts are warm (red channel above blue), the
+// UI accent stays cobalt (blue above red), and the part is one step stronger than the sheet.
+function rgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+describe.each([
+  ['light', light],
+  ['dark', dark],
+] as const)('canvas material tone (%s)', (theme, vars) => {
+  const c = (name: string) => resolve(vars, `--color-${name}`);
+  it.each(['sheet', 'sheet-waste', 'sheet-margin', 'part', 'part-locked', 'sim-part', 'grain'])(
+    '%s is a warm wood tone',
+    (name) => {
+      const [r, , b] = rgb(c(name));
+      expect(r - b, `${name} = ${c(name)}`).toBeGreaterThan(10);
+    },
+  );
+  it.each(['accent', 'selection', 'focus'])('%s stays cobalt', (name) => {
+    const [r, , b] = rgb(c(name));
+    expect(b, `${name} = ${c(name)}`).toBeGreaterThan(r);
+  });
+  it('the part is one step stronger than the sheet', () => {
+    const step = contrast(c('part'), c('sheet-waste'));
+    expect(step).toBeGreaterThan(1.05);
+    // Light: the part is darker than the sheet; dark: lighter.
+    const darker = luminance(c('part')) < luminance(c('sheet-waste'));
+    expect(darker).toBe(theme === 'light');
+  });
+});
 
 describe.each([
   ['light', light],

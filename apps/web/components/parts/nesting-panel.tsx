@@ -60,13 +60,10 @@ export function NestingPanel({
             </PopoverContent>
           </Popover>
         </div>
-        {/* T244 (D-039): values as one line of chips; the explanation sits in the popover. */}
+        {/* T244 (D-039): values as chips; the explanation sits in the popover. T249: gap and
+            margin are not repeated here (their inputs sit right above); the tool stays. */}
         <ul className="flex flex-wrap gap-1.5" data-testid="nesting-chips">
-          {[
-            fill(t.gapChip, { value: percent.format(project.nesting.gap) }),
-            fill(t.marginChip, { value: percent.format(project.nesting.margin) }),
-            fill(t.toolChip, { value: percent.format(toolDiameter) }),
-          ].map((chip) => (
+          {[fill(t.toolChip, { value: percent.format(toolDiameter) })].map((chip) => (
             <li
               key={chip}
               className="rounded-sm border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-xs whitespace-nowrap text-fg-muted tabular-nums"
@@ -129,20 +126,7 @@ export function NestingPanel({
                 </dd>
               </div>
             </dl>
-            <ul
-              className="flex flex-col gap-0.5 text-sm text-fg-muted"
-              data-testid="nesting-sheet-lines"
-            >
-              {summary.sheets.map((s) => (
-                <li key={s.index}>
-                  {fill(t.sheetLine, {
-                    n: s.index + 1,
-                    count: s.placed,
-                    waste: percent.format(s.wastePercent),
-                  })}
-                </li>
-              ))}
-            </ul>
+            {/* T249: no per-plate lines; the plate tabs carry "fire %" once. */}
           </>
         )}
         {summary.sheetCount > 0 && summary.unplaced.length > 0 ? (

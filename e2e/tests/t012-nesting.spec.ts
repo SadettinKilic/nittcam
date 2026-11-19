@@ -55,12 +55,10 @@ test.describe('T012 nesting', () => {
     await worker;
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
     await expect(page.getByTestId('nesting-waste')).toHaveText(/^%\d+(,\d)?$/);
-    const line = (sheet: number) =>
-      new RegExp(`^${fill(n.sheetLine, { n: sheet, count: '\\d+', waste: '[\\d,]+' })}$`);
-    await expect(page.getByText(line(1))).toBeVisible();
-    await expect(page.getByText(line(2))).toBeVisible();
-    await expect(page.getByText(line(3))).toBeVisible();
-    await expect(page.getByText(line(4))).toHaveCount(0);
+    // T249: the plate tabs carry each plate's waste once (no per-plate prose lines).
+    const tabs = page.getByTestId('sheet-tabs-scroll').getByRole('tab');
+    await expect(tabs).toHaveCount(3);
+    for (let i = 0; i < 3; i++) await expect(tabs.nth(i)).toContainText(/fire %\d+(,\d)?/);
     await expect(page.getByTestId('nesting-unplaced')).toHaveCount(0);
     await page.screenshot({ path: '__screenshots__/t012-dizilim.png', fullPage: true });
 
