@@ -91,6 +91,11 @@ export const companies = pgTable('companies', {
    * company that deletes every entry does not get them back on the next server start.
    */
   materialsSeededAt: timestamp('materials_seeded_at', { withTimezone: true, mode: 'date' }),
+  /**
+   * DXF layer → operation mapping (T145, spec §4.6 "Eşleme şirket ayarı olarak saklanır"):
+   * upper-cased layer name → operation, validated by `dxfLayerMapSchema` in core.
+   */
+  dxfLayerMap: jsonb('dxf_layer_map').$type<Record<string, string>>().notNull().default({}),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

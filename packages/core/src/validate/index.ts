@@ -10,7 +10,7 @@ import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } fr
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
-import { deriveOutline, formatPath } from '../schema';
+import { deriveOutline, formatPath, innerOperation } from '../schema';
 import { checkHolePlacement } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { unsecuredSlugs } from '../toolpath/slug-check';
@@ -387,7 +387,12 @@ export const innerContourRules: ValidationRule = (project, context) => {
           path,
           message: `inner contour ${k + 1} of part "${part.name}" is invalid (${err})`,
         });
-      } else if (tool && !innerFitsTool(inner, tool.diameter)) {
+      } else if (
+        tool &&
+        innerOperation(part, k).kind === 'inside' &&
+        !innerFitsTool(inner, tool.diameter)
+      ) {
+        // T142: only a through cut inside the line needs the tool to fit.
         issues.push({
           code: 'INNER_CONTOUR_TOO_SMALL',
           severity: 'error',

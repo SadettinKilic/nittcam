@@ -82,6 +82,11 @@ export interface ExpectedPart {
   cx: number;
   cy: number;
   /**
+   * False when the outline is not a through cut (T142: operation `online` or `none`): only its
+   * cut-outs and through holes are expected as closed loops. Omitted = true.
+   */
+  outlineCut?: boolean;
+  /**
    * Its cut-outs (T134), each a closed through cut of its own: the centre of the tool-centre
    * loop's bounding box, sheet frame. Omitted = none.
    */

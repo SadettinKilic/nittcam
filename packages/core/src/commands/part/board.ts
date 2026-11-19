@@ -82,6 +82,13 @@ function mapPart(
     h.cy = c.y;
   }
   part.inners = part.inners.map((c) => normalize(contourMap(poly(c)), 'inner').vertices);
+  // Open lines (T142) turn and flip with the part; their direction is kept (no normalising).
+  if (part.lines) {
+    part.lines = part.lines.map((l) => ({
+      vertices: contourMap({ closed: false, vertices: l.vertices }).vertices,
+      op: l.op,
+    }));
+  }
   // Dimensions (T133) are points in the part frame: they turn and flip with the part.
   if (part.dims) {
     part.dims = part.dims.map((d) => ({ id: d.id, a: map(d.a), b: map(d.b) }));

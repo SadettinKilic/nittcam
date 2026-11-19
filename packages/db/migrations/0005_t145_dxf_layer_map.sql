@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ADD COLUMN "dxf_layer_map" jsonb DEFAULT '{}'::jsonb NOT NULL;

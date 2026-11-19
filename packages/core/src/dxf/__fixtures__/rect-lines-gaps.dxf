@@ -1,0 +1,290 @@
+  0
+SECTION
+  2
+HEADER
+  9
+$ACADVER
+  1
+AC1015
+  9
+$INSUNITS
+ 70
+4
+  0
+ENDSEC
+  0
+SECTION
+  2
+BLOCKS
+  0
+ENDSEC
+  0
+SECTION
+  2
+ENTITIES
+  0
+LINE
+  5
+100
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbLine
+ 10
+0
+ 20
+0
+ 30
+0
+ 11
+600
+ 21
+0
+ 31
+0
+  0
+LINE
+  5
+101
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbLine
+ 10
+600.03
+ 20
+0
+ 30
+0
+ 11
+600
+ 21
+400
+ 31
+0
+  0
+LINE
+  5
+102
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbLine
+ 10
+600
+ 20
+400
+ 30
+0
+ 11
+0.02
+ 21
+400.01
+ 31
+0
+  0
+LINE
+  5
+103
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbLine
+ 10
+0
+ 20
+400
+ 30
+0
+ 11
+0
+ 21
+0.03
+ 31
+0
+  0
+LINE
+  5
+104
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbLine
+ 10
+0
+ 20
+0
+ 30
+0
+ 11
+600
+ 21
+0
+ 31
+0
+  0
+LINE
+  5
+105
+100
+AcDbEntity
+  8
+SCRIBE
+100
+AcDbLine
+ 10
+100
+ 20
+100
+ 30
+0
+ 11
+200
+ 21
+100
+ 31
+0
+  0
+TEXT
+  5
+106
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+10
+ 20
+10
+ 30
+0
+ 40
+10
+  1
+PANEL A
+100
+AcDbText
+  0
+MTEXT
+  5
+107
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbMText
+ 10
+10
+ 20
+30
+ 30
+0
+ 40
+10
+  1
+Not: 18 mm
+  0
+DIMENSION
+  5
+108
+100
+AcDbEntity
+  8
+DIM
+100
+AcDbDimension
+  2
+*D1
+ 10
+0
+ 20
+-20
+ 30
+0
+ 11
+300
+ 21
+-20
+ 31
+0
+ 70
+32
+  1
+
+100
+AcDbAlignedDimension
+ 13
+0
+ 23
+0
+ 33
+0
+ 14
+600
+ 24
+0
+ 34
+0
+  0
+HATCH
+  5
+109
+100
+AcDbEntity
+  8
+HATCH
+100
+AcDbHatch
+ 10
+0
+ 20
+0
+ 30
+0
+210
+0
+220
+0
+230
+1
+  2
+SOLID
+ 70
+1
+ 71
+0
+ 91
+1
+ 92
+2
+ 72
+0
+ 73
+1
+ 93
+0
+ 97
+0
+ 75
+0
+ 76
+1
+ 98
+0
+  0
+ENDSEC
+  0
+EOF

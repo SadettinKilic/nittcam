@@ -1,0 +1,192 @@
+  0
+SECTION
+  2
+HEADER
+  9
+$ACADVER
+  1
+AC1015
+  9
+$INSUNITS
+ 70
+4
+  0
+ENDSEC
+  0
+SECTION
+  2
+BLOCKS
+  0
+ENDSEC
+  0
+SECTION
+  2
+ENTITIES
+  0
+LWPOLYLINE
+  5
+10A
+100
+AcDbEntity
+  8
+OUTER
+100
+AcDbPolyline
+ 90
+8
+ 70
+1
+ 43
+0
+ 10
+20
+ 20
+0
+ 10
+280
+ 20
+0
+ 42
+0.41421356237309503
+ 10
+300
+ 20
+20
+ 10
+300
+ 20
+180
+ 42
+0.41421356237309503
+ 10
+280
+ 20
+200
+ 10
+20
+ 20
+200
+ 42
+0.41421356237309503
+ 10
+0
+ 20
+180
+ 10
+0
+ 20
+20
+ 42
+0.41421356237309503
+  0
+CIRCLE
+  5
+10B
+100
+AcDbEntity
+  8
+HOLES
+100
+AcDbCircle
+ 10
+50
+ 20
+50
+ 30
+0
+ 40
+10
+  0
+LWPOLYLINE
+  5
+10C
+100
+AcDbEntity
+  8
+INNER
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 43
+0
+ 10
+120
+ 20
+90
+ 42
+-1
+ 10
+120
+ 20
+110
+ 10
+180
+ 20
+110
+ 42
+-1
+ 10
+180
+ 20
+90
+  0
+ARC
+  5
+10D
+100
+AcDbEntity
+  8
+MISC
+100
+AcDbCircle
+ 10
+250
+ 20
+150
+ 30
+0
+ 40
+15
+100
+AcDbArc
+ 50
+0
+ 51
+90
+  0
+ARC
+  5
+10E
+100
+AcDbEntity
+  8
+MISC
+100
+AcDbCircle
+ 10
+-250
+ 20
+150
+ 30
+0
+ 40
+15
+210
+0
+220
+0
+230
+-1
+100
+AcDbArc
+ 50
+0
+ 51
+90
+  0
+ENDSEC
+  0
+EOF

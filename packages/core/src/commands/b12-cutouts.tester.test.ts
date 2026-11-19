@@ -188,7 +188,9 @@ describe('B12 tester: cut-outs read back from the G-code (§7.2)', () => {
           for (const h of holes) {
             const near = all.filter((q) => inside(q, h));
             expect(near.length).toBeGreaterThan(0);
-            for (const q of near) expect(Math.abs(distTo(q, h) - R)).toBeLessThan(0.05);
+            // T141: the lead-in starts deeper in the opening (waste side), never closer than R.
+            for (const q of near) expect(distTo(q, h)).toBeGreaterThan(R - 0.05);
+            expect(near.some((q) => Math.abs(distTo(q, h) - R) < 0.05)).toBe(true);
             checked++;
           }
           const ops = tp.toolpath.operations;

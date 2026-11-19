@@ -16,6 +16,9 @@ import {
   withSegmentAngle,
   withSegmentLength,
   withVertexAt,
+  ALLOWED_OPERATIONS,
+  contourOperation,
+  type ContourRef,
   type OutlineEdit,
   type Part,
   type Point,
@@ -250,6 +253,80 @@ function Picker({
   );
 }
 
+/** Default depth of a new on-line (engraving) operation, mm (T142). */
+const ONLINE_DEPTH = 1;
+
+/**
+ * Operation of one contour (T142): a picker of the kinds the contour allows and, for `online`,
+ * the depth. Both run `setOperation` (DXF layer mapping, T145, writes the same field).
+ */
+function OperationRow({
+  t,
+  part,
+  run,
+  label,
+  contour,
+  testId,
+}: {
+  t: T;
+  part: Part;
+  run: Run;
+  label: string;
+  contour: ContourRef;
+  testId: string;
+}) {
+  const id = useId();
+  const current = contourOperation(part, contour);
+  if (!current) return null;
+  const kinds = ALLOWED_OPERATIONS[contour.type];
+  return (
+    <>
+      <Row
+        label={<label htmlFor={id}>{label}</label>}
+        mono={false}
+        valueProps={{ className: 'overflow-visible' }}
+      >
+        <Select
+          value={current.kind}
+          onValueChange={(kind) =>
+            run('setOperation', {
+              id: part.id,
+              contour,
+              kind,
+              ...(kind === 'online' ? { depth: ONLINE_DEPTH } : {}),
+            })
+          }
+        >
+          <SelectTrigger id={id} className="w-36" data-testid={testId} data-value={current.kind}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {kinds.map((k) => (
+              <SelectItem key={k} value={k}>
+                {t.operation.kinds[k]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Row>
+      {current.kind === 'online' ? (
+        <NumberRow
+          label={t.operation.depth}
+          value={current.depth}
+          testId={`${testId}-depth`}
+          onCommit={(v) =>
+            v === null || v <= 0
+              ? t.errors.length
+              : run('setOperation', { id: part.id, contour, kind: 'online', depth: v })
+                ? null
+                : t.operation.depthError
+          }
+        />
+      ) : null}
+    </>
+  );
+}
+
 /** The single selected part's properties. */
 export function PartProperties({
   t,
@@ -424,14 +501,41 @@ export function PartProperties({
 
       <InspectorGroup title={t.groups.operation} data-testid="prop-group-operation">
         <InspectorRows>
-          <Row label={op.outer} mono={false}>
-            {op.outerCut}
-          </Row>
+          <OperationRow
+            t={t}
+            part={part}
+            run={run}
+            label={op.outer}
+            contour={{ type: 'outline' }}
+            testId="prop-op-outline"
+          />
           {part.inners.length > 0 ? (
             <Row label={op.inners} valueProps={{ 'data-testid': 'prop-op-inners' }}>
               {part.inners.length}
             </Row>
           ) : null}
+          {part.inners.map((_, i) => (
+            <OperationRow
+              key={`inner${i}`}
+              t={t}
+              part={part}
+              run={run}
+              label={fill(t.innerN, { n: i + 1 })}
+              contour={{ type: 'inner', index: i }}
+              testId={`prop-op-inner-${i}`}
+            />
+          ))}
+          {(part.lines ?? []).map((_, i) => (
+            <OperationRow
+              key={`line${i}`}
+              t={t}
+              part={part}
+              run={run}
+              label={fill(op.lineN, { n: i + 1 })}
+              contour={{ type: 'line', index: i }}
+              testId={`prop-op-line-${i}`}
+            />
+          ))}
           {part.holes.length > 0 ? (
             <Row label={op.holes} valueProps={{ 'data-testid': 'prop-op-holes' }}>
               {part.holes.length}
