@@ -15,6 +15,8 @@
     "@nittcam/db": "workspace:*",
     "@nittcam/machines": "workspace:*",
     "@nittcam/ui": "workspace:*",
+    "@react-three/drei": "10.7.9",
+    "@react-three/fiber": "9.8.2",
     "@tanstack/react-table": "9.3.1",
     "@tanstack/react-virtual": "3.14.26",
     "konva": "10.9.1",
@@ -23,13 +25,15 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-konva": "19.3.2",
-    "read-excel-file": "9.3.17"
+    "read-excel-file": "9.3.17",
+    "three": "0.187.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@types/three": "0.187.0",
     "fast-check": "4.10.2",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",

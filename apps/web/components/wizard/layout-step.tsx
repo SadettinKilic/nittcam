@@ -12,6 +12,7 @@ import { LayoutGrid } from 'lucide-react';
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nittcam/ui';
 import { NumberField } from './number-field';
 import { WorkspaceLayout } from './workspace-layout';
+import type { TableSpec } from '../../lib/preview3d/stage';
 
 const MODES: readonly NestingMode[] = ['minWaste', 'fastest', 'minToolChanges'];
 
@@ -71,12 +72,15 @@ export function LayoutStep({
   session,
   toolDiameter,
   side,
+  table = null,
 }: {
   messages: Messages;
   session: ProjectSession;
   toolDiameter: number;
   /** Extra content under the options (the warnings panel). */
   side: ReactNode;
+  /** Machine table for the 3D preview (T152); null without a machine. */
+  table?: TableSpec | null;
 }) {
   const t = messages.wizard.layout;
   const nt = messages.cutList.nesting;
@@ -186,6 +190,7 @@ export function LayoutStep({
       appearKey={nested}
       left={settings}
       compactAction={compactNest}
+      preview3d={{ table }}
     />
   ) : (
     <WorkspaceLayout

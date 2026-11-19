@@ -24,6 +24,7 @@ import { DrawingBoard } from '../editor/drawing-board';
 import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
+import { tableSpecOf } from '../../lib/preview3d/stage';
 import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
 import { IssuesOkChip } from './issues-ok-chip';
 import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
@@ -782,6 +783,7 @@ function WizardSession({
         session={session}
         toolDiameter={toolDiameter}
         side={validation}
+        table={tableSpecOf(profile)}
       />
     );
   } else if (step === 'simulasyon') {
