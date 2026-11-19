@@ -19,6 +19,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M2 Tasarım sistemi ve uygulama kabuğu | T100–T111 (12) | B1–B4 | every existing screen in the new design, visual + axe checks in CI |
 | M2.5 Marka ve çalışma alanı cilası (Fable review #1) | T194–T199, T194a, T194b (8) | B4a–B4b | brand mark in the shell, mono numerics, canvas-first workspace on steps 3–4, calmer notices |
 | Fable review #2 follow-ups | T240–T247 (8) | B10a (T240–T243) + riders (T244–T247) | board usable on a phone, canvas gets the space, one tool-state language (D-039) |
+| Fable review #3 follow-ups | T248–T254 (7) | B8a (T248–T251) + riders (T252–T254) | phone cut list and simulation usable, one inspector pattern, download is the last step's primary action, canvas has a material tone (D-040) |
 | M3 Kesim listesi, malzeme, damar kadranı | T112–T123 (12) | B5–B8 | free-angle grain respected from cut list to G-code; cut list editable without Excel |
 | M4 Çizim tahtası I: editör | T124–T137 (14) | B9–B13 | a drawn freeform part with fillets is nested and gives checked G-code |
 | M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
@@ -31,9 +32,11 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
 | M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
 
-**Before the field test: 110 tasks in 34 batches** (94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11). The "~90 % / field-test ready" line is the end of M9 (T193).
+**Before the field test: 117 tasks in 35 batches** (94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11; + 7 from review #3, `docs/reviews/2026-11-19-fable-design-review-3.md`: T248–T254). The "~90 % / field-test ready" line is the end of M9 (T193).
 
 **Order note (2026-11-18, D-035 amendment):** after B4b come B9–B10 (drawing board foundation, T124–T129), then **B10a** (Fable review #2 must-fixes, T240–T243), then M3 B5–B8, then B11+.
+
+**Order note (2026-11-19, Fable review #3):** **B8a** (T248–T251) runs right after B8 and before B11. T252 and T253 ride with B8, T254 rides with B11. No other batch moves.
 
 ---
 
@@ -498,6 +501,8 @@ Tester focus: real Excel files (merged header row, empty rows, Turkish chars); o
 
 ### Batch B8: T121–T123 (materials, cabinets, organisation)
 
+Riders in this batch: T247 (review #2), T252 with T121 and T253 with T123 (review #3; text in "Review #3 riders" below).
+
 ### T121 Material & stock library   [status: todo]
 Spec: §3.4, §3.6, §9.1 · Depends: T111
 Acceptance:
@@ -511,8 +516,9 @@ Spec: §4.7 (v3 note) · Depends: T119
 Acceptance:
 - [ ] pure core `cabinetParts(params)`: W, H, D, thickness, back panel (none/inset/overlay, thickness), fixed shelves count, doors (0/1/2, gap), plinth height → named rect parts with grain (sides vertical) and edge band defaults; no joinery
 - [ ] "Dolap ekle" dialog with live mini preview (2D front view) → `importCutList` as one undo step; parts tagged with a group name
+- [ ] no lock-in (owner, D-041): every generated part is a plain cut-list row; it can be deleted, copied/duplicated and edited (dims, qty, grain, bands, name) one by one; deleting or editing one part never changes the others; the group tag is only a label (editable, removable), never a lock; no hidden link back to the generator
 - [ ] unit + property tests (dimensions add up, all parts positive, door gaps)
-Tester focus: generated dimensions vs hand calculation for 3 cabinets; undo removes the whole cabinet; dialog keyboard flow.
+Tester focus: generated dimensions vs hand calculation for 3 cabinets; undo removes the whole cabinet; dialog keyboard flow; generate → delete one part, copy one, edit one → the rest unchanged and nesting/export work.
 
 ### T123 Cut list organisation: groups, search, sort, filter   [status: todo]
 Spec: §4.1 · Depends: T119
@@ -520,6 +526,72 @@ Acceptance:
 - [ ] group column (cabinet/tag) with collapsible groups; search box (Turkish folding); sort by any column; filter "hatalı satırlar"
 - [ ] sorting/filtering never changes part order in the project (view only)
 Tester focus: e2e search + sort + group collapse; project JSON order unchanged after sorting.
+
+### Batch B8a: T248–T251 (Fable review #3 must-fixes; runs right after B8)
+
+Source: Fable design review #3 (`docs/reviews/2026-11-19-fable-design-review-3.md`, 2026-11-19, screenshots in `docs/reviews/2026-11-19-fable-3/`). Scores: corporate image 7/10 (was 6.5), modernity 8 (7.5), usability 7.5 (7), readiness for M4–M6 7.5 (7). Rule: D-040. Each task ≤ ½ day.
+
+### T248 Phone cut list: compact cards, one-row toolbar   [status: todo]
+Spec: §4.1, §3.7 · Depends: T118, T119, T120, T123 (same toolbar)
+Acceptance:
+- [ ] below 640 px a part card is **≤ 88 px high** when it has no issue (today 158 px): line 1 = checkbox, row number, name, "⋯" menu; line 2 = "560 × 720" in mono, "×8", the grain chip ("↔ 0°" / "Serbest") and a band chip only when a band is set; tapping a value edits it in place as today; at 390 × 844 at least 5 cards are visible under the toolbar
+- [ ] the list toolbar is **one row** at 390 px and 360 px: "İçe aktar" (primary) + "Satır ekle" as icon+text, everything else ("Dışa aktar", and T123's sort / filter) in one "⋯" menu; with a selection the row is replaced by "2 seçili · Toplu düzenle · ⋯ · ✕" (today 2 rows, 4 rows with a selection)
+- [ ] the "Bant ☐ –" compact cell is replaced by the band chip above (phone) and by T253's cell (desktop compact layout); no control without a visible meaning
+- [ ] import panel, every width: the "N satır ekle" / "Vazgeç" row is sticky at the bottom of the panel so it is visible without scrolling at 1440 × 900 and 390 × 844; the intro paragraph is one sentence, the rest moves into an info popover
+Tester focus: card height and visible-card count by bounding box at 390 × 844 and 360 × 740; every toolbar action still reachable by keyboard and named (axe); edit, select, bulk edit and import e2e stay green; baselines updated on purpose.
+
+### T249 Dizilim and Simülasyon panels II: one toolbar row, shared inspector rows   [status: todo]
+Spec: §3.6, §8.2 · Depends: T244, T245, T242 · Decision: D-040
+Acceptance:
+- [ ] Dizilim and Simülasyon at ≥ 1024 px: plate tabs (left) and the canvas tools (right) share **one row** (today two rows at 1440; open item from T244); the grid toggle is the same icon toggle button as on the board (no checkbox + "Milimetre ızgarası (100 mm)" text; the text is its tooltip), at every width
+- [ ] one shared `InspectorRow` (label left, mono value right, one line, 32 px) in `packages/ui`; the board inspector and the Dizilim "Seçili parça" list both use it; at 264 px no value wraps ("596 × 716 mm", "X 622 · Y 742 mm", "Damar · kilitli 30°")
+- [ ] Dizilim left panel: the "Boşluk / Kenar" chips that repeat the two inputs above them are removed (the "Takım Ø8" chip stays); the per-plate prose lines are removed (the tabs carry "fire %"); the sentences "Şimdilik üç mod da …" and "Artık parça kullanımı (yakında)" are removed from the UI (unbuilt options are not shown, D-039)
+- [ ] Simülasyon below 640 px: the whole transport (scrubber, time, speed chips, position line) is visible above the "Ayarlar / G-code" button bar with nothing behind it (same rule as T240); the wizard header shows the short label "Simülasyon" below 640 px (the step name itself is unchanged, spec §3.7)
+Tester focus: **safety**: the air-cut sentence and every warning string are still present (string list before/after); bounding boxes: transport bottom ≤ button bar top at 390 × 844 and 360 × 740; tabs and tools on one row at 1440 and 1024; play/pause and layout drag e2e green; baselines updated on purpose.
+
+### T250 Export step: download in the footer, tidy file rows   [status: todo]
+Spec: §3.7, §7.1 · Depends: T111, T199 · Decision: D-040
+Acceptance:
+- [ ] on step 5 the wizard footer's primary button is **"İndir"** (where "İleri" sits on steps 1–4), so it is visible without scrolling at 1440 × 900 and 390 × 844; it is disabled until the checklist and the unverified-profile acceptance are complete, and its disabled reason ("İndirmek için kontrol listesini tamamlayın") is shown next to it; the in-page button is removed (one download action per screen)
+- [ ] no safety text, checkbox or acceptance step is removed or reworded; the download request and its server-side checks are unchanged
+- [ ] file rows never break inside a word at any width: file name (mono, truncated in the middle if needed) on line 1; size in Turkish format ("20,1 KB") and "sha256 f2acd1f0…" (first 8 characters, full hash in a tooltip and a copy button) on line 2
+- [ ] "Dışa aktarma geçmişi" uses the same file row
+Tester focus: **safety**: download impossible until every box is ticked (keyboard and click), same as before; full hash still reachable and correct (copy); no mid-word wrap at 390 and 360 px; export e2e green.
+
+### T251 Canvas material tone   [status: todo]
+Spec: §3.2, §8.3 · Depends: T196 · Decision: D-040
+Acceptance:
+- [ ] new tokens for the stock sheet and for parts in a warm, pale wood family, light and dark (the sheet lighter, parts one step stronger, ink outline); used by the layout canvas, the simulation canvas, the board, the step 1 preview and the home/project thumbnails; no hard-coded colours in canvas code
+- [ ] the UI accent stays cobalt: selection, handles, active tool, previews and snap guides keep their colours; orange/amber stays only for the simulation tool and rapids; no second UI colour is added
+- [ ] part labels and measures on the new part fill ≥ 4.5:1, part outline against the sheet ≥ 3:1, both themes (`tokens.test.ts` covers the new pairs); the grain hatch and the grain glyph stay readable on the new fills
+- [ ] a locked part, a selected part and an overlapping/invalid part are still told apart without relying on colour alone (existing icons/strokes kept)
+Tester focus: contrast tests; all canvas baselines regenerated on purpose and looked at one by one in both themes; simulation toolpath colours still distinct from the part fill.
+
+### Review #3 riders: T252–T254 (not a batch; each rides with the batch named in its title; no reorder)
+
+### T252 Step 1: grain dial next to the sheet preview (rides with B8, with T121)   [status: todo]
+Spec: §3.7, §2.4 · Depends: T116
+Acceptance:
+- [ ] at ≥ 1024 px the "Damar yönü" dial sits in the "Önizleme" card under the sheet preview (dial left, angle input and presets right), not at the end of the form; at 1440 × 900 the dial and the preview are both fully visible without scrolling (today the dial starts behind the footer)
+- [ ] below 1024 px the preview card comes directly above the dial block (today the "Uyarılar" card sits between them and they are ≈ 400 px apart)
+- [ ] the "Uyarılar" card with no issues becomes the "Sorun yok" chip in the step card header (same component as T246); with issues the card returns
+Tester focus: bounding boxes at 1440 × 900 and 390 × 844; dial keyboard use and undo unchanged (T115/T116 e2e green); chip ↔ card switch.
+
+### T253 Cut list grid: quiet zeros, stable layout with warnings (rides with B8, with T123)   [status: todo]
+Spec: §4.1 · Depends: T118, T246
+Acceptance:
+- [ ] an edge band value of 0 is shown as a dimmed "–" (the cell is still editable and shows the number while focused); data and CSV export are unchanged (still 0)
+- [ ] when the first issue appears the grid does not move or change its columns: "Uyarılar" opens as a right-side panel over the free space at ≥ 1280 px (or as a popover from the issue chip when there is no room), and the four band columns stay as they were
+- [ ] in the compact band layout (grid < 1040 px) the "Bant" cell shows four small edge marks (which edges have a band) and opens the four inputs in a popover; no bare checkbox
+Tester focus: typing 9000 into a width cell at 1440 and 1280 leaves every other cell's x position unchanged (bounding boxes); export CSV still writes 0; keyboard path through the band popover; axe.
+
+### T254 Board: fit to the sheet, grain glyph, focus ring (rides with B11, with T130)   [status: todo]
+Spec: §4.2, §2.4 · Depends: T243, T116 · Decision: D-040 (replaces the "fit frames the parts only" line of T243)
+Acceptance:
+- [ ] with the sheet outline on, entering the board and the fit button frame the **union of the sheet outline and the parts** with 48 px padding, so at 1440 × 900 all four sheet edges and the "Plaka 2.800 × 2.070" label are visible (today only two dashed lines show and the label is under the ruler); with the outline off, fit frames the parts as before
+- [ ] parts with a fixed grain show the same grain glyph as on the layout canvas, at the part's angle; it follows rotate and mirror (D-038)
+- [ ] the canvas focus indicator is a full 2 px inset ring on all four sides (today only the right and bottom edges show while drawing), or none when the pointer is in use (`:focus-visible` rule)
+Tester focus: sheet edges inside the canvas box at 1440 × 900, 1024 × 768 and 390 × 844; glyph angle after rotate 90° and mirror on 2 parts; focus ring with keyboard only; baselines.
 
 ---
 
@@ -530,6 +602,8 @@ Konva stays the 2D engine (§8.3). Every edit is a command (§5.1). Snap/geometr
 B9–B10 (T124–T129) were moved up and run right after M2.5, before M3 (D-035 amendment, 2026-11-18); their task text is in the section "M4 early: Çizim tahtası temeli" above. M4 continues here with B11.
 
 ### Batch B11: T130–T132 (properties and corner tools)
+
+Rider in this batch: T254 with T130 (review #3; text in "Review #3 riders" in the M3 section). T130 builds the inspector from the shared rows of T249 (D-040).
 
 ### T130 Properties panel   [status: todo]
 Spec: §4.4 · Depends: T127
