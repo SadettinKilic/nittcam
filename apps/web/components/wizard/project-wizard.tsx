@@ -30,6 +30,7 @@ import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
+import { HoleIssuesContext, holeErrors } from '../editor/hole-issues';
 import { ValidationPanel } from './validation-panel';
 import {
   STEPS,
@@ -515,9 +516,16 @@ function WizardSession({
   const slugError = session.issues.some((i) => i.code === 'INNER_SLUG_UNSECURED')
     ? t.steps.errors.slugUnsecured
     : undefined;
+  // T275: a hole the machine cannot drill (or that does not fit its part) likewise.
+  const holeError = session.issues.some(
+    (i) => i.severity === 'error' && /^parts\[\d+\]\.holes\[\d+\]/.test(i.path),
+  )
+    ? t.steps.errors.holeInvalid
+    : undefined;
+  const partsError = slugError ?? holeError;
   const stepErrors: StepErrors = {
     ...(machineError ? { makine: machineError } : {}),
-    ...(slugError ? { parcalar: slugError } : {}),
+    ...(partsError ? { parcalar: partsError } : {}),
   };
   const simMachine: SimMachine | null = useMemo(
     () =>
@@ -561,10 +569,24 @@ function WizardSession({
     () => unsecuredInners(project, session.issues),
     [project, session.issues],
   );
+  const profileTools = profile?.tools;
+  // T275: "Çizimde aç" on a hole error also brings that hole's rows into view.
+  const [holeFocus, setHoleFocus] = useState<{ partId: string; hole: number } | null>(null);
+  const holeIssues = useMemo(
+    () => ({
+      byPart: holeErrors(project, session.issues),
+      tools: profileTools
+        ? profileTools.map((x) => ({ number: x.number, diameter: x.diameter }))
+        : null,
+      focus: holeFocus,
+    }),
+    [project, session.issues, profileTools, holeFocus],
+  );
   // T270: "Çizimde aç" on a blocked cut-out opens Parçalar → Çizim with that part selected.
   const openPart = useCallback(
-    (partId: string) => {
+    (partId: string, hole?: number) => {
       setPartsSelection([partId]);
+      setHoleFocus(hole !== undefined ? { partId, hole } : null);
       setPartsViewState('drawing');
       setStep('parcalar');
       focusHeading.current = true;
@@ -741,21 +763,23 @@ function WizardSession({
   } else if (drawing) {
     both = (
       <InnerIssuesContext.Provider value={innerIssues}>
-        <DrawingBoard
-          t={messages.editor}
-          project={project}
-          run={session.run}
-          onToList={() => setPartsView('list')}
-          viewSwitch={switchInCanvas ? viewSwitch : undefined}
-          toolDiameter={toolDiameter}
-          holeTool={{
-            number: holeToolNo,
-            diameter: (profile && findTool(profile, holeToolNo)?.diameter) ?? toolDiameter,
-          }}
-          initialSelection={partsSelection}
-          onSelectionChange={setPartsSelection}
-          dxfText={messages.dxfImport}
-        />
+        <HoleIssuesContext.Provider value={holeIssues}>
+          <DrawingBoard
+            t={messages.editor}
+            project={project}
+            run={session.run}
+            onToList={() => setPartsView('list')}
+            viewSwitch={switchInCanvas ? viewSwitch : undefined}
+            toolDiameter={toolDiameter}
+            holeTool={{
+              number: holeToolNo,
+              diameter: (profile && findTool(profile, holeToolNo)?.diameter) ?? toolDiameter,
+            }}
+            initialSelection={partsSelection}
+            onSelectionChange={setPartsSelection}
+            dxfText={messages.dxfImport}
+          />
+        </HoleIssuesContext.Provider>
       </InnerIssuesContext.Provider>
     );
   } else if (step === 'parcalar') {

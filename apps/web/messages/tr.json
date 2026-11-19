@@ -526,7 +526,13 @@
       "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde.",
       "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
       "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
-      "INNER_SLUG_UNSECURED": "Bir iç kesimin göbeğine 2 köprü sığmıyor; açıklığı büyütün ya da delik aracıyla çizin."
+      "INNER_SLUG_UNSECURED": "Bir iç kesimin göbeğine 2 köprü sığmıyor; açıklığı büyütün ya da delik aracıyla çizin.",
+      "HOLE_SMALLER_THAN_TOOL": "Delik, takımdan küçük.",
+      "GROOVE_NARROWER_THAN_TOOL": "Kanal, takımdan dar.",
+      "TOOL_NOT_IN_PROFILE": "Deliğin takımı bu makinede yok.",
+      "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Kör delik derinliği plaka kalınlığından az olmalı.",
+      "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
+      "holeN": "Delik {n}: {text}"
     },
     "paste": {
       "title": "İçe aktar",
@@ -938,6 +944,7 @@
       "detail": "Teknik ayrıntı: {message}",
       "machinesHint": "Makine ayarlarını Makineler sayfasından düzeltebilirsiniz.",
       "innerPlace": "{name} · İç kesim {n}",
+      "holePlace": "{name} · Delik {n}",
       "openPart": "Çizimde aç"
     },
     "rules": {
@@ -1238,7 +1245,8 @@
       "errors": {
         "noParams": "Bu malzeme ve kalınlık için kesim ayarı yok; G-code üretilemez.",
         "unverifiedParams": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı; G-code üretilemez.",
-        "slugUnsecured": "Bir iç kesimin göbeğine 2 köprü sığmıyor; G-code üretilemez."
+        "slugUnsecured": "Bir iç kesimin göbeğine 2 köprü sığmıyor; G-code üretilemez.",
+        "holeInvalid": "Bir delik bu makineyle delinemiyor ya da parçaya uymuyor; G-code üretilemez."
       },
       "nextStep": "Sonraki: {name}",
       "counter": "{n} / {total}"
@@ -1370,7 +1378,9 @@
       },
       "violationAt": "{file} · satır {line}",
       "innerPlace": "{name} · İç kesim {n}",
+      "holePlace": "{name} · Delik {n}",
       "openPart": "Çizimde aç",
+      "machinesLink": "Makineler sayfası",
       "noLayout": "Önce Dizilim adımında parçaları yerleştirin.",
       "noMachine": "Önce bir makine seçin.",
       "notCreated": "Proje henüz kaydedilmedi. Bir değişiklik yapınca kaydedilir, sonra dışa aktarılabilir.",
@@ -1443,6 +1453,7 @@
       "row": "Satır {n}",
       "rowNamed": "Satır {n} · {name}",
       "innerNamed": "{name} · İç kesim {k}",
+      "holeNamed": "{name} · Delik {k}",
       "sheet": "Plaka {n}",
       "codes": {
         "PART_LARGER_THAN_SHEET": "Parça plakaya sığmıyor (kenar payı dahil).",
@@ -1992,6 +2003,16 @@
         "depth": "Derinlik",
         "grooveWidth": "Kanal genişliği",
         "tool": "Takım no",
+        "toolDiameter": "· Ø{d}",
+        "toolMissing": "· yok",
+        "errors": {
+          "HOLE_SMALLER_THAN_TOOL": "Delik {n}: Ø{d}, T{tool} takımından (Ø{td}) küçük. Daha ince bir takım seçin ya da çapı büyütün.",
+          "TOOL_NOT_IN_PROFILE": "Delik {n}: T{tool} bu makinede yok.",
+          "GROOVE_NARROWER_THAN_TOOL": "Delik {n}: kanal genişliği {w} mm, T{tool} takımından (Ø{td}) dar. Daha ince bir takım seçin ya da kanalı genişletin.",
+          "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Delik {n}: kör derinlik {depth} mm, plaka kalınlığından ({t} mm) az olmalı. Derinliği azaltın ya da Boydan boya açın.",
+          "HOLE_OUTSIDE_PART": "Delik {n}: parçanın içinde kalmıyor ya da bir iç kesime değiyor. Merkezi içeri alın ya da çapı küçültün.",
+          "other": "Delik {n}: bu delik G-code'a yazılamıyor."
+        },
         "invalid": "Geçerli bir değer girin.",
         "refused": "Bu değer uygulanamadı: delik parçanın içinde kalmalı, derinlik ve kanal genişliği geçerli olmalı."
       }

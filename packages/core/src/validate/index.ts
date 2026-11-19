@@ -11,7 +11,7 @@ import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
 import { deriveOutline, formatPath, innerOperation } from '../schema';
-import { checkHolePlacement } from '../editor/holes';
+import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { unsecuredSlugs } from '../toolpath/slug-check';
 
@@ -123,7 +123,8 @@ export const holeDepthBelowThickness: ValidationRule = (project) => {
   project.parts.forEach((part, i) => {
     part.holes.forEach((hole, h) => {
       if (!isBlind(hole)) return;
-      if (hole.depth < thickness) {
+      // Same rule as the toolpath (T275, blindDepthInvalid).
+      if (!blindDepthInvalid(hole, thickness)) {
         // Blind but with less than HOLE_MIN_SKIN mm left: it may break through (T140).
         if (thickness - hole.depth < HOLE_MIN_SKIN - EPS) {
           issues.push({
@@ -152,7 +153,9 @@ export const holeDepthBelowThickness: ValidationRule = (project) => {
  * - pocket/through: "Çap takım çapından küçük olamaz" → `d < tool diameter` is an error
  *   (equal is fine: a single plunge or drill cycle);
  * - groove: "Kanal genişliği takım çapına eşitse tek geçiş, büyükse çok geçiş; küçükse uyarı" →
- *   `grooveWidth < tool diameter` is a warning.
+ *   `grooveWidth < tool diameter` is an error since T275: the toolpath refuses it, so it is caught
+ *   where the hole is drawn (D-045).
+ * The rule is `holeToolProblem`, shared with the toolpath.
  * Comparisons allow EPS, so a hole within 0.001 mm of the tool diameter counts as equal.
  * Skipped when the caller passes no profile.
  */
@@ -162,8 +165,10 @@ export const holeVsTool: ValidationRule = (project, context) => {
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     part.holes.forEach((hole, h) => {
+      const problem = holeToolProblem(hole, machine.tools);
+      if (!problem) return;
       const tool = findTool(machine, hole.tool);
-      if (!tool) {
+      if (!tool || problem.code === 'TOOL_NOT_IN_PROFILE') {
         issues.push({
           code: 'TOOL_NOT_IN_PROFILE',
           severity: 'error',
@@ -173,17 +178,17 @@ export const holeVsTool: ValidationRule = (project, context) => {
         return;
       }
       if (hole.type === 'groove') {
-        if (hole.grooveWidth + EPS < tool.diameter) {
+        if (problem.code === 'GROOVE_NARROWER_THAN_TOOL') {
           issues.push({
             code: 'GROOVE_NARROWER_THAN_TOOL',
-            severity: 'warning',
+            severity: 'error',
             path: formatPath(['parts', i, 'holes', h, 'grooveWidth']),
             message: `groove "${hole.id}" in part "${part.id}" is ${mm(hole.grooveWidth)} mm wide, narrower than the ${mm(tool.diameter)} mm tool T${tool.number}`,
           });
         }
         return;
       }
-      if (hole.d + EPS < tool.diameter) {
+      if (problem.code === 'HOLE_SMALLER_THAN_TOOL') {
         issues.push({
           code: 'HOLE_SMALLER_THAN_TOOL',
           severity: 'error',

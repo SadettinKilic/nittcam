@@ -70,6 +70,7 @@ export function NumberRow({
   testId,
   allowEmpty = false,
   maxDecimals = 2,
+  invalid = false,
 }: {
   label: string;
   value: number | null;
@@ -78,6 +79,8 @@ export function NumberRow({
   testId: string;
   allowEmpty?: boolean;
   maxDecimals?: number;
+  /** Shows the field as invalid although the value was accepted (e.g. a tool the machine lacks, T275). */
+  invalid?: boolean;
 }) {
   const id = useId();
   const [draft, setDraft] = useState<number | null>(value);
@@ -110,7 +113,7 @@ export function NumberRow({
           onValueChange={setDraft}
           unit={unit}
           maxDecimals={maxDecimals}
-          invalid={error !== null}
+          invalid={invalid || error !== null}
           aria-describedby={error ? `${id}-error` : undefined}
           className="w-36"
           data-testid={testId}

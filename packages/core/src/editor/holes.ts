@@ -92,3 +92,37 @@ export function checkHolePlacement(
   }
   return undefined;
 }
+
+/**
+ * A hole's tool problem (T275, spec §4.5, D-050): the one rule the validation (where the hole is
+ * drawn) and the toolpath (backstop) share, checked in this order:
+ * - the tool number is not in the machine's tool table;
+ * - pocket / through: the diameter is smaller than the tool (equal is a single plunge);
+ * - groove: the groove is narrower than the tool.
+ * EPS slack: within 0.001 mm counts as equal.
+ */
+export type HoleToolProblem =
+  | { code: 'TOOL_NOT_IN_PROFILE' }
+  | { code: 'HOLE_SMALLER_THAN_TOOL'; toolDiameter: number }
+  | { code: 'GROOVE_NARROWER_THAN_TOOL'; toolDiameter: number };
+
+export function holeToolProblem(
+  hole: Hole,
+  tools: readonly { number: number; diameter: number }[],
+): HoleToolProblem | null {
+  const tool = tools.find((t) => t.number === hole.tool);
+  if (!tool) return { code: 'TOOL_NOT_IN_PROFILE' };
+  if (hole.type === 'groove') {
+    return hole.grooveWidth < tool.diameter - EPS
+      ? { code: 'GROOVE_NARROWER_THAN_TOOL', toolDiameter: tool.diameter }
+      : null;
+  }
+  return hole.d < tool.diameter - EPS
+    ? { code: 'HOLE_SMALLER_THAN_TOOL', toolDiameter: tool.diameter }
+    : null;
+}
+
+/** A blind hole (pocket, groove) must stay above the sheet bottom: depth < thickness (EPS). */
+export function blindDepthInvalid(hole: Hole, thickness: number): boolean {
+  return hole.type !== 'through' && !(hole.depth < thickness - EPS);
+}

@@ -42,7 +42,7 @@ import {
 } from './path';
 import { toolpathSafetyViolations } from './safety';
 import { buildHoleOperation, holeOperationKind, holeStart, placedHoleCentre } from './holes';
-import { checkHolePlacement } from '../editor/holes';
+import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { summarizeToolpath } from './stats';
 import { buildOnlineOperation, onlineStart } from './online';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
@@ -88,7 +88,7 @@ function issue(
   severity: ToolpathSeverity,
   partId: string | null,
   message: string,
-  extra: { copy?: number; sheet?: number; inner?: number } = {},
+  extra: { copy?: number; sheet?: number; inner?: number; hole?: number } = {},
 ): ToolpathIssue {
   return { code, severity, partId, message, ...extra };
 }
@@ -968,11 +968,14 @@ export function buildToolpath(
   const holeTools = new Map<string, { tool: number; diameter: number; depths: number[] }>();
   for (const part of project.parts) {
     const outline = deriveOutline(part);
-    for (const h of part.holes) {
+    for (const [hi, h] of part.holes.entries()) {
+      // T275: the hole index names the hole where it is drawn ("Kapak · Delik 3").
       const bad = (code: ToolpathCode, message: string) =>
-        errors.push(issue(code, 'error', part.id, `Hole ${h.id}: ${message}`));
+        errors.push(issue(code, 'error', part.id, `Hole ${h.id}: ${message}`, { hole: hi }));
+      // Same rule as the validation where the hole is drawn (T275, holeToolProblem).
+      const problem = holeToolProblem(h, machine.tools);
       const ht = findTool(machine, h.tool);
-      if (!ht) {
+      if (!ht || problem?.code === 'TOOL_NOT_IN_PROFILE') {
         bad('TOOL_NOT_IN_PROFILE', `tool T${h.tool} is not in the machine profile.`);
         continue;
       }
@@ -980,11 +983,11 @@ export function buildToolpath(
         bad('HOLE_OUTSIDE_PART', 'it does not lie inside the part (clear of inner contours).');
         continue;
       }
-      if (h.d < ht.diameter - EPS) {
+      if (problem?.code === 'HOLE_SMALLER_THAN_TOOL') {
         bad('HOLE_SMALLER_THAN_TOOL', `Ø${h.d} mm is smaller than the tool Ø${ht.diameter} mm.`);
         continue;
       }
-      if (h.type === 'groove' && h.grooveWidth < ht.diameter - EPS) {
+      if (problem?.code === 'GROOVE_NARROWER_THAN_TOOL' && h.type === 'groove') {
         bad(
           'GROOVE_NARROWER_THAN_TOOL',
           `groove width ${h.grooveWidth} mm is narrower than the tool Ø${ht.diameter} mm.`,
@@ -992,7 +995,7 @@ export function buildToolpath(
         continue;
       }
       const depth = h.type === 'through' ? target : -h.depth;
-      if (h.type !== 'through' && !(h.depth < thickness - EPS)) {
+      if (h.type !== 'through' && blindDepthInvalid(h, thickness)) {
         bad('HOLE_DEPTH_INVALID', `blind depth ${h.depth} mm must be less than the thickness.`);
         continue;
       }

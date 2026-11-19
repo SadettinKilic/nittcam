@@ -72,8 +72,8 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
   const cutOuts = new Set<string>();
   for (const i of r.toolpathIssues) {
     // T270: one line per cut-out (named by part and number in the UI), not one per copy.
-    if (i.inner !== undefined) {
-      const key = `${i.code}/${i.partId ?? ''}/${i.inner}`;
+    if (i.inner !== undefined || i.hole !== undefined) {
+      const key = `${i.code}/${i.partId ?? ''}/${i.inner ?? ''}/${i.hole ?? ''}`;
       if (cutOuts.has(key)) continue;
       cutOuts.add(key);
     }
@@ -86,6 +86,7 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
       ...(i.sheet !== undefined ? { sheet: i.sheet } : {}),
       ...(i.partId !== null ? { partId: i.partId } : {}),
       ...(i.inner !== undefined ? { inner: i.inner } : {}),
+      ...(i.hole !== undefined ? { hole: i.hole } : {}),
     });
   }
   for (const i of [...r.postErrors, ...r.postWarnings]) {
@@ -113,14 +114,20 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
   return out;
 }
 
-/** Part id and cut-out index of a `parts[i].inners[k]` validation path (T270). */
+/**
+ * Part id and cut-out (T270) or hole (T275) index of a `parts[i].inners[k]` / `parts[i].holes[h]`
+ * validation path.
+ */
 function cutOutOf(
   data: { parts: readonly { id: string }[] },
   path: string,
-): { partId: string; inner: number } | undefined {
-  const m = /^parts\[(\d+)\]\.inners\[(\d+)\]/.exec(path);
+): { partId: string; inner: number } | { partId: string; hole: number } | undefined {
+  const m = /^parts\[(\d+)\]\.(inners|holes)\[(\d+)\]/.exec(path);
   const part = m ? data.parts[Number(m[1])] : undefined;
-  return m && part ? { partId: part.id, inner: Number(m[2]) } : undefined;
+  if (!m || !part) return undefined;
+  return m[2] === 'inners'
+    ? { partId: part.id, inner: Number(m[3]) }
+    : { partId: part.id, hole: Number(m[3]) };
 }
 
 /** Sheet index of a `layout.sheets[s]...` validation path. */

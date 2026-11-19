@@ -22,6 +22,8 @@ export interface ExportViolation {
   partId?: string;
   /** Its inner contour (0-based), for an issue about a cut-out (T270). */
   inner?: number;
+  /** Its hole (0-based), for an issue about a hole (T275). */
+  hole?: number;
 }
 
 /** What the pre-export checklist shows (spec §6.5), taken from the profile and the stock. */
