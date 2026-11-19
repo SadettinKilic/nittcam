@@ -439,3 +439,8 @@ Review #3 found the canvases still read as generic blue boxes on grey, two diffe
 - **Parallelism switch:** "paralellik on" = the dev builds batch N+1 in a separate worktree while the tester checks batch N; "paralellik off" = sequential as before. Set to **on** on 2026-11-19.
 - **Delta testing:** the tester checks only the batch's new and changed parts; fix rounds re-check only the reported bugs; only blockers fail a round; max 2 rounds. Whole-app safety comes from the full CI run.
 - **Reviews:** PO does a short look after every merged batch (is it right, is anything broken), no deep review. Fable design review every 2 batches (was every ~10 tasks). Replaces the "every 4–5 tasks" PO review rule.
+
+## D-043 Desktop-first; phone polish later (2026-11-19, owner)
+- The product will rarely be used from a phone. Build and polish for PC; at phone widths screens must only not break (no page-level horizontal scroll, primary action reachable, no crash, axe clean).
+- Phone-specific polish moves to a "Mobile UI pass" (one or two batches before the field test). T248 deferred there; T249 phone bullet split out as T255; T248 import-panel bullet moved to T250. B8a is now T249–T251.
+- Tester and reviews focus on 1440 px; 390 px is a smoke check. Goal: faster progress.
