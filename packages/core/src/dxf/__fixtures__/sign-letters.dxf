@@ -1,0 +1,338 @@
+  0
+SECTION
+  2
+HEADER
+  9
+$ACADVER
+  1
+AC1015
+  9
+$INSUNITS
+ 70
+4
+  0
+ENDSEC
+  0
+SECTION
+  2
+BLOCKS
+  0
+ENDSEC
+  0
+SECTION
+  2
+ENTITIES
+  0
+LWPOLYLINE
+  5
+132
+100
+AcDbEntity
+  8
+HARF
+100
+AcDbPolyline
+ 90
+10
+ 70
+1
+ 43
+0
+ 10
+0
+ 20
+0
+ 10
+40
+ 20
+0
+ 10
+40
+ 20
+130
+ 10
+120
+ 20
+0
+ 10
+160
+ 20
+0
+ 10
+160
+ 20
+200
+ 10
+120
+ 20
+200
+ 10
+120
+ 20
+70
+ 10
+40
+ 20
+200
+ 10
+0
+ 20
+200
+  0
+LWPOLYLINE
+  5
+133
+100
+AcDbEntity
+  8
+HARF
+100
+AcDbPolyline
+ 90
+2
+ 70
+1
+ 43
+0
+ 10
+200
+ 20
+100
+ 42
+1
+ 10
+400
+ 20
+100
+ 42
+1
+  0
+LWPOLYLINE
+  5
+134
+100
+AcDbEntity
+  8
+HARF
+100
+AcDbPolyline
+ 90
+2
+ 70
+1
+ 43
+0
+ 10
+250
+ 20
+100
+ 42
+1
+ 10
+350
+ 20
+100
+ 42
+1
+  0
+LINE
+  5
+135
+100
+AcDbEntity
+  8
+HARF
+100
+AcDbLine
+ 10
+450
+ 20
+0
+ 30
+0
+ 11
+580
+ 21
+0
+ 31
+0
+  0
+LINE
+  5
+136
+100
+AcDbEntity
+  8
+HARF
+100
+AcDbLine
+ 10
+580.02
+ 20
+0
+ 30
+0
+ 11
+580
+ 21
+40
+ 31
+0
+  0
+LINE
+  5
+137
+100
+AcDbEntity
+  8
+HARF
+100
+AcDbLine
+ 10
+490
+ 20
+40
+ 30
+0
+ 11
+580
+ 21
+40.01
+ 31
+0
+  0
+LINE
+  5
+138
+100
+AcDbEntity
+  8
+HARF
+100
+AcDbLine
+ 10
+490
+ 20
+40
+ 30
+0
+ 11
+490
+ 21
+200
+ 31
+0
+  0
+LINE
+  5
+139
+100
+AcDbEntity
+  8
+HARF
+100
+AcDbLine
+ 10
+490
+ 20
+200
+ 30
+0
+ 11
+450.01
+ 21
+200
+ 31
+0
+  0
+LINE
+  5
+13A
+100
+AcDbEntity
+  8
+HARF
+100
+AcDbLine
+ 10
+450
+ 20
+200
+ 30
+0
+ 11
+450
+ 21
+0.02
+ 31
+0
+  0
+HATCH
+  5
+13B
+100
+AcDbEntity
+  8
+DOLGU
+100
+AcDbHatch
+ 10
+0
+ 20
+0
+ 30
+0
+210
+0
+220
+0
+230
+1
+  2
+SOLID
+ 70
+1
+ 71
+0
+ 91
+1
+ 92
+2
+ 72
+0
+ 73
+1
+ 93
+0
+ 97
+0
+ 75
+0
+ 76
+1
+ 98
+0
+  0
+MTEXT
+  5
+13C
+100
+AcDbEntity
+  8
+NOT
+100
+AcDbMText
+ 10
+0
+ 20
+-30
+ 30
+0
+ 40
+10
+  1
+NOL tabela 18mm MDF
+  0
+ENDSEC
+  0
+EOF

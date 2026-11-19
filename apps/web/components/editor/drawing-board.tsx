@@ -22,6 +22,7 @@ import {
   CircleDot,
   Grid3x3,
   Hand,
+  FileUp,
   List,
   Maximize,
   MousePointer2,
@@ -102,6 +103,7 @@ import {
   type PendingTemplate,
 } from '../../lib/editor/template-place';
 import { BoardPartList } from './part-list';
+import { DxfImportDialog } from '../parts/dxf-import-dialog';
 import { StatusBar } from './status-bar';
 
 const EditorCanvas = dynamic(() => import('./editor-canvas'), { ssr: false });
@@ -182,6 +184,7 @@ export function DrawingBoard({
   holeTool,
   initialSelection,
   onSelectionChange,
+  dxfText,
 }: {
   t: T;
   project: Project;
@@ -197,7 +200,10 @@ export function DrawingBoard({
   initialSelection?: readonly string[];
   /** Reports every selection change (Liste ↔ Çizim keep one selection, T135). */
   onSelectionChange?: (ids: string[]) => void;
+  /** Text of the DXF import dialog (T146); without it the button is hidden. */
+  dxfText?: Messages['dxfImport'];
 }) {
+  const [dxfOpen, setDxfOpen] = useState(0);
   const [state, dispatch] = useReducer(editorReducer, initialEditorState, (s) => {
     const have = new Set(project.parts.map((p) => p.id));
     return { ...s, selection: (initialSelection ?? []).filter((id) => have.has(id)) };
@@ -1185,6 +1191,43 @@ export function DrawingBoard({
     );
   }
 
+  /** T146: parts confirmed in the DXF dialog, one importDxf = one undo step. */
+  function addDxf(params: { parts: unknown[] }, fileName: string, count: number): boolean {
+    const ok = run('importDxf', params);
+    if (dxfText) {
+      if (ok) notify.success(fill(dxfText.added, { file: fileName, count }), { id: 'board-dxf' });
+      else notify.error(dxfText.failed);
+    }
+    return ok;
+  }
+
+  const dxfButton = dxfText ? (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => setDxfOpen((n) => n + 1)}
+      data-testid="board-dxf-open"
+    >
+      <FileUp aria-hidden />
+      {dxfText.open}
+    </Button>
+  ) : null;
+
+  const dxfDialog =
+    dxfOpen > 0 && dxfText ? (
+      <DxfImportDialog
+        key={dxfOpen}
+        t={dxfText}
+        open
+        onOpenChange={(o) => {
+          if (!o) setDxfOpen(0);
+        }}
+        onImport={addDxf}
+        newId={newPartId}
+        {...(holeTool ? { holeTool: holeTool.number } : {})}
+      />
+    ) : null;
+
   const overlay = (
     <>
       <EditorTour t={t.tour} onClose={() => canvasEl?.focus({ preventScroll: true })} />
@@ -1332,6 +1375,7 @@ export function DrawingBoard({
         />
       ) : null}
       {miniBar}
+      {dxfDialog}
       <InnerPrompt
         t={t.inner}
         partName={
@@ -1351,10 +1395,13 @@ export function DrawingBoard({
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
           <div className={`${floating} flex max-w-sm flex-col items-start gap-3 p-4`}>
             <p className="text-sm text-fg-muted">{t.empty}</p>
-            <Button size="sm" variant="outline" onClick={onToList}>
-              <List aria-hidden />
-              {t.toList}
-            </Button>
+            <div className="pointer-events-auto flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={onToList}>
+                <List aria-hidden />
+                {t.toList}
+              </Button>
+              {dxfButton}
+            </div>
           </div>
         </div>
       ) : null}
@@ -1470,6 +1517,7 @@ export function DrawingBoard({
           project={project}
           selection={selection}
           onSelect={selectFromList}
+          action={parts.length > 0 ? dxfButton : null}
         />
       }
       right={

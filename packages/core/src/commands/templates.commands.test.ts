@@ -447,3 +447,62 @@ describe('updateTemplateVersion (T149)', () => {
     ).toMatch(/inside the part outline/);
   });
 });
+
+describe('templates carry per-contour operations and lines (T142 + T147)', () => {
+  const groove: TemplateGeometry = {
+    holes: [],
+    inners: [
+      {
+        contour: [
+          { x: 0, y: -40, bulge: 0 },
+          { x: 30, y: -40, bulge: 0 },
+          { x: 30, y: 40, bulge: 0 },
+          { x: 0, y: 40, bulge: 0 },
+        ],
+        op: { kind: 'online', depth: 3 },
+      },
+    ],
+    lines: [
+      {
+        vertices: [
+          { x: 40, y: -40, bulge: 0 },
+          { x: 40, y: 40, bulge: 0 },
+        ],
+        op: { kind: 'online', depth: 2 },
+      },
+    ],
+  };
+
+  it('placing writes ops.inners and lines; removing takes them back; save round-trips', () => {
+    const p0 = load();
+    const p1 = run(p0, 'addTemplate', {
+      id: 'side',
+      template: {
+        templateId: 'g',
+        version: 1,
+        name: 'Kanal',
+        geometry: groove,
+        defaults: { count: 1, spacing: 0, edgeDistance: 50, d: {} },
+        placement: defaultPlacement('left', { x: 0, y: 900 }),
+      },
+    });
+    const side = part(p1);
+    expect(side.ops?.inners).toEqual([{ kind: 'online', depth: 3 }]);
+    expect(side.lines).toEqual([
+      {
+        vertices: [
+          { x: 90, y: 860, bulge: 0 },
+          { x: 90, y: 940, bulge: 0 },
+        ],
+        op: { kind: 'online', depth: 2 },
+      },
+    ]);
+    expect(projectSchema.safeParse(p1).success).toBe(true);
+    const saved = templateFromPart(side, { holeIds: [], inners: [0], lines: [0], edge: 'left' });
+    if (typeof saved === 'string') throw new Error(saved);
+    expect(saved.geometry.inners[0]?.op).toEqual({ kind: 'online', depth: 3 });
+    expect(saved.geometry.lines?.[0]?.op).toEqual({ kind: 'online', depth: 2 });
+    const p2 = run(p1, 'removeTemplateInstance', { id: 'side', instanceId: 't1' });
+    expect(part(p2)).toEqual(part(p0));
+  });
+});

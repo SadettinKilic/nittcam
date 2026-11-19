@@ -1,3 +1,5 @@
 # Golden G-code files are compared byte for byte (CRLF kept): never convert line endings.
 *.nc -text
 *.tap -text
+# DXF fixtures keep their line ends (CRLF fixtures test Windows exports).
+*.dxf -text

@@ -5,6 +5,7 @@ export {
   setMaterial,
   applyLibraryMaterial,
   setThickness,
+  setThinSkin,
   setSheetSize,
   setGrain,
 } from './plate';
@@ -17,6 +18,10 @@ export {
   duplicatePart,
   importCutList,
   MAX_IMPORT_ROWS,
+  importDxf,
+  importDxfParamsSchema,
+  dxfImportOrigin,
+  MAX_DXF_PARTS,
 } from './part';
 export {
   setNestingOptions,

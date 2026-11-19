@@ -15,3 +15,9 @@ export const JOIN_TOL = 0.05;
  * that centre ± radius loses precision.
  */
 export const MIN_BULGE = 1e-9;
+
+/**
+ * Curve approximation tolerance in millimetres (T144): a SPLINE or ELLIPSE converted to line
+ * segments deviates from the true curve by at most this much.
+ */
+export const CURVE_TOL = 0.01;

@@ -755,6 +755,7 @@ function WizardSession({
           }}
           initialSelection={partsSelection}
           onSelectionChange={setPartsSelection}
+          dxfText={messages.dxfImport}
         />
       </InnerIssuesContext.Provider>
     );
@@ -770,6 +771,8 @@ function WizardSession({
         issuesKey={session.projectId ?? undefined}
         initialSelection={partsSelection}
         onSelectionChange={setPartsSelection}
+        dxfText={messages.dxfImport}
+        holeTool={holeToolNo}
       />
     );
     // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats

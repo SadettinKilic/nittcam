@@ -239,6 +239,9 @@ function SaveDialog({
   const [edge, setEdge] = useState<Edge>('left');
   const [holes, setHoles] = useState<Set<string>>(() => new Set(part.holes.map((h) => h.id)));
   const [inners, setInners] = useState<Set<number>>(() => new Set(part.inners.map((_, i) => i)));
+  const [lines, setLines] = useState<Set<number>>(
+    () => new Set((part.lines ?? []).map((_, i) => i)),
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -248,6 +251,7 @@ function SaveDialog({
     const r = templateFromPart(part, {
       holeIds: part.holes.filter((h) => holes.has(h.id)).map((h) => h.id),
       inners: [...inners].sort((a, b) => a - b),
+      lines: [...lines].sort((a, b) => a - b),
       edge: edge === 'free' ? null : edge,
     });
     if (typeof r === 'string') return setError(t.nothing);
@@ -330,6 +334,16 @@ function SaveDialog({
                 {fill(t.innerItem, { n: i + 1 })}
               </label>
             ))}
+            {(part.lines ?? []).map((_, i) => (
+              <label key={`line-${i}`} className="flex items-center gap-2 text-sm text-fg">
+                <Checkbox
+                  checked={lines.has(i)}
+                  data-testid={`template-save-line-${i}`}
+                  onCheckedChange={(on) => setLines((s) => toggle(s, i, on === true))}
+                />
+                {fill(t.lineItem, { n: i + 1 })}
+              </label>
+            ))}
           </fieldset>
           {error ? (
             <p role="alert" className="text-sm text-danger-text" data-testid="template-save-error">
@@ -383,7 +397,7 @@ export function TemplateProperties({
   const update = (instanceId: string, patch: Record<string, unknown>) =>
     run('updateTemplateInstance', { id: part.id, instanceId, ...patch }) ? null : t.refused;
 
-  const canSave = part.holes.length + part.inners.length > 0;
+  const canSave = part.holes.length + part.inners.length + (part.lines?.length ?? 0) > 0;
 
   return (
     <InspectorGroup title={t.title} data-testid="prop-group-templates">

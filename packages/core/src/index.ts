@@ -27,3 +27,4 @@ export * from './simulation';
 export * from './testcut';
 export * from './editor';
 export * from './template';
+export * from './dxf';

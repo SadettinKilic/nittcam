@@ -14,6 +14,7 @@ import { normalizeInner } from '../editor/inners';
 import { contour } from '../geometry/polyline';
 import { mirror, rotate, rotatePointBy, translate } from '../geometry/transform';
 import type { BBox, Point, Polyline } from '../geometry/types';
+import { innerOperation } from '../schema/operations';
 import type {
   Hole,
   Part,
@@ -138,12 +139,6 @@ export function deriveTemplate(
 // Writing an instance into a part (used by the template commands on an Immer draft)
 // ---------------------------------------------------------------------------
 
-/** Fields of T142 (per-contour operations, open lines), read structurally (additive, B15). */
-interface OpsShape {
-  ops?: { outline?: unknown; inners?: (unknown | null)[] };
-  lines?: { vertices: Vertex[]; op: unknown }[];
-}
-
 const sameVertices = (a: readonly Vertex[], b: readonly Vertex[]) =>
   a.length === b.length &&
   a.every((v, i) => v.x === b[i]?.x && v.y === b[i]?.y && v.bulge === b[i]?.bulge);
@@ -156,7 +151,7 @@ export function removeDerived(part: Part, ref: TemplateRef): void {
   const prefix = instanceHolePrefix(ref.instanceId);
   part.holes = part.holes.filter((h) => !h.id.startsWith(prefix));
   const d = deriveTemplate(ref, localBox(part));
-  const x = part as Part & OpsShape;
+  const x = part;
   for (const inner of d.inners) {
     const k = part.inners.findIndex((c) => sameVertices(c, inner.contour));
     if (k < 0) continue;
@@ -179,7 +174,7 @@ export function removeDerived(part: Part, ref: TemplateRef): void {
 /** Adds what `ref` creates to `part` (holes, inner contours with their operations, lines). */
 export function addDerived(part: Part, ref: TemplateRef): void {
   const d = deriveTemplate(ref, localBox(part));
-  const x = part as Part & OpsShape;
+  const x = part;
   part.holes.push(...d.holes);
   for (const inner of d.inners) {
     part.inners.push(inner.contour);
@@ -343,11 +338,13 @@ export interface TemplateSelection {
   holeIds: readonly string[];
   /** Inner contour indexes of the part. */
   inners: readonly number[];
+  /** Open line indexes of the part (T142); absent = none. */
+  lines?: readonly number[];
   /** Reference edge; `null` = no edge (edge distance 0, free placement). */
   edge: TemplateEdge | null;
 }
 
-export type TemplateFromPartError = 'empty' | 'unknownHole' | 'unknownInner';
+export type TemplateFromPartError = 'empty' | 'unknownHole' | 'unknownInner' | 'unknownLine';
 
 /**
  * A new template from the selected holes and inner contours of `part` (T147). The reference point
@@ -359,7 +356,8 @@ export function templateFromPart(
   part: Part,
   sel: TemplateSelection,
 ): { geometry: TemplateGeometry; params: TemplateParams } | TemplateFromPartError {
-  if (sel.holeIds.length + sel.inners.length === 0) return 'empty';
+  const lineIdx = sel.lines ?? [];
+  if (sel.holeIds.length + sel.inners.length + lineIdx.length === 0) return 'empty';
   const holes: Hole[] = [];
   for (const id of sel.holeIds) {
     const h = part.holes.find((x) => x.id === id);
@@ -372,10 +370,16 @@ export function templateFromPart(
     if (!c) return 'unknownInner';
     inners.push(c);
   }
+  const lines: NonNullable<Part['lines']> = [];
+  for (const k of lineIdx) {
+    const l = part.lines?.[k];
+    if (!l) return 'unknownLine';
+    lines.push(l);
+  }
   let origin: Point;
   if (holes[0]) origin = { x: holes[0].cx, y: holes[0].cy };
   else {
-    const all = inners.flat();
+    const all = [...inners.flat(), ...lines.flatMap((l) => l.vertices)];
     const xs = all.map((v) => v.x);
     const ys = all.map((v) => v.y);
     origin = {
@@ -405,17 +409,28 @@ export function templateFromPart(
       const c = toLocal({ x: h.cx, y: h.cy });
       return { ...h, id: `h${i + 1}`, cx: c.x, cy: c.y };
     }),
-    inners: inners.map((c) => {
+    inners: inners.map((c, i) => {
       const moved = rotate(
         translate(contour(c.map((v) => ({ ...v }))), -origin.x, -origin.y),
         -rot,
       );
+      // The cut-out keeps its operation (T142): only non-default ones are stored.
+      const op = innerOperation(part, sel.inners[i] as number);
       return {
         contour: normalizeInner(
           moved.vertices.map((v) => ({ x: tidy(v.x), y: tidy(v.y), bulge: v.bulge })),
         ),
+        ...(op.kind === 'inside' || op.kind === 'outside' ? {} : { op }),
       };
     }),
+    ...(lines.length > 0
+      ? {
+          lines: lines.map((l) => {
+            const op: TemplateContourOp = l.op.kind === 'online' ? l.op : { kind: 'none' };
+            return { vertices: l.vertices.map((v) => ({ ...toLocal(v), bulge: v.bulge })), op };
+          }),
+        }
+      : {}),
   };
   return {
     geometry,

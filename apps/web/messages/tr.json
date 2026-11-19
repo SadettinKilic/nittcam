@@ -974,7 +974,8 @@
       "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
       "NO_OPERATIONS": "Kesilecek parça yok.",
       "DEPTH_EXCEEDS_FLUTE_LENGTH": "Kesim derinliği takımın kesici boyunu aşıyor.",
-      "SMALL_PART_UNSECURED": "Küçük parça sabitlenemiyor (köprü yerleşmedi).",
+      "SMALL_PART_UNSECURED": "Küçük parça sabitlenemiyor (köprü yerleşmedi). Kesim ayarlarında “Son pasoda ince tabaka bırak” seçeneğini açın.",
+      "INVALID_SKIN": "İnce tabaka kalınlığı 0’dan büyük ve malzeme kalınlığından az olmalı.",
       "SMALL_SLUG_UNSECURED": "İç kesimden düşecek küçük parçaya (göbek) 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin (delik içi tamamen boşaltılır, göbek kalmaz).",
       "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç kesime değiyor.",
       "HOLE_SMALLER_THAN_TOOL": "Delik çapı takım çapından küçük.",
@@ -982,6 +983,7 @@
       "HOLE_DEPTH_INVALID": "Kör delik derinliği malzeme kalınlığından küçük olmalı.",
       "INNER_OFFSET_FAILED": "İç kesim bu takım için çok küçük; takım boşluğa girmiyor.",
       "INNER_SPLIT": "Takım iç kesimin dar bir boğazından geçemiyor.",
+      "ONLINE_DEPTH_INVALID": "Çizgi üzerinden işlem derinliği malzeme kalınlığından az olmalı.",
       "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor, dış hatla kesişiyor ya da başka bir iç kesime değiyor; parça bu haliyle kesilemez.",
       "SPINDLE_INVALID": "Devir spindle aralığının dışında.",
       "SPINDLE_RPM_RANGE": "Devir spindle aralığının dışında.",
@@ -1039,6 +1041,7 @@
       "LEAD_SHORTENED": "Giriş/çıkış hareketi kısaltıldı.",
       "LEAD_REMOVED": "Giriş/çıkış hareketi yer olmadığı için kaldırıldı.",
       "SMALL_PART_AUTO_TABS": "Küçük parçaya otomatik köprü eklendi.",
+      "SMALL_PART_SKIN": "Küçük parçanın altında ince tabaka bırakıldı; plakanın sonunda temizleme pasosuyla kesilir.",
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
       "TABS_REDUCED": "Köprü sayısı azaltıldı.",
       "TABS_NOT_PLACED": "Köprüler yerleştirilemedi.",
@@ -1294,6 +1297,11 @@
       "unverifiedParams": "{material} {thickness} mm kesim ayarı başlangıç değerleriyle kaydedildi ve doğrulanmadı. Bu haliyle G-code üretilemez: değerleri makinenizde doğrulayıp onaylayın.",
       "verifyParams": "Kesim ayarını doğrula",
       "paramsOk": "Kesim ayarı: T{tool} takım, {feed} besleme, {rpm}, {step} paso.",
+      "skin": {
+        "label": "Son pasoda ince tabaka bırak",
+        "hint": "Küçük parçalar köprü yerine altta ince bir tabakayla tutulur; tabaka plakanın sonunda temizleme pasosuyla kesilir.",
+        "thickness": "Tabaka kalınlığı"
+      },
       "units": {
         "mm": "mm",
         "feed": "mm/dk",
@@ -1916,9 +1924,17 @@
       "pickHint": "Tuvalde bir kenarın ortasına ya da bir köşeye tıklayın.",
       "operation": {
         "outer": "Dış kontur",
-        "outerCut": "Dıştan kesim",
         "inners": "İç kontur",
-        "holes": "Delik"
+        "holes": "Delik",
+        "lineN": "Çizgi {n}",
+        "depth": "Derinlik",
+        "depthError": "Derinlik malzeme kalınlığından az olmalı.",
+        "kinds": {
+          "outside": "Dıştan kesim",
+          "inside": "İçten kesim",
+          "online": "Çizgi üzerinden",
+          "none": "Kesilmez"
+        }
       },
       "convert": "Serbest şekle dönüştür",
       "convertHint": "Dikdörtgen çizgi ve yaylara çevrilir; en, boy ve yarıçap alanları kalkar.",
@@ -2013,6 +2029,7 @@
         "include": "Şablona girecekler",
         "holeItem": "Delik {n} · Ø {d} mm",
         "innerItem": "İç kontur {n}",
+        "lineItem": "Çizgi {n}",
         "saved": "\"{name}\" şablonu kaydedildi.",
         "saveError": "Şablon kaydedilemedi.",
         "nothing": "En az bir delik veya iç kontur seçin.",
@@ -2174,5 +2191,91 @@
       "black": "Siyah",
       "clear": "Şeffaf"
     }
+  },
+  "dxfImport": {
+    "open": "DXF içe aktar",
+    "openHint": "Çizim programından kaydedilmiş bir DXF dosyasını parçalara çevirir",
+    "title": "DXF içe aktar",
+    "description": "Dosyayı seçin; önizleme ve rapordan sonra parçalar tek adımda eklenir. Sonra her biri çizim ekranında düzenlenebilir.",
+    "choose": "Dosya seç",
+    "dropHint": "veya .dxf dosyasını buraya bırakın (en fazla 10 MB)",
+    "fileLabel": "DXF dosyası",
+    "reading": "Dosya okunuyor…",
+    "problems": {
+      "dwg": "DWG dosyaları açılamıyor. Dosyayı çizim programınızda \"Farklı kaydet → DXF\" ile DXF olarak kaydedin ve onu seçin.",
+      "binary": "Bu DXF ikili (binary) biçimde. Çizim programınızda ASCII DXF olarak kaydedin.",
+      "type": "Yalnızca .dxf dosyaları içe aktarılabilir.",
+      "size": "Dosya çok büyük (en fazla 10 MB).",
+      "empty": "Dosyada kesilebilecek çizgi, yay veya daire yok.",
+      "parse": "Dosya okunamadı. Geçerli bir DXF olduğundan emin olun."
+    },
+    "preview": "Önizleme",
+    "previewLabel": "{file} önizlemesi: {parts} parça",
+    "legend": {
+      "part": "Parça",
+      "open": "Kapalı değil",
+      "pending": "Henüz desteklenmiyor"
+    },
+    "report": {
+      "title": "Rapor",
+      "parts": "Parça",
+      "inners": "İç kontur / delik",
+      "supported": "Okunan nesne",
+      "converted": "Dönüştürülen eğri (spline, elips)",
+      "ignored": "Yok sayılan (yazı, ölçü, tarama)",
+      "skipped": "Atlanan (iç içe blok, 3B, bozuk)",
+      "duplicates": "Üst üste binen kopya (atıldı)",
+      "open": "Kapanmayan çizgi (eklenmez)",
+      "pending": "Cep / çizgi üzerinden (yakında, eklenmez)",
+      "orphans": "Parça dışında kalan iç kontur (eklenmez)"
+    },
+    "openWarning": "{count} çizgi kapalı bir şekil oluşturmuyor; bunlar eklenmez. Uçlar 0,05 mm içinde birleştirilir.",
+    "unit": {
+      "title": "Birim",
+      "question": "Çizimin birimi belirsiz. Hangi birimle çizildi?",
+      "reasons": {
+        "missing": "Dosyada birim bilgisi yok.",
+        "unitless": "Dosyada birim \"birimsiz\" olarak kayıtlı.",
+        "unknown": "Dosyadaki birim tanınmıyor.",
+        "size": "Çizim {size} çıkıyor; birim yanlış olabilir."
+      },
+      "label": "Çizim birimi",
+      "placeholder": "Birim seçin",
+      "suggested": "önerilen",
+      "fromFile": "{unit}, dosyadan okundu",
+      "names": {
+        "mm": "Milimetre (mm)",
+        "cm": "Santimetre (cm)",
+        "dm": "Desimetre (dm)",
+        "m": "Metre (m)",
+        "in": "İnç (in)",
+        "ft": "Fit (ft)",
+        "yd": "Yarda (yd)",
+        "mil": "Mil (0,001 in)",
+        "um": "Mikrometre (µm)"
+      }
+    },
+    "layers": {
+      "title": "Katman eşleme",
+      "hint": "Her katmanın ne olacağını seçin. Seçim şirket ayarı olarak hatırlanır.",
+      "layer": "Katman",
+      "count": "Nesne",
+      "op": "İşlem",
+      "ops": {
+        "auto": "Otomatik (dış = parça, iç = iç kontur)",
+        "outside": "Dış kesim (parça)",
+        "inside": "İç kesim",
+        "drill": "Delik (daireler delik olur)",
+        "pocket": "Cep",
+        "online": "Çizgi üzerinden",
+        "ignore": "Alma"
+      }
+    },
+    "confirm": "{count} parçayı ekle",
+    "confirmNone": "Eklenecek parça yok",
+    "cancel": "Vazgeç",
+    "back": "Başka dosya",
+    "added": "{file}: {count} parça eklendi",
+    "failed": "Parçalar eklenemedi."
   }
 }

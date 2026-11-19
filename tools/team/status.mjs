@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Team status CLI. Writes .team/state.json, which the dashboard (pnpm team) reads.
-//   node tools/team/status.mjs <po|dev|dev2|dev3|tester|fable> <state> "<task>" "<message>"
+//   node tools/team/status.mjs <po|dev|dev2|tester|devops|fable> <state> "<task>" "<message>"
+//   node tools/team/status.mjs mode <on|off>   (D-054 paralellik: on = PO, Dev 1, Dev 2, Tester, DevOps, CTO; off = PO, Dev 1, Tester)
 //   node tools/team/status.mjs task <Txxx> <todo|doing|review|done|blocked> ["title"] [owner]
 //   node tools/team/status.mjs milestone "<M0 — Temel>"
 //   node tools/team/status.mjs limit on "<19:40>" | limit off
@@ -8,7 +9,7 @@
 //   node tools/team/status.mjs ask "<question>" ["option" ...]  |  answered <Qxxx> "<answer>"
 //   node tools/team/status.mjs alert "<message>" | alert off   ("PC'ye bak" popup)
 //   node tools/team/status.mjs call   (owner wrote to the PO: desk phone rings on the dashboard, hangs up 10 s after the last call; silent on any error)
-//   node tools/team/status.mjs role <dev2|dev3> <dev|tester|cto> ["why"]   (D-052: role of a flexible seat, shown on the dashboard)
+//   (D-054 retired the flexible seats: `role` and `dev3` are accepted from old callers and ignored; every write drops them from state)
 //   node tools/team/status.mjs print
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -20,8 +21,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 let root = join(here, '..', '..');
 try { root = dirname(execSync('git rev-parse --path-format=absolute --git-common-dir', { cwd: here, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()); } catch {}
 const file = join(root, '.team', 'state.json');
-// fable = visiting design reviewer, dev2/dev3 = optional extra developers (dev3 uses the CTO slot when no review runs); both shown in the office only while active
-const AGENTS = ['po', 'dev', 'dev2', 'dev3', 'tester', 'fable'];
+// D-054 fixed team: fable = CTO (reviews every 2 batches), devops = integration to main
+const AGENTS = ['po', 'dev', 'dev2', 'tester', 'devops', 'fable'];
+const RETIRED = ['dev3']; // D-052 flexible seat; old callers still send it
 const STATES = ['idle', 'planning', 'coding', 'testing', 'reviewing', 'blocked', 'done'];
 const TASK_STATES = ['todo', 'doing', 'review', 'done', 'blocked'];
 
@@ -34,7 +36,7 @@ let s;
 try { s = JSON.parse(readFileSync(file, 'utf8')); } catch { s = empty(); }
 
 const now = new Date().toISOString();
-const [cmd, ...rest] = process.argv.slice(2);
+let [cmd, ...rest] = process.argv.slice(2);
 const die = (m) => { console.error(m); process.exit(1); };
 if (cmd === 'call') { // hook-safe: sets state.call.at, never fails loudly
   try {
@@ -46,7 +48,13 @@ if (cmd === 'call') { // hook-safe: sets state.call.at, never fails loudly
   process.exit(0);
 }
 
-if (AGENTS.includes(cmd)) {
+if (RETIRED.includes(cmd) || cmd === 'role') {
+  console.log(`ignored: "${cmd}" was retired by D-054 (fixed team)`);
+  cmd = 'prune';
+}
+if (cmd === 'prune') {
+  // nothing else: the write below drops legacy keys
+} else if (AGENTS.includes(cmd)) {
   const [state, task = '', message = ''] = rest;
   if (!STATES.includes(state)) die(`state must be one of: ${STATES.join(', ')}`);
   s.agents = s.agents || {};
@@ -97,26 +105,25 @@ if (AGENTS.includes(cmd)) {
     s.log.unshift({ t: now, who: 'po', state: 'blocked', task: '', msg: "PC'ye bak: " + msg.slice(0, 80) });
     s.log = s.log.slice(0, 60);
   }
-} else if (cmd === 'role') {
-  // role <dev2|dev3> <dev|tester|cto> ["why"]  -> flexible seat role (D-052)
-  const [key, role, why = ''] = rest;
-  const ROLES = ['dev', 'tester', 'cto'];
-  if (!['dev2', 'dev3'].includes(key) || !ROLES.includes(role)) die('usage: role <dev2|dev3> <dev|tester|cto> ["why"]');
-  // kept in a top-level "seats" map: older copies of this script (in agents' worktrees) rewrite s.agents[key] but keep unknown top-level keys
-  s.seats = s.seats || {};
-  s.seats[key] = { role, why, since: now };
-  const label = { dev: 'geliştirici', tester: 'tester', cto: 'CTO' }[role];
-  s.log.unshift({ t: now, who: 'po', state: 'planning', task: key, msg: `Esnek koltuk ${key} → ${label}${why ? ': ' + why : ''}` });
+} else if (cmd === 'mode') {
+  // mode <on|off>  -> paralellik (D-054); the dashboard shows the roster of this mode
+  const [m] = rest;
+  if (!['on', 'off'].includes(m)) die('usage: mode <on|off>');
+  s.mode = m;
+  s.log.unshift({ t: now, who: 'po', state: 'planning', task: '', msg: `Paralellik ${m === 'on' ? 'açık' : 'kapalı'}` });
   s.log = s.log.slice(0, 60);
 } else if (cmd === 'milestone') {
   s.milestone = rest[0] || s.milestone;
 } else if (cmd === 'print') {
   process.stdout.write(JSON.stringify(s, null, 2) + '\n'); process.exit(0);
 } else {
-  die('usage: status.mjs <po|dev|dev2|dev3|tester|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | role <dev2|dev3> <dev|tester|cto> ["why"] | milestone "<name>" | call | print');
+  die('usage: status.mjs <po|dev|dev2|tester|devops|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | mode <on|off> | prune | milestone "<name>" | call | print');
 }
 
 s.updated = now;
+// D-054: drop legacy members and the flexible-seat map (older copies of this script may write them back; the dashboard ignores them)
+delete s.seats;
+for (const k of Object.keys(s.agents || {})) if (!AGENTS.includes(k)) delete s.agents[k];
 // merge the latest usage-limit snapshot written by the Claude Code status line
 try { s.limits = JSON.parse(readFileSync(join(root, '.team', 'limits.json'), 'utf8')); } catch {}
 mkdirSync(dirname(file), { recursive: true });

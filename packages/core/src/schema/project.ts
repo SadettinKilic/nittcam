@@ -252,6 +252,44 @@ export const dimensionLineSchema = z.strictObject({
   b: z.strictObject({ x: coord, y: coord }),
 });
 
+// ---------------------------------------------------------------------------
+// Per-contour operations (T142, spec §4.6, §6.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * What the machine does on one contour (T142). `outside`: through cut with the tool outside the
+ * line (the default of an outline). `inside`: through cut with the tool inside the line (the
+ * default of an inner contour). `online`: the tool centre follows the line at `depth` mm
+ * (engraving; open lines allowed; never a through cut: depth < thickness). `none`: not cut.
+ * Allowed kinds per contour: outline outside | online | none; inner inside | online | none;
+ * open line online | none (`allowedOperations`). DXF layer mapping (T145) writes this same value.
+ */
+export const contourOperationSchema = z.discriminatedUnion(
+  'kind',
+  [
+    z.strictObject({ kind: z.literal('outside') }),
+    z.strictObject({ kind: z.literal('inside') }),
+    z.strictObject({ kind: z.literal('none') }),
+    z.strictObject({ kind: z.literal('online'), depth: positiveMm }),
+  ],
+  { error: 'operation must be "outside", "inside", "online" (with depth) or "none"' },
+);
+
+/** An open polyline in the part frame (T142); `bulge` on the last vertex is ignored. */
+export const openLineSchema = z.strictObject({
+  vertices: z.array(vertexSchema).min(2, { error: 'a line needs at least 2 vertices' }),
+  op: contourOperationSchema,
+});
+
+/**
+ * Operations that differ from the defaults (T142). Absent = outline `outside`, every inner
+ * `inside`. `inners[k]` belongs to `inners[k]` of the part; `null` or missing = the default.
+ */
+export const partOperationsSchema = z.strictObject({
+  outline: contourOperationSchema.optional(),
+  inners: z.array(contourOperationSchema.nullable()).optional(),
+});
+
 /** A part's grain (D-034); `angle` is in the part's own frame, [0, 180). */
 export const partGrainSchema = z.strictObject({
   mode: z.enum(['free', 'fixed'], { error: 'grain mode must be "free" or "fixed"' }),
@@ -285,6 +323,10 @@ const partBase = {
   /** Inner contours (windows, cut-outs), stored CW (spec §6.1). */
   inners: z.array(contourSchema),
   holes: z.array(holeSchema),
+  /** Per-contour operations (T142); absent = the defaults (see `partOperationsSchema`). */
+  ops: partOperationsSchema.optional(),
+  /** Open lines (T142), e.g. engraving from a DXF layer (T145); absent = none. */
+  lines: z.array(openLineSchema).max(500, { error: 'at most 500 lines' }).optional(),
   edgeBand: edgeBandSchema,
   templates: z.array(templateRefSchema),
   /** Linear dimensions in the part frame (T133); annotations only, never cut. Absent = none. */
@@ -403,6 +445,16 @@ export const cuttingSchema = z.strictObject({
     width: z.number({ error: 'must be a number' }).positive({ error: 'must be > 0' }).optional(),
     height: z.number({ error: 'must be a number' }).positive({ error: 'must be > 0' }).optional(),
   }),
+  /**
+   * Thin skin (T143, §6.3 "son pasoda ince tabaka bırak"): present = small parts are held by a
+   * skin of `thickness` mm instead of tabs, removed by a cleanup pass at the end of each sheet.
+   * Absent = tabs (the default). Tabs and skin are alternatives per project.
+   */
+  skin: z
+    .strictObject({
+      thickness: z.number({ error: 'must be a number' }).positive({ error: 'must be > 0' }),
+    })
+    .optional(),
   leadIn: z.enum(['arc', 'line'], { error: 'leadIn must be "arc" or "line"' }),
   direction: z.enum(['climb', 'conventional'], {
     error: 'direction must be "climb" or "conventional"',
@@ -523,6 +575,10 @@ export type TemplatePlacement = z.infer<typeof templatePlacementSchema>;
 export type TemplateEdge = z.infer<typeof templateEdgeSchema>;
 export type TemplateContourOp = z.infer<typeof templateContourOpSchema>;
 export type DimensionLine = z.infer<typeof dimensionLineSchema>;
+export type ContourOperation = z.infer<typeof contourOperationSchema>;
+export type ContourOperationKind = ContourOperation['kind'];
+export type OpenLine = z.infer<typeof openLineSchema>;
+export type PartOperations = z.infer<typeof partOperationsSchema>;
 export type RectParams = z.infer<typeof rectParamsSchema>;
 export type RectPart = z.infer<typeof rectPartSchema>;
 export type FreeformPart = z.infer<typeof freeformPartSchema>;
