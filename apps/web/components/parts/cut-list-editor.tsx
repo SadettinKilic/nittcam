@@ -2,6 +2,7 @@
 
 import {
   cutListToCsv,
+  partBoxSize,
   type CutListPartInput,
   type Part,
   type Project,
@@ -225,7 +226,20 @@ function SizeCell({
   field: 'w' | 'h';
 }) {
   const { t } = ctx;
-  if (part.kind !== 'rect') return <span className="block px-2 text-right text-fg-muted">–</span>;
+  if (part.kind !== 'rect') {
+    // Freeform part (T135): the drawing is the source; W/H are its bounding box, read-only here.
+    const value = formatInput(partBoxSize(part)[field]);
+    return (
+      <span
+        className="flex h-9 flex-col items-end justify-center px-2 text-right leading-tight text-fg-muted"
+        title={t.freeformSize}
+        data-testid={`cell-${field}-freeform`}
+      >
+        {field === 'w' ? <span className="text-[10px] text-fg-subtle">{t.freeform}</span> : null}
+        <span className="font-mono text-sm tabular-nums">{value}</span>
+      </span>
+    );
+  }
   return (
     <TextCell
       row={row}
@@ -611,7 +625,7 @@ function lightText(t: Text, part: Part, index: number, col: string): string {
       return part.name;
     case 'w':
     case 'h':
-      return rect ? formatInput(part.params[col]) : '–';
+      return rect ? formatInput(part.params[col]) : formatInput(partBoxSize(part)[col]);
     case 'qty':
       return String(part.qty);
     case 'grain':
@@ -1137,6 +1151,8 @@ export function CutListEditor({
   onUndo,
   issuesPanel,
   issuesKey,
+  initialSelection,
+  onSelectionChange,
 }: {
   t: Text;
   project: Project;
@@ -1151,6 +1167,10 @@ export function CutListEditor({
   issuesPanel?: ReactNode;
   /** Project id: a closed Uyarılar panel is remembered per project (T256). */
   issuesKey?: string | undefined;
+  /** Selected part ids when the grid opens (shared with the drawing board, T135). */
+  initialSelection?: readonly string[];
+  /** Reports every selection change (Liste ↔ Çizim keep one selection, T135). */
+  onSelectionChange?: (ids: string[]) => void;
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -1177,7 +1197,9 @@ export function CutListEditor({
     writeDismissed(issuesKey, issueCodes);
   }
   const issuesContent = useRef<HTMLDivElement>(null);
-  const [selection, setSelection] = useState<ReadonlySet<string>>(() => new Set());
+  const [selection, setSelection] = useState<ReadonlySet<string>>(
+    () => new Set(initialSelection ?? []),
+  );
   const anchor = useRef<string | null>(null);
   const focusNext = useRef<string | null>(null);
   const pasteButton = useRef<HTMLButtonElement>(null);
@@ -1242,6 +1264,9 @@ export function CutListEditor({
     return parts.filter((p) => selection.has(p.id) && have.has(p.id)).map((p) => p.id);
   }, [parts, selection]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const reportSelection = useRef(onSelectionChange);
+  reportSelection.current = onSelectionChange;
+  useEffect(() => reportSelection.current?.(selected), [selected]);
 
   // The cell a keyboard move is still heading for (its row is mounting). A key that arrives
   // meanwhile moves on from there, not from the cell that still has focus, so 40 fast ArrowDowns

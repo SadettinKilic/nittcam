@@ -145,3 +145,52 @@ test.describe('T134 inner contours', () => {
     await expect(page.getByTestId('inner-prompt')).toHaveCount(0);
   });
 });
+
+test.describe('T135 cut list ↔ editor sync', () => {
+  test('one selection for Liste and Çizim; search in the board list', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openNewProject(page, 'parcalar');
+    await paste(page, KITCHEN, 5);
+    // Select row 2 in the grid → the board shows it selected.
+    await page.getByTestId('row-select-2').click();
+    await page.getByTestId('parts-view-drawing').click();
+    const list = page.getByTestId('editor-part-list').getByRole('button');
+    await expect(list).toHaveCount(5);
+    await expect(list.nth(1)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('editor-properties')).toBeVisible();
+    // Select row 4 on the board → the grid shows row 4 selected.
+    await list.nth(3).click();
+    await page.getByTestId('parts-view-list').click();
+    await expect(page.getByTestId('row-select-4')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByTestId('row-select-2')).toHaveAttribute('aria-checked', 'false');
+    // Search filters the board list only; row numbers stay.
+    await page.getByTestId('parts-view-drawing').click();
+    await page.getByTestId('editor-part-search').fill('kapak');
+    await expect(list).toHaveCount(1);
+    await expect(list.first()).toContainText('Kapak');
+    await expect(list.first()).toContainText('3');
+    await page.getByTestId('editor-part-search').fill('zzzz-yok');
+    await expect(page.getByTestId('editor-part-search-empty')).toBeVisible();
+  });
+
+  test('a freeform part shows "Serbest" with read-only bounding-box W/H in the grid', async ({
+    page,
+  }) => {
+    const canvas = await openBoard(page);
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('no canvas');
+    // A circle on empty board (bottom right) → freeform part.
+    await page.keyboard.press('c');
+    await page.keyboard.down('Alt');
+    await page.mouse.click(box.x + box.width - 150, box.y + box.height - 120);
+    await page.mouse.click(box.x + box.width - 110, box.y + box.height - 120);
+    await page.keyboard.up('Alt');
+    await expect(page.getByTestId('editor-part-list').getByRole('button')).toHaveCount(6);
+    await page.getByTestId('parts-view-list').click();
+    const w = page.getByTestId('cell-w-freeform');
+    await expect(w).toHaveCount(1);
+    await expect(w).toContainText(tr.cutList.freeform);
+    await expect(page.getByTestId('cell-h-freeform')).toHaveText(/\d/);
+    await expect(w.locator('input')).toHaveCount(0);
+  });
+});

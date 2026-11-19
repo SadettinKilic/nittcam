@@ -1,11 +1,18 @@
 'use client';
 
 import { partBoxSize, type Project } from '@nittcam/core';
-import { Measure, cn } from '@nittcam/ui';
+import { Input, Measure, cn } from '@nittcam/ui';
+import { Search } from 'lucide-react';
+import { useState } from 'react';
 import type { Messages } from '../../lib/messages';
+import { matchesPart } from '../../lib/editor/part-search';
 import { focusRing } from '../page/page-header';
 
-/** Left panel of the drawing board: the parts, click to select (Shift adds). Compact density. */
+/**
+ * Left panel of the drawing board (T124, T135): the parts, click to select (Shift adds), with a
+ * search over name, note and group. The search only filters the list (numbers stay the cut list
+ * row numbers); the selection is the one the cut list shares. Compact density.
+ */
 export function BoardPartList({
   t,
   project,
@@ -17,6 +24,8 @@ export function BoardPartList({
   selection: ReadonlySet<string>;
   onSelect: (id: string, additive: boolean) => void;
 }) {
+  const [query, setQuery] = useState('');
+  const rows = project.parts.map((p, i) => ({ p, i })).filter(({ p }) => matchesPart(p, query));
   return (
     <section data-density="compact" className="flex flex-col gap-2 p-panel" aria-label={t.title}>
       {/* ≥ 1024 px the workspace panel header shows the title + count (T241). */}
@@ -26,8 +35,37 @@ export function BoardPartList({
           {t.count.replace('{count}', String(project.parts.length))}
         </span>
       </div>
+      {project.parts.length > 0 ? (
+        <div className="relative">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-fg-subtle"
+          />
+          <Input
+            type="search"
+            inputSize="sm"
+            aria-label={t.search}
+            placeholder={t.searchPlaceholder}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && query !== '') {
+                e.stopPropagation();
+                setQuery('');
+              }
+            }}
+            className="pl-8"
+            data-testid="editor-part-search"
+          />
+        </div>
+      ) : null}
+      {rows.length === 0 && query !== '' ? (
+        <p className="px-2 text-sm text-fg-muted" data-testid="editor-part-search-empty">
+          {t.noMatch}
+        </p>
+      ) : null}
       <ul className="flex flex-col gap-0.5" data-testid="editor-part-list">
-        {project.parts.map((p, i) => {
+        {rows.map(({ p, i }) => {
           const size = partBoxSize(p);
           const on = selection.has(p.id);
           const name = p.name.trim() || t.unnamed;

@@ -168,6 +168,8 @@ export function DrawingBoard({
   onToList,
   viewSwitch,
   toolDiameter,
+  initialSelection,
+  onSelectionChange,
 }: {
   t: T;
   project: Project;
@@ -177,8 +179,18 @@ export function DrawingBoard({
   toolDiameter?: number;
   /** Liste / Çizim switch placed in the canvas toolbar band (below 1024 px, T240). */
   viewSwitch?: ReactNode;
+  /** Selected part ids when the board opens (shared with the cut list, T135). */
+  initialSelection?: readonly string[];
+  /** Reports every selection change (Liste ↔ Çizim keep one selection, T135). */
+  onSelectionChange?: (ids: string[]) => void;
 }) {
-  const [state, dispatch] = useReducer(editorReducer, initialEditorState);
+  const [state, dispatch] = useReducer(editorReducer, initialEditorState, (s) => {
+    const have = new Set(project.parts.map((p) => p.id));
+    return { ...s, selection: (initialSelection ?? []).filter((id) => have.has(id)) };
+  });
+  const reportSelection = useRef(onSelectionChange);
+  reportSelection.current = onSelectionChange;
+  useEffect(() => reportSelection.current?.(state.selection), [state.selection]);
   const [size, setSize] = useState({ w: 0, h: 0 });
   // Tool rail's rendered size: the phone mini-toolbar is kept clear of it (B10a).
   const [railEl, setRailEl] = useState<HTMLDivElement | null>(null);

@@ -481,6 +481,8 @@
     },
     "cellLabel": "Satır {n}: {column}",
     "edgeLabel": "Satır {n}: {edge} kenar bandı (mm)",
+    "freeform": "Serbest",
+    "freeformSize": "Serbest şekil: en ve boy çizimden gelir (sınır kutusu); Çizim görünümünde düzenlenir.",
     "grainCell": {
       "edit": "Satır {n}: damar açısı {angle}",
       "free": "Serbest",
@@ -1785,7 +1787,10 @@
       "title": "Parçalar",
       "count": "{count} parça",
       "qty": "×{qty}",
-      "unnamed": "Adsız parça"
+      "unnamed": "Adsız parça",
+      "search": "Parça ara",
+      "searchPlaceholder": "Ara: ad, not, grup",
+      "noMatch": "Eşleşen parça yok."
     },
     "inspector": {
       "title": "Özellikler",
