@@ -18,6 +18,13 @@ export type ShortcutId =
   | 'boardCircle'
   | 'boardLine'
   | 'boardArc'
+  | 'boardHole'
+  | 'boardDim'
+  | 'boardTypeLength'
+  | 'boardCancel'
+  | 'boardPanHold'
+  | 'boardZoomIn'
+  | 'boardZoomOut'
   | 'boardFit'
   | 'boardCopy'
   | 'boardPaste'
@@ -62,6 +69,14 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'boardCircle', keys: 'c', group: 'board', page: true },
   { id: 'boardLine', keys: 'l', group: 'board', page: true },
   { id: 'boardArc', keys: 'a', group: 'board', page: true },
+  { id: 'boardHole', keys: 'o', group: 'board', page: true },
+  { id: 'boardDim', keys: 'd', group: 'board', page: true },
+  // T136: drawing keys of the editor tools, so the shortcut sheet covers every board key.
+  { id: 'boardTypeLength', keys: 'enter', group: 'board', page: true },
+  { id: 'boardCancel', keys: 'escape', group: 'board', page: true },
+  { id: 'boardPanHold', keys: 'space', group: 'board', page: true },
+  { id: 'boardZoomIn', keys: 'plus', group: 'board', page: true },
+  { id: 'boardZoomOut', keys: '-', group: 'board', page: true },
   { id: 'boardFit', keys: 'f', group: 'board', page: true },
   { id: 'boardCopy', keys: 'mod+c', group: 'board', page: true },
   { id: 'boardPaste', keys: 'mod+v', group: 'board', page: true },
@@ -79,8 +94,34 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   'board',
 ];
 
-/** Event that opens the shortcuts dialog from a page (the board status bar "?", T242). */
+/**
+ * Event that opens the shortcuts dialog from a page (the board status bar "?", T242). A
+ * `CustomEvent` whose `detail` is a group opens the sheet of that group only (T136).
+ */
 export const OPEN_SHORTCUTS_EVENT = 'nittcam:shortcuts';
+
+/** Opens the shortcut sheet; `group` limits it to one group (the editor's sheet, T136). */
+export function openShortcuts(group?: ShortcutGroup): void {
+  window.dispatchEvent(new CustomEvent(OPEN_SHORTCUTS_EVENT, { detail: group ?? null }));
+}
+
+/**
+ * The group a mounted page owns (the drawing board → 'board', T136): "?" there opens that
+ * group's sheet first. Returns the release function for the effect cleanup.
+ */
+let pageGroup: { group: ShortcutGroup } | null = null;
+export function claimPageGroup(group: ShortcutGroup): () => void {
+  const own = { group };
+  pageGroup = own;
+  return () => {
+    if (pageGroup === own) pageGroup = null;
+  };
+}
+
+/** The group of the open page, if any. */
+export function currentPageGroup(): ShortcutGroup | null {
+  return pageGroup?.group ?? null;
+}
 
 /** Display text of a shortcut for tooltips ("Shift+X", "Ctrl+D", "⌘D"). */
 export function shortcutText(id: ShortcutId, isMac: boolean): string {
@@ -208,8 +249,12 @@ export function isTypingTarget(target: TargetLike | null | undefined): boolean {
 const KEY_NAMES: Record<string, string> = {
   arrowup: '↑',
   arrowdown: '↓',
-  enter: '↵',
+  enter: 'Enter',
   delete: 'Delete',
+  escape: 'Esc',
+  space: 'Space',
+  // "+" cannot be written in a key step (it joins modifiers), so the registry names it.
+  plus: '+',
 };
 
 /** Display keys per step, e.g. "mod+k" → [["Ctrl", "K"]] or [["⌘", "K"]]; "g p" → [["G"], ["P"]]. */

@@ -19,6 +19,14 @@ export default defineConfig({
     baseURL,
     locale: 'tr-TR',
     trace: 'on-first-retry',
+    // T136: the editor's first-use tour is marked as seen, so it never covers the board in other
+    // specs; the tour's own spec starts from empty storage (`test.use({ storageState: ... })`).
+    storageState: {
+      cookies: [],
+      origins: [
+        { origin: baseURL, localStorage: [{ name: 'nittcam-editor-tour', value: 'done' }] },
+      ],
+    },
   },
   // Visual baselines (T102, D-032): compared only on Linux (CI) because font rendering differs
   // on Windows/macOS. T199a: in CI a missing baseline FAILS (updateSnapshots 'none') instead of

@@ -192,8 +192,19 @@
       "boardDelete": "Sil",
       "boardMirrorH": "Yatay aynala",
       "boardMirrorV": "Dikey aynala",
-      "boardRotate": "90° döndür"
-    }
+      "boardRotate": "90° döndür",
+      "boardHole": "Delik aracı",
+      "boardDim": "Ölçü aracı",
+      "boardTypeLength": "Çizerken: yazılan uzunluğu uygula",
+      "boardCancel": "Çizimi bırak / seçimi temizle",
+      "boardPanHold": "Basılı tut: kaydır",
+      "boardZoomIn": "Yakınlaştır",
+      "boardZoomOut": "Uzaklaştır"
+    },
+    "boardTitle": "Çizim tahtası kısayolları",
+    "boardDescription": "Çizerken sayı yazıp Enter'a basın; Esc vazgeçer. Kısayollar metin kutusunda çalışmaz.",
+    "showAll": "Tüm kısayollar",
+    "startTour": "Tanıtım turunu başlat"
   },
   "feedback": {
     "loading": "Sayfa yükleniyor…",
@@ -592,6 +603,7 @@
         "REQUIRED": "{field} boş.",
         "INVALID_NUMBER": "{field} sayı değil.",
         "NOT_POSITIVE": "{field} sıfırdan büyük olmalı.",
+        "TOO_SMALL": "{field} en az 0,001 mm olmalı.",
         "INVALID_QTY": "Adet 1 veya daha büyük tam sayı olmalı.",
         "INVALID_GRAIN": "Damar kilidi evet/hayır (1/0, x) olmalı.",
         "INVALID_EDGE_BAND": "{field}: bant kalınlığı mm cinsinden sayı olmalı (ör. 0,8). Bant yoksa boş bırakın, - veya yok yazın.",
@@ -1981,13 +1993,15 @@
         "circleStart": "Merkezi tıklayın",
         "circleEnd": "Yarıçap kadar uzağı tıklayın ya da R yazın",
         "lineStart": "Başlangıç noktasını tıklayın",
-        "lineNext": "Sonraki noktayı tıklayın ya da uzunluk yazın (Tab: açı)",
+        "lineNext": "Sonraki noktayı tıklayın ya da uzunluğu yazıp Enter'a basın (Tab: açı)",
         "lineClose": "Tıklayın: şekil kapanır ve parça olur",
         "arcStart": "Yayın başlangıcını tıklayın",
         "arcEnd": "Yayın bitiş noktasını tıklayın",
         "arcBend": "Yayın üstünde bir nokta tıklayın ya da R yazın",
         "open": "Kesilemez, kapalı değil: başlangıca bağlayın ya da Esc",
-        "bend": "Kavisi sürükleyin; R canlı gösterilir"
+        "bend": "Kavisi sürükleyin; R canlı gösterilir",
+        "select": "Bir parçaya tıklayın; bir çizgiye tıklayınca uzunluğu ve açısı sağ panelde açılır (Shift: çoklu seçim)",
+        "pan": "Sürükleyerek kaydırın; tekerlek yakınlaştırır (Esc: Seç aracı)"
       },
       "close": "Kapat",
       "open": "Kapalı değil",
@@ -1997,6 +2011,37 @@
       "bendHandle": "Kavis tutamağı"
     },
     "actionsBar": "Seçim işlemleri",
+    "tour": {
+      "label": "Çizim tahtası tanıtımı",
+      "progress": "{n} / {total}",
+      "skip": "Turu atla",
+      "back": "Geri",
+      "next": "İleri",
+      "done": "Bitir",
+      "keys": "Enter: ileri · Esc: turu atla",
+      "steps": {
+        "tools": {
+          "title": "Araçlar burada",
+          "body": "Dikdörtgen, çember, çizgi, yay, delik ve ölçü araçları. Harf kısayolları ipucunda yazar (R, C, L, A, O, D); V ile seçime dönersiniz."
+        },
+        "draw": {
+          "title": "Ölçüyle çizin",
+          "body": "Çizgi aracında ilk noktayı tıklayın, sonra uzunluğu yazıp Enter'a basın. Tab ile açıya geçersiniz; başlangıca tıklayınca şekil kapanır ve parça olur."
+        },
+        "edit": {
+          "title": "Sonra düzenleyin",
+          "body": "Bir parçayı ya da çizgisini seçin: uzunluk, açı, köşe yuvarlama ve yay yarıçapı sağdaki panelde açılır ve oradan değişir."
+        },
+        "status": {
+          "title": "Sıradaki adım altta",
+          "body": "Alttaki çubuk o anki aracın sıradaki adımını söyler. Yapışmayı buradan açıp kapatırsınız; Alt basılıyken geçici olarak kapanır."
+        },
+        "help": {
+          "title": "Kısayollar ve tur",
+          "body": "Tüm çizim kısayolları bu düğmede ya da ? tuşunda. Bu turu oradan yeniden başlatabilirsiniz."
+        }
+      }
+    },
     "holeHint": "Parçanın üstünde merkeze tıkla, çapı sürükleyerek büyüt, ikinci tıklamayla bitir.",
     "holeRefused": "Delik buraya eklenemedi: parçanın içinde kalmalı ve iç boşluklara değmemeli."
   },

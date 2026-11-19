@@ -451,6 +451,14 @@ function Player({
     [duration],
   );
 
+  // T268: refit only when the fit inputs change in value. An autosave or a machine refetch gives
+  // new `stock` / `machine` objects with the same numbers; refitting then threw away a zoom the
+  // user had just made (CI flake in t020 "zoom: + four times").
+  const fitKey = JSON.stringify([bounds, stock.height, insets]);
+  const fitArgs = useRef({ bounds, sheetHeight: stock.height, insets });
+  useEffect(() => {
+    fitArgs.current = { bounds, sheetHeight: stock.height, insets };
+  });
   useEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -461,13 +469,14 @@ function Player({
       const h = Math.floor(entries[0]?.contentRect.height ?? 0);
       if (w <= 0 || h <= 0 || (w === last.w && h === last.h)) return;
       last = { w, h };
+      const f = fitArgs.current;
       setColors((c) => c ?? readSimColors());
       setSize({ w, h });
-      setView(fitBounds(bounds, stock.height, w, h, insets));
+      setView(fitBounds(f.bounds, f.sheetHeight, w, h, f.insets));
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [bounds, stock.height, insets]);
+  }, [fitKey]);
   // A theme switch re-reads the token colours, so the canvas follows light/dark live (T110).
   useEffect(() => onThemeChange(() => setColors((c) => (c ? readSimColors() : c))), []);
 

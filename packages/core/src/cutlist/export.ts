@@ -22,16 +22,24 @@ export const CUT_LIST_CSV_HEADER = [
 /** UTF-8 byte order mark: Excel then reads the file as UTF-8 (Turkish letters). */
 const BOM = String.fromCharCode(0xfeff);
 
-/** A number with a decimal comma and no grouping (3 decimals at most, as stored). */
-function num(v: number): string {
-  return String(Math.round(v * 1000) / 1000).replace('.', ',');
+/**
+ * A number with a decimal comma and no grouping (3 decimals at most, as stored; T267). A value
+ * like `0,001` or `123,456` looks like a thousands group, and the import reads it as 1 or 123456
+ * when other cells (a note "1.5") make it pick the decimal dot. Such values get one trailing zero
+ * (`0,0010`): four decimals are never a thousands group, and a spreadsheet shows the same number.
+ */
+export function csvNumber(v: number): string {
+  const s = String(Math.round(v * 1000) / 1000);
+  const [int = '', frac] = s.split('.');
+  const groupLike = frac?.length === 3 && int.replace('-', '').length <= 3;
+  return (groupLike ? `${s}0` : s).replace('.', ',');
 }
 
 /**
  * Text that a spreadsheet would read as a formula (spec §8.6, CSV injection): it starts with
  * `=`, `+`, `-`, `@`, a tab or a CR, possibly after apostrophes already there. Such text gets
  * one leading `'`, which `parseCutList` strips again (`unescapeCsvText`). Only text cells pass
- * here; number cells are written by `num` and never escaped.
+ * here; number cells are written by `csvNumber` and never escaped.
  */
 const CSV_FORMULA_START = /^'*[=+\-@\t\r]/;
 
@@ -62,15 +70,15 @@ export function cutListToCsv(parts: readonly Part[]): CutListCsv {
     lines.push(
       [
         cell(p.name),
-        num(p.params.w),
-        num(p.params.h),
+        csvNumber(p.params.w),
+        csvNumber(p.params.h),
         String(p.qty),
         p.grain.mode === 'fixed' ? 'evet' : 'hayır',
-        num(p.grain.angle),
-        num(p.edgeBand.top),
-        num(p.edgeBand.bottom),
-        num(p.edgeBand.left),
-        num(p.edgeBand.right),
+        csvNumber(p.grain.angle),
+        csvNumber(p.edgeBand.top),
+        csvNumber(p.edgeBand.bottom),
+        csvNumber(p.edgeBand.left),
+        csvNumber(p.edgeBand.right),
         cell(p.note ?? ''),
       ].join(';'),
     );
