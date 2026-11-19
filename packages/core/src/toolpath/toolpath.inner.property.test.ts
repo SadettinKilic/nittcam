@@ -134,8 +134,9 @@ describe('inner contours in the toolpath (T134)', () => {
     expect(orientation(passLoop(outer, 0))).toBe('cw'); // climb outside the part
     expect(orientation(passLoop(inner, 0))).toBe('ccw'); // climb inside the opening
     expect(passOffBy(inner, placedHole(200, 100, hole, at))).toEqual([]);
-    // No lead: the tool goes down on the path, inside the opening.
-    expect(inner.segments.some((s) => s.role === 'leadIn' || s.role === 'leadOut')).toBe(false);
+    // T141: a lead-in inside the opening (waste side), no lead-out into the loose slug.
+    expect(inner.segments.some((s) => s.role === 'leadIn')).toBe(true);
+    expect(inner.segments.some((s) => s.role === 'leadOut')).toBe(false);
   });
 
   it('property: any rotation, size and opening; inner before outer; G-code generated', () => {

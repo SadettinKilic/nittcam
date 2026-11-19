@@ -7,7 +7,8 @@
  *   P + r·n − r·t, lead-out ends at P + r·n + r·t.
  * - line lead: a straight line at 45° to the contour, length r. Lead-in starts at
  *   P + r·(n − t)/√2, lead-out ends at P + r·(n + t)/√2.
- * Both stay on the waste side of an outer contour.
+ * Both stay on the waste side: outside an outer contour, and inside the opening of an inner
+ * contour (T141, `waste: 'inside'`: n points into the opening, the slug that falls out).
  */
 import { EPS } from '../geometry/constants';
 import { forEachSegment } from '../geometry/polyline';
@@ -27,6 +28,9 @@ export interface Leads {
   leadOut: PathSeg | null;
 }
 
+/** Which side of the tool-centre loop is waste: `outside` an outer contour, `inside` an opening. */
+export type WasteSide = 'outside' | 'inside';
+
 /** Lead segments of length/radius `len` at P (`len` ≤ 0 or type `none` → no leads). */
 export function leadSegments(
   p: Point,
@@ -35,10 +39,13 @@ export function leadSegments(
   travel: 'cw' | 'ccw',
   type: LeadType,
   len: number,
+  waste: WasteSide = 'outside',
 ): Leads {
   if (type === 'none' || len <= 0) return { leadIn: null, leadOut: null };
-  const s = travel === 'ccw' ? 1 : -1;
-  // Outward normal: right of travel for CCW (the part is on the left), left for CW.
+  const s = (travel === 'ccw') === (waste === 'outside') ? 1 : -1;
+  // Waste-side normal. Outer contour: right of travel for CCW (the part is on the left), left for
+  // CW. Opening (T141): the other side, into the opening; the arc then bends the other way too,
+  // so it stays tangent to the travel at P.
   const nIn = { x: s * tIn.y, y: -s * tIn.x };
   const nOut = { x: s * tOut.y, y: -s * tOut.x };
   if (type === 'arc') {
@@ -158,12 +165,22 @@ export function samplePath(s: PathSeg): Point[] {
 }
 
 /**
+ * Is a tool centre at p inside the opening `o` and at least `toolRadius` from its outline (EPS
+ * slack)? The cutter then only touches the slug, never the part around the opening (T141).
+ */
+export function insideClearOf(p: Point, o: Obstacle, toolRadius: number): boolean {
+  if (!insidePolygon(p, o.polygon)) return false;
+  return distanceToOutline(p, o.outline) >= toolRadius - EPS;
+}
+
+/**
  * True when the leads stay inside `bounds` (exact, arc-aware box) and clear of the parts.
  * Neighbours: the distance to an outline is 1-Lipschitz, so with samples at most h apart every
  * point between two samples is at least (sample distance − h/2) away; requiring
  * toolRadius + h/2 at the samples makes the check hold for the whole lead, not only the samples.
  * Own part: the lead ends on the contour at exactly the tool radius, so the margin cannot be
- * added there; the own part is checked at the samples (tool radius − EPS).
+ * added there; the own part is checked at the samples (tool radius − EPS). With `waste: 'inside'`
+ * `own` is the opening (T141): the lead must stay inside it, the same distance from its outline.
  */
 export function leadsClear(
   leads: Leads,
@@ -171,6 +188,7 @@ export function leadsClear(
   neighbours: readonly Obstacle[],
   toolRadius: number,
   bounds: BBox,
+  waste: WasteSide = 'outside',
 ): boolean {
   for (const seg of [leads.leadIn, leads.leadOut]) {
     if (!seg) continue;
@@ -184,7 +202,9 @@ export function leadsClear(
       return false;
     }
     for (const q of samplePath(seg)) {
-      if (!clearOf(q, own, toolRadius)) return false;
+      const ownClear =
+        waste === 'inside' ? insideClearOf(q, own, toolRadius) : clearOf(q, own, toolRadius);
+      if (!ownClear) return false;
       if (!neighbours.every((o) => clearOf(q, o, toolRadius + LEAD_SAMPLE_STEP / 2))) return false;
     }
   }
