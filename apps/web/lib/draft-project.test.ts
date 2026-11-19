@@ -36,7 +36,7 @@ if (!mdfSet) throw new Error('example profile has no set');
 
 describe('new project never defaults to an unverified set (T271)', () => {
   const base = defaultMachineProfile();
-  const first = base.materials[0]!;
+  const first = mdfSet;
   const other = { ...first, thickness: 16 };
   const mark = <T extends object>(m: T) => ({ ...m, unverified: true as const });
   it('skips an unverified first set for the first verified one', () => {
