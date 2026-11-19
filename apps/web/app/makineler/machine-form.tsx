@@ -167,9 +167,10 @@ export function MachineForm({
     if (startIndex === null) return;
     const raf = requestAnimationFrame(() => {
       document.getElementById('sec-materials')?.scrollIntoView({ block: 'start' });
-      document
-        .getElementById(fieldId(`materials[${startIndex}].feed`))
-        ?.focus({ preventScroll: true });
+      const feed = document.getElementById(fieldId(`materials[${startIndex}].feed`));
+      feed?.focus({ preventScroll: true });
+      // T265: the whole row (and its "starting values" note) in view, not only the section top.
+      feed?.closest('tr')?.scrollIntoView({ block: 'nearest' });
     });
     return () => cancelAnimationFrame(raf);
   }, [startIndex]);
@@ -798,6 +799,7 @@ export function MachineForm({
               error={e('materials')}
               keys={materialRows.keys}
               testId="materials-table"
+              dense
               onAdd={() => {
                 materialRows.add();
                 update((p) => void p.materials.push(newParamSet(p)));
@@ -809,24 +811,27 @@ export function MachineForm({
               renderRow={(i) => {
                 const m = profile.materials[i] as MaterialParams;
                 const path = (k: keyof MaterialParams) => `materials[${i}].${k}`;
-                // D-046: an edited row is the user's own; the "copied from" mark goes away.
+                // D-046 / T265: an edited row is the user's own; the "copied from" and
+                // "starting values" marks go away.
                 const set = (fn: (x: MaterialParams) => void) =>
                   update((p) => {
                     const x = p.materials[i] as MaterialParams;
                     fn(x);
                     delete x.copiedFrom;
+                    delete x.unverified;
                   });
+                // T265: the headers carry the units, so the cells stay narrow and the whole row
+                // (Paso, Takım no) fits without sideways scrolling at 1440.
                 const cell = (
                   k: 'thickness' | 'feed' | 'plungeFeed' | 'rpm' | 'stepDown' | 'tool',
                   label: string,
-                  unit?: string,
                 ) => (
                   <NumberField
                     key={k}
                     compact
+                    narrow
                     path={path(k)}
                     label={label}
-                    unit={unit}
                     value={m[k]}
                     error={e(path(k))}
                     onParseError={onParseError}
@@ -837,6 +842,7 @@ export function MachineForm({
                   <div key="m" className="flex min-w-0 flex-col gap-1">
                     <SelectField
                       compact
+                      narrow
                       path={path('material')}
                       label={f.material}
                       value={m.material}
@@ -858,12 +864,32 @@ export function MachineForm({
                           .replace('{thickness}', String(m.thickness).replace('.', ','))}
                       </p>
                     ) : null}
+                    {m.unverified ? (
+                      <div
+                        className="flex flex-col items-start gap-1 text-xs text-warning-text"
+                        data-testid="material-unverified-note"
+                      >
+                        <p className="flex items-start gap-1">
+                          <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                          {t.form.unverified}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          data-testid="material-unverified-confirm"
+                          onClick={() => set(() => undefined)}
+                        >
+                          {t.form.unverifiedConfirm}
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>,
-                  cell('thickness', f.thickness, u.mm),
-                  cell('feed', f.feed, u.feed),
-                  cell('plungeFeed', f.plungeFeed, u.feed),
-                  cell('rpm', f.rpm, u.rpm),
-                  cell('stepDown', f.stepDown, u.mm),
+                  cell('thickness', f.thickness),
+                  cell('feed', f.feed),
+                  cell('plungeFeed', f.plungeFeed),
+                  cell('rpm', f.rpm),
+                  cell('stepDown', f.stepDown),
                   cell('tool', f.materialTool),
                 ];
               }}
@@ -944,8 +970,11 @@ function RowTable(props: {
   onAdd: () => void;
   onRemove: (index: number) => void;
   renderRow: (index: number) => ReactNode[];
+  /** Narrow cells and wrapping headers (T265, materials table). */
+  dense?: boolean;
 }) {
   const { headers, addLabel, removeLabel, error, keys, testId, onAdd, onRemove, renderRow } = props;
+  const pad = props.dense ? 'px-2' : 'px-3';
   return (
     <div className="flex flex-col gap-3">
       <div className="relative max-w-full overflow-x-auto rounded-lg border border-border">
@@ -956,7 +985,7 @@ function RowTable(props: {
                 <th
                   key={h}
                   scope="col"
-                  className="px-3 py-2 text-left text-xs font-medium whitespace-nowrap text-fg-muted"
+                  className={`${pad} py-2 text-left align-bottom text-xs font-medium text-fg-muted ${props.dense ? '' : 'whitespace-nowrap'}`}
                 >
                   {h}
                 </th>
@@ -970,7 +999,7 @@ function RowTable(props: {
             {keys.map((key, i) => (
               <tr key={key} className="align-top">
                 {renderRow(i).map((cell, c) => (
-                  <td key={c} className="px-3 py-2">
+                  <td key={c} className={`${pad} py-2`}>
                     {cell}
                   </td>
                 ))}

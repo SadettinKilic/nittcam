@@ -28,6 +28,8 @@ interface FieldProps {
   help?: string | undefined;
   /** Table cells: the label is for screen readers only and there is no help line. */
   compact?: boolean;
+  /** Dense table cells (T265, materials table): a narrower minimum width. */
+  narrow?: boolean;
 }
 
 /** A table cell control: aria-label instead of a visible label, the error under it. */
@@ -63,7 +65,7 @@ export function NumberField(
     maxDecimals?: number;
   },
 ) {
-  const { path, label, error, help, compact, value, onChange, onParseError, unit } = props;
+  const { path, label, error, help, compact, narrow, value, onChange, onParseError, unit } = props;
   const control = (extra: { 'aria-describedby'?: string; 'aria-label'?: string }) => (
     <NumberInput
       {...extra}
@@ -75,7 +77,9 @@ export function NumberField(
       maxDecimals={props.maxDecimals ?? 3}
       invalid={!!error}
       inputSize={compact ? 'sm' : 'md'}
-      {...(compact ? { className: unit && unit.length > 2 ? 'min-w-36' : 'min-w-24' } : {})}
+      {...(compact
+        ? { className: narrow ? 'min-w-20' : unit && unit.length > 2 ? 'min-w-36' : 'min-w-24' }
+        : {})}
       onValueChange={(v) => {
         if (v !== null) onChange(v);
       }}
@@ -124,14 +128,14 @@ export function SelectField<T extends string>(
     onChange: (value: T) => void;
   },
 ) {
-  const { path, label, error, help, compact, value, options, onChange } = props;
+  const { path, label, error, help, compact, narrow, value, options, onChange } = props;
   const control = (extra: { 'aria-describedby'?: string; 'aria-label'?: string }) => (
     <Select value={value} onValueChange={(v) => onChange(v as T)} name={path}>
       <SelectTrigger
         {...extra}
         id={fieldId(path)}
         size={compact ? 'sm' : 'md'}
-        {...(compact ? { className: 'min-w-36' } : {})}
+        {...(compact ? { className: narrow ? 'min-w-32' : 'min-w-36' } : {})}
         aria-invalid={error ? true : undefined}
       >
         <SelectValue />

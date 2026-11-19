@@ -51,4 +51,9 @@ describe('notify', () => {
     });
     expect(calls[1]?.[2]).toEqual({ duration: 4000 });
   });
+
+  it('T266: a toast can show bottom-center, off the right-hand inspector', () => {
+    notify.success('Taşma açıldı', { position: 'bottom-center' });
+    expect(calls[0]?.[2]).toEqual({ duration: 4000, position: 'bottom-center' });
+  });
 });

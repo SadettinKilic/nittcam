@@ -234,6 +234,8 @@ export function useProjectSession({
     redo,
     rename,
     flush: () => queue.flush(),
+    /** Saves and waits until the project is on the server; its id or `null` (T264). */
+    settle: () => queue.settle(),
     /** Forget unsent changes (after a conflict was resolved by reloading or copying). */
     discard: () => queue.discard(),
   };

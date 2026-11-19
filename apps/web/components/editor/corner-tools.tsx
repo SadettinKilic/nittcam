@@ -36,6 +36,9 @@ import type { Messages } from '../../lib/messages';
 import { Callout } from '../wizard/panels';
 import type { Run } from './properties';
 
+/** T266: corner-tool toasts show beside the inspector, never on the "Köşe" group's fields. */
+const BESIDE_PANEL = { position: 'bottom-center' } as const;
+
 type T = Messages['editor']['inspector'];
 
 const mm = (v: number) => formatNumberTr(v, { maxDecimals: 2 });
@@ -79,11 +82,14 @@ export function TightCornerNotice({
           onClick={() => {
             const res = fixTightCorners(outline, toolRadius);
             if (!res?.ok) {
-              notify.error(res ? errorText(t, res.error) : t.errors.failed);
+              notify.error(res ? errorText(t, res.error) : t.errors.failed, BESIDE_PANEL);
               return;
             }
             if (run('filletCorners', { id: part.id, corners: fixable, r: toolRadius })) {
-              notify.success(fill(t.concave.fixed, { count: fixable.length, r: mm(toolRadius) }));
+              notify.success(
+                fill(t.concave.fixed, { count: fixable.length, r: mm(toolRadius) }),
+                BESIDE_PANEL,
+              );
             }
           }}
         >
@@ -150,7 +156,7 @@ export function CornerTools({
     }
     if (run('addDogbone', { id: part.id, corner: vertex, r: toolRadius, style })) {
       setNote(null);
-      notify.success(fill(t.dogbone.added, { r: mm(toolRadius) }));
+      notify.success(fill(t.dogbone.added, { r: mm(toolRadius) }), BESIDE_PANEL);
     } else setNote({ tone: 'danger', text: t.errors.failed });
   }
 
@@ -169,7 +175,7 @@ export function CornerTools({
           }}
           unit="mm"
           min={0}
-          className="w-36"
+          className="w-24"
           data-testid="prop-fillet-r"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && canFillet) {
