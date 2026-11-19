@@ -78,3 +78,70 @@ test.describe('T133 dimensions', () => {
     await expect(page.getByText(tr.editor.dim.noPart)).toBeVisible();
   });
 });
+
+test.describe('T134 inner contours', () => {
+  test('a rectangle drawn inside a part asks "iç kesim olarak ekle?" and becomes its cut-out', async ({
+    page,
+  }) => {
+    const canvas = await openBoard(page);
+    await page.getByTestId('editor-part-list').getByRole('button').first().click();
+    const p0 = await position(page);
+    const partsBefore = await page.getByTestId('editor-part-list').getByRole('button').count();
+    await page.keyboard.press('r');
+    const a = await screen(canvas, { x: p0.x + 150, y: p0.y + 200 });
+    const b = await screen(canvas, { x: p0.x + 400, y: p0.y + 500 });
+    // Alt = free points (no grid snap).
+    await page.keyboard.down('Alt');
+    await page.mouse.click(a.x, a.y);
+    await page.mouse.click(b.x, b.y);
+    await page.keyboard.up('Alt');
+    const prompt = page.getByTestId('inner-prompt');
+    await expect(prompt).toBeVisible();
+    await expect(prompt).toContainText(tr.editor.inner.title);
+    await page.getByTestId('inner-prompt-inner').click();
+    await expect(prompt).toHaveCount(0);
+    await page.keyboard.press('v');
+    // No new part; the first part now has one cut-out of the drawn size.
+    await expect(page.getByTestId('editor-part-list').getByRole('button')).toHaveCount(partsBefore);
+    await expect(page.getByTestId('prop-inner')).toHaveCount(1);
+    // Free points: the drawn size within a pixel's worth of millimetres.
+    const text = ((await page.getByTestId('prop-inner').textContent()) ?? '').replace(
+      tr.editor.inspector.innerN.replace('{n}', '1'),
+      '',
+    );
+    const m = /([\d.,]+)\s*×\s*([\d.,]+)/.exec(text);
+    expect(Math.abs(trNum(m?.[1] ?? 'NaN') - 250)).toBeLessThan(5);
+    expect(Math.abs(trNum(m?.[2] ?? 'NaN') - 300)).toBeLessThan(5);
+    await expect(page.getByTestId('prop-op-inners')).toHaveText('1');
+    // Removable, one undo step.
+    await page.getByTestId('prop-inner-remove').click();
+    await expect(page.getByTestId('prop-inner')).toHaveCount(0);
+    await page.getByTestId('editor-canvas').focus();
+    await page.keyboard.press('Control+z');
+    await expect(page.getByTestId('prop-inner')).toHaveCount(1);
+  });
+
+  test('"Ayrı parça" adds a new part; a shape across the edge is a part without asking', async ({
+    page,
+  }) => {
+    const canvas = await openBoard(page);
+    await page.getByTestId('editor-part-list').getByRole('button').first().click();
+    const p0 = await position(page);
+    const list = page.getByTestId('editor-part-list').getByRole('button');
+    const n = await list.count();
+    await page.keyboard.press('r');
+    let a = await screen(canvas, { x: p0.x + 150, y: p0.y + 200 });
+    let b = await screen(canvas, { x: p0.x + 400, y: p0.y + 500 });
+    await page.mouse.click(a.x, a.y);
+    await page.mouse.click(b.x, b.y);
+    await page.getByTestId('inner-prompt-part').click();
+    await expect(list).toHaveCount(n + 1);
+    // Across the left edge: not inside → no prompt.
+    a = await screen(canvas, { x: p0.x - 100, y: p0.y + 50 });
+    b = await screen(canvas, { x: p0.x + 100, y: p0.y + 150 });
+    await page.mouse.click(a.x, a.y);
+    await page.mouse.click(b.x, b.y);
+    await expect(list).toHaveCount(n + 2);
+    await expect(page.getByTestId('inner-prompt')).toHaveCount(0);
+  });
+});

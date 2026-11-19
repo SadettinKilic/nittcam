@@ -8,7 +8,9 @@
  * group and runs nothing.
  */
 import {
+  bbox,
   bulgeForRadius,
+  contour,
   deriveOutline,
   segmentInfo,
   withSegmentAngle,
@@ -37,7 +39,7 @@ import {
 } from '@nittcam/ui';
 import { X } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
-import { formatMm } from '../../lib/canvas-labels';
+import { formatMm, sizeText } from '../../lib/canvas-labels';
 import { fill } from '../../lib/draft-project';
 import { grainDialLabels } from '../../lib/grain-labels';
 import type { Messages } from '../../lib/messages';
@@ -421,6 +423,35 @@ export function PartProperties({
           ) : null}
         </InspectorRows>
       </InspectorGroup>
+
+      {part.inners.length > 0 ? (
+        <InspectorGroup title={t.groups.inners} data-testid="prop-group-inners">
+          <InspectorRows>
+            {part.inners.map((inner, i) => {
+              const b = bbox(contour(inner));
+              return (
+                <Row
+                  key={i}
+                  label={fill(t.innerN, { n: i + 1 })}
+                  valueProps={{ className: 'flex items-center justify-end gap-1' }}
+                  data-testid="prop-inner"
+                >
+                  <span>{sizeText(b.maxX - b.minX, b.maxY - b.minY)}</span>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label={fill(t.innerRemove, { n: i + 1 })}
+                    data-testid="prop-inner-remove"
+                    onClick={() => run('removeInnerContour', { id: part.id, index: i })}
+                  >
+                    <X aria-hidden />
+                  </IconButton>
+                </Row>
+              );
+            })}
+          </InspectorRows>
+        </InspectorGroup>
+      ) : null}
 
       {part.dims && part.dims.length > 0 ? (
         <InspectorGroup title={t.groups.dims} data-testid="prop-group-dims">

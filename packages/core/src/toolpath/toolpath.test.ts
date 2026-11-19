@@ -476,11 +476,11 @@ describe('project-level errors and warnings', () => {
     return r.project;
   }
 
-  it('inner contours and holes are not cut yet: export-blocking errors, not silent omissions', () => {
+  it('holes are not cut yet: export-blocking error; inner contours are cut (T134)', () => {
     const machine = handExample().machine;
     const inner = buildToolpath(withFeature('inner'), machine);
-    expect(inner.ok).toBe(false);
-    expect(codes(inner, 'errors')).toEqual(['INNER_CONTOURS_NOT_SUPPORTED']);
+    expect(codes(inner, 'errors')).toEqual([]);
+    expect(inner.toolpath.operations.map((o) => o.kind)).toEqual(['innerContour', 'outerContour']);
     const hole = buildToolpath(withFeature('hole'), machine);
     expect(hole.ok).toBe(false);
     expect(codes(hole, 'errors')).toEqual(['HOLES_NOT_SUPPORTED']);

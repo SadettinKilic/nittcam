@@ -4,6 +4,7 @@ import {
   boardBox,
   boardParts,
   arcOf,
+  checkInnerContour,
   bulgeFromSagitta,
   nextPartName,
   segmentMidpoint,
@@ -41,7 +42,7 @@ import {
 } from 'react';
 import type { Messages } from '../../lib/messages';
 import { onThemeChange } from '../../lib/canvas-theme';
-import { newPartId } from '../../lib/draft-project';
+import { fill, newPartId } from '../../lib/draft-project';
 import {
   backspace,
   clickAt,
@@ -62,6 +63,8 @@ import { claimPageKeys } from '../../lib/shortcuts';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
 import { dimOwner, segmentLabels } from '../../lib/editor/dims';
+import { innerHost, shapeVertices } from '../../lib/editor/inner-host';
+import { InnerPrompt } from './inner-prompt';
 import { miniBarRailClear } from '../../lib/editor/mini-bar';
 import {
   SNAP_TOGGLES,
@@ -435,8 +438,33 @@ export function DrawingBoard({
     );
   }, []);
 
-  /** Adds a finished shape as a part with the next free name and selects it (T127). */
+  // A closed shape drawn inside a part (T134): ask "iç kesim olarak ekle?" first.
+  const [innerAsk, setInnerAsk] = useState<{ shape: DrawnShape; host: string } | null>(null);
+
+  /** Finished shape: inside a part → ask (cut-out or part); elsewhere → a new part (T127). */
   function commitShape(shape: DrawnShape) {
+    const host = innerHost(parts, shapeVertices(shape));
+    if (host) setInnerAsk({ shape, host });
+    else addShapePart(shape);
+  }
+
+  /** Adds the shape as that part's inner contour; a refused one says why (T134). */
+  function addShapeInner(shape: DrawnShape, host: string) {
+    const part = parts.find((p) => p.id === host);
+    if (!part) return;
+    const vertices = shapeVertices(shape);
+    const err = checkInnerContour(part.outline, part.inners, vertices, toolDiameter ?? 0);
+    if (err) {
+      notify.error(fill(t.inner.errors[err], { d: formatMm(toolDiameter ?? 0) }));
+      return;
+    }
+    if (run('addInnerContour', { id: host, vertices, toolDiameter: toolDiameter ?? 0 })) {
+      dispatch({ type: 'select', ids: [host] });
+    }
+  }
+
+  /** Adds a finished shape as a part with the next free name and selects it (T127). */
+  function addShapePart(shape: DrawnShape) {
     const id = newPartId();
     const name = nextPartName(
       t.defaultName,
@@ -1174,6 +1202,21 @@ export function DrawingBoard({
         />
       ) : null}
       {miniBar}
+      <InnerPrompt
+        t={t.inner}
+        partName={
+          innerAsk
+            ? project.parts.find((p) => p.id === innerAsk.host)?.name.trim() || t.parts.unnamed
+            : null
+        }
+        onInner={() => {
+          if (innerAsk) addShapeInner(innerAsk.shape, innerAsk.host);
+        }}
+        onPart={() => {
+          if (innerAsk) addShapePart(innerAsk.shape);
+        }}
+        onCancel={() => setInnerAsk(null)}
+      />
       {parts.length === 0 && !drawTool ? (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
           <div className={`${floating} flex max-w-sm flex-col items-start gap-3 p-4`}>

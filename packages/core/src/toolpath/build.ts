@@ -86,6 +86,25 @@ export function placedOutline(part: Part, placement: Pick<Placement, 'x' | 'y' |
   return translate(turned, placement.x - box.minX, placement.y - box.minY);
 }
 
+/**
+ * A placed part's inner contours in the sheet frame (T134): the same rotation and shift as
+ * `placedOutline` (the outline's rotated bounding box decides the shift), stored CW.
+ */
+export function placedInners(
+  part: Part,
+  placement: Pick<Placement, 'x' | 'y' | 'rot'>,
+): Polyline[] {
+  if (part.inners.length === 0) return [];
+  const box = bbox(rotate(normalize(contour(deriveOutline(part)), 'outer'), placement.rot));
+  return part.inners.map((c) =>
+    translate(
+      rotate(normalize(contour(c), 'inner'), placement.rot),
+      placement.x - box.minX,
+      placement.y - box.minY,
+    ),
+  );
+}
+
 export interface ContourPathResult {
   ok: boolean;
   paths: Polyline[];
@@ -222,6 +241,12 @@ interface OperationContext {
   placement: Placement;
   sheetIndex: number;
   outline: Polyline;
+  /**
+   * Inner contour index (T134) for a cut-out: travel is reversed (climb stays climb on the other
+   * side of the material), no leads (the tool enters on the path, inside the opening), no tabs
+   * (the slug falls free). Undefined = the outer contour.
+   */
+  inner?: number;
   /** Tool-centre loop (CCW, as offset returns it). */
   raw: Polyline;
   /** Straight segment of `raw` whose midpoint is the start point (D-023); −1 = start vertex. */
@@ -241,6 +266,11 @@ function buildOuterOperation(
   const where = { copy: ctx.placement.index, sheet: ctx.sheetIndex };
   const partId = ctx.part.id;
   const toolRadius = p.toolDiameter / 2;
+  const isInner = ctx.inner !== undefined;
+  if (isInner) {
+    // Climb on the inside of an opening = the opposite travel of the outer contour (D-021).
+    p = { ...p, travel: p.travel === 'cw' ? 'ccw' : 'cw', lead: 'none' };
+  }
 
   // Start at the midpoint of the chosen straight edge (cut order, D-023), then set the travel
   // direction (CCW as offset returns it). Leads and tabs below are computed for this start.
@@ -326,7 +356,7 @@ function buildOuterOperation(
   // Tabs (T015, D-022): every part when tabs are on, small parts always (§6.3 small-part safety).
   const small = isSmallPart(ctx.outline, p.tabs.smallPartArea, p.tabs.smallPartMinSide);
   let tabs: Tab[] = [];
-  if (p.tabs.all || small) {
+  if (!isInner && (p.tabs.all || small)) {
     if (small && !p.tabs.all && !smallWarned.has(partId)) {
       smallWarned.add(partId);
       warnings.push(
@@ -423,8 +453,10 @@ function buildOuterOperation(
   segments.push({ role: 'retract', moves: [rapid(exit, p.safeZ)] });
 
   return {
-    id: `${partId}#${ctx.placement.index}`,
-    kind: 'outerContour',
+    id: isInner
+      ? `${partId}#${ctx.placement.index}/inner${ctx.inner}`
+      : `${partId}#${ctx.placement.index}`,
+    kind: isInner ? 'innerContour' : 'outerContour',
     sheet: ctx.sheetIndex,
     partId,
     copy: ctx.placement.index,
@@ -676,18 +708,11 @@ export function buildToolpath(
     },
   };
 
-  // Features not cut yet in M1: block export instead of silently leaving them out.
+  // Inner contours (T134): an opening the tool cannot cut blocks export (once per part; the
+  // copies only turn it). Features not cut yet: block export instead of silently leaving them out.
   const toolRadius = tool.diameter / 2;
   for (const part of project.parts) {
     if (part.inners.length > 0) {
-      errors.push(
-        issue(
-          'INNER_CONTOURS_NOT_SUPPORTED',
-          'error',
-          part.id,
-          'Inner contours are not cut yet (M1: outer contours only).',
-        ),
-      );
       for (const inner of part.inners) {
         for (const it of innerContourPath(contour(inner), toolRadius).issues) {
           (it.severity === 'error' ? errors : warnings).push(
@@ -774,6 +799,40 @@ export function buildToolpath(
         warnings: opWarnings,
         errors: opErrors,
       };
+      // Inner contours of this copy (T134): one operation each, cut before the outer contour (the
+      // order's hard constraint inner → outer within a part copy). Failures are reported per part
+      // above, so a failed opening simply has no operation (and the toolpath is not ok).
+      placedInners(x.part, x.placement).forEach((innerPoly, k) => {
+        const res = innerContourPath(innerPoly, toolRadius);
+        const loop = res.paths[0];
+        if (!res.ok || !loop) return;
+        const innerRaw = normalize(loop, 'outer');
+        prepared.push({
+          ...x,
+          inner: k,
+          sheetIndex,
+          own,
+          neighbours,
+          raw: innerRaw,
+          startEdge: -1,
+          warnings: opWarnings,
+          errors: opErrors,
+        });
+        const cand = startEdgeCandidates(innerRaw, startFraction);
+        edges.push(cand);
+        items.push({
+          sheet: sheetIndex,
+          part: `${x.part.id}#${x.placement.index}`,
+          cls: 'inner',
+          tool: params.tool,
+          area: partArea.get(x.part.id) ?? 0,
+          starts:
+            cand.length > 0
+              ? cand.map((e) => edgeMidpoint(innerRaw, e))
+              : [{ x: innerRaw.vertices[0]?.x ?? 0, y: innerRaw.vertices[0]?.y ?? 0 }],
+        });
+        itemCtx.push(prepared.length - 1);
+      });
       prepared.push(ctx);
       if (!contourRes.ok || !raw) {
         edges.push([]);
@@ -813,7 +872,11 @@ export function buildToolpath(
     operations.push(buildOuterOperation(ctx, params, ctx.warnings, ctx.errors, smallWarned));
   }
   // Issues stay in placement order whatever the cut order.
+  // A copy's inner and outer operations share one issue list: add each list once.
+  const seen = new Set<ToolpathIssue[]>();
   for (const ctx of prepared) {
+    if (seen.has(ctx.warnings)) continue;
+    seen.add(ctx.warnings);
     warnings.push(...ctx.warnings);
     errors.push(...ctx.errors);
   }
