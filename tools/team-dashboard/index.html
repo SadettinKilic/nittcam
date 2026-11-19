@@ -111,6 +111,8 @@ body.limited .top{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}
 .ag .nm small{color:var(--muted);font-weight:400;margin-left:4px}
 .ag .msg{color:var(--muted);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ag .tk{font-size:12px;color:var(--subtle)}
+.ag.passive{background:var(--surface-2);border-left-style:dashed}
+.ag.passive .nm{font-weight:600}
 .ag .tk b{color:var(--fg);font-family:var(--f-mono);font-weight:500}
 .pill{display:inline-block;font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 8px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);white-space:nowrap}
 .s-coding,.s-doing{background:var(--accent-subtle);border-color:var(--accent-border);color:var(--accent-text)}
@@ -291,10 +293,10 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   const TASK_TR = {todo:'sırada',doing:'yapılıyor',review:'incelemede',done:'bitti',blocked:'takıldı'};
   const CREW = [
     {key:'po', name:'PO', role:'Ürün sahibi', hair:'#3b2a20'},
-    {key:'dev', name:'Dev', role:'Geliştirici', hair:'#1e1a17'},
-    {key:'dev2', name:'Dev 2', role:'Geliştirici (2. dev)', hair:'#b5651d', optional:true},
-    {key:'dev3', name:'Dev 3', role:'Geliştirici (3. dev, CTO yokken)', hair:'#1f1f1f', optional:true},
+    {key:'dev', name:'Dev 1', role:'Geliştirici', hair:'#1e1a17'},
     {key:'tester', name:'Tester', role:'Test', hair:'#7a4a24'},
+    {key:'dev2', name:'Dev 2', role:'Geliştirici', hair:'#b5651d', optional:true},
+    {key:'dev3', name:'Dev 3', role:'Geliştirici', hair:'#1f1f1f', optional:true},
     {key:'fable', name:'CTO', role:'Tasarım ve ürün incelemesi', hair:'#c9c3b8', visitor:true},
   ];
   const $ = (id) => document.getElementById(id);
@@ -930,7 +932,8 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     if(redraw) draw(performance.now()/1000);
     if(!raf && !document.hidden){ lastT = performance.now(); raf = requestAnimationFrame(frame); }
   }
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) kick(true); });
+  // back on the tab: nobody replays a walk, everybody snaps to their current spot (ambient walks are dropped too)
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ if(L) relocate(); kick(true); } });
   rmq.addEventListener ? rmq.addEventListener('change', ()=>kick(true)) : rmq.addListener(()=>kick(true));
   const dmq = matchMedia('(prefers-color-scheme: dark)'); dmq.addEventListener ? dmq.addEventListener('change', readTheme) : dmq.addListener(readTheme);
   $('themeBtn').addEventListener('click', readTheme);
@@ -1155,52 +1158,48 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     for(const p of AMB.conf) F(c,Math.round(p.x),Math.round(p.y),1,p.h,p.col);
   }
   sched('tea', 240, 600, 4, 6); sched('dev', 90, 240, 10, 13); sched('po', 150, 300, 16, 19); sched('cto', 900, 2100, 24, 28);
-  if(FAST) window.NITT_AMB = {AMB, NPCS, tea:()=>teaStart('serve'), collect:()=>teaStart('collect'), dev:()=>{ const D = devsReady(); return D.length>0 && (paceStart(D[0]), true); },
+  if(FAST) window.NITT_AMB = {AMB, NPCS, actors, view:()=>VIEW, tea:()=>teaStart('serve'), collect:()=>teaStart('collect'), dev:()=>{ const D = devsReady(); return D.length>0 && (paceStart(D[0]), true); },
     po:()=>{ const P = actors.po; return P.st==='reviewing' && P.grp==='poDesk' && ready(P) && boardStart(P); }, cto:()=>ctoStart(), confetti};
 
-  // where each agent stands, from its state
+  // where each agent stands, from its state. Seating: testers (tester or a tester seat) at the test bench, devs at the dev
+  // desks (also while testing), PO in its office, CTO (cto seat or fable) in the meeting room.
+  const isCTO = (c)=>c.key==='fable' || c.seat==='cto';
+  const ALT = [{spot:'meet', i:0}, {spot:'board', i:0}, {spot:'board', i:1}, {spot:'brk', i:3}, {spot:'brk', i:2}, {spot:'brk', i:1}, {spot:'brk', i:0}]; // standing fallbacks when a group is full
   function spotFor(c, st, ctx){
     if(ctx.limited) return {spot:'brk'};
-    if(c.key==='fable') return {spot:'meet', i:0};
+    if(isCTO(c)) return {spot:'meet', i:0};
     if(st==='idle') return {spot:'brk'};
     if(st==='planning') return {spot:'board'};
-    if(st==='reviewing'){
-      const mi = {po:1, dev:2, tester:3, dev2:4, dev3:0}[c.key]; // meeting-room seats
-      if(ctx.fable) return {spot:'meet', i:mi};
-      return c.key==='po' ? {spot:'poDesk'} : {spot:'meet', i:mi};
-    }
+    if(st==='reviewing') return c.key!=='po' ? {spot:'meet', seq:true} : {spot:'poDesk'};
     const isTester = c.key==='tester' || c.seat==='tester';
     // testers work at the test bench; devs running their own tests stay at their desk; the PO stays in its office
-    if(st==='testing' || st==='coding') return {spot: isTester ? 'bench' : c.key==='po' ? 'poDesk' : 'devDesk'};
-    return {spot: c.key==='po'?'poDesk' : c.seat==='tester' ? 'bench' : c.key==='dev'||c.key==='dev2'||c.key==='dev3'?'devDesk' : 'bench'};
+    return {spot: isTester ? 'bench' : c.key==='po' ? 'poDesk' : 'devDesk'};
   }
+  const FRESH = 12*3600e3;
+  // whole roster in a fixed order: PO, Dev 1, Tester, the flexible seats (+ the legacy CTO visitor only while active)
   function agentView(){
-    const lim = limitInfo(), A = S.agents||{};
-    const fa = A.fable, fableOn = !!fa && fa.state && fa.state!=='idle' && fa.updated && (Date.now()-new Date(fa.updated)) < 12*3600e3;
-    const d2 = A.dev2, dev2On = !!d2 && !!d2.updated && (Date.now()-new Date(d2.updated)) < 12*3600e3; // optional 2nd dev: shown while it has reported in the last 12 h
-    const d3 = A.dev3, dev3On = !!d3 && !!d3.updated && d3.state!=='idle' && (Date.now()-new Date(d3.updated)) < 12*3600e3; // 3rd dev: only while working (uses the CTO slot)
-    // D-052 flexible seats: dev2/dev3 carry a role (dev | tester | cto) set by "status.mjs role"
-    const SEATS = S.seats || {};
+    const lim = limitInfo(), A = S.agents||{}, SEATS = S.seats||{};
+    const live = (k)=>{ const r = A[k]; return !!r && !!r.updated && (Date.now()-new Date(r.updated)) < FRESH; };
     const seatRole = (k)=> (SEATS[k] && SEATS[k].role) || 'dev';
-    const extraDevs = [['dev2',dev2On],['dev3',dev3On]].filter(([k,on])=>on && seatRole(k)==='dev').length;
-    CREW.find(c=>c.key==='dev').name = extraDevs ? 'Dev 1' : 'Dev';
     let devNo = 1, testNo = 1;
     const seated = (c)=>{
       if(c.key!=='dev2' && c.key!=='dev3') return c;
-      const r = seatRole(c.key), why = (SEATS[c.key] && SEATS[c.key].why) || '';
-      if(r==='tester') return {...c, seat:'tester', name:'Tester '+(++testNo), role:'Test (esnek koltuk'+(why?': '+why:'')+')'};
-      if(r==='cto') return {...c, seat:'cto', name:'CTO (esnek koltuk)', role:'İnceleme'+(why?': '+why:'')};
-      return {...c, seat:'dev', name:'Dev '+(++devNo), role:'Geliştirici (esnek koltuk'+(why?': '+why:'')+')'};
+      const r = seatRole(c.key);
+      if(r==='tester') return {...c, seat:'tester', name:'Tester '+(++testNo), role:'Test'};
+      if(r==='cto') return {...c, seat:'cto', name:'CTO', role:'Tasarım ve ürün incelemesi'};
+      return {...c, seat:'dev', name:'Dev '+(++devNo), role:'Geliştirici'};
     };
-    return CREW.filter(c=>c.key==='dev2' ? dev2On : c.key==='dev3' ? dev3On : (!c.visitor || fableOn)).map(seated).map(c=>{
-      const raw = A[c.key] || {state:'idle'};
+    return CREW.filter(c=>c.key!=='fable' || (A.fable && A.fable.state && A.fable.state!=='idle' && live('fable'))).map(seated).map(c=>{
+      const raw = A[c.key] || {state:'idle'}, alive = live(c.key), extra = !!c.optional || c.visitor;
       const a = lim.blocked ? {...raw, state:'idle', message:'Limit doldu, mola. '+(lim.reset?lim.reset+"'de dönüyoruz.":'')} : raw;
-      return {c, a, st: STATE_TR[a.state] ? a.state : 'idle'};
+      const st = !lim.blocked && alive && STATE_TR[raw.state] ? raw.state : 'idle';
+      // off = never / long not updated ("Yok"); flexible seats and the CTO visitor are drawn in the office only while active
+      return {c, a, st, off: !alive, inOffice: extra ? st!=='idle' : true};
     });
   }
   function renderOffice(){
-    const lim = limitInfo(), view = agentView(), fableOn = view.some(v=>v.c.visitor);
-    const cx = {limited: lim.blocked, fable: fableOn};
+    const lim = limitInfo(), roster = agentView(), view = roster.filter(v=>v.inOffice), fableOn = view.some(v=>v.c.visitor);
+    const cx = {limited: lim.blocked, cto: view.some(v=>isCTO(v.c))};
     VIEW = view;
     // ambient life yields to anything real: blocked agent, usage limit, "PC'ye bak" alert, or a real CTO review
     AMB.fableOn = fableOn; const amBlock = alarmReasons(lim).length>0 || view.some(v=>v.st==='blocked');
@@ -1209,9 +1208,10 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     if(L && Object.keys(S.agents||{}).length){
       const taken = new Set();
       view.forEach(({c,a,st})=>{
-        const s = spotFor(c, st, cx), A = actors[c.key], g = s.spot, n = L.SP[g].length; let i;
-        if(g==='meet') i = s.i;
-        else { i = A.grp===g && !taken.has(g+A.idx) ? A.idx : [...Array(n).keys()].find(k=>!taken.has(g+k)); if(i==null) i = n-1; }
+        const s = spotFor(c, st, cx), A = actors[c.key]; let g = s.spot, n = L.SP[g].length, i;
+        if(s.i!=null) i = s.i;
+        else { const first = s.seq ? 1 : 0; i = A.grp===g && A.idx>=first && !taken.has(g+A.idx) ? A.idx : [...Array(n).keys()].find(k=>k>=first && !taken.has(g+k)); }
+        if(i==null || taken.has(g+i)){ const f = ALT.find(o=>!taken.has(o.spot+o.i)); if(f){ g = f.spot; i = f.i; } else i = Math.min(i==null ? n-1 : i, n-1); } // group full: standing fallback spot
         taken.add(g+i); A.c = c; A.st = st; A.a = a; goTo(A, g, i);
         const o = OV[c.key], txt = (a.task ? `<b>${esc(a.task)}</b> ` : '') + esc(a.message || STATE_TR[st]);
         if(o.txt!==txt){ o.txt = txt; o.t.innerHTML = '<span class="ct">'+txt+'</span>'; o.bw = 0; o.last = ''; }
@@ -1219,17 +1219,18 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
         o.h.setAttribute('aria-label', `${c.name}: ${STATE_TR[st]}${a.task?' · '+a.task:''}. Ayrıntı için tıkla.`);
         o.w.title = (a.task ? a.task+' · ' : '') + (a.message || STATE_TR[st]);
       });
-      CREW.forEach(c=>{ if(!view.some(v=>v.c===c)){ const A = actors[c.key]; A.st = 'idle'; goTo(A, 'door', 0); } });
+      CREW.forEach(c=>{ if(!view.some(v=>v.c.key===c.key)){ const A = actors[c.key]; A.st = 'idle'; goTo(A, 'door', 0); } });
       cvs.setAttribute('aria-label', 'Ofis: ' + view.map(({c,st})=>{ const A = actors[c.key]; return `${c.name} ${ROOM_TR[spotOf(A.grp,A.idx).room]||''}, ${STATE_TR[st].toLowerCase()}`; }).join('; '));
       if(popKey){ if(view.some(v=>v.c.key===popKey)) pop.innerHTML = popHTML(popKey); else closePop(); }
       kick(true);
     }
     $('officeMeta').textContent = lim.blocked ? 'limit doldu · ekip molada' : view.filter(v=>v.st!=='idle').length+' kişi çalışıyor · '+view.filter(v=>v.st==='idle').length+' molada';
     // crew cards
-    $('crew').innerHTML = view.map(({c,a,st})=>`<div class="ag" style="--c:var(--c-${c.key})">
-      <div class="row"><span class="nm">${esc(c.name)}<small>${esc(c.role)}</small></span><span class="pill s-${st}">${STATE_TR[st]}</span></div>
-      <div class="msg">${esc(a.message || '—')}</div>
-      <div class="tk">${a.task ? `<b>${esc(a.task)}</b> · ` : ''}${esc(ago(a.updated))}</div></div>`).join('');
+    $('crew').innerHTML = roster.map(({c,a,st,off})=>{ const pill = off ? 'Yok' : STATE_TR[st], passive = st==='idle';
+      return `<div class="ag${passive?' passive':''}" style="--c:var(--c-${c.key})">
+      <div class="row"><span class="nm">${esc(c.name)}<small>${esc(c.role)}</small></span><span class="pill s-${st}">${pill}</span></div>
+      <div class="msg">${off ? 'Aktif değil' : esc(a.message || '—')}</div>
+      <div class="tk">${!off && a.task ? `<b>${esc(a.task)}</b> · ` : ''}${off && !a.updated ? 'henüz rapor yok' : esc(ago(a.updated))}</div></div>`; }).join('');
   }
 
   // ---------- CI corner ----------
