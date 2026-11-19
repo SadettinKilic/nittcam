@@ -92,8 +92,9 @@ test('layout 390 px: plate tabs do not overlap the grid toggle', async ({ page }
   await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   const tabs = await page.getByRole('tab').last().boundingBox();
-  const grid = await page.getByRole('checkbox').first().boundingBox();
-  if (!tabs || !grid) throw new Error('tab or grid checkbox has no box');
+  // T249: the grid is an icon toggle button now (same as the board).
+  const grid = await page.getByTestId('layout-grid').boundingBox();
+  if (!tabs || !grid) throw new Error('tab or grid toggle has no box');
   const overlap =
     tabs.x < grid.x + grid.width &&
     grid.x < tabs.x + tabs.width &&

@@ -22,7 +22,8 @@ import {
 } from 'react';
 import {
   Button,
-  Checkbox,
+  InspectorRow,
+  InspectorRows,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -37,6 +38,7 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  cn,
 } from '@nittcam/ui';
 import { Grid3x3, Info, Lock, LockOpen, Maximize, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { onThemeChange } from '../../lib/canvas-theme';
@@ -147,7 +149,6 @@ export function LayoutView({
   compactAction,
 }: LayoutViewProps) {
   const coarse = useMediaQuery('(pointer: coarse)', false);
-  const gridId = useId();
   const selectId = useId();
   const count = project.layout.sheets.length;
   const [sheetState, setSheet] = useState(0);
@@ -513,10 +514,13 @@ export function LayoutView({
   const overlay = (
     <>
       <div className="pointer-events-none absolute inset-x-2 top-2 z-10 @container">
-        <div className="flex flex-col items-end gap-2 @3xl:flex-row @3xl:items-start @3xl:justify-between">
+        {/* T249 (D-040): from 1024 px the tabs (left, scrolling) and the tools (right) share one
+            row whatever the canvas width; narrower screens keep the own tab row under 768 px of
+            canvas (T199b). */}
+        <div className="flex flex-col items-end gap-2 @3xl:flex-row @3xl:items-start @3xl:justify-between lg:flex-row lg:items-start lg:justify-between">
           <PlateTabStrip
             active={String(sheet)}
-            className={`${floating} max-w-full min-w-0 self-stretch p-0.5 @3xl:self-auto`}
+            className={`${floating} max-w-full min-w-0 self-stretch p-0.5 @3xl:self-auto lg:self-auto`}
             testId="sheet-tabs-scroll"
           >
             <TabsList
@@ -545,13 +549,20 @@ export function LayoutView({
             </TabsList>
           </PlateTabStrip>
           <div className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}>
-            <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-fg-muted">
-              <Checkbox id={gridId} checked={grid} onCheckedChange={(v) => setGrid(v === true)} />
-              <label htmlFor={gridId} className="flex cursor-pointer items-center" title={t.grid}>
-                <Grid3x3 aria-hidden className="size-4 sm:hidden" />
-                <span className="max-sm:sr-only">{t.grid}</span>
-              </label>
-            </div>
+            {/* T249: the same icon toggle as the board (T243); the text is its tooltip. */}
+            <Tooltip content={t.grid}>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                aria-label={t.grid}
+                aria-pressed={grid}
+                data-testid="layout-grid"
+                className={cn(grid && 'bg-accent-subtle text-accent-text hover:text-accent-text')}
+                onClick={() => setGrid(!grid)}
+              >
+                <Grid3x3 aria-hidden />
+              </IconButton>
+            </Tooltip>
             <Tooltip content={t.zoomOut}>
               <IconButton
                 size="sm"
@@ -723,32 +734,49 @@ function PartInfo({
   onToggleLock: (() => void) | undefined;
 }) {
   const i = t.info;
-  const rows: [string, string, string][] = [
-    ['number', i.number, part.label],
-    ['name', i.name, part.name || t.unnamed],
-    ['size', i.size, fill(i.sizeValue, { w: mmFormat.format(part.w), h: mmFormat.format(part.h) })],
+  // T249 (D-040): one InspectorRow per value; mono read-outs never wrap at 264 px.
+  const rows: [string, string, string, boolean][] = [
+    ['number', i.number, part.label, true],
+    ['name', i.name, part.name || t.unnamed, false],
+    [
+      'size',
+      i.size,
+      fill(i.sizeValue, { w: mmFormat.format(part.w), h: mmFormat.format(part.h) }),
+      true,
+    ],
     [
       'position',
       i.position,
       fill(i.positionValue, { x: mmFormat.format(part.x), y: mmFormat.format(part.y) }),
+      true,
     ],
-    ['rotation', i.rotation, fill(i.rotationValue, { rot: part.rot })],
-    ['locked', i.locked, part.locked ? i.lockedYes : i.lockedNo],
-    ['grain', i.grain, part.grainAngle !== null ? i.grainYes : i.grainNo],
+    ['rotation', i.rotation, fill(i.rotationValue, { rot: part.rot }), true],
+    ['locked', i.locked, part.locked ? i.lockedYes : i.lockedNo, false],
+    [
+      'grain',
+      i.grain,
+      part.grainAngle !== null
+        ? fill(i.grainYes, { angle: mmFormat.format(part.grainAngle) })
+        : i.grainNo,
+      false,
+    ],
   ];
   return (
     <div className="flex flex-col gap-2" data-testid="layout-info">
       <h3 className="font-semibold text-fg">{i.title}</h3>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-        {rows.map(([key, label, value]) => (
-          <div key={key} className="contents">
-            <dt className="text-fg-muted">{label}</dt>
-            <dd data-testid={`layout-info-${key}`} className="tabular-nums">
-              {value}
-            </dd>
-          </div>
+      <InspectorRows>
+        {rows.map(([key, label, value, mono]) => (
+          <InspectorRow
+            key={key}
+            label={label}
+            mono={mono}
+            {...(key === 'position' ? { title: i.positionHint } : {})}
+            valueProps={{ 'data-testid': `layout-info-${key}`, title: value }}
+          >
+            {value}
+          </InspectorRow>
         ))}
-      </dl>
+      </InspectorRows>
       {pending ? (
         <p
           data-testid="layout-pending"
