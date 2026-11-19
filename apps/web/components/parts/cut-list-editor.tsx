@@ -25,6 +25,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   IconButton,
+  LiteCheckbox,
   Tooltip,
   cn,
   formatNumberTr,
@@ -51,6 +52,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   type ComponentType,
@@ -60,6 +62,7 @@ import {
 import {
   EDGES,
   WIDE_BANDS_MIN,
+  bandedEdges,
   cellId,
   cutListSummary,
   formatInput,
@@ -67,6 +70,7 @@ import {
   navTarget,
   validatePositive,
   validateQty,
+  type EdgeKey,
   type NavDirection,
 } from '../../lib/cut-list-grid';
 import { downloadText } from '../../lib/cut-list-file';
@@ -109,6 +113,8 @@ interface GridContext {
   selectClick: (row: number, mods: { shift: boolean; ctrl: boolean }) => void;
   selectionCount: () => number;
   selectAll: (on: boolean) => void;
+  /** Opens the shared row menu (T119) at a row's ⋯ button. */
+  openRowMenu: (row: number, anchor: HTMLElement) => void;
 }
 
 type RowAction = 'duplicate' | 'remove' | 'up' | 'down';
@@ -207,14 +213,14 @@ function GrainColumnCell({ ctx, part, row }: { ctx: GridContext; part: Part; row
   const { t, run } = ctx;
   return (
     <div className="flex items-center gap-0.5">
-      <Checkbox
+      <LiteCheckbox
         tabIndex={-1}
         aria-label={fill(t.cellLabel, { n: row + 1, column: t.columns.grain })}
         checked={part.grain.mode === 'fixed'}
-        onCheckedChange={(v) =>
+        onClick={() =>
           void run('setPartGrain', {
             id: part.id,
-            mode: v === true ? 'fixed' : 'free',
+            mode: part.grain.mode === 'fixed' ? 'free' : 'fixed',
             angle: part.grain.angle,
           })
         }
@@ -249,47 +255,93 @@ function NoteCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: numbe
   );
 }
 
-/** Row menu (T119): duplicate, move up / down, delete. */
+/** Row menu button (T119): opens the one shared `RowMenu` (no menu root per row, T118 perf). */
 function ActionsCell({ ctx, row }: { ctx: GridContext; part: Part; row: number }) {
-  const { t } = ctx;
-  const m = t.rowMenu;
   return (
     <div className="flex justify-end">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <IconButton
-            id={cellId(row, 'actions')}
-            size="sm"
-            aria-label={fill(m.label, { n: row + 1 })}
-            data-testid={`row-menu-${row + 1}`}
-            onKeyDown={(e) => onButtonNav(e, row, 'actions', ctx.navigate)}
-          >
-            <MoreHorizontal aria-hidden />
-          </IconButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => ctx.rowAction(row, 'duplicate')}>
-            <Copy aria-hidden />
-            {m.duplicate}
-            <DropdownMenuShortcut>Ctrl+D</DropdownMenuShortcut>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => ctx.rowAction(row, 'up')}>
-            <ArrowUp aria-hidden />
-            {m.moveUp}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => ctx.rowAction(row, 'down')}>
-            <ArrowDown aria-hidden />
-            {m.moveDown}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem destructive onSelect={() => ctx.rowAction(row, 'remove')}>
-            <Trash2 aria-hidden />
-            {m.remove}
-            <DropdownMenuShortcut>Delete</DropdownMenuShortcut>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <IconButton
+        id={cellId(row, 'actions')}
+        size="sm"
+        aria-label={fill(ctx.t.rowMenu.label, { n: row + 1 })}
+        aria-haspopup="menu"
+        data-testid={`row-menu-${row + 1}`}
+        onClick={(e) => ctx.openRowMenu(row, e.currentTarget)}
+        onKeyDown={(e) => onButtonNav(e, row, 'actions', ctx.navigate)}
+      >
+        <MoreHorizontal aria-hidden />
+      </IconButton>
     </div>
+  );
+}
+
+/**
+ * The row menu: duplicate, move up / down, delete. One instance for the whole list, anchored at
+ * the pressed row's button; focus goes back to that button when it closes.
+ */
+function RowMenu({
+  t,
+  openerRef,
+  rowAction,
+}: {
+  t: Text;
+  openerRef: { current: ((row: number, anchor: HTMLElement) => void) | null };
+  rowAction: (row: number, action: RowAction) => void;
+}) {
+  const [at, setAt] = useState<{ row: number; rect: DOMRect } | null>(null);
+  const [open, setOpen] = useState(false);
+  useLayoutEffect(() => {
+    openerRef.current = (row, anchor) => {
+      setAt({ row, rect: anchor.getBoundingClientRect() });
+      setOpen(true);
+    };
+  }, [openerRef]);
+  if (!at) return null;
+  const m = t.rowMenu;
+  const item = (action: RowAction) => () => rowAction(at.row, action);
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <span
+          aria-hidden
+          tabIndex={-1}
+          className="pointer-events-none fixed"
+          style={{
+            left: at.rect.left,
+            top: at.rect.top,
+            width: at.rect.width,
+            height: at.rect.height,
+          }}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        aria-label={fill(m.label, { n: at.row + 1 })}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          document.getElementById(cellId(at.row, 'actions'))?.focus();
+        }}
+      >
+        <DropdownMenuItem onSelect={item('duplicate')}>
+          <Copy aria-hidden />
+          {m.duplicate}
+          <DropdownMenuShortcut>Ctrl+D</DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={item('up')}>
+          <ArrowUp aria-hidden />
+          {m.moveUp}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={item('down')}>
+          <ArrowDown aria-hidden />
+          {m.moveDown}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem destructive onSelect={item('remove')}>
+          <Trash2 aria-hidden />
+          {m.remove}
+          <DropdownMenuShortcut>Delete</DropdownMenuShortcut>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -298,7 +350,7 @@ function IndexCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: numb
   const selected = ctx.isSelected(part.id);
   return (
     <div className="flex items-center justify-between gap-1 pl-1.5">
-      <Checkbox
+      <LiteCheckbox
         aria-label={fill(ctx.t.select.row, { n: row + 1 })}
         checked={selected}
         data-testid={`row-select-${row + 1}`}
@@ -436,13 +488,8 @@ function useWidth(ref: { current: HTMLElement | null }): number {
  * One grid row, memoised: scrolling renders only the rows that come into view (T118 perf). It
  * re-renders when its part, its index, its warnings or the row count change.
  */
-const GridRow = memo(function GridRow({
-  row,
-  index,
-  selected,
-  Render,
-}: {
-  row: { id: string; getAllCells: () => { id: string }[] };
+interface GridRowProps {
+  row: { id: string; getAllCells: () => { id: string; column: { id: string } }[] };
   index: number;
   part: Part;
   issueKey: string;
@@ -450,26 +497,100 @@ const GridRow = memo(function GridRow({
   /** The column set (wide / compact bands): a change re-renders every row. */
   columns: unknown;
   selected: boolean;
+  /** Mounted during a fast scroll: a text-only row until scrolling stops (T118 perf). */
+  light: boolean;
+  t: Text;
   Render: ComponentType<{ cell: unknown }>;
-}) {
+}
+
+/** What a light row shows in a column: the cell's value as plain text. */
+function lightText(t: Text, part: Part, index: number, col: string): string {
+  const rect = part.kind === 'rect';
+  switch (col) {
+    case 'index':
+      return String(index + 1);
+    case 'name':
+      return part.name;
+    case 'w':
+    case 'h':
+      return rect ? formatInput(part.params[col]) : '–';
+    case 'qty':
+      return String(part.qty);
+    case 'grain':
+      return part.grain.mode === 'fixed'
+        ? `${formatNumberTr(part.grain.angle, { maxDecimals: 1 })}°`
+        : t.grainCell.free;
+    case 'band': {
+      const n = bandedEdges(part).length;
+      return n === 0 ? '–' : fill(t.bandCell.sides, { count: n });
+    }
+    case 'note':
+      return part.note ?? '';
+    default:
+      return col.startsWith('edge-') ? formatInput(part.edgeBand[col.slice(5) as EdgeKey]) : '';
+  }
+}
+
+/** Light cells line their text up with the inputs (td 2 px + input border 1 px + padding 8 px). */
+const LIGHT_TD =
+  'h-9 truncate border-b border-border-subtle px-[11px] py-0.5 text-sm whitespace-pre text-fg';
+
+const GridRow = memo(function GridRow({
+  row,
+  index,
+  part,
+  selected,
+  light,
+  t,
+  Render,
+}: GridRowProps) {
   return (
     <tr
       aria-rowindex={index + 2}
       aria-selected={selected}
       data-testid="cut-list-row"
-      className={cn(
-        'transition-colors duration-(--duration-fast)',
-        selected ? 'bg-accent-subtle' : 'hover:bg-surface-subtle',
-      )}
+      // No color transition on rows: a transition on every row made scrolling restyle-heavy (T118).
+      className={selected ? 'bg-accent-subtle' : 'hover:bg-surface-subtle'}
     >
-      {row.getAllCells().map((cell) => (
-        <td key={cell.id} className="h-9 border-b border-border-subtle px-0.5 py-0.5">
-          <Render cell={cell} />
-        </td>
-      ))}
+      {row.getAllCells().map((cell) =>
+        light ? (
+          // No inputs, buttons or icons: a row mounted mid-scroll costs a few text cells.
+          <td
+            key={cell.id}
+            className={cn(
+              LIGHT_TD,
+              NUMERIC.has(cell.column.id) && 'text-right tabular-nums',
+              cell.column.id === 'index' && 'text-xs text-fg-subtle',
+              (cell.column.id === 'grain' || cell.column.id === 'band') && 'text-fg-subtle',
+            )}
+          >
+            {lightText(t, part, index, cell.column.id)}
+          </td>
+        ) : (
+          <td key={cell.id} className="h-9 border-b border-border-subtle px-0.5 py-0.5">
+            <Render cell={cell} />
+          </td>
+        ),
+      )}
     </tr>
   );
-});
+}, sameRow);
+
+/**
+ * GridRow's memo test: only what a row shows. The TanStack row object and the renderer are left
+ * out on purpose; a row with the same part, index and column set renders the same cells.
+ */
+function sameRow(a: GridRowProps, b: GridRowProps): boolean {
+  return (
+    a.part === b.part &&
+    a.index === b.index &&
+    a.issueKey === b.issueKey &&
+    a.rowCount === b.rowCount &&
+    a.columns === b.columns &&
+    a.selected === b.selected &&
+    a.light === b.light
+  );
+}
 
 /** Desktop grid: TanStack Table (sizing + resizing) with virtual rows and a sticky header. */
 function Grid({
@@ -501,10 +622,23 @@ function Grid({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
-    overscan: 12,
+    // Rows mount while scrolling (T118 perf): a small overscan keeps each frame's work small.
+    overscan: 4,
     initialRect: { width: 1000, height: 640 },
   });
-  scrollToRow.current = (row) => virtualizer.scrollToIndex(row, { align: 'auto' });
+  // Light rows (T118 perf): a row that mounts while the user scrolls renders without inputs, and
+  // gets them when scrolling stops. Rows that already have inputs keep them (a focused cell is never
+  // swapped), and a scroll from keyboard navigation mounts full rows, so the target can take focus.
+  const [lightState] = useState(() => ({ full: new Set<string>(), nav: false }));
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
+  scrollToRow.current = (row) => {
+    lightState.nav = true;
+    rerender();
+    virtualizer.scrollToIndex(row, { align: 'auto' });
+  };
+  if (!virtualizer.isScrolling) lightState.nav = false;
+  const lightAllowed = virtualizer.isScrolling && !lightState.nav;
+  const nextFull = new Set<string>();
   const items = virtualizer.getVirtualItems();
   const padTop = items[0]?.start ?? 0;
   const padBottom = virtualizer.getTotalSize() - (items[items.length - 1]?.end ?? 0);
@@ -512,6 +646,31 @@ function Grid({
   const colCount = headers.length;
   const nameResized = table.state.columnSizing.name !== undefined;
   const ctxNow = ctx.current;
+  const rowEls = items.map((v) => {
+    const row = rows[v.index];
+    if (!row) return null;
+    const light = lightAllowed && !lightState.full.has(row.id);
+    if (!light) nextFull.add(row.id);
+    return (
+      <GridRow
+        key={row.id}
+        row={row}
+        index={v.index}
+        part={row.original}
+        issueKey={ctxNow
+          .issuesOf(v.index)
+          .map((i) => i.code)
+          .join(' ')}
+        rowCount={rows.length}
+        columns={columns}
+        selected={ctxNow.isSelected(row.id)}
+        light={light}
+        t={t}
+        Render={table.FlexRender as ComponentType<{ cell: unknown }>}
+      />
+    );
+  });
+  lightState.full = nextFull;
 
   return (
     <table
@@ -567,26 +726,7 @@ function Grid({
             <td colSpan={colCount} style={{ height: padTop, padding: 0 }} />
           </tr>
         ) : null}
-        {items.map((v) => {
-          const row = rows[v.index];
-          if (!row) return null;
-          return (
-            <GridRow
-              key={row.id}
-              row={row}
-              index={v.index}
-              part={row.original}
-              issueKey={ctxNow
-                .issuesOf(v.index)
-                .map((i) => i.code)
-                .join(' ')}
-              rowCount={rows.length}
-              columns={columns}
-              selected={ctxNow.isSelected(row.id)}
-              Render={table.FlexRender as ComponentType<{ cell: unknown }>}
-            />
-          );
-        })}
+        {rowEls}
         {padBottom > 0 ? (
           <tr aria-hidden>
             <td colSpan={colCount} style={{ height: padBottom, padding: 0 }} />
@@ -870,6 +1010,7 @@ export function CutListEditor({
     selectedSet,
     setSelection,
   };
+  const rowMenu = useRef<((row: number, anchor: HTMLElement) => void) | null>(null);
   const ctx = useMemo(
     () => ({
       current: {
@@ -887,6 +1028,7 @@ export function CutListEditor({
         selectionCount: () => latest.current.selectedSet.size,
         selectAll: (on: boolean) =>
           latest.current.setSelection(new Set(on ? latest.current.parts.map((p) => p.id) : [])),
+        openRowMenu: (row: number, anchor: HTMLElement) => rowMenu.current?.(row, anchor),
       } satisfies GridContext,
     }),
     [t],
@@ -1112,6 +1254,7 @@ export function CutListEditor({
           </Tooltip>
         </footer>
       </section>
+      <RowMenu t={t} openerRef={rowMenu} rowAction={ctx.current.rowAction} />
       <BulkEditSheet
         t={t}
         open={bulkOpen}

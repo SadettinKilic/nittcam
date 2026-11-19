@@ -6,15 +6,22 @@ import {
   GrainArrow,
   GrainDial,
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
   Switch,
   buttonVariants,
   cn,
   formatNumberTr,
   notify,
 } from '@nittcam/ui';
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import {
   EDGES,
   bandedEdges,
@@ -258,6 +265,71 @@ export function TextCell<T>({
 }
 
 /**
+ * A cell button whose popover mounts only when it first opens (T118 perf): a virtual grid mounts
+ * rows while scrolling, and a Radix popover root per row made each row too heavy. The button stays
+ * the same element (anchored with `virtualRef`), so focus and the grid's ids never move.
+ */
+function PopoverButton({
+  content,
+  contentClassName,
+  onOpenChange,
+  onClick,
+  ...button
+}: Omit<ComponentProps<'button'>, 'type' | 'content'> & {
+  content: () => ReactNode;
+  contentClassName: string;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [open, setOpenState] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  // A press outside closes without taking focus back (as a Radix trigger does).
+  const outside = useRef(false);
+  function setOpen(next: boolean) {
+    if (next) setMounted(true);
+    setOpenState(next);
+    onOpenChange?.(next);
+  }
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        data-state={open ? 'open' : 'closed'}
+        {...button}
+        onClick={(e) => {
+          onClick?.(e);
+          if (!e.defaultPrevented) setOpen(!open);
+        }}
+      />
+      {mounted ? (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverAnchor virtualRef={ref as { current: HTMLButtonElement }} />
+          <PopoverContent
+            className={contentClassName}
+            data-density="compact"
+            onInteractOutside={(e) => {
+              // The button toggles itself on click; a press on it is not "outside".
+              if (ref.current?.contains(e.target as Node)) e.preventDefault();
+              else outside.current = true;
+            }}
+            onCloseAutoFocus={(e) => {
+              e.preventDefault();
+              if (!outside.current) ref.current?.focus();
+              outside.current = false;
+            }}
+          >
+            {content()}
+          </PopoverContent>
+        </Popover>
+      ) : null}
+    </>
+  );
+}
+
+/**
  * Grain cell of a row (T116, D-034): mini arrow + angle; opens a popover with the GrainDial, the
  * fixed/free switch and "apply to all parts" (one `setPartsGrain` command, one undo step).
  * Changing the angle makes the grain fixed: an angle only matters for a fixed grain.
@@ -286,71 +358,73 @@ export function GrainCell({
   const deg = `${formatNumberTr(angle, { maxDecimals: 1 })}°`;
   const switchId = `grain-fixed-${part.id}`;
   return (
-    <Popover onOpenChange={() => setLive(null)}>
-      <PopoverTrigger
-        id={cellId(row, 'grain')}
-        className={cn(
-          buttonVariants({ variant: 'ghost', size: 'sm' }),
-          'h-control-sm gap-1 px-1.5 font-mono tabular-nums',
-          fixed ? 'text-fg' : 'text-fg-subtle',
-        )}
-        aria-label={fill(g.edit, { n, angle: fixed ? deg : g.free })}
-        data-testid={`grain-cell-${n}`}
-        data-mode={part.grain.mode}
-        data-angle={part.grain.angle}
-        onKeyDown={navigate ? (e) => onButtonNav(e, row, 'grain', navigate) : undefined}
-      >
-        {fixed ? <GrainArrow angle={angle} className="text-accent-text" /> : null}
-        {fixed ? deg : g.free}
-      </PopoverTrigger>
-      <PopoverContent className="flex w-80 flex-col gap-3" data-density="compact">
-        <p className="text-sm font-semibold text-fg">{g.title}</p>
-        <div className="flex items-start gap-2">
-          <Switch
-            id={switchId}
-            checked={fixed}
-            onCheckedChange={(v) =>
-              void run('setPartGrain', { id: part.id, mode: v ? 'fixed' : 'free', angle })
-            }
-            data-testid={`grain-fixed-${n}`}
-          />
-          <label htmlFor={switchId} className="flex flex-col gap-0.5 text-sm text-fg">
-            {g.fixed}
-            <span className="text-xs text-fg-muted">{g.fixedHint}</span>
-          </label>
-        </div>
-        <GrainDial
-          value={part.grain.angle}
-          onValueChange={setLive}
-          onValueCommit={(a) => {
-            setLive(null);
-            if (a !== part.grain.angle || !fixed) {
-              run('setPartGrain', { id: part.id, mode: 'fixed', angle: a });
-            }
-          }}
-          labels={grainDialLabels()}
-          data-testid={`grain-dial-${n}`}
-        />
-        {allIds().length > 1 ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="self-start"
-            onClick={() => {
-              const ok = run('setPartsGrain', {
-                ids: allIds(),
-                mode: part.grain.mode,
-                angle: part.grain.angle,
-              });
-              if (ok) notify.success(fill(g.applied, { count: allIds().length }));
+    <PopoverButton
+      onOpenChange={() => setLive(null)}
+      contentClassName="flex w-80 flex-col gap-3"
+      id={cellId(row, 'grain')}
+      className={cn(
+        buttonVariants({ variant: 'ghost', size: 'sm' }),
+        'h-control-sm gap-1 px-1.5 font-mono tabular-nums',
+        fixed ? 'text-fg' : 'text-fg-subtle',
+      )}
+      aria-label={fill(g.edit, { n, angle: fixed ? deg : g.free })}
+      data-testid={`grain-cell-${n}`}
+      data-mode={part.grain.mode}
+      data-angle={part.grain.angle}
+      onKeyDown={navigate ? (e) => onButtonNav(e, row, 'grain', navigate) : undefined}
+      content={() => (
+        <>
+          <p className="text-sm font-semibold text-fg">{g.title}</p>
+          <div className="flex items-start gap-2">
+            <Switch
+              id={switchId}
+              checked={fixed}
+              onCheckedChange={(v) =>
+                void run('setPartGrain', { id: part.id, mode: v ? 'fixed' : 'free', angle })
+              }
+              data-testid={`grain-fixed-${n}`}
+            />
+            <label htmlFor={switchId} className="flex flex-col gap-0.5 text-sm text-fg">
+              {g.fixed}
+              <span className="text-xs text-fg-muted">{g.fixedHint}</span>
+            </label>
+          </div>
+          <GrainDial
+            value={part.grain.angle}
+            onValueChange={setLive}
+            onValueCommit={(a) => {
+              setLive(null);
+              if (a !== part.grain.angle || !fixed) {
+                run('setPartGrain', { id: part.id, mode: 'fixed', angle: a });
+              }
             }}
-            data-testid={`grain-apply-all-${n}`}
-          >
-            {g.applyAll}
-          </Button>
-        ) : null}
-      </PopoverContent>
-    </Popover>
+            labels={grainDialLabels()}
+            data-testid={`grain-dial-${n}`}
+          />
+          {allIds().length > 1 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => {
+                const ok = run('setPartsGrain', {
+                  ids: allIds(),
+                  mode: part.grain.mode,
+                  angle: part.grain.angle,
+                });
+                if (ok) notify.success(fill(g.applied, { count: allIds().length }));
+              }}
+              data-testid={`grain-apply-all-${n}`}
+            >
+              {g.applyAll}
+            </Button>
+          ) : null}
+        </>
+      )}
+    >
+      {fixed ? <GrainArrow angle={angle} className="text-accent-text" /> : null}
+      {fixed ? deg : g.free}
+    </PopoverButton>
   );
 }
 
@@ -432,42 +506,43 @@ export function BandCell({
           .map((e) => `${t.edge[e]} ${formatNumberTr(part.edgeBand[e], { maxDecimals: 2 })}`)
           .join(', ');
   return (
-    <Popover>
-      <PopoverTrigger
-        id={cellId(row, 'band')}
-        className={cn(
-          buttonVariants({ variant: 'ghost', size: 'sm' }),
-          'h-control-sm w-full justify-start gap-1.5 px-1.5 tabular-nums',
-          sides.length === 0 ? 'text-fg-subtle' : 'text-fg',
-        )}
-        aria-label={fill(t.bandCell.edit, { n, sides: summary })}
-        data-testid={`band-cell-${n}`}
-        data-sides={sides.join(' ')}
-        onKeyDown={navigate ? (e) => onButtonNav(e, row, 'band', navigate) : undefined}
-      >
-        <BandGlyph sides={sides} />
-        <span className="truncate text-xs">
-          {sides.length === 0 ? '–' : fill(t.bandCell.sides, { count: sides.length })}
-        </span>
-      </PopoverTrigger>
-      <PopoverContent className="flex w-64 flex-col gap-3" data-density="compact">
-        <p className="text-sm font-semibold text-fg">{t.bandCell.title}</p>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          {EDGES.map((edge) => (
-            <label key={edge} className="flex flex-col gap-1 text-xs text-fg-muted">
-              <span aria-hidden>{t.edge[edge]}</span>
-              <EdgeInput
-                t={t}
-                part={part}
-                row={row}
-                edge={edge}
-                run={run}
-                id={`cl-${row}-pop-${edge}`}
-              />
-            </label>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <PopoverButton
+      contentClassName="flex w-64 flex-col gap-3"
+      id={cellId(row, 'band')}
+      className={cn(
+        buttonVariants({ variant: 'ghost', size: 'sm' }),
+        'h-control-sm w-full justify-start gap-1.5 px-1.5 tabular-nums',
+        sides.length === 0 ? 'text-fg-subtle' : 'text-fg',
+      )}
+      aria-label={fill(t.bandCell.edit, { n, sides: summary })}
+      data-testid={`band-cell-${n}`}
+      data-sides={sides.join(' ')}
+      onKeyDown={navigate ? (e) => onButtonNav(e, row, 'band', navigate) : undefined}
+      content={() => (
+        <>
+          <p className="text-sm font-semibold text-fg">{t.bandCell.title}</p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            {EDGES.map((edge) => (
+              <label key={edge} className="flex flex-col gap-1 text-xs text-fg-muted">
+                <span aria-hidden>{t.edge[edge]}</span>
+                <EdgeInput
+                  t={t}
+                  part={part}
+                  row={row}
+                  edge={edge}
+                  run={run}
+                  id={`cl-${row}-pop-${edge}`}
+                />
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+    >
+      <BandGlyph sides={sides} />
+      <span className="truncate text-xs">
+        {sides.length === 0 ? '–' : fill(t.bandCell.sides, { count: sides.length })}
+      </span>
+    </PopoverButton>
   );
 }
