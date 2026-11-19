@@ -31,11 +31,14 @@ describe('new project stock (T259, D-045)', () => {
   });
 });
 
+const mdfSet = machine.profile.materials[0];
+if (!mdfSet) throw new Error('example profile has no set');
+
 describe('default entry tie-break (D-046)', () => {
   const sorted = [...library].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
   const exampleish = {
     materials: (['mdf', 'melamine', 'plywood'] as const).map((material) => ({
-      ...machine.profile.materials[0]!,
+      ...mdfSet,
       material,
     })),
   };
@@ -51,7 +54,7 @@ describe('default entry tie-break (D-046)', () => {
     const plyOnly = { materials: exampleish.materials.filter((m) => m.material === 'plywood') };
     expect(firstUsableLibraryStock(sorted, plyOnly)?.entry.kind).toBe('plywood');
     const acrylic = {
-      materials: [{ ...exampleish.materials[0]!, material: 'acrylic' as const, thickness: 5 }],
+      materials: [{ ...mdfSet, material: 'acrylic' as const, thickness: 5 }],
     };
     expect(firstUsableLibraryStock(sorted, acrylic)?.entry.kind).toBe('acrylic');
   });
