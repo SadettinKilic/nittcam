@@ -159,7 +159,8 @@ test.describe('T253 quiet zeros and a grid that stays put', () => {
       await chip.click();
       await expect(page.getByTestId('validation-panel')).toHaveCount(0);
       await chip.click();
-      await expect(page.getByTestId('validation-panel')).toBeVisible();
+      // The chip moves focus into the panel (next frame); Esc there closes it.
+      await expect(page.locator('[data-testid=validation-panel] h2 button')).toBeFocused();
       await page.keyboard.press('Escape');
       await expect(page.getByTestId('validation-panel')).toHaveCount(0);
       await expect(chip).toHaveAttribute('aria-expanded', 'false');
