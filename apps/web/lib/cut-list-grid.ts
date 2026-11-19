@@ -11,9 +11,10 @@ export const EDGES: readonly EdgeKey[] = ['top', 'bottom', 'left', 'right'];
 
 /**
  * Keyboard-navigable columns, left to right. With `wideBands` the four edge band columns are
- * separate cells; otherwise one "Bant" cell opens the four inputs (compact density, T118).
+ * separate cells; otherwise one "Bant" cell opens the four inputs (compact density, T118). The
+ * "Grup" column (T123) is left out of the narrow (tablet) grid.
  */
-export function navColumns(wideBands: boolean): string[] {
+export function navColumns(wideBands: boolean, group = true): string[] {
   return [
     'name',
     'w',
@@ -22,19 +23,23 @@ export function navColumns(wideBands: boolean): string[] {
     'grain',
     ...(wideBands ? EDGES.map((e) => `edge-${e}`) : ['band']),
     'note',
+    ...(group ? ['group'] : []),
     'actions',
   ];
 }
 
-/** Container width (px) from which the four edge band columns are shown separately. */
-export const WIDE_BANDS_MIN = 1040;
+/**
+ * Container width (px) from which the four edge band columns are shown separately: the wide
+ * columns with the "Grup" column (T123) need 1 064 px; a 1440 px screen leaves about 1 150 px.
+ */
+export const WIDE_BANDS_MIN = 1080;
 
 /**
  * Container width (px) below which the grid uses narrow columns (tablets, 640–1023 px screens):
- * the compact columns need 728 px, a 768 px screen with the sidebar leaves about 494 px; the
- * narrow columns need 488 px.
+ * the compact columns with "Grup" (T123) need 824 px, a 768 px screen with the sidebar leaves
+ * about 494 px; the narrow columns (no "Grup") need 488 px.
  */
-export const NARROW_GRID_MAX = 760;
+export const NARROW_GRID_MAX = 840;
 
 /** DOM id of a grid cell (input or button), used for keyboard navigation. */
 export function cellId(row: number, col: string): string {

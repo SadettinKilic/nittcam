@@ -18,6 +18,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Button,
   Checkbox,
+  Input,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,23 +27,31 @@ import {
   DropdownMenuTrigger,
   IconButton,
   LiteCheckbox,
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
   Tooltip,
   cn,
+  focusRing,
   formatNumberTr,
   notify,
 } from '@nittcam/ui';
 import {
+  Archive,
   ArrowDown,
   ArrowUp,
-  CircleCheck,
+  ChevronDown,
+  ChevronRight,
   ClipboardPaste,
   Copy,
   Download,
   Keyboard,
+  Layers,
   MoreHorizontal,
   Pencil,
   Plus,
   Rows3,
+  Search,
   Trash2,
   TriangleAlert,
   X,
@@ -77,7 +86,18 @@ import {
   type NavDirection,
 } from '../../lib/cut-list-grid';
 import { downloadText } from '../../lib/cut-list-file';
+import {
+  SORT_KEYS,
+  cutListView,
+  issueRows,
+  nextSort,
+  type GroupItem,
+  type Sort,
+  type SortKey,
+  type ViewItem,
+} from '../../lib/cut-list-view';
 import { fill, newPartId } from '../../lib/draft-project';
+import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
 import {
@@ -92,6 +112,7 @@ import {
 } from './cut-list-cells';
 import { BulkEditSheet } from './cut-list-bulk';
 import { PastePanel } from './paste-panel';
+import { IssuesOkChip } from '../wizard/issues-ok-chip';
 
 export type { Run } from './cut-list-cells';
 
@@ -116,6 +137,8 @@ interface GridContext {
   /** Click on a row's checkbox / number: plain toggles, Ctrl/⌘ toggles, Shift selects a range. */
   selectClick: (row: number, mods: { shift: boolean; ctrl: boolean }) => void;
   selectionCount: () => number;
+  /** Ids of the rows the view shows (T123): "select all" selects these. */
+  visibleIds: () => readonly string[];
   selectAll: (on: boolean) => void;
   /** Opens the shared row menu (T119) at a row's ⋯ button. */
   openRowMenu: (row: number, anchor: HTMLElement) => void;
@@ -163,6 +186,25 @@ function NameCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: numbe
         </Tooltip>
       ) : null}
     </div>
+  );
+}
+
+/** The part's group label (cabinet / tag, T122, T123); empty removes it. */
+function GroupCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
+  const { t } = ctx;
+  return (
+    <TextCell
+      row={row}
+      col="group"
+      maxLength={60}
+      label={fill(t.cellLabel, { n: row + 1, column: t.columns.group })}
+      value={part.group ?? ''}
+      current={part.group ?? ''}
+      validate={(text) => ({ ok: true, value: text.trim() })}
+      onCommit={(group) => ctx.run('updatePart', { id: part.id, group })}
+      rejected={t.errors.rejected}
+      navigate={ctx.navigate}
+    />
   );
 }
 
@@ -299,10 +341,13 @@ function RowMenu({
   t,
   openerRef,
   rowAction,
+  canMove,
 }: {
   t: Text;
   openerRef: { current: ((row: number, anchor: HTMLElement) => void) | null };
   rowAction: (row: number, action: RowAction) => void;
+  /** False while the view is sorted (T123): moving a row has no visible place then. */
+  canMove: boolean;
 }) {
   const [at, setAt] = useState<{ row: number; rect: DOMRect } | null>(null);
   const [open, setOpen] = useState(false);
@@ -343,11 +388,11 @@ function RowMenu({
           {m.duplicate}
           <DropdownMenuShortcut>Ctrl+D</DropdownMenuShortcut>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={item('up')}>
+        <DropdownMenuItem onSelect={item('up')} disabled={!canMove}>
           <ArrowUp aria-hidden />
           {m.moveUp}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={item('down')}>
+        <DropdownMenuItem onSelect={item('down')} disabled={!canMove}>
           <ArrowDown aria-hidden />
           {m.moveDown}
         </DropdownMenuItem>
@@ -483,6 +528,19 @@ function buildColumns(t: Text, wideBands: boolean, narrow: boolean, ctx: { curre
       minSize: size(80, 56),
       cell: (info) => <NoteCell ctx={c()} part={info.row.original} row={info.row.index} />,
     }),
+    // T123: the group label, after Not so the typing path (Ad → En → Boy → Adet) stays short;
+    // editable; the narrow (tablet) grid leaves it to the group headers.
+    ...(narrow
+      ? []
+      : [
+          column.display({
+            id: 'group',
+            header: t.columns.group,
+            size: 96,
+            minSize: 72,
+            cell: (info) => <GroupCell ctx={c()} part={info.row.original} row={info.row.index} />,
+          }),
+        ]),
     column.display({
       id: 'actions',
       header: () => <span className="sr-only">{t.columns.actions}</span>,
@@ -492,6 +550,10 @@ function buildColumns(t: Text, wideBands: boolean, narrow: boolean, ctx: { curre
     }),
   ]);
 }
+
+/** A pressed toggle button of the view bar (T123). */
+const PRESSED =
+  'border-accent-border bg-accent-subtle text-accent-text hover:bg-accent-subtle hover:text-accent-text';
 
 /** Numeric columns: header and content right-aligned. */
 const NUMERIC = new Set(['index', 'w', 'h', 'qty']);
@@ -516,7 +578,10 @@ function useWidth(ref: { current: HTMLElement | null }): number {
  */
 interface GridRowProps {
   row: { id: string; getAllCells: () => { id: string; column: { id: string } }[] };
+  /** Index of the part in the project (cell ids, labels, issues). */
   index: number;
+  /** Position in the view (T123): sorting and groups move rows without changing `index`. */
+  position: number;
   part: Part;
   issueKey: string;
   rowCount: number;
@@ -554,8 +619,14 @@ function lightText(t: Text, part: Part, index: number, col: string): string {
     }
     case 'note':
       return part.note ?? '';
-    default:
-      return col.startsWith('edge-') ? formatInput(part.edgeBand[col.slice(5) as EdgeKey]) : '';
+    case 'group':
+      return part.group ?? '';
+    default: {
+      if (!col.startsWith('edge-')) return '';
+      // T253: a zero band is a quiet dash, as in the full cell.
+      const v = part.edgeBand[col.slice(5) as EdgeKey];
+      return v === 0 ? '–' : formatInput(v);
+    }
   }
 }
 
@@ -566,6 +637,7 @@ const LIGHT_TD =
 const GridRow = memo(function GridRow({
   row,
   index,
+  position,
   part,
   selected,
   light,
@@ -575,7 +647,7 @@ const GridRow = memo(function GridRow({
 }: GridRowProps) {
   return (
     <tr
-      aria-rowindex={index + 2}
+      aria-rowindex={position + 2}
       aria-selected={selected}
       data-testid="cut-list-row"
       // No color transition on rows: a transition on every row made scrolling restyle-heavy (T118).
@@ -591,6 +663,9 @@ const GridRow = memo(function GridRow({
               NUMERIC.has(cell.column.id) && 'text-right tabular-nums',
               cell.column.id === 'index' && 'text-xs text-fg-subtle',
               (cell.column.id === 'grain' || cell.column.id === 'band') && 'text-fg-subtle',
+              cell.column.id.startsWith('edge-') &&
+                part.edgeBand[cell.column.id.slice(5) as EdgeKey] === 0 &&
+                'text-fg-subtle',
             )}
             // The first click on a row mounted mid-scroll must not be lost (B7 r2).
             onMouseDown={(e) => onLightPress(e, row.id)}
@@ -615,6 +690,7 @@ function sameRow(a: GridRowProps, b: GridRowProps): boolean {
   return (
     a.part === b.part &&
     a.index === b.index &&
+    a.position === b.position &&
     a.issueKey === b.issueKey &&
     a.rowCount === b.rowCount &&
     a.columns === b.columns &&
@@ -623,23 +699,91 @@ function sameRow(a: GridRowProps, b: GridRowProps): boolean {
   );
 }
 
+/** Columns a header press sorts by (T123); the index column means project order (no sort). */
+const SORTABLE = new Set<string>(SORT_KEYS);
+
+/** Sort state of a header cell for `aria-sort`. */
+function ariaSort(sort: Sort | null, id: string): 'ascending' | 'descending' | undefined {
+  if (!sort || sort.key !== id) return undefined;
+  return sort.dir === 'asc' ? 'ascending' : 'descending';
+}
+
+/**
+ * A group header row (T123): the label, its row / piece count and a collapse button. Collapsing
+ * only hides rows in the view; the project keeps every part.
+ */
+function GroupRow({
+  t,
+  item,
+  position,
+  colCount,
+  onToggle,
+}: {
+  t: Text;
+  item: GroupItem;
+  position: number;
+  colCount: number;
+  onToggle: (key: string) => void;
+}) {
+  const label = item.key || t.view.ungrouped;
+  return (
+    <tr aria-rowindex={position + 2} data-testid="cut-list-group" data-group={item.key}>
+      <td
+        colSpan={colCount}
+        className="h-9 border-b border-border-subtle bg-surface-subtle px-1.5 py-0.5"
+      >
+        <button
+          type="button"
+          aria-expanded={!item.collapsed}
+          data-testid="cut-list-group-toggle"
+          onClick={() => onToggle(item.key)}
+          className={cn(
+            'flex h-control-sm items-center gap-1.5 rounded-md px-1.5 text-sm outline-none hover:bg-surface-hover',
+            focusRing,
+          )}
+        >
+          {item.collapsed ? (
+            <ChevronRight aria-hidden className="size-4 text-fg-muted" />
+          ) : (
+            <ChevronDown aria-hidden className="size-4 text-fg-muted" />
+          )}
+          <span className={cn('font-medium', item.key ? 'text-fg' : 'text-fg-muted')}>{label}</span>
+          <span className="text-xs text-fg-subtle tabular-nums">
+            {fill(t.view.groupCount, { rows: item.rows, pieces: item.pieces })}
+          </span>
+        </button>
+      </td>
+    </tr>
+  );
+}
+
 /** Desktop grid: TanStack Table (sizing + resizing) with virtual rows and a sticky header. */
 function Grid({
   t,
   parts,
+  items,
   ctx,
   wideBands,
   narrow,
   scrollRef,
   scrollToRow,
+  sort,
+  onSort,
+  onToggleGroup,
 }: {
   t: Text;
   parts: readonly Part[];
+  /** The view (T123): group headers and part rows in display order. */
+  items: readonly ViewItem[];
   ctx: { current: GridContext };
   wideBands: boolean;
   narrow: boolean;
   scrollRef: { current: HTMLDivElement | null };
+  /** Scrolls a part (project index) into view. */
   scrollToRow: { current: ((row: number) => void) | null };
+  sort: Sort | null;
+  onSort: (key: SortKey) => void;
+  onToggleGroup: (key: string) => void;
 }) {
   const columns = useMemo(
     () => buildColumns(t, wideBands, narrow, ctx),
@@ -655,7 +799,7 @@ function Grid({
   const rows = table.getRowModel().rows;
   // eslint-disable-next-line react-hooks/incompatible-library -- the virtualizer re-renders this component itself
   const virtualizer = useVirtualizer({
-    count: rows.length,
+    count: items.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
     // Rows mount while scrolling (T118 perf): a small overscan keeps each frame's work small.
@@ -668,9 +812,11 @@ function Grid({
   const [lightState] = useState(() => ({ full: new Set<string>(), nav: false }));
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   scrollToRow.current = (row) => {
+    const position = items.findIndex((it) => it.kind === 'part' && it.index === row);
+    if (position < 0) return;
     lightState.nav = true;
     rerender();
-    virtualizer.scrollToIndex(row, { align: 'auto' });
+    virtualizer.scrollToIndex(position, { align: 'auto' });
   };
   // A press on a light cell (B7 r2): the browser would focus nothing, so keep it from moving focus,
   // render the row in full right now and focus the control under the pointer.
@@ -688,15 +834,29 @@ function Grid({
   if (!virtualizer.isScrolling) lightState.nav = false;
   const lightAllowed = virtualizer.isScrolling && !lightState.nav;
   const nextFull = new Set<string>();
-  const items = virtualizer.getVirtualItems();
-  const padTop = items[0]?.start ?? 0;
-  const padBottom = virtualizer.getTotalSize() - (items[items.length - 1]?.end ?? 0);
+  const virtualItems = virtualizer.getVirtualItems();
+  const padTop = virtualItems[0]?.start ?? 0;
+  const padBottom = virtualizer.getTotalSize() - (virtualItems[virtualItems.length - 1]?.end ?? 0);
   const headers = table.getHeaderGroups()[0]?.headers ?? [];
   const colCount = headers.length;
   const nameResized = table.state.columnSizing.name !== undefined;
   const ctxNow = ctx.current;
-  const rowEls = items.map((v) => {
-    const row = rows[v.index];
+  const rowEls = virtualItems.map((v) => {
+    const item = items[v.index];
+    if (!item) return null;
+    if (item.kind === 'group') {
+      return (
+        <GroupRow
+          key={`group:${item.key}`}
+          t={t}
+          item={item}
+          position={v.index}
+          colCount={colCount}
+          onToggle={onToggleGroup}
+        />
+      );
+    }
+    const row = rows[item.index];
     if (!row) return null;
     const light = lightAllowed && !lightState.full.has(row.id);
     if (!light) nextFull.add(row.id);
@@ -704,10 +864,11 @@ function Grid({
       <GridRow
         key={row.id}
         row={row}
-        index={v.index}
+        index={item.index}
+        position={v.index}
         part={row.original}
         issueKey={ctxNow
-          .issuesOf(v.index)
+          .issuesOf(item.index)
           .map((i) => i.code)
           .join(' ')}
         rowCount={rows.length}
@@ -727,7 +888,7 @@ function Grid({
       className="w-full table-fixed border-separate border-spacing-0 text-left text-sm"
       style={{ minWidth: table.getTotalSize() }}
       aria-labelledby="cut-list-title"
-      aria-rowcount={rows.length + 1}
+      aria-rowcount={items.length + 1}
       data-testid="cut-list-grid"
     >
       <colgroup>
@@ -741,33 +902,71 @@ function Grid({
       </colgroup>
       <thead>
         <tr>
-          {headers.map((h) => (
-            <th
-              key={h.id}
-              scope="col"
-              data-testid={h.id.startsWith('edge-') ? `edge-col-${h.id.slice(5)}` : undefined}
-              className={cn(
-                'sticky top-0 z-10 h-9 border-b border-border bg-surface-subtle px-2 text-xs font-medium whitespace-nowrap text-fg-muted',
-                NUMERIC.has(h.id) && 'text-right',
-              )}
-            >
-              <span className="block truncate">
-                {h.isPlaceholder ? null : <table.FlexRender header={h} />}
-              </span>
-              {h.column.getCanResize() ? (
-                <div
-                  aria-hidden
-                  onMouseDown={h.getResizeHandler()}
-                  onTouchStart={h.getResizeHandler()}
-                  onDoubleClick={() => h.column.resetSize()}
-                  className={cn(
-                    'absolute top-1.5 right-0 bottom-1.5 w-1.5 cursor-col-resize touch-none rounded-full select-none hover:bg-accent-border',
-                    h.column.getIsResizing() && 'bg-accent',
-                  )}
-                />
-              ) : null}
-            </th>
-          ))}
+          {headers.map((h) => {
+            const sortable = SORTABLE.has(h.id);
+            const key = h.id as SortKey;
+            const state = sortable ? ariaSort(sort, key) : undefined;
+            const content = h.isPlaceholder ? null : <table.FlexRender header={h} />;
+            return (
+              <th
+                key={h.id}
+                scope="col"
+                aria-sort={state}
+                data-testid={h.id.startsWith('edge-') ? `edge-col-${h.id.slice(5)}` : undefined}
+                className={cn(
+                  'sticky top-0 z-10 h-9 border-b border-border bg-surface-subtle px-2 text-xs font-medium whitespace-nowrap text-fg-muted',
+                  sortable && 'px-0.5',
+                  NUMERIC.has(h.id) && 'text-right',
+                )}
+              >
+                {sortable ? (
+                  <button
+                    type="button"
+                    data-testid={`sort-${h.id}`}
+                    onClick={() => onSort(key)}
+                    className={cn(
+                      'relative flex h-7 w-full min-w-0 items-center rounded-sm px-1.5 outline-none hover:bg-surface-hover hover:text-fg',
+                      NUMERIC.has(h.id) && 'justify-end',
+                      state && 'text-fg',
+                      focusRing,
+                    )}
+                  >
+                    <span className="truncate">{content}</span>
+                    {/* The arrow floats in the free side of the cell: the text never truncates. */}
+                    {state ? (
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'absolute top-1/2 -translate-y-1/2 text-accent-text',
+                          NUMERIC.has(h.id) ? 'left-0.5' : 'right-0.5',
+                        )}
+                      >
+                        {state === 'ascending' ? (
+                          <ArrowUp className="size-3.5" />
+                        ) : (
+                          <ArrowDown className="size-3.5" />
+                        )}
+                      </span>
+                    ) : null}
+                  </button>
+                ) : (
+                  <span className="block truncate">{content}</span>
+                )}
+                {h.column.getCanResize() ? (
+                  <div
+                    aria-hidden
+                    onMouseDown={h.getResizeHandler()}
+                    onTouchStart={h.getResizeHandler()}
+                    onDoubleClick={() => h.column.resetSize()}
+                    className={cn(
+                      'absolute top-1.5 right-0 bottom-1.5 w-1.5 cursor-col-resize touch-none rounded-full select-none hover:bg-accent-border',
+                      h.column.getIsResizing() && 'bg-accent',
+                    )}
+                  />
+                ) : null}
+              </th>
+            );
+          })}
         </tr>
       </thead>
       <tbody>
@@ -791,25 +990,31 @@ function Grid({
 function Cards({
   t,
   parts,
+  order,
   ctx,
   scrollRef,
   scrollToRow,
 }: {
   t: Text;
   parts: readonly Part[];
+  /** Project indexes in view order (T123: search, sort, filter; no group headers on phones). */
+  order: readonly number[];
   ctx: { current: GridContext };
   scrollRef: { current: HTMLDivElement | null };
   scrollToRow: { current: ((row: number) => void) | null };
 }) {
   // eslint-disable-next-line react-hooks/incompatible-library -- the virtualizer re-renders this component itself
   const virtualizer = useVirtualizer({
-    count: parts.length,
+    count: order.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => CARD_HEIGHT,
     overscan: 4,
     initialRect: { width: 390, height: 640 },
   });
-  scrollToRow.current = (row) => virtualizer.scrollToIndex(row, { align: 'auto' });
+  scrollToRow.current = (row) => {
+    const position = order.indexOf(row);
+    if (position >= 0) virtualizer.scrollToIndex(position, { align: 'auto' });
+  };
   const c = ctx.current;
   const field = (label: string, child: ReactNode, className?: string) => (
     <div className={cn('flex min-w-0 flex-col gap-0.5', className)}>
@@ -827,9 +1032,9 @@ function Cards({
       data-testid="cut-list-cards"
     >
       {virtualizer.getVirtualItems().map((v) => {
-        const part = parts[v.index];
+        const row = order[v.index] ?? -1;
+        const part = parts[row];
         if (!part) return null;
-        const row = v.index;
         return (
           <li
             key={part.id}
@@ -873,7 +1078,7 @@ function Cards({
 /** Header checkbox: select all rows / none (T119). */
 function SelectAllHeader({ ctx }: { ctx: GridContext }) {
   const count = ctx.selectionCount();
-  const total = ctx.allIds().length;
+  const total = ctx.visibleIds().length;
   return (
     <div className="flex items-center pl-1.5">
       <Checkbox
@@ -914,7 +1119,7 @@ export function CutListEditor({
   issues,
   run,
   onUndo,
-  onShowIssues,
+  issuesPanel,
 }: {
   t: Text;
   project: Project;
@@ -922,11 +1127,30 @@ export function CutListEditor({
   run: Run;
   /** Undo of the last command (the "Geri al" action of toasts, T246). */
   onUndo?: () => void;
-  /** Brings the Uyarılar panel into view (the issue chip, T246). */
-  onShowIssues?: () => void;
+  /**
+   * The Uyarılar panel (T253): it floats on the right from the issue chip, so the grid never
+   * moves or changes its columns when the first issue appears.
+   */
+  issuesPanel?: ReactNode;
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [cabinetOpen, setCabinetOpen] = useState(0);
+  // T253: the Uyarılar panel floats from the issue chip. From 1280 px it opens by itself when the
+  // first issue appears (and on a step entered with issues); it closes when the issues are gone.
+  const wideScreen = useMediaQuery('(min-width: 1280px)');
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  const hasIssues = issues.length > 0 && issuesPanel !== undefined;
+  const [issuesShown, setIssuesShown] = useState(false);
+  // State follows props during render (no effect): open once per run of issues.
+  if (hasIssues && wideScreen && !issuesShown) {
+    setIssuesShown(true);
+    setIssuesOpen(true);
+  } else if (!hasIssues && (issuesShown || issuesOpen)) {
+    setIssuesShown(false);
+    setIssuesOpen(false);
+  }
+  const issuesContent = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<ReadonlySet<string>>(() => new Set());
   const anchor = useRef<string | null>(null);
   const focusNext = useRef<string | null>(null);
@@ -940,7 +1164,34 @@ export function CutListEditor({
 
   const parts = project.parts;
   const summary = cutListSummary(project);
-  const cols = useMemo(() => navColumns(wideBands), [wideBands]);
+  const cols = useMemo(() => navColumns(wideBands, !narrow), [wideBands, narrow]);
+
+  // T123: the view (search, sort, filter, groups). It never changes the project order.
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<Sort | null>(null);
+  const [issuesOnly, setIssuesOnly] = useState(false);
+  const [grouped, setGrouped] = useState(false);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
+  const issueSet = useMemo(() => issueRows(issues), [issues]);
+  const view = useMemo(
+    () => cutListView(parts, issueSet, { query, sort, issuesOnly, grouped, collapsed }),
+    [parts, issueSet, query, sort, issuesOnly, grouped, collapsed],
+  );
+  const order = view.order;
+  function toggleGroup(key: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+  function resetView() {
+    setQuery('');
+    setSort(null);
+    setIssuesOnly(false);
+    setCollapsed(new Set());
+  }
   // Ids of removed parts drop out of the selection (undo, delete, another screen).
   const selected = useMemo(() => {
     const have = new Set(parts.map((p) => p.id));
@@ -990,6 +1241,10 @@ export function CutListEditor({
       params: { w: 100, h: 100, r: 0 },
     });
     if (ok) {
+      // The new row has no group and no issue yet: drop what would hide it (T123).
+      setQuery('');
+      setIssuesOnly(false);
+      if (collapsed.has('')) toggleGroup('');
       focusNext.current = `${parts.length}|${col}`;
       scrollToRow.current?.(parts.length);
     }
@@ -997,10 +1252,13 @@ export function CutListEditor({
 
   const navigate: Navigate = (row: number, col: string, dir: NavDirection, enter = false) => {
     const from = pendingFocus.current ?? { row, col };
-    const target = navTarget(from.row, from.col, dir, parts.length, cols, enter);
+    // Rows move in view order (T123); cell ids keep the project index.
+    const position = order.indexOf(from.row);
+    if (position < 0) return;
+    const target = navTarget(position, from.col, dir, order.length, cols, enter);
     if (!target) return;
     if ('append' in target) addRow(target.col === 'actions' ? 'name' : target.col);
-    else focusCell(target.row, target.col);
+    else focusCell(order[target.row] ?? 0, target.col);
   };
 
   const issuesOf = (index: number) =>
@@ -1040,10 +1298,13 @@ export function CutListEditor({
   function selectClick(row: number, mods: { shift: boolean; ctrl: boolean }) {
     const id = parts[row]?.id;
     if (!id) return;
-    const from = anchor.current ? parts.findIndex((p) => p.id === anchor.current) : -1;
-    if (mods.shift && from >= 0) {
-      const [a, b] = from < row ? [from, row] : [row, from];
-      const range = parts.slice(a, b + 1).map((p) => p.id);
+    // Ranges follow the view order (T123).
+    const anchorRow = anchor.current ? parts.findIndex((p) => p.id === anchor.current) : -1;
+    const from = order.indexOf(anchorRow);
+    const to = order.indexOf(row);
+    if (mods.shift && from >= 0 && to >= 0) {
+      const [a, b] = from < to ? [from, to] : [to, from];
+      const range = order.slice(a, b + 1).map((i) => parts[i]?.id ?? '');
       setSelection(new Set(mods.ctrl ? [...selected, ...range] : range));
       return;
     }
@@ -1059,6 +1320,7 @@ export function CutListEditor({
     run,
     navigate,
     parts,
+    order,
     issuesOf,
     act,
     targetIds,
@@ -1070,6 +1332,7 @@ export function CutListEditor({
     run,
     navigate,
     parts,
+    order,
     issuesOf,
     act,
     targetIds,
@@ -1093,8 +1356,22 @@ export function CutListEditor({
         selectClick: (row: number, mods: { shift: boolean; ctrl: boolean }) =>
           latest.current.selectClick(row, mods),
         selectionCount: () => latest.current.selectedSet.size,
+        visibleIds: () =>
+          latest.current.order.flatMap((i) => {
+            const id = latest.current.parts[i]?.id;
+            return id ? [id] : [];
+          }),
         selectAll: (on: boolean) =>
-          latest.current.setSelection(new Set(on ? latest.current.parts.map((p) => p.id) : [])),
+          latest.current.setSelection(
+            new Set(
+              on
+                ? latest.current.order.flatMap((i) => {
+                    const id = latest.current.parts[i]?.id;
+                    return id ? [id] : [];
+                  })
+                : [],
+            ),
+          ),
         openRowMenu: (row: number, anchor: HTMLElement) => rowMenu.current?.(row, anchor),
       } satisfies GridContext,
     }),
@@ -1131,6 +1408,23 @@ export function CutListEditor({
     return ok;
   }
 
+  /** T122: the generated rows in one importCutList = one undo step (D-041). */
+  function addCabinet(generated: Parameters<typeof cabinetRows>[0], group: string): boolean {
+    const rows = cabinetRows(generated, t.cabinet.roles, group, newPartId);
+    const ok = run('importCutList', { parts: rows });
+    if (ok) {
+      notify.success(
+        fill(t.cabinet.added, { group: group.trim() || t.cabinet.title, count: rows.length }),
+        {
+          id: 'cut-list-cabinet',
+          ...undoAction,
+        },
+      );
+      scrollToRow.current?.(parts.length);
+    }
+    return ok;
+  }
+
   function applyBulk(params: Record<string, unknown>): boolean {
     const ok = run('updateParts', params);
     if (ok) {
@@ -1152,6 +1446,8 @@ export function CutListEditor({
 
   const problemCount = issues.length;
   const s = t.select;
+  const v = t.view;
+  const filtering = query.trim() !== '' || issuesOnly;
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -1164,165 +1460,338 @@ export function CutListEditor({
         />
       ) : null}
 
-      <section
-        aria-labelledby="cut-list-title"
-        data-density="compact"
-        onKeyDown={onGridKey}
-        className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-xs"
-      >
-        <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-2.5">
-          {selected.length > 0 ? (
-            <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="selection-bar">
-              <span className="text-sm font-medium text-fg tabular-nums" role="status">
-                {fill(s.count, { count: selected.length })}
-              </span>
-              <Button size="sm" onClick={() => setBulkOpen(true)} data-testid="bulk-open">
-                <Pencil aria-hidden />
-                {s.bulkEdit}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => act('duplicate', selected)}>
-                <Copy aria-hidden />
-                {t.rowMenu.duplicate}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="hover:bg-danger-subtle hover:text-danger-text"
-                onClick={() => act('remove', selected)}
-                data-testid="selection-remove"
+      <Popover open={issuesOpen && hasIssues} onOpenChange={setIssuesOpen}>
+        <section
+          aria-labelledby="cut-list-title"
+          data-density="compact"
+          onKeyDown={onGridKey}
+          className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-xs"
+        >
+          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-2.5">
+            {selected.length > 0 ? (
+              <div
+                className="flex min-w-0 flex-wrap items-center gap-2"
+                data-testid="selection-bar"
               >
-                <Trash2 aria-hidden />
-                {t.rowMenu.remove}
-              </Button>
-              <Tooltip content={s.clear}>
-                <IconButton size="sm" aria-label={s.clear} onClick={() => setSelection(new Set())}>
-                  <X aria-hidden />
-                </IconButton>
-              </Tooltip>
-            </div>
-          ) : (
-            <div className="flex min-w-0 items-center gap-3">
-              <h2 id="cut-list-title" className="text-base font-semibold tracking-tight text-fg">
-                {t.tableLabel}
-              </h2>
-              {problemCount === 0 ? (
-                <span
-                  data-testid="cut-list-issue-chip"
-                  data-count={0}
-                  className="inline-flex h-6 items-center gap-1 rounded-sm border border-success-border bg-success-subtle px-2 text-xs font-medium text-success-text"
-                >
-                  <CircleCheck aria-hidden className="size-3.5" />
-                  {t.issueChip.ok}
+                <span className="text-sm font-medium text-fg tabular-nums" role="status">
+                  {fill(s.count, { count: selected.length })}
                 </span>
-              ) : (
-                <button
-                  type="button"
-                  data-testid="cut-list-issue-chip"
-                  data-count={problemCount}
-                  onClick={onShowIssues}
-                  className="inline-flex h-6 items-center gap-1 rounded-sm border border-warning-border bg-warning-subtle px-2 text-xs font-medium text-warning-text outline-none hover:bg-warning-subtle/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                <Button size="sm" onClick={() => setBulkOpen(true)} data-testid="bulk-open">
+                  <Pencil aria-hidden />
+                  {s.bulkEdit}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => act('duplicate', selected)}>
+                  <Copy aria-hidden />
+                  {t.rowMenu.duplicate}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hover:bg-danger-subtle hover:text-danger-text"
+                  onClick={() => act('remove', selected)}
+                  data-testid="selection-remove"
                 >
-                  <TriangleAlert aria-hidden className="size-3.5" />
-                  {fill(t.issueChip.count, { count: problemCount })}
-                </button>
-              )}
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => addRow()}>
-              <Plus aria-hidden />
-              {t.addRow}
-            </Button>
-            <Tooltip content={t.exportCsvHint}>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportCsv}
-                disabled={parts.length === 0}
-                data-testid="cut-list-export"
-              >
-                <Download aria-hidden />
-                {t.exportCsv}
+                  <Trash2 aria-hidden />
+                  {t.rowMenu.remove}
+                </Button>
+                <Tooltip content={s.clear}>
+                  <IconButton
+                    size="sm"
+                    aria-label={s.clear}
+                    onClick={() => setSelection(new Set())}
+                  >
+                    <X aria-hidden />
+                  </IconButton>
+                </Tooltip>
+              </div>
+            ) : (
+              <div className="flex min-w-0 items-center gap-3">
+                <h2 id="cut-list-title" className="text-base font-semibold tracking-tight text-fg">
+                  {t.tableLabel}
+                </h2>
+                {problemCount === 0 ? (
+                  <IssuesOkChip label={t.issueChip.ok} testId="cut-list-issue-chip" />
+                ) : (
+                  <button
+                    type="button"
+                    data-testid="cut-list-issue-chip"
+                    data-count={problemCount}
+                    aria-expanded={issuesPanel ? issuesOpen : undefined}
+                    aria-controls={issuesPanel && issuesOpen ? 'cut-list-issues' : undefined}
+                    onClick={() => {
+                      if (issuesOpen) {
+                        setIssuesOpen(false);
+                        return;
+                      }
+                      setIssuesOpen(true);
+                      // Keyboard users land in the panel; Esc there closes it.
+                      requestAnimationFrame(() =>
+                        issuesContent.current?.querySelector<HTMLElement>('h2 button')?.focus(),
+                      );
+                    }}
+                    className="inline-flex h-6 items-center gap-1 rounded-sm border border-warning-border bg-warning-subtle px-2 text-xs font-medium text-warning-text outline-none hover:bg-warning-subtle/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  >
+                    <TriangleAlert aria-hidden className="size-3.5" />
+                    {fill(t.issueChip.count, { count: problemCount })}
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => addRow()}>
+                <Plus aria-hidden />
+                {t.addRow}
               </Button>
-            </Tooltip>
-            <Button
-              ref={pasteButton}
-              size="sm"
-              aria-expanded={pasteOpen}
-              aria-controls="paste-panel"
-              onClick={() => setPasteOpen((o) => !o)}
-            >
-              <ClipboardPaste aria-hidden />
-              {t.pasteOpen}
-            </Button>
-          </div>
-        </div>
-        {selected.length > 0 ? (
-          // The title stays the section's name while the selection bar replaces it.
-          <h2 id="cut-list-title" className="sr-only">
-            {t.tableLabel}
-          </h2>
-        ) : null}
-        <div
-          ref={scrollRef}
-          className={cn(
-            'relative max-w-full overflow-auto',
-            parts.length === 0 ? '' : 'max-h-[max(22rem,calc(100dvh-20rem))]',
-          )}
-          data-testid="cut-list-scroll"
-        >
-          {parts.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-              <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface-subtle text-fg-muted">
-                <Rows3 aria-hidden className="size-5" />
-              </span>
-              <p className="text-sm font-medium text-fg">{t.empty}</p>
-              <p className="max-w-sm text-sm text-fg-muted">{t.subtitle}</p>
+              <Tooltip content={t.cabinet.openHint}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCabinetOpen((n) => n + 1)}
+                  data-testid="cabinet-open"
+                  aria-label={phone ? t.cabinet.open : undefined}
+                >
+                  <Archive aria-hidden />
+                  <span className="max-sm:sr-only">{t.cabinet.open}</span>
+                </Button>
+              </Tooltip>
+              <Tooltip content={t.exportCsvHint}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportCsv}
+                  disabled={parts.length === 0}
+                  data-testid="cut-list-export"
+                >
+                  <Download aria-hidden />
+                  {t.exportCsv}
+                </Button>
+              </Tooltip>
+              <Button
+                ref={pasteButton}
+                size="sm"
+                aria-expanded={pasteOpen}
+                aria-controls="paste-panel"
+                onClick={() => setPasteOpen((o) => !o)}
+              >
+                <ClipboardPaste aria-hidden />
+                {t.pasteOpen}
+              </Button>
             </div>
-          ) : phone ? (
-            <Cards t={t} parts={parts} ctx={ctx} scrollRef={scrollRef} scrollToRow={scrollToRow} />
-          ) : (
-            <Grid
-              t={t}
-              parts={parts}
-              ctx={ctx}
-              wideBands={wideBands}
-              narrow={narrow}
-              scrollRef={scrollRef}
-              scrollToRow={scrollToRow}
+          </div>
+          {parts.length > 0 ? (
+            <div
+              className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-4 py-2"
+              data-testid="cut-list-view"
+            >
+              <div className="relative w-full sm:w-56 xl:w-72">
+                <Search
+                  aria-hidden
+                  className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-fg-subtle"
+                />
+                <Input
+                  type="search"
+                  inputSize="sm"
+                  aria-label={v.search}
+                  placeholder={v.searchPlaceholder}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && query !== '') {
+                      e.stopPropagation();
+                      setQuery('');
+                    }
+                  }}
+                  className="pl-8"
+                  data-testid="cut-list-search"
+                />
+              </div>
+              <Tooltip content={v.groupHint}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-pressed={grouped}
+                  onClick={() => setGrouped((g) => !g)}
+                  className={cn(grouped && PRESSED)}
+                  data-testid="cut-list-group-by"
+                >
+                  <Layers aria-hidden />
+                  {v.group}
+                </Button>
+              </Tooltip>
+              <Tooltip content={v.issuesOnlyHint}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-pressed={issuesOnly}
+                  onClick={() => setIssuesOnly((on) => !on)}
+                  className={cn(issuesOnly && PRESSED)}
+                  data-testid="cut-list-issues-only"
+                >
+                  <TriangleAlert aria-hidden />
+                  {v.issuesOnly}
+                  {issueSet.size > 0 ? (
+                    <span className="text-xs text-fg-muted tabular-nums">{issueSet.size}</span>
+                  ) : null}
+                </Button>
+              </Tooltip>
+              <span className="flex-1" />
+              {filtering || sort ? (
+                <>
+                  <span
+                    role="status"
+                    className="text-xs text-fg-muted tabular-nums"
+                    data-testid="cut-list-shown"
+                  >
+                    {fill(v.shown, { shown: view.matched, total: parts.length })}
+                  </span>
+                  <Tooltip content={v.viewOnlyHint}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={resetView}
+                      data-testid="cut-list-reset"
+                    >
+                      <X aria-hidden />
+                      <span className={narrow ? 'sr-only' : undefined}>{v.reset}</span>
+                    </Button>
+                  </Tooltip>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+          {issuesPanel ? (
+            <>
+              {/* The panel hangs from the right edge under the view bar, over the grid (T253). */}
+              <PopoverAnchor aria-hidden className="h-0" />
+              <PopoverContent
+                ref={issuesContent}
+                id="cut-list-issues"
+                aria-label={t.issuesPanel.label}
+                role="dialog"
+                side="bottom"
+                align="end"
+                data-testid="cut-list-issues"
+                className="max-h-[min(32rem,calc(100dvh-14rem))] w-[22rem] max-w-[calc(100vw-2rem)] overflow-auto border-0 bg-transparent p-0 shadow-lg"
+                // Non-modal and quiet: it never takes focus by itself and stays open while
+                // the user keeps typing in the grid; the chip or Esc inside it closes it.
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                onInteractOutside={(e) => e.preventDefault()}
+                onEscapeKeyDown={(e) => {
+                  if (!issuesContent.current?.contains(document.activeElement)) e.preventDefault();
+                }}
+              >
+                {issuesPanel}
+              </PopoverContent>
+            </>
+          ) : null}
+          {cabinetOpen > 0 ? (
+            <CabinetDialog
+              key={cabinetOpen}
+              t={t.cabinet}
+              open
+              onOpenChange={(o) => {
+                if (!o) setCabinetOpen(0);
+              }}
+              thickness={project.stock.thickness}
+              defaultGroup={nextCabinetName(
+                t.cabinet.defaultGroup,
+                parts.map((p) => p.group),
+              )}
+              onAdd={addCabinet}
             />
-          )}
-        </div>
-        <footer
-          aria-label={t.summary.label}
-          className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border-subtle px-4 py-2 text-xs text-fg-muted tabular-nums"
-        >
-          <span data-testid="cut-list-count">
-            {fill(t.count, { rows: summary.rows, pieces: summary.pieces })}
-          </span>
-          <span aria-hidden className="text-fg-subtle">
-            ·
-          </span>
-          <span data-testid="cut-list-area" data-value={summary.areaM2}>
-            {fill(t.summary.area, { area: formatNumberTr(summary.areaM2, { maxDecimals: 2 }) })}
-          </span>
-          <span aria-hidden className="text-fg-subtle">
-            ·
-          </span>
-          <Tooltip content={t.summary.sheetsHint}>
-            <span tabIndex={0} data-testid="cut-list-sheets" data-value={summary.sheets}>
-              {fill(t.summary.sheets, { count: summary.sheets })}
+          ) : null}
+          {selected.length > 0 ? (
+            // The title stays the section's name while the selection bar replaces it.
+            <h2 id="cut-list-title" className="sr-only">
+              {t.tableLabel}
+            </h2>
+          ) : null}
+          <div
+            ref={scrollRef}
+            className={cn(
+              'relative max-w-full overflow-auto',
+              parts.length === 0 ? '' : 'max-h-[max(22rem,calc(100dvh-20rem))]',
+            )}
+            data-testid="cut-list-scroll"
+          >
+            {parts.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+                <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface-subtle text-fg-muted">
+                  <Rows3 aria-hidden className="size-5" />
+                </span>
+                <p className="text-sm font-medium text-fg">{t.empty}</p>
+                <p className="max-w-sm text-sm text-fg-muted">{t.subtitle}</p>
+              </div>
+            ) : view.items.length === 0 ? (
+              <div
+                className="flex flex-col items-center gap-3 px-6 py-10 text-center"
+                data-testid="cut-list-no-match"
+              >
+                <p className="text-sm text-fg-muted">{v.noMatch}</p>
+                <Button variant="outline" size="sm" onClick={resetView}>
+                  {v.reset}
+                </Button>
+              </div>
+            ) : phone ? (
+              <Cards
+                t={t}
+                parts={parts}
+                order={order}
+                ctx={ctx}
+                scrollRef={scrollRef}
+                scrollToRow={scrollToRow}
+              />
+            ) : (
+              <Grid
+                t={t}
+                parts={parts}
+                items={view.items}
+                ctx={ctx}
+                wideBands={wideBands}
+                narrow={narrow}
+                scrollRef={scrollRef}
+                scrollToRow={scrollToRow}
+                sort={sort}
+                onSort={(key) => setSort((prev) => nextSort(prev, key))}
+                onToggleGroup={toggleGroup}
+              />
+            )}
+          </div>
+          <footer
+            aria-label={t.summary.label}
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border-subtle px-4 py-2 text-xs text-fg-muted tabular-nums"
+          >
+            <span data-testid="cut-list-count">
+              {fill(t.count, { rows: summary.rows, pieces: summary.pieces })}
             </span>
-          </Tooltip>
-          <span className="flex-1" />
-          <Tooltip content={t.shortcuts}>
-            <IconButton size="sm" aria-label={t.summary.shortcuts} data-testid="cut-list-shortcuts">
-              <Keyboard aria-hidden />
-            </IconButton>
-          </Tooltip>
-        </footer>
-      </section>
-      <RowMenu t={t} openerRef={rowMenu} rowAction={ctx.current.rowAction} />
+            <span aria-hidden className="text-fg-subtle">
+              ·
+            </span>
+            <span data-testid="cut-list-area" data-value={summary.areaM2}>
+              {fill(t.summary.area, { area: formatNumberTr(summary.areaM2, { maxDecimals: 2 }) })}
+            </span>
+            <span aria-hidden className="text-fg-subtle">
+              ·
+            </span>
+            <Tooltip content={t.summary.sheetsHint}>
+              <span tabIndex={0} data-testid="cut-list-sheets" data-value={summary.sheets}>
+                {fill(t.summary.sheets, { count: summary.sheets })}
+              </span>
+            </Tooltip>
+            <span className="flex-1" />
+            <Tooltip content={t.shortcuts}>
+              <IconButton
+                size="sm"
+                aria-label={t.summary.shortcuts}
+                data-testid="cut-list-shortcuts"
+              >
+                <Keyboard aria-hidden />
+              </IconButton>
+            </Tooltip>
+          </footer>
+        </section>
+      </Popover>
+      <RowMenu t={t} openerRef={rowMenu} rowAction={ctx.current.rowAction} canMove={!sort} />
       <BulkEditSheet
         t={t}
         open={bulkOpen}

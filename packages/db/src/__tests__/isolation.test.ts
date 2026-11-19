@@ -36,10 +36,10 @@ async function seed(scope: CompanyScope) {
   const material = await scope.materials.create({
     name: 'MDF 18',
     kind: 'mdf',
-    thickness: 18,
-    feed: 6000,
-    spindleSpeed: 18000,
-    stepDown: 6,
+    thicknesses: [18],
+    tone: 'natural',
+    grain: null,
+    sheetSizes: [{ width: 2800, height: 2070 }],
   });
   const template = await scope.templates.create({ name: 'Kapak' });
   const templateVersion = await scope.templates.addVersion(template.id, {
@@ -258,12 +258,12 @@ describe('tenant isolation', () => {
     const row = await a.materials.create({
       name: 'smuggle',
       kind: 'mdf',
-      thickness: 18,
-      feed: 1,
-      spindleSpeed: 1,
-      stepDown: 1,
+      thicknesses: [18],
+      tone: 'natural',
+      grain: null,
+      sheetSizes: [{ width: 2440, height: 1220 }],
       companyId: b.companyId,
-    } as Parameters<typeof a.materials.create>[0]);
+    });
     expect(row.companyId).toBe(a.companyId);
     expect((await b.materials.list()).map((m) => m.id)).not.toContain(row.id);
   });
