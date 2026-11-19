@@ -95,3 +95,30 @@ export const setGrain = defineCommand({
     draft.stock.sheet.grain = params.grain;
   },
 });
+
+/**
+ * Thin skin on or off (T143, §6.3 "son pasoda ince tabaka bırak"): `thickness` mm of skin under
+ * small parts instead of tabs, cut through by a cleanup pass at the end of each sheet; `null` =
+ * tabs (the default). A safety setting the user chooses: not an AI tool.
+ */
+export const setThinSkin = defineCommand({
+  name: 'setThinSkin',
+  area: 'plate',
+  description:
+    'Hold small parts with a thin skin (thickness in mm, less than the stock thickness) instead of tabs; null = tabs.',
+  aiTool: false,
+  params: z.strictObject({
+    thickness: z
+      .number({ error: 'thickness must be a finite number (mm)' })
+      .positive({ error: 'thickness must be greater than 0' })
+      .nullable(),
+  }),
+  check: (project, p) =>
+    p.thickness !== null && !(p.thickness < project.stock.thickness)
+      ? `skin thickness ${p.thickness} mm must be less than the stock thickness (${project.stock.thickness} mm)`
+      : undefined,
+  apply: (draft, p) => {
+    if (p.thickness === null) delete draft.cutting.skin;
+    else draft.cutting.skin = { thickness: p.thickness };
+  },
+});

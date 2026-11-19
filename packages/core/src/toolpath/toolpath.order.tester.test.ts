@@ -220,7 +220,14 @@ describe('tester: cut order through buildToolpath (independent checker)', () => 
 // ---------------------------------------------------------------- cutOrder with fake items
 
 type Cls = OrderItem['cls'];
-const RANK: Record<Cls, number> = { drill: 0, pocket: 0, groove: 0, inner: 1, outer: 2 };
+const RANK: Record<Cls, number> = {
+  drill: 0,
+  pocket: 0,
+  groove: 0,
+  online: 0,
+  inner: 1,
+  outer: 2,
+};
 
 const itemsArb = fc
   .integer({ min: 1, max: 8 })

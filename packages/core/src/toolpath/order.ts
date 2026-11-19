@@ -25,13 +25,15 @@ import type { Point } from '../geometry/types';
 import type { NestingMode } from '../schema';
 
 /** Operation classes; drill/pocket/groove are the holes of §4.5. */
-export type CutClass = 'drill' | 'pocket' | 'groove' | 'inner' | 'outer';
+export type CutClass = 'drill' | 'pocket' | 'groove' | 'online' | 'inner' | 'outer';
 
 /** Holes and pockets first, then inner contours, the outer contour last (§6.3, §4.5). */
 export const CUT_CLASS_RANK: Record<CutClass, number> = {
   drill: 0,
   pocket: 0,
   groove: 0,
+  // On-line engraving (T142) never frees anything: with the holes, before every through cut.
+  online: 0,
   inner: 1,
   outer: 2,
 };

@@ -107,6 +107,21 @@ jobs:
           retention-days: 3
           if-no-files-found: ignore
 
+      # T137b: the B13 editor perf result (summary JSON + performance trace) on every full run,
+      # pass or fail, so the numbers can be compared over time. Only the shard that ran the spec
+      # has the files; the others upload nothing.
+      - name: Upload editor perf result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-perf-${{ matrix.shard }}
+          path: |
+            e2e/test-results/**/editor-perf.json
+            e2e/test-results/**/editor-perf-trace.json
+          retention-days: 5
+          compression-level: 9
+          if-no-files-found: ignore
+
   # T102 / D-032: every screen at 1440 and 390 px, light and dark, with screenshot baselines (Linux
   # only) and axe (serious/critical = fail). T199a: a missing or changed baseline FAILS the run;
   # the actual images become candidate baselines in the visual-screenshots artefact.

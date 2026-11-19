@@ -310,7 +310,11 @@ export function cutLoops(sm: readonly SheetMove[], d: Derived, push: Push): CutL
 
 /** Closed through cuts the layout expects: every placed copy plus each of its cut-outs (T134). */
 export function expectedLoopCount(expected: readonly ExpectedPart[]): number {
-  return expected.reduce((n, e) => n + 1 + (e.inners?.length ?? 0) + (e.holes?.length ?? 0), 0);
+  return expected.reduce(
+    (n, e) =>
+      n + (e.outlineCut === false ? 0 : 1) + (e.inners?.length ?? 0) + (e.holes?.length ?? 0),
+    0,
+  );
 }
 
 interface ExpectedLoop {
@@ -335,7 +339,7 @@ export function matchLayout(
   push: Push,
 ): void {
   const want: ExpectedLoop[] = expected.flatMap((part) => [
-    { part, cx: part.cx, cy: part.cy },
+    ...(part.outlineCut === false ? [] : [{ part, cx: part.cx, cy: part.cy }]),
     ...(part.inners ?? []).map((c, inner) => ({ part, inner, cx: c.cx, cy: c.cy })),
     ...(part.holes ?? []).map((c, hole) => ({ part, hole, cx: c.cx, cy: c.cy })),
   ]);
@@ -355,15 +359,16 @@ export function matchLayout(
     if (bestI >= 0 && bestD <= d.layoutTol) free.delete(bestI);
     else extra.push(l);
   }
-  const inners = want.length - expected.length;
+  const outlines = expected.filter((e) => e.outlineCut !== false).length;
+  const inners = want.length - outlines;
   if (loops.length !== want.length) {
     push(
       'LAYOUT',
       'PART_COUNT',
       0,
       inners === 0
-        ? `The program cuts ${loops.length} parts, the layout has ${expected.length}.`
-        : `The program cuts ${loops.length} closed loops, the layout has ${expected.length} parts and ${inners} cut-outs or through holes (${want.length}).`,
+        ? `The program cuts ${loops.length} parts, the layout has ${outlines}.`
+        : `The program cuts ${loops.length} closed loops, the layout has ${outlines} parts and ${inners} cut-outs or through holes (${want.length}).`,
     );
   }
   for (const l of extra) {

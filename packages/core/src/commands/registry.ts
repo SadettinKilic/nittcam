@@ -23,6 +23,7 @@ import {
   removeDimension,
   addInnerContour,
   removeInnerContour,
+  setOperation,
   duplicatePart,
   duplicateParts,
   importCutList,
@@ -47,6 +48,7 @@ import {
   setMaterial,
   setSheetSize,
   setThickness,
+  setThinSkin,
 } from './plate';
 import {
   commandContextSchema,
@@ -66,6 +68,7 @@ export const COMMANDS = {
   setMaterial,
   applyLibraryMaterial,
   setThickness,
+  setThinSkin,
   setSheetSize,
   setGrain,
   addPart,
@@ -84,6 +87,7 @@ export const COMMANDS = {
   removeDimension,
   addInnerContour,
   removeInnerContour,
+  setOperation,
   updatePart,
   setPartGrain,
   setPartsGrain,
