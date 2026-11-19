@@ -166,6 +166,16 @@
   --color-part-stroke: #5c4a30;
   --color-part-locked: #efdfc2;
   --color-part-locked-stroke: var(--color-info-800);
+  /* 3D preview materials (T154, spec §3.8): matte, slightly desaturated base tones; the grain */
+  /* texture is generated in code from them. Edge bands use the accent family. */
+  --color-mat-mdf: #b39a7a;
+  --color-mat-plywood: #d6c09c;
+  --color-mat-melamine: #e9e7e1;
+  --color-mat-solid-wood: #c09a70;
+  --color-mat-acrylic: #cbdade;
+  --color-mat-pvc: #dfe1e4;
+  --color-mat-band: var(--color-brand-500);
+  --color-mat-shadow: #2a2620;
   --color-selection: var(--color-brand-600);
   --color-sim-depth-top: var(--color-brand-200);
   --color-sim-depth-bottom: var(--color-brand-900);
@@ -327,6 +337,14 @@
   --color-part-stroke: #c7ae86;
   --color-part-locked: #47392a;
   --color-part-locked-stroke: var(--color-info-300);
+  --color-mat-mdf: #8a7459;
+  --color-mat-plywood: #a38f70;
+  --color-mat-melamine: #b4b2ad;
+  --color-mat-solid-wood: #8f7151;
+  --color-mat-acrylic: #94a6ac;
+  --color-mat-pvc: #a3a7ac;
+  --color-mat-band: var(--color-brand-400);
+  --color-mat-shadow: #050506;
   --color-selection: var(--color-brand-400);
   --color-sim-depth-top: var(--color-brand-200);
   --color-sim-depth-bottom: var(--color-brand-600);

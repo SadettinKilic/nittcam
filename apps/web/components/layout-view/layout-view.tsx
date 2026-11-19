@@ -40,7 +40,23 @@ import {
   Tooltip,
   cn,
 } from '@nittcam/ui';
-import { Grid3x3, Info, Lock, LockOpen, Maximize, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  Box,
+  Grid3x3,
+  Info,
+  Lock,
+  LockOpen,
+  Maximize,
+  RefreshCw,
+  Square,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
+import { Preview3D } from '../preview3d/preview3d';
+import type { CameraCommand } from '../preview3d/scene';
+import type { ViewPreset } from '../../lib/preview3d/camera';
+import { hasWebGL2 } from '../../lib/preview3d/capability';
+import type { TableSpec } from '../../lib/preview3d/stage';
 import { onThemeChange } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
@@ -90,6 +106,11 @@ export interface LayoutViewProps {
   left?: ReactNode;
   /** Below 1024 px: the main action kept next to the panel buttons ("Diz"), T198. */
   compactAction?: ReactNode;
+  /**
+   * 3D preview (T152, spec §3.8): shows the 2D/3D switch; `table` is the machine table (null =
+   * no machine yet). Without it the view is 2D only (e.g. inside the simulation).
+   */
+  preview3d?: { table: TableSpec | null };
 }
 
 const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
@@ -147,6 +168,7 @@ export function LayoutView({
   appearKey = 0,
   left,
   compactAction,
+  preview3d,
 }: LayoutViewProps) {
   const coarse = useMediaQuery('(pointer: coarse)', false);
   const selectId = useId();
@@ -164,6 +186,31 @@ export function LayoutView({
   const [view, setView] = useState<ViewState | null>(null);
   const [colors, setColors] = useState<CanvasColors | null>(null);
   const box = useRef<HTMLDivElement>(null);
+  // T152: 2D/3D switch. Without WebGL2 (or after a failed scene) the 2D view stays, with a note.
+  const [mode, setMode] = useState<'2d' | '3d'>('2d');
+  const [noWebGL, setNoWebGL] = useState(false);
+  const [camera, setCamera] = useState<CameraCommand>({
+    preset: 'iso',
+    from: 'top',
+    nonce: 0,
+    animate: true,
+  });
+  const show3d = preview3d !== undefined && mode === '3d';
+  const pt = t.preview3d;
+  function chooseMode(next: '2d' | '3d') {
+    if (next === '3d' && !hasWebGL2()) {
+      setNoWebGL(true);
+      setMode('2d');
+      return;
+    }
+    // Every opening eases from top to isometric (a jump with reduced motion, in the rig).
+    if (next === '3d' && mode !== '3d')
+      setCamera((c) => ({ preset: 'iso', from: 'top', nonce: c.nonce + 1, animate: true }));
+    setMode(next);
+  }
+  function preset(p: ViewPreset) {
+    setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true }));
+  }
 
   const stock = project.stock.sheet;
   const height = size.h;
@@ -548,59 +595,112 @@ export function LayoutView({
               })}
             </TabsList>
           </PlateTabStrip>
-          <div className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}>
-            {/* T249: the same icon toggle as the board (T243); the text is its tooltip. */}
-            <Tooltip content={t.grid}>
-              <IconButton
-                size="sm"
-                variant="ghost"
-                aria-label={t.grid}
-                aria-pressed={grid}
-                data-testid="layout-grid"
-                className={cn(grid && 'bg-accent-subtle text-accent-text hover:text-accent-text')}
-                onClick={() => setGrid(!grid)}
+          <div
+            className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}
+            data-testid="layout-tools"
+          >
+            {preview3d ? (
+              // Compact icon switch (B19 fix): the tab row keeps its room (T249, ≥ 3 full tabs).
+              // The 3D presets live in the 3D view itself, so 3D adds nothing to this row.
+              <div
+                role="group"
+                aria-label={pt.switchLabel}
+                className="flex items-center gap-px rounded-md bg-surface-subtle p-px"
+                data-testid="view-switch"
               >
-                <Grid3x3 aria-hidden />
-              </IconButton>
-            </Tooltip>
-            <Tooltip content={t.zoomOut}>
-              <IconButton
-                size="sm"
-                variant="ghost"
-                aria-label={t.zoomOut}
-                onClick={() => zoomButton(1 / 1.25)}
-                aria-keyshortcuts="-"
-              >
-                <ZoomOut aria-hidden />
-              </IconButton>
-            </Tooltip>
-            <Tooltip content={t.zoomIn}>
-              <IconButton
-                size="sm"
-                variant="ghost"
-                aria-label={t.zoomIn}
-                onClick={() => zoomButton(1.25)}
-                aria-keyshortcuts="+"
-              >
-                <ZoomIn aria-hidden />
-              </IconButton>
-            </Tooltip>
-            <Tooltip content={t.fit}>
-              <IconButton
-                size="sm"
-                variant="ghost"
-                aria-label={t.fit}
-                onClick={fit}
-                aria-keyshortcuts="0"
-              >
-                <Maximize aria-hidden />
-              </IconButton>
-            </Tooltip>
+                {(['2d', '3d'] as const).map((m) => (
+                  <Tooltip key={m} content={m === '2d' ? pt.view2dTip : pt.view3dTip}>
+                    <IconButton
+                      size="sm"
+                      variant="ghost"
+                      aria-label={m === '2d' ? pt.view2dTip : pt.view3dTip}
+                      aria-pressed={mode === m}
+                      data-testid={`view-${m}`}
+                      onClick={() => chooseMode(m)}
+                      className={cn(
+                        'size-7',
+                        mode === m && 'bg-surface text-fg shadow-xs hover:bg-surface',
+                      )}
+                    >
+                      {m === '2d' ? <Square aria-hidden /> : <Box aria-hidden />}
+                    </IconButton>
+                  </Tooltip>
+                ))}
+              </div>
+            ) : null}
+            {show3d ? null : (
+              <>
+                {/* T249: the same icon toggle as the board (T243); the text is its tooltip. */}
+                <Tooltip content={t.grid}>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t.grid}
+                    aria-pressed={grid}
+                    data-testid="layout-grid"
+                    className={cn(
+                      grid && 'bg-accent-subtle text-accent-text hover:text-accent-text',
+                    )}
+                    onClick={() => setGrid(!grid)}
+                  >
+                    <Grid3x3 aria-hidden />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={t.zoomOut}>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t.zoomOut}
+                    onClick={() => zoomButton(1 / 1.25)}
+                    aria-keyshortcuts="-"
+                  >
+                    <ZoomOut aria-hidden />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={t.zoomIn}>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t.zoomIn}
+                    onClick={() => zoomButton(1.25)}
+                    aria-keyshortcuts="+"
+                  >
+                    <ZoomIn aria-hidden />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={t.fit}>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t.fit}
+                    onClick={fit}
+                    aria-keyshortcuts="0"
+                  >
+                    <Maximize aria-hidden />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
           </div>
         </div>
       </div>
+      {noWebGL && !show3d ? (
+        <div
+          role="status"
+          data-testid="preview3d-fallback"
+          className={`${floating} absolute inset-x-2 bottom-12 z-10 mx-auto flex max-w-md items-start gap-2 px-3 py-2 text-sm text-fg sm:bottom-12`}
+        >
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-info-text" />
+          <span>{pt.fallback}</span>
+        </div>
+      ) : null}
       {/* B4b: on phones the sticky panel bar may cover the canvas foot until the page scrolls. */}
-      <div className="pointer-events-none absolute bottom-2 left-2 z-10 max-sm:bottom-8">
+      <div
+        className={cn(
+          'pointer-events-none absolute bottom-2 left-2 z-10 max-sm:bottom-8',
+          show3d && 'hidden',
+        )}
+      >
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -619,7 +719,7 @@ export function LayoutView({
         </Popover>
       </div>
       <div
-        className={`${floating} pointer-events-none absolute right-2 bottom-2 z-10 hidden items-center gap-3 px-2.5 py-1.5 font-mono text-2xs text-fg-muted tabular-nums sm:flex`}
+        className={`${floating} pointer-events-none absolute right-2 bottom-2 z-10 hidden items-center gap-3 px-2.5 py-1.5 font-mono text-2xs text-fg-muted tabular-nums ${show3d ? '' : 'sm:flex'}`}
         data-testid="layout-readout"
       >
         <span ref={cursor} title={t.cursor} className="min-w-[9.5rem] text-right">
@@ -652,6 +752,8 @@ export function LayoutView({
         role="application"
         aria-label={fill(t.canvasLabel, { n: sheet + 1, count: parts.length })}
         aria-describedby="layout-info"
+        aria-hidden={show3d || undefined}
+        inert={show3d || undefined}
         onKeyDown={onKeyDown}
         onPointerMove={onPointer}
         data-testid="layout-canvas"
@@ -661,7 +763,7 @@ export function LayoutView({
         data-y={view?.y}
         data-sheet-height={stock.height}
         data-part-color={colors?.part}
-        className={`absolute inset-0 ${canvasTouchClass(zoomed)} overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
+        className={`absolute inset-0 ${show3d ? 'invisible' : ''} ${canvasTouchClass(zoomed)} overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
       >
         {width > 0 && height > 0 && view && colors ? (
           <CanvasBoundary>
@@ -687,6 +789,21 @@ export function LayoutView({
           </CanvasBoundary>
         ) : null}
       </div>
+      {show3d && preview3d ? (
+        <Preview3D
+          t={pt}
+          project={project}
+          sheet={sheet}
+          table={preview3d.table}
+          command={camera}
+          onPreset={preset}
+          onFallback={() => {
+            setNoWebGL(true);
+            setMode('2d');
+          }}
+          partCount={parts.length}
+        />
+      ) : null}
     </TabsContent>
   );
 
