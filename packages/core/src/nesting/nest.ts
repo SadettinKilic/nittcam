@@ -7,7 +7,14 @@
 import { allowedRotations, rotationPolicyOf } from '../geometry/grain';
 import { contour, signedArea } from '../geometry/polyline';
 import { isQuarterTurn } from '../geometry/transform';
-import { defaultSheet, deriveOutline, sheetSizeOf, type Placement, type Project } from '../schema';
+import {
+  defaultSheet,
+  deriveOutline,
+  sheetSizeOf,
+  stockSheetSizes,
+  type Placement,
+  type Project,
+} from '../schema';
 import { cutOrder, type OrderItem } from '../toolpath/order';
 import { loopSegments, pathLength } from '../toolpath/path';
 import { compareScore, GuillotineBin, MaxRectsBin, type Bin, type Fit } from './bins';
@@ -150,6 +157,10 @@ interface Context {
   s: number;
   /** The bin area: usable area grown by `s` (so an inflated part inside it = part inside usable). */
   area: Rect;
+  /** Stock sheet sizes (T164); one entry = the single-size path. */
+  dims: readonly SheetDim[];
+  /** Bin area per size (`areas[0]` = `area`). */
+  areas: readonly Rect[];
   /** Tools one copy of each part needs, sorted (the contour tool included, T162). */
   tools: ReadonlyMap<string, readonly number[]>;
   /** Outer contour length of each part, mm. */
@@ -160,7 +171,15 @@ interface Context {
 interface Packed {
   /** New placements per sheet (locked ones are not included). */
   sheets: Placement[][];
+  /** Size index (into `ctx.dims`) of each sheet (T164). */
+  sizeOf: number[];
   unplaced: UnplacedPart[];
+}
+
+interface SheetDim {
+  width: number;
+  height: number;
+  qty?: number | undefined;
 }
 
 function inflate(r: Rect, s: number): Rect {
@@ -172,14 +191,20 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
   const { input, s } = ctx;
   const bins: Bin[] = [];
   const sheets: Placement[][] = [];
-  const openSheet = (): Bin => {
-    const bin = makeBin(heuristic, ctx.area);
+  const sizeOf: number[] = [];
+  const used = ctx.dims.map(() => 0);
+  const openSheet = (k: number): Bin => {
+    const bin = makeBin(heuristic, ctx.areas[k] ?? ctx.area);
     bins.push(bin);
     sheets.push([]);
+    sizeOf.push(k);
+    used[k] = (used[k] ?? 0) + 1;
     return bin;
   };
-  for (const locked of input.locked) {
-    const bin = openSheet();
+  const sizeIndex = (k: number | undefined): number =>
+    k !== undefined && Number.isInteger(k) && k >= 0 && k < ctx.dims.length ? k : 0;
+  for (const [li, locked] of input.locked.entries()) {
+    const bin = openSheet(sizeIndex(input.lockedSizes?.[li]));
     for (const pl of locked) {
       const r = placementRect(pl, ctx.sizes);
       if (r) bin.occupy(inflate(r, s));
@@ -210,7 +235,45 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
     });
   };
 
-  for (const item of items) {
+  /**
+   * Size of the next new sheet for `items[from]` (T164): among the sizes with stock left that
+   * take the item, the one whose greedy fill of the remaining items wastes the smallest share of
+   * the sheet; ties by list order. A single size skips the trial (the old path).
+   */
+  const pickSize = (from: number): number | null => {
+    const item = items[from];
+    if (!item) return null;
+    const open: number[] = [];
+    ctx.dims.forEach((d, k) => {
+      if (d.qty !== undefined && (used[k] ?? 0) >= d.qty) return;
+      if (ctx.dims.length === 1 || tryBin(makeBin(heuristic, ctx.areas[k] ?? ctx.area), item)) {
+        open.push(k);
+      }
+    });
+    if (open.length <= 1) return open[0] ?? null;
+    let best: number | null = null;
+    let bestWaste = Infinity;
+    for (const k of open) {
+      const d = ctx.dims[k] as SheetDim;
+      const trial = makeBin(heuristic, ctx.areas[k] ?? ctx.area);
+      let partArea = 0;
+      for (let j = from; j < items.length; j++) {
+        const it = items[j] as Item;
+        const hit = tryBin(trial, it);
+        if (!hit) continue;
+        trial.occupy({ x: hit.fit.x, y: hit.fit.y, w: hit.opt.w + 2 * s, h: hit.opt.h + 2 * s });
+        partArea += hit.opt.w * hit.opt.h;
+      }
+      const waste = 1 - partArea / (d.width * d.height);
+      if (waste < bestWaste - 1e-12) {
+        bestWaste = waste;
+        best = k;
+      }
+    }
+    return best;
+  };
+
+  for (const [at, item] of items.entries()) {
     let done = false;
     for (const [i, bin] of bins.entries()) {
       const hit = tryBin(bin, item);
@@ -221,7 +284,12 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
       }
     }
     if (done) continue;
-    const bin = openSheet();
+    const k = pickSize(at);
+    if (k === null) {
+      unplaced.push({ partId: item.partId, index: item.index, reason: 'NO_STOCK' });
+      continue;
+    }
+    const bin = openSheet(k);
     const hit = tryBin(bin, item);
     if (hit) {
       place(bins.length - 1, item, hit.fit, hit.opt);
@@ -229,10 +297,12 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
       // Defensive (items too large are filtered before packing): never leave an empty sheet.
       bins.pop();
       sheets.pop();
+      sizeOf.pop();
+      used[k] = (used[k] ?? 1) - 1;
       unplaced.push({ partId: item.partId, index: item.index, reason: 'TOO_LARGE' });
     }
   }
-  return { sheets, unplaced };
+  return { sheets, sizeOf, unplaced };
 }
 
 /** Statistics of one sheet's placements (bounding-box areas, raw sheet area). */
@@ -268,8 +338,8 @@ function wasteArea(
   ctx: Context,
   sheets: readonly (readonly Placement[])[],
   stats: readonly SheetStats[],
+  dims: readonly SheetDim[],
 ): number {
-  const { width, height } = ctx.input.sheet;
   let waste = 0;
   sheets.forEach((placements, i) => {
     const st = stats[i];
@@ -278,6 +348,7 @@ function wasteArea(
       waste += st.wasteArea;
       return;
     }
+    const { width, height } = dims[i] ?? ctx.input.sheet;
     let right = 0;
     let top = 0;
     for (const pl of placements) {
@@ -347,10 +418,11 @@ function objective(
   ctx: Context,
   layout: readonly (readonly Placement[])[],
   stats: readonly SheetStats[],
+  dims: readonly SheetDim[],
   weights: ObjectiveWeights,
   all: boolean,
 ): ObjectiveCost {
-  const waste = wasteArea(ctx, layout, stats);
+  const waste = wasteArea(ctx, layout, stats, dims);
   const cut = all || weights.cutLength !== 0 ? pathEstimate(ctx, layout) : 0;
   const changes = all || weights.toolChanges !== 0 ? toolChangeCount(ctx, layout) : 0;
   const handling = layout.length;
@@ -378,6 +450,8 @@ interface Candidate {
   ordering: PartOrdering;
   heuristic: PlacerHeuristic;
   layout: Placement[][];
+  /** Size of each sheet (T164). */
+  dims: SheetDim[];
   unplaced: UnplacedPart[];
   stats: SheetStats[];
   cost: ObjectiveCost;
@@ -407,7 +481,10 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
     if (!sizes.has(p.id)) sizes.set(p.id, { w: p.w, h: p.h, outline: p.outline });
   }
   const s = partSpacing(input.toolDiameter, input.gap);
-  const usable = usableSize(input.sheet, input.margin);
+  const dims: readonly SheetDim[] =
+    input.sheets && input.sheets.length > 0 ? input.sheets : [input.sheet];
+  const usables = dims.map((d) => usableSize(d, input.margin));
+  const usable = usables[0] ?? usableSize(input.sheet, input.margin);
   // Tool numbers are positive; -1 stands for an unknown contour tool distinct from every hole tool.
   const contourTool = input.contourTool ?? -1;
   const tools = new Map<string, readonly number[]>();
@@ -433,6 +510,13 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
       w: usable.width + 2 * s,
       h: usable.height + 2 * s,
     },
+    dims,
+    areas: usables.map((u) => ({
+      x: input.margin - s,
+      y: input.margin - s,
+      w: u.width + 2 * s,
+      h: u.height + 2 * s,
+    })),
   };
 
   const lockedKeys = new Set<string>();
@@ -451,7 +535,7 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
     );
     for (let index = 0; index < part.qty; index++) {
       if (lockedKeys.has(`${part.id}#${index}`)) continue;
-      if (!fitsUsableAny(options, usable)) {
+      if (!usables.some((u) => fitsUsableAny(options, u))) {
         tooLarge.push({ partId: part.id, index, reason: 'TOO_LARGE' });
         continue;
       }
@@ -487,12 +571,14 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
         ...(input.locked[i] ?? []).map((pl) => ({ ...pl })),
         ...added,
       ]);
-      const stats = layout.map((pls, i) => sheetStats(i, pls, input.sheet, sizes));
-      const cost = objective(ctx, layout, stats, weights, false);
+      const sheetDims = layout.map((_, i) => dims[packed.sizeOf[i] ?? 0] ?? input.sheet);
+      const stats = layout.map((pls, i) => sheetStats(i, pls, sheetDims[i] ?? input.sheet, sizes));
+      const cost = objective(ctx, layout, stats, sheetDims, weights, false);
       const cand: Candidate = {
         ordering,
         heuristic,
         layout,
+        dims: sheetDims,
         unplaced: [...tooLarge, ...packed.unplaced],
         stats,
         cost,
@@ -511,7 +597,15 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
     (a, b) => (a.partId < b.partId ? -1 : a.partId > b.partId ? 1 : 0) || a.index - b.index,
   );
   return {
-    layout: { sheets: win.layout.map((placements) => ({ placements })) },
+    // A size per sheet only with several stock sizes (T164): single-size layouts stay identical.
+    layout: {
+      sheets: win.layout.map((placements, i) => {
+        const d = win.dims[i];
+        return dims.length > 1 && d
+          ? { size: { width: d.width, height: d.height }, placements }
+          : { placements };
+      }),
+    },
     sheetCount: win.layout.length,
     sheets: win.stats,
     partArea,
@@ -520,7 +614,7 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
     utilisationPercent: sheetArea > 0 ? 100 - wastePercent : 0,
     unplaced,
     // Every term measured for the report; the total (and so the choice) is unchanged.
-    cost: objective(ctx, win.layout, win.stats, weights, true),
+    cost: objective(ctx, win.layout, win.stats, win.dims, weights, true),
     strategy: { ordering: win.ordering, heuristic: win.heuristic },
     candidates: count,
     info: rotatedBboxInfo(win.layout, sizes),
@@ -573,7 +667,20 @@ export function nestingInputFromProject(
 ): NestingInput {
   const locked = project.layout.sheets.map((sheet) => sheet.placements.filter((p) => p.locked));
   while (locked.length > 0 && locked[locked.length - 1]?.length === 0) locked.pop();
+  // T164: several stock sizes only when the project lists them (absent = the single-size path).
+  const stockSizes = project.stock.sheets ? stockSheetSizes(project) : null;
+  const multi = stockSizes
+    ? {
+        sheets: stockSizes,
+        lockedSizes: locked.map((_, i) => {
+          const own = sheetSizeOf(project, i);
+          const k = stockSizes.findIndex((d) => d.width === own.width && d.height === own.height);
+          return Math.max(0, k);
+        }),
+      }
+    : {};
   return {
+    ...multi,
     sheet: { width: defaultSheet(project).width, height: defaultSheet(project).height },
     parts: project.parts.map((part) => ({
       id: part.id,

@@ -83,6 +83,13 @@ export const MODE_WEIGHTS: Readonly<Record<NestingMode, Readonly<ObjectiveWeight
 /** Everything the placer needs. Built from a project by `nestingInputFromProject`. */
 export interface NestingInput {
   sheet: { width: number; height: number };
+  /**
+   * Stock sheet sizes in order (T164, D-056); absent or one size without `qty` = `[sheet]` (the
+   * single-size path, byte-identical to before). `qty` absent = no limit.
+   */
+  sheets?: readonly { width: number; height: number; qty?: number | undefined }[] | undefined;
+  /** Size index (into `sheets`) of each locked sheet; absent = 0. */
+  lockedSizes?: readonly number[] | undefined;
   parts: readonly NestPart[];
   /** Gap between parts, mm (project `nesting.gap`). */
   gap: number;
@@ -103,7 +110,10 @@ export interface NestingInput {
 }
 
 /** Why a part copy was not placed. */
-export type UnplacedReason = 'TOO_LARGE';
+export type UnplacedReason =
+  | 'TOO_LARGE'
+  /** Every sheet size it fits is used up (qty limits, T164). */
+  | 'NO_STOCK';
 
 export interface UnplacedPart {
   partId: string;

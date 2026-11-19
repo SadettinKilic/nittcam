@@ -10,7 +10,13 @@ import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } fr
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
-import { defaultSheet, deriveOutline, formatPath, innerOperation } from '../schema';
+import {
+  defaultSheet,
+  deriveOutline,
+  stockSheetSizes,
+  formatPath,
+  innerOperation,
+} from '../schema';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { lineLeavesPart } from '../editor/lines';
@@ -81,6 +87,7 @@ export const partLargerThanSheet: ValidationRule = (project) => {
   const { width, height } = defaultSheet(project);
   const { margin } = project.nesting;
   const usable = usableSize(defaultSheet(project), margin);
+  const usables = [usable, ...stockSheetSizes(project).map((d) => usableSize(d, margin))];
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     const size = partBoxSize(part);
@@ -90,7 +97,9 @@ export const partLargerThanSheet: ValidationRule = (project) => {
       defaultSheet(project),
       rotationPolicyOf(project.nesting),
     );
-    if (fitsUsableAny(rotationOptions(partShape(part), rotations), usable)) return;
+    const options = rotationOptions(partShape(part), rotations);
+    // T164: with several stock sizes a part only needs to fit one of them.
+    if (usables.some((u) => fitsUsableAny(options, u))) return;
     const locked = part.grain.mode === 'fixed' && defaultSheet(project).grain !== null;
     const how = !locked
       ? 'in any orientation'

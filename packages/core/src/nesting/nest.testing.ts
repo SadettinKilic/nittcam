@@ -26,8 +26,6 @@ export function invariantViolations(input: NestingInput, result: NestingResult):
   const required = 2 * s; // toolDiameter + gap
   const ux0 = input.margin;
   const uy0 = input.margin;
-  const ux1 = input.sheet.width - input.margin;
-  const uy1 = input.sheet.height - input.margin;
 
   // Locked placements unchanged, on the same sheet, in the same order, first.
   input.locked.forEach((locked, i) => {
@@ -56,6 +54,9 @@ export function invariantViolations(input: NestingInput, result: NestingResult):
   if (result.sheetCount !== result.layout.sheets.length) out.push('sheetCount mismatch');
 
   result.layout.sheets.forEach((sh, si) => {
+    // T164: each sheet against its own size.
+    const ux1 = (sh.size ?? input.sheet).width - input.margin;
+    const uy1 = (sh.size ?? input.sheet).height - input.margin;
     const nLocked = input.locked[si]?.length ?? 0;
     const rects = sh.placements.map((p) => placementRect(p, sizes));
     sh.placements.forEach((p: Placement, pi) => {
