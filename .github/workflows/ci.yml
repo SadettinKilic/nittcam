@@ -3,11 +3,16 @@
 name: CI
 
 #
-# Lean CI (owner, 2026-11-18; Actions minutes): every PR push runs only the fast `checks` job
-# (and the db job). The slow `e2e` job (chromium e2e + visual + axe, ~15 min) runs only
+# Lean CI (owner, 2026-11-18; Actions minutes): every PR push runs only the fast `build` job
+# (and the db job). The full check (D-048: chromium e2e in 5 parallel shards + a separate
+# visual/axe job, ~5 min wall clock) runs only
 #   - after every merge (push to main), and
-#   - on demand before a merge: `gh workflow run CI --ref <branch>` (the PO merges only when
-#     this full run is green on the PR head commit; the tester uses it for visual baselines).
+#   - on demand before a merge: `gh workflow run CI --ref <branch> [-f baselines=update]`.
+# With baselines=update the visual job rewrites changed Linux baselines and commits them to the
+# branch in the same run; that run still counts for the merge gate, because the gate
+# (`node tools/ci/full-run-ok.mjs <pr>`) accepts a head that is only that bot baseline commit.
+# scope=visual runs only the visual job (e.g. after a full run whose only failure was an
+# intended visual diff); the gate combines jobs of all dispatch runs on the same commit.
 # Docs-only changes run nothing.
 on:
   pull_request:
@@ -16,10 +21,22 @@ on:
     branches: [main]
     paths-ignore: ['docs/**', '**/*.md', '.team/**', 'tools/team-dashboard/**']
   workflow_dispatch:
+    inputs:
+      baselines:
+        description: 'compare = a changed baseline fails; update = commit changed baselines to the branch (review them in the PR diff)'
+        type: choice
+        options: [compare, update]
+        default: compare
+      scope:
+        description: 'full = everything (merge gate); visual = only the visual/axe job'
+        type: choice
+        options: [full, visual]
+        default: full
 
+# A newer run on the same branch cancels the older one (never on main: every merge keeps its run).
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -27,6 +44,7 @@ permissions:
 jobs:
   build:
     name: lint · typecheck · test · build · licences
+    if: inputs.scope != 'visual'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -58,46 +76,112 @@ jobs:
       - name: Licence check (D-009)
         run: pnpm licenses:check
 
-  # Slow job: only on push to main (after a merge) and on manual dispatch (before a merge).
+  # Slow part, only on push to main (after a merge) and on manual dispatch (before a merge).
+  # D-048: chromium e2e in 5 shards (was one ~12.5 min job), and visual + axe as its own job, so a
+  # red e2e no longer skips the visual step (both always report).
   e2e:
-    name: e2e · visual · axe
-    if: github.event_name != 'pull_request'
+    name: e2e · chromium (shard ${{ matrix.shard }}/5)
+    if: github.event_name != 'pull_request' && inputs.scope != 'visual'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
+      - uses: ./.github/actions/e2e-setup
 
-      - uses: actions/setup-node@v5
+      - name: E2E (chromium, shard ${{ matrix.shard }}/5)
+        run: pnpm --filter @nittcam/e2e exec playwright test --project=chromium --shard=${{ matrix.shard }}/5
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
+          name: playwright-report-e2e-${{ matrix.shard }}
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 3
+          if-no-files-found: ignore
 
-      - name: Install
-        run: pnpm install --frozen-lockfile
+  # T102 / D-032: every screen at 1440 and 390 px, light and dark, with screenshot baselines (Linux
+  # only) and axe (serious/critical = fail). T199a: a missing or changed baseline FAILS the run;
+  # the actual images become candidate baselines in the visual-screenshots artefact.
+  # D-048: phone dark captures have no baseline (desktop-first, D-043); axe still runs on them.
+  # With `-f baselines=update` this job rewrites changed (and missing) baselines and commits them
+  # to the branch in the same run (old/new images in the baseline-update artefact; the PR diff
+  # shows them too). axe still fails the job. The merge gate accepts that bot commit as the head.
+  visual:
+    name: ${{ inputs.baselines == 'update' && 'visual · axe (baseline update)' || 'visual · axe' }}
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Refuse baseline update on main
+        if: inputs.baselines == 'update' && github.ref == 'refs/heads/main'
+        run: |
+          echo "::error::baselines=update runs only on a PR branch, never on main"
+          exit 1
 
-      - name: Build
-        run: pnpm build
+      - uses: actions/checkout@v5
 
-      - name: Install Playwright chromium
-        run: pnpm --filter @nittcam/e2e exec playwright install --with-deps chromium
+      - uses: ./.github/actions/e2e-setup
 
-      - name: E2E (chromium)
-        run: pnpm --filter @nittcam/e2e e2e
+      - name: Keep the current baselines (update mode)
+        if: inputs.baselines == 'update'
+        run: cp -r e2e/visual-baselines "$RUNNER_TEMP/baselines-before"
 
-      # T102 / D-032: /dev/ui (later every screen) at 1440 and 390 px, light and dark, with
-      # screenshot baselines (Linux only) and axe. T199a: a missing or changed baseline FAILS the
-      # run; the actual images become candidate baselines in the visual-screenshots artefact.
       - name: Visual + accessibility (pnpm e2e:visual)
+        env:
+          VISUAL_UPDATE: ${{ inputs.baselines == 'update' && 'changed' || '' }}
         run: pnpm --filter @nittcam/e2e e2e:visual
 
       - name: Collect visual baseline candidates (T199a)
-        if: always()
+        if: always() && inputs.baselines != 'update'
         run: node tools/ci/visual-candidates.mjs e2e/test-results e2e/visual-baselines
 
+      - name: Commit changed baselines (update mode)
+        if: inputs.baselines == 'update'
+        env:
+          BRANCH: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          out="$RUNNER_TEMP/baseline-update"
+          mkdir -p "$out/before" "$out/after"
+          changed=$(git status --porcelain --untracked-files=all -- e2e/visual-baselines | awk '{print $2}')
+          if [ -z "$changed" ]; then
+            echo "No baseline changed." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            for f in $changed; do
+              n=$(basename "$f")
+              cp "$f" "$out/after/$n"
+              if [ -f "$RUNNER_TEMP/baselines-before/$n" ]; then cp "$RUNNER_TEMP/baselines-before/$n" "$out/before/$n"; fi
+            done
+            { echo "Changed baselines (review them in the PR diff or the baseline-update artefact):"; printf -- '- %s\n' $changed; } | tee -a "$GITHUB_STEP_SUMMARY"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -- e2e/visual-baselines
+            git commit -q -m "test(visual): update Linux baselines (CI baseline refresh, D-048)" -m "Run: $RUN_URL" -m "Base: $GITHUB_SHA"
+            git pull -q --rebase origin "$BRANCH"
+            git push -q origin "HEAD:$BRANCH"
+          fi
+
+      - name: Upload baseline update (old/new images)
+        if: always() && inputs.baselines == 'update'
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-update
+          path: ${{ runner.temp }}/baseline-update/
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Upload visual screenshots and baselines
-        if: always()
+        if: always() && inputs.baselines != 'update'
         uses: actions/upload-artifact@v4
         with:
           name: visual-screenshots
@@ -111,7 +195,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-visual
           path: |
             e2e/playwright-report/
             e2e/test-results/
@@ -123,6 +207,7 @@ jobs:
   # committed migrations match the Drizzle schema.
   db-postgres:
     name: db · migrations + tests on Postgres 17
+    if: inputs.scope != 'visual'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:

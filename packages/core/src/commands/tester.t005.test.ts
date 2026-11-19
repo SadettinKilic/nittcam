@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /* eslint-disable @typescript-eslint/no-explicit-any -- tests forge raw JSON */
 /** Tester additions for T005 (PR #6): rejection, empty history, log, immutability, tools, rules, perf. */
 import { describe, expect, it } from 'vitest';
@@ -5,6 +6,9 @@ import cabinetDoors from '../schema/__fixtures__/cabinet-doors.json';
 import { parseProject, type Project } from '../schema';
 import { validateProject } from '../validate';
 import { CommandStack, applyCommand, commandToolDefinitions, type CommandContext } from './index';
+
+/** Timing budgets apply as written in CI; local runs on a loaded PC get PERF_BUDGET_SCALE (default 3, D-048). */
+const BUDGET = process.env.CI ? 1 : Number(process.env.PERF_BUDGET_SCALE ?? 3);
 
 const user: CommandContext = { actor: 'user', at: '2026-11-16T10:00:00Z' };
 const ai: CommandContext = { actor: 'ai', at: '2026-11-16T12:30:45.123+03:00' };
@@ -224,7 +228,7 @@ describe('T005 tester: performance', () => {
     expect(stack.project.parts).toHaveLength(baseParts + 1000);
     for (let i = 0; i < 1000; i++) expect(stack.undo()).toBe(true);
     const total = Date.now() - t0;
-    expect(total).toBeLessThan(20_000);
+    expect(total).toBeLessThan(20_000 * BUDGET);
     expect(stack.canUndo).toBe(false);
     expect(stack.project.parts).toHaveLength(baseParts);
   }, 60_000);

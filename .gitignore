@@ -25,3 +25,6 @@ playwright/.cache/
 
 # local database and file storage (D-004, D-014)
 .data/
+
+# Local review captures (snap() and tester specs); CI uploads them as an artefact (D-048)
+e2e/__screenshots__/

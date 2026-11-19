@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- tests index known results */
 /**
  * Tester review of the independent G-code reader (T018, D-026; spec §6.5, §7.2).
@@ -8,6 +9,9 @@
 import { describe, expect, it } from 'vitest';
 import { readGcode } from './reader';
 import type { GcodeReadOptions, GcodeReadResult } from './types';
+
+/** Timing budgets apply as written in CI; local runs on a loaded PC get PERF_BUDGET_SCALE (default 3, D-048). */
+const BUDGET = process.env.CI ? 1 : Number(process.env.PERF_BUDGET_SCALE ?? 3);
 
 /** Explicit modal setup, spindle on, a known start point and a defined feed. */
 const PRE = 'G21 G90 G17 G54\nG0 Z20\nM3 S18000\nG1 X0 Y0 F100\n';
@@ -443,7 +447,7 @@ describe('very large input', () => {
     const line = 'G1 X1 '.repeat(Math.ceil(1_000_000 / 6));
     const t0 = performance.now();
     const r = read(PRE + line);
-    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(performance.now() - t0).toBeLessThan(2000 * BUDGET);
     expect(r.ok).toBe(false); // duplicate words
     expect(codes(r)).toContain('DUPLICATE_WORD');
     expect(r.moves).toHaveLength(2);
@@ -464,7 +468,7 @@ describe('very large input', () => {
     for (const [line, code] of cases) {
       const t0 = performance.now();
       const r = read(PRE + line + '\nG1 X2');
-      expect(performance.now() - t0, line.slice(0, 20)).toBeLessThan(2000);
+      expect(performance.now() - t0, line.slice(0, 20)).toBeLessThan(2000 * BUDGET);
       if (code) expect(codes(r)).toContain(code);
       expect(r.moves[r.moves.length - 1]!.to.x).toBe(2); // the following line is still read
     }
@@ -617,7 +621,7 @@ describe('performance: 100k lines', () => {
     const t0 = performance.now();
     const r = readGcode(text);
     const ms = performance.now() - t0;
-    expect(ms).toBeLessThan(2000);
+    expect(ms).toBeLessThan(2000 * BUDGET);
     // arcs with I0.5 from random points are radius mismatches: the reader still finishes and reports
     expect(r.lines).toHaveLength(100_000);
     expect(r.moves.length + r.errors.length).toBeGreaterThan(90_000);
@@ -634,7 +638,7 @@ describe('performance: 100k lines', () => {
     clean.push('M30');
     const t0 = performance.now();
     const r = readGcode(clean.join('\n'));
-    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(performance.now() - t0).toBeLessThan(2000 * BUDGET);
     expect(r.errors).toEqual([]);
     expect(r.moves.length).toBeGreaterThan(99_000);
   });

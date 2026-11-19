@@ -27,7 +27,14 @@ export default defineConfig({
   // tester commits the reviewed ones to e2e/visual-baselines/. Locally (and with
   // VISUAL_UPDATE=missing) missing baselines are still written.
   snapshotPathTemplate: '{testDir}/../visual-baselines/{arg}{ext}',
-  updateSnapshots: process.env.CI && process.env.VISUAL_UPDATE !== 'missing' ? 'none' : 'missing',
+  // D-048: VISUAL_UPDATE=changed is the CI baseline-refresh mode (`gh workflow run CI -f
+  // baselines=update`): changed and missing baselines are rewritten and committed by CI.
+  updateSnapshots:
+    process.env.VISUAL_UPDATE === 'changed'
+      ? 'changed'
+      : process.env.CI && process.env.VISUAL_UPDATE !== 'missing'
+        ? 'none'
+        : 'missing',
   expect: {
     toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css', maxDiffPixels: 0 },
   },

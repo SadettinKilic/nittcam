@@ -22,6 +22,15 @@ const SCREENSHOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..',
 /** Baselines are compared only on Linux (CI): font rendering differs on other systems. */
 export const compareBaselines = process.platform === 'linux';
 
+/**
+ * Desktop-first (D-043, D-048): phone captures keep a baseline in the light theme only. Phone
+ * dark is still captured for review and still runs axe, but dark-theme regressions are guarded
+ * by the desktop dark baselines. Remove this rule in the mobile UI pass.
+ */
+export function hasBaseline(name: string): boolean {
+  return !name.endsWith('-mobile-dark');
+}
+
 /** Picks the theme before any page script runs (no flash, no toggle click). */
 export async function applyTheme(page: Page, theme: Theme): Promise<void> {
   await page.addInitScript(
@@ -96,7 +105,7 @@ export async function snap(
     caret: 'hide',
   });
   // baseline: false = review capture only (pages whose data is shared with other tests).
-  if (compareBaselines && opts.baseline !== false) {
+  if (compareBaselines && opts.baseline !== false && hasBaseline(name)) {
     // Soft: a diff fails the test but later captures still run, so one CI run yields every
     // candidate baseline of a multi-step test (B4b round 2).
     await expect.soft(page).toHaveScreenshot(`${name}.png`, { fullPage });
