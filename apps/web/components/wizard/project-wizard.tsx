@@ -80,6 +80,7 @@ import {
 } from '@nittcam/ui';
 import { ariaKeyShortcuts, shortcutById } from '../../lib/shortcuts';
 import { useMediaQuery, WORKSPACE_DESKTOP } from '../../lib/use-media-query';
+import { setSidebarWorkspace } from '../../lib/sidebar-state';
 import { PageSkeleton } from '../feedback/page-skeleton';
 import { ShellStatus, useShellTitle } from '../shell/shell-context';
 
@@ -340,6 +341,13 @@ function WizardSession({
   // Liste / Çizim switch sits in the header row, below that (drawing view) in the canvas band.
   const phone = useMediaQuery('(max-width: 639px)', false);
   const wide = useMediaQuery(WORKSPACE_DESKTOP);
+  // T263: the workspace steps (board, Dizilim, Simülasyon) open with the sidebar rail below 1440.
+  const railStep =
+    step === 'dizilim' || step === 'simulasyon' || (step === 'parcalar' && partsView === 'drawing');
+  useEffect(() => {
+    setSidebarWorkspace(railStep);
+  }, [railStep]);
+  useEffect(() => () => setSidebarWorkspace(false), []);
   const stepRef = useRef(step);
   const heading = useRef<HTMLHeadingElement>(null);
   const focusHeading = useRef(false);
@@ -692,6 +700,11 @@ function WizardSession({
         t={messages.simulation}
         project={project}
         machine={simMachine}
+        header={{
+          projectName: session.name,
+          revision: session.revision,
+          saved: session.projectId !== null && !session.dirty,
+        }}
         empty={{
           noLayout: (
             <section
@@ -843,9 +856,10 @@ function WizardSession({
           ) : null}
         </>
       ) : (
-        <>
-          {/* One header row on ≥ 1400 px (T197; narrower screens would squeeze the stepper): project name, stepper, undo/redo. */}
-          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-5 min-[1400px]:flex-nowrap min-[1400px]:items-center">
+        <div className="@container" data-testid="wizard-head-row">
+          {/* One header row when the content is as wide as at 1400 px with the sidebar open (T197); a
+              container query (T263), so the 1280 px workspace with the icon rail gets the 1440 px row. */}
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3 @min-[1112px]:flex-nowrap @min-[1112px]:items-center">
             <header className="contents">
               <NameField
                 label={t.nameLabel}
@@ -853,12 +867,12 @@ function WizardSession({
                 onCommit={session.rename}
                 autoSelect={session.projectId === null && step === 'makine'}
               />
-              <div className="order-2 flex items-center gap-1 min-[1400px]:order-3 min-[1400px]:shrink-0">
+              <div className="order-2 flex items-center gap-1 @min-[1112px]:order-3 @min-[1112px]:shrink-0">
                 {headerActions}
               </div>
             </header>
 
-            <div className="order-3 flex w-full min-w-0 items-center gap-3 min-[1400px]:order-2 min-[1400px]:w-auto min-[1400px]:flex-1 min-[1400px]:max-[1679px]:min-w-min">
+            <div className="order-3 flex w-full min-w-0 items-center gap-3 @min-[1112px]:order-2 @min-[1112px]:w-auto @min-[1112px]:flex-1 @min-[1112px]:@max-[1391px]:min-w-min">
               {step === 'parcalar' && wide ? (
                 <div className="shrink-0" data-testid="wizard-view-switch">
                   {viewSwitch}
@@ -877,7 +891,7 @@ function WizardSession({
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {session.saveState === 'conflict' ? (
@@ -1041,12 +1055,12 @@ function StepIndicator({
       <div className="flex min-w-0 items-center gap-3 lg:shrink-0">
         <span
           aria-hidden="true"
-          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:max-[1399px]:flex min-[1480px]:flex [&_svg]:size-5"
+          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:@max-[1111px]:flex @min-[1192px]:flex [&_svg]:size-5"
         >
           <StepIcon />
         </span>
         <div className="flex min-w-0 flex-col">
-          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase min-[1400px]:max-[1479px]:sr-only">
+          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase @min-[1112px]:@max-[1191px]:sr-only">
             {fill(t.stepOf, { n: index + 1, total: STEPS.length })}
           </p>
           <h1
@@ -1054,7 +1068,7 @@ function StepIndicator({
             tabIndex={-1}
             data-testid="wizard-step-title"
             data-step={current}
-            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:max-[1399px]:text-xl min-[1480px]:text-xl"
+            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:@max-[1111px]:text-xl @min-[1192px]:text-xl"
           >
             {t[current]}
           </h1>
@@ -1062,7 +1076,7 @@ function StepIndicator({
       </div>
       <nav
         aria-label={t.label}
-        className="min-w-0 lg:flex-1 min-[1400px]:max-[1679px]:min-w-[22.75rem]"
+        className="min-w-0 lg:flex-1 @min-[1112px]:@max-[1391px]:min-w-[22.75rem]"
       >
         <ol className="flex items-center gap-1" data-testid="wizard-steps">
           {STEPS.map((s, i) => {
@@ -1094,7 +1108,7 @@ function StepIndicator({
                   {active ? null : (
                     <span
                       aria-hidden="true"
-                      className={`${status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} hidden min-w-0 truncate whitespace-nowrap xl:max-[1399px]:block min-[1680px]:block`}
+                      className={`${status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} hidden min-w-0 truncate whitespace-nowrap xl:@max-[1111px]:block @min-[1392px]:block`}
                     >
                       {t[s]}
                     </span>
@@ -1322,9 +1336,9 @@ function NameField({
   }
   return (
     // B4b: in the one-row header (≥ 1400 px) the name yields first, down to 10rem (ellipsis + title).
-    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:max-[1399px]:min-w-64 min-[1400px]:min-w-40 min-[1400px]:flex-[0_1_20rem]">
+    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:@max-[1111px]:min-w-64 @min-[1112px]:min-w-40 @min-[1112px]:flex-[0_1_20rem]">
       {/* T247: from 1280 px the caption goes; the name is the title (the label stays for AT). */}
-      <span className="px-2 text-xs font-medium text-fg-subtle min-[1280px]:sr-only">{label}</span>
+      <span className="px-2 text-xs font-medium text-fg-subtle lg:sr-only">{label}</span>
       <span className="group/name relative w-full max-w-xl">
         <input
           ref={input}
