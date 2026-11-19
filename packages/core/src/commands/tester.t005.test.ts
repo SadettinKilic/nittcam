@@ -156,6 +156,9 @@ describe('T005 tester: AI tool definitions', () => {
     expect(new Set(names).size).toBe(names.length);
     expect(names.sort()).toEqual(
       [
+        'addHole',
+        'updateHole',
+        'removeHole',
         'addPart',
         'duplicatePart',
         'importCutList',

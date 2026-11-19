@@ -10,7 +10,8 @@ import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } fr
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
-import { formatPath } from '../schema';
+import { deriveOutline, formatPath } from '../schema';
+import { checkHolePlacement } from '../editor/holes';
 
 export type ValidationSeverity = 'error' | 'warning';
 
@@ -24,7 +25,8 @@ export type ValidationCode =
   | 'LOCKED_PLACEMENT_GRAIN'
   | 'PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
-  | 'SHEET_LARGER_THAN_TABLE';
+  | 'SHEET_LARGER_THAN_TABLE'
+  | 'HOLE_OUTSIDE_PART';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -297,6 +299,30 @@ export const sheetLargerThanTable: ValidationRule = (project, context) => {
   ];
 };
 
+/**
+ * (h) Each hole lies inside its part, clear of the cut-outs (T138, spec §4.5). The hole commands
+ * refuse such a hole, but an outline edit or a removed/added cut-out can break it later (D-045):
+ * error, the toolpath refuses it too (a hole outside the part would cut the neighbour).
+ */
+export const holeInsidePart: ValidationRule = (project) => {
+  const issues: ValidationIssue[] = [];
+  project.parts.forEach((part, i) => {
+    if (part.holes.length === 0) return;
+    const outline = deriveOutline(part);
+    part.holes.forEach((hole, h) => {
+      const err = checkHolePlacement(outline, part.inners, hole);
+      if (!err) return;
+      issues.push({
+        code: 'HOLE_OUTSIDE_PART',
+        severity: 'error',
+        path: formatPath(['parts', i, 'holes', h]),
+        message: `${hole.type} "${hole.id}" in part "${part.id}" ${err === 'outside' ? 'does not lie inside the part outline' : 'touches or overlaps a cut-out'}`,
+      });
+    });
+  });
+  return issues;
+};
+
 /** Rules run after every command, in this order. */
 export const VALIDATION_RULES: readonly ValidationRule[] = [
   partLargerThanSheet,
@@ -306,6 +332,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   placementGrain,
   noCuttingParams,
   sheetLargerThanTable,
+  holeInsidePart,
 ];
 
 /** Runs every rule and returns the combined list (errors and warnings, in rule order). */

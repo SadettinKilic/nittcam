@@ -1407,7 +1407,8 @@
         "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
         "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
         "NO_CUTTING_PARAMS": "Makinede bu malzeme ve kalınlık için kesim ayarı yok.",
-        "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor."
+        "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
+        "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor."
       },
       "other": "Kontrol {code}"
     }
@@ -1762,7 +1763,8 @@
       "rect": "Dikdörtgen",
       "circle": "Çember",
       "line": "Çizgi",
-      "arc": "Yay"
+      "arc": "Yay",
+      "hole": "Delik"
     },
     "view": {
       "zoomIn": "Yakınlaştır",
@@ -1880,6 +1882,28 @@
         "qty": "Adet 1 ya da daha büyük bir tam sayı olmalı.",
         "fillet": "Bu köşe yuvarlatılamaz (iki düz kenar arasında değil).",
         "failed": "Değişiklik uygulanamadı."
+      },
+      "hole": {
+        "title": "Delikler",
+        "holeN": "Delik {n}",
+        "remove": "Delik {n} sil",
+        "type": {
+          "pocket": "Cep",
+          "through": "Geçme",
+          "groove": "Kanal"
+        },
+        "filled": "İçini boşalt",
+        "ringOnly": "Sadece çember (kanal)",
+        "ringOnlyOn": "Açık",
+        "through": "Boydan boya (geçme)",
+        "d": "Çap",
+        "cx": "Merkez X",
+        "cy": "Merkez Y",
+        "depth": "Derinlik",
+        "grooveWidth": "Kanal genişliği",
+        "tool": "Takım no",
+        "invalid": "Geçerli bir değer girin.",
+        "refused": "Bu değer uygulanamadı: delik parçanın içinde kalmalı, derinlik ve kanal genişliği geçerli olmalı."
       }
     },
     "copied": "{count} parça kopyalandı",
@@ -1914,7 +1938,9 @@
       "cancel": "Vazgeç",
       "bendHandle": "Kavis tutamağı"
     },
-    "actionsBar": "Seçim işlemleri"
+    "actionsBar": "Seçim işlemleri",
+    "holeHint": "Parçanın üstünde merkeze tıkla, çapı sürükleyerek büyüt, ikinci tıklamayla bitir.",
+    "holeRefused": "Delik buraya eklenemedi: parçanın içinde kalmalı ve iç boşluklara değmemeli."
   },
   "materialLibrary": {
     "title": "Malzemeler",
