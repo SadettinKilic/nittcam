@@ -406,9 +406,9 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   function buildLayout(tall){
     const L = {tall, rooms:{}, items:[], SP:{}, screens:[], wins:[], plaques:[], rugs:[], leds:[], lamps:[]};
     if(!tall){
-      L.W = 376; L.H = 216; L.corr = {x:0, y:96, w:376, h:22}; L.entrance = {x:-10, y:108};
+      L.W = 376; L.H = 236; L.corr = {x:0, y:96, w:376, h:22}; L.entrance = {x:-10, y:108};
       const t = (a,b)=>({x:a, y:17, w:b-a, h:75}), bt = (a,b)=>({x:a, y:135, w:b-a, h:77});
-      Object.assign(L.rooms, {po:t(3,120), meet:t(123,252), dev:t(255,373), lab:bt(3,136), brk:bt(139,284), ci:bt(287,373)});
+      Object.assign(L.rooms, {po:t(3,120), meet:t(123,222), dev:t(225,373), lab:bt(3,136), brk:bt(139,284), ci:bt(287,373)});
       for(const r of Object.values(L.rooms)){ const top = r.y < 100; r.top = top; r.aisle = r.y+r.h-(top?6:7);
         const dx = top ? r.x+(r.w>>1) : r.x+r.w-12; r.dx = dx; r.inn = {x:dx, y:r.aisle}; r.out = {x:dx, y:108}; }
     } else {
@@ -453,7 +453,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       plant(r.x+7, r.y+r.h-3);
     }
     // meeting room: TV, table, chairs
-    { const r = R.meet, pw = plaque(r,'meet'), tw = tall?32:76, tx = r.x+((r.w-tw)>>1), ty = r.y+24;
+    { const r = R.meet, pw = plaque(r,'meet'), tw = tall?32:60, tx = r.x+((r.w-tw)>>1), ty = r.y+24;
       const tvw = tall?24:40; let tvx = Math.max(r.x+3+pw+4, tx+((tw-tvw)>>1)); tvx = Math.min(tvx, r.x+r.w-tvw-3);
       L.tv = {x:tvx, y:r.y-13, w:tvw, h:11};
       L.screens.push({x:tvx+1, y:r.y-12, w:tvw-2, h:8, id:'tv', kind:'tv'});
@@ -475,9 +475,17 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     { const r = R.dev, pw = plaque(r,'dev'), wx = r.x+3+pw+6;
       if(wx+18 <= r.x+r.w-3) L.wins.push({x:wx, y:r.y-12, w:tall?Math.min(18, r.x+r.w-3-wx):20, h:9, r});
       if(!tall) L.clock = {x:wx+28, y:r.y-11};
-      const dw = tall?72:120, dx = r.x+((r.w-dw)>>1), dy = r.y+14, off = tall?12:20, s0 = dx+off, s1 = dx+dw-off, s2 = dx+(dw>>1);
-      desk(dx, dy, dw, [{x:s0, id:'dev0'}, {x:s1, id:'dev1'}, {x:s2, id:'dev2'}], tall?null:{lamp:dx+4, mug:dx+dw-6});
-      SP.devDesk = [{room:'dev', x:s0, y:dy+16, face:'up', pose:'sit', scr:'dev0'}, {room:'dev', x:s1, y:dy+16, face:'up', pose:'sit', scr:'dev1'}, {room:'dev', x:s2, y:dy+16, face:'up', pose:'sit', scr:'dev2'}];
+      if(tall){
+        const dw = 72, dx = r.x+((r.w-dw)>>1), dy = r.y+14, off = 12, s0 = dx+off, s1 = dx+dw-off, s2 = dx+(dw>>1);
+        desk(dx, dy, dw, [{x:s0, id:'dev0'}, {x:s1, id:'dev1'}, {x:s2, id:'dev2'}], null);
+        SP.devDesk = [s0,s1,s2].map((x,k)=>({room:'dev', x, y:dy+16, face:'up', pose:'sit', scr:'dev'+k}));
+      } else { // two staggered desk rows, two workstations each (dev, dev2, dev3 + one spare), the aisle stays clear below
+        const dw = 66, ax = r.x+6, bx = r.x+r.w-6-dw, d1 = r.y+12, d2 = r.y+34, xs = [ax+16, ax+dw-16, bx+16, bx+dw-16];
+        desk(ax, d1, dw, [{x:xs[0], id:'dev0'}, {x:xs[1], id:'dev1'}], {lamp:ax+4, mug:ax+dw-6});
+        desk(bx, d2, dw, [{x:xs[2], id:'dev2'}, {x:xs[3], id:'dev3'}], {mug:bx+dw-6});
+        SP.devDesk = xs.map((x,k)=>({room:'dev', x, y:(k<2?d1:d2)+16, face:'up', pose:'sit', scr:'dev'+k}));
+        plant(r.x+r.w-9, r.y+24);
+      }
       SP.devDesk.forEach(chairB);
       plant(r.x+r.w-7, r.y+r.h-3);
     }
@@ -486,16 +494,17 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       if(shw > 10) L.shelf = {x:shx, y:r.y-12, w:shw};
       const bw = tall?54:96, bx = r.x+(tall?7:5), by = r.y+14, cw = tall?22:34, cx0 = bx+bw-cw-3, mx = bx+9;
       L.cnc = {x:cx0, y:by, w:cw};
-      L.screens.push({x:mx-5, y:by-8, w:10, h:6, id:'lab', kind:'mon'});
+      const mx2 = bx+36;
+      L.screens.push({x:mx-5, y:by-8, w:10, h:6, id:'lab', kind:'mon'}); if(!tall) L.screens.push({x:mx2-5, y:by-8, w:10, h:6, id:'lab2', kind:'mon'});
       add(by+10, (c,t)=>{ F(c,bx,by,bw,6,P.benchTop); F(c,bx,by,bw,1,P.benchHi); F(c,bx,by+6,bw,4,P.benchFr); F(c,bx+1,by+10,2,2,P.benchLeg); F(c,bx+bw-3,by+10,2,2,P.benchLeg);
-        monitor(c,mx,by); F(c,mx-4,by+3,8,2,'#3a3f4b');
+        monitor(c,mx,by); F(c,mx-4,by+3,8,2,'#3a3f4b'); if(!tall){ monitor(c,mx2,by); F(c,mx2-4,by+3,8,2,'#3a3f4b'); F(c,mx2+6,by+3,2,2,'#e9ecf0'); }
         F(c,mx+8,by-4,3,5,P.bezel); F(c,mx+9,by-3,1,3,'#5fb3ff'); // phone on a stand
         // mini CNC: base, workpiece, posts, gantry; the spindle moves while someone tests
         F(c,cx0,by-4,cw,5,'#d4ac74'); F(c,cx0,by-4,cw,1,'#e6c38e'); F(c,cx0+3,by-5,cw-6,1,'#f0dcb4');
         F(c,cx0,by-12,2,9,'#59606c'); F(c,cx0+cw-2,by-12,2,9,'#59606c'); F(c,cx0,by-13,cw,2,'#3b414d');
         const sp = L.cncX!=null ? L.cncX : cx0+(cw>>1)-1; F(c,sp,by-11,3,5,'#2f56e3'); F(c,sp,by-11,3,1,'#6690f7'); F(c,sp+1,by-6,1,1,'#d7dbe1');
       });
-      SP.bench = [{room:'lab', x:mx, y:by+16, face:'up', pose:'sit', scr:'lab'}, {room:'lab', x:cx0+(cw>>1), y:by+16, face:'up', pose:'sit', scr:'cnc'}];
+      SP.bench = [{room:'lab', x:mx, y:by+16, face:'up', pose:'sit', scr:'lab'}, tall ? {room:'lab', x:cx0+(cw>>1), y:by+16, face:'up', pose:'sit', scr:'cnc'} : {room:'lab', x:mx2, y:by+16, face:'up', pose:'sit', scr:'lab2'}];
       SP.bench.forEach(chairB);
       if(!tall) plant(r.x+7, r.y+r.h-3);
     }
@@ -516,6 +525,15 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
         add(ty+7, (c)=>{ F(c,tx,ty,9,5,P.deskTop); F(c,tx,ty,9,1,P.deskHi); F(c,tx,ty+5,9,2,P.deskFr); F(c,tx+4,ty-5,1,5,'#4a505e'); F(c,tx+1,ty-8,7,3,'#f2d39b'); F(c,tx+1,ty-8,7,1,'#f7e3bd'); }); }
       plant(r.x+7, r.y+r.h-3);
     }
+    // balcony below the break area (wide only): glass door in the south wall, deck, railing, plant, ashtray
+    if(!tall){ const r = R.brk, bw = 58, bx = r.x+r.w-bw-4, dr = bx+(bw>>1), dyy = r.y+r.h+13;
+      L.balc = {x:bx, y:r.y+r.h+1, w:bw, h:20, dr};
+      SP.balc = [{room:'brk', x:dr, y:dyy, face:'down', pose:'stand', via:[{x:dr, y:dyy-5}]}, {room:'brk', x:dr+15, y:dyy, face:'down', pose:'stand', via:[{x:dr, y:dyy-5}, {x:dr+15, y:dyy-5}]}];
+      const by = r.y+r.h+19;
+      add(by+2, (c)=>{ F(c,bx,by-9,bw,2,'#7c8492'); F(c,bx,by-9,bw,1,'#a4abb7'); for(let x=bx+2;x<bx+bw;x+=5) F(c,x,by-7,1,7,'#4a505e'); F(c,bx,by,bw,2,'#5d6470'); F(c,bx,by-9,2,11,'#5d6470'); F(c,bx+bw-2,by-9,2,11,'#5d6470'); });
+      plant(bx+8, by-3);
+      add(by-4, (c)=>{ const x = bx+bw-10, y = by-12; F(c,x+1,y,3,7,'#6b7280'); F(c,x,y+6,5,2,'#4a505e'); F(c,x-1,y-1,7,2,'#9aa1ac'); F(c,x,y-2,5,1,'#e9ecf0'); F(c,x+2,y-2,1,1,'#ff7a1a'); }); // standing ashtray
+    }
     // server / CI corner: three racks with LEDs and a status beacon
     { const r = R.ci; plaque(r,'ci'); const rw = 16, gap = 4, x0 = r.x+5, y0 = r.y-4;
       for(let i=0;i<3;i++){ const x = x0+i*(rw+gap);
@@ -534,7 +552,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       { const r = R.lab, b = r.y+r.h-22, x = r.x+r.w-30; add(b, (c)=>{ F(c,x,b-8,10,8,'#c9a06a'); F(c,x,b-8,10,1,'#dcb784'); F(c,x+4,b-8,2,8,'#e8d2a9'); F(c,x+11,b-7,8,7,'#b98f5a'); F(c,x+11,b-7,8,1,'#cfa673'); F(c,x+2,b-14,8,6,'#b98f5a'); F(c,x+2,b-14,8,1,'#cfa673'); F(c,x+5,b-14,2,6,'#e8d2a9'); }); }
     }
     // corridor props (wide only)
-    if(!tall){ plant(121, 102); plant(253, 102);
+    if(!tall){ plant(121, 102); plant(223, 102);
       add(102, (c)=>{ const x = 344; F(c,x,93,7,9,'#d9dde3'); F(c,x,93,7,1,'#eef0f3'); F(c,x+1,87,5,6,'#8fd0f2'); F(c,x+1,87,5,1,'#c4e8f8'); F(c,x+5,96,1,1,'#3f8be0'); }); }
   }
 
@@ -570,6 +588,12 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       for(const r of Object.values(R)){ const wx = r.left ? r.x+r.w : r.x-3; F(c,wx,r.aisle-9,3,12,P.thresh); F(c,wx,r.aisle-10,3,1,P.doorFr); F(c,wx,r.aisle+3,3,1,P.doorFr); }
       F(c,co.x,L.H-4,co.w,4,P.corA); F(c,co.x+1,L.H-12,co.w-2,10,P.mat); for(let y=L.H-11;y<L.H-2;y+=2) F(c,co.x+2,y,co.w-4,1,P.matB);
     }
+    // balcony deck + glass door (wide only)
+    if(L.balc){ const b = L.balc, r = R.brk, d = b.dr;
+      F(c,b.x-2,b.y-1,b.w+4,b.h+3,'#2f3440'); F(c,b.x,b.y,b.w,b.h,'#a98558');
+      for(let y=b.y+2;y<b.y+b.h;y+=4) F(c,b.x,y,b.w,1,'#8f6f46'); for(let x=b.x+9,i=0;x<b.x+b.w;x+=13,i++) F(c,x,b.y+(i%2?0:2),1,2,'#8f6f46');
+      F(c,b.x,b.y,b.w,2,'rgba(0,0,0,.22)');
+      F(c,d-8,r.y+r.h-5,16,6,P.doorFr); F(c,d-7,r.y+r.h-4,14,5,'#b7e2fa'); F(c,d,r.y+r.h-4,1,5,P.doorFr); F(c,d-7,r.y+r.h-4,14,1,'#e5f5fd'); F(c,d-7,r.y+r.h,14,1,P.thresh); }
     // rugs
     for(const g of L.rugs){ F(c,g.x,g.y,g.w,g.h,P.rug); F(c,g.x+2,g.y+2,g.w-4,g.h-4,P.rugB); F(c,g.x+3,g.y+3,g.w-6,g.h-6,P.rug);
       for(let x=g.x+1;x<g.x+g.w-1;x+=3){ F(c,x,g.y+1,1,1,P.rugE); F(c,x,g.y+g.h-2,1,1,P.rugE); } }
@@ -687,7 +711,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       if(!A.vis || A.path.length || A.amb || !A.grp || A.grp==='door') continue;
       const sp = spotOf(A.grp, A.idx);
       if(A.st==='coding' && sp.scr) s.scr[sp.scr==='cnc'?'lab':sp.scr] = 'code';
-      if(A.st==='testing'){ s.testing = true; s.scr.lab = 'test'; }
+      if(A.st==='testing'){ s.testing = true; s.scr[sp.scr==='lab2'?'lab2':'lab'] = 'test'; }
       if(A.st==='reviewing' && sp.scr==='po') s.scr.po = 'doc';
       if((A.st==='reviewing') && sp.room==='meet') s.meeting = true;
       if(A.st==='planning' && A.grp==='board') s.planning = true;
@@ -980,17 +1004,17 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     if(AMB.cto || AMB.fableOn || actors.fable.vis) return false;
     const used = new Set(Object.values(actors).filter(A=>A.vis && A.grp==='brk').map(A=>A.idx)), si = [3,2,1,0].find(i=>!used.has(i));
     if(si==null) return false;
-    const seat = L.SP.brk[si], N = mkNPC('fable', 'CTO'); // the last free sofa seat
+    const seat = L.SP.balc ? L.SP.balc[0] : L.SP.brk[si], N = mkNPC('fable', 'CTO'); // balcony when there is one, else the last free sofa seat
     const stroll = L.tall ? {x:L.entrance.x, y:L.corr.y+14} : {x:L.rooms.ci.out.x, y:L.rooms.ci.out.y};
     const pts = pathBetween({entrance:true}, seat).filter(p=>p.x!==L.entrance.x || p.y!==L.entrance.y);
     NPCS.push(N); AMB.cto = N;
-    walk(N, [stroll, ...pts], ()=>{ N.free = {view:'front', v:'sit', sit:true}; N.cigar = true;
+    walk(N, [stroll, ...pts], ()=>{ N.free = seat.pose==='stand' ? {view:'front', v:'stand'} : {view:'front', v:'sit', sit:true}; N.cigar = true;
       later(N, rnd(25,45), ()=>{ N.cigar = false; walk(N, pathBetween(seat, {entrance:true}), ()=>removeNPC(N)); N.dest = {entrance:true}; }); });
     return true;
   }
   // tea lady: serves a cup to every occupied desk/seat, comes back later to collect them
   function cupPos(sp){
-    if(sp.scr && sp.scr!=='cnc'){ const m = L.screens.find(q=>q.id===sp.scr); if(!m) return null; const x = sp.x+(sp.scr==='lab'?11:9);
+    if(sp.scr && sp.scr!=='cnc'){ const m = L.screens.find(q=>q.id===sp.scr); if(!m) return null; const x = sp.x+(sp.scr==='lab'||sp.scr==='lab2'?11:9);
       return {key:sp.room+sp.x, room:sp.room, x, y:m.y+9, sx:x+1, sy:sp.y}; }
     if(sp.room==='meet' && sp.paper && sp.face==='up') return {key:'m'+sp.x, room:'meet', x:sp.paper.x+7, y:sp.paper.y+1, sx:sp.paper.x+8, sy:sp.y};
     return null;
