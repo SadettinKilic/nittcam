@@ -884,7 +884,36 @@
     "lockedGrainIssue": "Kilitli parça {label} damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
     "placementGrainIssue": "Parça {label}: damar yönü değişti, parça damara ters duruyor. Yerleşimi yeniden dizin.",
     "renestStale": "Yerleşimi yenile",
-    "empty": "Dizilim yok."
+    "empty": "Dizilim yok.",
+    "preview3d": {
+      "switchLabel": "Görünüm",
+      "view2d": "2D",
+      "view3d": "3D",
+      "canvasLabel": "Plaka {n} 3D önizlemesi: {count} parça. Sürükleyerek döndürün, tekerlekle yakınlaştırın, sağ tuşla (veya iki parmakla) kaydırın.",
+      "loading": "3D önizleme yükleniyor…",
+      "fallback": "Bu cihazda 3D önizleme açılamıyor (WebGL2 desteklenmiyor). 2D görünüm gösteriliyor.",
+      "presets": {
+        "top": "Üst",
+        "iso": "İzometrik",
+        "front": "Ön",
+        "right": "Sağ",
+        "left": "Sol",
+        "back": "Arka",
+        "isoFrontLeft": "İzometrik, ön sol",
+        "isoBackRight": "İzometrik, arka sağ",
+        "isoBackLeft": "İzometrik, arka sol"
+      },
+      "presetTip": "{view} görünümü",
+      "reset": "Görünümü sıfırla",
+      "cube": "Görünüm küpü",
+      "bottom": "Alt",
+      "simple": "Basit mod",
+      "simpleTip": "Düz renkler, doku ve gölge yok: eski bilgisayarlarda daha akıcı döner.",
+      "simpleAuto": "Görüntü yavaş kaldığı için basit moda geçildi. Düğmeyle geri açabilirsiniz.",
+      "view2dTip": "2D görünüm",
+      "view3dTip": "3D önizleme",
+      "presetsLabel": "Hazır görünümler"
+    }
   },
   "simulation": {
     "legendButton": "Açıklama",
