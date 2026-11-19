@@ -9,6 +9,7 @@ import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import { boardPositions } from '../editor/board';
 import { cornerTurn, filletOutline, fixTightCorners, tightCorners } from '../editor/corners';
 import { checkOutline } from '../editor/edit';
+import { EPS } from '../geometry/constants';
 import { contour, orientation, signedArea } from '../geometry/polyline';
 import { arcOf } from '../geometry/segment';
 import { deriveOutline, parseProject, type Part, type Project, type Vertex } from '../schema';
@@ -57,7 +58,10 @@ const convexPolygon = fc
   )
   .filter(
     (vs) =>
-      checkOutline(vs) === undefined && vs.every((_, i) => Math.abs(cornerTurn(vs, i)) > 1e-3),
+      // T268: strictly convex. Rounding the ellipse points to whole mm can make a nearly
+      // straight corner slightly concave (turn < 0); a fillet there rightly adds area, which
+      // broke "area decreases" now and then (13.00100 vs 13.001).
+      checkOutline(vs) === undefined && vs.every((_, i) => cornerTurn(vs, i) > 1e-3),
   );
 
 describe('filletOutline (T131) properties', () => {
@@ -74,10 +78,20 @@ describe('filletOutline (T131) properties', () => {
           if (!res.ok) return; // a clamp can make the outline invalid only when degenerate
           expect(closedChain(res.vertices)).toBe(true);
           expect(orientation(contour(res.vertices))).toBe('ccw');
-          // Smaller (vertices are kept to 1e-6 mm, so allow that rounding on tiny fillets).
-          expect(area(res.vertices)).toBeLessThan(area(vs) + 1e-3);
+          // Smaller, up to the 1e-6 mm vertex rounding. T268: a tangent point rounded on a long
+          // edge moves the area by ~1e-6 × edge length, so the allowance scales with the perimeter
+          // (a fixed 1e-3 failed on a 1.8 m edge: 455730.00110 vs 455730.001).
+          const perimeter = vs.reduce((sum, p, i) => {
+            const q = vs[(i + 1) % vs.length] ?? p;
+            return sum + Math.hypot(q.x - p.x, q.y - p.y);
+          }, 0);
+          expect(area(res.vertices)).toBeLessThan(area(vs) + 1e-3 + 2e-6 * perimeter);
           for (const got of res.radii) expect(got).toBeLessThanOrEqual(r + 1e-6);
-          if (!res.clamped) for (const got of res.radii) expect(got).toBeCloseTo(r, 4);
+          // T268: equal within EPS (the core's length tolerance), not to 4 decimals: a radius at the
+          // clamp limit within EPS is not reported as clamped (corners.ts: fit < want - EPS), plus
+          // the 1e-6 mm rounding.
+          if (!res.clamped)
+            for (const got of res.radii) expect(Math.abs(got - r)).toBeLessThanOrEqual(EPS + 1e-6);
         },
       ),
       { numRuns: 300 },

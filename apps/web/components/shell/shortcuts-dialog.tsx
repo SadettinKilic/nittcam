@@ -1,32 +1,61 @@
 'use client';
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@nittcam/ui';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@nittcam/ui';
+import { useRef } from 'react';
+import { OPEN_EDITOR_TOUR_EVENT } from '../../lib/editor/tour';
 import type { Messages } from '../../lib/messages';
-import { SHORTCUTS, SHORTCUT_GROUPS } from '../../lib/shortcuts';
+import { SHORTCUTS, SHORTCUT_GROUPS, type ShortcutGroup } from '../../lib/shortcuts';
 import { ShortcutKeys } from './keys';
 
-/** "?" help: every registered shortcut, grouped (T104). */
+/**
+ * "?" help: every registered shortcut, grouped (T104). With `group` = 'board' it is the
+ * editor's shortcut sheet (T136): the board group only, a link to the full list and the tour.
+ */
 export function ShortcutsDialog({
   open,
   onOpenChange,
   t,
   onCloseAutoFocus,
+  group = null,
+  onShowAll,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   t: Messages['shortcuts'];
   onCloseAutoFocus?: (event: Event) => void;
+  group?: ShortcutGroup | null;
+  onShowAll?: () => void;
 }) {
+  const board = group === 'board';
+  // "Turu başlat": the tour opens once the dialog has closed and released its focus trap, so
+  // its card gets the focus instead of the button that opened the sheet.
+  const startTour = useRef(false);
+  const groups = group ? [group] : SHORTCUT_GROUPS;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         closeLabel={t.close}
         data-testid="shortcuts-dialog"
-        onCloseAutoFocus={onCloseAutoFocus}
+        data-group={group ?? 'all'}
+        onCloseAutoFocus={(e) => {
+          if (startTour.current) {
+            startTour.current = false;
+            e.preventDefault();
+            window.dispatchEvent(new Event(OPEN_EDITOR_TOUR_EVENT));
+          } else onCloseAutoFocus?.(e);
+        }}
       >
         <DialogHeader>
-          <DialogTitle>{t.title}</DialogTitle>
-          <DialogDescription>{t.description}</DialogDescription>
+          <DialogTitle>{board ? t.boardTitle : t.title}</DialogTitle>
+          <DialogDescription>{board ? t.boardDescription : t.description}</DialogDescription>
         </DialogHeader>
         {/* Scrollable list: focusable so keyboard users can scroll it (axe scrollable-region-focusable). */}
         <div
@@ -36,7 +65,7 @@ export function ShortcutsDialog({
           data-testid="shortcuts-list"
           className="-mx-1 flex max-h-[60vh] flex-col gap-5 overflow-y-auto rounded-md px-1 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
-          {SHORTCUT_GROUPS.map((group) => (
+          {groups.map((group) => (
             <section key={group} aria-labelledby={`shortcuts-${group}`}>
               <h3 id={`shortcuts-${group}`} className="mb-1.5 text-xs font-medium text-fg-muted">
                 {t.groups[group]}
@@ -56,6 +85,25 @@ export function ShortcutsDialog({
             </section>
           ))}
         </div>
+        {group ? (
+          <DialogFooter className="gap-2 sm:justify-between">
+            {board ? (
+              <Button
+                variant="secondary"
+                data-testid="shortcuts-start-tour"
+                onClick={() => {
+                  startTour.current = true;
+                  onOpenChange(false);
+                }}
+              >
+                {t.startTour}
+              </Button>
+            ) : null}
+            <Button variant="ghost" data-testid="shortcuts-show-all" onClick={onShowAll}>
+              {t.showAll}
+            </Button>
+          </DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

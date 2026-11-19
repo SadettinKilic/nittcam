@@ -139,11 +139,20 @@ describe('B11 tester: overcuts through the whole pipeline (read G-code)', () => 
           const part = p.parts.find((x) => x.id === pl.partId) as Part;
           const outline = placedOutline(part, pl);
           const poly = polyPoints(outline);
+          // T268: one expect per part, not per sampled point (an expect per point made this test
+          // ~1 s and it timed out under full parallel load), and only points near the part are
+          // measured: a point farther than R + 1 mm from the bounding box can neither be inside
+          // nor set the minimum distance (which must exceed R - 0.01).
+          const xs = poly.map((v) => v.x);
+          const ys = poly.map((v) => v.y);
+          const pad = R + 1;
+          const [x0, x1] = [Math.min(...xs) - pad, Math.max(...xs) + pad];
+          const [y0, y1] = [Math.min(...ys) - pad, Math.max(...ys) + pad];
+          const near = pts.filter((q) => q.x >= x0 && q.x <= x1 && q.y >= y0 && q.y <= y1);
+          const insidePts = near.filter((q) => inside(q, poly));
+          expect(insidePts, `${pl.partId}: tool centre inside the part`).toEqual([]);
           let minD = Infinity;
-          for (const q of pts) {
-            expect(inside(q, poly), `${pl.partId}: tool centre inside the part`).toBe(false);
-            minD = Math.min(minD, distTo(q, poly));
-          }
+          for (const q of near) minD = Math.min(minD, distTo(q, poly));
           // The tool edge never enters the part (sampling tolerance 0.01 mm).
           expect(minD).toBeGreaterThan(R - 0.01);
           // Corner point of the original L (250, 200) in the sheet frame: placedOutline only

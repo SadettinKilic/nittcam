@@ -2,7 +2,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Part } from '../schema';
-import { cutListToCsv, CUT_LIST_CSV_HEADER } from './export';
+import { csvNumber, cutListToCsv, CUT_LIST_CSV_HEADER } from './export';
 import { cutListToParts, headerField, parseCutList } from './parse';
 
 function rect(over: Partial<Extract<Part, { kind: 'rect' }>> = {}): Part {
@@ -139,12 +139,74 @@ describe('cutListToCsv (T120)', () => {
           note: r.note === '' ? undefined : r.note,
         }),
       );
+    // T267: CI seed -1727248701 shrank to this part; the note ".0" made the import pick the
+    // decimal dot, and "0,001" then came back as 1. Pinned so it runs on every pass.
+    const seedCase: Part = rect({
+      id: 'p0',
+      name: '',
+      qty: 1,
+      grain: { mode: 'free', angle: 0 },
+      params: { w: 0.001, h: 0.001, r: 0 },
+      edgeBand: { top: 0, right: 0.001, bottom: 0, left: 0 },
+      note: '.0',
+    });
     fc.assert(
       fc.property(fc.array(part, { minLength: 1, maxLength: 20 }), (parts) => {
         expect(reimport(cutListToCsv(parts).text)).toEqual(parts.map(rowOf));
       }),
-      { numRuns: 200 },
+      { numRuns: 200, examples: [[[seedCase]]] },
     );
+  });
+
+  it('T267: small and large sizes survive a note with a decimal dot', () => {
+    const parts = [
+      rect({ id: 'a', params: { w: 0.5, h: 1234.25, r: 0 }, note: '1.5' }),
+      rect({ id: 'b', params: { w: 123.456, h: 0.123, r: 0 }, note: 'v2.0' }),
+      rect({ id: 'c', params: { w: 1.001, h: 999.999, r: 0 }, note: undefined }),
+    ];
+    expect(reimport(cutListToCsv(parts).text)).toEqual(parts.map(rowOf));
+  });
+});
+
+describe('csvNumber (T267)', () => {
+  it.each([
+    [0.001, '0,0010'],
+    [0.5, '0,5'],
+    [123.456, '123,4560'],
+    [1234.25, '1234,25'],
+    [1234.567, '1234,567'],
+    [716, '716'],
+    [1000, '1000'],
+    [0.8, '0,8'],
+    [396.1234, '396,1230'],
+  ])('%s → %s', (v, s) => {
+    expect(csvNumber(v)).toBe(s);
+  });
+
+  it('never looks like one thousands group (d{1,3},ddd)', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 10_000_000 }), (n) => {
+        expect(csvNumber(n / 1000)).not.toMatch(/^\d{1,3},\d{3}$/);
+      }),
+    );
+  });
+});
+
+describe('parseCutList size limits (T267)', () => {
+  it.each([
+    ['0', 'NOT_POSITIVE'],
+    ['-5', 'NOT_POSITIVE'],
+    ['0,0005', 'TOO_SMALL'],
+  ])('width %s is refused with %s', (raw, code) => {
+    const result = parseCutList(`En;Boy;Adet\n${raw};100;1\n`);
+    expect(result.rows[0]?.errors.map((e) => e.code)).toEqual([code]);
+    expect(result.rows[0]?.values.w).toBeNull();
+  });
+
+  it('accepts exactly the smallest size', () => {
+    const result = parseCutList('En;Boy;Adet\n0,0010;100;1\n');
+    expect(result.rows[0]?.errors).toEqual([]);
+    expect(result.rows[0]?.values.w).toBe(0.001);
   });
 });
 
