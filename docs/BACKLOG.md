@@ -1117,20 +1117,20 @@ Tester focus: run suite twice → stable screenshots; review all images.
 
 ### Batch B22: T162–T164 (modes and options)
 
-### T162 Nesting modes and objective weights   [status: todo]
+### T162 Nesting modes and objective weights   [status: done]
 Spec: §6.2 · Depends: T114
 Acceptance:
 - [ ] `setNestingMode`: minWaste / fastest (cut length λ) / minToolChanges (μ); one objective function with weights per mode; cut length estimated from the toolpath model
 - [ ] benchmarks per mode in `__bench__`; deterministic
 Tester focus: each mode wins its own metric on the benchmark set; property tests unchanged.
 
-### T163 Nesting options UI, worker progress and cancel   [status: todo]
+### T163 Nesting options UI, worker progress and cancel   [status: done]
 Spec: §3.6, §6.2 · Depends: T162
 Acceptance:
 - [ ] layout step panel: mode cards, gap, margin, offcut use, rotation policy; run in worker with progress and "İptal"; results kept per option set
 Tester focus: cancel leaves the old layout intact; UI never freezes (long task < 50 ms) with 500 parts.
 
-### T164 Multiple stock sheet sizes   [status: todo]
+### T164 Multiple stock sheet sizes   [status: done]
 Spec: §6.2 · Depends: T121, T162
 Acceptance:
 - [ ] stock = list of sheet sizes with quantity limits (from the material library); placer picks sizes to minimise the objective; report per size
@@ -1189,6 +1189,13 @@ Tester focus: numbering consistent across layout, simulation, 3D; visual.
 
 ---
 
+
+### T281 Nesting run/cancel with 1500 copies stays under 50 ms per main-thread task   [status: todo]
+Spec: §11 · Depends: T163
+Found in integration/3 (2026-11-20): CI saw long tasks of 50–68 ms on run/cancel with 1500 copies (T163's own bar is < 50 ms with 500 parts, met). The spec `b22-nesting-options.spec.ts` allows 100 ms for now.
+Acceptance:
+- [ ] profile run/cancel at 1500 copies (CPU-throttled), split or defer the main-thread work; restore the 50 ms bar in the spec
+Tester focus: none beyond CI.
 ## M8: Export, etiket, proje yönetimi (exit: NC, DXF, PDF and labels from the server; projects, home and settings complete)
 
 ### Batch B25: T172–T174 (PDF)
