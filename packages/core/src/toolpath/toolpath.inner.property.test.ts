@@ -117,7 +117,7 @@ function passOffBy(op: Operation, hole: Box): string[] {
 const machine = machineOf({ toolDiameter: TOOL, thickness: 18 });
 
 describe('inner contours in the toolpath (T134)', () => {
-  it('hand example: 40 × 30 opening in a 200 × 100 part; inner first, opposite travel, no tabs', () => {
+  it('hand example: 40 × 30 opening in a 200 × 100 part; inner first, opposite travel, small slug tabbed (D-049)', () => {
     const hole = { minX: 30, minY: 20, maxX: 70, maxY: 50 };
     const at = { x: 100, y: 100, rot: 0 };
     const res = buildToolpath(project(200, 100, hole, at), machine);
@@ -127,7 +127,9 @@ describe('inner contours in the toolpath (T134)', () => {
     expect(inner.kind).toBe('innerContour');
     expect(inner.id).toBe('p#0/inner0');
     expect(outer.kind).toBe('outerContour');
-    expect(inner.tabs).toEqual([]);
+    // The 40 × 30 slug is small (D-049): tabs even with tabs off, at least 2.
+    expect(inner.tabs.length).toBeGreaterThanOrEqual(2);
+    expect(res.warnings.map((w) => w.code)).toContain('SMALL_SLUG_AUTO_TABS');
     expect(inner.passDepths).toEqual(outer.passDepths);
     expect(orientation(passLoop(outer, 0))).toBe('cw'); // climb outside the part
     expect(orientation(passLoop(inner, 0))).toBe('ccw'); // climb inside the opening
@@ -157,7 +159,18 @@ describe('inner contours in the toolpath (T134)', () => {
           fc.pre(hole.maxX < W - 5 && hole.maxY < H - 5);
           const at = { x: 50, y: 60, rot };
           const res = buildToolpath(project(W, H, hole, at, direction), machine);
-          expect(res.errors).toEqual([]);
+          // D-049: a small slug (area < 50 000 mm² or a side < 100 mm) is held by at least 2 tabs
+          // even with tabs off, or the toolpath is refused (never cut free); a large one follows
+          // the project's tab setting (off here).
+          const sw = hole.maxX - hole.minX;
+          const sh = hole.maxY - hole.minY;
+          const small = sw * sh < 50_000 || Math.min(sw, sh) < 100;
+          if (res.errors.length > 0) {
+            expect(small).toBe(true);
+            expect(res.errors.map((e) => e.code)).toEqual(['SMALL_SLUG_UNSECURED']);
+            expect(res.ok).toBe(false);
+            return;
+          }
           const ops = res.toolpath.operations;
           const iIn = ops.findIndex((o) => o.kind === 'innerContour');
           const iOut = ops.findIndex((o) => o.kind === 'outerContour');
@@ -165,6 +178,12 @@ describe('inner contours in the toolpath (T134)', () => {
           expect(iIn).toBeLessThan(iOut);
           const inner = ops[iIn] as Operation;
           const outer = ops[iOut] as Operation;
+          if (small) expect(inner.tabs.length).toBeGreaterThanOrEqual(2);
+          else expect(inner.tabs).toEqual([]);
+          for (const t of inner.tabs) {
+            expect(t.z).toBeGreaterThan(res.toolpath.targetDepth);
+            expect(t.z).toBeLessThan(0);
+          }
           expect(passOffBy(inner, placedHole(W, H, hole, at))).toEqual([]);
           expect(orientation(passLoop(inner, inner.passDepths.length - 1))).not.toBe(
             orientation(passLoop(outer, outer.passDepths.length - 1)),
@@ -192,7 +211,7 @@ describe('inner contours in the toolpath (T134)', () => {
           expect(gc.ok).toBe(true);
         },
       ),
-      { numRuns: 60 },
+      { numRuns: 80 },
     );
   });
 

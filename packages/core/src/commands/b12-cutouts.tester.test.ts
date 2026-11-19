@@ -2,7 +2,9 @@
  * B12 tester (T134): cut-outs through the whole pipeline (nesting → toolpath → post → reader).
  * Read back from the G-code, not from the toolpath model: inside every placed opening the tool
  * centre stays exactly the tool radius away from the opening edge and never enters the part; the
- * cut-outs of a copy are cut before its outer contour, with no tabs; climb inside the opening.
+ * cut-outs of a copy are cut before its outer contour; a small slug is held by ≥ 2 tabs (D-049,
+ * owner 2026-11-19; was "no tabs" in round 1), a large one follows the project's tab setting;
+ * climb inside the opening.
  * A valid project with cut-outs must pass the export checks (rule 9); an invalid cut-out (too
  * small, crossing the outline, outside, overlapping) must stop the toolpath itself, so the server
  * export never depends on the client validation panel.
@@ -20,6 +22,7 @@ import { goldenProfile, goldenProject } from '../post/golden.testing';
 import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import { parseProject, type Part, type Project } from '../schema';
 import { buildToolpath, placedInners, placedOutline } from '../toolpath/build';
+import { isSmallPart, TAB_DEFAULTS } from '../toolpath/tabs';
 import { machineOf, passLoop, projectOf } from '../toolpath/toolpath.testing';
 import { boardPositions } from '../editor/board';
 import { applyCommand } from './index';
@@ -155,7 +158,7 @@ const profile = (post: 'generic' | 'mach3') => ({
 
 describe('B12 tester: cut-outs read back from the G-code (§7.2)', () => {
   it.each(['generic', 'mach3'] as const)(
-    '%s: tool centre exactly R inside each opening, never in the part; inner before outer; no tabs',
+    '%s: tool centre exactly R inside each opening, never in the part; inner before outer; slug tabs (D-049)',
     (post) => {
       const p = withCutouts();
       const tp = buildToolpath(p, goldenProfile(post));
@@ -193,9 +196,16 @@ describe('B12 tester: cut-outs read back from the G-code (§7.2)', () => {
           const outerAt = ops.indexOf(mine.find((o) => o.kind === 'outerContour') as never);
           const inners = mine.filter((o) => o.kind === 'innerContour');
           expect(inners).toHaveLength(part.inners.length);
+          const slugs = placedInners(part, pl);
           for (const o of inners) {
             expect(ops.indexOf(o)).toBeLessThan(outerAt);
-            expect(o.tabs).toEqual([]);
+            // the cut order may change the order of the openings: the id names the cut-out
+            const slug = slugs[Number(/\/inner(\d+)$/.exec(o.id)?.[1])] as Polyline;
+            if (isSmallPart(slug, TAB_DEFAULTS.smallPartArea, TAB_DEFAULTS.smallPartMinSide)) {
+              expect(o.tabs.length, `${o.id}: small slug held`).toBeGreaterThanOrEqual(2);
+            } else if (!p.cutting.tabs.auto) {
+              expect(o.tabs).toEqual([]);
+            }
           }
         }
       }

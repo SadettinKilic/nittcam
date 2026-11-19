@@ -157,6 +157,7 @@ export type ToolpathCode =
   | 'SAFETY_VIOLATION'
   | 'INVALID_TAB'
   | 'SMALL_PART_UNSECURED'
+  | 'SMALL_SLUG_UNSECURED'
   // warnings
   | 'ARC_COLLAPSED'
   | 'LEAD_SHORTENED'
@@ -165,6 +166,7 @@ export type ToolpathCode =
   | 'CLEARANCE_CLAMPED'
   | 'UNPLACED_COPIES'
   | 'SMALL_PART_AUTO_TABS'
+  | 'SMALL_SLUG_AUTO_TABS'
   | 'TABS_REDUCED'
   | 'TABS_NOT_PLACED';
 

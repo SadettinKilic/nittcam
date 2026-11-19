@@ -244,10 +244,12 @@ interface OperationContext {
   outline: Polyline;
   /**
    * Inner contour index (T134) for a cut-out: travel is reversed (climb stays climb on the other
-   * side of the material), no leads (the tool enters on the path, inside the opening), no tabs
-   * (the slug falls free). Undefined = the outer contour.
+   * side of the material), no leads (the tool enters on the path, inside the opening). Tabs follow
+   * the slug (D-049). Undefined = the outer contour.
    */
   inner?: number;
+  /** The placed cut-out itself (sheet frame) for an inner contour: the slug it frees (D-049). */
+  slug?: Polyline;
   /** Tool-centre loop (CCW, as offset returns it). */
   raw: Polyline;
   /** Straight segment of `raw` whose midpoint is the start point (D-023); −1 = start vertex. */
@@ -355,17 +357,27 @@ function buildOuterOperation(
     }
   }
   // Tabs (T015, D-022): every part when tabs are on, small parts always (§6.3 small-part safety).
-  const small = isSmallPart(ctx.outline, p.tabs.smallPartArea, p.tabs.smallPartMinSide);
+  // A cut-out's slug follows the same rule (D-049): a small slug can be thrown by the cutter, so
+  // it gets at least 2 tabs (also on arcs: openings are often round) even with tabs off.
+  const small = isSmallPart(
+    isInner && ctx.slug ? ctx.slug : ctx.outline,
+    p.tabs.smallPartArea,
+    p.tabs.smallPartMinSide,
+  );
+  const what = isInner ? `Small slug of inner contour ${(ctx.inner ?? 0) + 1}` : 'Small part';
   let tabs: Tab[] = [];
-  if (!isInner && (p.tabs.all || small)) {
-    if (small && !p.tabs.all && !smallWarned.has(partId)) {
-      smallWarned.add(partId);
+  if (p.tabs.all || small) {
+    const warnKey = isInner ? `${partId}/inner${ctx.inner}` : partId;
+    if (small && !p.tabs.all && !smallWarned.has(warnKey)) {
+      smallWarned.add(warnKey);
       warnings.push(
         issue(
-          'SMALL_PART_AUTO_TABS',
+          isInner ? 'SMALL_SLUG_AUTO_TABS' : 'SMALL_PART_AUTO_TABS',
           'warning',
           partId,
-          'Small part: tabs added automatically so the vacuum does not lose it.',
+          isInner
+            ? `${what}: tabs added automatically so the cutter does not throw it.`
+            : 'Small part: tabs added automatically so the vacuum does not lose it.',
         ),
       );
     }
@@ -381,15 +393,18 @@ function buildOuterOperation(
       keepBack: leadIn + toolRadius,
       minCount: small ? TAB_DEFAULTS.smallPartMinCount : 1,
       z: p.tabs.top,
+      onArcs: isInner,
     });
     if (tabs.length === 0 && small) {
       // No thin-skin fallback in M1 (§2.4: M3): an unheld small part can fly off the vacuum.
       errors.push(
         issue(
-          'SMALL_PART_UNSECURED',
+          isInner ? 'SMALL_SLUG_UNSECURED' : 'SMALL_PART_UNSECURED',
           'error',
           partId,
-          `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free.`,
+          isInner
+            ? `${what}: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs; it would be cut free. Make the opening larger or clear it as a pocket.`
+            : `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free.`,
           where,
         ),
       );
@@ -827,6 +842,7 @@ export function buildToolpath(
         prepared.push({
           ...x,
           inner: k,
+          slug: innerPoly,
           sheetIndex,
           own,
           neighbours,
