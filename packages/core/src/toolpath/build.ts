@@ -18,7 +18,7 @@ import {
   type Project,
 } from '../schema';
 import { deriveOutline } from '../schema/outline';
-import { defaultSheet } from '../schema/sheet-size';
+import { defaultSheet, sheetSizeOf } from '../schema/sheet-size';
 import { checkInnerContour } from '../editor/inners';
 import { passDepths, throughCutTarget } from './depth';
 import {
@@ -1283,7 +1283,15 @@ export function buildToolpath(
     const ctx = prepared[k] as (typeof prepared)[number];
     ctx.startEdge = (edges[k] as number[])[o.start] ?? -1;
     operations.push(
-      buildOuterOperation(ctx, params, ctx.warnings, ctx.errors, smallWarned, cleanups),
+      buildOuterOperation(
+        ctx,
+        // each sheet's own size bounds its leads (T164, several stock sizes)
+        { ...params, sheet: sheetSizeOf(project, ctx.sheetIndex) },
+        ctx.warnings,
+        ctx.errors,
+        smallWarned,
+        cleanups,
+      ),
     );
   }
   // Thin-skin cleanup passes (T143) are the last cuts of their sheet, in cut order.

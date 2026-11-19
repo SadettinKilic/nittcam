@@ -9,7 +9,7 @@ import { readGcode, type GcodeReadResult } from '../gcode-reader';
 import type { MachineProfile } from '../machine';
 import { parsePostConfig, type PostProfileVersion } from '../post';
 import type { Project } from '../schema';
-import { defaultSheet } from '../schema';
+import { defaultSheet, sheetSizeOf } from '../schema';
 import { buildToolpath } from '../toolpath';
 import { buildSimSheet } from './build';
 import type { SimMachineFrame, SimSheet, SimSummary } from './types';
@@ -97,6 +97,12 @@ export function simulateProject(
     sheetHeight: defaultSheet(project).height,
   };
   const frame = checkFrame(profile, stock);
+  // Each sheet is played back in its own frame: a right/back origin moves with the sheet size (T164).
+  const frameOf = (sheet: number) => {
+    if (!project.layout.sheets[sheet]?.size) return frame;
+    const own = sheetSizeOf(project, sheet);
+    return checkFrame(profile, { ...stock, sheetWidth: own.width, sheetHeight: own.height });
+  };
   const opts = readerOptions(profile, post);
   const rapidFeed = profile.rapidFeed ?? SIM_DEFAULT_RAPID_FEED;
   const toolDiameters: Record<number, number> = {};
@@ -118,15 +124,17 @@ export function simulateProject(
 
   const sheets = [...bySheet.keys()]
     .sort((a, b) => a - b)
-    .map((sheet) =>
-      buildSimSheet({
+    .map((sheet) => {
+      const own = frameOf(sheet);
+      const sim = buildSimSheet({
         sheet,
         files: bySheet.get(sheet) ?? [],
-        frame,
+        frame: own,
         rapidFeed,
         toolDiameters,
-      }),
-    );
+      });
+      return own === frame ? sim : { ...sim, machine: simMachineFrame(profile, own) };
+    });
 
   // Pass and tab counts come from the toolpath the program was generated from (deterministic).
   const tp = buildToolpath(project, profile, options.toolpath ?? {});

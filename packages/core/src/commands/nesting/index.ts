@@ -4,7 +4,13 @@ import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../../geometry/grain';
 import { nestProject, type NestHooks } from '../../nesting/nest';
-import { defaultSheet, nestingRotationSchema, nestingSchema, placementSchema, type Project } from '../../schema';
+import {
+  defaultSheet,
+  nestingRotationSchema,
+  nestingSchema,
+  placementSchema,
+  type Project,
+} from '../../schema';
 import { defineCommand } from '../types';
 
 /** Sets the nesting goal, part gap and sheet margin. At least one field is required. */

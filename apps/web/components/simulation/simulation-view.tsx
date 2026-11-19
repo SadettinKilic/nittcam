@@ -333,7 +333,7 @@ export function SimulationView({
             t={t}
             sim={sim}
             project={project}
-            machine={result.machine}
+            machine={sim.machine ?? result.machine}
             left={side}
             tabs={tabs}
           />

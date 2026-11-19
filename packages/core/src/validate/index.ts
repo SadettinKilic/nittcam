@@ -14,6 +14,7 @@ import {
   defaultSheet,
   deriveOutline,
   stockSheetSizes,
+  sheetSizeOf,
   formatPath,
   innerOperation,
 } from '../schema';
@@ -345,19 +346,33 @@ export const unverifiedCuttingParams: ValidationRule = (project, context) => {
 export const sheetLargerThanTable: ValidationRule = (project, context) => {
   const machine = context?.machine;
   if (!machine) return [];
-  const { width, height } = defaultSheet(project);
   const off = machine.origin.sheetOffset;
-  const fits =
-    off.x + width <= machine.table.width + EPS && off.y + height <= machine.table.depth + EPS;
-  if (fits) return [];
-  return [
-    {
+  // Every stock size and every size a layout sheet uses (T164), the default sheet first, once each.
+  const sizes = [
+    { ...defaultSheet(project), path: 'stock.sheet' },
+    ...stockSheetSizes(project).map((s, i) => ({ ...s, path: `stock.sheets.${i}` })),
+    ...project.layout.sheets.map((_, i) => ({
+      ...sheetSizeOf(project, i),
+      path: `layout.sheets.${i}.size`,
+    })),
+  ];
+  const seen = new Set<string>();
+  const out: ValidationIssue[] = [];
+  for (const { width, height, path } of sizes) {
+    const key = `${width}x${height}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const fits =
+      off.x + width <= machine.table.width + EPS && off.y + height <= machine.table.depth + EPS;
+    if (fits) continue;
+    out.push({
       code: 'SHEET_LARGER_THAN_TABLE',
       severity: 'warning',
-      path: 'stock.sheet',
+      path,
       message: `the ${mm(width)} × ${mm(height)} mm sheet does not fit the ${mm(machine.table.width)} × ${mm(machine.table.depth)} mm table`,
-    },
-  ];
+    });
+  }
+  return out;
 };
 
 /**

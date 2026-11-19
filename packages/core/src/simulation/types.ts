@@ -71,6 +71,11 @@ export interface SimTotals {
 export interface SimSheet {
   /** Index of `layout.sheets`. */
   sheet: number;
+  /**
+   * Table and program zero for this sheet when its size differs from the default sheet (T164):
+   * with a right/back origin they sit elsewhere in its sheet frame. Absent = `SimulateResult.machine`.
+   */
+  machine?: SimMachineFrame;
   files: SimFile[];
   /** Flat x, y, z triples in the sheet frame, mm. Point k = `points[3k..3k+2]`. */
   points: number[];

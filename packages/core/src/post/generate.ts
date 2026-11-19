@@ -82,7 +82,10 @@ function utf8Length(s: string): number {
 interface Ctx {
   cfg: PostConfig;
   profile: MachineProfile;
+  /** Frame of the sheet being written (per sheet size, T164). */
   frame: MachineFrame;
+  /** Size of the sheet being written. */
+  sheetSize: { sheetWidth: number; sheetHeight: number };
   toolpath: Toolpath;
   meta: PostMeta;
   profileVersion: number;
@@ -594,7 +597,7 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
     `PLAKA ${plan.sheetIndex}/${plan.sheetCount}${parts > 1 ? ` - BÖLÜM ${part}/${parts}` : ''}`,
   );
   lines.push(
-    `MALZEME: ${meta.stock.material} ${f3(meta.stock.thickness)} mm, plaka ${f3(meta.stock.sheetWidth)} x ${f3(meta.stock.sheetHeight)}`,
+    `MALZEME: ${meta.stock.material} ${f3(meta.stock.thickness)} mm, plaka ${f3(c.sheetSize.sheetWidth)} x ${f3(c.sheetSize.sheetHeight)}`,
   );
   lines.push(
     `ORİJİN: ${CORNER_LABEL[profile.origin.corner] ?? profile.origin.corner}, X+ ${profile.origin.xPositive === 'right' ? 'sağ' : 'sol'}, Y+ ${profile.origin.yPositive === 'back' ? 'arka' : 'ön'}, plaka ofseti ${f3(profile.origin.sheetOffset.x)} / ${f3(profile.origin.sheetOffset.y)}`,
@@ -727,7 +730,11 @@ export function generateGcode(
     typeof st.material !== 'string' ||
     !pos(st.thickness) ||
     !pos(st.sheetWidth) ||
-    !pos(st.sheetHeight)
+    !pos(st.sheetHeight) ||
+    (st.sheets !== undefined &&
+      (typeof st.sheets !== 'object' ||
+        st.sheets === null ||
+        !Object.values(st.sheets).every((s) => pos(s?.sheetWidth) && pos(s?.sheetHeight))))
   ) {
     err('INVALID_META', 'Project name, revision or stock size missing or invalid.');
     return fail();
@@ -803,6 +810,7 @@ export function generateGcode(
     frame,
     toolpath,
     meta,
+    sheetSize: { sheetWidth: st.sheetWidth, sheetHeight: st.sheetHeight },
     profileVersion: machineProfileVersion.version,
     verification: state,
     unverified: state !== 'verified' || profile.example || cfg.status !== 'verified',
@@ -856,9 +864,18 @@ export function generateGcode(
   const files: PostFile[] = [];
   const toolRuns = new Map<string, number>();
 
+  /** Context of one sheet: its own size and the frame for it (right/back origins move with it). */
+  const sheetCtx = (sheet: number): Ctx => {
+    const own = st.sheets?.[sheet];
+    if (!own) return ctx;
+    const size = { sheetWidth: own.sheetWidth, sheetHeight: own.sheetHeight };
+    return { ...ctx, sheetSize: size, frame: machineFrame(profile, { ...st, ...size }) };
+  };
+
   for (const plan of plans) {
+    const pctx = sheetCtx(plan.sheet);
     try {
-      const chunks = splitPlan(ctx, plan, maxBytes);
+      const chunks = splitPlan(pctx, plan, maxBytes);
       if (chunks === null) {
         err('FILE_TOO_LARGE', `Sheet ${plan.sheet} program exceeds ${maxBytes} bytes.`, undefined, {
           sheet: plan.sheet,
@@ -891,7 +908,7 @@ export function generateGcode(
           err('FILE_NAME_TOO_LONG', `No file name fits in ${maxName} characters.`);
           return;
         }
-        const bad = verifyProgram(ctx, content);
+        const bad = verifyProgram(pctx, content);
         if (bad) {
           err('CHECK_FAILED', `Internal program check failed: ${bad}.`);
           return;
