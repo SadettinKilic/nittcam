@@ -1169,8 +1169,9 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       if(ctx.fable) return {spot:'meet', i:mi};
       return c.key==='po' ? {spot:'poDesk'} : {spot:'meet', i:mi};
     }
-    if(st==='testing') return {spot:'bench'};
-    if(st==='coding') return {spot: c.key==='tester'||c.seat==='tester' ? 'bench' : 'devDesk'};
+    const isTester = c.key==='tester' || c.seat==='tester';
+    // testers work at the test bench; devs running their own tests stay at their desk; the PO stays in its office
+    if(st==='testing' || st==='coding') return {spot: isTester ? 'bench' : c.key==='po' ? 'poDesk' : 'devDesk'};
     return {spot: c.key==='po'?'poDesk' : c.seat==='tester' ? 'bench' : c.key==='dev'||c.key==='dev2'||c.key==='dev3'?'devDesk' : 'bench'};
   }
   function agentView(){
@@ -1179,13 +1180,14 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     const d2 = A.dev2, dev2On = !!d2 && !!d2.updated && (Date.now()-new Date(d2.updated)) < 12*3600e3; // optional 2nd dev: shown while it has reported in the last 12 h
     const d3 = A.dev3, dev3On = !!d3 && !!d3.updated && d3.state!=='idle' && (Date.now()-new Date(d3.updated)) < 12*3600e3; // 3rd dev: only while working (uses the CTO slot)
     // D-052 flexible seats: dev2/dev3 carry a role (dev | tester | cto) set by "status.mjs role"
-    const seatRole = (k)=> (A[k] && A[k].role) || 'dev';
+    const SEATS = S.seats || {};
+    const seatRole = (k)=> (SEATS[k] && SEATS[k].role) || 'dev';
     const extraDevs = [['dev2',dev2On],['dev3',dev3On]].filter(([k,on])=>on && seatRole(k)==='dev').length;
     CREW.find(c=>c.key==='dev').name = extraDevs ? 'Dev 1' : 'Dev';
     let devNo = 1, testNo = 1;
     const seated = (c)=>{
       if(c.key!=='dev2' && c.key!=='dev3') return c;
-      const r = seatRole(c.key), why = (A[c.key] && A[c.key].roleWhy) || '';
+      const r = seatRole(c.key), why = (SEATS[c.key] && SEATS[c.key].why) || '';
       if(r==='tester') return {...c, seat:'tester', name:'Tester '+(++testNo), role:'Test (esnek koltuk'+(why?': '+why:'')+')'};
       if(r==='cto') return {...c, seat:'cto', name:'CTO (esnek koltuk)', role:'İnceleme'+(why?': '+why:'')};
       return {...c, seat:'dev', name:'Dev '+(++devNo), role:'Geliştirici (esnek koltuk'+(why?': '+why:'')+')'};

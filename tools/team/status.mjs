@@ -50,8 +50,7 @@ if (AGENTS.includes(cmd)) {
   const [state, task = '', message = ''] = rest;
   if (!STATES.includes(state)) die(`state must be one of: ${STATES.join(', ')}`);
   s.agents = s.agents || {};
-  const prev = s.agents[cmd] || {};
-  s.agents[cmd] = { state, task, message, updated: now, ...(prev.role ? { role: prev.role, roleWhy: prev.roleWhy || '' } : {}) };
+  s.agents[cmd] = { state, task, message, updated: now };
   s.log.unshift({ t: now, who: cmd, state, task, msg: message });
   s.log = s.log.slice(0, 60);
 } else if (cmd === 'task') {
@@ -103,8 +102,9 @@ if (AGENTS.includes(cmd)) {
   const [key, role, why = ''] = rest;
   const ROLES = ['dev', 'tester', 'cto'];
   if (!['dev2', 'dev3'].includes(key) || !ROLES.includes(role)) die('usage: role <dev2|dev3> <dev|tester|cto> ["why"]');
-  s.agents = s.agents || {};
-  s.agents[key] = { ...(s.agents[key] || { state: 'idle', task: '', message: '', updated: null }), role, roleWhy: why };
+  // kept in a top-level "seats" map: older copies of this script (in agents' worktrees) rewrite s.agents[key] but keep unknown top-level keys
+  s.seats = s.seats || {};
+  s.seats[key] = { role, why, since: now };
   const label = { dev: 'geliştirici', tester: 'tester', cto: 'CTO' }[role];
   s.log.unshift({ t: now, who: 'po', state: 'planning', task: key, msg: `Esnek koltuk ${key} → ${label}${why ? ': ' + why : ''}` });
   s.log = s.log.slice(0, 60);
