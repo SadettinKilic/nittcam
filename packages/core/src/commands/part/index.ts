@@ -312,3 +312,5 @@ export { moveVertex, setOutline, setSegmentAngle, setSegmentLength } from './edi
 export { addDogbone, convertToFreeform, filletCorners } from './corners';
 export { duplicateParts, reorderParts, updateParts } from './list';
 export { addHole, removeHole, updateHole } from './holes';
+export { addDimension, removeDimension } from './annotate';
+export { addInnerContour, removeInnerContour } from './inners';

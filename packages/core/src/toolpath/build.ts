@@ -11,6 +11,7 @@ import type { BBox, Point, Polyline } from '../geometry/types';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
 import type { Part, Placement, Project } from '../schema';
 import { deriveOutline } from '../schema/outline';
+import { checkInnerContour } from '../editor/inners';
 import { passDepths, throughCutTarget } from './depth';
 import { leadSegments, leadsClear, obstacle, type Leads, type Obstacle } from './lead';
 import {
@@ -86,6 +87,25 @@ export function placedOutline(part: Part, placement: Pick<Placement, 'x' | 'y' |
   const turned = rotate(local, placement.rot);
   const box = bbox(turned);
   return translate(turned, placement.x - box.minX, placement.y - box.minY);
+}
+
+/**
+ * A placed part's inner contours in the sheet frame (T134): the same rotation and shift as
+ * `placedOutline` (the outline's rotated bounding box decides the shift), stored CW.
+ */
+export function placedInners(
+  part: Part,
+  placement: Pick<Placement, 'x' | 'y' | 'rot'>,
+): Polyline[] {
+  if (part.inners.length === 0) return [];
+  const box = bbox(rotate(normalize(contour(deriveOutline(part)), 'outer'), placement.rot));
+  return part.inners.map((c) =>
+    translate(
+      rotate(normalize(contour(c), 'inner'), placement.rot),
+      placement.x - box.minX,
+      placement.y - box.minY,
+    ),
+  );
 }
 
 export interface ContourPathResult {
@@ -224,6 +244,14 @@ interface OperationContext {
   placement: Placement;
   sheetIndex: number;
   outline: Polyline;
+  /**
+   * Inner contour index (T134) for a cut-out: travel is reversed (climb stays climb on the other
+   * side of the material), no leads (the tool enters on the path, inside the opening). Tabs follow
+   * the slug (D-049). Undefined = the outer contour.
+   */
+  inner?: number;
+  /** The placed cut-out itself (sheet frame) for an inner contour: the slug it frees (D-049). */
+  slug?: Polyline;
   /** Tool-centre loop (CCW, as offset returns it). */
   raw: Polyline;
   /** Straight segment of `raw` whose midpoint is the start point (D-023); −1 = start vertex. */
@@ -243,6 +271,11 @@ function buildOuterOperation(
   const where = { copy: ctx.placement.index, sheet: ctx.sheetIndex };
   const partId = ctx.part.id;
   const toolRadius = p.toolDiameter / 2;
+  const isInner = ctx.inner !== undefined;
+  if (isInner) {
+    // Climb on the inside of an opening = the opposite travel of the outer contour (D-021).
+    p = { ...p, travel: p.travel === 'cw' ? 'ccw' : 'cw', lead: 'none' };
+  }
 
   // Start at the midpoint of the chosen straight edge (cut order, D-023), then set the travel
   // direction (CCW as offset returns it). Leads and tabs below are computed for this start.
@@ -326,17 +359,27 @@ function buildOuterOperation(
     }
   }
   // Tabs (T015, D-022): every part when tabs are on, small parts always (§6.3 small-part safety).
-  const small = isSmallPart(ctx.outline, p.tabs.smallPartArea, p.tabs.smallPartMinSide);
+  // A cut-out's slug follows the same rule (D-049): a small slug can be thrown by the cutter, so
+  // it gets at least 2 tabs (also on arcs: openings are often round) even with tabs off.
+  const small = isSmallPart(
+    isInner && ctx.slug ? ctx.slug : ctx.outline,
+    p.tabs.smallPartArea,
+    p.tabs.smallPartMinSide,
+  );
+  const what = isInner ? `Small slug of inner contour ${(ctx.inner ?? 0) + 1}` : 'Small part';
   let tabs: Tab[] = [];
   if (p.tabs.all || small) {
-    if (small && !p.tabs.all && !smallWarned.has(partId)) {
-      smallWarned.add(partId);
+    const warnKey = isInner ? `${partId}/inner${ctx.inner}` : partId;
+    if (small && !p.tabs.all && !smallWarned.has(warnKey)) {
+      smallWarned.add(warnKey);
       warnings.push(
         issue(
-          'SMALL_PART_AUTO_TABS',
+          isInner ? 'SMALL_SLUG_AUTO_TABS' : 'SMALL_PART_AUTO_TABS',
           'warning',
           partId,
-          'Small part: tabs added automatically so the vacuum does not lose it.',
+          isInner
+            ? `${what}: tabs added automatically so the cutter does not throw it.`
+            : 'Small part: tabs added automatically so the vacuum does not lose it.',
         ),
       );
     }
@@ -352,15 +395,18 @@ function buildOuterOperation(
       keepBack: leadIn + toolRadius,
       minCount: small ? TAB_DEFAULTS.smallPartMinCount : 1,
       z: p.tabs.top,
+      onArcs: isInner,
     });
     if (tabs.length === 0 && small) {
       // No thin-skin fallback in M1 (§2.4: M3): an unheld small part can fly off the vacuum.
       errors.push(
         issue(
-          'SMALL_PART_UNSECURED',
+          isInner ? 'SMALL_SLUG_UNSECURED' : 'SMALL_PART_UNSECURED',
           'error',
           partId,
-          `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free.`,
+          isInner
+            ? `${what}: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs; it would be cut free. Make the opening larger or clear it as a pocket.`
+            : `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free.`,
           where,
         ),
       );
@@ -425,8 +471,10 @@ function buildOuterOperation(
   segments.push({ role: 'retract', moves: [rapid(exit, p.safeZ)] });
 
   return {
-    id: `${partId}#${ctx.placement.index}`,
-    kind: 'outerContour',
+    id: isInner
+      ? `${partId}#${ctx.placement.index}/inner${ctx.inner}`
+      : `${partId}#${ctx.placement.index}`,
+    kind: isInner ? 'innerContour' : 'outerContour',
     sheet: ctx.sheetIndex,
     partId,
     copy: ctx.placement.index,
@@ -678,19 +726,28 @@ export function buildToolpath(
     },
   };
 
-  // Features not cut yet in M1: block export instead of silently leaving them out.
+  // Inner contours (T134): an opening the tool cannot cut blocks export (once per part; the
+  // copies only turn it). Features not cut yet: block export instead of silently leaving them out.
   const toolRadius = tool.diameter / 2;
+  // The geometry rules of validation `INNER_CONTOUR_INVALID` (§7.2): a cut-out crossing the outline,
+  // outside it or overlapping an earlier one would cut into the part edge, the sheet or a
+  // neighbour, so it stops the toolpath here too (the server export never relies on the panel).
   for (const part of project.parts) {
     if (part.inners.length > 0) {
-      errors.push(
-        issue(
-          'INNER_CONTOURS_NOT_SUPPORTED',
-          'error',
-          part.id,
-          'Inner contours are not cut yet (M1: outer contours only).',
-        ),
-      );
-      for (const inner of part.inners) {
+      const outline = deriveOutline(part);
+      for (const [k, inner] of part.inners.entries()) {
+        const invalid = checkInnerContour(outline, part.inners.slice(0, k), inner, 0);
+        if (invalid) {
+          errors.push(
+            issue(
+              'INNER_CONTOUR_INVALID',
+              'error',
+              part.id,
+              `Inner contour ${k + 1} is invalid (${invalid}): it must lie inside the outline and not touch another inner contour.`,
+            ),
+          );
+          continue;
+        }
         for (const it of innerContourPath(contour(inner), toolRadius).issues) {
           (it.severity === 'error' ? errors : warnings).push(
             issue(it.code, it.severity, part.id, it.message),
@@ -849,6 +906,42 @@ export function buildToolpath(
         warnings: opWarnings,
         errors: opErrors,
       };
+      // Inner contours of this copy (T134): one operation each, cut before the outer contour (the
+      // order's hard constraint inner → outer within a part copy). Failures are reported per part
+      // above, so a failed opening simply has no operation (and the toolpath is not ok).
+      placedInners(x.part, x.placement).forEach((innerPoly, k) => {
+        const res = innerContourPath(innerPoly, toolRadius);
+        const loop = res.paths[0];
+        if (!res.ok || !loop) return;
+        const innerRaw = normalize(loop, 'outer');
+        prepared.push({
+          ...x,
+          inner: k,
+          slug: innerPoly,
+          sheetIndex,
+          own,
+          neighbours,
+          raw: innerRaw,
+          startEdge: -1,
+          warnings: opWarnings,
+          errors: opErrors,
+        });
+        const cand = startEdgeCandidates(innerRaw, startFraction);
+        edges.push(cand);
+        items.push({
+          sheet: sheetIndex,
+          part: `${x.part.id}#${x.placement.index}`,
+          cls: 'inner',
+          tool: params.tool,
+          area: partArea.get(x.part.id) ?? 0,
+          starts:
+            cand.length > 0
+              ? cand.map((e) => edgeMidpoint(innerRaw, e))
+              : [{ x: innerRaw.vertices[0]?.x ?? 0, y: innerRaw.vertices[0]?.y ?? 0 }],
+        });
+        itemCtx.push(prepared.length - 1);
+        itemHole.push(null);
+      });
       prepared.push(ctx);
       if (!contourRes.ok || !raw) {
         edges.push([]);
@@ -894,7 +987,11 @@ export function buildToolpath(
     operations.push(buildOuterOperation(ctx, params, ctx.warnings, ctx.errors, smallWarned));
   }
   // Issues stay in placement order whatever the cut order.
+  // A copy's inner and outer operations share one issue list: add each list once.
+  const seen = new Set<ToolpathIssue[]>();
   for (const ctx of prepared) {
+    if (seen.has(ctx.warnings)) continue;
+    seen.add(ctx.warnings);
     warnings.push(...ctx.warnings);
     errors.push(...ctx.errors);
   }

@@ -53,8 +53,9 @@ export interface Interval {
 
 /**
  * Where a tab centre may go on a closed loop that starts at P (`segs`, in travel order):
- * - only on straight segments, at least `half` (= raised span / 2 = w/2 + tool radius) from both
- *   ends, so the raised span never touches a corner or an arc;
+ * - only on straight segments (with `onArcs`, D-049 cut-out slugs: also on arcs), at least `half`
+ *   (= raised span / 2 = w/2 + tool radius) from both ends, so the raised span never touches a
+ *   corner or another segment and an arc too short for a tab gets none;
  * - the raised span stays out of `[0, keepFwd]` and `[total − keepBack, total]` (lead-in/out, the
  *   ramp and the plunge point around P).
  */
@@ -63,13 +64,14 @@ export function tabCentreIntervals(
   half: number,
   keepFwd: number,
   keepBack: number,
+  onArcs = false,
 ): Interval[] {
   const total = segs.reduce((s, x) => s + segLength(x), 0);
   const out: Interval[] = [];
   let s0 = 0;
   for (const s of segs) {
     const l = segLength(s);
-    if (s.bulge === 0) {
+    if (s.bulge === 0 || onArcs) {
       const lo = Math.max(s0 + half, keepFwd + half);
       const hi = Math.min(s0 + l - half, total - keepBack - half);
       if (hi >= lo) out.push({ lo, hi });
@@ -138,11 +140,13 @@ export function placeTabs(
     keepBack: number;
     minCount: number;
     z: number;
+    /** Tabs may sit on arcs too (D-049: cut-out slugs, often round openings). */
+    onArcs?: boolean;
   },
 ): Tab[] {
   const total = segs.reduce((s, x) => s + segLength(x), 0);
   const half = (o.width + o.toolDiameter) / 2;
-  const allowed = tabCentreIntervals(segs, half, o.keepFwd, o.keepBack);
+  const allowed = tabCentreIntervals(segs, half, o.keepFwd, o.keepBack, o.onArcs ?? false);
   for (let n = o.count; n >= Math.max(1, o.minCount); n--) {
     // neighbouring raised spans must not touch (n = 1 has no neighbour)
     if (n > 1 && total / n <= 2 * half + EPS) continue;

@@ -340,6 +340,20 @@ const PartShape = memo(function PartShape({
           shadowForStrokeEnabled={false}
         />
       )}
+      {/* Cut-outs (T134): the sheet shows through; they turn and move with the part. */}
+      {part.inners.map((pts, i) => (
+        <Line
+          key={`inner-${i}`}
+          points={pts}
+          closed
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          fill={colors.waste}
+          perfectDrawEnabled={false}
+          shadowForStrokeEnabled={false}
+          listening={false}
+        />
+      ))}
       {label.lines.map((line, i) => (
         <Text
           key={i}

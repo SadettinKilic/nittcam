@@ -82,7 +82,8 @@ export function exportNc(
       sheetWidth: project.stock.sheet.width,
       sheetHeight: project.stock.sheet.height,
     },
-    layout: expectedLayouts(project),
+    // one cutting tool per project (D-021): the cut-out loops are offset by its radius
+    layout: expectedLayouts(project, tp.toolpath.operations[0]?.toolDiameter ?? 0),
   });
 }
 

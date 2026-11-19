@@ -29,6 +29,8 @@ export interface BoardPart {
   inners: Vertex[][];
   /** Hole centres and diameters in board coordinates. */
   holes: { id: string; x: number; y: number; d: number }[];
+  /** Linear dimensions (T133, annotations) in board coordinates. */
+  dims: { id: string; a: Point; b: Point }[];
   /** Bounding box in board coordinates. */
   box: BBox;
 }
@@ -102,6 +104,11 @@ export function boardParts(project: Project): BoardPart[] {
       outline: shift(deriveOutline(part), at.x, at.y),
       inners: part.inners.map((c) => shift(c, at.x, at.y)),
       holes: part.holes.map((h) => holeCentre(h, at)),
+      dims: (part.dims ?? []).map((d) => ({
+        id: d.id,
+        a: { x: d.a.x + at.x, y: d.a.y + at.y },
+        b: { x: d.b.x + at.x, y: d.b.y + at.y },
+      })),
       box: {
         minX: local.minX + at.x,
         minY: local.minY + at.y,

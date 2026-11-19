@@ -92,12 +92,13 @@ export interface Tab {
 }
 
 /**
- * `outerContour`: a part's outer contour (T014). `pocket`: a circular pocket cleared from its centre
+ * `outerContour`: a part's outer contour (T014). `innerContour`: a cut-out (T134), cut before it.
+ * `pocket`: a circular pocket cleared from its centre
  * with concentric rings (the test part of T022, D-031, and the holes of §4.5: through and blind,
  * T139–T140); down to the target depth it is a through hole. `drill`: a hole as wide as the tool,
  * one plunge per pass (peck, D-050). `groove`: a ring groove around the hole's centreline (T140).
  */
-export type OperationKind = 'outerContour' | 'pocket' | 'drill' | 'groove';
+export type OperationKind = 'outerContour' | 'innerContour' | 'pocket' | 'drill' | 'groove';
 
 export interface Operation {
   /** `<partId>#<copy>` (unique in the toolpath). */
@@ -155,7 +156,7 @@ export type ToolpathCode =
   | 'OFFSET_FAILED'
   | 'INNER_OFFSET_FAILED'
   | 'INNER_SPLIT'
-  | 'INNER_CONTOURS_NOT_SUPPORTED'
+  | 'INNER_CONTOUR_INVALID'
   | 'HOLE_OUTSIDE_PART'
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
@@ -164,6 +165,7 @@ export type ToolpathCode =
   | 'SAFETY_VIOLATION'
   | 'INVALID_TAB'
   | 'SMALL_PART_UNSECURED'
+  | 'SMALL_SLUG_UNSECURED'
   // warnings
   | 'ARC_COLLAPSED'
   | 'LEAD_SHORTENED'
@@ -172,6 +174,7 @@ export type ToolpathCode =
   | 'CLEARANCE_CLAMPED'
   | 'UNPLACED_COPIES'
   | 'SMALL_PART_AUTO_TABS'
+  | 'SMALL_SLUG_AUTO_TABS'
   | 'TABS_REDUCED'
   | 'TABS_NOT_PLACED';
 

@@ -55,7 +55,7 @@ export function segmentInfo(vs: readonly Vertex[], index: number): SegmentInfo |
 }
 
 /** Do the closed segments p–q and r–s cross or touch (beyond EPS)? */
-function segmentsMeet(p: Point, q: Point, r: Point, s: Point): boolean {
+export function segmentsMeet(p: Point, q: Point, r: Point, s: Point): boolean {
   const cross = (o: Point, a: Point, b: Point) =>
     (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
   const d1 = cross(r, s, p);
