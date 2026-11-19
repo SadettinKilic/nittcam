@@ -189,3 +189,80 @@ test.describe('B11 follow-up: toasts above the wizard footer', () => {
     });
   }
 });
+
+async function drawL(page: Page, canvas: Locator) {
+  const b = await canvas.boundingBox();
+  if (!b) throw new Error('no canvas');
+  await page.keyboard.press('l');
+  await page.mouse.click(b.x + b.width * 0.55, b.y + b.height * 0.8);
+  for (const [len, angle] of [
+    [600, 0],
+    [300, 90],
+    [300, 180],
+    [300, 90],
+    [300, 180],
+    [600, 270],
+  ] as const) {
+    await page.keyboard.type(String(len));
+    await page.keyboard.press('Tab');
+    await page.keyboard.type(String(angle));
+    await page.keyboard.press('Enter');
+  }
+  await page.keyboard.press('v');
+  await expect(page.getByTestId('editor-size')).toHaveText(/600\s*×\s*600/);
+}
+
+test.describe('T131 / T132 corner tools', () => {
+  test('fillet one corner and all corners; convert to freeform; one undo step each', async ({
+    page,
+  }) => {
+    await openBoard(page);
+    await page.getByTestId('editor-part-list').getByRole('button').first().click();
+    await page.getByTestId('prop-convert').click();
+    await expect(page.getByTestId('editor-inspector')).toContainText(ins.kind.freeform);
+    await pickOption(page.getByTestId('prop-vertex-pick'), fill(ins.vertexN, { n: 1 }));
+    // Enter in the radius field rounds the picked corner (same as the button).
+    await setField(page, 'prop-fillet-r', '20');
+    await expect(page.getByTestId('prop-fillet')).toBeDisabled();
+    // Vertex 1 became two tangent points: 5 corners in the picker now.
+    await page.getByTestId('prop-segment-pick').click();
+    await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(5);
+    await page.keyboard.press('Escape');
+    // Clamp: 400 does not fit the 560 / 720 sides with every corner rounded.
+    await pickOption(page.getByTestId('prop-vertex-pick'), fill(ins.vertexN, { n: 3 }));
+    await page.getByTestId('prop-fillet-r').fill('400');
+    await page.getByTestId('prop-fillet-all').click();
+    await expect(page.getByTestId('prop-corner-note')).toHaveText(
+      fill(ins.filletClamped, { r: '280' }),
+    );
+    await page.getByTestId('editor-canvas').focus();
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    await expect(page.getByTestId('editor-inspector')).toContainText(ins.kind.rect);
+  });
+
+  test('inner corner tighter than the tool: warning, auto-fix; dogbone opens the corner', async ({
+    page,
+  }) => {
+    const canvas = await openBoard(page);
+    await drawL(page, canvas);
+    const notice = page.getByTestId('prop-concave');
+    await expect(notice).toContainText(ins.concave.title);
+    await page.getByTestId('prop-concave-fix').click();
+    await expect(notice).toHaveCount(0);
+    await page.getByTestId('editor-canvas').focus();
+    await page.keyboard.press('Control+z');
+    await expect(notice).toBeVisible();
+
+    // Dogbone on the concave corner (vertex 4: the L's inner corner).
+    await pickOption(page.getByTestId('prop-vertex-pick'), fill(ins.vertexN, { n: 4 }));
+    await expect(page.getByTestId('prop-dogbone')).toBeVisible();
+    await pickOption(
+      page.getByTestId('prop-dogbone-style'),
+      `${ins.dogbone.tbone} · ${ins.dogbone.prev}`,
+    );
+    await page.getByTestId('prop-dogbone').click();
+    await expect(notice).toHaveCount(0);
+  });
+});

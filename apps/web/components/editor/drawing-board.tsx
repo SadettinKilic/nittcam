@@ -119,7 +119,10 @@ function typing(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
     (target.isContentEditable ||
-      target.closest('input, textarea, select, [role="combobox"], [role="dialog"]') !== null)
+      // An open Select's listbox too: its Esc closes the list, not the board selection (T130).
+      target.closest(
+        'input, textarea, select, [role="combobox"], [role="listbox"], [role="dialog"]',
+      ) !== null)
   );
 }
 
@@ -159,6 +162,7 @@ export function DrawingBoard({
   run,
   onToList,
   viewSwitch,
+  toolDiameter,
 }: {
   t: T;
   project: Project;
@@ -858,7 +862,10 @@ export function DrawingBoard({
       if (
         target instanceof HTMLElement &&
         (target.isContentEditable ||
-          target.closest('input, textarea, select, [role="combobox"], [role="dialog"]') !== null)
+          // An open Select's listbox too: its Esc closes the list, not the board selection (T130).
+          target.closest(
+            'input, textarea, select, [role="combobox"], [role="listbox"], [role="dialog"]',
+          ) !== null)
       ) {
         return;
       }
@@ -1241,6 +1248,7 @@ export function DrawingBoard({
           run={run}
           sub={subShown}
           onSub={setSub}
+          toolRadius={toolDiameter ? toolDiameter / 2 : 0}
         />
       }
       canvas={canvas}

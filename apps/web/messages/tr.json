@@ -1750,11 +1750,9 @@
         "dogbone": "Dogbone",
         "tbone": "T-bone",
         "add": "Taşma aç",
-        "edge": "T-bone yönü",
         "prev": "Gelen kenar",
         "next": "Giden kenar",
-        "added": "İç köşeye {r} mm yarıçaplı taşma açıldı.",
-        "convexOnly": "Taşma yalnız iç (içbükey) köşeye açılır."
+        "added": "İç köşeye {r} mm yarıçaplı taşma açıldı."
       },
       "errors": {
         "index": "Bu kenar ya da köşe artık yok.",

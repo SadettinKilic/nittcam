@@ -19,6 +19,7 @@ import {
   type Point,
 } from '@nittcam/core';
 import {
+  Button,
   GrainDial,
   Input,
   InspectorGroup,
@@ -31,11 +32,13 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
+  Tooltip,
 } from '@nittcam/ui';
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useRef, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import { grainDialLabels } from '../../lib/grain-labels';
 import type { Messages } from '../../lib/messages';
+import { CornerTools, TightCornerNotice } from './corner-tools';
 
 type T = Messages['editor']['inspector'];
 export type Run = (command: string, params: unknown) => boolean;
@@ -249,7 +252,7 @@ export function PartProperties({
   run,
   sub,
   onSub,
-  children,
+  toolRadius = 0,
 }: {
   t: T;
   part: Part;
@@ -258,8 +261,8 @@ export function PartProperties({
   run: Run;
   sub: SubSelection;
   onSub: (sub: SubSelection) => void;
-  /** Extra groups (corner tools, T131/T132) placed after the vertex group. */
-  children?: ReactNode;
+  /** Tool radius of the selected machine, mm (inner-corner rule, dogbone; T131/T132). */
+  toolRadius?: number;
 }) {
   const outline = deriveOutline(part);
   const n = outline.length;
@@ -275,6 +278,9 @@ export function PartProperties({
 
   return (
     <div className="flex flex-col gap-1" data-testid="editor-properties">
+      {toolRadius > 0 ? (
+        <TightCornerNotice t={t} part={part} toolRadius={toolRadius} run={run} />
+      ) : null}
       <InspectorGroup title={t.groups.part} data-testid="prop-group-part">
         <InspectorRows>
           <NameRow t={t} part={part} run={run} />
@@ -342,6 +348,19 @@ export function PartProperties({
             </>
           ) : null}
         </InspectorRows>
+        {part.kind === 'rect' ? (
+          <Tooltip content={t.convertHint}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="self-start"
+              data-testid="prop-convert"
+              onClick={() => run('convertToFreeform', { id: part.id })}
+            >
+              {t.convert}
+            </Button>
+          </Tooltip>
+        ) : null}
       </InspectorGroup>
 
       <InspectorGroup title={t.groups.grain} data-testid="prop-group-grain">
@@ -514,7 +533,9 @@ export function PartProperties({
             </>
           ) : null}
         </InspectorRows>
-        {ver !== null ? children : null}
+        {ver !== null ? (
+          <CornerTools t={t} part={part} vertex={ver} toolRadius={toolRadius} run={run} />
+        ) : null}
       </InspectorGroup>
     </div>
   );

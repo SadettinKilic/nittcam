@@ -15,7 +15,6 @@ import type { BoardSummary } from '../../lib/editor/summary';
 import type { Messages } from '../../lib/messages';
 import { ariaKeyShortcuts, shortcutById, shortcutText, type ShortcutId } from '../../lib/shortcuts';
 import { PartProperties, type Run, type SubSelection } from './properties';
-import type { ReactNode } from 'react';
 import { useIsMac } from '../shell/keys';
 
 export interface InspectorActions {
@@ -103,7 +102,7 @@ export function EditorInspector({
   run,
   sub = null,
   onSub,
-  corner,
+  toolRadius,
 }: {
   t: Messages['editor']['inspector'];
   project: Project;
@@ -114,8 +113,8 @@ export function EditorInspector({
   /** Selected segment / vertex of the single selected part. */
   sub?: SubSelection;
   onSub?: (sub: SubSelection) => void;
-  /** Corner tools under the vertex group (T131/T132). */
-  corner?: ReactNode;
+  /** Tool radius of the selected machine, mm (T131/T132). */
+  toolRadius?: number;
   /** With nothing selected: counts, total area and extents of the board (T242). */
   summary?: BoardSummary;
 }) {
@@ -195,9 +194,15 @@ export function EditorInspector({
             </div>
           ) : null}
           {selected.length === 1 && part && first && run && onSub ? (
-            <PartProperties t={t} part={part} at={first.at} run={run} sub={sub} onSub={onSub}>
-              {corner}
-            </PartProperties>
+            <PartProperties
+              t={t}
+              part={part}
+              at={first.at}
+              run={run}
+              sub={sub}
+              onSub={onSub}
+              toolRadius={toolRadius ?? 0}
+            />
           ) : null}
         </>
       )}
