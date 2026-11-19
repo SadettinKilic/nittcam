@@ -5,7 +5,7 @@
 import type { DrawTool } from './draw-tool';
 import { panBy, zoomAt, type Pt, type Viewport } from './viewport';
 
-export type EditorTool = 'select' | 'pan' | DrawTool;
+export type EditorTool = 'select' | 'pan' | 'dim' | DrawTool;
 
 /** Snap kinds the status bar toggles (T126); the engine lives in `@nittcam/core`. */
 export const SNAP_TOGGLES = [

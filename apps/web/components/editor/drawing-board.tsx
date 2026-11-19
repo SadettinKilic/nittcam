@@ -4,6 +4,7 @@ import {
   boardBox,
   boardParts,
   arcOf,
+  checkInnerContour,
   bulgeFromSagitta,
   nextPartName,
   segmentMidpoint,
@@ -22,6 +23,7 @@ import {
   Maximize,
   MousePointer2,
   PenLine,
+  Ruler,
   Spline,
   Square,
   SquareDashed,
@@ -40,7 +42,7 @@ import {
 } from 'react';
 import type { Messages } from '../../lib/messages';
 import { onThemeChange } from '../../lib/canvas-theme';
-import { newPartId } from '../../lib/draft-project';
+import { fill, newPartId } from '../../lib/draft-project';
 import {
   backspace,
   clickAt,
@@ -60,6 +62,9 @@ import {
 import { claimPageKeys } from '../../lib/shortcuts';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
+import { dimOwner, segmentLabels } from '../../lib/editor/dims';
+import { innerHost, shapeVertices } from '../../lib/editor/inner-host';
+import { InnerPrompt } from './inner-prompt';
 import { miniBarRailClear } from '../../lib/editor/mini-bar';
 import {
   SNAP_TOGGLES,
@@ -127,7 +132,7 @@ function typing(target: EventTarget | null): boolean {
 }
 
 /** Plain keys the board owns while open (global shortcuts skip them). */
-const BOARD_KEYS = ['v', 'h', 'r', 'c', 'l', 'a', 'f', '+', '=', '-'] as const;
+const BOARD_KEYS = ['v', 'h', 'r', 'c', 'l', 'a', 'd', 'f', '+', '=', '-'] as const;
 
 /** One pointer gesture on the canvas. */
 type Gesture =
@@ -163,6 +168,8 @@ export function DrawingBoard({
   onToList,
   viewSwitch,
   toolDiameter,
+  initialSelection,
+  onSelectionChange,
 }: {
   t: T;
   project: Project;
@@ -172,8 +179,18 @@ export function DrawingBoard({
   toolDiameter?: number;
   /** Liste / Çizim switch placed in the canvas toolbar band (below 1024 px, T240). */
   viewSwitch?: ReactNode;
+  /** Selected part ids when the board opens (shared with the cut list, T135). */
+  initialSelection?: readonly string[];
+  /** Reports every selection change (Liste ↔ Çizim keep one selection, T135). */
+  onSelectionChange?: (ids: string[]) => void;
 }) {
-  const [state, dispatch] = useReducer(editorReducer, initialEditorState);
+  const [state, dispatch] = useReducer(editorReducer, initialEditorState, (s) => {
+    const have = new Set(project.parts.map((p) => p.id));
+    return { ...s, selection: (initialSelection ?? []).filter((id) => have.has(id)) };
+  });
+  const reportSelection = useRef(onSelectionChange);
+  reportSelection.current = onSelectionChange;
+  useEffect(() => reportSelection.current?.(state.selection), [state.selection]);
   const [size, setSize] = useState({ w: 0, h: 0 });
   // Tool rail's rendered size: the phone mini-toolbar is kept clear of it (B10a).
   const [railEl, setRailEl] = useState<HTMLDivElement | null>(null);
@@ -239,6 +256,9 @@ export function DrawingBoard({
   const [typed, setTyped] = useState<{ values: string[]; active: number }>(NO_TYPED);
   const [drawAt, setDrawAt] = useState<Pt | null>(null);
   const [lock, setLock] = useState(false);
+  // Dimension tool (T133): the first picked point; the second click adds the dimension.
+  const dimTool = state.tool === 'dim';
+  const [dimA, setDimA] = useState<Pt | null>(null);
   const docked = useMediaQuery('(max-width: 639px)', false);
   const fields = drawTool ? fieldsFor(drawTool, draft) : [];
   const typedValues: Typed = {};
@@ -424,13 +444,39 @@ export function DrawingBoard({
     dispatch({ type: 'tool', tool });
     setTyped(NO_TYPED);
     setSnapMark(null);
+    setDimA(null);
     setDraft((d) =>
       d?.kind === 'path' && (tool === 'line' || tool === 'arc') ? { ...d, pending: null } : null,
     );
   }, []);
 
-  /** Adds a finished shape as a part with the next free name and selects it (T127). */
+  // A closed shape drawn inside a part (T134): ask "iç kesim olarak ekle?" first.
+  const [innerAsk, setInnerAsk] = useState<{ shape: DrawnShape; host: string } | null>(null);
+
+  /** Finished shape: inside a part → ask (cut-out or part); elsewhere → a new part (T127). */
   function commitShape(shape: DrawnShape) {
+    const host = innerHost(parts, shapeVertices(shape));
+    if (host) setInnerAsk({ shape, host });
+    else addShapePart(shape);
+  }
+
+  /** Adds the shape as that part's inner contour; a refused one says why (T134). */
+  function addShapeInner(shape: DrawnShape, host: string) {
+    const part = parts.find((p) => p.id === host);
+    if (!part) return;
+    const vertices = shapeVertices(shape);
+    const err = checkInnerContour(part.outline, part.inners, vertices, toolDiameter ?? 0);
+    if (err) {
+      notify.error(fill(t.inner.errors[err], { d: formatMm(toolDiameter ?? 0) }));
+      return;
+    }
+    if (run('addInnerContour', { id: host, vertices, toolDiameter: toolDiameter ?? 0 })) {
+      dispatch({ type: 'select', ids: [host] });
+    }
+  }
+
+  /** Adds a finished shape as a part with the next free name and selects it (T127). */
+  function addShapePart(shape: DrawnShape) {
     const id = newPartId();
     const name = nextPartName(
       t.defaultName,
@@ -543,6 +589,7 @@ export function DrawingBoard({
       else if (k === 'c' && !e.shiftKey) setTool('circle');
       else if (k === 'l' && !e.shiftKey) setTool('line');
       else if (k === 'a' && !e.shiftKey) setTool('arc');
+      else if (k === 'd' && !e.shiftKey) setTool('dim');
       else if (k === 'f') fit();
       else if (k === '+' || k === '=') zoomBy(1.25);
       else if (k === '-') zoomBy(1 / 1.25);
@@ -602,6 +649,10 @@ export function DrawingBoard({
       return;
     }
     if (e.button !== 0) return;
+    if (dimTool) {
+      placeDim(drawPoint(w, e.altKey).point);
+      return;
+    }
     if (drawTool) {
       // Rectangle and circle start on press (drag or click-click); paths add points on release.
       const before = draft;
@@ -647,6 +698,43 @@ export function DrawingBoard({
         ? { kind: 'pan', last: s }
         : { kind: 'marquee', start: w, startScreen: s, additive: e.shiftKey, moved: false };
   }
+
+  /**
+   * Dimension tool (T133): the first click picks a, the second adds the dimension a–b to the part
+   * whose box holds both points (the selected one first) and selects it. Esc drops the first point.
+   */
+  function placeDim(point: Pt) {
+    if (!dimA) {
+      setDimA(point);
+      return;
+    }
+    setDimA(null);
+    if (Math.hypot(point.x - dimA.x, point.y - dimA.y) < 1e-3) return;
+    const owner = dimOwner(parts, dimA, point, singleId);
+    if (!owner) {
+      notify.info(t.dim.noPart);
+      return;
+    }
+    const a = { x: tidy(dimA.x), y: tidy(dimA.y) };
+    const b = { x: tidy(point.x), y: tidy(point.y) };
+    if (run('addDimension', { id: owner, dimId: newPartId().replace(/^p-/, 'd-'), a, b })) {
+      dispatch({ type: 'select', ids: [owner] });
+    }
+  }
+
+  // Dimension tool keys: Esc drops the first point, a second Esc returns to Seç.
+  useEffect(() => {
+    if (!dimTool) return;
+    function onKey(e: KeyboardEvent) {
+      if (typing(e.target) || e.key !== 'Escape') return;
+      if (dimA) setDimA(null);
+      else setTool('select');
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [dimTool, dimA, setTool]);
 
   /** The grabbed part's outline vertex nearest to the press point: the point that snaps. */
   function anchorOf(id: string, at: Pt): Pt {
@@ -700,7 +788,7 @@ export function DrawingBoard({
     setCursor(w);
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, s);
     const g = gesture.current;
-    if (drawTool && (!g || g.kind === 'draw')) {
+    if ((drawTool || dimTool) && (!g || g.kind === 'draw')) {
       const r = drawPoint(w, e.altKey);
       setDrawAt(r.point);
       setLock(e.shiftKey);
@@ -999,6 +1087,8 @@ export function DrawingBoard({
         {railTool('circle', t.tools.circle, 'C', <Circle aria-hidden />)}
         {railTool('line', t.tools.line, 'L', <PenLine aria-hidden />)}
         {railTool('arc', t.tools.arc, 'A', <Spline aria-hidden />)}
+        <span aria-hidden className="mx-2 my-0.5 h-px bg-border" />
+        {railTool('dim', t.tools.dim, 'D', <Ruler aria-hidden />)}
       </div>
       {viewSwitch ? (
         <div
@@ -1124,6 +1214,21 @@ export function DrawingBoard({
         />
       ) : null}
       {miniBar}
+      <InnerPrompt
+        t={t.inner}
+        partName={
+          innerAsk
+            ? project.parts.find((p) => p.id === innerAsk.host)?.name.trim() || t.parts.unnamed
+            : null
+        }
+        onInner={() => {
+          if (innerAsk) addShapeInner(innerAsk.shape, innerAsk.host);
+        }}
+        onPart={() => {
+          if (innerAsk) addShapePart(innerAsk.shape);
+        }}
+        onCancel={() => setInnerAsk(null)}
+      />
       {parts.length === 0 && !drawTool ? (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
           <div className={`${floating} flex max-w-sm flex-col items-start gap-3 p-4`}>
@@ -1205,6 +1310,17 @@ export function DrawingBoard({
             corners={vertexHandles}
             grains={grains}
             focus={focusMark}
+            segmentLabels={
+              state.tool === 'select' && single && view && !drag && !bend
+                ? segmentLabels(
+                    single.outline,
+                    single.inners,
+                    view.scale,
+                    subShown?.kind === 'segment' ? subShown.index : null,
+                  )
+                : null
+            }
+            dimPreview={dimTool && dimA && drawAt ? { a: dimA, b: drawAt } : null}
             drawText={{ close: t.draw.close, open: t.draw.open }}
           />
         </CanvasBoundary>
@@ -1266,7 +1382,11 @@ export function DrawingBoard({
               ? t.draw.hints.bend
               : drawTool
                 ? t.draw.hints[hintFor(drawTool, draft, draftView)]
-                : null
+                : dimTool
+                  ? dimA
+                    ? t.dim.hintSecond
+                    : t.dim.hintFirst
+                  : null
           }
           snapName={draftView?.closing ? t.draw.close : snapMark ? t.snap[snapMark.kind] : null}
         />

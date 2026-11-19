@@ -6,7 +6,7 @@ import {
   type Project,
 } from '@nittcam/core';
 import { readTokenColors } from '../../lib/canvas-theme';
-import { footprintOutline } from '../../lib/placed-outline';
+import { footprintInners, footprintOutline } from '../../lib/placed-outline';
 
 /** Pixels per mm and the pan of the stage. */
 export interface ViewState {
@@ -85,6 +85,8 @@ export interface DrawnPart {
   grainAngle: number | null;
   /** True outline in the footprint frame (Y down), or null when the footprint rectangle is it (T116). */
   outline: number[] | null;
+  /** Inner contours (cut-outs, T134) in the same frame; they turn with the part. */
+  inners: number[][];
 }
 
 /** The placements of one sheet, ready to draw. Placements of unknown parts are skipped. */
@@ -111,6 +113,7 @@ export function drawnParts(project: Project, sheet: number): DrawnPart[] {
       grainAngle:
         hit.part.grain.mode === 'fixed' ? normalizeGrain(hit.part.grain.angle + pl.rot) : null,
       outline: footprintOutline(hit.part, pl.rot, size.h),
+      inners: footprintInners(hit.part, pl.rot, size.h),
     });
   }
   return out;

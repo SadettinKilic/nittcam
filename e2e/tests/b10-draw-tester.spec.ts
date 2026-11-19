@@ -336,6 +336,8 @@ test.describe('B10 tester: rail keyboard path and axe', () => {
       circle: 'C',
       line: 'L',
       arc: 'A',
+      // B12 T133: the dimension tool.
+      dim: 'D',
     };
     for (const [tool, key] of Object.entries(keys)) {
       const btn = page.getByTestId(`editor-tool-${tool}`);

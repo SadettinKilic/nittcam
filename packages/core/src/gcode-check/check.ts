@@ -5,7 +5,7 @@
  */
 import { readGcode, type GcodeReadResult } from '../gcode-reader';
 import { derive, type Derived } from './derive';
-import { cutLoops, matchLayout, matchModel, type CutLoop } from './match';
+import { cutLoops, expectedLoopCount, matchLayout, matchModel, type CutLoop } from './match';
 import { toSheetMoves } from './path';
 import {
   floorRule,
@@ -129,7 +129,7 @@ function finish(
       moves: a.moves,
       matchedOperations: a.consumed,
       partsCut: a.loops.length,
-      partsExpected: layout ? layout.length : null,
+      partsExpected: layout ? expectedLoopCount(layout) : null,
     }),
   };
 }
@@ -225,7 +225,7 @@ export function checkGcodeFiles(
         entry.result = finish(lr.analysis, null, lr.d);
       }
       if (entry) {
-        entry.result.summary.partsExpected = layout.length;
+        entry.result.summary.partsExpected = expectedLoopCount(layout);
         entry.result.summary.partsCut = loops.length;
       }
     }
