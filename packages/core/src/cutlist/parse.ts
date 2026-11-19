@@ -297,6 +297,14 @@ function unspace(raw: string): string | null {
   return RE_SPACE_GROUPS.test(s) ? s.replace(/[ \u00a0\u202f]/g, '') : null;
 }
 
+/**
+ * Removes the `'` that the CSV export puts before text a spreadsheet would read as a formula
+ * (spec §8.6). A plain leading apostrophe ("'Ali") is kept.
+ */
+export function unescapeCsvText(text: string): string {
+  return /^'+[=+\-@\t\r]/.test(text) ? text.slice(1) : text;
+}
+
 /** Reads a number cell with the table's decimal separator; `null` when it is not a number. */
 export function parseCutListNumber(raw: string, decimal: DecimalSeparator): number | null {
   const s = unspace(raw);
@@ -762,14 +770,14 @@ export function parseCutList(text: string, options: ParseCutListOptions = {}): C
       line: record.line,
       cells,
       values: {
-        name: cell(cols.name),
+        name: unescapeCsvText(cell(cols.name)),
         w,
         h,
         qty,
         grainLock,
         grainAngle,
         edgeBand,
-        note: cell(cols.note).slice(0, 200),
+        note: unescapeCsvText(cell(cols.note)).slice(0, 200),
       },
       errors,
     };

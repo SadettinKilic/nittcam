@@ -147,3 +147,26 @@ describe('cutListToCsv (T120)', () => {
     );
   });
 });
+
+describe('cutListToCsv formula escape (spec §8.6)', () => {
+  const base = {
+    qty: 1,
+    grain: { mode: 'free' as const, angle: 0 },
+    kind: 'rect' as const,
+    params: { w: 600, h: 400, r: 0 },
+    inners: [],
+    holes: [],
+    edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+    templates: [],
+  };
+  const names = ['=1+1', '+x', '-y', '@SUM(1)', '\tz', "'=q", "'Ali", 'plain', '-'];
+
+  it('escapes formula starts and round-trips every name', () => {
+    const parts = names.map((name, i) => ({ ...base, id: `p${i}`, name, note: name }));
+    const csv = cutListToCsv(parts).text;
+    expect(csv).toContain("'=1+1");
+    expect(csv).not.toContain("''Ali");
+    const back = parseCutList(csv).rows.map((r) => r.values.name);
+    expect(back).toEqual(names);
+  });
+});

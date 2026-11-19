@@ -27,8 +27,17 @@ function num(v: number): string {
   return String(Math.round(v * 1000) / 1000).replace('.', ',');
 }
 
+/**
+ * Text that a spreadsheet would read as a formula (spec §8.6, CSV injection): it starts with
+ * `=`, `+`, `-`, `@`, a tab or a CR, possibly after apostrophes already there. Such text gets
+ * one leading `'`, which `parseCutList` strips again (`unescapeCsvText`). Only text cells pass
+ * here; number cells are written by `num` and never escaped.
+ */
+const CSV_FORMULA_START = /^'*[=+\-@\t\r]/;
+
 /** RFC 4180 quoting for `;` CSV: quote when the cell holds `;`, `"`, a line break or edge spaces. */
-function cell(text: string): string {
+function cell(raw: string): string {
+  const text = CSV_FORMULA_START.test(raw) ? `'${raw}` : raw;
   return /[;"\r\n\t]|^\s|\s$/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
