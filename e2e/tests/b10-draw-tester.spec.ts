@@ -336,6 +336,8 @@ test.describe('B10 tester: rail keyboard path and axe', () => {
       circle: 'C',
       line: 'L',
       arc: 'A',
+      // B14 T138: the hole tool.
+      hole: 'O',
       // B12 T133: the dimension tool.
       dim: 'D',
     };
@@ -354,7 +356,7 @@ test.describe('B10 tester: rail keyboard path and axe', () => {
     await page.getByTestId('editor-canvas').focus();
     await page.keyboard.press('v');
     await expect(page.getByTestId('editor-tool-select')).toHaveAttribute('aria-pressed', 'true');
-    for (const k of ['c', 'l', 'a']) {
+    for (const k of ['c', 'l', 'a', 'o']) {
       await page.keyboard.press(k);
       await page.keyboard.press('Escape');
       await expect(page.getByTestId('editor-tool-select')).toHaveAttribute('aria-pressed', 'true');
