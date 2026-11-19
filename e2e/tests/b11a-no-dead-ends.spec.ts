@@ -40,6 +40,7 @@ test.describe('B11a no dead ends', () => {
     request,
   }) => {
     test.setTimeout(120_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
     const problems = watchConsole(page);
     const name = `B11a ayar ${Date.now()}`;
     const machineId = await newMachine(request, name);
@@ -74,9 +75,44 @@ test.describe('B11a no dead ends', () => {
     await expect(last.locator('[id$="-feed"]')).toBeFocused();
     await expect(page.locator('#sec-materials')).toBeInViewport();
     await expect(page.getByTestId('machine-dirty')).toBeVisible();
+    // T265: starting values are marked, the pass never exceeds the sheet, Paso / Takım no visible.
+    await expect(last.getByTestId('material-unverified-note')).toContainText(
+      tr.machines.form.unverified,
+    );
+    const num = async (sel: string) =>
+      Number((await last.locator(sel).inputValue()).replace(/\./g, '').replace(',', '.'));
+    expect(await num('[id$="-stepDown"]')).toBeLessThanOrEqual(await num('[id$="-thickness"]'));
+    // At 1440 the whole row fits: no sideways scroll hides "Paso" or "Takım no".
+    const overflow = await page.getByTestId('materials-table').evaluate((t) => {
+      const box = t.parentElement as HTMLElement;
+      return box.scrollWidth - box.clientWidth;
+    });
+    expect(overflow).toBeLessThanOrEqual(1);
+    await expect(last.locator('[id$="-stepDown"]')).toBeInViewport({ ratio: 1 });
+    await expect(last.locator('[id$="-tool"]')).toBeInViewport({ ratio: 1 });
 
-    await page.getByRole('button', { name: tr.machines.form.save, exact: true }).click();
+    // Saved without confirming: the set exists but does not count as configured.
+    const save = page.getByRole('button', { name: tr.machines.form.save, exact: true });
+    await save.click();
     const saved = page.getByTestId('param-fix-saved');
+    await expect(saved).toBeVisible({ timeout: 30_000 });
+    await saved.getByTestId('param-fix-return').click();
+    await expect(page).toHaveURL(new RegExp(`/projeler/${id}\\?adim=makine`));
+    await wizardReady(page, 'makine');
+    await expect(page.getByTestId('no-cutting-params')).toContainText(
+      w.machine.unverifiedParams.slice(-40),
+    );
+    await expect(page.getByTestId('cutting-params')).toHaveCount(0);
+    await expect(page.getByTestId('wizard-step-makine')).toHaveAttribute('data-error', '');
+
+    // "Kesim ayarını doğrula": the same row; the note survived save and reload. Confirm it.
+    await page.getByTestId('add-cutting-params').click();
+    await expect(page.getByTestId('machine-form')).toBeVisible({ timeout: 30_000 });
+    const row = page.getByTestId('materials-table').locator('tbody tr').last();
+    await expect(row.locator('[id$="-feed"]')).toBeFocused();
+    await row.getByTestId('material-unverified-confirm').click();
+    await expect(row.getByTestId('material-unverified-note')).toHaveCount(0);
+    await save.click();
     await expect(saved).toBeVisible({ timeout: 30_000 });
     await saved.getByTestId('param-fix-return').click();
 
@@ -150,7 +186,11 @@ test.describe('B11a no dead ends', () => {
         }),
       );
       for (const s of statuses) {
-        const ok = [tr.materialLibrary.statusOk, tr.materialLibrary.statusMissing];
+        const ok = [
+          tr.materialLibrary.statusOk,
+          tr.materialLibrary.statusMissing,
+          tr.materialLibrary.statusUnverified,
+        ];
         expect(
           ok.some((x) => s.text.includes(x)),
           s.text,

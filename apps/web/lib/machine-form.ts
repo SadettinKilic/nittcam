@@ -52,7 +52,10 @@ export function parseErrorText(
  * A new parameter set as the form's "Ekle" adds it (T107): the given kind and thickness, the
  * form's starting values for feed, plunge, rpm (clamped to the spindle) and step-down, and the
  * profile's first tool. The user reviews and saves it; nothing is written without the form.
+ * T265: the step-down never exceeds the sheet thickness (5 mm acrylic starts at 5, not 6).
  */
+export const START_STEP_DOWN = 6;
+
 export function newParamSet(
   profile: Pick<MachineProfile, 'spindle' | 'tools'>,
   material: MaterialKind = 'mdf',
@@ -64,7 +67,7 @@ export function newParamSet(
     feed: 5000,
     plungeFeed: 1500,
     rpm: Math.min(Math.max(18000, profile.spindle.minRpm), profile.spindle.maxRpm),
-    stepDown: 6,
+    stepDown: thickness > 0 ? Math.min(START_STEP_DOWN, thickness) : START_STEP_DOWN,
     tool: profile.tools[0]?.number ?? 1,
   };
 }
@@ -124,7 +127,11 @@ export function withParamSet(
   return {
     profile: {
       ...profile,
-      materials: [...profile.materials, newParamSet(profile, set.material, set.thickness)],
+      // T265: generic starting values, marked until the user confirms or edits the row.
+      materials: [
+        ...profile.materials,
+        { ...newParamSet(profile, set.material, set.thickness), unverified: true },
+      ],
     },
     index: profile.materials.length,
     added: true,

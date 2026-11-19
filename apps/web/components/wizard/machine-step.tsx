@@ -124,7 +124,10 @@ export function MachineFields({
     : profile && kind
       ? profileThicknesses(profile, kind)
       : [];
-  const set = profile ? findMaterialParams(profile, stock) : undefined;
+  const found = profile ? findMaterialParams(profile, stock) : undefined;
+  // T265: unconfirmed starting values do not count as a configured set.
+  const unverified = found?.unverified === true;
+  const set = unverified ? undefined : found;
   const tableIssue = issues.find((i) => i.code === 'SHEET_LARGER_THAN_TABLE');
   const errors = t.errors;
 
@@ -344,7 +347,7 @@ export function MachineFields({
             className="flex flex-col items-start gap-2.5 rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
           >
             <p>
-              {fill(t.noParams, {
+              {fill(unverified ? t.unverifiedParams : t.noParams, {
                 material: kind ? materialName(kind) : stock.material,
                 thickness: mm(stock.thickness),
               })}
@@ -359,8 +362,8 @@ export function MachineFields({
                   returnTo,
                 })}
               >
-                <Plus aria-hidden />
-                {t.addParams}
+                {unverified ? null : <Plus aria-hidden />}
+                {unverified ? t.verifyParams : t.addParams}
               </Link>
             </Button>
           </div>

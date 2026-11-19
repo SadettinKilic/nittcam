@@ -145,6 +145,7 @@ export type ToolpathSeverity = 'error' | 'warning';
 export type ToolpathCode =
   // errors (block export)
   | 'NO_CUTTING_PARAMS'
+  | 'CUTTING_PARAMS_UNVERIFIED'
   | 'TOOL_NOT_IN_PROFILE'
   | 'INVALID_OPTION'
   | 'DEPTH_EXCEEDS_FLUTE_LENGTH'

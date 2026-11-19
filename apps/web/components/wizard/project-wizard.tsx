@@ -452,8 +452,14 @@ function WizardSession({
 
   const profile = detail?.profile ?? null;
   // D-045 / T258: a problem that blocks G-code is marked on the step that causes it, on every step.
-  const noParams = profile !== null && findMaterialParams(profile, project.stock) === undefined;
-  const stepErrors: StepErrors = noParams ? { makine: t.steps.errors.noParams } : {};
+  const params = profile !== null ? findMaterialParams(profile, project.stock) : undefined;
+  const noParams = profile !== null && params === undefined;
+  // T265: a set with unconfirmed starting values blocks like a missing one.
+  const stepErrors: StepErrors = noParams
+    ? { makine: t.steps.errors.noParams }
+    : params?.unverified
+      ? { makine: t.steps.errors.unverifiedParams }
+      : {};
   const simMachine: SimMachine | null = useMemo(() => {
     const d = details[machineId];
     return d
