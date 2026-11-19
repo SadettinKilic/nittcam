@@ -3,7 +3,19 @@
  * grows live with the cursor, the second click adds the hole (one `addHole`). Pure helpers; the
  * board keeps the in-progress centre as UI state.
  */
-import { boardPositions, type Hole, type Part, type Project } from '@nittcam/core';
+import {
+  boardPositions,
+  checkHolePlacement,
+  contourDistance,
+  deriveOutline,
+  insideContour,
+  type BoardPart,
+  type Hole,
+  type HolePlacementError,
+  type Part,
+  type Project,
+} from '@nittcam/core';
+import { hitPart } from './hit';
 import type { Pt } from './viewport';
 
 /** In-progress hole: the part it belongs to and its centre in board mm. */
@@ -70,4 +82,64 @@ export function holeDefaults(
   const width =
     hole.type === 'groove' ? hole.grooveWidth : Math.min(toolDiameter, Math.max(hole.d / 2, 0.1));
   return { depth, grooveWidth: width };
+}
+
+/** Two hole centres closer than this are the same centre (mm, T276). */
+export const SAME_CENTRE_MM = 0.5;
+
+function clearInside(part: BoardPart, p: Pt, clearance: number): boolean {
+  if (!insideContour(p, part.outline) || contourDistance(p, part.outline) < clearance) return false;
+  return part.inners.every((c) => !insideContour(p, c) && contourDistance(p, c) >= clearance);
+}
+
+/**
+ * Centre of a new hole (T276, CTO review #7 C): the snapped point when it lies inside a part with
+ * room for the smallest hole (`clearance` = tool radius); otherwise, when the clicked point itself
+ * is inside a part, the clicked point rounded to whole mm in the part frame (a grid that snaps a
+ * hinge cup 22.5 mm from the edge onto the edge must not refuse it). Null = no part there.
+ */
+export function holeCentre(
+  parts: readonly BoardPart[],
+  raw: Pt,
+  snapped: Pt,
+  clearance: number,
+): { partId: string; c: Pt } | null {
+  const rawPart = hitPart(parts, raw, 0);
+  const pick = (part: BoardPart | undefined, p: Pt) =>
+    part && clearInside(part, p, clearance) ? { partId: part.id, c: p } : null;
+  const byId = (id: string | null) => parts.find((p) => p.id === id);
+  // Snapped first, but only inside the part that was clicked (when one was).
+  const snappedPart = rawPart ? byId(rawPart) : byId(hitPart(parts, snapped, 0));
+  const fromSnap = pick(snappedPart, snapped);
+  if (fromSnap) return fromSnap;
+  const part = byId(rawPart);
+  if (!part) return null;
+  const c = {
+    x: part.at.x + Math.round(raw.x - part.at.x),
+    y: part.at.y + Math.round(raw.y - part.at.y),
+  };
+  // Rounding never leaves the part when the raw point was inside it.
+  return { partId: part.id, c: hitPart(parts, c, 0) === part.id ? c : raw };
+}
+
+/** 0-based index of the part's hole already on this centre (T276), or null. */
+export function holeOnCentre(part: BoardPart | undefined, c: Pt): number | null {
+  const i = part?.holes.findIndex((h) => Math.hypot(h.x - c.x, h.y - c.y) < SAME_CENTRE_MM) ?? -1;
+  return i >= 0 ? i : null;
+}
+
+/** Why a drawn hole was refused (T276): its circle crosses the outline or touches a cut-out. */
+export function holeRefusal(
+  project: Project,
+  params: { id: string; hole: Hole },
+): HolePlacementError | null {
+  const part = project.parts.find((p) => p.id === params.id);
+  if (!part) return 'outside';
+  return checkHolePlacement(deriveOutline(part), part.inners, params.hole) ?? null;
+}
+
+/** A typed diameter ("35", "12,5"), mm; null when it is not a positive number. */
+export function typedDiameter(text: string): number | null {
+  const v = Number(text.replace(',', '.'));
+  return text !== '' && Number.isFinite(v) && v > 0 ? v : null;
 }

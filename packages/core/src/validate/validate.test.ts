@@ -212,7 +212,7 @@ describe('(c) hole / groove vs tool diameter (spec §4.5, T010)', () => {
     expect(issues[0]?.message).toContain('5.99 mm, smaller than the 6 mm tool T1');
   });
 
-  it('groove narrower than the tool: warning; equal or wider: fine', () => {
+  it('groove narrower than the tool: error like the toolpath (T275); equal or wider: fine', () => {
     const p = withHoles([
       { id: 'narrow', type: 'groove', d: 60, cx: 100, cy: 100, depth: 5, grooveWidth: 5, tool: 1 },
       { id: 'single', type: 'groove', d: 60, cx: 200, cy: 100, depth: 5, grooveWidth: 6, tool: 1 },
@@ -221,7 +221,7 @@ describe('(c) hole / groove vs tool diameter (spec §4.5, T010)', () => {
     expect(holeVsTool(p, { machine })).toEqual([
       expect.objectContaining({
         code: 'GROOVE_NARROWER_THAN_TOOL',
-        severity: 'warning',
+        severity: 'error',
         path: 'parts[0].holes[0].grooveWidth',
       }),
     ]);

@@ -15,6 +15,7 @@ import {
   unverifiedReasons,
   type ExportNcResult,
   type PostFile,
+  type ProgramTools,
   type UnverifiedReason,
 } from '@nittcam/core';
 import type { CompanyScope, ExportRow, MachineWithProfile, ProjectRow } from '@nittcam/db';
@@ -71,8 +72,8 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
   const cutOuts = new Set<string>();
   for (const i of r.toolpathIssues) {
     // T270: one line per cut-out (named by part and number in the UI), not one per copy.
-    if (i.inner !== undefined) {
-      const key = `${i.code}/${i.partId ?? ''}/${i.inner}`;
+    if (i.inner !== undefined || i.hole !== undefined || i.openLine !== undefined) {
+      const key = `${i.code}/${i.partId ?? ''}/${i.inner ?? ''}/${i.hole ?? ''}/${i.openLine ?? ''}`;
       if (cutOuts.has(key)) continue;
       cutOuts.add(key);
     }
@@ -85,6 +86,8 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
       ...(i.sheet !== undefined ? { sheet: i.sheet } : {}),
       ...(i.partId !== null ? { partId: i.partId } : {}),
       ...(i.inner !== undefined ? { inner: i.inner } : {}),
+      ...(i.hole !== undefined ? { hole: i.hole } : {}),
+      ...(i.openLine !== undefined ? { openLine: i.openLine } : {}),
     });
   }
   for (const i of [...r.postErrors, ...r.postWarnings]) {
@@ -112,14 +115,24 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
   return out;
 }
 
-/** Part id and cut-out index of a `parts[i].inners[k]` validation path (T270). */
+/**
+ * Part id and cut-out (T270) or hole (T275) index of a `parts[i].inners[k]` / `parts[i].holes[h]`
+ * validation path.
+ */
 function cutOutOf(
   data: { parts: readonly { id: string }[] },
   path: string,
-): { partId: string; inner: number } | undefined {
-  const m = /^parts\[(\d+)\]\.inners\[(\d+)\]/.exec(path);
+):
+  | { partId: string; inner: number }
+  | { partId: string; hole: number }
+  | { partId: string; openLine: number }
+  | undefined {
+  const m = /^parts\[(\d+)\]\.(inners|holes|lines)\[(\d+)\]/.exec(path);
   const part = m ? data.parts[Number(m[1])] : undefined;
-  return m && part ? { partId: part.id, inner: Number(m[2]) } : undefined;
+  if (!m || !part) return undefined;
+  const k = Number(m[3]);
+  if (m[2] === 'inners') return { partId: part.id, inner: k };
+  return m[2] === 'holes' ? { partId: part.id, hole: k } : { partId: part.id, openLine: k };
 }
 
 /** Sheet index of a `layout.sheets[s]...` validation path. */
@@ -250,19 +263,34 @@ export async function runExport(
       violations: violationsOf(r),
       needsAcceptance: needsUnverifiedAcceptance(pv, cfg.config),
       unverifiedReasons: unverifiedReasons(pv, cfg.config),
-      checklist: checklistOf(machine, data),
+      checklist: checklistOf(machine, data, r.tools),
     },
   };
 }
 
-function checklistOf(machine: MachineWithProfile, data: ProjectRow['data']): ExportChecklistInfo {
+/**
+ * T274: the tools come from the toolpath that produced the file, in order of use (the sheet with
+ * the most tool runs; every sheet program follows the same order rule). Falls back to the material
+ * setting's tool only when the pipeline stopped before a toolpath.
+ */
+function checklistOf(
+  machine: MachineWithProfile,
+  data: ProjectRow['data'],
+  program: ProgramTools | null,
+): ExportChecklistInfo {
   const p = machine.profile;
-  const params = findMaterialParams(p, data.stock);
-  const tools = params
-    ? p.tools
-        .filter((t) => t.number === params.tool)
-        .map((t) => ({ number: t.number, diameter: t.diameter, type: t.type }))
-    : [];
+  let tools: ExportChecklistInfo['tools'];
+  if (program && program.sheets.length > 0) {
+    const longest = program.sheets.reduce((a, b) => (b.tools.length > a.tools.length ? b : a));
+    tools = longest.tools.map((t) => ({ number: t.number, diameter: t.diameter, type: t.type }));
+  } else {
+    const params = findMaterialParams(p, data.stock);
+    tools = params
+      ? p.tools
+          .filter((t) => t.number === params.tool)
+          .map((t) => ({ number: t.number, diameter: t.diameter, type: t.type }))
+      : [];
+  }
   return {
     origin: {
       corner: p.origin.corner,
@@ -272,6 +300,8 @@ function checklistOf(machine: MachineWithProfile, data: ProjectRow['data']): Exp
     },
     zReference: p.zZero.reference,
     tools,
+    toolChanges: program?.manualChanges ?? 0,
+    rezeroZ: program?.rezeroZ ?? false,
   };
 }
 

@@ -3,6 +3,7 @@
 import type { SimulateResult } from '@nittcam/core';
 import Link from 'next/link';
 import { fill } from '../../lib/draft-project';
+import { itemPlace, machineRelated, onDrawnItem } from '../../lib/part-items';
 import type { SimText } from './model';
 
 export interface Finding {
@@ -19,12 +20,16 @@ export interface Finding {
   partId?: string;
   /** Its inner contour (0-based), for an issue about a cut-out (T270). */
   inner?: number;
+  /** Its hole (0-based), for an issue about a hole (T275). */
+  hole?: number;
+  /** Its open line (0-based), for an issue about a line (T277). */
+  openLine?: number;
 }
 
 /** Part names for the place of a cut-out issue, and the way to the drawing board (T270). */
 export interface PartLinks {
   parts?: readonly { id: string; name: string }[];
-  onOpenPart?: ((partId: string) => void) | undefined;
+  onOpenPart?: ((partId: string, hole?: number) => void) | undefined;
 }
 
 const RULE_ORDER = [
@@ -53,8 +58,8 @@ export function findings(result: SimulateResult): Finding[] {
   const cutOuts = new Set<string>();
   for (const i of ex.toolpathIssues) {
     // T270: one line per cut-out, not one per copy of the part.
-    if (i.inner !== undefined) {
-      const key = `${i.code}/${i.partId ?? ''}/${i.inner}`;
+    if (i.inner !== undefined || i.hole !== undefined || i.openLine !== undefined) {
+      const key = `${i.code}/${i.partId ?? ''}/${i.inner ?? ''}/${i.hole ?? ''}/${i.openLine ?? ''}`;
       if (cutOuts.has(key)) continue;
       cutOuts.add(key);
     }
@@ -66,6 +71,8 @@ export function findings(result: SimulateResult): Finding[] {
       ...(i.sheet !== undefined ? { sheet: i.sheet } : {}),
       ...(i.partId !== null ? { partId: i.partId } : {}),
       ...(i.inner !== undefined ? { inner: i.inner } : {}),
+      ...(i.hole !== undefined ? { hole: i.hole } : {}),
+      ...(i.openLine !== undefined ? { openLine: i.openLine } : {}),
     });
   }
   const checked = ex.check !== null;
@@ -114,11 +121,9 @@ function groupTitle(t: SimText, group: string): string {
   return (t.rules as Record<string, string>)[group] ?? group;
 }
 
-/** "Kapak · İç kesim 3" for an issue about a cut-out of a known part (T270). */
+/** "Kapak · İç kesim 3" (T270) / "Kapak · Delik 3" (T275) for an issue about a drawn item. */
 function innerPlace(t: SimText, f: Finding, links: PartLinks): string | null {
-  if (f.inner === undefined || f.partId === undefined) return null;
-  const name = links.parts?.find((p) => p.id === f.partId)?.name;
-  return name ? fill(t.blocked.innerPlace, { name, n: f.inner + 1 }) : null;
+  return itemPlace(f, links.parts, t.blocked, fill);
 }
 
 function FindingList({
@@ -177,11 +182,11 @@ function FindingList({
                     </span>
                   )}
                 </span>
-                {f.partId !== undefined && f.inner !== undefined && links.onOpenPart ? (
+                {onDrawnItem(f) && links.onOpenPart ? (
                   <button
                     type="button"
                     data-testid="violation-open-part"
-                    onClick={() => links.onOpenPart?.(f.partId as string)}
+                    onClick={() => links.onOpenPart?.(f.partId as string, f.hole)}
                     className="shrink-0 rounded-sm text-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:ml-auto"
                   >
                     {t.blocked.openPart}
@@ -208,8 +213,8 @@ export function Violations({
   const errors = all.filter((f) => f.severity === 'error');
   const warnings = all.filter((f) => f.severity === 'warning');
   const stage = result.export.stage;
-  // T270: the Makineler hint only when an error is not about a drawn cut-out.
-  const machineRelated = errors.some((f) => f.inner === undefined);
+  // T270 / T275: the Makineler hint only for an error whose fix may be on the machine.
+  const machineHint = errors.some(machineRelated);
   return (
     <section
       role="alert"
@@ -243,7 +248,7 @@ export function Violations({
           </div>
         </details>
       ) : null}
-      {machineRelated ? (
+      {machineHint ? (
         <p className="text-sm">
           {t.blocked.machinesHint}{' '}
           <Link href="/makineler" className="rounded-sm font-medium text-accent-text underline">

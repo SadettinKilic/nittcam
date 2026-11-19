@@ -522,6 +522,7 @@ function ThinSkin({
       {skin ? (
         <NumberField
           label={t.skin.thickness}
+          unit={t.units.mm}
           value={skin.thickness}
           testId="thin-skin-thickness"
           errors={errors}

@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { Hole, Project } from '@nittcam/core';
-import { addHoleParams, holeDefaults, liveDiameter, nextHoleId } from './hole-tool';
+import { boardParts } from '@nittcam/core';
+import {
+  addHoleParams,
+  holeCentre,
+  holeDefaults,
+  holeOnCentre,
+  holeRefusal,
+  liveDiameter,
+  nextHoleId,
+  typedDiameter,
+} from './hole-tool';
 
 function project(): Project {
   return {
@@ -60,5 +70,42 @@ describe('hole tool (T138)', () => {
     expect(holeDefaults(through, 1.2, 8).depth).toBeLessThan(1.2);
     const groove: Hole = { ...through, type: 'groove', depth: 4, grooveWidth: 6, d: 40 };
     expect(holeDefaults(groove, 18, 8)).toEqual({ depth: 4, grooveWidth: 6 });
+  });
+});
+
+describe('T276: the hole lands where it is clicked', () => {
+  // Part A sits at board (1000, 500), 400 × 300; hole h1 at board (1050, 550).
+  const parts = () => boardParts(project());
+
+  it('a snap onto the edge does not move a centre clicked inside (hinge cup 22,5 mm in)', () => {
+    const at = holeCentre(parts(), { x: 1022.5, y: 600.2 }, { x: 1000, y: 600 }, 4);
+    expect(at).toEqual({ partId: 'a', c: { x: 1023, y: 600 } });
+  });
+
+  it('a snapped point inside the clicked part with room is kept', () => {
+    const at = holeCentre(parts(), { x: 1097, y: 603 }, { x: 1100, y: 600 }, 4);
+    expect(at).toEqual({ partId: 'a', c: { x: 1100, y: 600 } });
+  });
+
+  it('a click outside every part is no centre', () => {
+    expect(holeCentre(parts(), { x: 900, y: 600 }, { x: 900, y: 600 }, 4)).toBeNull();
+  });
+
+  it('the same centre twice is found; a typed diameter parses Turkish decimals', () => {
+    const [a] = parts();
+    expect(holeOnCentre(a, { x: 1050.2, y: 550 })).toBe(0);
+    expect(holeOnCentre(a, { x: 1060, y: 550 })).toBeNull();
+    expect(typedDiameter('35')).toBe(35);
+    expect(typedDiameter('12,5')).toBe(12.5);
+    expect(typedDiameter('')).toBeNull();
+    expect(typedDiameter('0')).toBeNull();
+  });
+
+  it('a refusal names the edge or the cut-out', () => {
+    const p = project();
+    const edge = addHoleParams(p, { partId: 'a', c: { x: 1010, y: 600 } }, 35, 2);
+    expect(edge && holeRefusal(p, edge)).toBe('outside');
+    const fine = addHoleParams(p, { partId: 'a', c: { x: 1200, y: 650 } }, 35, 2);
+    expect(fine && holeRefusal(p, fine)).toBeNull();
   });
 });

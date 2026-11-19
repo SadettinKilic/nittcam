@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { EPS } from '../geometry/constants';
 import { defaultMachineProfile } from '../machine';
 import { holeFixtureProject } from '../post/golden.testing';
+import { validateProject } from '../validate';
 import { buildToolpath } from './build';
 import { pocketRings } from './holes';
 import { operationMoves, toolpathSafetyViolations } from './safety';
@@ -117,6 +118,28 @@ describe('T139 refusals: export-blocking errors', () => {
     const out = run([{ id: 'h', type: 'through', d: 30, cx: 5, cy: 60, tool: 2 }]);
     expect(codes(out)).toEqual(['HOLE_OUTSIDE_PART']);
     expect(out.ok).toBe(false);
+  });
+
+  it('T275: each refused hole carries its index; the validation flags the same holes', () => {
+    const holes = [
+      { id: 'ok', type: 'through', d: 8, cx: 60, cy: 60, tool: 2 },
+      { id: 'small', type: 'through', d: 5, cx: 120, cy: 60, tool: 2 },
+      { id: 't9', type: 'through', d: 10, cx: 180, cy: 60, tool: 9 },
+      { id: 'deep', type: 'pocket', d: 35, cx: 250, cy: 150, depth: 18, tool: 2 },
+      { id: 'groove', type: 'groove', d: 40, cx: 120, cy: 200, depth: 5, grooveWidth: 6, tool: 2 },
+    ];
+    const r = run(holes);
+    expect(r.errors.map((e) => `${e.code}@${e.hole}`)).toEqual([
+      'HOLE_SMALLER_THAN_TOOL@1',
+      'TOOL_NOT_IN_PROFILE@2',
+      'HOLE_DEPTH_INVALID@3',
+      'GROOVE_NARROWER_THAN_TOOL@4',
+    ]);
+    const p = profile();
+    const v = validateProject(holeFixtureProject(holes), { machine: p })
+      .filter((i) => i.severity === 'error' && /holes\[/.test(i.path))
+      .map((i) => Number(/holes\[(\d+)\]/.exec(i.path)?.[1]));
+    expect([...new Set(v)].sort()).toEqual([1, 2, 3, 4]);
   });
 
   it("through depth beyond the hole tool's flute length", () => {

@@ -1,8 +1,9 @@
 'use client';
 
-import type { SimSummary } from '@nittcam/core';
+import type { ProgramTools, SimSummary } from '@nittcam/core';
 import { fill } from '../../lib/draft-project';
 import { Measure } from '@nittcam/ui';
+import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { formatDuration, formatInt, type SimText } from './model';
 import { WarningList, type Finding } from './violations';
@@ -14,9 +15,12 @@ export function SummaryCard({
   checksOk,
   errorCount,
   warnings,
+  program = null,
 }: {
   t: SimText;
   summary: SimSummary;
+  /** Tools in order of use and manual changes (T274). */
+  program?: ProgramTools | null;
   checksOk: boolean;
   errorCount: number;
   warnings: readonly Finding[];
@@ -73,6 +77,27 @@ export function SummaryCard({
           </div>
         ))}
       </dl>
+      {program && program.sheets.some((sh) => sh.tools.length > 1) ? (
+        <p className="text-sm text-fg" data-testid="sim-tool-order">
+          {fill(s.toolOrder, {
+            tools: program.sheets
+              .reduce((a, b) => (b.tools.length > a.tools.length ? b : a))
+              .tools.map((tool) => `T${tool.number} Ø${tool.diameter} mm`)
+              .join(' → '),
+          })}
+        </p>
+      ) : null}
+      {program && program.manualChanges > 0 ? (
+        <p
+          className="flex items-start gap-1.5 text-sm font-medium text-warning-text"
+          data-testid="sim-manual-change"
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+          {fill(program.rezeroZ ? s.manualChangeZ : s.manualChange, {
+            count: program.manualChanges,
+          })}
+        </p>
+      ) : null}
       <p className="text-xs text-fg-muted">
         {fill(s.timeNote, { rapid: formatInt(summary.rapidFeed) })}
       </p>

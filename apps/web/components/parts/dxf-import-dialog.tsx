@@ -7,6 +7,7 @@
  */
 import {
   DXF_LAYER_OPS_READY,
+  defaultOnlineDepth,
   DXF_USER_UNITS,
   planDxfImport,
   type DxfDrawing,
@@ -82,6 +83,7 @@ export function DxfImportDialog({
   onImport,
   newId,
   holeTool,
+  thickness,
 }: {
   t: Text;
   open: boolean;
@@ -91,6 +93,8 @@ export function DxfImportDialog({
   newId: () => string;
   /** Tool number for holes made from circles on a "Delik" layer. */
   holeTool?: number;
+  /** Stock thickness, mm: the depth of "Çizgi üzerinden" lines (T277). */
+  thickness?: number;
 }) {
   const ids = { file: useId(), unit: useId() };
   const input = useRef<HTMLInputElement>(null);
@@ -158,7 +162,14 @@ export function DxfImportDialog({
   function confirm() {
     if (!drawing || !picked || needsUnit) return;
     const base = baseName(picked.name);
-    const { parts } = importParams(drawing, map, base, newId, holeTool);
+    const { parts } = importParams(
+      drawing,
+      map,
+      base,
+      newId,
+      holeTool,
+      defaultOnlineDepth(thickness ?? 18),
+    );
     if (parts.length === 0) return;
     if (onImport({ parts }, picked.name, parts.length)) {
       saveChoices(chosen);
@@ -176,6 +187,7 @@ export function DxfImportDialog({
     ? [
         ['parts', summary.parts, null],
         ['inners', summary.inners, null],
+        ['lines', summary.lines, null],
         ['supported', summary.supported, null],
         ['converted', summary.converted, summary.converted > 0 ? 'info' : null],
         ['ignored', summary.ignored, null],
@@ -184,6 +196,7 @@ export function DxfImportDialog({
         ['open', summary.open, summary.open > 0 ? 'warning' : null],
         ['pending', summary.pending, summary.pending > 0 ? 'warning' : null],
         ['orphans', summary.orphans, summary.orphans > 0 ? 'warning' : null],
+        ['lineOrphans', summary.lineOrphans, summary.lineOrphans > 0 ? 'warning' : null],
       ]
     : [];
 
@@ -301,7 +314,20 @@ export function DxfImportDialog({
                       data-testid="dxf-open"
                     />
                   ))}
-                  {[...plan.pending, ...plan.orphans].map((c, i) => (
+                  {plan.parts.flatMap((p, k) =>
+                    p.lines.map((l, i) => (
+                      <path
+                        key={`l${k}-${i}`}
+                        d={svgPath(l.poly)}
+                        fill="none"
+                        className="stroke-part-stroke"
+                        strokeWidth={1}
+                        vectorEffect="non-scaling-stroke"
+                        data-testid="dxf-line"
+                      />
+                    )),
+                  )}
+                  {[...plan.pending, ...plan.orphans, ...plan.lineOrphans].map((c, i) => (
                     <path
                       key={`x${i}`}
                       d={svgPath(c.poly)}
@@ -330,7 +356,7 @@ export function DxfImportDialog({
                       {t.legend.open}
                     </li>
                   ) : null}
-                  {summary.pending + summary.orphans > 0 ? (
+                  {summary.pending + summary.orphans + summary.lineOrphans > 0 ? (
                     <li className="flex items-center gap-1.5">
                       <span aria-hidden className="h-0 w-4 border-t-2 border-dotted border-info" />
                       {t.legend.pending}
@@ -471,7 +497,7 @@ export function DxfImportDialog({
                               >
                                 <SelectTrigger
                                   size="sm"
-                                  className="min-w-56"
+                                  className="min-w-64"
                                   aria-label={`${t.layers.op}: ${layer}`}
                                   data-testid={`dxf-layer-${layer}`}
                                   data-value={op}
