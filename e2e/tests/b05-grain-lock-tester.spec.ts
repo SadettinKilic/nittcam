@@ -3,7 +3,7 @@ import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import {
   fill,
   goStep,
-  openNewProject,
+  openGrainedProject,
   pasteAndNest,
   pickOption,
   projectId,
@@ -22,7 +22,7 @@ const LABEL = '1.1 · Yan dikme';
 test('lock, turn the sheet grain, LOCKED_PLACEMENT_GRAIN; unlock → PLACEMENT_GRAIN; Yerleşimi yenile clears it', async ({
   page,
 }) => {
-  await openNewProject(page, 'makine');
+  await openGrainedProject(page);
   const g0 = page.getByTestId('sheet-grain-dial-quick-0');
   await g0.click();
   await pasteAndNest(page, SHELF, 1, 'makine');
@@ -66,7 +66,7 @@ test('stale rotation after a sheet grain change: export refused (422, Turkish); 
   page,
 }) => {
   test.setTimeout(120_000);
-  await openNewProject(page, 'makine');
+  await openGrainedProject(page);
   await page.getByTestId('sheet-grain-dial-quick-0').click();
   await pasteAndNest(page, SHELF, 1, 'makine');
   await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-part-count', '2');

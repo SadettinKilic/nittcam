@@ -6,6 +6,7 @@ import {
   fill,
   goStep,
   KITCHEN,
+  openGrainedProject,
   openNewProject,
   paste,
   pasteAndNest,
@@ -162,7 +163,7 @@ test.describe('T023 wizard', () => {
   test('reload in every step keeps everything (server persistence)', async ({ page }) => {
     test.setTimeout(120_000);
     const problems = watchConsole(page);
-    await openNewProject(page, 'makine');
+    await openGrainedProject(page, 'makine');
     await page.getByTestId('sheet-grain-dial-quick-90').click();
     await saved(page);
     const id = await projectId(page);
@@ -291,7 +292,7 @@ test.describe('T023 wizard', () => {
     context,
   }) => {
     const problems = watchConsole(page);
-    await openNewProject(page, 'parcalar');
+    await openGrainedProject(page, 'parcalar');
     await paste(page, KITCHEN, 5);
     await saved(page);
     const id = await projectId(page);

@@ -168,11 +168,12 @@ test.describe('B11a no dead ends', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openNewProject(page, 'makine');
     const material = page.getByTestId('wizard-material');
-    await material.click();
-    await page
-      .getByRole('listbox')
-      .getByRole('option', { name: /^MDF[^a-z]*18 mm$/ })
-      .click();
+    // D-046: a new project already starts on MDF 18; pick another entry first so the pick of
+    // MDF is a real edit (it creates the project) and the sheet ends up without grain.
+    for (const name of [/^Melamin[^a-z]*18 mm$/, /^MDF[^a-z]*18 mm$/]) {
+      await material.click();
+      await page.getByRole('listbox').getByRole('option', { name }).click();
+    }
     await expect(page.getByTestId('sheet-grain-off')).toBeVisible();
     const id = await projectId(page);
     await goStep(page, 'parcalar');

@@ -7,6 +7,7 @@ import {
   pickOption,
   fill,
   goStep,
+  openGrainedProject,
   openNewProject,
   paste,
   projectId,
@@ -230,7 +231,7 @@ test.describe('T023 tester: autosave, offline, restore', () => {
     request,
   }) => {
     const problems = watchConsole(page);
-    await openNewProject(page, 'parcalar');
+    await openGrainedProject(page, 'parcalar');
     await paste(page, KITCHEN, 5);
     await saved(page);
     const id = await projectId(page);
@@ -255,7 +256,7 @@ test.describe('T023 tester: autosave, offline, restore', () => {
   }) => {
     test.setTimeout(90_000);
     const problems = watchConsole(page);
-    await openNewProject(page, 'parcalar');
+    await openGrainedProject(page, 'parcalar');
     await paste(page, KITCHEN, 5);
     await saved(page);
     const id = await projectId(page);
@@ -296,7 +297,7 @@ test.describe('T023 tester: autosave, offline, restore', () => {
 
   test('offline then reload: unsent commands are replayed and saved', async ({ page, request }) => {
     test.setTimeout(90_000);
-    await openNewProject(page, 'makine');
+    await openGrainedProject(page, 'makine');
     await goStep(page, 'parcalar');
     await paste(page, KITCHEN, 5);
     await saved(page);
@@ -330,7 +331,7 @@ test.describe('T023 tester: autosave, offline, restore', () => {
     context,
     request,
   }) => {
-    await openNewProject(page, 'parcalar');
+    await openGrainedProject(page, 'parcalar');
     await paste(page, KITCHEN, 5);
     await saved(page);
     const id = await projectId(page);
@@ -380,7 +381,7 @@ test.describe('T023 tester: wizard step 1', () => {
     page,
   }) => {
     const problems = watchConsole(page);
-    await openNewProject(page, 'makine');
+    await openGrainedProject(page);
     // The example machine is already selected in a fresh project.
     const machine = page.getByTestId('wizard-machine');
     await expect(machine).toHaveText(/Örnek router/);
@@ -518,7 +519,7 @@ test.describe('T023 tester: wizard flow', () => {
   test('undo and redo work in every step (button and Ctrl+Z / Ctrl+Y)', async ({ page }) => {
     test.setTimeout(120_000);
     const problems = watchConsole(page);
-    await openNewProject(page, 'makine');
+    await openGrainedProject(page, 'makine');
     const undo = page.getByTestId('wizard-undo');
     const redo = page.getByRole('button', { name: tr.cutList.redo, exact: true });
     await expect(undo).toBeDisabled();

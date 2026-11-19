@@ -1,7 +1,14 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { goStep, openNewProject, paste, pasteAndNest, saved } from './wizard-helpers';
+import {
+  goStep,
+  openGrainedProject,
+  openNewProject,
+  paste,
+  pasteAndNest,
+  saved,
+} from './wizard-helpers';
 
 // Tester B6 (T115, T116, T244, T245; D-034, D-038, D-039): GrainDial edge cases (typed values,
 // snap borders, Alt, touch, disabled / no grain), slider semantics + axe, undo granularity,
@@ -252,7 +259,7 @@ test.describe('T116 grain in the wizard (tester)', () => {
   test('sheet dial: each keyboard step is one undo step; angle survives a reload', async ({
     page,
   }) => {
-    await openNewProject(page, 'makine');
+    await openGrainedProject(page);
     const dial = page.getByTestId('sheet-grain-dial');
     const preview = page.getByTestId('sheet-preview-grain');
     await dial.focus();

@@ -3,6 +3,7 @@ import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import {
   goStep,
   nest,
+  openGrainedProject,
   openNewProject,
   openWorkspacePanel,
   saved,
@@ -48,8 +49,9 @@ async function paste(page: Page, text = KITCHEN, count = 5) {
   await expect(page.getByLabel(t.paste.textLabel)).toHaveCount(0);
 }
 
-async function toSimulation(page: Page) {
-  await openNewProject(page, 'parcalar');
+/** `grained`: a sheet with grain 0° (D-046: the default MDF 18 has none), for the grain label. */
+async function toSimulation(page: Page, grained = false) {
+  await (grained ? openGrainedProject : openNewProject)(page, 'parcalar');
   await paste(page);
   await nest(page);
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
@@ -370,7 +372,7 @@ test.describe('T020 round 2: small screens and tabs', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 800 });
-    await toSimulation(page);
+    await toSimulation(page, true);
     const canvas = await ready(page);
     await page.getByRole('button', { name: s.controls.end }).click();
     const grain = await page.getByTestId('sim-grain').boundingBox();
@@ -400,7 +402,7 @@ test.describe('T020 round 2: small screens and tabs', () => {
   });
 
   test('1280 px: grain label with its text does not hide badges either', async ({ page }) => {
-    await toSimulation(page);
+    await toSimulation(page, true);
     const canvas = await ready(page);
     await page.getByRole('button', { name: s.controls.end }).click();
     const grain = await page.getByTestId('sim-grain').boundingBox();

@@ -148,17 +148,17 @@ test.describe('B8 tester: T122 three cabinets (D-041)', () => {
     );
     let parts = await storedParts(page);
     expect(summary(parts)).toEqual([...CAB1, ...CAB2, ...CAB3]);
-    // Grain: sides and doors vertical (90°), the rest along the width; open shelf has no band.
+    // Grain: a new project is on MDF 18 without grain (D-046), so every part is free (T260) and
+    // its row says "Serbest"; the open shelf has no band.
     for (const p of parts) {
-      if (p.name === c.roles.back) expect(p.grain.mode).toBe('free');
-      else
-        expect(p.grain).toEqual({
-          mode: 'fixed',
-          angle: p.name === c.roles.side || p.name === c.roles.door ? 90 : 0,
-        });
+      expect(p.grain.mode, p.name).toBe('free');
       if (p.group === 'Açık raf')
         expect(Object.values(p.edgeBand).every((x) => x === 0)).toBe(true);
     }
+    await expect(page.getByTestId('grain-cell-1')).toHaveAttribute(
+      'aria-label',
+      fill(t.grainCell.edit, { n: 1, angle: t.grainCell.free }),
+    );
 
     // One undo removes exactly the last cabinet; redo brings it back.
     await page.getByTestId('wizard-undo').click();

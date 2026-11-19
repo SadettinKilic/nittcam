@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { expectNoA11yViolations } from './visual/helpers';
-import { fill, openNewProject, pickOption, watchConsole } from './wizard-helpers';
+import {
+  fill,
+  openGrainedProject,
+  openNewProject,
+  pickOption,
+  watchConsole,
+} from './wizard-helpers';
 
 /** B8: material & stock library (T121) and the step 1 grain dial placement (T252). */
 
@@ -105,7 +111,7 @@ test.describe('T121 material library', () => {
 test.describe('T252 grain dial next to the sheet preview', () => {
   test('1440 × 900: preview and dial fully visible together; Sorun yok chip', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await openNewProject(page, 'makine');
+    await openGrainedProject(page);
     const preview = page.getByTestId('sheet-preview');
     const dial = page.getByTestId('sheet-grain-dial');
     await expect(dial).toBeVisible();
@@ -129,7 +135,7 @@ test.describe('T252 grain dial next to the sheet preview', () => {
 
   test('390 × 844: the preview card sits directly above the dial block', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await openNewProject(page, 'makine');
+    await openGrainedProject(page);
     const svg = await page.getByTestId('sheet-preview').locator('svg[role=img]').boundingBox();
     const d = await page.getByTestId('sheet-grain-dial').boundingBox();
     if (!svg || !d) throw new Error('no boxes');
