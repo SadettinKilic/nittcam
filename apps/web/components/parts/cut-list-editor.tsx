@@ -61,6 +61,7 @@ import {
 } from 'react';
 import {
   EDGES,
+  NARROW_GRID_MAX,
   WIDE_BANDS_MIN,
   bandedEdges,
   cellId,
@@ -209,22 +210,35 @@ function QtyCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number
   );
 }
 
-function GrainColumnCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
+function GrainColumnCell({
+  ctx,
+  part,
+  row,
+  narrow = false,
+}: {
+  ctx: GridContext;
+  part: Part;
+  row: number;
+  /** Narrow grid (tablet): no lock checkbox; the popover's switch does the same. */
+  narrow?: boolean;
+}) {
   const { t, run } = ctx;
   return (
     <div className="flex items-center gap-0.5">
-      <LiteCheckbox
-        tabIndex={-1}
-        aria-label={fill(t.cellLabel, { n: row + 1, column: t.columns.grain })}
-        checked={part.grain.mode === 'fixed'}
-        onClick={() =>
-          void run('setPartGrain', {
-            id: part.id,
-            mode: part.grain.mode === 'fixed' ? 'free' : 'fixed',
-            angle: part.grain.angle,
-          })
-        }
-      />
+      {narrow ? null : (
+        <LiteCheckbox
+          tabIndex={-1}
+          aria-label={fill(t.cellLabel, { n: row + 1, column: t.columns.grain })}
+          checked={part.grain.mode === 'fixed'}
+          onClick={() =>
+            void run('setPartGrain', {
+              id: part.id,
+              mode: part.grain.mode === 'fixed' ? 'free' : 'fixed',
+              angle: part.grain.angle,
+            })
+          }
+        />
+      )}
       <GrainCell
         t={t}
         part={part}
@@ -364,38 +378,44 @@ function IndexCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: numb
   );
 }
 
-/** The grid's columns; `wideBands` shows the four edge band columns instead of one "Bant" cell. */
-function buildColumns(t: Text, wideBands: boolean, ctx: { current: GridContext }) {
+/**
+ * The grid's columns; `wideBands` shows the four edge band columns instead of one "Bant" cell.
+ * `narrow` (container below NARROW_GRID_MAX, tablets) narrows every column so the grid fits a
+ * 768 px screen without a sideways scroll: short W / H headers, no grain checkbox, a glyph-only
+ * band cell.
+ */
+function buildColumns(t: Text, wideBands: boolean, narrow: boolean, ctx: { current: GridContext }) {
   const c = () => ctx.current;
+  const size = (normal: number, small: number) => (narrow ? small : normal);
   return column.columns([
     column.display({
       id: 'index',
       header: () => <SelectAllHeader ctx={c()} />,
-      size: 56,
+      size: size(56, 48),
       enableResizing: false,
       cell: (info) => <IndexCell ctx={c()} part={info.row.original} row={info.row.index} />,
     }),
     column.display({
       id: 'name',
       header: t.columns.name,
-      size: 120,
-      minSize: 120,
+      size: size(120, 74),
+      minSize: size(120, 74),
       cell: (info) => <NameCell ctx={c()} part={info.row.original} row={info.row.index} />,
     }),
     column.display({
       id: 'w',
-      header: t.columns.w,
-      size: 76,
-      minSize: 64,
+      header: narrow ? t.columns.wShort : t.columns.w,
+      size: size(76, 56),
+      minSize: size(64, 52),
       cell: (info) => (
         <SizeCell ctx={c()} part={info.row.original} row={info.row.index} field="w" />
       ),
     }),
     column.display({
       id: 'h',
-      header: t.columns.h,
-      size: 76,
-      minSize: 64,
+      header: narrow ? t.columns.hShort : t.columns.h,
+      size: size(76, 56),
+      minSize: size(64, 52),
       cell: (info) => (
         <SizeCell ctx={c()} part={info.row.original} row={info.row.index} field="h" />
       ),
@@ -403,16 +423,18 @@ function buildColumns(t: Text, wideBands: boolean, ctx: { current: GridContext }
     column.display({
       id: 'qty',
       header: t.columns.qty,
-      size: 56,
-      minSize: 52,
+      size: size(56, 44),
+      minSize: size(52, 44),
       cell: (info) => <QtyCell ctx={c()} part={info.row.original} row={info.row.index} />,
     }),
     column.display({
       id: 'grain',
       header: t.columns.grainHeader,
-      size: 104,
-      minSize: 100,
-      cell: (info) => <GrainColumnCell ctx={c()} part={info.row.original} row={info.row.index} />,
+      size: size(104, 66),
+      minSize: size(100, 64),
+      cell: (info) => (
+        <GrainColumnCell ctx={c()} part={info.row.original} row={info.row.index} narrow={narrow} />
+      ),
     }),
     ...(wideBands
       ? EDGES.map((edge) =>
@@ -437,8 +459,8 @@ function buildColumns(t: Text, wideBands: boolean, ctx: { current: GridContext }
           column.display({
             id: 'band',
             header: t.columns.band,
-            size: 72,
-            minSize: 64,
+            size: size(72, 44),
+            minSize: size(64, 44),
             cell: (info) => (
               <BandCell
                 t={c().t}
@@ -446,6 +468,7 @@ function buildColumns(t: Text, wideBands: boolean, ctx: { current: GridContext }
                 row={info.row.index}
                 run={c().run}
                 navigate={c().navigate}
+                glyphOnly={narrow}
               />
             ),
           }),
@@ -453,14 +476,14 @@ function buildColumns(t: Text, wideBands: boolean, ctx: { current: GridContext }
     column.display({
       id: 'note',
       header: t.columns.note,
-      size: 100,
-      minSize: 80,
+      size: size(100, 64),
+      minSize: size(80, 56),
       cell: (info) => <NoteCell ctx={c()} part={info.row.original} row={info.row.index} />,
     }),
     column.display({
       id: 'actions',
       header: () => <span className="sr-only">{t.columns.actions}</span>,
-      size: 68,
+      size: size(68, 36),
       enableResizing: false,
       cell: (info) => <ActionsCell ctx={c()} part={info.row.original} row={info.row.index} />,
     }),
@@ -598,6 +621,7 @@ function Grid({
   parts,
   ctx,
   wideBands,
+  narrow,
   scrollRef,
   scrollToRow,
 }: {
@@ -605,10 +629,14 @@ function Grid({
   parts: readonly Part[];
   ctx: { current: GridContext };
   wideBands: boolean;
+  narrow: boolean;
   scrollRef: { current: HTMLDivElement | null };
   scrollToRow: { current: ((row: number) => void) | null };
 }) {
-  const columns = useMemo(() => buildColumns(t, wideBands, ctx), [t, wideBands, ctx]);
+  const columns = useMemo(
+    () => buildColumns(t, wideBands, narrow, ctx),
+    [t, wideBands, narrow, ctx],
+  );
   const table = useTable({
     features,
     columns,
@@ -886,6 +914,7 @@ export function CutListEditor({
   const phone = !useMediaQuery('(min-width: 640px)');
   const width = useWidth(scrollRef);
   const wideBands = !phone && width >= WIDE_BANDS_MIN;
+  const narrow = !phone && width > 0 && width < NARROW_GRID_MAX;
 
   const parts = project.parts;
   const summary = cutListSummary(project);
@@ -1220,6 +1249,7 @@ export function CutListEditor({
               parts={parts}
               ctx={ctx}
               wideBands={wideBands}
+              narrow={narrow}
               scrollRef={scrollRef}
               scrollToRow={scrollToRow}
             />

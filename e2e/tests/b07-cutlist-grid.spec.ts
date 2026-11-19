@@ -132,6 +132,28 @@ test.describe('T118 grid v2', () => {
     await expect(page.getByTestId('band-cell-1')).toHaveAttribute('data-sides', 'top');
   });
 
+  for (const width of [640, 768, 800, 1023]) {
+    test(`tablet ${width} px: narrow columns, no sideways scroll; "Serbest" in the UI font`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(URL);
+      await pasteRows(page, THREE, 3);
+      const scroll = page.getByTestId('cut-list-scroll');
+      await expect(page.getByTestId('cut-list-grid')).toBeVisible();
+      expect(await scroll.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+      const grain = page.getByTestId('grain-cell-1');
+      await expect(grain).toHaveText(t.grainCell.free);
+      const fonts = await grain.evaluate((el) => [
+        getComputedStyle(el).fontFamily,
+        getComputedStyle(document.body).fontFamily,
+      ]);
+      expect(fonts[0]).toBe(fonts[1]);
+      // Every column still edits: the note cell is there.
+      await expect(cell(page, 1, t.columns.note)).toBeVisible();
+    });
+  }
+
   test('390 px: one card per part, no page-level horizontal scroll', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(URL);

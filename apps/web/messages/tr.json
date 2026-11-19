@@ -461,6 +461,8 @@
       "name": "Ad",
       "w": "En (mm)",
       "h": "Boy (mm)",
+      "wShort": "En",
+      "hShort": "Boy",
       "qty": "Adet",
       "grain": "Damar kilidi",
       "edgeGroup": "Kenar bandı (mm)",

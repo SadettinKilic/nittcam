@@ -29,6 +29,13 @@ export function navColumns(wideBands: boolean): string[] {
 /** Container width (px) from which the four edge band columns are shown separately. */
 export const WIDE_BANDS_MIN = 1040;
 
+/**
+ * Container width (px) below which the grid uses narrow columns (tablets, 640–1023 px screens):
+ * the compact columns need 728 px, a 768 px screen with the sidebar leaves about 494 px; the
+ * narrow columns need 488 px.
+ */
+export const NARROW_GRID_MAX = 760;
+
 /** DOM id of a grid cell (input or button), used for keyboard navigation. */
 export function cellId(row: number, col: string): string {
   return `cl-${row}-${col}`;

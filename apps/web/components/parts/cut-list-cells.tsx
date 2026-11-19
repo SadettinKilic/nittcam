@@ -364,8 +364,9 @@ export function GrainCell({
       id={cellId(row, 'grain')}
       className={cn(
         buttonVariants({ variant: 'ghost', size: 'sm' }),
-        'h-control-sm gap-1 px-1.5 font-mono tabular-nums',
-        fixed ? 'text-fg' : 'text-fg-subtle',
+        'h-control-sm gap-1 px-1.5',
+        // Angles are figures (tabular); "Serbest" is a word in the UI font.
+        fixed ? 'font-mono text-fg tabular-nums' : 'text-fg-subtle',
       )}
       aria-label={fill(g.edit, { n, angle: fixed ? deg : g.free })}
       data-testid={`grain-cell-${n}`}
@@ -490,12 +491,15 @@ export function BandCell({
   row,
   run,
   navigate,
+  glyphOnly = false,
 }: {
   t: Text;
   part: Part;
   row: number;
   run: Run;
   navigate?: Navigate | undefined;
+  /** Narrow grid (tablet): the glyph alone; the label names the sides. */
+  glyphOnly?: boolean;
 }) {
   const sides = bandedEdges(part);
   const n = row + 1;
@@ -540,9 +544,11 @@ export function BandCell({
       )}
     >
       <BandGlyph sides={sides} />
-      <span className="truncate text-xs">
-        {sides.length === 0 ? '–' : fill(t.bandCell.sides, { count: sides.length })}
-      </span>
+      {glyphOnly ? null : (
+        <span className="truncate text-xs">
+          {sides.length === 0 ? '–' : fill(t.bandCell.sides, { count: sides.length })}
+        </span>
+      )}
     </PopoverButton>
   );
 }
