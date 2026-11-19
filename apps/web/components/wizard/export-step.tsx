@@ -459,11 +459,21 @@ export function ExportStep({
                   ? fill(t.checkTool, {
                       tools: preview.checklist.tools
                         .map((tool) => `T${tool.number} Ø${tool.diameter} mm`)
-                        .join(', '),
+                        .join(' → '),
                     })
                   : t.checkToolNone
               }
             />
+            {preview.checklist && preview.checklist.toolChanges > 0 ? (
+              <ChecklistItem
+                testId="export-check-toolchange"
+                checked={f.checks.toolChange}
+                onChange={(v) => update({ checks: { ...f.checks, toolChange: v } })}
+                label={fill(preview.checklist.rezeroZ ? t.checkToolChangeZ : t.checkToolChange, {
+                  count: preview.checklist.toolChanges,
+                })}
+              />
+            ) : null}
             <ChecklistItem
               testId="export-check-aircut"
               checked={f.checks.airCut}

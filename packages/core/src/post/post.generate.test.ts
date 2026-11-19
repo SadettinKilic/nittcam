@@ -345,12 +345,26 @@ describe('tool change modes', () => {
     const k = lines.findIndex((l, i) => l === 'M0' && lines[i - 1]!.includes('T3'));
     expect(lines.slice(k - 2, k + 4)).toEqual([
       'M5',
-      '(TAKIM DEGISTIR: T3 D6.000, sonra cycle start)',
+      '(TAKIM DEGISTIR: T3 D6.000 - Z SIFIRLA - SONRA CYCLE START)',
       'M0',
       'G0 Z20.0000',
       'M3 S18000',
       'G4 P5.0',
     ]);
+  });
+
+  it('manual with tool length offset keeps the plain change message (T274)', () => {
+    const p = profileFor('mach3');
+    p.toolChanger.lengthCompensation = true;
+    p.tools.push({ number: 3, type: 'flatEndMill', diameter: 6, fluteLength: 25, flutes: 2 });
+    const tp = sampleToolpath(p);
+    tp.operations[1]!.tool = 3;
+    tp.operations[1]!.toolDiameter = 6;
+    const cfg = config('mach3');
+    cfg.toolChange.lengthOffset = true;
+    const c = run({ toolpath: tp, profile: p, config: cfg }).files[0]!.content;
+    expect(c).toContain('(TAKIM DEGISTIR: T3 D6.000, sonra cycle start)');
+    expect(c).not.toContain('Z SIFIRLA');
   });
 
   it('none: one file per tool run', () => {

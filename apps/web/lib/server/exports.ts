@@ -15,6 +15,7 @@ import {
   unverifiedReasons,
   type ExportNcResult,
   type PostFile,
+  type ProgramTools,
   type UnverifiedReason,
 } from '@nittcam/core';
 import type { CompanyScope, ExportRow, MachineWithProfile, ProjectRow } from '@nittcam/db';
@@ -250,19 +251,34 @@ export async function runExport(
       violations: violationsOf(r),
       needsAcceptance: needsUnverifiedAcceptance(pv, cfg.config),
       unverifiedReasons: unverifiedReasons(pv, cfg.config),
-      checklist: checklistOf(machine, data),
+      checklist: checklistOf(machine, data, r.tools),
     },
   };
 }
 
-function checklistOf(machine: MachineWithProfile, data: ProjectRow['data']): ExportChecklistInfo {
+/**
+ * T274: the tools come from the toolpath that produced the file, in order of use (the sheet with
+ * the most tool runs; every sheet program follows the same order rule). Falls back to the material
+ * setting's tool only when the pipeline stopped before a toolpath.
+ */
+function checklistOf(
+  machine: MachineWithProfile,
+  data: ProjectRow['data'],
+  program: ProgramTools | null,
+): ExportChecklistInfo {
   const p = machine.profile;
-  const params = findMaterialParams(p, data.stock);
-  const tools = params
-    ? p.tools
-        .filter((t) => t.number === params.tool)
-        .map((t) => ({ number: t.number, diameter: t.diameter, type: t.type }))
-    : [];
+  let tools: ExportChecklistInfo['tools'];
+  if (program && program.sheets.length > 0) {
+    const longest = program.sheets.reduce((a, b) => (b.tools.length > a.tools.length ? b : a));
+    tools = longest.tools.map((t) => ({ number: t.number, diameter: t.diameter, type: t.type }));
+  } else {
+    const params = findMaterialParams(p, data.stock);
+    tools = params
+      ? p.tools
+          .filter((t) => t.number === params.tool)
+          .map((t) => ({ number: t.number, diameter: t.diameter, type: t.type }))
+      : [];
+  }
   return {
     origin: {
       corner: p.origin.corner,
@@ -272,6 +288,8 @@ function checklistOf(machine: MachineWithProfile, data: ProjectRow['data']): Exp
     },
     zReference: p.zZero.reference,
     tools,
+    toolChanges: program?.manualChanges ?? 0,
+    rezeroZ: program?.rezeroZ ?? false,
   };
 }
 

@@ -126,7 +126,8 @@ test.describe('T020 simulation', () => {
     await expect(page.getByTestId('sim-check-status')).toHaveText(new RegExp(s.summary.checksOk));
     await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true');
     await expect(page.getByTestId('sim-summary-time')).toContainText('≈');
-    await expect(page.getByTestId('sim-summary-tools')).toHaveText(/^[1-9]/);
+    // one tool: the first tool is set-up, no in-program change (T274)
+    await expect(page.getByTestId('sim-summary-tools')).toHaveText(/^0/);
     await expect(summary).toContainText(s.summary.cutLength);
     // Three sheets, each its own tab; the banner stays visible.
     await expect(page.getByRole('tab')).toHaveCount(3);

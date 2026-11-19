@@ -33,8 +33,12 @@ export interface ExportChecklistInfo {
     sheetOffset: { x: number; y: number };
   };
   zReference: 'table' | 'materialTop';
-  /** Tools the program uses (number, diameter mm, type). */
+  /** Tools the program uses in order of use, from the toolpath; a tool repeats when it comes back (T274). */
   tools: { number: number; diameter: number; type: string }[];
+  /** Operator tool-change stops inside the program (manual changer); 0 = none (T274). */
+  toolChanges: number;
+  /** After each manual change Z must be re-zeroed (no tool length offset). */
+  rezeroZ: boolean;
 }
 
 export interface ExportProfileInfo {

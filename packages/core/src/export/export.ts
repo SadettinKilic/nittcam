@@ -25,6 +25,7 @@ import {
   type ToolpathIssue,
   type ToolpathOptions,
 } from '../toolpath';
+import { programTools, type ProgramTools } from './program-tools';
 
 export interface ExportNcOptions {
   /** Header and file name; default "NittCam". */
@@ -49,6 +50,8 @@ export interface ExportNcResult {
   postWarnings: PostIssue[];
   /** Result of the automatic checks (null when the pipeline stopped before them). */
   check: GcodeCheckFilesResult | null;
+  /** Tools in order of use and manual changes, from the toolpath (T274); null without a toolpath. */
+  tools: ProgramTools | null;
 }
 
 /** Runs the whole pipeline; any failed step → no files. */
@@ -70,6 +73,7 @@ export function exportNc(
       postErrors: [],
       postWarnings: [],
       check: null,
+      tools: null,
     };
   }
   return postAndCheck(tp.toolpath, toolpathIssues, profileVersion, post, {
@@ -108,8 +112,9 @@ export function postAndCheck(
   meta: PostAndCheckMeta,
 ): ExportNcResult {
   const profile = profileVersion.profile;
-  const base = { files: [], postErrors: [], postWarnings: [], check: null };
   const cfg = parsePostConfig(post);
+  const tools = programTools(toolpath, profile, cfg.ok ? cfg.config : null);
+  const base = { files: [], postErrors: [], postWarnings: [], check: null, tools };
   // An invalid config is refused by the generator itself; the checks only need its declarations.
   const expectations: GcodeCheckPostExpectations | undefined = cfg.ok ? cfg.config : undefined;
   const { layout, zFloor, ...postMeta } = meta;
@@ -182,6 +187,7 @@ export function postAndCheck(
     postErrors: [],
     postWarnings: gen.warnings,
     check: result,
+    tools,
   };
 }
 

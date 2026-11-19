@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { downloadBlocker, EMPTY_CHECKLIST, errorCount } from './export-gate';
 
 const FILE = { name: 'a.nc', size: 10, hash: 'h', sheet: 0 };
-const ALL = { origin: true, tool: true, airCut: true };
+const ALL = { origin: true, tool: true, airCut: true, toolChange: false };
 
 describe('downloadBlocker (§6.6 checklist, §7.2 rules 9–10)', () => {
   it('no preview or failed checks block first', () => {
@@ -22,6 +22,30 @@ describe('downloadBlocker (§6.6 checklist, §7.2 rules 9–10)', () => {
     expect(downloadBlocker(p, { ...ALL, origin: false }, false)).toBe('checklist');
     expect(downloadBlocker(p, { ...ALL, tool: false }, false)).toBe('checklist');
     expect(downloadBlocker(p, ALL, false)).toBeNull();
+  });
+
+  it('manual tool changes need their own confirmation (T274)', () => {
+    const checklist = {
+      origin: {
+        corner: 'frontLeft' as const,
+        xPositive: 'right' as const,
+        yPositive: 'back' as const,
+        sheetOffset: { x: 0, y: 0 },
+      },
+      zReference: 'materialTop' as const,
+      tools: [],
+      rezeroZ: true,
+    };
+    const two = {
+      ok: true,
+      files: [FILE],
+      needsAcceptance: false,
+      checklist: { ...checklist, toolChanges: 2 },
+    };
+    expect(downloadBlocker(two, ALL, false)).toBe('checklist');
+    expect(downloadBlocker(two, { ...ALL, toolChange: true }, false)).toBeNull();
+    const none = { ...two, checklist: { ...checklist, toolChanges: 0 } };
+    expect(downloadBlocker(none, ALL, false)).toBeNull();
   });
 
   it('an unverified profile needs the acceptance', () => {

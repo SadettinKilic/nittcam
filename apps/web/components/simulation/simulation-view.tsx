@@ -251,6 +251,7 @@ export function SimulationView({
         <SummaryCard
           t={t}
           summary={result.summary}
+          program={result.export.tools}
           checksOk={errorCount === 0}
           errorCount={errorCount}
           warnings={warnings}
