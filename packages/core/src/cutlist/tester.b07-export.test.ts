@@ -59,19 +59,16 @@ describe('cutListToCsv edge cases (B7 tester)', () => {
 
   // BUG (B7 tester): names and notes starting with = + @ are written raw, Excel runs them as a
   // formula on open (OWASP CSV injection, spec §8.6). Flip to it() once the export escapes them.
-  it(
-    'cells that Excel reads as a formula (= + - @) are not written raw (CSV injection)',
-    () => {
-      const text = cutListToCsv([
-        rect('a', '=HYPERLINK("http://x","tıkla")'),
-        rect('b', '@SUM(1)', { note: '+1+1' }),
-      ]).text;
-      const cells = text
-        .split('\r\n')
-        .slice(1)
-        .filter(Boolean)
-        .flatMap((l) => l.split(';'));
-      for (const c of cells) expect(c.replace(/^"/, '')).not.toMatch(/^[=+@]/);
-    },
-  );
+  it('cells that Excel reads as a formula (= + - @) are not written raw (CSV injection)', () => {
+    const text = cutListToCsv([
+      rect('a', '=HYPERLINK("http://x","tıkla")'),
+      rect('b', '@SUM(1)', { note: '+1+1' }),
+    ]).text;
+    const cells = text
+      .split('\r\n')
+      .slice(1)
+      .filter(Boolean)
+      .flatMap((l) => l.split(';'));
+    for (const c of cells) expect(c.replace(/^"/, '')).not.toMatch(/^[=+@]/);
+  });
 });
