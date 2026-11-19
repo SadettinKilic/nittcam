@@ -46,6 +46,9 @@ async function expectEdges(page: Page, n: number, v: Record<Edge, string>) {
 }
 
 test.describe('T011b edge band (tester)', () => {
+  // T118: the four band columns show on a wide grid; narrower grids use the Bant popover.
+  test.use({ viewport: { width: 1600, height: 900 } });
+
   test('U1/U2/K1/K2 on landscape, portrait and square rows fill the right grid cells', async ({
     page,
   }) => {
@@ -96,7 +99,7 @@ test.describe('T011b edge band (tester)', () => {
   }) => {
     await page.goto(URL);
     await pasteAndApply(page, TSV, 3);
-    const undo = page.getByRole('button', { name: t.undo });
+    const undo = page.getByTestId('wizard-undo');
 
     // Same value typed again: no step; Enter moves down the same column.
     await edge(page, 1, 'top').fill('0,4');
@@ -108,7 +111,8 @@ test.describe('T011b edge band (tester)', () => {
 
     // A real edit on row 3 bottom: exactly one step.
     await edge(page, 3, 'bottom').fill('1,2');
-    await edge(page, 3, 'bottom').press('Enter');
+    // Tab, not Enter: Enter on the last row adds a part (T118).
+    await edge(page, 3, 'bottom').press('Tab');
     await expectEdges(page, 3, { top: '0,4', right: '2', bottom: '1,2', left: '1' });
     await undo.click();
     await expect(edge(page, 3, 'bottom')).toHaveValue('0,8');
@@ -139,8 +143,9 @@ test.describe('T011b edge band (tester)', () => {
       expect(await overflow(page)).toBeLessThanOrEqual(0);
       await pasteAndApply(page, TSV, 3);
       expect(await overflow(page)).toBeLessThanOrEqual(0);
+      // T118: phone cards; the Bant cell opens the four band inputs.
+      await page.getByTestId('band-cell-1').click();
       const right = edge(page, 1, 'right');
-      await right.scrollIntoViewIfNeeded();
       await right.fill('3');
       await right.press('Enter');
       await expect(right).toHaveValue('3');
@@ -150,12 +155,16 @@ test.describe('T011b edge band (tester)', () => {
     });
   }
 
-  test('strings come from tr.json: group header, edge headers, labels', async ({ page }) => {
+  test('strings come from tr.json: edge headers, labels', async ({ page }) => {
     await page.goto(URL);
     await pasteAndApply(page, TSV, 3);
-    await expect(page.getByRole('columnheader', { name: t.columns.edgeGroup })).toBeVisible();
     for (const k of ['top', 'bottom', 'left', 'right'] as const) {
-      await expect(page.getByRole('columnheader', { name: t.edge[k], exact: true })).toBeVisible();
+      await expect(
+        page.getByRole('columnheader', {
+          name: fill(t.edgeHeader, { edge: t.edge[k] }),
+          exact: true,
+        }),
+      ).toBeVisible();
     }
     await expect(edge(page, 1, 'top')).toBeVisible();
   });

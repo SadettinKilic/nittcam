@@ -149,6 +149,11 @@ const partBase = {
   id: nonEmptyId,
   name: z.string({ error: 'must be a string' }),
   qty: positiveInt,
+  /** Free text for the workshop (material, colour, customer; T118). Absent = none. */
+  note: z
+    .string({ error: 'must be a string' })
+    .max(200, { error: 'at most 200 characters' })
+    .optional(),
   /**
    * Grain of the piece (D-034): `fixed` = the grain line at `angle` (part frame) must lie along the
    * sheet grain after placement; `free` = no grain rule (the angle is kept for display).

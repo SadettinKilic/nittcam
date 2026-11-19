@@ -39,7 +39,7 @@ export {
   SelectTrigger,
   SelectValue,
 } from './components/select';
-export { Checkbox, RadioGroup, RadioGroupItem, Switch } from './components/toggles';
+export { Checkbox, LiteCheckbox, RadioGroup, RadioGroupItem, Switch } from './components/toggles';
 export {
   AlertDialog,
   AlertDialogAction,

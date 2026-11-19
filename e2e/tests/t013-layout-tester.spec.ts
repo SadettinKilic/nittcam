@@ -203,7 +203,7 @@ test.describe('T013 tester: refusals and undo/redo', () => {
     const before = await info(page, TOP);
     await page.getByTestId('layout-canvas').scrollIntoViewIfNeeded();
     // undo is available (the nesting); redo is not
-    await expect(page.getByRole('button', { name: t.undo })).toBeEnabled();
+    await expect(page.getByTestId('wizard-undo')).toBeEnabled();
     const a = await screen(page, centre(before).x, centre(before).y);
     const b = await screen(page, centre(shelf).x, centre(shelf).y);
     await dragTo(page, a, b);
@@ -213,7 +213,7 @@ test.describe('T013 tester: refusals and undo/redo', () => {
     await expect(alert).toContainText("16 mm'den yakın");
     expect(await info(page, TOP)).toEqual(before);
     // the single undo step is still the nesting: one click removes the whole layout
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(page.getByTestId('layout-canvas')).toHaveCount(0);
     expect(problems).toEqual([]);
   });
@@ -229,7 +229,7 @@ test.describe('T013 tester: refusals and undo/redo', () => {
     const moved = await info(page, TOP);
     expect(moved.locked).toBe(true);
     expect(moved).not.toEqual(before);
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     expect(await info(page, TOP)).toEqual(before);
     await page.getByRole('button', { name: t.redo }).click();
     expect(await info(page, TOP)).toEqual(moved);

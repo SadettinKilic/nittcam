@@ -190,7 +190,7 @@ test.describe('T013 layout view', () => {
     expect(Number.isInteger(after.x) && Number.isInteger(after.y)).toBe(true);
     await page.screenshot({ path: '__screenshots__/t013-surukle-kilitle.png', fullPage: true });
 
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     const undone = await info(page, TOP);
     expect(undone).toEqual(before);
     expect(problems).toEqual([]);
@@ -215,7 +215,7 @@ test.describe('T013 layout view', () => {
     await expect(page.getByTestId('layout-message')).toHaveAttribute('role', 'alert');
     expect(await info(page, TOP)).toEqual(before);
     // Nothing was recorded: the only undo step is the nesting itself.
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(page.getByTestId('layout-canvas')).toHaveCount(0);
     expect(problems).toEqual([]);
   });
@@ -247,7 +247,7 @@ test.describe('T013 layout view', () => {
     await expect(page.getByTestId('layout-info-locked')).toHaveText(l.info.lockedYes);
     await page.getByRole('button', { name: l.info.unlock }).click();
     await expect(page.getByTestId('layout-info-locked')).toHaveText(l.info.lockedNo);
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(page.getByTestId('layout-info-locked')).toHaveText(l.info.lockedYes);
   });
 
@@ -278,7 +278,7 @@ test.describe('T013 layout view', () => {
     await page.keyboard.press('Enter');
     const moved = await info(page, TOP);
     expect(moved).toEqual({ ...start, x: start.x + 1, y: start.y + 10 });
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     expect(await info(page, TOP)).toEqual(start);
   });
 

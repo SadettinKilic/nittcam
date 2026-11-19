@@ -16,8 +16,26 @@ describe('workshop pastes', () => {
     expect(r.rows).toHaveLength(2);
     expect(r.rows.every((x) => x.errors.length === 0)).toBe(true);
     expect(vals(text)).toEqual([
-      { name: 'Kapak', w: 396.5, h: 716, qty: 4, grainLock: false, edgeBand: allEdges(0) },
-      { name: 'Raf', w: 564, h: 300.25, qty: 2, grainLock: false, edgeBand: allEdges(0) },
+      {
+        name: 'Kapak',
+        w: 396.5,
+        h: 716,
+        qty: 4,
+        grainLock: false,
+        edgeBand: allEdges(0),
+        grainAngle: null,
+        note: '',
+      },
+      {
+        name: 'Raf',
+        w: 564,
+        h: 300.25,
+        qty: 2,
+        grainLock: false,
+        edgeBand: allEdges(0),
+        grainAngle: null,
+        note: '',
+      },
     ]);
     expect(r.unitAmbiguous).toBe(false);
   });

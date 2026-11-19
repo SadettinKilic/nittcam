@@ -40,6 +40,9 @@ async function openPaste(page: Page) {
 }
 
 test.describe('T011 cut list', () => {
+  // T118: a wide grid shows the four band columns.
+  test.use({ viewport: { width: 1600, height: 900 } });
+
   test('paste TSV → preview with mapping and errors → Uygula → rows → undo/redo', async ({
     page,
   }) => {
@@ -47,7 +50,7 @@ test.describe('T011 cut list', () => {
     await page.goto(URL);
     await expect(page.getByRole('heading', { level: 1, name: t.title })).toBeVisible();
     await expect(page.getByText(t.empty)).toBeVisible();
-    await expect(page.getByRole('button', { name: t.undo })).toBeDisabled();
+    await expect(page.getByTestId('wizard-undo')).toBeDisabled();
 
     const area = await openPaste(page);
     await area.fill(SAMPLE_TSV);
@@ -80,7 +83,8 @@ test.describe('T011 cut list', () => {
 
     await page.getByRole('button', { name: fill(p.applyCount, { count: 3 }) }).click();
     await expect(page.getByLabel(p.textLabel)).toHaveCount(0);
-    await expect(page.getByRole('status')).toHaveText(fill(p.applied, { count: 3 }));
+    // T246: a toast with a Geri al action, not a banner.
+    await expect(page.getByText(fill(p.applied, { count: 3 }))).toBeVisible();
 
     await expect(cell(page, 1, t.columns.name)).toHaveValue('Kapak');
     await expect(cell(page, 1, t.columns.w)).toHaveValue('396,5');
@@ -97,7 +101,7 @@ test.describe('T011 cut list', () => {
     await page.screenshot({ path: '__screenshots__/t011-kesim-listesi.png', fullPage: true });
 
     // One undo removes the whole import; redo brings it back.
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(page.getByText(t.empty)).toBeVisible();
     await page.getByRole('button', { name: t.redo }).click();
     await expect(cell(page, 3, t.columns.name)).toHaveValue('Çekmece önü');
@@ -137,7 +141,7 @@ test.describe('T011 cut list', () => {
     await area.fill(SAMPLE_TSV);
     await page.getByRole('button', { name: p.cancel }).click();
     await expect(page.getByText(t.empty)).toBeVisible();
-    await expect(page.getByRole('button', { name: t.undo })).toBeDisabled();
+    await expect(page.getByTestId('wizard-undo')).toBeDisabled();
   });
 
   test('grid editing: add, edit with Enter, invalid value, duplicate, remove, undo', async ({
@@ -154,7 +158,8 @@ test.describe('T011 cut list', () => {
     const w = cell(page, 1, t.columns.w);
     await expect(w).toBeFocused();
     await w.fill('300,5');
-    await w.press('Enter');
+    // Tab commits and moves right (T118: Enter on the last row would add a new row).
+    await w.press('Tab');
     await expect(w).toHaveValue('300,5');
 
     // Invalid value: Turkish error, nothing changed, Esc restores.
@@ -167,17 +172,18 @@ test.describe('T011 cut list', () => {
     await expect(h).toHaveValue('100');
     await expect(h).not.toHaveAttribute('aria-invalid', 'true');
 
-    await page
-      .getByRole('button', { name: fill(t.rowAction, { action: t.duplicate, n: 1 }) })
-      .click();
+    // T119: row actions live in the row menu.
+    await page.getByRole('button', { name: fill(t.rowMenu.label, { n: 1 }) }).click();
+    await page.getByRole('menuitem', { name: t.rowMenu.duplicate }).click();
     await expect(cell(page, 2, t.columns.name)).toHaveValue('Yan dikme');
     await expect(cell(page, 2, t.columns.w)).toHaveValue('300,5');
 
-    await page.getByRole('button', { name: fill(t.rowAction, { action: t.remove, n: 1 }) }).click();
+    await page.getByRole('button', { name: fill(t.rowMenu.label, { n: 1 }) }).click();
+    await page.getByRole('menuitem', { name: t.rowMenu.remove }).click();
     await expect(cell(page, 2, t.columns.name)).toHaveCount(0);
 
     // Undo: remove, duplicate, width, name, add — one step each.
-    const undo = page.getByRole('button', { name: t.undo });
+    const undo = page.getByTestId('wizard-undo');
     await undo.click();
     await expect(cell(page, 2, t.columns.name)).toHaveValue('Yan dikme');
     await undo.click();

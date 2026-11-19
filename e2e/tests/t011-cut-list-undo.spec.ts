@@ -11,7 +11,7 @@ const fill = (text: string, values: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? String(values[k]) : m));
 const w = (page: Page, n: number) =>
   page.getByLabel(fill(t.cellLabel, { n, column: t.columns.w }), { exact: true });
-const undo = (page: Page) => page.getByRole('button', { name: t.undo });
+const undo = (page: Page) => page.getByTestId('wizard-undo');
 const redo = (page: Page) => page.getByRole('button', { name: t.redo });
 
 async function seed(page: Page): Promise<void> {
@@ -93,7 +93,8 @@ test.describe('T011 cut list undo (tester round 2)', () => {
     await w(page, 2).fill('420');
     await page.keyboard.press('Enter');
     await w(page, 3).fill('650');
-    await page.keyboard.press('Enter');
+    // Tab, not Enter: Enter on the last row adds a part (T118).
+    await page.keyboard.press('Tab');
     await w(page, 3).fill('650');
     await page.getByRole('heading', { level: 1 }).click();
     await undo(page).click();

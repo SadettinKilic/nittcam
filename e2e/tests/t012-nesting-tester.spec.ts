@@ -71,7 +71,7 @@ test.describe('T012 nesting (tester)', () => {
     expect(Number(second.sheets)).toBeGreaterThan(Number(first.sheets));
 
     // Undo the second Diz: the previous layout summary (with the missing copies noted) is back.
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(page.getByTestId('nesting-sheets')).toHaveText(first.sheets);
     expect(await summary(page)).toEqual(first);
     await expect(page.getByTestId('nesting-unplaced')).toBeVisible();
@@ -88,7 +88,10 @@ test.describe('T012 nesting (tester)', () => {
     await nest(page);
     await expect(page.getByTestId('nesting-unplaced')).toHaveText(fill(n.unplaced, { count: 1 }));
     await goStep(page, 'parcalar');
-    await expect(page.getByText(t.issues.PART_LARGER_THAN_SHEET)).toBeVisible();
+    // T118: the row shows a warning icon (text in its tooltip / accessible name).
+    await expect(
+      page.locator('[data-testid^=row-issue-][data-codes*=PART_LARGER_THAN_SHEET]'),
+    ).toBeVisible();
   });
 
   test('300 copies: main thread stays responsive while the worker nests; edit during run is STALE', async ({

@@ -20,6 +20,8 @@ const rectPartInput = {
   id: partIdSchema,
   name: rectPartSchema.shape.name.default(''),
   qty: rectPartSchema.shape.qty.default(1),
+  /** Optional workshop note (T118); empty = none. */
+  note: rectPartSchema.shape.note,
   /** Grain of the part (D-034); default free. */
   grain: partGrainSchema.optional(),
   /** Alias kept for one release: `true` = fixed along the sheet grain, `false` = free. */
@@ -45,6 +47,7 @@ function pushRectPart(draft: Draft<Project>, p: RectPartInput): void {
     id: p.id,
     name: p.name,
     qty: p.qty,
+    ...(p.note ? { note: p.note } : {}),
     grain: { mode: grain.mode, angle: grain.angle },
     kind: 'rect',
     params: { w: p.params.w, h: p.params.h, r: p.params.r },
@@ -137,7 +140,7 @@ export const updatePart = defineCommand({
   name: 'updatePart',
   area: 'part',
   description:
-    'Change an existing part by id. Give only the fields to change: name, qty, grain ' +
+    'Change an existing part by id. Give only the fields to change: name, qty, note, grain ' +
     '({ mode: "fixed" | "free", angle 0–180° in the part frame }; grainLock is an old alias), ' +
     'params (w, h, r in millimetres; rectangle parts only) and edgeBand (top, right, bottom, ' +
     'left in millimetres).',
@@ -147,6 +150,8 @@ export const updatePart = defineCommand({
       id: partIdSchema,
       name: rectPartSchema.shape.name.optional(),
       qty: rectPartSchema.shape.qty.optional(),
+      /** Workshop note; '' removes it. */
+      note: rectPartSchema.shape.note,
       grain: partGrainSchema.optional(),
       /** Alias kept for one release (D-034): `true` = fixed along the sheet grain, `false` = free. */
       grainLock: z.boolean({ error: 'must be true or false' }).optional(),
@@ -163,6 +168,7 @@ export const updatePart = defineCommand({
       (p) =>
         p.name !== undefined ||
         p.qty !== undefined ||
+        p.note !== undefined ||
         p.grain !== undefined ||
         p.grainLock !== undefined ||
         p.params !== undefined ||
@@ -182,6 +188,10 @@ export const updatePart = defineCommand({
     if (!part) return;
     if (params.name !== undefined) part.name = params.name;
     if (params.qty !== undefined) part.qty = params.qty;
+    if (params.note !== undefined) {
+      if (params.note === '') delete part.note;
+      else part.note = params.note;
+    }
     if (params.grain !== undefined) {
       part.grain = { mode: params.grain.mode, angle: params.grain.angle };
     } else if (params.grainLock !== undefined) {
@@ -287,3 +297,4 @@ export const duplicatePart = defineCommand({
 
 export { mirrorPart, movePart, pasteParts, removeParts, rotatePart, setPartsGrain } from './board';
 export { drawPart, setSegmentBulge } from './draw';
+export { duplicateParts, reorderParts, updateParts } from './list';

@@ -165,6 +165,7 @@ describe('T005 tester: AI tool definitions', () => {
         'setSheetSize',
         'setThickness',
         'updatePart',
+        'updateParts',
       ].sort(),
     );
     for (const t of tools) {

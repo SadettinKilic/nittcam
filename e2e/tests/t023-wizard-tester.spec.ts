@@ -512,7 +512,7 @@ test.describe('T023 tester: wizard flow', () => {
     test.setTimeout(120_000);
     const problems = watchConsole(page);
     await openNewProject(page, 'makine');
-    const undo = page.getByRole('button', { name: tr.cutList.undo, exact: true });
+    const undo = page.getByTestId('wizard-undo');
     const redo = page.getByRole('button', { name: tr.cutList.redo, exact: true });
     await expect(undo).toBeDisabled();
 

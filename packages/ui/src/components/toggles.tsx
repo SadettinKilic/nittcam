@@ -43,6 +43,44 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Checkbox
   );
 }
 
+/**
+ * A light checkbox for long virtual lists (T118 perf): a plain `<button role="checkbox">` with the
+ * Checkbox look, no Radix root, no hidden form input. Use it where hundreds of rows mount while
+ * scrolling; use `Checkbox` everywhere else. The caller toggles in `onClick` (Space activates
+ * the button, so keyboard and modifier keys arrive there too). Enter does not toggle it, as with a
+ * native checkbox; the caller's `onKeyDown` still sees Enter (grid navigation).
+ */
+export function LiteCheckbox({
+  checked,
+  className,
+  onKeyDown,
+  ...props
+}: Omit<ComponentProps<'button'>, 'role' | 'type'> & { checked: boolean }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      data-state={checked ? 'checked' : 'unchecked'}
+      className={cn(
+        box,
+        focusRing,
+        'grid size-4.5 place-content-center rounded-xs',
+        'data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=checked]:text-accent-fg',
+        className,
+      )}
+      {...props}
+      onKeyDown={(e) => {
+        onKeyDown?.(e);
+        // A button fires click on Enter; a checkbox does not.
+        if (e.key === 'Enter') e.preventDefault();
+      }}
+    >
+      {checked ? <Check className="size-3.5" strokeWidth={3} aria-hidden /> : null}
+    </button>
+  );
+}
+
 export function Switch({ className, ...props }: ComponentProps<typeof SwitchPrimitive.Root>) {
   const field = useFieldControlProps(props);
   return (

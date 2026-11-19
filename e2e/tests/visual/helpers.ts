@@ -38,8 +38,11 @@ export async function applyTheme(page: Page, theme: Theme): Promise<void> {
 }
 
 /** Freezes transitions, animations and the caret for captures (on top of reduced motion). */
+// Toasts are transient (4 s) and would make captures timing-dependent (B7: the paste toast), so
+// captures never include them.
 const FREEZE_CSS =
-  '*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}';
+  '*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}' +
+  '[data-sonner-toaster]{display:none!important}';
 
 /**
  * Waits until the page is stable so captures are deterministic (T199a; B4a lost hours to flaky

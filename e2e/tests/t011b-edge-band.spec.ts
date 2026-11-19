@@ -40,6 +40,9 @@ async function pasteAndApply(page: Page, text: string, count: number) {
 }
 
 test.describe('T011b edge band per edge', () => {
+  // T118: the four band columns show on a wide grid; narrower grids use the Bant popover.
+  test.use({ viewport: { width: 1600, height: 900 } });
+
   test('paste with Uzun1/Kısa2 → the right edges are filled by orientation', async ({ page }) => {
     const problems: string[] = [];
     page.on('pageerror', (e) => problems.push(e.message));
@@ -81,7 +84,9 @@ test.describe('T011b edge band per edge', () => {
 
     // The grid has four band columns in the order Üst, Alt, Sol, Sağ.
     const headers = page.locator('thead th[data-testid^="edge-col-"]');
-    await expect(headers).toHaveText([t.edge.top, t.edge.bottom, t.edge.left, t.edge.right]);
+    await expect(headers).toHaveText(
+      (Object.keys(t.edge) as Edge[]).map((e) => fill(t.edgeHeader, { edge: t.edge[e] })),
+    );
     await page.screenshot({ path: '__screenshots__/t011b-kesim-listesi-bant.png', fullPage: true });
     expect(problems).toEqual([]);
   });
@@ -110,7 +115,7 @@ test.describe('T011b edge band per edge', () => {
   test('editing one edge is one undo step; an unchanged value adds none', async ({ page }) => {
     await page.goto(URL);
     await pasteAndApply(page, LONG_SHORT_TSV, 2);
-    const undo = page.getByRole('button', { name: t.undo });
+    const undo = page.getByTestId('wizard-undo');
     const redo = page.getByRole('button', { name: t.redo });
 
     await edge(page, 1, 'left').fill('1,5');
@@ -155,9 +160,9 @@ test.describe('T011b edge band per edge', () => {
     await expect(name(page, 1)).toHaveValue('Kapak');
     expect(await overflow(page)).toBeLessThanOrEqual(0);
 
-    // The rightmost band input scrolls into view inside the table box and can be edited.
+    // T118: on phones each part is a card; the Bant cell opens the four band inputs.
+    await page.getByTestId('band-cell-2').click();
     const right = edge(page, 2, 'right');
-    await right.scrollIntoViewIfNeeded();
     await expect(right).toBeInViewport();
     await right.fill('1');
     await page.keyboard.press('Enter');

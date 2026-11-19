@@ -92,7 +92,7 @@ test.describe('T011 cut list (tester)', () => {
     // PO decision (round 1): Uygula is disabled until a unit is chosen.
     await expect(apply).toBeDisabled();
     await expect(page.getByText(t.empty)).toBeVisible();
-    await expect(page.getByRole('button', { name: t.undo })).toBeDisabled();
+    await expect(page.getByTestId('wizard-undo')).toBeDisabled();
     await page.getByLabel(p.unit.mm).check();
     await apply.click();
     await expect(cell(page, 1, t.columns.w)).toHaveValue('39,6');
@@ -120,7 +120,7 @@ test.describe('T011 cut list (tester)', () => {
     await page.getByRole('button', { name: fill(p.applyCount, { count: 2000 }) }).click();
     await expect(page.getByTestId('cut-list-count')).toContainText('2000', { timeout: 15_000 });
     expect(Date.now() - t0).toBeLessThan(10_000);
-    await page.getByRole('button', { name: t.undo }).click();
+    await page.getByTestId('wizard-undo').click();
     await expect(page.getByText(t.empty)).toBeVisible();
     expect(problems).toEqual([]);
   });
@@ -155,6 +155,6 @@ test('Enter moving to the next row is still ONE undo step', async ({ page }) => 
   await w.fill('410');
   await page.keyboard.press('Enter');
   await expect(cell(page, 2, t.columns.w)).toBeFocused();
-  await page.getByRole('button', { name: t.undo }).click();
+  await page.getByTestId('wizard-undo').click();
   await expect(w).toHaveValue('500', { timeout: 2000 });
 });

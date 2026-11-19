@@ -240,7 +240,7 @@ test.describe('T243 board reference frame', () => {
     const status = page.getByTestId('save-status');
     await expect(status).toHaveAttribute('data-state', /^(saved|idle)$/, { timeout: 15_000 });
     const revision = await status.getAttribute('data-revision');
-    const undo = page.getByRole('button', { name: tr.cutList.undo });
+    const undo = page.getByTestId('wizard-undo');
     const undoState = await undo.isDisabled();
     await sheet.click();
     await expect(sheet).toHaveAttribute('aria-pressed', 'false');
