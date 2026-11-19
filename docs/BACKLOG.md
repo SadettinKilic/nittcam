@@ -527,11 +527,12 @@ Acceptance:
 - [ ] sorting/filtering never changes part order in the project (view only)
 Tester focus: e2e search + sort + group collapse; project JSON order unchanged after sorting.
 
-### Batch B8a: T248–T251 (Fable review #3 must-fixes; runs right after B8)
+### Batch B8a: T249–T251 (Fable review #3 must-fixes; runs right after B8; T248 deferred, D-043)
 
 Source: Fable design review #3 (`docs/reviews/2026-11-19-fable-design-review-3.md`, 2026-11-19, screenshots in `docs/reviews/2026-11-19-fable-3/`). Scores: corporate image 7/10 (was 6.5), modernity 8 (7.5), usability 7.5 (7), readiness for M4–M6 7.5 (7). Rule: D-040. Each task ≤ ½ day.
 
-### T248 Phone cut list: compact cards, one-row toolbar   [status: todo]
+### T248 Phone cut list: compact cards, one-row toolbar   [status: deferred]
+> **Deferred to the mobile UI pass (D-043).** Only the import-panel bullet (sticky "N satır ekle / Vazgeç" row, one-sentence intro) stays in B8a and moved to T250.
 Spec: §4.1, §3.7 · Depends: T118, T119, T120, T123 (same toolbar)
 Acceptance:
 - [ ] below 640 px a part card is **≤ 88 px high** when it has no issue (today 158 px): line 1 = checkbox, row number, name, "⋯" menu; line 2 = "560 × 720" in mono, "×8", the grain chip ("↔ 0°" / "Serbest") and a band chip only when a band is set; tapping a value edits it in place as today; at 390 × 844 at least 5 cards are visible under the toolbar
@@ -546,7 +547,7 @@ Acceptance:
 - [ ] Dizilim and Simülasyon at ≥ 1024 px: plate tabs (left) and the canvas tools (right) share **one row** (today two rows at 1440; open item from T244); the grid toggle is the same icon toggle button as on the board (no checkbox + "Milimetre ızgarası (100 mm)" text; the text is its tooltip), at every width
 - [ ] one shared `InspectorRow` (label left, mono value right, one line, 32 px) in `packages/ui`; the board inspector and the Dizilim "Seçili parça" list both use it; at 264 px no value wraps ("596 × 716 mm", "X 622 · Y 742 mm", "Damar · kilitli 30°")
 - [ ] Dizilim left panel: the "Boşluk / Kenar" chips that repeat the two inputs above them are removed (the "Takım Ø8" chip stays); the per-plate prose lines are removed (the tabs carry "fire %"); the sentences "Şimdilik üç mod da …" and "Artık parça kullanımı (yakında)" are removed from the UI (unbuilt options are not shown, D-039)
-- [ ] Simülasyon below 640 px: the whole transport (scrubber, time, speed chips, position line) is visible above the "Ayarlar / G-code" button bar with nothing behind it (same rule as T240); the wizard header shows the short label "Simülasyon" below 640 px (the step name itself is unchanged, spec §3.7)
+- [ ] *(deferred to the mobile UI pass, D-043; see T255)* Simülasyon below 640 px: the whole transport (scrubber, time, speed chips, position line) is visible above the "Ayarlar / G-code" button bar with nothing behind it (same rule as T240); the wizard header shows the short label "Simülasyon" below 640 px (the step name itself is unchanged, spec §3.7)
 Tester focus: **safety**: the air-cut sentence and every warning string are still present (string list before/after); bounding boxes: transport bottom ≤ button bar top at 390 × 844 and 360 × 740; tabs and tools on one row at 1440 and 1024; play/pause and layout drag e2e green; baselines updated on purpose.
 
 ### T250 Export step: download in the footer, tidy file rows   [status: todo]
@@ -557,6 +558,9 @@ Acceptance:
 - [ ] file rows never break inside a word at any width: file name (mono, truncated in the middle if needed) on line 1; size in Turkish format ("20,1 KB") and "sha256 f2acd1f0…" (first 8 characters, full hash in a tooltip and a copy button) on line 2
 - [ ] "Dışa aktarma geçmişi" uses the same file row
 Tester focus: **safety**: download impossible until every box is ticked (keyboard and click), same as before; full hash still reachable and correct (copy); no mid-word wrap at 390 and 360 px; export e2e green.
+
+### T250 import-panel note
+> T250 also carries the T248 import-panel bullet (D-043): the "N satır ekle" / "Vazgeç" row is sticky at the bottom of the import panel so it is visible without scrolling at 1440 × 900; the intro paragraph is one sentence, the rest moves into an info popover.
 
 ### T251 Canvas material tone   [status: todo]
 Spec: §3.2, §8.3 · Depends: T196 · Decision: D-040
@@ -1027,6 +1031,18 @@ Acceptance:
 Tester focus: preferences persist and apply on reload; compact density screenshots.
 
 ---
+
+## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
+
+Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.
+
+### T248 Phone cut list: compact cards, one-row toolbar (moved here; text above in B8a)   [status: deferred]
+
+### T255 Phone Simülasyon transport visible, short header label   [status: todo]
+Spec: §3.7 · Depends: T249 · Decision: D-043
+Acceptance:
+- [ ] the T249 phone bullet: below 640 px the whole transport (scrubber, time, speed chips, position line) is visible above the "Ayarlar / G-code" button bar; the wizard header shows the short label "Simülasyon" below 640 px
+Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
