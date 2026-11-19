@@ -26,7 +26,14 @@ import {
   updateParts,
 } from './part';
 import { lockPlacement, runNesting, setNestingOptions } from './nesting';
-import { setGrain, setMachine, setMaterial, setSheetSize, setThickness } from './plate';
+import {
+  applyLibraryMaterial,
+  setGrain,
+  setMachine,
+  setMaterial,
+  setSheetSize,
+  setThickness,
+} from './plate';
 import {
   commandContextSchema,
   type CommandContext,
@@ -43,6 +50,7 @@ const immer = new Immer({ autoFreeze: true });
 export const COMMANDS = {
   setMachine,
   setMaterial,
+  applyLibraryMaterial,
   setThickness,
   setSheetSize,
   setGrain,

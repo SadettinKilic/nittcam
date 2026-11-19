@@ -12,13 +12,16 @@ export interface NavItem {
 
 export const NEW_PROJECT_HREF = '/projeler/yeni';
 
+/** Ayarlar has one page so far: the material library (T121). */
+export const SETTINGS_HREF = '/ayarlar/malzemeler';
+
 export const NAV_ITEMS: readonly NavItem[] = [
   { key: 'home', href: '/' },
   { key: 'machines', href: '/makineler' },
   { key: 'projects', href: '/projeler' },
   { key: 'templates' },
   { key: 'create', href: NEW_PROJECT_HREF },
-  { key: 'settings' },
+  { key: 'settings', href: SETTINGS_HREF },
 ];
 
 /** Is the current page under this menu item? Oluştur owns the new-project wizard. */
@@ -35,6 +38,8 @@ export function isNavActive(key: NavKey, pathname: string): boolean {
       );
     case 'create':
       return isUnder(pathname, NEW_PROJECT_HREF);
+    case 'settings':
+      return isUnder(pathname, '/ayarlar');
     default:
       return false;
   }
@@ -45,7 +50,8 @@ function isUnder(pathname: string, base: string): boolean {
 }
 
 /** Label keys of a crumb; the shell turns them into Turkish text. */
-export type CrumbKey = NavKey | 'newProject' | 'project' | 'verification' | 'notFound';
+export type CrumbKey =
+  NavKey | 'newProject' | 'project' | 'verification' | 'materials' | 'notFound';
 
 export interface Crumb {
   key: CrumbKey;
@@ -72,6 +78,9 @@ export function breadcrumbs(pathname: string): Crumb[] {
     if (parts.length === 1) return [{ key: 'projects' }];
     if (second === 'yeni') return [{ key: 'projects', href: '/projeler' }, { key: 'newProject' }];
     if (parts.length === 2) return [{ key: 'projects', href: '/projeler' }, { key: 'project' }];
+  }
+  if (first === 'ayarlar' && second === 'malzemeler' && parts.length === 2) {
+    return [{ key: 'settings', href: SETTINGS_HREF }, { key: 'materials' }];
   }
   return [{ key: 'notFound' }];
 }

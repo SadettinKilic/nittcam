@@ -632,9 +632,9 @@ test.describe('T023 tester: wizard flow', () => {
     await page.goto('/');
     const nav = page.getByRole('navigation', { name: tr.nav.label });
     const soon = nav.getByRole('list', { name: tr.nav.soonGroup });
-    for (const label of [tr.nav.templates, tr.nav.settings]) {
-      await expect(soon.getByText(label, { exact: true })).toBeVisible();
-    }
+    // T121: Ayarlar is live (Malzemeler); Şablonlar stays in Yakında.
+    await expect(soon.getByText(tr.nav.templates, { exact: true })).toBeVisible();
+    await expect(soon.getByText(tr.nav.settings, { exact: true })).toHaveCount(0);
     // They are not links (no dead end), or they lead to a page that says yakında.
     expect(await nav.getByRole('link', { name: tr.nav.templates }).count()).toBeLessThanOrEqual(1);
     const targets: [string, RegExp][] = [

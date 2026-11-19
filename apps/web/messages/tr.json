@@ -115,7 +115,8 @@
       "newProject": "Yeni proje",
       "project": "Proje",
       "verification": "Doğrulama",
-      "notFound": "Sayfa bulunamadı"
+      "notFound": "Sayfa bulunamadı",
+      "materials": "Malzemeler"
     },
     "theme": {
       "label": "Tema",
@@ -1176,7 +1177,11 @@
         "number": "Sayı girin (ör. 18).",
         "positive": "Sıfırdan büyük olmalı.",
         "rejected": "Bu değer kabul edilmedi."
-      }
+      },
+      "cardTitle": "Makine ve malzeme",
+      "libraryGroup": "Malzeme kütüphanesi",
+      "libraryThicknesses": "{list} mm",
+      "libraryThicknessHint": "Kütüphanedeki kalınlıklar: {list} mm"
     },
     "parts": {
       "summary": "Özet",
@@ -1740,5 +1745,79 @@
       "bendHandle": "Kavis tutamağı"
     },
     "actionsBar": "Seçim işlemleri"
+  },
+  "materialLibrary": {
+    "title": "Malzemeler",
+    "subtitle": "Atölyenizdeki plakalar: tür, kalınlıklar, stok plaka ölçüleri ve varsayılan damar. Kesim ayarları her makinenin profilinden gelir.",
+    "add": "Malzeme ekle",
+    "loading": "Malzemeler yükleniyor",
+    "loadError": "Malzemeler yüklenemedi.",
+    "retry": "Tekrar dene",
+    "emptyTitle": "Kütüphane boş",
+    "empty": "Kullandığınız plakaları ekleyin; sihirbazın ilk adımında tek tıkla seçilir.",
+    "columns": {
+      "name": "Malzeme",
+      "thicknesses": "Kalınlıklar",
+      "sheets": "Plaka ölçüleri",
+      "grain": "Damar",
+      "params": "Kesim ayarı"
+    },
+    "grainNone": "Yok",
+    "grainValue": "{angle}°",
+    "paramsOk": "{machine}: tamam",
+    "paramsMissing": "{machine}: {list} mm için ayar yok",
+    "paramsNoMachine": "Makine yok",
+    "edit": "Düzenle",
+    "editNamed": "{name} malzemesini düzenle",
+    "remove": "Sil",
+    "removeNamed": "{name} malzemesini sil",
+    "removeTitle": "\"{name}\" silinsin mi?",
+    "removeBody": "Bu malzemeyi kullanan projeler etkilenmez; plaka değerleri projede saklıdır.",
+    "removeConfirm": "Sil",
+    "cancel": "Vazgeç",
+    "removed": "\"{name}\" silindi.",
+    "saved": "\"{name}\" kaydedildi.",
+    "saveError": "Kaydedilemedi. Değerleri kontrol edip tekrar deneyin.",
+    "form": {
+      "newTitle": "Yeni malzeme",
+      "editTitle": "Malzemeyi düzenle",
+      "description": "Sihirbaz bu değerleri önerir; projede yine de özel ölçü girilebilir.",
+      "name": "Ad",
+      "namePlaceholder": "ör. Beyaz melamin",
+      "kind": "Tür",
+      "tone": "Renk / doku",
+      "thicknesses": "Kalınlıklar",
+      "thicknessLabel": "Kalınlık {n}",
+      "addThickness": "Kalınlık ekle",
+      "removeThickness": "{value} mm kalınlığı kaldır",
+      "sheets": "Stok plaka ölçüleri",
+      "sheetWidth": "Plaka {n} uzun kenar",
+      "sheetHeight": "Plaka {n} kısa kenar",
+      "addSheet": "Ölçü ekle",
+      "removeSheet": "Plaka {n} ölçüsünü kaldır",
+      "grain": "Varsayılan damar",
+      "grainOn": "Damarlı plaka",
+      "grainAngle": "Damar açısı",
+      "grainHint": "0° = uzun kenar boyunca, 90° = kısa kenar boyunca.",
+      "grainPlastic": "Plastikte damar yoktur.",
+      "save": "Kaydet",
+      "cancel": "Vazgeç",
+      "errors": {
+        "name": "Ad girin.",
+        "thicknesses": "En az bir geçerli kalınlık girin.",
+        "sheets": "En az bir geçerli plaka ölçüsü girin.",
+        "grain": "Açı 0 ile 179 arasında olmalı."
+      }
+    },
+    "tones": {
+      "natural": "Doğal",
+      "oak": "Meşe",
+      "walnut": "Ceviz",
+      "white": "Beyaz",
+      "grey": "Gri",
+      "anthracite": "Antrasit",
+      "black": "Siyah",
+      "clear": "Şeffaf"
+    }
   }
 }

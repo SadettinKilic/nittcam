@@ -179,26 +179,37 @@ export const tools = pgTable(
   ],
 );
 
-/** Material parameter sets (§9.1: tür, kalınlık, besleme, devir, paso). */
+/**
+ * Company material & stock library (T121, §3.4 "Ayarlar → Malzemeler", §9.1). Cutting parameters
+ * stay in the machine profiles' material sets and are linked by kind + thickness (D-044).
+ * Validated by `libraryMaterialSchema` from core on every write.
+ */
 export const materials = pgTable(
   'materials',
   {
     id: id(),
     companyId: companyId(),
     name: text('name').notNull(),
+    /** `MaterialKind` of core (mdf, plywood, melamine, solidWood, acrylic, pvc). */
     kind: text('kind').notNull(),
-    /** mm */
-    thickness: doublePrecision('thickness').notNull(),
-    /** mm/min */
-    feed: doublePrecision('feed').notNull(),
-    /** rpm */
-    spindleSpeed: integer('spindle_speed').notNull(),
-    /** Depth per pass, mm. */
-    stepDown: doublePrecision('step_down').notNull(),
+    /** Thicknesses on hand, mm, ascending. */
+    thicknesses: jsonb('thicknesses').$type<number[]>().notNull().default([]),
+    /** Colour / texture key (`MaterialTone`). */
+    tone: text('tone').notNull().default('natural'),
+    /** Default sheet grain, degrees [0, 180); null = no grain. */
+    grain: doublePrecision('grain'),
+    /** Stock sheet sizes, mm. */
+    sheetSizes: jsonb('sheet_sizes')
+      .$type<{ width: number; height: number }[]>()
+      .notNull()
+      .default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index('materials_company_idx').on(t.companyId)],
+  (t) => [
+    index('materials_company_idx').on(t.companyId),
+    unique('materials_company_id_id_uq').on(t.companyId, t.id),
+  ],
 );
 
 export const templates = pgTable(

@@ -23,6 +23,39 @@ export const setMaterial = defineCommand({
   params: z.strictObject({ material: stockSchema.shape.material }),
   apply: (draft, params) => {
     draft.stock.material = params.material;
+    // A hand-picked material no longer comes from a library entry (T121).
+    delete draft.stock.libraryId;
+  },
+});
+
+/**
+ * Picks a stock from the company material library in one undo step (T121): material kind,
+ * thickness, sheet size and sheet grain together. The caller resolves the entry (core has no
+ * database); `libraryId` only remembers which entry it was.
+ */
+export const applyLibraryMaterial = defineCommand({
+  name: 'applyLibraryMaterial',
+  area: 'plate',
+  description:
+    'Use a material of the company library: sets the material, thickness (mm), sheet size (mm) ' +
+    'and sheet grain (degrees or null) at once and remembers the library entry id.',
+  // Library ids come from the company database; the AI picks a material with setMaterial.
+  aiTool: false,
+  params: z.strictObject({
+    libraryId: z.string().min(1).max(64),
+    material: stockSchema.shape.material,
+    thickness: stockSchema.shape.thickness,
+    width: stockSchema.shape.sheet.shape.width,
+    height: stockSchema.shape.sheet.shape.height,
+    grain: stockSchema.shape.sheet.shape.grain,
+  }),
+  apply: (draft, params) => {
+    draft.stock.libraryId = params.libraryId;
+    draft.stock.material = params.material;
+    draft.stock.thickness = params.thickness;
+    draft.stock.sheet.width = params.width;
+    draft.stock.sheet.height = params.height;
+    draft.stock.sheet.grain = params.grain;
   },
 });
 

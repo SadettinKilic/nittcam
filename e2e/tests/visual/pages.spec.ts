@@ -102,6 +102,17 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await snap(page, `t107-form-${vp}-${theme}`, { fullPage: false });
       });
 
+      test('settings: material library and its dialog (T121)', async ({ page }) => {
+        await page.goto('/ayarlar/malzemeler');
+        await expect(page.getByTestId('material-row')).toHaveCount(4);
+        await expectNoA11yViolations(page);
+        await snap(page, `t121-materials-${vp}-${theme}`);
+        await page.getByTestId('material-edit').first().click();
+        await expect(page.getByTestId('material-dialog')).toBeVisible();
+        await expectNoA11yViolations(page);
+        await snap(page, `t121-material-dialog-${vp}-${theme}`, { fullPage: false });
+      });
+
       test('verification: stepper, download cards, checklist (T108)', async ({ page }) => {
         await page.goto('/makineler');
         await page.getByTestId('machine-list').waitFor();

@@ -6,6 +6,9 @@
  */
 import {
   currentVerificationState,
+  DEFAULT_LIBRARY,
+  libraryMaterialSchema,
+  type LibraryMaterial,
   parseMachineProfile,
   parseProject,
   type CommandLogEntry,
@@ -71,6 +74,14 @@ export class InvalidMachineProfile extends Error {
   override readonly name = 'InvalidMachineProfile';
   constructor(readonly issues: MachineProfileIssue[]) {
     super(`invalid machine profile: ${issues.map((i) => `${i.path}: ${i.message}`).join('; ')}`);
+  }
+}
+
+/** A material library entry failed core `libraryMaterialSchema`; nothing was written (T121). */
+export class InvalidMaterial extends Error {
+  override readonly name = 'InvalidMaterial';
+  constructor(readonly issues: { path: string; message: string }[]) {
+    super(`invalid material: ${issues.map((i) => `${i.path}: ${i.message}`).join('; ')}`);
   }
 }
 
@@ -187,6 +198,83 @@ function mutable<T extends TenantTable>(
         .where(and(eq(t.id, id), eq(t.companyId, companyId)))
         .returning();
       return (rows[0] as Row<T> | undefined) ?? null;
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Material library (T121)
+// ---------------------------------------------------------------------------------------------
+
+export type MaterialRow = typeof materials.$inferSelect;
+
+function validMaterial(json: unknown): LibraryMaterial {
+  const parsed = libraryMaterialSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new InvalidMaterial(
+      parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+    );
+  }
+  return parsed.data;
+}
+
+function materialsRepo(db: Db, companyId: string) {
+  const own = (id: string) => and(eq(materials.id, id), eq(materials.companyId, companyId));
+  const get = async (id: string): Promise<MaterialRow | null> => {
+    const rows = await db.select().from(materials).where(own(id));
+    return rows[0] ?? null;
+  };
+  return {
+    /** Entries of the company, by name (Turkish collation is done by the caller). */
+    async list(): Promise<MaterialRow[]> {
+      return db
+        .select()
+        .from(materials)
+        .where(eq(materials.companyId, companyId))
+        .orderBy(asc(materials.name), asc(materials.createdAt));
+    },
+    get,
+    /** Validates with core and inserts; throws `InvalidMaterial`. */
+    async create(json: unknown): Promise<MaterialRow> {
+      const m = validMaterial(json !== null && typeof json === 'object' ? stripOwned(json) : json);
+      const rows = await db
+        .insert(materials)
+        .values({ ...m, companyId })
+        .returning();
+      return rows[0] as MaterialRow;
+    },
+    /**
+     * Merges `patch` onto the entry and validates the result; `null` when it does not exist in
+     * this company (nothing changes). Keys the helper owns (id, company, timestamps) are ignored.
+     */
+    async update(id: string, patch: unknown): Promise<MaterialRow | null> {
+      const current = await get(id);
+      if (!current) return null;
+      const { kind, name, thicknesses, tone, grain, sheetSizes } = current;
+      const changes = patch !== null && typeof patch === 'object' ? stripOwned(patch) : {};
+      const m = validMaterial({ kind, name, thicknesses, tone, grain, sheetSizes, ...changes });
+      const rows = await db
+        .update(materials)
+        .set({ ...m, updatedAt: new Date() })
+        .where(own(id))
+        .returning();
+      return rows[0] ?? null;
+    },
+    /** `false` when it does not exist in this company. Projects keep their stock (by value). */
+    async remove(id: string): Promise<boolean> {
+      const rows = await db.delete(materials).where(own(id)).returning({ id: materials.id });
+      return rows.length > 0;
+    },
+    /** Inserts the default library when the company has no entry yet; returns the count added. */
+    async seedDefaults(): Promise<number> {
+      const existing = await db
+        .select({ id: materials.id })
+        .from(materials)
+        .where(eq(materials.companyId, companyId))
+        .limit(1);
+      if (existing.length > 0) return 0;
+      await db.insert(materials).values(DEFAULT_LIBRARY.map((m) => ({ ...m, companyId })));
+      return DEFAULT_LIBRARY.length;
     },
   };
 }
@@ -979,7 +1067,7 @@ export function forCompany(db: Db, companyId: string) {
     machines: machinesRepo(db, companyId),
     machineProfileVersions: reader(db, companyId, machineProfileVersions),
     tools: mutable(db, companyId, tools),
-    materials: mutable(db, companyId, materials),
+    materials: materialsRepo(db, companyId),
     templates: templatesRepo(db, companyId),
     templateVersions: reader(db, companyId, templateVersions),
     projects: projectsRepo(db, companyId),

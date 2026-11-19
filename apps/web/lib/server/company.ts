@@ -55,6 +55,9 @@ async function openScope(): Promise<CompanyScope> {
   if (created) await seedDefaultProfile(scope);
   // Companies seeded before T020: replace an untouched old example by a new version (D-028).
   else await upgradeExampleProfile(scope);
+  // T121: a company without a material library gets the default entries (also companies made
+  // before T121). Checked once per server process; an emptied library is refilled on restart.
+  await scope.materials.seedDefaults();
   return scope;
 }
 

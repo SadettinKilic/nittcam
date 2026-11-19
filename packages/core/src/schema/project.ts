@@ -214,6 +214,11 @@ export const machineRefSchema = z.strictObject({
 
 export const stockSchema = z.strictObject({
   material: nonEmptyId,
+  /**
+   * Company library entry the stock was picked from (T121); display only: `material` (the kind)
+   * and the sizes below stay the source. Absent = typed by hand or picked before T121.
+   */
+  libraryId: nonEmptyId.max(64, { error: 'at most 64 characters' }).optional(),
   thickness: positiveMm,
   sheet: z.strictObject({
     width: positiveMm,

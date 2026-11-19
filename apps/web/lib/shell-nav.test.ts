@@ -26,6 +26,7 @@ describe('isNavActive', () => {
     expect(active('/projeler/123')).toEqual(['projects']);
     expect(active('/projeler/yeni')).toEqual(['create']);
     expect(active('/projeler/yeni/parcalar')).toEqual(['create']);
+    expect(active('/ayarlar/malzemeler')).toEqual(['settings']);
   });
 
   it('does not match look-alike prefixes', () => {
@@ -50,6 +51,13 @@ describe('breadcrumbs', () => {
     expect(breadcrumbs('/projeler/p1')).toEqual([
       { key: 'projects', href: '/projeler' },
       { key: 'project' },
+    ]);
+  });
+
+  it('gives Ayarlar → Malzemeler (T121)', () => {
+    expect(breadcrumbs('/ayarlar/malzemeler')).toEqual([
+      { key: 'settings', href: '/ayarlar/malzemeler' },
+      { key: 'materials' },
     ]);
   });
 

@@ -23,7 +23,9 @@ import { DrawingBoard } from '../editor/drawing-board';
 import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
-import { MachineFields, SheetPreview } from './machine-step';
+import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
+import { IssuesOkChip } from './issues-ok-chip';
+import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ValidationPanel } from './validation-panel';
 import {
@@ -371,6 +373,17 @@ function WizardSession({
   // The session needs the profile for validation; it is read from the latest state each render.
   const [machineId, setMachineId] = useState(init.project.machine.machineId);
   const [sheetGrainPreview, setSheetGrainPreview] = useState<number | null>(null);
+  // T121: the company material library for step 1 (empty until loaded or when it fails).
+  const [library, setLibrary] = useState<readonly MaterialItem[]>([]);
+  useEffect(() => {
+    let live = true;
+    void fetchMaterials().then((items) => {
+      if (live && items) setLibrary(items);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
   const detail = details[machineId] ?? null;
   const session = useProjectSession({
     initial: init,
@@ -537,21 +550,31 @@ function WizardSession({
             </p>
           </Callout>
         ) : (
-          <Panel>
+          <Panel
+            title={t.machine.cardTitle}
+            titleId="machine-card-title"
+            data-testid="machine-card"
+            action={
+              session.issues.length === 0 ? (
+                <IssuesOkChip label={messages.cutList.issueChip.ok} testId="machine-issue-chip" />
+              ) : undefined
+            }
+          >
             <MachineFields
               t={t.machine}
               materials={messages.materials}
               machinesLink={t.machinesLink}
-              onGrainPreview={setSheetGrainPreview}
               project={project}
               machines={machines}
+              library={library}
               detail={detail}
               issues={session.issues}
               run={session.run}
             />
           </Panel>
         )}
-        {validation}
+        {/* T252: no issues = the "Sorun yok" chip in the card header instead of the card. */}
+        {session.issues.length > 0 ? validation : null}
       </div>
     );
     right = (
@@ -560,6 +583,14 @@ function WizardSession({
         project={project}
         profile={profile}
         grainPreview={sheetGrainPreview}
+        footer={
+          <SheetGrain
+            t={t.machine}
+            project={project}
+            run={session.run}
+            onGrainPreview={setSheetGrainPreview}
+          />
+        }
       />
     );
   } else if (drawing) {

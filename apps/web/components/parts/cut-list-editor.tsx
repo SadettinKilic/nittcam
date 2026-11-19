@@ -34,7 +34,6 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  CircleCheck,
   ClipboardPaste,
   Copy,
   Download,
@@ -92,6 +91,7 @@ import {
 } from './cut-list-cells';
 import { BulkEditSheet } from './cut-list-bulk';
 import { PastePanel } from './paste-panel';
+import { IssuesOkChip } from '../wizard/issues-ok-chip';
 
 export type { Run } from './cut-list-cells';
 
@@ -1206,14 +1206,7 @@ export function CutListEditor({
                 {t.tableLabel}
               </h2>
               {problemCount === 0 ? (
-                <span
-                  data-testid="cut-list-issue-chip"
-                  data-count={0}
-                  className="inline-flex h-6 items-center gap-1 rounded-sm border border-success-border bg-success-subtle px-2 text-xs font-medium text-success-text"
-                >
-                  <CircleCheck aria-hidden className="size-3.5" />
-                  {t.issueChip.ok}
-                </span>
+                <IssuesOkChip label={t.issueChip.ok} testId="cut-list-issue-chip" />
               ) : (
                 <button
                   type="button"
