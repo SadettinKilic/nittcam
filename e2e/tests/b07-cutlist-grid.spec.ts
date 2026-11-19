@@ -255,6 +255,22 @@ test.describe('T246 feedback', () => {
     await expectNoA11yViolations(page, { exclude: ['[data-sonner-toaster]'] });
   });
 
+  test('full width only for Parçalar without issues: Dışa aktar keeps two columns at 1440 px', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/projeler/yeni?adim=export');
+    const aside = page.locator('#step-content > aside');
+    await expect(aside).toBeVisible();
+    const [left, right] = await page.evaluate(() => {
+      const kids = [...document.querySelectorAll('#step-content > *')];
+      return kids.slice(0, 2).map((k) => k.getBoundingClientRect().toJSON() as DOMRect);
+    });
+    // Side by side: same top, the main column starts right of the checklist.
+    expect(Math.abs((left?.top ?? 0) - (right?.top ?? -99))).toBeLessThan(2);
+    expect(right?.left ?? 0).toBeGreaterThan((left?.right ?? 0) - 1);
+  });
+
   test('the how-to sentence lives in the empty state and the import dialog', async ({ page }) => {
     await page.goto(URL);
     await expect(page.getByText(t.subtitle)).toHaveCount(1);

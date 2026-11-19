@@ -495,6 +495,7 @@ function WizardSession({
   let left: ReactNode = null;
   let right: ReactNode = null;
   let both: ReactNode = null;
+  let partsFullWidth = false;
   // Dizilim and Simülasyon are canvas-first workspaces that fill the viewport (T197).
   const drawing = step === 'parcalar' && partsView === 'drawing';
   const workspace = step === 'dizilim' || step === 'simulasyon' || drawing;
@@ -589,6 +590,7 @@ function WizardSession({
     // T246: no issues = no Uyarılar panel (a 'Sorun yok' chip in the table header); the table
     // takes the full width. With issues the panel returns on the left.
     if (session.issues.length === 0) {
+      partsFullWidth = true;
       both = editor;
     } else {
       left = (
@@ -826,7 +828,9 @@ function WizardSession({
         className={
           workspace
             ? 'min-w-0 lg:min-h-0 lg:flex-1'
-            : `grid min-w-0 items-start gap-5 ${both ? '' : GRID[step]}`
+            : // T246: the Parçalar step with no issues has no Uyarılar panel, so the table takes
+              // the full width. Every other step keeps its grid (Dışa aktar has two columns).
+              `grid min-w-0 items-start gap-5 ${partsFullWidth ? '' : GRID[step]}`
         }
       >
         {both ?? (
