@@ -145,6 +145,8 @@ export class AutosaveQueue {
   private savedGeneration = 0;
   private timer: unknown = null;
   private inFlight = false;
+  /** Resolves when the request in flight has come back (T264: `settle` waits for it). */
+  private running: Promise<void> | null = null;
   private again = false;
   private attempt = 0;
   private current: SaveState = 'idle';
@@ -208,6 +210,27 @@ export class AutosaveQueue {
     return this.save();
   }
 
+  /**
+   * Saves everything pending and waits until it is on the server, including a save already in
+   * flight (T264: leaving for the machine form must know the project's id). Resolves with the
+   * project id, or `null` when a new project could not be created (the unsent queue stays stored,
+   * so `/projeler/yeni` restores it). Never retries a failed save itself.
+   */
+  async settle(): Promise<string | null> {
+    for (let round = 0; round < 10; round += 1) {
+      this.cancelTimer();
+      if (this.running) {
+        await this.running;
+        continue;
+      }
+      if (this.disposed || this.current === 'conflict' || !this.dirty) break;
+      const before = this.attempt;
+      await this.save();
+      if (this.attempt > before) break; // failed; the regular retry timer takes over
+    }
+    return this.id;
+  }
+
   /** After the user resolved a conflict elsewhere (reload / copy): stop and forget the queue. */
   discard(): void {
     this.cancelTimer();
@@ -249,6 +272,8 @@ export class AutosaveQueue {
       return;
     }
     this.inFlight = true;
+    let finished = () => {};
+    this.running = new Promise<void>((resolve) => (finished = resolve));
     const sentCount = this.entries.length;
     const sentGeneration = this.generation;
     const wasNew = this.id === null;
@@ -267,6 +292,8 @@ export class AutosaveQueue {
       result = { ok: false, kind: 'network' };
     }
     this.inFlight = false;
+    this.running = null;
+    finished();
     if (this.disposed) return;
 
     if (result.ok) {

@@ -232,6 +232,13 @@ export const materialParamsSchema = z.strictObject({
    * drops the mark once the user edits the row. Optional; older profiles stay valid.
    */
   copiedFrom: materialKindSchema.optional(),
+  /**
+   * The set holds the form's generic starting values, added by the "Kesim ayarı ekle" fix flow
+   * (T265, D-045/D-046), and nobody has confirmed them for this material. Such a set does not count
+   * as configured: validation and the toolpath report `CUTTING_PARAMS_UNVERIFIED` until the user
+   * confirms or edits the row (the form drops the mark). Optional; older profiles stay valid.
+   */
+  unverified: z.literal(true).optional(),
 });
 
 // ---------------------------------------------------------------------------

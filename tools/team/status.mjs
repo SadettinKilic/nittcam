@@ -8,6 +8,7 @@
 //   node tools/team/status.mjs ask "<question>" ["option" ...]  |  answered <Qxxx> "<answer>"
 //   node tools/team/status.mjs alert "<message>" | alert off   ("PC'ye bak" popup)
 //   node tools/team/status.mjs call   (owner wrote to the PO: desk phone rings on the dashboard, hangs up 10 s after the last call; silent on any error)
+//   node tools/team/status.mjs role <dev2|dev3> <dev|tester|cto> ["why"]   (D-052: role of a flexible seat, shown on the dashboard)
 //   node tools/team/status.mjs print
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -96,12 +97,23 @@ if (AGENTS.includes(cmd)) {
     s.log.unshift({ t: now, who: 'po', state: 'blocked', task: '', msg: "PC'ye bak: " + msg.slice(0, 80) });
     s.log = s.log.slice(0, 60);
   }
+} else if (cmd === 'role') {
+  // role <dev2|dev3> <dev|tester|cto> ["why"]  -> flexible seat role (D-052)
+  const [key, role, why = ''] = rest;
+  const ROLES = ['dev', 'tester', 'cto'];
+  if (!['dev2', 'dev3'].includes(key) || !ROLES.includes(role)) die('usage: role <dev2|dev3> <dev|tester|cto> ["why"]');
+  // kept in a top-level "seats" map: older copies of this script (in agents' worktrees) rewrite s.agents[key] but keep unknown top-level keys
+  s.seats = s.seats || {};
+  s.seats[key] = { role, why, since: now };
+  const label = { dev: 'geliştirici', tester: 'tester', cto: 'CTO' }[role];
+  s.log.unshift({ t: now, who: 'po', state: 'planning', task: key, msg: `Esnek koltuk ${key} → ${label}${why ? ': ' + why : ''}` });
+  s.log = s.log.slice(0, 60);
 } else if (cmd === 'milestone') {
   s.milestone = rest[0] || s.milestone;
 } else if (cmd === 'print') {
   process.stdout.write(JSON.stringify(s, null, 2) + '\n'); process.exit(0);
 } else {
-  die('usage: status.mjs <po|dev|dev2|dev3|tester|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | milestone "<name>" | call | print');
+  die('usage: status.mjs <po|dev|dev2|dev3|tester|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | role <dev2|dev3> <dev|tester|cto> ["why"] | milestone "<name>" | call | print');
 }
 
 s.updated = now;

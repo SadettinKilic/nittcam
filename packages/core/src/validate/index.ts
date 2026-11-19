@@ -27,6 +27,7 @@ export type ValidationCode =
   | 'LOCKED_PLACEMENT_GRAIN'
   | 'PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
+  | 'CUTTING_PARAMS_UNVERIFIED'
   | 'SHEET_LARGER_THAN_TABLE'
   | 'HOLE_OUTSIDE_PART'
   | 'INNER_CONTOUR_INVALID'
@@ -296,6 +297,24 @@ export const noCuttingParams: ValidationRule = (project, context) => {
 };
 
 /**
+ * (e2) The stock's parameter set holds unconfirmed starting values (`unverified`, T265): the fix
+ * flow added it and the user has not confirmed or edited it, so it does not count as configured.
+ * An error, like a missing set; the toolpath refuses it too. Skipped without a profile.
+ */
+export const unverifiedCuttingParams: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || !findMaterialParams(machine, project.stock)?.unverified) return [];
+  return [
+    {
+      code: 'CUTTING_PARAMS_UNVERIFIED',
+      severity: 'error',
+      path: 'stock.material',
+      message: `the cutting parameters for ${project.stock.material} ${mm(project.stock.thickness)} mm are unconfirmed starting values`,
+    },
+  ];
+};
+
+/**
  * (f) The sheet does not fit the machine table at its place (`origin.sheetOffset`), spec §3.6
  * "Plaka tablaya sığmıyorsa uyarı". A warning here; the automatic G-code check blocks the export
  * (`SHEET_OUTSIDE_TABLE`, D-027). EPS slack. Skipped without a profile.
@@ -387,6 +406,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   lockedPlacementInvalid,
   placementGrain,
   noCuttingParams,
+  unverifiedCuttingParams,
   sheetLargerThanTable,
   holeInsidePart,
   innerContourRules,

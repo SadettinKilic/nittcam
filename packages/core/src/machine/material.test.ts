@@ -6,6 +6,7 @@ import type { Project } from '../schema';
 import {
   exampleMachineProfile,
   findMaterialParams,
+  machineProfileSchema,
   materialHasGrain,
   materialKindOf,
   MATERIAL_KINDS,
@@ -154,5 +155,39 @@ describe('NO_CUTTING_PARAMS and SHEET_LARGER_THAN_TABLE rules', () => {
     expect(ok.errors.map((e) => e.code)).not.toContain('NO_CUTTING_PARAMS');
     const missing = buildToolpath(project('pvc'), machine);
     expect(missing.errors.map((e) => e.code)).toContain('NO_CUTTING_PARAMS');
+  });
+});
+
+describe('CUTTING_PARAMS_UNVERIFIED (T265)', () => {
+  const base = exampleMachineProfile();
+  const mdf = base.materials.find((m) => m.material === 'mdf' && m.thickness === 18);
+  const marked = {
+    ...base,
+    materials: base.materials.map((m) => (m === mdf ? { ...m, unverified: true as const } : m)),
+  };
+
+  it('the schema keeps the mark and older profiles stay valid', () => {
+    expect(machineProfileSchema.parse(marked).materials.some((m) => m.unverified)).toBe(true);
+    expect(machineProfileSchema.parse(base).materials.every((m) => !m.unverified)).toBe(true);
+  });
+
+  it('validation reports an error for an unconfirmed set, none for a confirmed one', () => {
+    expect(validateProject(project('MDF'), { machine: marked })).toContainEqual(
+      expect.objectContaining({ code: 'CUTTING_PARAMS_UNVERIFIED', severity: 'error' }),
+    );
+    const codes = validateProject(project('MDF'), { machine: base }).map((i) => i.code);
+    expect(codes).not.toContain('CUTTING_PARAMS_UNVERIFIED');
+    // a missing set stays NO_CUTTING_PARAMS only
+    const pvc = validateProject(project('pvc'), { machine: marked }).map((i) => i.code);
+    expect(pvc).toContain('NO_CUTTING_PARAMS');
+    expect(pvc).not.toContain('CUTTING_PARAMS_UNVERIFIED');
+  });
+
+  it('the toolpath refuses unconfirmed starting values', () => {
+    const r = buildToolpath(project('MDF'), marked);
+    expect(r.errors.map((e) => e.code)).toEqual(['CUTTING_PARAMS_UNVERIFIED']);
+    expect(buildToolpath(project('MDF'), base).errors.map((e) => e.code)).not.toContain(
+      'CUTTING_PARAMS_UNVERIFIED',
+    );
   });
 });

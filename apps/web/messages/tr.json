@@ -254,6 +254,8 @@
     "form": {
       "createTitle": "Yeni makine",
       "copiedFrom": "{from} {thickness} mm ayarından kopyalandı; kendi makinenizde doğrulayın.",
+      "unverified": "Başlangıç değerleri; bu malzeme için doğrulanmadı. Kendi makinenizde doğrulayın.",
+      "unverifiedConfirm": "Değerleri doğruladım",
       "editTitle": "Makineyi düzenle",
       "exampleNote": "Bu bir örnek profildir. Değerleri kendi makinenize göre kontrol edin; üretimden önce air cut ve test kesimi yapın.",
       "versionNote": "Her kayıt yeni bir profil sürümü oluşturur. Makine, takım veya post sürümü değişirse doğrulama yeniden gerekir.",
@@ -950,6 +952,7 @@
       "M6_WITHOUT_CHANGER": "Otomatik takım değiştiricisi olmayan makinede M6 yazılmış.",
       "TOOL_NOT_IN_PROFILE": "Gereken takım makine profilinde yok.",
       "NO_CUTTING_PARAMS": "Bu malzeme ve kalınlık için makine profilinde kesim parametresi yok (Makineler → Malzeme parametreleri).",
+      "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı başlangıç değerlerinde ve doğrulanmadı (Makineler → Malzeme parametreleri).",
       "POST_MISMATCH": "Makine profilindeki post sürümü yüklü post ile uyuşmuyor.",
       "NO_PLACEMENTS": "Dizilimde yerleşmiş parça yok.",
       "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
@@ -1211,7 +1214,8 @@
       },
       "error": "hata var",
       "errors": {
-        "noParams": "Bu malzeme ve kalınlık için kesim ayarı yok; G-code üretilemez."
+        "noParams": "Bu malzeme ve kalınlık için kesim ayarı yok; G-code üretilemez.",
+        "unverifiedParams": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı; G-code üretilemez."
       },
       "nextStep": "Sonraki: {name}",
       "counter": "{n} / {total}"
@@ -1270,6 +1274,8 @@
       "tableWarning": "Plaka tablaya sığmıyor: {w} × {h} mm plaka, {tw} × {td} mm tabla. Dışa aktarma kontrolü bu plakayı durdurur.",
       "noParams": "Bu makinede {material} {thickness} mm için kesim ayarı (besleme, devir, paso) yok. Bu haliyle G-code üretilemez: kesim ayarını ekleyin ya da başka bir malzeme veya kalınlık seçin.",
       "addParams": "Kesim ayarı ekle",
+      "unverifiedParams": "{material} {thickness} mm kesim ayarı başlangıç değerleriyle kaydedildi ve doğrulanmadı. Bu haliyle G-code üretilemez: değerleri makinenizde doğrulayıp onaylayın.",
+      "verifyParams": "Kesim ayarını doğrula",
       "paramsOk": "Kesim ayarı: T{tool} takım, {feed} besleme, {rpm}, {step} paso.",
       "units": {
         "mm": "mm",
@@ -1417,6 +1423,7 @@
         "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
         "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
         "NO_CUTTING_PARAMS": "Makinede bu malzeme ve kalınlık için kesim ayarı yok.",
+        "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı.",
         "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
         "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
@@ -2006,6 +2013,8 @@
     "paramsNoMachine": "Makine yok",
     "statusOk": "Tamam",
     "statusMissing": "Ayar yok",
+    "statusUnverified": "Doğrulanmadı",
+    "paramsUnverified": "{machine}: {list} mm ayarı doğrulanmadı",
     "edit": "Düzenle",
     "editNamed": "{name} malzemesini düzenle",
     "remove": "Sil",
