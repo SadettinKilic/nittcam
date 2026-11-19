@@ -72,6 +72,16 @@ test.describe('T118 light rows: no regressions', () => {
     await expect(cell(page, 41, t.columns.w)).toHaveValue('321');
   });
 
+  test('40 ArrowDowns with no delay land on row 41 (a key during a pending move goes on from its target)', async ({
+    page,
+  }) => {
+    await cell(page, 1, t.columns.w).click();
+    for (let i = 0; i < 40; i++) await page.keyboard.press('ArrowDown');
+    await expect
+      .poll(() => activeLabel(page))
+      .toBe(fill(t.cellLabel, { n: 41, column: t.columns.w }));
+  });
+
   test('ArrowDown pressed while a wheel scroll is still running lands in the next row', async ({
     page,
   }) => {
@@ -145,8 +155,7 @@ test.describe('T118 light rows: no regressions', () => {
   test('typed but not committed, then the row scrolls out and back: the text is kept', async ({
     page,
   }) => {
-    // Known, not a B7 regression: an uncommitted edit is dropped when its row unmounts.
-    test.fail();
+    // Fixed in B7 round 3: a cell commits its typed text when its row unmounts.
     const input = cell(page, 2, t.columns.name);
     await input.click();
     await input.fill('Yarım');

@@ -948,16 +948,31 @@ export function CutListEditor({
   }, [parts, selection]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
+  // The cell a keyboard move is still heading for (its row is mounting). A key that arrives
+  // meanwhile moves on from there, not from the cell that still has focus, so 40 fast ArrowDowns
+  // land on row 41 at any key rate (B7 r2).
+  const pendingFocus = useRef<{ row: number; col: string } | null>(null);
+
   /** Focuses a cell, scrolling its row into view first when it is not rendered yet. */
   function focusCell(row: number, col: string, tries = 3) {
     const el = document.getElementById(cellId(row, col));
     if (el) {
+      pendingFocus.current = null;
       el.focus();
       if (el instanceof HTMLInputElement) el.select();
       return;
     }
+    if (tries === 0) {
+      pendingFocus.current = null;
+      return;
+    }
+    const target = { row, col };
+    pendingFocus.current = target;
     scrollToRow.current?.(row);
-    if (tries > 0) requestAnimationFrame(() => focusCell(row, col, tries - 1));
+    requestAnimationFrame(() => {
+      // A newer move took over: it has its own retries.
+      if (pendingFocus.current === target) focusCell(row, col, tries - 1);
+    });
   }
 
   useEffect(() => {
@@ -981,7 +996,8 @@ export function CutListEditor({
   }
 
   const navigate: Navigate = (row: number, col: string, dir: NavDirection, enter = false) => {
-    const target = navTarget(row, col, dir, parts.length, cols, enter);
+    const from = pendingFocus.current ?? { row, col };
+    const target = navTarget(from.row, from.col, dir, parts.length, cols, enter);
     if (!target) return;
     if ('append' in target) addRow(target.col === 'actions' ? 'name' : target.col);
     else focusCell(target.row, target.col);
