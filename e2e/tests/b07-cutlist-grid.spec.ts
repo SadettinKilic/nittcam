@@ -404,7 +404,13 @@ test.describe('T246 feedback', () => {
     await page.goto(URL);
     await expect(page.getByText(t.subtitle)).toHaveCount(1);
     await page.getByRole('button', { name: t.pasteOpen }).click();
-    await expect(page.locator('#paste-panel').getByText(t.subtitle)).toBeVisible();
+    // T250 (T248 import bullet): one-sentence intro; the how-to is in the info popover.
+    const panel = page.locator('#paste-panel');
+    await expect(panel.getByText(t.paste.intro)).toBeVisible();
+    await expect(page.getByText(t.subtitle)).toHaveCount(1);
+    await panel.getByRole('button', { name: t.paste.about }).click();
+    await expect(page.getByRole('dialog').getByText(t.subtitle)).toBeVisible();
+    await expect(page.getByRole('dialog').getByText(t.paste.help)).toBeVisible();
   });
 });
 

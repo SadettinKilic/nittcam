@@ -121,9 +121,31 @@ export type ExportApiError =
   | { error: 'file_missing' }
   | { error: 'server_error' };
 
-/** The short form of a hash shown in the UI. */
+/** The short form of a hash shown in the UI (T250: first 8 characters; the full hash is one
+ * tooltip / copy away). */
 export function shortHash(hash: string): string {
-  return hash.slice(0, 12);
+  return hash.slice(0, 8);
+}
+
+const sizeFormat = new Intl.NumberFormat('tr-TR', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/** A file size the Turkish way (T250): "512 B", "20,1 KB", "1,5 MB" (SI units, 1 KB = 1000 B). */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1000) return `${Math.max(0, Math.round(bytes))} B`;
+  if (bytes < 999_950) return `${sizeFormat.format(bytes / 1000)} KB`;
+  return `${sizeFormat.format(bytes / 1_000_000)} MB`;
+}
+
+/**
+ * Splits a file name for middle truncation (T250): the head may be cut with an ellipsis, the tail
+ * (the last `tail` characters, so the sheet number and extension) always stays visible.
+ */
+export function splitFileName(name: string, tail = 12): [string, string] {
+  if (name.length <= tail) return ['', name];
+  return [name.slice(0, name.length - tail), name.slice(name.length - tail)];
 }
 
 /** Download URL of one stored file. */
