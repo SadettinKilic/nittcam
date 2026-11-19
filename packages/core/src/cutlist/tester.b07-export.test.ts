@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Part } from '../schema';
 import { cutListToCsv } from './export';
@@ -70,5 +71,73 @@ describe('cutListToCsv edge cases (B7 tester)', () => {
       .filter(Boolean)
       .flatMap((l) => l.split(';'));
     for (const c of cells) expect(c.replace(/^"/, '')).not.toMatch(/^[=+@]/);
+  });
+
+  // Round 2: injection variants and the escape / unescape round trip.
+  const FORMULA = ['=1+1', '+1', '-2+3', '@SUM(A1)', "'=1", "''+x", "=cmd|' /C calc'!A0"];
+
+  /** The text each cell of the data rows starts with (quotes removed). */
+  function cellStarts(text: string): string[] {
+    const crlf = String.fromCharCode(13, 10);
+    const body = text.replace(String.fromCharCode(0xfeff), '').split(crlf).slice(1).join(crlf);
+    const out: string[] = [];
+    let i = 0;
+    while (i < body.length) {
+      if (body[i] === '"') {
+        let j = i + 1;
+        while (j < body.length && !(body[j] === '"' && body[j + 1] !== '"'))
+          j += body[j] === '"' ? 2 : 1;
+        out.push(body.slice(i + 1, j));
+        i = j + 2;
+      } else {
+        const m = /^[^;\r\n]*/.exec(body.slice(i))?.[0] ?? '';
+        out.push(m);
+        i += m.length + 1;
+        if (body[i - 1] === '\r') i++;
+      }
+    }
+    return out;
+  }
+
+  it('every formula start (= + - @ tab CR, after apostrophes too) is escaped in name and note', () => {
+    const all = [...FORMULA, '\t=1', '\r=1'];
+    const text = cutListToCsv(all.map((f, i) => rect(`r${i}`, f, { note: f }))).text;
+    const starts = cellStarts(text);
+    expect(starts.length).toBeGreaterThan(all.length * 2);
+    for (const c of starts) expect(c, JSON.stringify(c)).not.toMatch(/^[=+\-@\t\r]/);
+  });
+
+  it('formula-like names and notes come back unchanged after export → import', () => {
+    const parts = FORMULA.map((f, i) => rect(`r${i}`, f, { note: f }));
+    expect(names(cutListToCsv(parts).text)).toEqual(parts.map((x) => [x.name, x.note]));
+  });
+
+  it('plain text and a plain leading apostrophe are written and read unchanged', () => {
+    const parts = [
+      rect('a', "'Ali'nin rafı"),
+      rect('b', '12 raf'),
+      rect('c', 'a=b', { note: 'x-1' }),
+    ];
+    const text = cutListToCsv(parts).text;
+    expect(text).not.toContain("''Ali");
+    expect(names(text)).toEqual([
+      ["'Ali'nin rafı", ''],
+      ['12 raf', ''],
+      ['a=b', 'x-1'],
+    ]);
+  });
+
+  it('property: a name / note with a formula start round-trips and is never written raw', () => {
+    const txt = fc
+      .tuple(fc.constantFrom('=', '+', '-', '@', "'=", "''-"), fc.string({ maxLength: 12 }))
+      .map(([a, b]) => (a + [...b].filter((ch) => ch.charCodeAt(0) >= 32).join('')).trimEnd());
+    fc.assert(
+      fc.property(txt, txt, (name, note) => {
+        const csv = cutListToCsv([rect('a', name, { note })]).text;
+        for (const c of cellStarts(csv)) expect(c).not.toMatch(/^[=+\-@]/);
+        expect(names(csv)).toEqual([[name, note]]);
+      }),
+      { numRuns: 300 },
+    );
   });
 });
