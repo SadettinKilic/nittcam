@@ -539,3 +539,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - In "off" the PO runs the integration round itself with the DevOps procedure (D-054: `integration/<n>`, one commit per batch, ONE full check, `ci:gate`, rebase merge).
 - Tester model is Sonnet (owner 2026-11-19); dev and PO stay Opus. CTO review uses Opus when Fable is not available.
 - PO decisions while the owner was away (2026-11-19): a groove narrower than the tool is an error (T275); tool-changer mode "none" shows no manual-change confirmation; B22 auto-nest is skipped while redo is possible.
+
+## D-058 Tabs on arcs for all-arc parts (2026-11-20, PO; T272, owner to confirm)
+- Amends spec §6.3 ("Tab ... yay üstüne konmaz") and D-049: outer-contour tabs stay on straight edges when any fits; only when none fits (disc, letter O) a tab may sit inside one arc whose radius is larger than the tool radius, centred on the arc, length measured along it, never on a corner or join.
+- Ready-template hole values (T150) are placeholders `verified: false`, "üretici verisiyle doğrulanacak" (§14.2); handle holes Ø6 (Ø5 is smaller than the standard 6 mm tool). No automatic hinge count by door height yet.
