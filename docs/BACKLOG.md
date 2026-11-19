@@ -516,8 +516,9 @@ Spec: §4.7 (v3 note) · Depends: T119
 Acceptance:
 - [ ] pure core `cabinetParts(params)`: W, H, D, thickness, back panel (none/inset/overlay, thickness), fixed shelves count, doors (0/1/2, gap), plinth height → named rect parts with grain (sides vertical) and edge band defaults; no joinery
 - [ ] "Dolap ekle" dialog with live mini preview (2D front view) → `importCutList` as one undo step; parts tagged with a group name
+- [ ] no lock-in (owner, D-041): every generated part is a plain cut-list row; it can be deleted, copied/duplicated and edited (dims, qty, grain, bands, name) one by one; deleting or editing one part never changes the others; the group tag is only a label (editable, removable), never a lock; no hidden link back to the generator
 - [ ] unit + property tests (dimensions add up, all parts positive, door gaps)
-Tester focus: generated dimensions vs hand calculation for 3 cabinets; undo removes the whole cabinet; dialog keyboard flow.
+Tester focus: generated dimensions vs hand calculation for 3 cabinets; undo removes the whole cabinet; dialog keyboard flow; generate → delete one part, copy one, edit one → the rest unchanged and nesting/export work.
 
 ### T123 Cut list organisation: groups, search, sort, filter   [status: todo]
 Spec: §4.1 · Depends: T119

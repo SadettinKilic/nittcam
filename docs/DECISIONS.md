@@ -429,3 +429,7 @@ Review #3 found the canvases still read as generic blue boxes on grey, two diffe
 - **Board fit:** with the sheet outline on, fit frames the sheet and the parts together (amends the fit line of T243; the outline stays view-only, D-039).
 - **Step name:** "Önizleme / simülasyon" stays (spec §3.7); phones show the short label "Simülasyon" in the header only.
 - Decided by the reviewer; the owner may revisit any of them. Tasks: B8a (T248–T251), riders T252–T254. Review: `docs/reviews/2026-11-19-fable-design-review-3.md`.
+
+## D-041 Cabinet generator seeds parts, never locks them (2026-11-19, owner)
+- T122 stays in scope (owner approved). Goal: ease of use without losing flexibility.
+- The generator only seeds parts. Each generated part is an ordinary cut-list row: delete, copy, edit one by one; the group tag is a label, not a lock; no hidden link back to the generator. One undo removes the whole generated set.
