@@ -271,7 +271,11 @@ describe('POST /api/projects/:id/export', () => {
     expect(e2.violations.every((v) => v.severity === 'error' && v.message.length > 0)).toBe(true);
 
     for (const d of [d1, d2]) expect(await scope.exports.listForProject(d.id)).toEqual([]);
-    expect(await companyStorage(scope.companyId).list('exports/')).toEqual(before);
+    // Only this test's files: export.tester.test.ts writes into the same storage in parallel.
+    const added = (await companyStorage(scope.companyId).list('exports/')).filter(
+      (k) => !before.includes(k) && /\/(Akrilik|Dev_plaka)_/.test(k),
+    );
+    expect(added).toEqual([]);
   });
 
   it('a locked copy its grain does not allow → 422 LOCKED_PLACEMENT_GRAIN, nothing stored', async () => {
