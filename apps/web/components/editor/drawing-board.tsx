@@ -5,6 +5,7 @@ import {
   boardParts,
   arcOf,
   bulgeFromSagitta,
+  circleOutline,
   nextPartName,
   segmentMidpoint,
   snap,
@@ -16,6 +17,7 @@ import {
 import { Button, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
   Circle,
+  CircleDot,
   Grid3x3,
   Hand,
   List,
@@ -60,6 +62,7 @@ import {
 import { claimPageKeys } from '../../lib/shortcuts';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
+import { addHoleParams, liveDiameter, type HoleDraft } from '../../lib/editor/hole-tool';
 import { miniBarRailClear } from '../../lib/editor/mini-bar';
 import {
   SNAP_TOGGLES,
@@ -127,7 +130,7 @@ function typing(target: EventTarget | null): boolean {
 }
 
 /** Plain keys the board owns while open (global shortcuts skip them). */
-const BOARD_KEYS = ['v', 'h', 'r', 'c', 'l', 'a', 'f', '+', '=', '-'] as const;
+const BOARD_KEYS = ['v', 'h', 'r', 'c', 'l', 'a', 'o', 'f', '+', '=', '-'] as const;
 
 /** One pointer gesture on the canvas. */
 type Gesture =
@@ -163,6 +166,7 @@ export function DrawingBoard({
   onToList,
   viewSwitch,
   toolDiameter,
+  holeTool,
 }: {
   t: T;
   project: Project;
@@ -170,6 +174,8 @@ export function DrawingBoard({
   onToList: () => void;
   /** Cutting tool diameter of the selected machine, mm (inner-corner rule, dogbone; T131). */
   toolDiameter?: number;
+  /** Tool of a newly drawn hole (T138): the stock material set's tool, else the cutting tool. */
+  holeTool?: { number: number; diameter: number };
   /** Liste / Çizim switch placed in the canvas toolbar band (below 1024 px, T240). */
   viewSwitch?: ReactNode;
 }) {
@@ -240,6 +246,29 @@ export function DrawingBoard({
   const [drawAt, setDrawAt] = useState<Pt | null>(null);
   const [lock, setLock] = useState(false);
   const docked = useMediaQuery('(max-width: 639px)', false);
+  // Hole tool (T138): first click sets the centre on a part, the diameter follows the cursor,
+  // the second click adds the hole (one `addHole`).
+  const holeOn = state.tool === 'hole';
+  const [holeDraft, setHoleDraft] = useState<HoleDraft | null>(null);
+  const holeToolDia = holeTool?.diameter ?? toolDiameter ?? 0;
+  const holeD = holeDraft && drawAt ? liveDiameter(holeDraft.c, drawAt, holeToolDia) : null;
+  const holeView: DraftView | null =
+    holeDraft && holeD !== null
+      ? {
+          vertices: circleOutline(holeD / 2).map((v) => ({
+            ...v,
+            x: v.x + holeDraft.c.x - holeD / 2,
+            y: v.y + holeDraft.c.y - holeD / 2,
+          })),
+          closed: true,
+          rubber: null,
+          nodes: [],
+          closing: false,
+          open: false,
+          centre: holeDraft.c,
+          live: {},
+        }
+      : null;
   const fields = drawTool ? fieldsFor(drawTool, draft) : [];
   const typedValues: Typed = {};
   fields.forEach((f, i) => {
@@ -422,6 +451,7 @@ export function DrawingBoard({
   /** Switching tools ends the shape in progress; line ↔ arc keeps the path (one shape, two tools). */
   const setTool = useCallback((tool: EditorTool) => {
     dispatch({ type: 'tool', tool });
+    setHoleDraft(null);
     setTyped(NO_TYPED);
     setSnapMark(null);
     setDraft((d) =>
@@ -528,6 +558,20 @@ export function DrawingBoard({
     return () => window.removeEventListener('keydown', onKey, true);
   });
 
+  // Hole tool: Esc drops the centre in progress, a second Esc returns to Seç.
+  useEffect(() => {
+    if (!holeOn) return;
+    function onKey(e: KeyboardEvent) {
+      if (typing(e.target) || e.key !== 'Escape') return;
+      if (holeDraft) setHoleDraft(null);
+      else setTool('select');
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  });
+
   // Board keys (not while typing): V select, H pan, F fit, +/- zoom, Esc clears, Space pans.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -543,6 +587,7 @@ export function DrawingBoard({
       else if (k === 'c' && !e.shiftKey) setTool('circle');
       else if (k === 'l' && !e.shiftKey) setTool('line');
       else if (k === 'a' && !e.shiftKey) setTool('arc');
+      else if (k === 'o' && !e.shiftKey) setTool('hole');
       else if (k === 'f') fit();
       else if (k === '+' || k === '=') zoomBy(1.25);
       else if (k === '-') zoomBy(1 / 1.25);
@@ -602,6 +647,25 @@ export function DrawingBoard({
       return;
     }
     if (e.button !== 0) return;
+    if (holeOn) {
+      const { point } = drawPoint(w, e.altKey);
+      setDrawAt(point);
+      if (!holeDraft) {
+        const id = hitPart(parts, point, 0);
+        if (id) setHoleDraft({ partId: id, c: point });
+        else notify.error(t.holeRefused);
+        return;
+      }
+      const params = addHoleParams(
+        project,
+        holeDraft,
+        liveDiameter(holeDraft.c, point, holeToolDia),
+        holeTool?.number ?? 1,
+      );
+      if (!params || !run('addHole', params)) notify.error(t.holeRefused);
+      setHoleDraft(null);
+      return;
+    }
     if (drawTool) {
       // Rectangle and circle start on press (drag or click-click); paths add points on release.
       const before = draft;
@@ -700,7 +764,7 @@ export function DrawingBoard({
     setCursor(w);
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, s);
     const g = gesture.current;
-    if (drawTool && (!g || g.kind === 'draw')) {
+    if ((drawTool && (!g || g.kind === 'draw')) || (holeOn && !g)) {
       const r = drawPoint(w, e.altKey);
       setDrawAt(r.point);
       setLock(e.shiftKey);
@@ -999,6 +1063,7 @@ export function DrawingBoard({
         {railTool('circle', t.tools.circle, 'C', <Circle aria-hidden />)}
         {railTool('line', t.tools.line, 'L', <PenLine aria-hidden />)}
         {railTool('arc', t.tools.arc, 'A', <Spline aria-hidden />)}
+        {railTool('hole', t.tools.hole, 'O', <CircleDot aria-hidden />)}
       </div>
       {viewSwitch ? (
         <div
@@ -1199,8 +1264,8 @@ export function DrawingBoard({
                 : null
             }
             colors={colors}
-            draft={bendView ?? draftView}
-            draftLabel={bendView ? null : draftLabel}
+            draft={bendView ?? holeView ?? draftView}
+            draftLabel={bendView ? null : holeD !== null ? `Ø ${formatMm(holeD)}` : draftLabel}
             handles={bendHandles.map((h) => h.at)}
             corners={vertexHandles}
             grains={grains}
@@ -1264,9 +1329,11 @@ export function DrawingBoard({
           hint={
             bend
               ? t.draw.hints.bend
-              : drawTool
-                ? t.draw.hints[hintFor(drawTool, draft, draftView)]
-                : null
+              : holeOn
+                ? t.holeHint
+                : drawTool
+                  ? t.draw.hints[hintFor(drawTool, draft, draftView)]
+                  : null
           }
           snapName={draftView?.closing ? t.draw.close : snapMark ? t.snap[snapMark.kind] : null}
         />
