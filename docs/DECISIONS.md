@@ -527,3 +527,15 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - DevOps integrates when 2 PRs are ready, or when 1 PR has waited ~30 min with no other PR close, or at once for a safety fix. Docs-only PRs run nothing and the PO may merge them directly.
 - CTO reviews every 2 integrated batches as before (D-047 triage); between reviews the CTO is idle. The dashboard shows the six members; in "off" only PO, Dev 1 and Tester.
 - **Amendment (2026-11-19, PO):** on `integration/<n>` each batch is one commit (`git merge --squash` + the batch PR title), the BACKLOG status update and the CI baseline commit stay separate, and the integration PR lands with a **rebase merge**, so main keeps one revertable commit per batch. Pushes to main run only the fast checks; the full check runs once per round on `integration/<n>`, whose tree main then gets unchanged.
+
+## D-055 Nesting options before offcuts (2026-11-19, PO)
+- `nesting.rotation` is `free | none`; there is no offcut toggle before T168 adds offcuts.
+
+## D-056 Multiple sheet sizes (2026-11-19, PO)
+- Additive schema: the single-size stock stays valid; a library sheet has a quantity; `sheetSizeOf(project, sheet)` is the one lookup for a sheet's size in nesting, toolpath, post, check and simulation.
+- Mixed sizes: `better()` compares total sheet AREA first, then waste. Every sheet carries `size` when ≥ 2 sizes are used. Single-size output stays byte-identical.
+
+## D-057 "paralellik off" without DevOps (2026-11-19, owner)
+- In "off" the PO runs the integration round itself with the DevOps procedure (D-054: `integration/<n>`, one commit per batch, ONE full check, `ci:gate`, rebase merge).
+- Tester model is Sonnet (owner 2026-11-19); dev and PO stay Opus. CTO review uses Opus when Fable is not available.
+- PO decisions while the owner was away (2026-11-19): a groove narrower than the tool is an error (T275); tool-changer mode "none" shows no manual-change confirmation; B22 auto-nest is skipped while redo is possible.

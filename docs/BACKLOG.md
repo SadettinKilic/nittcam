@@ -876,7 +876,7 @@ Tester focus: safety review; pocket depth vs Z reference both modes (table / mat
 
 Runs before B18. Review and full evidence: `docs/reviews/2026-11-19-cto-design-review-7.md` ("Şimdi düzelt" A, B, C).
 
-### T274 Multi-tool program: checklist asks for every tool, manual change reminds to re-zero Z (must-fix: safety)   [status: todo]
+### T274 Multi-tool program: checklist asks for every tool, manual change reminds to re-zero Z (must-fix: safety)   [status: done]
 Spec: §7.2, §3.7, §6.4 · Depends: T139, T021 · Decision: D-050, D-051
 Found: door panel NC runs T2 → T3 → T2 (two manual changes); the profile has no tool length offset, yet neither the pause message nor the export checklist says to re-zero Z; the checklist asks only "Takım doğru mu? (T2 Ø8 mm)" (`apps/web/lib/server/exports.ts`, `checklistOf`).
 Acceptance:
@@ -888,7 +888,7 @@ Acceptance:
 - [ ] if over half a day: checklist now, comment + golden as a follow-up task
 Tester focus: safety review; a 1-tool and a 3-tool program; profile with and without manual change.
 
-### T275 Hole errors are caught where the hole is drawn (must-fix: late, unnamed block)   [status: todo]
+### T275 Hole errors are caught where the hole is drawn (must-fix: late, unnamed block)   [status: done]
 Spec: §4.5, §3.7 · Depends: T138, T270 · Decision: D-045, D-050
 Found: a Ø5 hole with the Ø8 tool, a tool number the machine does not have (T9) and blind depth 18 / 30 are accepted silently on the board; Simülasyon blocks with "Tüm program · Delik çapı takım çapından küçük." four times, linking only to "Makineler"; Parçalar shows as complete.
 Acceptance:
@@ -899,7 +899,7 @@ Acceptance:
 - [ ] D-050, thresholds and golden files unchanged
 Tester focus: each of the four errors; link target and selected part; deleting/fixing the hole clears the error everywhere; 1440 and 1024; axe.
 
-### T276 A hole lands where it is clicked: a centre near the edge is not refused (must-fix: dead-end flow)   [status: todo]
+### T276 A hole lands where it is clicked: a centre near the edge is not refused (must-fix: dead-end flow)   [status: done]
 Spec: §4.2, §4.5 · Depends: T138, T126
 Found: at %18 the grid is 100 mm; every centre closer than 50 mm to an edge snaps onto the edge and is refused with "Delik buraya eklenemedi"; a hinge cup (22,5 mm from the edge) cannot be placed with the mouse.
 Acceptance:
@@ -910,7 +910,7 @@ Acceptance:
 - [ ] if over half a day: the first two items
 Tester focus: hinge cup at 22,5 mm at %18 and %100; typed diameter; refusal texts.
 
-### T277 Rider: open lines stay inside their part; DXF on-line layers connect to T142   [status: todo]
+### T277 Rider: open lines stay inside their part; DXF on-line layers connect to T142   [status: done]
 Spec: §4.6, §6.3, §7.2 · Depends: T142, T145
 Found by the B15 tester: an open line (`part.lines`) from (100,100) to (600,100) on a 300 mm wide part exports without error and engraves 5 mm into the neighbour part. Only reachable through project JSON today; DXF on-line layers (pending in B16) will make it reachable.
 Acceptance:
@@ -968,20 +968,20 @@ Tester focus: e2e; size/type limits; visual + axe of the dialog.
 
 ### Batch B17: T147–T149 (templates core)
 
-### T147 Template model and "save as template"   [status: todo]
+### T147 Template model and "save as template"   [status: done]
 Spec: §4.7, §9.1 · Depends: T138
 Acceptance:
 - [ ] `templates` / `template_versions` tables (company-scoped, immutable versions); template = parametric group of holes/lines/grooves with params (diameter, edge distance, count, spacing)
 - [ ] `saveAsTemplate` from the selection (admin role later; single user now)
 Tester focus: tenancy test; version immutability; params validation.
 
-### T148 Place template: ghost, snap, mirror, repeat   [status: todo]
+### T148 Place template: ghost, snap, mirror, repeat   [status: done]
 Spec: §4.7 · Depends: T147
 Acceptance:
 - [ ] "Şablon ekle" → ghost preview, snaps to edges/corners, typed edge distance, mirror (left/right door), rotate, equal-spaced repeat; `addTemplate`, `updateTemplateInstance`; the project stores a copy + version + overrides
 Tester focus: e2e hinge on a door at 22.5 mm from the edge; mirrored door; undo.
 
-### T149 Template update flow   [status: todo]
+### T149 Template update flow   [status: done]
 Spec: §4.7 · Depends: T148
 Acceptance:
 - [ ] opening a project whose template has a newer version asks "Kullanılan … şablonu değişti. Güncellensin mi?"; yes = update (undoable), no = keep; overridden fields show a conflict warning
@@ -1011,7 +1011,7 @@ Acceptance:
 - [ ] property test: every tab lies on the contour, its length within ± EPS, never on a corner; existing golden files byte-identical (or a new golden approved per D-051)
 Tester focus: safety review of a tabbed disc NC (tab height, no gouge at tab edges); letters O, e, a.
 
-### T273 Rider: tab placement edge case found by fast-check   [status: todo]
+### T273 Rider: tab placement edge case found by fast-check   [status: done]
 Spec: §6.3 · Depends: T015
 Found by the B16 tester: `packages/core/src/toolpath/tabs.test.ts:309` failed once in CI: two 20 × 20 parts, p1 `h = 20.00000000000001`, `r = 1e-6`, seed 858170589 → "tab not on a straight edge clear of the corners".
 Acceptance:
@@ -1021,13 +1021,21 @@ Tester focus: none beyond CI.
 
 ---
 
+### T280 Offset kernel precision at near-straight arcs   [status: todo]
+Spec: §6.1 · Depends: T013
+Found 2026-11-19: `packages/core/src/geometry/offset.property.test.ts` fails with `FC_SEED=-536624909`: a near-straight arc (bulge −5e-8) gives a deviation of 0.00208 > EPS.
+Acceptance:
+- [ ] counter-example pinned as a regression test; root cause fixed in the kernel (treat |bulge| below a threshold as a line, or compute the sagitta stably), explained in the PR
+- [ ] the property passes 20 runs in a row with random seeds; existing goldens byte-identical
+Tester focus: none beyond CI.
+
 ## M6: 3D önizleme (exit: 360° preview with cutting playback; 300 parts within the perf budget; 2D fallback on weak devices)
 
 three + @react-three/fiber + @react-three/drei (MIT), lazy-loaded, in `apps/web` only (core stays pure). Decision D-033.
 
 ### Batch B19: T152–T154 (3D foundation)
 
-### T152 3D foundation, controls and fallback   [status: todo]
+### T152 3D foundation, controls and fallback   [status: done]
 Spec: §3.8 · Depends: T110
 Acceptance:
 - [ ] `Preview3D` lazy chunk (not in the initial bundle); WebGL2 capability check → fallback to the 2D view with a Turkish note
@@ -1037,7 +1045,7 @@ Acceptance:
 - [ ] rendered inside the `canvas` slot of `WorkspaceLayout` (T197) with the same floating toolbar positions as the 2D views; a 2D/3D segmented switch in the canvas toolbar
 Tester focus: fallback with WebGL disabled (Chromium flag); bundle analysis shows the 3D chunk is lazy; controls with mouse/touch.
 
-### T153 Part geometry: extrusion, cutouts, holes, pockets   [status: todo]
+### T153 Part geometry: extrusion, cutouts, holes, pockets   [status: done]
 Spec: §3.8, §4.5 · Depends: T152
 Acceptance:
 - [ ] pure builder (web) from the project + layout: outlines extruded to thickness (arcs tessellated), inners and through holes as shape holes, blind pockets/grooves as recessed geometry (no CSG), cached per part shape
@@ -1045,7 +1053,7 @@ Acceptance:
 - [ ] unit tests: vertex counts, hole count, bounding box = part bbox × thickness
 Tester focus: compare 3D top view screenshot with the 2D layout (positions/rotations match); a 30°-rotated part.
 
-### T154 Materials and grain texture   [status: todo]
+### T154 Materials and grain texture   [status: done]
 Spec: §3.6, §3.8 · Depends: T153
 Acceptance:
 - [ ] procedural textures generated in code (MDF, plywood, melamine colours, acrylic): no image downloads; grain stripes oriented by the sheet grain angle and each part's effective grain angle; edge bands coloured on banded edges
@@ -1345,6 +1353,10 @@ From CTO review #7 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-7.md`
 - Hole tool runs with the Ø8 tool's rpm and plunge values; note it on Simülasyon
 - Field-test list (not a task): manual tool change happens 20 mm above the material, no park position; decide on the owner's machine
 - Baselines (D-045): kitchen cabinet 16 / 5, L bracket 22 / 12, hinged door 38 / 27 (58 / 28 first time). DXF sign walkthrough moves to review #8
+
+From the B14a tester (2026-11-19):
+- Hinge cup at zoom %100 snaps to the 5 mm grid, so 22,5 mm must be typed; offer a finer snap near hinge positions
+- DXF import "Çizgi üzerinden" layer mapping has no browser test (unit tests only)
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
