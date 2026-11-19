@@ -420,3 +420,12 @@ Review #2 found the drawing board squeezed by chrome (≈ 548 px wide at 1440; �
 - **Panels carry values, not prose:** actions are icon buttons with tooltip + shortcut; shortcut lists live in the shortcuts dialog; explanations go into popovers. Safety sentences are exempt (T199 rule stays).
 - **Reference, not constraint:** the board may show the stock sheet as a view-only outline for scale; it is never project data.
 - Tasks: T127–T129 guidance, B10a (T240–T243), riders T244–T247. Review: `docs/reviews/2026-11-18-fable-design-review-2.md`.
+
+## D-040 Canvas material tone, one inspector row, last-step action in the footer (2026-11-19, Fable design review #3, design delegated by the owner)
+Review #3 found the canvases still read as generic blue boxes on grey, two different inspector layouts (board vs Dizilim), and the download button below the fold on the last step. Rules:
+- **Material tone:** the stock sheet and parts use a warm, pale wood token family on every canvas and thumbnail (the 3D materials of M6 come from the same family). The UI stays cool graphite with cobalt as the only accent; selection, tools and guides stay cobalt/info; orange stays for the simulation tool and rapids only.
+- **One inspector row:** every right-hand inspector (board, Dizilim, Simülasyon, later 3D) is built from one `InspectorRow`: label left, mono value right, one line, compact density. Values never wrap at the default panel width.
+- **Primary action in the footer:** a wizard step's main action is the footer's right-hand button. On the last step that is "İndir"; safety checks gate it exactly as before.
+- **Board fit:** with the sheet outline on, fit frames the sheet and the parts together (amends the fit line of T243; the outline stays view-only, D-039).
+- **Step name:** "Önizleme / simülasyon" stays (spec §3.7); phones show the short label "Simülasyon" in the header only.
+- Decided by the reviewer; the owner may revisit any of them. Tasks: B8a (T248–T251), riders T252–T254. Review: `docs/reviews/2026-11-19-fable-design-review-3.md`.
