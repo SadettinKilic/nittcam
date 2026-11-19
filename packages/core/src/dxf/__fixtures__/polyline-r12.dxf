@@ -1,0 +1,226 @@
+  0
+SECTION
+  2
+HEADER
+  9
+$ACADVER
+  1
+AC1015
+  9
+$INSUNITS
+ 70
+4
+  0
+ENDSEC
+  0
+SECTION
+  2
+BLOCKS
+  0
+ENDSEC
+  0
+SECTION
+  2
+ENTITIES
+  0
+POLYLINE
+  5
+127
+100
+AcDbEntity
+  8
+CUT
+100
+AcDb2dPolyline
+ 66
+1
+ 10
+0
+ 20
+0
+ 30
+0
+ 70
+1
+  0
+VERTEX
+  5
+128
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbVertex
+100
+AcDb2dVertex
+ 10
+0
+ 20
+0
+ 30
+0
+ 70
+0
+  0
+VERTEX
+  5
+129
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbVertex
+100
+AcDb2dVertex
+ 10
+200
+ 20
+0
+ 30
+0
+ 42
+1
+ 70
+0
+  0
+VERTEX
+  5
+12A
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbVertex
+100
+AcDb2dVertex
+ 10
+200
+ 20
+100
+ 30
+0
+ 70
+0
+  0
+VERTEX
+  5
+12B
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbVertex
+100
+AcDb2dVertex
+ 10
+0
+ 20
+100
+ 30
+0
+ 70
+0
+  0
+SEQEND
+  5
+12C
+100
+AcDbEntity
+  8
+CUT
+  0
+POLYLINE
+  5
+12D
+100
+AcDbEntity
+  8
+CUT
+100
+AcDb3dPolyline
+ 66
+1
+ 10
+0
+ 20
+0
+ 30
+0
+ 70
+8
+  0
+VERTEX
+  5
+12E
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbVertex
+100
+AcDb3dPolylineVertex
+ 10
+0
+ 20
+0
+ 30
+0
+ 70
+32
+  0
+VERTEX
+  5
+12F
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbVertex
+100
+AcDb3dPolylineVertex
+ 10
+50
+ 20
+0
+ 30
+10
+ 70
+32
+  0
+VERTEX
+  5
+130
+100
+AcDbEntity
+  8
+CUT
+100
+AcDbVertex
+100
+AcDb3dPolylineVertex
+ 10
+50
+ 20
+50
+ 30
+0
+ 70
+32
+  0
+SEQEND
+  5
+131
+100
+AcDbEntity
+  8
+CUT
+  0
+ENDSEC
+  0
+EOF

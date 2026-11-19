@@ -17,6 +17,10 @@ export {
   duplicatePart,
   importCutList,
   MAX_IMPORT_ROWS,
+  importDxf,
+  importDxfParamsSchema,
+  dxfImportOrigin,
+  MAX_DXF_PARTS,
 } from './part';
 export {
   setNestingOptions,
