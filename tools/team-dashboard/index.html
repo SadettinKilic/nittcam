@@ -8,7 +8,7 @@
   --accent:#2f56e3; --accent-subtle:#eff4ff; --accent-border:#c0d2fd; --accent-text:#2443c8;
   --ok:#039855; --ok-subtle:#ecfdf3; --warn:#b54708; --warn-c:#f79009; --warn-subtle:#fffaeb; --bad:#d92d20; --bad-subtle:#fef3f2; --bad-border:#fecdca;
   --floor:#e8ebef; --room:#fcfcfd; --wall:#9da5b3; --glass:#c0d2fd; --desk:#d9dee6; --desk-edge:#b3bac6; --screen:#1e2229; --sofa:#c0d2fd; --plant:#12b76a; --rack:#3f4652; --chair:#586170; --skin:#f2c9a4;
-  --c-po:#2f56e3; --c-dev:#0e9384; --c-tester:#dc6803; --c-fable:#7a5af8;
+  --c-po:#2f56e3; --c-dev:#0e9384; --c-dev2:#5f8f16; --c-tester:#dc6803; --c-fable:#7a5af8;
   --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --f-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",monospace;
   color-scheme:light;
@@ -19,7 +19,7 @@
   --accent:#4470f0; --accent-subtle:#141c38; --accent-border:#26356e; --accent-text:#94b3fb;
   --ok:#32d583; --ok-subtle:#052e1d; --warn:#fdb022; --warn-c:#fdb022; --warn-subtle:#2b1d05; --bad:#f97066; --bad-subtle:#2a0f0c; --bad-border:#571d16;
   --floor:#0d0f12; --room:#16191e; --wall:#3f4652; --glass:#26356e; --desk:#2a2f38; --desk-edge:#3f4652; --screen:#08090b; --sofa:#213380; --plant:#12b76a; --rack:#2a2f38; --chair:#3f4652; --skin:#e9b98f;
-  --c-po:#6690f7; --c-dev:#15b79e; --c-tester:#f79009; --c-fable:#9b8afb;
+  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-tester:#f79009; --c-fable:#9b8afb;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
@@ -28,7 +28,7 @@
   --accent:#4470f0; --accent-subtle:#141c38; --accent-border:#26356e; --accent-text:#94b3fb;
   --ok:#32d583; --ok-subtle:#052e1d; --warn:#fdb022; --warn-c:#fdb022; --warn-subtle:#2b1d05; --bad:#f97066; --bad-subtle:#2a0f0c; --bad-border:#571d16;
   --floor:#0d0f12; --room:#16191e; --wall:#3f4652; --glass:#26356e; --desk:#2a2f38; --desk-edge:#3f4652; --screen:#08090b; --sofa:#213380; --plant:#12b76a; --rack:#2a2f38; --chair:#3f4652; --skin:#e9b98f;
-  --c-po:#6690f7; --c-dev:#15b79e; --c-tester:#f79009; --c-fable:#9b8afb;
+  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-tester:#f79009; --c-fable:#9b8afb;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -292,6 +292,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   const CREW = [
     {key:'po', name:'PO', role:'Ürün sahibi', hair:'#3b2a20'},
     {key:'dev', name:'Dev', role:'Geliştirici', hair:'#1e1a17'},
+    {key:'dev2', name:'Dev 2', role:'Geliştirici (2. dev)', hair:'#b5651d', optional:true},
     {key:'tester', name:'Tester', role:'Test', hair:'#7a4a24'},
     {key:'fable', name:'CTO', role:'Tasarım ve ürün incelemesi', hair:'#c9c3b8', visitor:true},
   ];
@@ -323,7 +324,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   const GLY = {A:'010101111101101',B:'110101110101110',C:'011100100100011',D:'110101101101110',E:'111100110100111',F:'111100110100100',
     G:'011100101101011',H:'101101111101101',I:'111010010010111',J:'001001001101010',K:'101101110101101',L:'100100100100111',
     M:'101111111101101',N:'110101101101101',O:'010101101101010',P:'110101110100100',R:'110101110101101',S:'011100010001110',
-    T:'111010010010010',U:'101101101101111',V:'101101101101010',Y:'101101010010010',Z:'111001010100111','·':'000000010000000','.':'000000000000010'};
+    T:'111010010010010',U:'101101101101111',V:'101101101101010',Y:'101101010010010',Z:'111001010100111','?':'111001010000010','1':'010110010010111','2':'110001010100111','·':'000000010000000','.':'000000000000010'};
   const MARK = {'İ':['I',[[1,-2]]],'Ş':['S',[[1,5]]],'Ç':['C',[[1,5]]],'Ö':['O',[[0,-2],[2,-2]]],'Ü':['U',[[0,-2],[2,-2]]],'Ğ':['G',[[0,-2],[2,-2]]]};
   const ptw = (s) => [...s].length*4-1;
   function ptext(c, s, x, y, col){
@@ -360,8 +361,10 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   const LOOK = {
     po:{c:'#3d63e6', d:'#2949b8', h:'#3b2a20', a:'#1b2140', b:'#1b2140', acc:'tie', tag:'#2f56e3'},
     dev:{c:'#14a693', d:'#0b7a6d', h:'#1e1a17', a:'#30343c', b:'#30343c', acc:'phones', tag:'#0e9384'},
+    dev2:{c:'#7fb52a', d:'#587f14', h:'#b5651d', a:'#30343c', b:'#30343c', acc:'phones', tag:'#5f8f16'},
     tester:{c:'#f08a1c', d:'#c45f07', h:'#7a4a24', a:'#d9480f', b:'#a8370a', acc:'cap', tag:'#dc6803'},
     fable:{c:'#8466f9', d:'#5d40d8', h:'#e4dfd6', a:'#f4c542', b:'#f4c542', acc:'scarf', tag:'#7a5af8'},
+    tea:{c:'#d65a8a', d:'#a33a63', h:'#5a3a2a', a:'#f4f1ea', b:'#e3d9c6', acc:'cap', tag:'#c2417a'}, // ambient tea lady: headscarf + apron colours
   };
   const SKIN = '#f2c9a4', EYE = '#2a1f1a', PANTS = '#2f3542', SHOE = '#15171c';
   const TPL = {
@@ -577,7 +580,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     // window frames (glass is drawn per frame for day/night)
     for(const w of L.wins){ F(c,w.x-1,w.y-1,w.w+2,w.h+2,P.winFrame); F(c,w.x-1,w.y+w.h+1,w.w+2,1,'#c9c0ae'); }
     // clock
-    if(L.clock){ const k = L.clock; F(c,k.x+1,k.y,5,7,'#4a505e'); F(c,k.x,k.y+1,7,5,'#4a505e'); F(c,k.x+1,k.y+1,5,5,'#fbfaf6'); F(c,k.x+3,k.y+2,1,2,'#23262e'); F(c,k.x+4,k.y+3,1,1,'#d92d20'); }
+    if(L.clock){ const k = L.clock; F(c,k.x+1,k.y,5,7,'#4a505e'); F(c,k.x,k.y+1,7,5,'#4a505e'); F(c,k.x+1,k.y+1,5,5,'#fbfaf6'); }
     // shelf with boxes in the lab
     if(L.shelf){ const s = L.shelf; F(c,s.x,s.y+4,s.w,1,'#8d7a62'); F(c,s.x,s.y+9,s.w,1,'#8d7a62');
       const bx = ['#c9a06a','#7fa7e8','#e07a5f','#9ccf8f','#c9a06a'];
@@ -589,7 +592,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   const SPEED = 38; // internal px per second
   const actors = {};
   CREW.forEach((c,i)=>{ actors[c.key] = {c, key:c.key, x:0, y:0, path:[], dir:'down', vis:false, placed:false, grp:null, idx:0, want:null, st:'idle', a:{}, ph:i*1.37, walkT:0, dest:null}; });
-  let L = null, BG = null, K = 1, night = false, ciState = 'none', VIEW = [];
+  let L = null, BG = null, K = 1, night = false, DL = 1, ciState = 'none', VIEW = [];
   const office = $('office'), stage = $('stage'), cvs = $('floor'), ctx = cvs.getContext('2d'), ov = $('ov');
   const rmq = matchMedia('(prefers-reduced-motion: reduce)');
   const reduced = () => rmq.matches;
@@ -606,6 +609,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     return pts.filter((p,i)=>!i || p.x!==pts[i-1].x || p.y!==pts[i-1].y);
   }
   function goTo(A, g, i){
+    if(A.amb){ if(A.grp!==g || A.idx!==i) A.want = {g, i}; else A.want = null; return; } // ambient walk in progress: finish it first
     if(A.path.length){ A.want = {g, i}; return; }
     if(A.placed && A.grp===g && A.idx===i) return;
     const to = spotOf(g, i);
@@ -619,11 +623,13 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     A.path = pathBetween(from, to).filter(p=>p.x!==A.x || p.y!==A.y); A.grp = g; A.idx = i; A.dest = to; A.walkT = 0;
   }
   function relocate(){ // layout changed: snap everybody to their spot in the new arrangement
+    ambAbort();
     Object.values(actors).forEach(A=>{ A.path = []; A.want = null; if(!A.placed) return; const s = spotOf(A.grp, A.idx);
       if(s.entrance) A.vis = false; else { A.x = s.x; A.y = s.y; } });
   }
   function update(dt){
-    for(const A of Object.values(actors)){
+    ambTick(dt);
+    for(const A of [...Object.values(actors), ...NPCS]){
       if(!A.vis || !A.path.length) continue;
       let step = SPEED*dt; A.walkT += dt;
       while(step > 0 && A.path.length){
@@ -632,12 +638,15 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
         else if(dy){ A.dir = dy<0 ? 'up' : 'down'; const m = Math.min(step, Math.abs(dy)); A.y += Math.sign(dy)*m; step -= m; }
         if(A.x===p.x && A.y===p.y) A.path.shift();
       }
-      if(!A.path.length){ if(A.dest && A.dest.entrance) A.vis = false; if(A.want){ const w = A.want; A.want = null; goTo(A, w.g, w.i); } }
+      if(!A.path.length){ if(A.dest && A.dest.entrance) A.vis = false;
+        if(A.onArrive){ const f = A.onArrive; A.onArrive = null; f(A); }
+        if(!A.path.length && !A.amb && A.want){ const w = A.want; A.want = null; goTo(A, w.g, w.i); } }
     }
   }
   // current pose of an actor: view (front/back/left/right), sprite variant, top-left y offset, sitting flag
   function poseOf(A, t){
     if(A.path.length){ const f = (A.walkT*8|0)%4, side = A.dir==='left'||A.dir==='right'; return {view: A.dir==='up'?'back':A.dir==='down'?'front':A.dir, v: side ? (f%2?'walk2':'walk1') : ['walk1','stand','walk2','stand'][f], sit:false}; }
+    if(A.free){ const f = A.free; return {view:f.view, v:typeof f.v==='function' ? f.v(t) : f.v, sit:!!f.sit}; } // ambient pose away from the home spot
     const s = spotOf(A.grp, A.idx), st = A.st, rm = reduced();
     const view = s.face==='up'?'back':s.face==='down'?'front':s.face;
     if(s.pose==='sit'){
@@ -666,7 +675,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   function sceneState(){ // which screens/props are active, from actors that reached their spot
     const s = {scr:{}, testing:false, meeting:false, planning:false};
     for(const A of Object.values(actors)){
-      if(!A.vis || A.path.length || !A.grp || A.grp==='door') continue;
+      if(!A.vis || A.path.length || A.amb || !A.grp || A.grp==='door') continue;
       const sp = spotOf(A.grp, A.idx);
       if(A.st==='coding' && sp.scr) s.scr[sp.scr==='cnc'?'lab':sp.scr] = 'code';
       if(A.st==='testing'){ s.testing = true; s.scr.lab = 'test'; }
@@ -701,9 +710,10 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     }
   }
   function drawWindows(c, t){
+    const dark = night || DL<.12;
     for(const wn of L.wins){
       const {x,y,w,h} = wn;
-      if(!night){ F(c,x,y,w,h,P.sky); F(c,x,y+h-3,w,3,P.skyB); const cx = x + ((t*1.2|0) % (w+8)) - 6;
+      if(!dark){ F(c,x,y,w,h,P.sky); F(c,x,y+h-3,w,3,P.skyB); const cx = x + ((t*1.2|0) % (w+8)) - 6;
         c.save(); c.beginPath(); c.rect(x,y,w,h); c.clip(); F(c,cx,y+2,5,2,P.cloud); F(c,cx+1,y+1,3,1,P.cloud); c.restore(); }
       else { F(c,x,y,w,h,P.nsky); [[2,2],[w-4,1],[(w>>1)+1,4],[4,h-3],[w-3,h-4]].forEach(([a,b],i)=>{ if(hash(i+(t*1.5|0)*7+x)>.25) F(c,x+a,y+b,1,1,P.star); });
         if(wn===L.wins[0]){ F(c,x+w-6,y+2,3,3,P.moon); F(c,x+w-5,y+2,1,1,P.nsky); } }
@@ -711,7 +721,8 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     }
   }
   function drawSun(c){ // daylight patches on the floor below windows
-    c.fillStyle = 'rgba(255,250,228,.22)';
+    if(DL<.03) return;
+    c.fillStyle = 'rgba(255,250,228,'+(.22*DL).toFixed(3)+')';
     for(const wn of L.wins){ const fy = wn.r.y; for(let i=0;i<12;i++) c.fillRect(wn.x+2+(i>>1), fy+i, wn.w-2, 1); }
   }
   function drawLeds(c, t){
@@ -732,17 +743,20 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   }
   function drawProps(c, t, S){ // animated details on top of furniture (before the night tint)
     const rm = reduced();
-    // whiteboard sketch: grows while someone is planning
-    if(L.board){ const b = L.board, n = b.dw; const prog = S.planning && !rm ? (t*5|0)%(n+6) : n;
-      for(let i=0;i<Math.min(prog,n);i++){ const yy = b.y+3+Math.round(2+1.6*Math.sin(i*.7)); F(c,b.dx+i,yy,1,1,'#2f56e3'); if(i%4===0 && i<n-2) F(c,b.dx+i,b.y+8,2,1,'#d92d20'); } }
+    // whiteboard sketch: grows while someone is planning (or the PO is fixing the chart); the curve changes after each fix
+    if(L.board){ const b = L.board, n = b.dw; const prog = (S.planning || AMB.fixing) && !rm ? (t*5|0)%(n+6) : n;
+      for(let i=0;i<Math.min(prog,n);i++){ const yy = b.y+3+Math.round(2+1.6*Math.sin(i*.7+AMB.seed*1.9)); F(c,b.dx+i,yy,1,1,'#2f56e3'); if(i%4===0 && i<n-2) F(c,b.dx+i,b.y+8,2,1,'#d92d20'); } }
     // CNC spindle position
     if(L.cnc){ const k = L.cnc, span = k.w-7; L.cncX = S.testing && !rm ? k.x+2+Math.abs(((t*10|0)%(span*2))-span) : null; }
+    drawClock(c);
+    for(const q of AMB.cups) drawCup(c, q);
     for(const A of Object.values(actors)){
-      if(!A.vis || A.path.length || !A.grp || A.grp==='door') continue;
+      if(!A.vis || A.path.length || A.amb || !A.grp || A.grp==='door') continue;
       const sp = spotOf(A.grp, A.idx), bx = actorBox(A, t);
       if(A.st==='reviewing' && sp.paper){ const flip = !rm && (t+A.ph)%2.4 < .3; F(c,sp.paper.x,sp.paper.y,5,4,P.paper); F(c,sp.paper.x+1,sp.paper.y+1,3,1,P.ink); F(c,sp.paper.x+1,sp.paper.y+(flip?2:3),2,1,P.ink); if(flip) F(c,sp.paper.x+4,sp.paper.y,1,2,'#d7dbe1'); }
       if(A.grp==='brk' && sp.cup){ const hx = bx.x+3, hy = bx.top+8; F(c,hx,hy,2,2,'#f4f1ea'); F(c,hx,hy,2,1,'#7a4a24'); }
     }
+    for(const N of NPCS) if(N.vis && N.key==='tea'){ const b = actorBox(N, t); F(c,b.x+2,b.top+8,6,1,'#9aa1ac'); F(c,b.x+3,b.top+6,2,2,'#f4f1ea'); F(c,b.x+6,b.top+6,2,2,'#b0521f'); } // her tray
   }
   function drawEmissive(c, t, S){
     for(const s of L.screens) drawScreen(c, s, s.kind==='tv' ? (S.meeting?'on':'off') : (S.scr[s.id]||'off'), reduced()?0:t);
@@ -752,7 +766,8 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     // steam from coffee cups on the sofa
     if(!reduced()) for(const A of Object.values(actors)){ if(!A.vis || A.path.length || A.grp!=='brk') continue; const bx = actorBox(A,t);
       for(let i=0;i<2;i++){ const k = ((t*3 + A.ph + i*1.5) % 3); F(c,bx.x+3+(k>1.5?1:0)+i, bx.top+7-Math.round(k*2), 1, 1, 'rgba(255,255,255,.75)'); } }
-    if(night){
+    drawAmbientFx(c, t);
+    if(night || DL<.5){
       for(const r of Object.values(L.rooms)) { pixEllipse(c, r.x+(r.w>>1), r.y+(r.h>>1), Math.round(r.w*.42), Math.round(r.h*.4), 'rgba(255,208,140,.06)'); pixEllipse(c, r.x+(r.w>>1), r.y+(r.h>>1), Math.round(r.w*.24), Math.round(r.h*.22), 'rgba(255,208,140,.05)'); }
       for(const s of L.screens) if(s.kind==='tv' ? S.meeting : S.scr[s.id]) pixEllipse(c, s.x+(s.w>>1), s.y+s.h+(s.kind==='tv'?10:8), s.kind==='tv'?18:9, s.kind==='tv'?6:4, 'rgba(120,170,255,.10)');
       for(const l of L.lamps){ F(c,l.x-3,l.y-1,7,3,'#f7e3bd'); pixEllipse(c, l.x, l.y+8, 14, 8, 'rgba(255,214,150,.10)'); }
@@ -762,7 +777,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     for(const p of L.plaques){ F(c,p.x,p.y,p.w,9,P.plaque); F(c,p.x,p.y+9,p.w,1,'rgba(0,0,0,.25)'); ptext(c,p.s,p.x+2,p.y+3,P.plaqueT); }
     // name tags, nudged so they never overlap
     const tags = [];
-    for(const A of Object.values(actors)){ if(!A.vis) continue; const b = actorBox(A,t), s = A.c.name.toUpperCase(), w = ptw(s)+4;
+    for(const A of [...Object.values(actors), ...NPCS]){ if(!A.vis) continue; const b = actorBox(A,t), s = A.c.name.toUpperCase(), w = ptw(s)+4;
       tags.push({A, x:b.x-(w>>1), y:b.y+2, w, s}); }
     tags.sort((a,b)=>a.x-b.x);
     tags.forEach((g,i)=>{ for(let j=0;j<i;j++){ const o = tags[j]; if(g.x < o.x+o.w+1 && o.x < g.x+g.w+1 && Math.abs(g.y-o.y) < 8) g.y = o.y+8; } });
@@ -774,16 +789,22 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       if(A.st==='blocked'){ const y = b.top-1+(reduced()?0:Math.round(Math.sin(t*5+A.ph))); F(c,x,y,7,9,'#7a1410'); F(c,x+1,y+1,5,7,'#ef3b2c'); F(c,x+3,y+2,1,3,'#fff'); F(c,x+3,y+6,1,1,'#fff'); F(c,x+5,y+9,1,1,'#7a1410'); }
       else { const pop = !reduced() && ((t+A.ph)%3) < .35, y = b.top-(pop?2:0); F(c,x,y,8,8,'#0b5e35'); F(c,x+1,y+1,6,6,'#22b464'); [[2,4],[3,5],[4,4],[5,3],[6,2]].forEach(([a,d])=>F(c,x+a-(a>5?1:0),y+d,1,1,'#fff')); if(pop){ F(c,x-1,y-1,1,1,'#ffe66d'); F(c,x+8,y-1,1,1,'#ffe66d'); } }
     }
+    // ambient bubbles: the tea lady's call, a dev's thought while pacing (state bubbles stay HTML and untouched)
+    for(const A of [...Object.values(actors), ...NPCS]){ if(!A.vis) continue;
+      if(A.say && !A.path.length){ const b = actorBox(A,t); bubble(c, b.x, b.top, A.say, false); }
+      else if(A.amb && A.amb.kind==='pace' && A.path.length){ const b = actorBox(A,t); bubble(c, b.x, b.top, (t/1.3|0)%3===2 ? '?' : '...', true); }
+    }
   }
   function draw(t){
     if(!L) return;
     const c = ctx, S = sceneState();
+    DL = night ? 0 : daylight();
     c.imageSmoothingEnabled = false;
     c.drawImage(BG,0,0);
     if(!night) drawSun(c);
     // depth-sorted furniture and characters
     const list = L.items.slice();
-    for(const A of Object.values(actors)) if(A.vis) list.push({y:A.y, A});
+    for(const A of [...Object.values(actors), ...NPCS]) if(A.vis) list.push({y:A.y, A});
     list.sort((a,b)=>a.y-b.y);
     for(const it of list){
       if(it.A){ const b = actorBox(it.A, t), spr = sprite(it.A.key, b.p.view, b.p.v); F(c,b.x-3,b.y,7,1,'rgba(0,0,0,.18)'); c.drawImage(spr, b.x-4, b.top); }
@@ -791,6 +812,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     }
     drawProps(c, t, S);
     if(night){ c.fillStyle = 'rgba(10,14,40,.48)'; c.fillRect(0,0,L.W,L.H); }
+    else if(DL<1){ c.fillStyle = 'rgba(14,20,52,'+((1-DL)*.34).toFixed(3)+')'; c.fillRect(0,0,L.W,L.H); } // dusk and night by the real hour
     drawEmissive(c, t, S);
     drawUI(c, t);
     placeOverlays(t);
@@ -864,7 +886,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   let raf = 0, lastT = 0;
   function frame(now){
     raf = 0; if(document.hidden || !L) return;
-    const walking = Object.values(actors).some(A=>A.vis && A.path.length);
+    const walking = Object.values(actors).some(A=>A.vis && A.path.length) || NPCS.some(N=>N.vis && N.path.length) || AMB.conf.length>0;
     if(now-lastT >= (walking ? 33 : 66)){ const dt = Math.min(.1, (now-lastT)/1000); lastT = now; update(dt); draw(now/1000); }
     raf = requestAnimationFrame(frame);
   }
@@ -881,6 +903,164 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   if(window.ResizeObserver) new ResizeObserver(()=>{ const cw = office.clientWidth; if(cw && cw!==layout.cw){ layout.cw = cw; layout(); } }).observe(office);
   else addEventListener('resize', layout);
 
+  // ---------- ambient office life (cosmetic only) ----------
+  // Tea lady, pacing dev, PO fixing the board chart, CTO cigar break, wall clock, dusk light, confetti. None of it touches
+  // state, labels or the real review/meeting logic; it is suppressed while anything is blocked, the usage limit is on,
+  // the "PC'ye bak" alert is open, or prefers-reduced-motion is set. ?fast=1 shortens the timers, ?hour=22 fakes the hour.
+  const FAST = /[?&]fast=1/.test(location.search), TS = FAST ? .2 : 1, QH = (location.search.match(/[?&]hour=(\d+(?:\.\d+)?)/)||[])[1];
+  const rnd = (a,b)=>a+Math.random()*(b-a);
+  const NPCS = [];
+  const AMB = {t:0, block:false, fableOn:false, cups:[], seed:0, fixing:false, conf:[], next:{}, tea:null, agent:null, cto:null, collectAt:null};
+  const sched = (k, lo, hi, flo, fhi)=>{ AMB.next[k] = AMB.t + (FAST ? rnd(flo||8, fhi||16) : rnd(lo, hi)); };
+  const hourNow = ()=>{ if(QH!=null) return +QH; const d = new Date(); return d.getHours()+d.getMinutes()/60; };
+  const daylight = ()=>{ const h = hourNow(); return h>=9 && h<=17 ? 1 : h>=6 && h<9 ? (h-6)/3 : h>17 && h<20 ? (20-h)/3 : 0; };
+  const ready = (A)=>A.vis && A.placed && !A.path.length && !A.amb && !A.want;
+  const devsReady = ()=>[actors.dev, actors.dev2].filter(D=>D.st==='coding' && D.grp==='devDesk' && ready(D));
+  const mkNPC = (key, name)=>({c:{name}, key, x:L.entrance.x, y:L.entrance.y, path:[], dir:L.tall?'up':'right', vis:true, walkT:0, ph:0, dest:null, st:'npc', free:null, at:{entrance:true}});
+  function walk(A, pts, fn){ // follow waypoints, then call fn
+    let px = A.x, py = A.y; A.path = pts.filter(p=>{ const keep = p.x!==px || p.y!==py; px = p.x; py = p.y; return keep; });
+    A.dest = null; A.walkT = 0; A.free = null; A.onArrive = fn || null;
+    if(!A.path.length && fn){ A.onArrive = null; fn(A); }
+  }
+  const later = (A, sec, fn)=>{ A.wake = AMB.t + sec*TS; A.wakeFn = fn; };
+  function agentDone(A){ const k = A.amb && A.amb.kind; A.amb = null; A.free = null; A.wake = null; A.wakeFn = null; A.onArrive = null; AMB.agent = null; AMB.fixing = false;
+    if(k==='pace') sched('dev', 180, 420); else if(k==='board') sched('po', 240, 540); }
+  function removeNPC(N){
+    const i = NPCS.indexOf(N); if(i>=0) NPCS.splice(i,1);
+    if(AMB.tea && AMB.tea.N===N){ const m = AMB.tea.mode; AMB.tea = null;
+      if(m==='serve' && AMB.cups.length) AMB.collectAt = AMB.t + (FAST ? rnd(14,22) : rnd(180,300)); else sched('tea', 480, 900); }
+    if(AMB.cto===N){ AMB.cto = null; sched('cto', 1200, 2700); }
+  }
+  function ambAbort(){ // back to plain office life at once
+    for(const A of Object.values(actors)) if(A.amb){ const s = spotOf(A.grp, A.idx); if(!s.entrance){ A.x = s.x; A.y = s.y; } A.path = []; agentDone(A);
+      if(A.want){ const w = A.want; A.want = null; goTo(A, w.g, w.i); } }
+    NPCS.length = 0; AMB.cups = []; AMB.tea = null; AMB.cto = null; AMB.agent = null; AMB.fixing = false; AMB.collectAt = null;
+    ['tea','dev','po','cto'].forEach(k=>{ if(!(AMB.next[k] > AMB.t)) sched(k, 120, 300); });
+  }
+  // dev gets up and paces along the aisle, thinking
+  function paceStart(A){
+    const r = L.rooms.dev, s = spotOf(A.grp, A.idx), lo = r.x+12, hi = r.x+r.w-12;
+    A.amb = {kind:'pace', st:A.st, end:AMB.t+rnd(20,40)*TS, hi:s.x<(lo+hi)/2}; AMB.agent = A;
+    walk(A, [{x:s.x, y:r.aisle}], ()=>paceLeg(A, lo, hi));
+  }
+  function paceLeg(A, lo, hi){
+    const m = A.amb; if(!m) return;
+    if(AMB.t>=m.end || A.want || A.st!==m.st) return paceHome(A);
+    const x = m.hi ? hi : lo; m.hi = !m.hi;
+    walk(A, [{x, y:L.rooms.dev.aisle}], ()=>{ A.free = {view:'front', v:'stand'}; later(A, rnd(.6,1.6), ()=>paceLeg(A, lo, hi)); });
+  }
+  function paceHome(A){ const s = spotOf(A.grp, A.idx); walk(A, [{x:s.x, y:L.rooms.dev.aisle}, {x:s.x, y:s.y}], ()=>agentDone(A)); }
+  // PO walks to the task board, studies it, fixes the chart, goes back
+  function boardStart(A){
+    if(Object.values(actors).some(o=>o!==A && o.grp==='board')) return false;
+    const s = spotOf(A.grp, A.idx), B = L.SP.board[0];
+    A.amb = {kind:'board', st:A.st}; AMB.agent = A;
+    walk(A, pathBetween(s, B), ()=>{ A.free = {view:'back', v:'stand'}; later(A, rnd(1.5,3), ()=>boardFix(A)); });
+    return true;
+  }
+  function boardFix(A){
+    const m = A.amb; if(!m) return;
+    if(A.want || A.st!==m.st) return boardHome(A);
+    AMB.fixing = true; AMB.seed++; A.free = {view:'back', v:(t)=>(t*3|0)%2 ? 'raise1' : 'raise2'};
+    later(A, rnd(5,8), ()=>{ AMB.fixing = false; A.free = {view:'back', v:'point'}; later(A, 1.6, ()=>boardHome(A)); });
+  }
+  function boardHome(A){ walk(A, pathBetween(L.SP.board[0], spotOf(A.grp, A.idx)), ()=>agentDone(A)); }
+  // CTO strolls the corridor, smokes a cigar on the break-area sofa, leaves (not a review: the real fable agent is untouched)
+  function ctoStart(){
+    if(AMB.cto || AMB.fableOn || actors.fable.vis) return false;
+    const used = new Set(Object.values(actors).filter(A=>A.vis && A.grp==='brk').map(A=>A.idx)), si = [3,2,1,0].find(i=>!used.has(i));
+    if(si==null) return false;
+    const seat = L.SP.brk[si], N = mkNPC('fable', 'CTO'); // the last free sofa seat
+    const stroll = L.tall ? {x:L.entrance.x, y:L.corr.y+14} : {x:L.rooms.ci.out.x, y:L.rooms.ci.out.y};
+    const pts = pathBetween({entrance:true}, seat).filter(p=>p.x!==L.entrance.x || p.y!==L.entrance.y);
+    NPCS.push(N); AMB.cto = N;
+    walk(N, [stroll, ...pts], ()=>{ N.free = {view:'front', v:'sit', sit:true}; N.cigar = true;
+      later(N, rnd(25,45), ()=>{ N.cigar = false; walk(N, pathBetween(seat, {entrance:true}), ()=>removeNPC(N)); N.dest = {entrance:true}; }); });
+    return true;
+  }
+  // tea lady: serves a cup to every occupied desk/seat, comes back later to collect them
+  function cupPos(sp){
+    if(sp.scr && sp.scr!=='cnc'){ const m = L.screens.find(q=>q.id===sp.scr); if(!m) return null; const x = sp.x+(sp.scr==='lab'?11:9);
+      return {key:sp.room+sp.x, room:sp.room, x, y:m.y+9, sx:x+1, sy:sp.y}; }
+    if(sp.room==='meet' && sp.paper && sp.face==='up') return {key:'m'+sp.x, room:'meet', x:sp.paper.x+7, y:sp.paper.y+1, sx:sp.paper.x+8, sy:sp.y};
+    return null;
+  }
+  function teaStart(mode){
+    if(AMB.tea) return false;
+    const ord = (a,b)=>{ const ra = L.rooms[a.room], rb = L.rooms[b.room]; return L.tall ? (ra.y-rb.y || ra.x-rb.x || a.x-b.x) : (ra.dx-rb.dx || a.x-b.x); };
+    let stops = [];
+    if(mode==='serve'){
+      for(const A of Object.values(actors)){ if(!A.vis || !A.grp || A.grp==='door') continue; const q = cupPos(spotOf(A.grp, A.idx));
+        if(q && !stops.some(o=>o.key===q.key) && !AMB.cups.some(o=>o.key===q.key)) stops.push({...q, kind:Math.random()<.65 ? 'tea' : 'coffee'}); }
+    } else stops = AMB.cups.map(q=>({...q}));
+    if(!stops.length) return false;
+    stops.sort(ord);
+    const N = mkNPC('tea', 'Çaycı'); NPCS.push(N); AMB.tea = {N, mode, stops}; AMB.next.tea = Infinity;
+    teaNext(N); return true;
+  }
+  function teaNext(N){
+    const T = AMB.tea; if(!T) return;
+    const s = T.stops.shift();
+    if(!s){ walk(N, pathBetween(N.at, {entrance:true}), ()=>removeNPC(N)); N.dest = {entrance:true}; return; }
+    const to = {room:s.room, x:s.sx, y:s.sy};
+    walk(N, pathBetween(N.at, to), ()=>{ N.at = to; N.free = {view:'back', v:'stand'};
+      if(T.mode==='serve'){ N.say = s.kind==='tea' ? 'ÇAY?' : 'KAHVE GELDİ';
+        later(N, .9, ()=>{ AMB.cups.push({key:s.key, room:s.room, x:s.x, y:s.y, sx:s.sx, sy:s.sy, kind:s.kind, born:AMB.t}); later(N, 1.3, ()=>{ N.say = null; teaNext(N); }); }); }
+      else later(N, .8, ()=>{ AMB.cups = AMB.cups.filter(q=>q.key!==s.key); teaNext(N); }); });
+  }
+  function confetti(){
+    if(reduced() || !L || !L.board) return; const b = L.board, col = ['#ff5a4f','#ffd166','#4cc38a','#5b8def','#c084fc','#ff9f43'];
+    for(let i=0;i<40;i++) AMB.conf.push({x:b.x+rnd(2,b.w-2), y:b.y+rnd(1,5), vx:rnd(-22,22), vy:rnd(-46,-12), life:rnd(1.2,2.2), col:col[i%col.length], h:i%3===0?2:1});
+    kick(true);
+  }
+  function ambTick(dt){
+    if(reduced()){ if(NPCS.length || AMB.agent || AMB.cups.length || AMB.conf.length){ ambAbort(); AMB.conf = []; } return; }
+    if(!L) return;
+    AMB.t += dt;
+    if(AMB.conf.length){ for(const p of AMB.conf){ p.life -= dt; p.vy += 60*dt; p.x += p.vx*dt; p.y += p.vy*dt; } AMB.conf = AMB.conf.filter(p=>p.life>0 && p.y<L.H); }
+    if(AMB.block || !Object.keys(S.agents||{}).length) return;
+    for(const A of [...Object.values(actors).filter(a=>a.amb), ...NPCS]) if(A.wake!=null && AMB.t>=A.wake){ const f = A.wakeFn; A.wake = null; A.wakeFn = null; f(A); }
+    const T = AMB.t, nx = AMB.next, retry = FAST ? 3 : 30;
+    if(!AMB.tea){
+      if(AMB.collectAt!=null){ if(T>=AMB.collectAt){ AMB.collectAt = null; if(!teaStart('collect')){ AMB.cups = []; sched('tea', 480, 900); } } }
+      else if(T>=nx.tea && !teaStart('serve')) sched('tea', 60, 120);
+    }
+    if(!AMB.agent){
+      if(T>=nx.dev){ const D = devsReady(); if(D.length) paceStart(D[Math.random()*D.length|0]); else nx.dev = T+retry; }
+      else if(T>=nx.po){ const P = actors.po; if(!(P.st==='reviewing' && P.grp==='poDesk' && ready(P) && boardStart(P))) nx.po = T+retry; }
+    }
+    if(!AMB.cto && T>=nx.cto && !ctoStart()) nx.cto = T+(FAST ? 3 : 60);
+  }
+  // drawing helpers
+  function bubble(c, cx, ty, text, thought){ // pixel speech/thought bubble above a head (ty = sprite top)
+    const w = ptw(text)+5, h = 10, x = Math.max(1, Math.min(Math.round(cx-w/2), L.W-w-1)), y = Math.max(1, ty-h-4);
+    F(c,x,y,w,h,'#23262e'); F(c,x+1,y+1,w-2,h-2,'#ffffff'); ptext(c, text, x+3, y+3, '#23262e');
+    if(thought){ F(c,cx,y+h,2,2,'#23262e'); F(c,cx,y+h,1,1,'#ffffff'); F(c,cx-1,y+h+2,1,1,'#23262e'); }
+    else { F(c,cx-1,y+h-1,3,1,'#ffffff'); F(c,cx,y+h,1,1,'#ffffff'); F(c,cx-1,y+h,1,1,'#23262e'); F(c,cx+1,y+h,1,1,'#23262e'); F(c,cx,y+h+1,1,1,'#23262e'); }
+  }
+  function drawCup(c, q){
+    if(q.kind==='tea'){ F(c,q.x-1,q.y+3,5,1,'#f4f1ea'); F(c,q.x,q.y,3,3,'#c8e4ee'); F(c,q.x,q.y+1,3,2,'#b0521f'); F(c,q.x,q.y,1,1,'#eaf6fa'); }
+    else { F(c,q.x,q.y,3,3,'#f4f1ea'); F(c,q.x,q.y,3,1,'#5a3418'); F(c,q.x+3,q.y+1,1,1,'#f4f1ea'); }
+  }
+  function drawClock(c){
+    if(!L.clock) return; const k = L.clock, d = new Date(), m = d.getMinutes()+d.getSeconds()/60, h = (d.getHours()%12)+m/60, cx = k.x+3, cy = k.y+3;
+    const am = m/60*Math.PI*2, ah = h/12*Math.PI*2;
+    F(c,cx,cy,1,1,'#23262e'); F(c,cx+Math.round(Math.sin(am)),cy-Math.round(Math.cos(am)),1,1,'#23262e'); F(c,cx+Math.round(Math.sin(am)*2),cy-Math.round(Math.cos(am)*2),1,1,'#23262e');
+    F(c,cx+Math.round(Math.sin(ah)),cy-Math.round(Math.cos(ah)),1,1,'#d92d20');
+  }
+  function drawAmbientFx(c, t){ // steam, cigar smoke, confetti (after the night tint, like other lights)
+    for(const q of AMB.cups){ if(AMB.t-q.born > 110*TS) continue;
+      for(let i=0;i<2;i++){ const k = (t*2.5 + q.x*.7 + i*1.5) % 3; F(c,q.x+1+i-(k>1.5?1:0), q.y-1-Math.round(k*1.6), 1, 1, 'rgba(255,255,255,'+(.8-k*.2).toFixed(2)+')'); } }
+    for(const N of NPCS){ if(!N.cigar || !N.vis) continue; const b = actorBox(N, t), ex = b.x+4, ey = b.top+4;
+      F(c,b.x+1,ey,3,1,'#7a4a24'); F(c,ex,ey,1,1,(t*2|0)%2 ? '#ff7a1a' : '#ffb347');
+      for(let i=0;i<3;i++){ const k = (t*1.4 + i) % 3; F(c,ex+Math.round(Math.sin(t*2+i*2.1)*1.5), ey-1-Math.round(k*3.2), 1, 1, 'rgba(225,225,235,'+(.8-k*.25).toFixed(2)+')'); }
+      const cyc = (t%5)/5; F(c,ex+1+Math.round(cyc*3), ey-2-Math.round(cyc*11), 2, 2, 'rgba(235,235,242,'+(.85-cyc*.8).toFixed(2)+')'); }
+    for(const p of AMB.conf) F(c,Math.round(p.x),Math.round(p.y),1,p.h,p.col);
+  }
+  sched('tea', 240, 600, 4, 6); sched('dev', 90, 240, 10, 13); sched('po', 150, 300, 16, 19); sched('cto', 900, 2100, 24, 28);
+  if(FAST) window.NITT_AMB = {AMB, NPCS, tea:()=>teaStart('serve'), collect:()=>teaStart('collect'), dev:()=>{ const D = devsReady(); return D.length>0 && (paceStart(D[0]), true); },
+    po:()=>{ const P = actors.po; return P.st==='reviewing' && P.grp==='poDesk' && ready(P) && boardStart(P); }, cto:()=>ctoStart(), confetti};
+
   // where each agent stands, from its state
   function spotFor(c, st, ctx){
     if(ctx.limited) return {spot:'brk'};
@@ -888,17 +1068,20 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     if(st==='idle') return {spot:'brk'};
     if(st==='planning') return {spot:'board'};
     if(st==='reviewing'){
-      if(ctx.fable) return {spot:'meet', i: c.key==='po'?1 : c.key==='dev'?2 : 3};
-      return c.key==='po' ? {spot:'poDesk'} : {spot:'meet', i: c.key==='dev'?2:3};
+      const mi = {po:1, dev:2, tester:3, dev2:4}[c.key]; // meeting-room seats
+      if(ctx.fable) return {spot:'meet', i:mi};
+      return c.key==='po' ? {spot:'poDesk'} : {spot:'meet', i:mi};
     }
     if(st==='testing') return {spot:'bench'};
     if(st==='coding') return {spot: c.key==='tester' ? 'bench' : 'devDesk'};
-    return {spot: c.key==='po'?'poDesk' : c.key==='dev'?'devDesk' : 'bench'};
+    return {spot: c.key==='po'?'poDesk' : c.key==='dev'||c.key==='dev2'?'devDesk' : 'bench'};
   }
   function agentView(){
     const lim = limitInfo(), A = S.agents||{};
     const fa = A.fable, fableOn = !!fa && fa.state && fa.state!=='idle' && fa.updated && (Date.now()-new Date(fa.updated)) < 12*3600e3;
-    return CREW.filter(c=>!c.visitor || fableOn).map(c=>{
+    const d2 = A.dev2, dev2On = !!d2 && !!d2.updated && (Date.now()-new Date(d2.updated)) < 12*3600e3; // optional 2nd dev: shown while it has reported in the last 12 h
+    CREW.find(c=>c.key==='dev').name = dev2On ? 'Dev 1' : 'Dev';
+    return CREW.filter(c=>c.key==='dev2' ? dev2On : (!c.visitor || fableOn)).map(c=>{
       const raw = A[c.key] || {state:'idle'};
       const a = lim.blocked ? {...raw, state:'idle', message:'Limit doldu, mola. '+(lim.reset?lim.reset+"'de dönüyoruz.":'')} : raw;
       return {c, a, st: STATE_TR[a.state] ? a.state : 'idle'};
@@ -908,6 +1091,10 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     const lim = limitInfo(), view = agentView(), fableOn = view.some(v=>v.c.visitor);
     const cx = {limited: lim.blocked, fable: fableOn};
     VIEW = view;
+    // ambient life yields to anything real: blocked agent, usage limit, "PC'ye bak" alert, or a real CTO review
+    AMB.fableOn = fableOn; const amBlock = alarmReasons(lim).length>0 || view.some(v=>v.st==='blocked');
+    if((amBlock && !AMB.block) || (fableOn && AMB.cto)) ambAbort();
+    AMB.block = amBlock;
     if(L && Object.keys(S.agents||{}).length){
       const taken = new Set();
       view.forEach(({c,a,st})=>{
@@ -1101,12 +1288,16 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   $('alarmOk').addEventListener('click', ()=>{ alarmSeen = alarmKey; try{ localStorage.setItem('nittcam-alarm-seen', alarmSeen); }catch(e){} $('alarm').hidden = true; });
 
   // ---------- render ----------
+  let prevTask = null;
   function render(){
     const Li = limitInfo();
     $('ms').textContent = S.milestone || '—';
     $('upd').textContent = ago(S.updated);
     document.body.classList.toggle('limited', Li.blocked);
     $('limitBand').hidden = !Li.blocked; $('limitReset').textContent = Li.reset || 'yakında';
+    const tstat = {}; (S.tasks||[]).forEach(t=>{ tstat[t.id] = t.status; });
+    if(prevTask && Object.keys(tstat).some(id=>prevTask[id] && prevTask[id]!=='done' && tstat[id]==='done')) confetti();
+    prevTask = tstat;
     drawQuota(Li); renderOffice(); renderPhases(); renderTasks(); renderAsks(); renderLog(); drawAlarm(Li);
   }
 
