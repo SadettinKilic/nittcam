@@ -246,7 +246,13 @@ export function AppShell({ t, company, children }: AppShellProps) {
           t={t.shortcuts}
           onCloseAutoFocus={helpFocus.onCloseAutoFocus}
         />
-        <Toaster />
+        {/* Toasts sit above the sticky wizard footer (its height is --wizard-footer-h), so they
+            never cover its right-hand action ("İndir" on the last step). Off the wizard the
+            variable is unset and sonner's usual offsets apply. */}
+        <Toaster
+          offset={{ bottom: 'calc(var(--wizard-footer-h, 0px) + 24px)' }}
+          mobileOffset={{ bottom: 'calc(var(--wizard-footer-h, 0px) + 16px)' }}
+        />
       </TooltipProvider>
     </ShellProvider>
   );

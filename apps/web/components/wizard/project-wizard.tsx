@@ -571,6 +571,7 @@ function WizardSession({
         run={session.run}
         onToList={() => setPartsView('list')}
         viewSwitch={switchInCanvas ? viewSwitch : undefined}
+        toolDiameter={toolDiameter}
       />
     );
   } else if (step === 'parcalar') {

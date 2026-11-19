@@ -14,6 +14,8 @@ import { Copy, FlipHorizontal2, FlipVertical2, RotateCw, Trash2 } from 'lucide-r
 import type { BoardSummary } from '../../lib/editor/summary';
 import type { Messages } from '../../lib/messages';
 import { ariaKeyShortcuts, shortcutById, shortcutText, type ShortcutId } from '../../lib/shortcuts';
+import { PartProperties, type Run, type SubSelection } from './properties';
+import type { ReactNode } from 'react';
 import { useIsMac } from '../shell/keys';
 
 export interface InspectorActions {
@@ -90,7 +92,7 @@ export function BoardActionBar({
 
 /**
  * Right inspector of the drawing board (compact density): what is selected, its size and board
- * position, and the edit actions. The full properties panel comes with T130.
+ * position, the edit actions and, for one part, the properties panel (T130).
  */
 export function EditorInspector({
   t,
@@ -98,11 +100,22 @@ export function EditorInspector({
   selected,
   actions,
   summary,
+  run,
+  sub = null,
+  onSub,
+  corner,
 }: {
   t: Messages['editor']['inspector'];
   project: Project;
   selected: readonly BoardPart[];
   actions?: InspectorActions;
+  /** Runs a command (the properties panel edits, T130). Without it the panel is read-only. */
+  run?: Run;
+  /** Selected segment / vertex of the single selected part. */
+  sub?: SubSelection;
+  onSub?: (sub: SubSelection) => void;
+  /** Corner tools under the vertex group (T131/T132). */
+  corner?: ReactNode;
   /** With nothing selected: counts, total area and extents of the board (T242). */
   summary?: BoardSummary;
 }) {
@@ -161,11 +174,6 @@ export function EditorInspector({
       ) : (
         <>
           <InspectorRows>
-            {selected.length === 1 && part ? (
-              <Row label={t.kind.title} mono={false}>
-                {t.kind[part.kind]}
-              </Row>
-            ) : null}
             <Row label={t.size}>
               <Measure
                 value={[box.maxX - box.minX, box.maxY - box.minY]}
@@ -179,18 +187,17 @@ export function EditorInspector({
                 X <Measure value={box.minX} mono /> · Y <Measure value={box.minY} mono />
               </span>
             </Row>
-            {selected.length === 1 && part?.kind === 'rect' ? (
-              <Row label={t.radius}>
-                <Measure value={part.params.r} unit="mm" mono data-testid="editor-radius" />
-              </Row>
-            ) : null}
-            {selected.length === 1 && part ? <Row label={t.qty}>{part.qty}</Row> : null}
           </InspectorRows>
           {actions ? (
             <div className="flex flex-col gap-1.5">
               <h3 className="text-xs font-medium text-fg-muted">{t.actions}</h3>
               <BoardActionBar t={t} label={t.actions} actions={actions} className="-ml-1" />
             </div>
+          ) : null}
+          {selected.length === 1 && part && first && run && onSub ? (
+            <PartProperties t={t} part={part} at={first.at} run={run} sub={sub} onSub={onSub}>
+              {corner}
+            </PartProperties>
           ) : null}
         </>
       )}
