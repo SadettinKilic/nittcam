@@ -155,6 +155,16 @@ const partBase = {
     .max(200, { error: 'at most 200 characters' })
     .optional(),
   /**
+   * Group label (T122, T123), e.g. the cabinet a part came from. Only a label (D-041): editable,
+   * removable, never a lock and never a link back to a generator. Absent = no group.
+   */
+  group: z
+    .string({ error: 'must be a string' })
+    .trim()
+    .min(1, { error: 'must not be empty' })
+    .max(60, { error: 'at most 60 characters' })
+    .optional(),
+  /**
    * Grain of the piece (D-034): `fixed` = the grain line at `angle` (part frame) must lie along the
    * sheet grain after placement; `free` = no grain rule (the angle is kept for display).
    */

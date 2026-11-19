@@ -109,6 +109,14 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await mockExport(page);
       });
 
+      test('cabinet generator dialog (T122)', async ({ page }) => {
+        await openNewProject(page, 'parcalar');
+        await page.getByTestId('cabinet-open').click();
+        await expect(page.getByTestId('cabinet-dialog')).toBeVisible();
+        await expectNoA11yViolations(page);
+        await snap(page, `t122-cabinet-dialog-${vp}-${theme}`, { fullPage: false });
+      });
+
       test('steps 1–5: machine, parts, layout, simulation, export (T109–T111)', async ({
         page,
       }) => {

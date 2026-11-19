@@ -32,6 +32,7 @@ import {
   notify,
 } from '@nittcam/ui';
 import {
+  Archive,
   ArrowDown,
   ArrowUp,
   ClipboardPaste,
@@ -77,6 +78,7 @@ import {
 } from '../../lib/cut-list-grid';
 import { downloadText } from '../../lib/cut-list-file';
 import { fill, newPartId } from '../../lib/draft-project';
+import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
 import {
@@ -927,6 +929,7 @@ export function CutListEditor({
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [cabinetOpen, setCabinetOpen] = useState(0);
   const [selection, setSelection] = useState<ReadonlySet<string>>(() => new Set());
   const anchor = useRef<string | null>(null);
   const focusNext = useRef<string | null>(null);
@@ -1131,6 +1134,23 @@ export function CutListEditor({
     return ok;
   }
 
+  /** T122: the generated rows in one importCutList = one undo step (D-041). */
+  function addCabinet(generated: Parameters<typeof cabinetRows>[0], group: string): boolean {
+    const rows = cabinetRows(generated, t.cabinet.roles, group, newPartId);
+    const ok = run('importCutList', { parts: rows });
+    if (ok) {
+      notify.success(
+        fill(t.cabinet.added, { group: group.trim() || t.cabinet.title, count: rows.length }),
+        {
+          id: 'cut-list-cabinet',
+          ...undoAction,
+        },
+      );
+      scrollToRow.current?.(parts.length);
+    }
+    return ok;
+  }
+
   function applyBulk(params: Record<string, unknown>): boolean {
     const ok = run('updateParts', params);
     if (ok) {
@@ -1226,6 +1246,18 @@ export function CutListEditor({
               <Plus aria-hidden />
               {t.addRow}
             </Button>
+            <Tooltip content={t.cabinet.openHint}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCabinetOpen((n) => n + 1)}
+                data-testid="cabinet-open"
+                aria-label={phone ? t.cabinet.open : undefined}
+              >
+                <Archive aria-hidden />
+                <span className="max-sm:sr-only">{t.cabinet.open}</span>
+              </Button>
+            </Tooltip>
             <Tooltip content={t.exportCsvHint}>
               <Button
                 variant="outline"
@@ -1250,6 +1282,22 @@ export function CutListEditor({
             </Button>
           </div>
         </div>
+        {cabinetOpen > 0 ? (
+          <CabinetDialog
+            key={cabinetOpen}
+            t={t.cabinet}
+            open
+            onOpenChange={(o) => {
+              if (!o) setCabinetOpen(0);
+            }}
+            thickness={project.stock.thickness}
+            defaultGroup={nextCabinetName(
+              t.cabinet.defaultGroup,
+              parts.map((p) => p.group),
+            )}
+            onAdd={addCabinet}
+          />
+        ) : null}
         {selected.length > 0 ? (
           // The title stays the section's name while the selection bar replaces it.
           <h2 id="cut-list-title" className="sr-only">

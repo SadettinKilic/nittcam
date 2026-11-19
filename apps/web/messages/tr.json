@@ -700,7 +700,65 @@
     "exportCsvHint": "Kesim listesini CSV dosyası olarak indir (Excel ile açılır)",
     "exported": "Kesim listesi indirildi ({count} satır).",
     "exportSkipped": "{count} çizim parçası dosyaya yazılmadı; yalnızca dikdörtgen parçalar yazılır.",
-    "exportFile": "kesim-listesi.csv"
+    "exportFile": "kesim-listesi.csv",
+    "cabinet": {
+      "open": "Dolap ekle",
+      "openHint": "Ölçülerden yan, üst, alt, raf, arkalık ve kapak parçaları üretir",
+      "title": "Dolap ekle",
+      "description": "Kutu ölçülerini girin; parçalar kesim listesine sıradan satırlar olarak eklenir. Sonra her biri tek tek düzenlenebilir, kopyalanabilir veya silinebilir.",
+      "fields": {
+        "width": "En",
+        "height": "Yükseklik",
+        "depth": "Derinlik",
+        "thickness": "Plaka kalınlığı",
+        "shelves": "Raf sayısı",
+        "plinth": "Süpürgelik",
+        "back": "Arkalık",
+        "backThickness": "Arkalık kalınlığı",
+        "band": "Kenar bandı",
+        "doors": "Kapak",
+        "doorGap": "Kapak boşluğu",
+        "group": "Grup adı"
+      },
+      "units": {
+        "pieces": "adet"
+      },
+      "backModes": {
+        "none": "Yok",
+        "inset": "İçte (yanlar arasında)",
+        "overlay": "Dışta (arkaya çakılı)"
+      },
+      "doorCount": {
+        "0": "Kapaksız",
+        "1": "Tek kapak",
+        "2": "Çift kapak"
+      },
+      "groupHint": "Sadece bir etiket; satırları bağlamaz. Sonra değiştirilebilir veya silinebilir.",
+      "preview": "Önden görünüm",
+      "previewLabel": "Dolabın önden görünümü, {w} × {h} mm",
+      "size": "{w} × {h}",
+      "roles": {
+        "side": "Yan",
+        "top": "Üst",
+        "bottom": "Alt",
+        "shelf": "Raf",
+        "back": "Arkalık",
+        "door": "Kapak",
+        "plinth": "Süpürgelik"
+      },
+      "defaultGroup": "Dolap {n}",
+      "add": "{count} parça ekle",
+      "addDisabled": "Parça ekle",
+      "cancel": "Vazgeç",
+      "added": "{group}: {count} satır eklendi.",
+      "errors": {
+        "invalid": "Ölçüleri kontrol edin: hepsi sıfırdan büyük olmalı.",
+        "tooNarrow": "En, iki yan kalınlığından büyük olmalı.",
+        "tooLow": "Yükseklik; süpürgelik, üst ve alt kalınlıklarından büyük olmalı.",
+        "tooShallow": "Derinlik, arkalık kalınlığından büyük olmalı.",
+        "doorsTooSmall": "Kapak boşlukları kapaklara yer bırakmıyor."
+      }
+    }
   },
   "layout": {
     "workspace": {
