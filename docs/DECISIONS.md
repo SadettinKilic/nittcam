@@ -433,3 +433,19 @@ Review #3 found the canvases still read as generic blue boxes on grey, two diffe
 ## D-041 Cabinet generator seeds parts, never locks them (2026-11-19, owner)
 - T122 stays in scope (owner approved). Goal: ease of use without losing flexibility.
 - The generator only seeds parts. Each generated part is an ordinary cut-list row: delete, copy, edit one by one; the group tag is a label, not a lock; no hidden link back to the generator. One undo removes the whole generated set.
+
+## D-042 Speed: parallel switch, delta testing, lighter reviews (2026-11-19, owner)
+- Owner found the pace too slow (goal: reach M6 sooner). Two levers adopted:
+- **Parallelism switch:** "paralellik on" = the dev builds batch N+1 in a separate worktree while the tester checks batch N; "paralellik off" = sequential as before. Set to **on** on 2026-11-19.
+- **Delta testing:** the tester checks only the batch's new and changed parts; fix rounds re-check only the reported bugs; only blockers fail a round; max 2 rounds. Whole-app safety comes from the full CI run.
+- **Reviews:** PO does a short look after every merged batch (is it right, is anything broken), no deep review. Fable design review every 2 batches (was every ~10 tasks). Replaces the "every 4–5 tasks" PO review rule.
+
+## D-043 Desktop-first; phone polish later (2026-11-19, owner)
+- The product will rarely be used from a phone. Build and polish for PC; at phone widths screens must only not break (no page-level horizontal scroll, primary action reachable, no crash, axe clean).
+- Phone-specific polish moves to a "Mobile UI pass" (one or two batches before the field test). T248 deferred there; T249 phone bullet split out as T255; T248 import-panel bullet moved to T250. B8a is now T249–T251.
+- Tester and reviews focus on 1440 px; 390 px is a smoke check. Goal: faster progress.
+
+## D-044 Material library links cutting parameters, never copies them (2026-11-19, dev T121, PO accepted)
+- A library material's "parameter set per machine" is the machine profile's set for the same kind and thickness; the library stores no feed/rpm/step-down of its own (old columns dropped).
+- The project keeps `stock.material` as the kind (export unchanged) plus an optional, display-only `stock.libraryId`.
+- Default materials are seeded once per company (when it has none); a company that deletes them all must not get them back silently.
