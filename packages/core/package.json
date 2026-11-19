@@ -21,6 +21,7 @@
     "vitest": "5.0.5"
   },
   "dependencies": {
+    "dxf-parser": "1.1.2",
     "immer": "11.2.9",
     "zod": "4.6.7"
   }
