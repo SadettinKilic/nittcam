@@ -22,9 +22,12 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | Fable review #3 follow-ups | T248–T254 (7) | B8a (T248–T251) + riders (T252–T254) | phone cut list and simulation usable, one inspector pattern, download is the last step's primary action, canvas has a material tone (D-040) |
 | CTO review #4 follow-ups | T257–T263 (7) | B11a (T257–T260) + riders (T261–T263) | the default path cuts out of the box, blocking errors are caught at step 1, the cabinet generator adds only parts the stock can make, laptop widths keep the canvas (D-045) |
 | CTO review #5 must-fixes | T264–T266 (3) | B12a | "Kesim ayarı ekle" returns to the same project, a prefilled parameter set is never saved blind, corner tools fit the properties panel (D-047: everything else went to the polish queue) |
+| CTO review #6 must-fixes | T269–T271 (3) | B13a (T269–T270 + rider T271) | the file's profile version is shown where it is made, an inner cut without room for 2 tabs is caught where it is drawn, a new project never defaults to an unverified cutting set (D-047) |
+| CTO review #7 must-fixes | T274–T276 (3) | B14a | multi-tool programs ask for every tool and remind to re-zero Z, hole errors are caught where the hole is drawn, a hole near the edge lands where it is clicked (D-047) |
+| Tester/CI findings | T267–T268, T272–T273 (4) | T267 + rider T268 in B13; T272 + rider T273 in B18 | CSV export → import keeps small sizes; no flaky core test; small all-arc parts get tabs (D-049) |
 | M3 Kesim listesi, malzeme, damar kadranı | T112–T123 (12) | B5–B8 | free-angle grain respected from cut list to G-code; cut list editable without Excel |
-| M4 Çizim tahtası I: editör | T124–T137 (14) | B9–B13 | a drawn freeform part with fillets is nested and gives checked G-code |
-| M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
+| M4 Çizim tahtası I: editör | T124–T137 (14) | B9–B13 (+ B12a, B13a) | a drawn freeform part with fillets is nested and gives checked G-code (done 2026-11-19) |
+| M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) + T272–T273 | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
 | M6 3D önizleme | T152–T161 (10) | B19–B21 | 360° preview + cutting playback, 300 parts within the perf budget, 2D fallback |
 | M7 Dizilim yükseltmeleri | T162–T171 (10) | B22–B24 | 3 modes, true-shape with rotation, offcuts, edge-band deduction |
 | M8 Export, etiket, proje yönetimi | T172–T183 (12) | B25–B28 | NC + DXF + PDF + labels from the server; projects/home/settings complete |
@@ -34,7 +37,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
 | M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
 
-**Before the field test: 127 tasks in 37 batches** (+ 3 from CTO review #5, `docs/reviews/2026-11-19-cto-design-review-5.md`: T264–T266, one new batch B12a; before that 124 tasks in 36 batches: + 7 from CTO review #4, `docs/reviews/2026-11-19-cto-design-review-4.md`: T257–T263, one new batch B11a; T255 and T256 were added on 2026-11-19 and are not in this count; before that: 117 tasks in 35 batches = 94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11; + 7 from review #3, `docs/reviews/2026-11-19-fable-design-review-3.md`: T248–T254). The "~90 % / field-test ready" line is the end of M9 (T193).
+**Before the field test: 139 tasks in 39 batches** (counted from the task headings with a status, deferred T248 not counted; the mobile UI pass T248 + T255 comes on top. 2026-11-19: + 3 from CTO review #7 (T274–T276, batch B14a), + 3 from CTO review #6 (T269–T271, batch B13a), + T267/T268 (B13) and T272/T273 (B18) from tester/CI findings, T255/T256 now counted. Before that 127 tasks in 37 batches: + 3 from CTO review #5, `docs/reviews/2026-11-19-cto-design-review-5.md`: T264–T266, one new batch B12a; before that 124 tasks in 36 batches: + 7 from CTO review #4, `docs/reviews/2026-11-19-cto-design-review-4.md`: T257–T263, one new batch B11a; T255 and T256 were added on 2026-11-19 and are not in this count; before that: 117 tasks in 35 batches = 94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11; + 7 from review #3, `docs/reviews/2026-11-19-fable-design-review-3.md`: T248–T254). The "~90 % / field-test ready" line is the end of M9 (T193).
 
 **Order note (2026-11-18, D-035 amendment):** after B4b come B9–B10 (drawing board foundation, T124–T129), then **B10a** (Fable review #2 must-fixes, T240–T243), then M3 B5–B8, then B11+.
 
@@ -42,11 +45,13 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 
 **Order note (2026-11-19, CTO review #4):** **B11a** (T257–T260) runs right after B11 and before B12. T261 rides with B12, T262 and T263 ride with B13. No other batch moves.
 
+**Order note (2026-11-19, CTO review #5, D-047):** **B12a** (T264–T266) runs right after B12 and before B13. Everything else from that review is in "Polish queue (M9; D-047)". No other batch moves.
+
 **Order note (2026-11-19, CTO review #6, D-047):** **B13a** (T269–T270 + rider T271) runs now, in parallel with B13 and B14/B16. The rest of review #6 is in the Polish queue. No other batch moves.
 
 **Order note (2026-11-19, CTO review #7, D-047):** **B14a** (T274–T276) runs on the first free dev, before B18.
 
-**Order note (2026-11-19, CTO review #5, D-047):** **B12a** (T264–T266) runs right after B12 and before B13. Everything else from that review is in "Polish queue (M9; D-047)". No other batch moves.
+**Order note (2026-11-19, D-054, paralellik on):** M4 is done (B13, B13a landed). M5 continues (B15, B16 → B17 → B18) and M6 **B19** (3D foundation) runs in parallel with M5 because it touches other files; B20 waits for M5. Statuses here are set to `done` by DevOps in each integration PR (the dashboard reads this file from origin/main).
 
 ---
 
@@ -268,13 +273,6 @@ Acceptance:
 - [ ] in CI a missing or changed baseline fails (`updateSnapshots: 'none'`); the actual images are copied into the `visual-screenshots` artefact as candidate baselines (`tools/ci/visual-candidates.mjs`), so the baseline-refresh workflow stays; locally (or `VISUAL_UPDATE=missing`) missing ones are still written
 - [ ] `settle()` makes captures deterministic: network idle, fonts, no pending autosave, canvases sized, transitions/animations frozen, page scrolled to 0,0
 Tester focus: a deleted baseline makes the CI visual job red and the artefact holds the candidate; commit the Linux baselines from the artefact.
----
-
-## M4 early: Çizim tahtası temeli, B9–B10 (moved before M3; D-035 amendment 2026-11-18)
-
-The owner wants the drawing board early. B9 and B10 depend only on T110 (and on T197's `WorkspaceLayout`), so they run right after B4b and before M3 B5–B8. B11+ stay in M4 below. **Work order: B4b → B9 → B10 → B10a → B5 → B6 → B7 → B8 → B11 → …**
-
-### Batch B9: T124–T126 (canvas foundation)
 
 ### T199b B4b follow-ups   [status: done]
 Spec: §3.6, §3.7 · Depends: T196–T198 · Owner: B4b tester + PO review 2026-11-18
@@ -283,6 +281,14 @@ Acceptance:
 - [ ] below 640 px the simulation step shows the plate tabs on their own row, the same as Dizilim
 - [ ] tool-order markers in the simulation never cover part labels (markers offset to the part corner, or labels under markers hidden at low zoom)
 Tester focus: 1440 with 3+ plates (last tab fully visible / reachable); 390 simulation with 2+ plates; simulation screenshot at fit zoom, labels readable.
+
+---
+
+## M4 early: Çizim tahtası temeli, B9–B10 (moved before M3; D-035 amendment 2026-11-18)
+
+The owner wants the drawing board early. B9 and B10 depend only on T110 (and on T197's `WorkspaceLayout`), so they run right after B4b and before M3 B5–B8. B11+ stay in M4 below. **Work order: B4b → B9 → B10 → B10a → B5 → B6 → B7 → B8 → B11 → …**
+
+### Batch B9: T124–T126 (canvas foundation)
 
 ### T124 Editor canvas foundation   [status: done]
 Spec: §4.2 · Depends: T110
@@ -409,7 +415,7 @@ Acceptance:
 - [ ] the helper sentence next to the Liste / Çizim switch moves into the table's empty state and the import dialog
 Tester focus: the toast action undoes the paste in one step; chip ↔ panel switch when a warning appears; axe (toast is announced).
 
-### T247 Shell tidy: one save state, no duplicate nav (rides with B8)   [status: todo]
+### T247 Shell tidy: one save state, no duplicate nav (rides with B8)   [status: done]
 Spec: §3.4, §3.7 · Depends: T103 · Owner: FQ4 decided by the reviewer (design delegated 2026-11-18)
 Acceptance:
 - [ ] the save state is shown once per screen: in the wizard the footer keeps "Kaydedildi" and the top-bar chip is hidden (≥ 1024 px); on phones the top-bar dot stays and the footer text is dropped
@@ -513,7 +519,7 @@ Tester focus: real Excel files (merged header row, empty rows, Turkish chars); o
 
 Riders in this batch: T247 (review #2), T252 with T121 and T253 with T123 (review #3; text in "Review #3 riders" below).
 
-### T121 Material & stock library   [status: todo]
+### T121 Material & stock library   [status: done]
 Spec: §3.4, §3.6, §9.1 · Depends: T111
 Acceptance:
 - [ ] Ayarlar → Malzemeler page: CRUD of materials (type, name, thickness list, colour/texture key, default grain angle, stock sheet sizes, linked parameter set per machine), company-scoped `materials` table + migration
@@ -521,7 +527,7 @@ Acceptance:
 - [ ] tenancy test for the new table
 Tester focus: CRUD e2e; wizard uses library values; company isolation test; visual + axe.
 
-### T122 Parametric cabinet box generator   [status: todo]
+### T122 Parametric cabinet box generator   [status: done]
 Spec: §4.7 (v3 note) · Depends: T119
 Acceptance:
 - [ ] pure core `cabinetParts(params)`: W, H, D, thickness, back panel (none/inset/overlay, thickness), fixed shelves count, doors (0/1/2, gap), plinth height → named rect parts with grain (sides vertical) and edge band defaults; no joinery
@@ -530,7 +536,7 @@ Acceptance:
 - [ ] unit + property tests (dimensions add up, all parts positive, door gaps)
 Tester focus: generated dimensions vs hand calculation for 3 cabinets; undo removes the whole cabinet; dialog keyboard flow; generate → delete one part, copy one, edit one → the rest unchanged and nesting/export work.
 
-### T123 Cut list organisation: groups, search, sort, filter   [status: todo]
+### T123 Cut list organisation: groups, search, sort, filter   [status: done]
 Spec: §4.1 · Depends: T119
 Acceptance:
 - [ ] group column (cabinet/tag) with collapsible groups; search box (Turkish folding); sort by any column; filter "hatalı satırlar"
@@ -551,7 +557,7 @@ Acceptance:
 - [ ] import panel, every width: the "N satır ekle" / "Vazgeç" row is sticky at the bottom of the panel so it is visible without scrolling at 1440 × 900 and 390 × 844; the intro paragraph is one sentence, the rest moves into an info popover
 Tester focus: card height and visible-card count by bounding box at 390 × 844 and 360 × 740; every toolbar action still reachable by keyboard and named (axe); edit, select, bulk edit and import e2e stay green; baselines updated on purpose.
 
-### T249 Dizilim and Simülasyon panels II: one toolbar row, shared inspector rows   [status: todo]
+### T249 Dizilim and Simülasyon panels II: one toolbar row, shared inspector rows   [status: done]
 Spec: §3.6, §8.2 · Depends: T244, T245, T242 · Decision: D-040
 Acceptance:
 - [ ] Dizilim and Simülasyon at ≥ 1024 px: plate tabs (left) and the canvas tools (right) share **one row** (today two rows at 1440; open item from T244); the grid toggle is the same icon toggle button as on the board (no checkbox + "Milimetre ızgarası (100 mm)" text; the text is its tooltip), at every width
@@ -560,7 +566,7 @@ Acceptance:
 - [ ] *(deferred to the mobile UI pass, D-043; see T255)* Simülasyon below 640 px: the whole transport (scrubber, time, speed chips, position line) is visible above the "Ayarlar / G-code" button bar with nothing behind it (same rule as T240); the wizard header shows the short label "Simülasyon" below 640 px (the step name itself is unchanged, spec §3.7)
 Tester focus: **safety**: the air-cut sentence and every warning string are still present (string list before/after); bounding boxes: transport bottom ≤ button bar top at 390 × 844 and 360 × 740; tabs and tools on one row at 1440 and 1024; play/pause and layout drag e2e green; baselines updated on purpose.
 
-### T250 Export step: download in the footer, tidy file rows   [status: todo]
+### T250 Export step: download in the footer, tidy file rows   [status: done]
 Spec: §3.7, §7.1 · Depends: T111, T199 · Decision: D-040
 Acceptance:
 - [ ] on step 5 the wizard footer's primary button is **"İndir"** (where "İleri" sits on steps 1–4), so it is visible without scrolling at 1440 × 900 and 390 × 844; it is disabled until the checklist and the unverified-profile acceptance are complete, and its disabled reason ("İndirmek için kontrol listesini tamamlayın") is shown next to it; the in-page button is removed (one download action per screen)
@@ -572,7 +578,7 @@ Tester focus: **safety**: download impossible until every box is ticked (keyboar
 ### T250 import-panel note
 > T250 also carries the T248 import-panel bullet (D-043): the "N satır ekle" / "Vazgeç" row is sticky at the bottom of the import panel so it is visible without scrolling at 1440 × 900; the intro paragraph is one sentence, the rest moves into an info popover.
 
-### T251 Canvas material tone   [status: todo]
+### T251 Canvas material tone   [status: done]
 Spec: §3.2, §8.3 · Depends: T196 · Decision: D-040
 Acceptance:
 - [ ] new tokens for the stock sheet and for parts in a warm, pale wood family, light and dark (the sheet lighter, parts one step stronger, ink outline); used by the layout canvas, the simulation canvas, the board, the step 1 preview and the home/project thumbnails; no hard-coded colours in canvas code
@@ -583,7 +589,7 @@ Tester focus: contrast tests; all canvas baselines regenerated on purpose and lo
 
 ### Review #3 riders: T252–T254 (not a batch; each rides with the batch named in its title; no reorder)
 
-### T252 Step 1: grain dial next to the sheet preview (rides with B8, with T121)   [status: todo]
+### T252 Step 1: grain dial next to the sheet preview (rides with B8, with T121)   [status: done]
 Spec: §3.7, §2.4 · Depends: T116
 Acceptance:
 - [ ] at ≥ 1024 px the "Damar yönü" dial sits in the "Önizleme" card under the sheet preview (dial left, angle input and presets right), not at the end of the form; at 1440 × 900 the dial and the preview are both fully visible without scrolling (today the dial starts behind the footer)
@@ -591,7 +597,7 @@ Acceptance:
 - [ ] the "Uyarılar" card with no issues becomes the "Sorun yok" chip in the step card header (same component as T246); with issues the card returns
 Tester focus: bounding boxes at 1440 × 900 and 390 × 844; dial keyboard use and undo unchanged (T115/T116 e2e green); chip ↔ card switch.
 
-### T253 Cut list grid: quiet zeros, stable layout with warnings (rides with B8, with T123)   [status: todo]
+### T253 Cut list grid: quiet zeros, stable layout with warnings (rides with B8, with T123)   [status: done]
 Spec: §4.1 · Depends: T118, T246
 Acceptance:
 - [ ] an edge band value of 0 is shown as a dimmed "–" (the cell is still editable and shows the number while focused); data and CSV export are unchanged (still 0)
@@ -599,7 +605,7 @@ Acceptance:
 - [ ] in the compact band layout (grid < 1040 px) the "Bant" cell shows four small edge marks (which edges have a band) and opens the four inputs in a popover; no bare checkbox
 Tester focus: typing 9000 into a width cell at 1440 and 1280 leaves every other cell's x position unchanged (bounding boxes); export CSV still writes 0; keyboard path through the band popover; axe.
 
-### T256 Floating Uyarılar panel never covers cells; toasts above the footer (rides with B11)   [status: todo]
+### T256 Floating Uyarılar panel never covers cells; toasts above the footer (rides with B11)   [status: done]
 Spec: §4.1 · Depends: T253, T246 · Source: B8 tester r1 + B8a tester notes (2026-11-19)
 Acceptance:
 - [ ] the Parçalar "Uyarılar" panel auto-opens only when it fits right of the last grid column without covering any cell or header; otherwise it stays closed behind the issue chip (as at 1024 px)
@@ -607,7 +613,7 @@ Acceptance:
 - [ ] toasts (e.g. "N satır eklendi · Geri al") sit above the wizard footer and never cover its right-hand button (İleri / İndir) at 1440 and 1024
 Tester focus: bounding boxes at 1440 and 1280 with issues: no overlap with grid cells; close → reload → still closed; toast box above footer box.
 
-### T254 Board: fit to the sheet, grain glyph, focus ring (rides with B11, with T130)   [status: todo]
+### T254 Board: fit to the sheet, grain glyph, focus ring (rides with B11, with T130)   [status: done]
 Spec: §4.2, §2.4 · Depends: T243, T116 · Decision: D-040 (replaces the "fit frames the parts only" line of T243)
 Acceptance:
 - [ ] with the sheet outline on, entering the board and the fit button frame the **union of the sheet outline and the parts** with 48 px padding, so at 1440 × 900 all four sheet edges and the "Plaka 2.800 × 2.070" label are visible (today only two dashed lines show and the label is under the ruler); with the outline off, fit frames the parts as before
@@ -619,7 +625,7 @@ Tester focus: sheet edges inside the canvas box at 1440 × 900, 1024 × 768 and 
 
 Source: `docs/reviews/2026-11-19-cto-design-review-4.md` (operator walkthrough). Rule: D-045. Each task is at most half a day. Desktop-first (D-043): checks at 1440 and 1024; 390 is a smoke check.
 
-### T257 Seeded materials cut out of the box   [status: todo]
+### T257 Seeded materials cut out of the box   [status: done]
 Spec: §3.7, §2.4 · Depends: T121 · Decision: D-045, D-044
 Acceptance:
 - [ ] the seeded example machine profile has a parameter set for Melamin 18 mm and Kontrplak 18 mm (same values as its MDF 18 mm set; the profile stays "Taslak / Örnek" and unverified); Akrilik 5 mm stays without a set; existing golden G-code files stay byte-identical
@@ -628,7 +634,7 @@ Acceptance:
 - [ ] on a fresh database a project with library "Melamin 18 mm" goes from step 1 to "İndir" with no error
 Tester focus: fresh PGlite DB, Melamin 18 and Kontrplak 18 end to end (checks green, file downloads); golden files unchanged; Akrilik shows the mark; chip text at 1440 and 1024.
 
-### T258 "No cutting parameters" is caught at step 1, with one action to fix it   [status: todo]
+### T258 "No cutting parameters" is caught at step 1, with one action to fix it   [status: done]
 Spec: §3.7, §9 · Depends: T257 · Decision: D-045
 Acceptance:
 - [ ] the step 1 error box has a button "Kesim ayarı ekle": it opens the machine form scrolled to "Malzeme parametreleri" with the material kind and thickness prefilled in a new set; after saving, a "Projeye dön" link returns to the same project and step
@@ -636,7 +642,7 @@ Acceptance:
 - [ ] user-facing text only: "Makineler → Malzemeler" becomes "Makineler → Malzeme parametreleri" (Malzemeler is now a page under Ayarlar); the line "Teknik ayrıntı: No cutting parameters for …" is not shown; the raw "TOOLPATH" chip on the export step becomes "Takım yolu"
 Tester focus: Akrilik 5 mm project: button → set saved → back in the project, error gone, export reachable; no English sentence and no upper-case internal code on steps 1, 4 and 5 (text scan); keyboard path.
 
-### T259 Step 1 material field and sheet preview polish   [status: todo]
+### T259 Step 1 material field and sheet preview polish   [status: done]
 Spec: §3.7, §2.4 · Depends: T121, T252
 Acceptance:
 - [ ] the closed Malzeme select shows a library entry on one line (swatch, "MDF · 18 mm"); today the second line is clipped at the bottom edge at 1440 and 1024
@@ -645,7 +651,7 @@ Acceptance:
 - [ ] the thickness field has no native datalist arrow next to the number
 Tester focus: bounding box of the select value inside the trigger at 1440 and 1024, both themes; MDF vs Melamin preview (hatch off/on); step 1 e2e (T121, T252) green.
 
-### T260 Cabinet generator: only parts this stock can make, calmer form   [status: todo]
+### T260 Cabinet generator: only parts this stock can make, calmer form   [status: done]
 Spec: §4.1 · Depends: T122 · Decision: D-045, D-041
 Acceptance:
 - [ ] when "Arkalık kalınlığı" differs from the project's plate thickness the back panel is **not** added to the cut list by default: the summary shows it as "1 × Arkalık 564 × 720 · 8 mm · ayrı plaka" with a checkbox "Yine de listeye ekle"; when added it carries the note "8 mm" (today an 8 mm back lands silently in the 18 mm list and is nested on the 18 mm sheet)
@@ -656,20 +662,20 @@ Tester focus: a cabinet with 2 shelves on an 18 mm project adds 7 pieces without
 
 ### CTO review #4 riders: T261–T263 (not a batch; each rides with the batch named in its title; no reorder)
 
-### T261 Parçalar → Dizilim flow: no phantom row, nesting runs on first entry (rides with B12, with T135)   [status: todo]
+### T261 Parçalar → Dizilim flow: no phantom row, nesting runs on first entry (rides with B12, with T135)   [status: done]
 Spec: §4.1, §3.7 · Depends: T118 · Decision: D-045
 Acceptance:
 - [ ] a row created by pressing Enter on the last row and never edited ("Parça N", 100 × 100) is removed when focus leaves it or the step changes; a row added with "Satır ekle" is kept (today the leftover row is nested and cut as a 100 × 100 part)
 - [ ] entering Dizilim with parts and no layout runs the nesting once automatically (same command as "Diz", one undo step); after that "Diz" works as today; nothing runs automatically when a layout exists
 Tester focus: type a row, press Enter, click İleri: the count has no extra row; first entry to Dizilim shows a layout without a click; locked parts and an existing layout are never re-nested by entering the step.
 
-### T262 Simülasyon G-code panel shows the real file header (rides with B13, with T137)   [status: todo]
+### T262 Simülasyon G-code panel shows the real file header (rides with B13, with T137)   [status: done]
 Spec: §3.7, §9 · Depends: T020, T021
 Acceptance:
 - [ ] the G-code panel on Simülasyon shows the same file name, project name and revision as the file the export step downloads (today: "NittCam_S1.tap", "(PROJE: NittCam)", "(REVIZYON: 0)" against "Mutfak_alt_dolap_60_S1.tap", "(PROJE: Mutfak alt dolap 60)", "(REVIZYON: 3)"); if the revision is only known after saving, the panel says "kaydedilince" instead of 0
 Tester focus: compare the first 12 lines of the panel with the downloaded file on a saved project.
 
-### T263 Laptop widths: canvas budget at 1280 and 1024, Malzemeler row fits (rides with B13, with T137)   [status: todo]
+### T263 Laptop widths: canvas budget at 1280 and 1024, Malzemeler row fits (rides with B13, with T137)   [status: done]
 Spec: §3.6, §8.3 · Depends: T197, T240 · Decision: D-039, D-045
 Acceptance:
 - [ ] below 1440 px the app sidebar opens as the icon rail on the workspace steps (board, Dizilim, Simülasyon); the user's own toggle wins and is remembered
@@ -689,7 +695,7 @@ B9–B10 (T124–T129) were moved up and run right after M2.5, before M3 (D-035 
 
 Rider in this batch: T254 with T130 (review #3; text in "Review #3 riders" in the M3 section). T130 builds the inspector from the shared rows of T249 (D-040).
 
-### T130 Properties panel   [status: todo]
+### T130 Properties panel   [status: done]
 Spec: §4.4 · Depends: T127
 Acceptance:
 - [ ] part: name, qty, W/H/R (parametric), grain (GrainDial), operation summary; segment: length, angle, radius; vertex: X/Y
@@ -698,7 +704,7 @@ Acceptance:
 - [ ] edits are commands, one undo step each; invalid values rejected with Turkish errors
 Tester focus: segment-length rule on 3 shapes (hand-checked coordinates); undo granularity; keyboard use of the panel.
 
-### T131 Fillet, inner-corner rule, convert to freeform   [status: todo]
+### T131 Fillet, inner-corner rule, convert to freeform   [status: done]
 Spec: §4.3, §4.4 · Depends: T130
 Acceptance:
 - [ ] `filletCorners(part, corners, r)` in core: radius clamped to neighbour lengths with a warning
@@ -707,7 +713,7 @@ Acceptance:
 - [ ] property tests: fillet keeps the contour closed, orientation kept, area decreases
 Tester focus: property tests; clamp warning visible; auto-fix result checked against the tool radius of the selected machine.
 
-### T132 Dogbone / T-bone   [status: todo]
+### T132 Dogbone / T-bone   [status: done]
 Spec: §4.4 · Depends: T131
 Acceptance:
 - [ ] `addDogbone(part, corner, style)` in core: overcut circle of tool radius at concave corners (dogbone along the bisector, T-bone along a chosen edge)
@@ -718,20 +724,20 @@ Tester focus: toolpath test that the corner point is cut; visual check of both s
 
 Rider in this batch: T261 with T135 (CTO review #4; text in "CTO review #4 riders" in the M3 section).
 
-### T133 Dimension labels and annotations   [status: todo]
+### T133 Dimension labels and annotations   [status: done]
 Spec: §4.2, §4.4 · Depends: T130
 Acceptance:
 - [ ] on-canvas length labels for selected segments and parts (always readable size); dimension tool for persistent linear dimensions (stored as non-cut annotations, ignored by nesting/toolpath)
 Tester focus: annotations never reach the toolpath (core test); labels readable at all zoom levels (screenshots).
 
-### T134 Inner contours (cutouts)   [status: todo]
+### T134 Inner contours (cutouts)   [status: done]
 Spec: §4.3, §6.1 · Depends: T128
 Acceptance:
 - [ ] drawing a closed shape inside a part asks "iç kesim olarak ekle?" → added to `inners` (CW normalised)
 - [ ] validation: inner inside outer, inners not overlapping, inner larger than tool diameter
 Tester focus: validation cases; the inner contour survives nesting rotation (moves with the part).
 
-### T135 Cut list ↔ editor sync   [status: todo]
+### T135 Cut list ↔ editor sync   [status: done]
 Spec: §3.6, §4.1 · Depends: T127, T118
 Acceptance:
 - [ ] parts sidebar in the editor (search, select); selection syncs between Liste and Çizim; freeform parts show "Serbest" with bbox W/H read-only in the grid
@@ -742,7 +748,7 @@ Tester focus: e2e create in grid → visible in editor and back; freeform W/H no
 
 Source: `docs/reviews/2026-11-19-cto-design-review-5.md`. Rules: D-047 (max 3 must-fix tasks, each at most half a day), D-045, D-046. Desktop-first (D-043): checks at 1440 and 1024; 390 is a smoke check.
 
-### T264 "Kesim ayarı ekle" always returns to the same project   [status: todo]
+### T264 "Kesim ayarı ekle" always returns to the same project   [status: done]
 Spec: §3.7 · Depends: T258 · Decision: D-045
 Acceptance:
 - [ ] on a new project whose first edit is the material, clicking "Kesim ayarı ekle" at any moment (also within 1 s, before the first autosave has finished) opens the machine form with a return path to that project's id; "Projeye dön" lands on the same project with the same name, material and thickness (today: `donus=/projeler/yeni`, the return opens a new empty MDF project that says "Sorun yok" and the first project is orphaned)
@@ -750,7 +756,7 @@ Acceptance:
 - [ ] no extra project is created by the round trip (project count +1 at most)
 Tester focus: e2e with the click right after the pick (no wait) and after 4 s; project id, name and material before and after; Projeler count; the existing b11a spec picks the material first and must now assert the material after the return.
 
-### T265 A parameter set added by the fix flow is never saved blind   [status: todo]
+### T265 A parameter set added by the fix flow is never saved blind   [status: done]
 Spec: §2.4, §3.7 · Depends: T258, T257 · Decision: D-046, D-045
 Acceptance:
 - [ ] the row that "Kesim ayarı ekle" prefills (feed 5.000, rpm 18.000, step-down 6, first tool; the form's generic starting values) carries a visible note under it, in the same place and style as the copied-set note: "Başlangıç değerleri; bu malzeme için doğrulanmadı. Kendi makinenizde doğrulayın." The mark is stored with the set and is dropped when the user edits a value of that row (same behaviour as `copiedFrom`)
@@ -759,7 +765,7 @@ Acceptance:
 - [ ] golden G-code files unchanged; the seeded sets and D-046 notes unchanged
 Tester focus: Akrilik 5, PVC and Masif ahşap through the fix flow; the note survives save and reload and disappears after an edit; step-down clamp; golden files byte-identical.
 
-### T266 Corner tools fit the properties panel and stay reachable   [status: todo]
+### T266 Corner tools fit the properties panel and stay reachable   [status: done]
 Spec: §4.4, §3.6 · Depends: T130, T131, T132
 Acceptance:
 - [ ] the properties panel never scrolls sideways: content width = panel width at 1440 and 1024 (today 294 px in a 264 px panel; the "Yuvarlama yarıçapı" field ends at x = 1446 on a 1440 px screen and at x = 1030 on 1024, its unit is off screen)
@@ -771,21 +777,21 @@ Tester focus: scrollWidth = clientWidth of the panel scroller at both widths; bo
 
 Riders in this batch: T262 and T263 with T137 (CTO review #4; text in "CTO review #4 riders" in the M3 section). **Update 2026-11-19:** T262 and T263 shipped early as B13r (#71). B13 is now T136, T137, T267 (must-fix: wrong output) + rider T268.
 
-### T136 First-use tour and hints   [status: todo]
+### T136 First-use tour and hints   [status: done]
 Spec: §4.2 · Depends: T135
 Acceptance:
 - [ ] short tour (5 steps, skippable, remembered) for the editor; contextual hint bar per tool ("Uzunluk yazıp Enter'a bas")
 - [ ] shortcut sheet for editor tools (from the T104 registry)
 Tester focus: tour once only; keyboard-only completion; reduced motion.
 
-### T137 Editor e2e suite and performance budget   [status: todo]
+### T137 Editor e2e suite and performance budget   [status: done]
 Spec: §11 · Depends: T136
 Acceptance:
 - [ ] e2e: draw L-shape with arc and fillet → nest → simulate → NC download passes checks (= M4 exit)
 - [ ] perf: 500 entities, pan/zoom ≥ 50 fps, selection < 50 ms (trace in CI artefact)
 Tester focus: run suite; review perf numbers; G-code safety review of the drawn part's NC.
 
-### T267 Cut list CSV export → import keeps small sizes (must-fix, D-047: wrong output)   [status: todo]
+### T267 Cut list CSV export → import keeps small sizes (must-fix, D-047: wrong output)   [status: done]
 Spec: §4.1 · Depends: T118
 Found by: B12a full CI run 44536903810, fast-check property `export → import = same parts` in `packages/core/src/cutlist/export.test.ts` (seed -1727248701): a part with w = 0.001 comes back as w = 1.
 Acceptance:
@@ -794,7 +800,7 @@ Acceptance:
 - [ ] the property test runs with the failing seed pinned as an example, plus the default random runs; green 20 times in a row locally (`--repeat`)
 Tester focus: export a list with 0.5 mm and 1234.25 mm parts and re-import it; open the CSV in a spreadsheet: values readable in Turkish locale.
 
-### T268 Rider: flaky core test under load (`b11-corners.tester`)   [status: todo]
+### T268 Rider: flaky core test under load (`b11-corners.tester`)   [status: done]
 Spec: §11 · Depends: none
 Found by: B13r dev, 2026-11-19: `packages/core/src/commands/b11-corners.tester.test.ts` timed out once while the whole suite ran in parallel; passes alone 5/5.
 Acceptance:
@@ -806,7 +812,7 @@ Tester focus: none beyond CI (test-only change).
 
 Runs in parallel with B13 (different screens). Review: `docs/reviews/2026-11-19-cto-design-review-6.md`.
 
-### T269 Simülasyon and step 1 show the profile version the file is made with (must-fix: wrong output)   [status: todo]
+### T269 Simülasyon and step 1 show the profile version the file is made with (must-fix: wrong output)   [status: done]
 Spec: §3.7, §9, §2.4 · Depends: T258, T262 · Decision: D-045
 Found: the project is bound to a profile version and the export uses it, but step 1 and Simülasyon use the machine's latest version (`apps/web/components/wizard/project-wizard.tsx`, `details[machineId]`). MDF step-down 6 → 9 on the machine: Simülasyon shows "surum 4", `G1 Z-6.1666`, 24 passes; the downloaded file is "surum 1", `G1 Z-4.6250`, 32 passes.
 Acceptance:
@@ -817,7 +823,7 @@ Acceptance:
 - [ ] golden files and "the file is made with the project's version" stay unchanged
 Tester focus: create a project, change MDF step-down on the machine, reopen the project; panel text vs first 12 lines and pass count of the downloaded file, before and after "Son sürüme geç"; `?profil=son` return still works.
 
-### T270 An inner cut with no room for 2 tabs is caught where it is drawn (must-fix: late, blocking flow)   [status: todo]
+### T270 An inner cut with no room for 2 tabs is caught where it is drawn (must-fix: late, blocking flow)   [status: done]
 Spec: §4.3, §6.3, §3.7 · Depends: T134, T258 · Decision: D-049, D-045
 Found: with an 8 mm tool a Ø24 circle is added without warning; cut list "Sorun yok", Dizilim "Sorun bulunmadı", four ticks; only Simülasyon says "Bu dosya indirilemez … 2 köprü sığmıyor" without part name, linking to "Makineler", with "Uyarılar: Sorun bulunmadı" below. The block itself is right (D-049).
 Acceptance:
@@ -828,7 +834,7 @@ Acceptance:
 - [ ] D-049, thresholds and golden files unchanged; Ø35 and 80 × 80 pass with tabs as today
 Tester focus: Ø24 and Ø35 circle, 80 × 80 square; dot and text on every step; the view the link opens and the selected part; deleting the inner cut clears the error everywhere; 1440 and 1024; axe.
 
-### T271 Rider: a new project never defaults to an unverified cutting set   [status: todo]
+### T271 Rider: a new project never defaults to an unverified cutting set   [status: done]
 Spec: §2.4 · Depends: T265
 Found by the B12a tester: `apps/web/lib/draft-project.ts:60` `newProject` falls back to `profile.materials[0]` without skipping `unverified` sets (G-code stays blocked, but the T265 rule does not hold in this edge case).
 Acceptance:
@@ -842,7 +848,7 @@ Tester focus: machine whose only set came from the fix flow (unverified) → new
 
 ### Batch B14: T138–T140 (hole object and its toolpaths)
 
-### T138 Hole object, commands and hole tool   [status: todo]
+### T138 Hole object, commands and hole tool   [status: done]
 Spec: §4.5, §5.1 · Depends: T130
 Acceptance:
 - [ ] `addHole`, `updateHole`, `removeHole` (type pocket / through / groove, d, cx, cy, depth, groove width, tool); holes move/rotate with the part
@@ -850,7 +856,7 @@ Acceptance:
 - [ ] validation: d ≥ tool diameter, blind depth < thickness, groove width ≥ tool diameter, hole inside the part
 Tester focus: each validation case; a rotated part keeps holes in the right place (core test + screenshot).
 
-### T139 Toolpath: drilling and through holes   [status: todo]
+### T139 Toolpath: drilling and through holes   [status: done]
 Spec: §4.5, §6.3, §6.4 · Depends: T138 · **Human gate: new golden files (`needs-human`)**
 Acceptance:
 - [ ] d = tool → single plunge or drill cycle (G81/G83 when the profile supports it, else explicit moves); d > tool → helical/spiral entry + circular path; through depth = thickness + spoilboard allowance
@@ -858,7 +864,7 @@ Acceptance:
 - [ ] reader supports G81/G83 for checks; new golden fixtures for both posts
 Tester focus: **G-code safety** (§7.2 rules incl. drill cycle retract plane); failing-input test for a drill below Z limit; golden review list for the owner.
 
-### T140 Toolpath: blind pocket and ring groove   [status: todo]
+### T140 Toolpath: blind pocket and ring groove   [status: done]
 Spec: §4.5, §6.3 · Depends: T139
 Acceptance:
 - [ ] circular pocket clearing (spiral, stepover from the tool) to depth in passes; groove single/multi pass by width
@@ -996,12 +1002,6 @@ Acceptance:
 - [ ] list (company + ready library), preview thumbnail, edit params, version history, duplicate, archive
 Tester focus: visual + axe; edit creates a new version; old projects unchanged.
 
----
-
-## M6: 3D önizleme (exit: 360° preview with cutting playback; 300 parts within the perf budget; 2D fallback on weak devices)
-
-three + @react-three/fiber + @react-three/drei (MIT), lazy-loaded, in `apps/web` only (core stays pure). Decision D-033.
-
 ### T272 Small all-arc parts can be secured with tabs (sign letters "O", discs)   [status: todo]
 Spec: §2.4, §6.3 · Depends: T015, T143 · Decision: D-049
 Found by B16 (#80): a small part whose outline is only arcs (letter O, disc) gets no tabs, because outer-contour tabs are placed only on straight edges, so the export is blocked with `SMALL_PART_UNSECURED`. Sign shops hit this with DXF letters.
@@ -1018,6 +1018,12 @@ Acceptance:
 - [ ] counter-example pinned as a regression test; root cause found (real placement bug at tiny corner radius vs. too aggressive generator) and fixed at the cause, explained in the PR
 - [ ] the property passes 20 runs in a row with random seeds
 Tester focus: none beyond CI.
+
+---
+
+## M6: 3D önizleme (exit: 360° preview with cutting playback; 300 parts within the perf budget; 2D fallback on weak devices)
+
+three + @react-three/fiber + @react-three/drei (MIT), lazy-loaded, in `apps/web` only (core stays pure). Decision D-033.
 
 ### Batch B19: T152–T154 (3D foundation)
 
