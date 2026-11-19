@@ -13,7 +13,14 @@ import type { Part, Placement, Project } from '../schema';
 import { deriveOutline } from '../schema/outline';
 import { checkInnerContour } from '../editor/inners';
 import { passDepths, throughCutTarget } from './depth';
-import { leadSegments, leadsClear, obstacle, type Leads, type Obstacle } from './lead';
+import {
+  leadSegments,
+  leadsClear,
+  obstacle,
+  type Leads,
+  type Obstacle,
+  type WasteSide,
+} from './lead';
 import {
   loopSegments,
   pathLength,
@@ -246,8 +253,9 @@ interface OperationContext {
   outline: Polyline;
   /**
    * Inner contour index (T134) for a cut-out: travel is reversed (climb stays climb on the other
-   * side of the material), no leads (the tool enters on the path, inside the opening). Tabs follow
-   * the slug (D-049). Undefined = the outer contour.
+   * side of the material). The lead-in lies inside the opening, on the waste side (T141); no
+   * lead-out (the slug may already be loose; the tool retracts on the path). Tabs follow the slug
+   * (D-049). Undefined = the outer contour.
    */
   inner?: number;
   /** The placed cut-out itself (sheet frame) for an inner contour: the slug it frees (D-049). */
@@ -274,8 +282,11 @@ function buildOuterOperation(
   const isInner = ctx.inner !== undefined;
   if (isInner) {
     // Climb on the inside of an opening = the opposite travel of the outer contour (D-021).
-    p = { ...p, travel: p.travel === 'cw' ? 'ccw' : 'cw', lead: 'none' };
+    p = { ...p, travel: p.travel === 'cw' ? 'ccw' : 'cw' };
   }
+  // Leads stay clear of the own outline, or for an opening inside the cut-out (T141).
+  const waste: WasteSide = isInner ? 'inside' : 'outside';
+  const own = isInner && ctx.slug ? obstacle(ctx.slug) : ctx.own;
 
   // Start at the midpoint of the chosen straight edge (cut order, D-023), then set the travel
   // direction (CCW as offset returns it). Leads and tabs below are computed for this start.
@@ -296,8 +307,10 @@ function buildOuterOperation(
     const tOut = tangent(lastSeg, 1);
     let chosen: number | null = null;
     for (const f of LEAD_FALLBACK) {
-      const cand = leadSegments(start, tIn, tOut, p.travel, p.lead, p.leadLength * f);
-      if (leadsClear(cand, ctx.own, ctx.neighbours, toolRadius, bounds)) {
+      const both = leadSegments(start, tIn, tOut, p.travel, p.lead, p.leadLength * f, waste);
+      // Opening: lead-in only. A lead-out would cut on into a slug that may already be loose.
+      const cand: Leads = isInner ? { leadIn: both.leadIn, leadOut: null } : both;
+      if (leadsClear(cand, own, ctx.neighbours, toolRadius, bounds, waste)) {
         leads = cand;
         chosen = f;
         break;
@@ -309,7 +322,9 @@ function buildOuterOperation(
           'LEAD_REMOVED',
           'warning',
           partId,
-          'No room for a lead-in/out; the tool enters on the contour.',
+          isInner
+            ? 'No room for a lead-in inside the opening; the tool enters on the contour.'
+            : 'No room for a lead-in/out; the tool enters on the contour.',
           where,
         ),
       );
@@ -319,7 +334,7 @@ function buildOuterOperation(
           'LEAD_SHORTENED',
           'warning',
           partId,
-          `Lead shortened to ${(p.leadLength * chosen).toFixed(3)} mm (neighbour part or sheet edge).`,
+          `Lead shortened to ${(p.leadLength * chosen).toFixed(3)} mm (${isInner ? 'small opening' : 'neighbour part or sheet edge'}).`,
           where,
         ),
       );

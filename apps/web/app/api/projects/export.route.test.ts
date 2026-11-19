@@ -384,6 +384,48 @@ describe('POST /api/projects/:id/export', () => {
     expect(await scope.exports.listForProject(d.id)).toEqual([]);
   });
 
+  it('an opening the tool cannot pass (SPLIT) refuses the export: 422 before any file (T141)', async () => {
+    const scope = await companyScope();
+    const v = (x: number, y: number) => ({ x, y, bulge: 0 });
+    // Two 80 × 80 openings joined by a 4 mm neck: narrower than the tool, the offset splits.
+    const nested = await nestedProject();
+    const dumbbell = [
+      v(100, 100),
+      v(100, 180),
+      v(180, 180),
+      v(180, 142),
+      v(220, 142),
+      v(220, 180),
+      v(300, 180),
+      v(300, 100),
+      v(220, 100),
+      v(220, 138),
+      v(180, 138),
+      v(180, 100),
+    ];
+    const bad: Project = {
+      ...nested,
+      parts: nested.parts.map((x) => (x.id === 'kapak' ? { ...x, inners: [dumbbell] } : x)),
+    };
+    const d = await createProject('Boğazlı iç kesim', bad);
+    const pre = await preview(new Request(`http://test/x?revision=1`), ctx({ id: d.id }));
+    const pv = (await pre.json()) as ExportPreview;
+    expect(pv.ok).toBe(false);
+    expect(pv.files).toEqual([]);
+    const r = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d.id }));
+    expect(r.status).toBe(422);
+    const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
+    expect(e.stage).toBe('toolpath');
+    // The validation rule (INNER_CONTOUR_TOO_SMALL: a neck narrower than the tool) stops it first;
+    // the toolpath's own INNER_SPLIT error is the backstop behind it (core toolpath tests).
+    const split = e.violations.find(
+      (x) => x.code === 'INNER_CONTOUR_TOO_SMALL' || x.code === 'INNER_SPLIT',
+    );
+    expect(split?.severity).toBe('error');
+    expect(split?.message).toMatch(/dar/);
+    expect(await scope.exports.listForProject(d.id)).toEqual([]);
+  });
+
   it('bad input', async () => {
     const project = await nestedProject();
     const d = await createProject('Girdi', project);
