@@ -128,6 +128,15 @@ function onStraight(b: Box, x: number, y: number, tol = 1e-6): boolean {
   const qy = Math.abs(y - b.cy) - (b.hh - b.r);
   return qx <= tol || qy <= tol;
 }
+/** On the corner arc of a rounded (r > EPS) outline corner, in the same quadrant as `ref`. */
+function inCornerArc(b: Box, p: Pt, ref: Pt): boolean {
+  const qx = Math.abs(p.x - b.cx) - (b.hw - b.r);
+  const qy = Math.abs(p.y - b.cy) - (b.hh - b.r);
+  const same =
+    Math.sign(p.x - b.cx) === Math.sign(ref.x - b.cx) &&
+    Math.sign(p.y - b.cy) === Math.sign(ref.y - b.cy);
+  return b.r > 1e-3 && qx >= -1e-6 && qy >= -1e-6 && same;
+}
 function sdf(b: Box, x: number, y: number): number {
   const qx = Math.abs(x - b.cx) - (b.hw - b.r);
   const qy = Math.abs(y - b.cy) - (b.hh - b.r);
@@ -293,9 +302,13 @@ function review(c: Case, res: ToolpathResult, ramp: boolean): string[] {
       if (Math.abs(len - (c.width + c.tool)) > 1e-5) out.push(`raised length ${len}`);
       // straight, away from corners, on the tool path
       const pts = [sp.from, ...sp.topPts, sp.to];
+      // T272: a span may instead lie wholly on one rounded corner arc of the outline (radius > EPS;
+      // a sharp corner is never used), when no tab fits on the straight sides.
+      const arcSpan = pts.every((p) => inCornerArc(ctx.box, p, pts[0]!));
       for (let i = 0; i < pts.length; i++) {
         const p = pts[i]!;
-        if (!onStraight(ctx.box, p.x, p.y)) out.push(`tab point ${p.x},${p.y} in a corner zone`);
+        if (!arcSpan && !onStraight(ctx.box, p.x, p.y))
+          out.push(`tab point ${p.x},${p.y} in a corner zone`);
         if (Math.abs(sdf(ctx.box, p.x, p.y) - c.tool / 2) > 1e-3)
           out.push(`tab point not on the tool path (${sdf(ctx.box, p.x, p.y)})`);
         if (i > 0) {

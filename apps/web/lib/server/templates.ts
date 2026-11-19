@@ -1,5 +1,8 @@
 /** Server helpers of the template library API (T147–T149): validation and row mapping. */
 import {
+  READY_TEMPLATES,
+  readyTemplate,
+  type ReadyTemplate,
   templateGeometrySchema,
   templateParamsSchema,
   type TemplateGeometry,
@@ -20,6 +23,8 @@ export function toItem(template: TemplateRow, version: TemplateVersionRow): Temp
     version: version.version,
     geometry: version.geometry as unknown as TemplateGeometry,
     params: version.params as unknown as TemplateParams,
+    ...(template.archivedAt ? { archived: true as const } : {}),
+    createdAt: version.createdAt.toISOString(),
   };
 }
 
@@ -77,4 +82,28 @@ export async function readTemplate(
 export function handleTemplateError(err: unknown) {
   console.error(err);
   return templateError({ error: 'server_error' }, 500);
+}
+
+/** A ready library template (T150) as an API item: read-only, flagged unverified until checked. */
+export function readyItem(t: ReadyTemplate): TemplateItem {
+  return {
+    id: t.id,
+    name: t.name,
+    version: t.version,
+    geometry: t.geometry,
+    params: t.params,
+    ready: true,
+    verified: t.verified,
+  };
+}
+
+/** Every ready library template (spec §4.7 "Hazır kütüphane"). */
+export function readyItems(): TemplateItem[] {
+  return READY_TEMPLATES.map(readyItem);
+}
+
+/** The ready template with `id` (only version 1 exists), or undefined. */
+export function readyItemOf(id: string, version: number | null): TemplateItem | undefined {
+  const t = readyTemplate(id);
+  return t && (version === null || version === t.version) ? readyItem(t) : undefined;
 }

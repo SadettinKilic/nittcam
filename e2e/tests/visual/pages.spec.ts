@@ -113,6 +113,22 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await snap(page, `t121-material-dialog-${vp}-${theme}`, { fullPage: false });
       });
 
+      test('templates: company (empty) + ready library, history dialog (T151)', async ({
+        page,
+      }) => {
+        await page.goto('/sablonlar');
+        await expect(page.getByTestId('templates-ready').getByTestId('template-card')).toHaveCount(
+          6,
+        );
+        await expectNoA11yViolations(page);
+        await snap(page, `t151-templates-${vp}-${theme}`);
+        await page.getByTestId('template-card-menu').first().click();
+        await page.getByTestId('template-history').click();
+        await expect(page.getByTestId('template-version')).toHaveCount(1);
+        await expectNoA11yViolations(page);
+        await snap(page, `t151-template-history-${vp}-${theme}`, { fullPage: false });
+      });
+
       test('verification: stepper, download cards, checklist (T108)', async ({ page }) => {
         await page.goto('/makineler');
         await page.getByTestId('machine-list').waitFor();

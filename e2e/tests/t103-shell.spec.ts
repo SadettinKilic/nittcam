@@ -68,12 +68,11 @@ test.describe('app shell', () => {
       tr.nav.home,
       tr.nav.machines,
       tr.nav.projects,
+      tr.nav.templates,
       tr.nav.settings,
     ]);
-    // T121: Ayarlar is live (Malzemeler); only Şablonlar is still yakında.
-    const soon = nav.getByRole('list', { name: tr.nav.soonGroup });
-    await expect(soon.getByRole('listitem')).toHaveText([tr.nav.templates]);
-    await expect(soon.getByRole('link')).toHaveCount(0);
+    // T151: Şablonlar is live too, so the Yakında group is gone.
+    await expect(page.getByTestId('nav-soon')).toHaveCount(0);
     // Exactly one accent-filled "Yeni proje" at 1440 px: the sidebar button.
     const accent = page
       .getByRole('link', { name: tr.nav.newProject, exact: true })
