@@ -2068,5 +2068,91 @@
       "black": "Siyah",
       "clear": "Şeffaf"
     }
+  },
+  "dxfImport": {
+    "open": "DXF içe aktar",
+    "openHint": "Çizim programından kaydedilmiş bir DXF dosyasını parçalara çevirir",
+    "title": "DXF içe aktar",
+    "description": "Dosyayı seçin; önizleme ve rapordan sonra parçalar tek adımda eklenir. Sonra her biri çizim ekranında düzenlenebilir.",
+    "choose": "Dosya seç",
+    "dropHint": "veya .dxf dosyasını buraya bırakın (en fazla 10 MB)",
+    "fileLabel": "DXF dosyası",
+    "reading": "Dosya okunuyor…",
+    "problems": {
+      "dwg": "DWG dosyaları açılamıyor. Dosyayı çizim programınızda \"Farklı kaydet → DXF\" ile DXF olarak kaydedin ve onu seçin.",
+      "binary": "Bu DXF ikili (binary) biçimde. Çizim programınızda ASCII DXF olarak kaydedin.",
+      "type": "Yalnızca .dxf dosyaları içe aktarılabilir.",
+      "size": "Dosya çok büyük (en fazla 10 MB).",
+      "empty": "Dosyada kesilebilecek çizgi, yay veya daire yok.",
+      "parse": "Dosya okunamadı. Geçerli bir DXF olduğundan emin olun."
+    },
+    "preview": "Önizleme",
+    "previewLabel": "{file} önizlemesi: {parts} parça",
+    "legend": {
+      "part": "Parça",
+      "open": "Kapalı değil",
+      "pending": "Henüz desteklenmiyor"
+    },
+    "report": {
+      "title": "Rapor",
+      "parts": "Parça",
+      "inners": "İç kontur / delik",
+      "supported": "Okunan nesne",
+      "converted": "Dönüştürülen eğri (spline, elips)",
+      "ignored": "Yok sayılan (yazı, ölçü, tarama)",
+      "skipped": "Atlanan (iç içe blok, 3B, bozuk)",
+      "duplicates": "Üst üste binen kopya (atıldı)",
+      "open": "Kapanmayan çizgi (eklenmez)",
+      "pending": "Cep / çizgi üzerinden (yakında, eklenmez)",
+      "orphans": "Parça dışında kalan iç kontur (eklenmez)"
+    },
+    "openWarning": "{count} çizgi kapalı bir şekil oluşturmuyor; bunlar eklenmez. Uçlar 0,05 mm içinde birleştirilir.",
+    "unit": {
+      "title": "Birim",
+      "question": "Çizimin birimi belirsiz. Hangi birimle çizildi?",
+      "reasons": {
+        "missing": "Dosyada birim bilgisi yok.",
+        "unitless": "Dosyada birim \"birimsiz\" olarak kayıtlı.",
+        "unknown": "Dosyadaki birim tanınmıyor.",
+        "size": "Çizim {size} çıkıyor; birim yanlış olabilir."
+      },
+      "label": "Çizim birimi",
+      "placeholder": "Birim seçin",
+      "suggested": "önerilen",
+      "fromFile": "{unit}, dosyadan okundu",
+      "names": {
+        "mm": "Milimetre (mm)",
+        "cm": "Santimetre (cm)",
+        "dm": "Desimetre (dm)",
+        "m": "Metre (m)",
+        "in": "İnç (in)",
+        "ft": "Fit (ft)",
+        "yd": "Yarda (yd)",
+        "mil": "Mil (0,001 in)",
+        "um": "Mikrometre (µm)"
+      }
+    },
+    "layers": {
+      "title": "Katman eşleme",
+      "hint": "Her katmanın ne olacağını seçin. Seçim şirket ayarı olarak hatırlanır.",
+      "layer": "Katman",
+      "count": "Nesne",
+      "op": "İşlem",
+      "ops": {
+        "auto": "Otomatik (dış = parça, iç = iç kontur)",
+        "outside": "Dış kesim (parça)",
+        "inside": "İç kesim",
+        "drill": "Delik (daireler delik olur)",
+        "pocket": "Cep",
+        "online": "Çizgi üzerinden",
+        "ignore": "Alma"
+      }
+    },
+    "confirm": "{count} parçayı ekle",
+    "confirmNone": "Eklenecek parça yok",
+    "cancel": "Vazgeç",
+    "back": "Başka dosya",
+    "added": "{file}: {count} parça eklendi",
+    "failed": "Parçalar eklenemedi."
   }
 }

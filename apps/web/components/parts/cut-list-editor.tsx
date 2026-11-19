@@ -46,6 +46,7 @@ import {
   ClipboardPaste,
   Copy,
   Download,
+  FileUp,
   Keyboard,
   Layers,
   MoreHorizontal,
@@ -99,6 +100,8 @@ import {
 } from '../../lib/cut-list-view';
 import { fill, newPartId, stockHasGrain } from '../../lib/draft-project';
 import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
+import { DxfImportDialog } from './dxf-import-dialog';
+import type { Messages } from '../../lib/messages';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { mayAutoOpen, readDismissed, writeDismissed } from '../../lib/issues-dismissed';
@@ -1183,6 +1186,8 @@ export function CutListEditor({
   issuesKey,
   initialSelection,
   onSelectionChange,
+  dxfText,
+  holeTool,
 }: {
   t: Text;
   project: Project;
@@ -1201,8 +1206,13 @@ export function CutListEditor({
   initialSelection?: readonly string[];
   /** Reports every selection change (Liste ↔ Çizim keep one selection, T135). */
   onSelectionChange?: (ids: string[]) => void;
+  /** Text of the DXF import dialog (T146); without it the button is hidden. */
+  dxfText?: Messages['dxfImport'];
+  /** Tool number for holes made from DXF circles on a "Delik" layer (T145). */
+  holeTool?: number;
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [dxfOpen, setDxfOpen] = useState(0);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [cabinetOpen, setCabinetOpen] = useState(0);
   // T253 + T256: the Uyarılar panel floats from the issue chip. It opens by itself (when the first
@@ -1562,6 +1572,21 @@ export function CutListEditor({
     return ok;
   }
 
+  /** T146: the parts confirmed in the DXF dialog, one importDxf = one undo step. */
+  function addDxf(params: { parts: unknown[] }, fileName: string, count: number): boolean {
+    const ok = run('importDxf', params);
+    if (ok && dxfText) {
+      notify.success(fill(dxfText.added, { file: fileName, count }), {
+        id: 'cut-list-dxf',
+        ...undoAction,
+      });
+      scrollToRow.current?.(parts.length);
+    } else if (dxfText) {
+      notify.error(dxfText.failed);
+    }
+    return ok;
+  }
+
   function applyBulk(params: Record<string, unknown>): boolean {
     const ok = run('updateParts', params);
     if (ok) {
@@ -1694,6 +1719,20 @@ export function CutListEditor({
                   <span className="max-sm:sr-only">{t.cabinet.open}</span>
                 </Button>
               </Tooltip>
+              {dxfText ? (
+                <Tooltip content={dxfText.openHint}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDxfOpen((n) => n + 1)}
+                    data-testid="dxf-open"
+                    aria-label={phone ? dxfText.open : undefined}
+                  >
+                    <FileUp aria-hidden />
+                    <span className="max-sm:sr-only">{dxfText.open}</span>
+                  </Button>
+                </Tooltip>
+              ) : null}
               <Tooltip content={t.exportCsvHint}>
                 <Button
                   variant="outline"
@@ -1823,6 +1862,19 @@ export function CutListEditor({
                 {issuesPanel}
               </PopoverContent>
             </>
+          ) : null}
+          {dxfOpen > 0 && dxfText ? (
+            <DxfImportDialog
+              key={dxfOpen}
+              t={dxfText}
+              open
+              onOpenChange={(o) => {
+                if (!o) setDxfOpen(0);
+              }}
+              onImport={addDxf}
+              newId={newPartId}
+              {...(holeTool !== undefined ? { holeTool } : {})}
+            />
           ) : null}
           {cabinetOpen > 0 ? (
             <CabinetDialog

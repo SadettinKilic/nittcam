@@ -3,7 +3,7 @@
 import { partBoxSize, type Project } from '@nittcam/core';
 import { Input, Measure, cn } from '@nittcam/ui';
 import { Search } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Messages } from '../../lib/messages';
 import { matchesPart } from '../../lib/editor/part-search';
 import { focusRing } from '../page/page-header';
@@ -18,11 +18,14 @@ export function BoardPartList({
   project,
   selection,
   onSelect,
+  action,
 }: {
   t: Messages['editor']['parts'];
   project: Project;
   selection: ReadonlySet<string>;
   onSelect: (id: string, additive: boolean) => void;
+  /** Extra action under the header, e.g. "DXF içe aktar" (T146). */
+  action?: ReactNode;
 }) {
   const [query, setQuery] = useState('');
   const rows = project.parts.map((p, i) => ({ p, i })).filter(({ p }) => matchesPart(p, query));
@@ -35,6 +38,7 @@ export function BoardPartList({
           {t.count.replace('{count}', String(project.parts.length))}
         </span>
       </div>
+      {action}
       {project.parts.length > 0 ? (
         <div className="relative">
           <Search

@@ -282,6 +282,62 @@ function roundedRect(x, y, w, hgt, r) {
   ];
 }
 
+/** The sign-letter drawing at scale k (gaps scale too and stay below JOIN_TOL for k ≤ 2). */
+function signLetters(k) {
+  const L = (layer, x1, y1, x2, y2) => line(layer, x1 * k, y1 * k, x2 * k, y2 * k);
+  const P = (layer, pts, closed) =>
+    lwpoly(
+      layer,
+      pts.map(([x, y, b]) => (b === undefined ? [x * k, y * k] : [x * k, y * k, b])),
+      closed,
+    );
+  return file({
+    insunits: 4,
+    entities: [
+      P(
+        'HARF',
+        [
+          [0, 0],
+          [40, 0],
+          [40, 130],
+          [120, 0],
+          [160, 0],
+          [160, 200],
+          [120, 200],
+          [120, 70],
+          [40, 200],
+          [0, 200],
+        ],
+        true,
+      ),
+      P(
+        'HARF',
+        [
+          [200, 100, 1],
+          [400, 100, 1],
+        ],
+        true,
+      ),
+      P(
+        'HARF',
+        [
+          [250, 100, 1],
+          [350, 100, 1],
+        ],
+        true,
+      ),
+      L('HARF', 450, 0, 580, 0),
+      L('HARF', 580.02, 0, 580, 40),
+      L('HARF', 490, 40, 580, 40.01), // reversed
+      L('HARF', 490, 40, 490, 200),
+      L('HARF', 490, 200, 450.01, 200),
+      L('HARF', 450, 200, 450, 0.02),
+      hatch('DOLGU'),
+      mtext('NOT', 0, -30 * k, 'NOL tabela 18mm MDF'),
+    ],
+  });
+}
+
 const out = {
   // 600 × 400 panel from four LINEs with 0.03 mm gaps, one duplicate line, an open scribe line,
   // and annotation entities to be counted as ignored. CRLF line ends like Windows exports.
@@ -509,51 +565,10 @@ const out = {
   // Sign letters "N", "O", "L" (~200 mm tall) like sign software exports them: O as an outer and
   // an inner ring, L drawn as a LINE soup with tiny gaps and one reversed line, plus fill hatch
   // and a text note that are ignored.
-  'sign-letters.dxf': file({
-    insunits: 4,
-    entities: [
-      lwpoly(
-        'HARF',
-        [
-          [0, 0],
-          [40, 0],
-          [40, 130],
-          [120, 0],
-          [160, 0],
-          [160, 200],
-          [120, 200],
-          [120, 70],
-          [40, 200],
-          [0, 200],
-        ],
-        true,
-      ),
-      lwpoly(
-        'HARF',
-        [
-          [200, 100, 1],
-          [400, 100, 1],
-        ],
-        true,
-      ),
-      lwpoly(
-        'HARF',
-        [
-          [250, 100, 1],
-          [350, 100, 1],
-        ],
-        true,
-      ),
-      line('HARF', 450, 0, 580, 0),
-      line('HARF', 580.02, 0, 580, 40),
-      line('HARF', 490, 40, 580, 40.01), // reversed
-      line('HARF', 490, 40, 490, 200),
-      line('HARF', 490, 200, 450.01, 200),
-      line('HARF', 450, 200, 450, 0.02),
-      hatch('DOLGU'),
-      mtext('NOT', 0, -30, 'NOL tabela 18mm MDF'),
-    ],
-  }),
+  'sign-letters.dxf': signLetters(1),
+  // The same letters twice as large (~400 mm): big enough to cut without the small-part rule
+  // (round outer parts get no tabs on arcs), used by the end-to-end import → nest → NC test.
+  'sign-letters-400.dxf': signLetters(2),
 };
 
 for (const [name, content] of Object.entries(out)) writeFileSync(join(here, name), content);
