@@ -104,11 +104,13 @@ describe('(b) blind depth must be below the stock thickness (spec §4.5)', () =>
     expect(holeDepthBelowThickness(p).map((i) => i.path)).toEqual(['parts[1].holes[0].depth']);
   });
 
-  it('pocket just below the thickness: no error', () => {
+  it('pocket just below the thickness: no error, only the thin-skin warning (T140)', () => {
     const p = project((j) => {
       j.parts[0].holes[0].depth = j.stock.thickness - 0.01;
     });
-    expect(holeDepthBelowThickness(p)).toEqual([]);
+    expect(holeDepthBelowThickness(p).map((i) => [i.code, i.severity])).toEqual([
+      ['HOLE_DEPTH_NEAR_THICKNESS', 'warning'],
+    ]);
   });
 
   it('groove depth is checked too; through holes have no depth', () => {

@@ -9,7 +9,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import genericPost from '../../../machines/generic/v1/post.json';
 import mach3Post from '../../../machines/mach3/v1/post.json';
-import { GOLDEN_FIXTURES, goldenProfile, goldenProject } from '../post/golden.testing';
+import { goldenFixtureProjects, goldenProfile } from '../post/golden.testing';
 import { parsePostConfig, type PostConfig } from '../post';
 import type { Project } from '../schema';
 import { buildToolpath, type Toolpath } from '../toolpath';
@@ -38,10 +38,10 @@ export interface GoldenInput {
 
 /** A golden file (sheet 1) with its full check context. */
 export function golden(post: PostId, fixture: string): GoldenInput {
-  const fx = GOLDEN_FIXTURES.find((f) => f.id === fixture);
+  const fx = goldenFixtureProjects(8).find((f) => f.id === fixture);
   if (!fx) throw new Error(`unknown fixture ${fixture}`);
   const profile = goldenProfile(post);
-  const project = goldenProject(fx.json, 8);
+  const project = fx.project;
   const tp = buildToolpath(project, profile);
   if (!tp.ok) throw new Error(JSON.stringify(tp.errors));
   const file = `${fixture}_S1.${post === 'generic' ? 'nc' : 'tap'}`;
@@ -69,4 +69,4 @@ export function golden(post: PostId, fixture: string): GoldenInput {
   };
 }
 
-export const GOLDEN_IDS = GOLDEN_FIXTURES.map((f) => f.id);
+export const GOLDEN_IDS = goldenFixtureProjects(8).map((f) => f.id);

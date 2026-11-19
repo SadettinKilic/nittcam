@@ -71,6 +71,18 @@ export function opBlocks(lines: readonly string[]): [number, number][] {
   }
 }
 
+/**
+ * First operation block that cuts through (reaches the deepest Z of the program): the layout
+ * mutations need a part or a through hole, not a blind hole (T140).
+ */
+function throughBlock(lines: readonly string[]): [number, number] | undefined {
+  const zs = (l: string) => [...l.matchAll(/Z(-?\d+(?:\.\d+)?)/g)].map((m) => Number(m[1]));
+  const deepest = Math.min(...lines.flatMap(zs));
+  return opBlocks(lines).find(([s, e]) =>
+    lines.slice(s, e + 1).some((l) => zs(l).includes(deepest)),
+  );
+}
+
 /** Adds `dx` to every absolute X word of lines [s, e] (I/J are incremental and unchanged). */
 function shiftX(lines: string[], s: number, e: number, dx: number): string[] {
   return lines.map((l, k) =>
@@ -530,7 +542,7 @@ export const MUTATIONS: readonly Mutation[] = [
     posts: BOTH,
     what: 'delete one part',
     apply: (l) => {
-      const [a] = opBlocks(l);
+      const a = throughBlock(l);
       if (!a) throw new Error('block');
       return [...l.slice(0, a[0]), ...l.slice(a[1] + 1)];
     },
@@ -542,7 +554,7 @@ export const MUTATIONS: readonly Mutation[] = [
     posts: BOTH,
     what: 'one part moved 3 mm in X',
     apply: (l) => {
-      const [a] = opBlocks(l);
+      const a = throughBlock(l);
       if (!a) throw new Error('block');
       return shiftX(l, a[0], a[1], 3);
     },
@@ -554,7 +566,7 @@ export const MUTATIONS: readonly Mutation[] = [
     posts: BOTH,
     what: 'one part cut twice',
     apply: (l) => {
-      const [a] = opBlocks(l);
+      const a = throughBlock(l);
       if (!a) throw new Error('block');
       return [...l.slice(0, a[1] + 1), ...l.slice(a[0], a[1] + 1), ...l.slice(a[1] + 1)];
     },

@@ -11,6 +11,7 @@ import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
 import { deriveOutline, formatPath } from '../schema';
+import { checkHolePlacement } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 
 export type ValidationSeverity = 'error' | 'warning';
@@ -18,6 +19,7 @@ export type ValidationSeverity = 'error' | 'warning';
 export type ValidationCode =
   | 'PART_LARGER_THAN_SHEET'
   | 'HOLE_DEPTH_NOT_BELOW_THICKNESS'
+  | 'HOLE_DEPTH_NEAR_THICKNESS'
   | 'TOOL_NOT_IN_PROFILE'
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
@@ -27,6 +29,7 @@ export type ValidationCode =
   | 'NO_CUTTING_PARAMS'
   | 'CUTTING_PARAMS_UNVERIFIED'
   | 'SHEET_LARGER_THAN_TABLE'
+  | 'HOLE_OUTSIDE_PART'
   | 'INNER_CONTOUR_INVALID'
   | 'INNER_CONTOUR_TOO_SMALL';
 
@@ -100,6 +103,9 @@ export const partLargerThanSheet: ValidationRule = (project) => {
   return issues;
 };
 
+/** Material a blind hole must leave under it before the "too close" warning, mm (T140). */
+export const HOLE_MIN_SKIN = 1;
+
 function isBlind(hole: Hole): hole is Extract<Hole, { depth: number }> {
   return hole.type === 'pocket' || hole.type === 'groove';
 }
@@ -107,14 +113,26 @@ function isBlind(hole: Hole): hole is Extract<Hole, { depth: number }> {
 /**
  * (b) Blind depth must be smaller than the stock thickness (spec §4.5 "Kör derinlik malzeme
  * kalınlığından küçük olmalı"). Applies to pockets and grooves, the two hole types with a depth.
- * The "too close" warning of §4.5 needs a threshold the spec does not give yet (open question).
+ * Too close (§4.5 "çok yakınsa uyarı", T140): less than HOLE_MIN_SKIN mm left under it is a warning.
  */
 export const holeDepthBelowThickness: ValidationRule = (project) => {
   const { thickness } = project.stock;
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     part.holes.forEach((hole, h) => {
-      if (!isBlind(hole) || hole.depth < thickness) return;
+      if (!isBlind(hole)) return;
+      if (hole.depth < thickness) {
+        // Blind but with less than HOLE_MIN_SKIN mm left: it may break through (T140).
+        if (thickness - hole.depth < HOLE_MIN_SKIN - EPS) {
+          issues.push({
+            code: 'HOLE_DEPTH_NEAR_THICKNESS',
+            severity: 'warning',
+            path: formatPath(['parts', i, 'holes', h, 'depth']),
+            message: `${hole.type} "${hole.id}" in part "${part.id}" leaves ${mm(thickness - hole.depth)} mm under it (less than ${HOLE_MIN_SKIN} mm of the ${thickness} mm stock)`,
+          });
+        }
+        return;
+      }
       issues.push({
         code: 'HOLE_DEPTH_NOT_BELOW_THICKNESS',
         severity: 'error',
@@ -320,6 +338,30 @@ export const sheetLargerThanTable: ValidationRule = (project, context) => {
 };
 
 /**
+ * (h) Each hole lies inside its part, clear of the cut-outs (T138, spec §4.5). The hole commands
+ * refuse such a hole, but an outline edit or a removed/added cut-out can break it later (D-045):
+ * error, the toolpath refuses it too (a hole outside the part would cut the neighbour).
+ */
+export const holeInsidePart: ValidationRule = (project) => {
+  const issues: ValidationIssue[] = [];
+  project.parts.forEach((part, i) => {
+    if (part.holes.length === 0) return;
+    const outline = deriveOutline(part);
+    part.holes.forEach((hole, h) => {
+      const err = checkHolePlacement(outline, part.inners, hole);
+      if (!err) return;
+      issues.push({
+        code: 'HOLE_OUTSIDE_PART',
+        severity: 'error',
+        path: formatPath(['parts', i, 'holes', h]),
+        message: `${hole.type} "${hole.id}" in part "${part.id}" ${err === 'outside' ? 'does not lie inside the part outline' : 'touches or overlaps a cut-out'}`,
+      });
+    });
+  });
+  return issues;
+};
+
+/**
  * (g) Inner contours (T134, spec §4.3, D-045 "catch it where it is caused"): each cut-out must lie
  * inside the outline and not touch an earlier one (an outline edit can break that after the
  * cut-out was added), and the cutting tool of the selected machine must fit through it
@@ -366,6 +408,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   noCuttingParams,
   unverifiedCuttingParams,
   sheetLargerThanTable,
+  holeInsidePart,
   innerContourRules,
 ];
 

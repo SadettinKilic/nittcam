@@ -14,6 +14,7 @@ import { Copy, FlipHorizontal2, FlipVertical2, RotateCw, Trash2 } from 'lucide-r
 import type { BoardSummary } from '../../lib/editor/summary';
 import type { Messages } from '../../lib/messages';
 import { ariaKeyShortcuts, shortcutById, shortcutText, type ShortcutId } from '../../lib/shortcuts';
+import { HoleProperties } from './hole-properties';
 import { PartProperties, type Run, type SubSelection } from './properties';
 import { useIsMac } from '../shell/keys';
 
@@ -202,6 +203,15 @@ export function EditorInspector({
               sub={sub}
               onSub={onSub}
               toolRadius={toolRadius ?? 0}
+            />
+          ) : null}
+          {selected.length === 1 && part && run ? (
+            <HoleProperties
+              t={t.hole}
+              part={part}
+              run={run}
+              thickness={project.stock.thickness}
+              toolDiameter={(toolRadius ?? 0) * 2}
             />
           ) : null}
         </>
