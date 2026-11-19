@@ -104,7 +104,6 @@ export function LayoutStep({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-fg-muted">{t.modeNote}</p>
         </div>
         <div className="grid grid-cols-2 items-end gap-3">
           <NumberField
@@ -122,7 +121,6 @@ export function LayoutStep({
             onCommit={(margin) => run('setNestingOptions', { margin })}
           />
         </div>
-        <p className="text-xs text-fg-subtle">{t.offcuts}</p>
       </section>
       <NestingPanel
         t={nt}

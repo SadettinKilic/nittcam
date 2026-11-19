@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import type { Project } from '@nittcam/core';
-import { Button, Card, Checkbox, notify } from '@nittcam/ui';
+import { Button, Card, Checkbox, IconButton, Tooltip, notify } from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
 import {
   CircleAlert,
   CircleCheck,
+  Copy,
   Download,
   FileCode,
   ShieldAlert,
@@ -15,6 +16,7 @@ import {
 import { focusRing } from '../page/page-header';
 import { Callout } from './panels';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fill } from '../../lib/draft-project';
 import {
   downloadBlocker,
@@ -23,8 +25,11 @@ import {
   type ChecklistState,
 } from '../../lib/export-gate';
 import {
+  formatFileSize,
   shortHash,
+  splitFileName,
   type ExportApiError,
+  type ExportFileInfo,
   type ExportPreview,
   type ExportRecord,
   type ExportResponse,
@@ -89,6 +94,7 @@ export function ExportStep({
   revision,
   saved,
   saveState,
+  footerSlot,
 }: {
   t: Text;
   corners: Corners;
@@ -100,6 +106,8 @@ export function ExportStep({
   /** False while changes wait for the autosave. */
   saved: boolean;
   saveState: SaveState;
+  /** T250 (D-040): the wizard footer's right-hand slot; the step's "İndir" lives there. */
+  footerSlot: HTMLElement | null;
 }) {
   const acceptId = useId();
   const hasLayout = project.layout.sheets.length > 0;
@@ -177,6 +185,14 @@ export function ExportStep({
   }, [projectId, historyKey]);
 
   const blocker = downloadBlocker(preview, f.checks, f.accepted);
+  const blockerText =
+    blocker === 'checks'
+      ? t.needPass
+      : blocker === 'checklist'
+        ? t.needChecks
+        : blocker === 'accept'
+          ? t.needAccept
+          : null;
 
   async function doExport() {
     if (!projectId || !preview) return;
@@ -353,17 +369,9 @@ export function ExportStep({
               {preview.files.map((file) => (
                 <li
                   key={file.name}
-                  title={file.hash}
-                  className="flex min-w-0 items-start gap-2.5 rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2"
+                  className="min-w-0 rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2"
                 >
-                  <FileCode aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
-                  <span className="min-w-0 font-mono text-xs break-all text-fg">
-                    {fill(t.fileLine, {
-                      name: file.name,
-                      size: file.size,
-                      hash: shortHash(file.hash),
-                    })}
-                  </span>
+                  <FileRow t={t} file={file} />
                 </li>
               ))}
             </ul>
@@ -464,28 +472,40 @@ export function ExportStep({
           </fieldset>
         ) : null}
 
-        <div className="flex flex-col items-start gap-2 border-t border-border-subtle pt-5">
-          <Button
-            size="lg"
-            disabled={blocker !== null || f.download.status === 'busy'}
-            aria-describedby="export-hint"
-            data-testid="export-download"
-            onClick={() => void doExport()}
-          >
-            <Download aria-hidden />
-            {f.download.status === 'busy' ? t.downloading : t.download}
-          </Button>
-          <p id="export-hint" data-testid="export-hint" className="text-sm text-fg-muted">
-            {blocker === 'checks'
-              ? t.needPass
-              : blocker === 'checklist'
-                ? t.needChecks
-                : blocker === 'accept'
-                  ? t.needAccept
-                  : null}
-          </p>
-          <DownloadResult t={t} state={f.download} />
-        </div>
+        {/* T250 (D-040): one download action per screen, the footer's "İndir"; the result stays
+            here. Below 640 px the footer has no room for the reason, so it is repeated here. */}
+        {blockerText ? <p className="text-sm text-fg-muted sm:hidden">{blockerText}</p> : null}
+        {f.download.status === 'failed' || f.download.status === 'done' ? (
+          <div className="flex flex-col items-start gap-2 border-t border-border-subtle pt-5">
+            <DownloadResult t={t} state={f.download} />
+          </div>
+        ) : null}
+        {footerSlot
+          ? createPortal(
+              <>
+                <p
+                  id="export-hint"
+                  data-testid="export-hint"
+                  className="hidden min-w-0 truncate text-sm text-fg-muted sm:block"
+                  {...(blockerText ? { title: blockerText } : {})}
+                >
+                  {blockerText}
+                </p>
+                <Button
+                  disabled={blocker !== null || f.download.status === 'busy'}
+                  aria-describedby="export-hint"
+                  aria-busy={f.download.status === 'busy'}
+                  data-testid="export-download"
+                  className="shrink-0"
+                  onClick={() => void doExport()}
+                >
+                  <Download aria-hidden />
+                  {f.download.status === 'busy' ? t.downloading : t.download}
+                </Button>
+              </>,
+              footerSlot,
+            )
+          : null}
 
         <History
           t={t}
@@ -494,6 +514,76 @@ export function ExportStep({
         />
       </section>
     </>
+  );
+}
+
+/**
+ * One export file (T250): line 1 the name in mono, cut in the middle if needed (the sheet number
+ * and extension stay visible); line 2 the Turkish size and the first 8 characters of the sha256,
+ * the full hash in the copy button's tooltip and on the clipboard. Never breaks inside a word.
+ */
+function FileRow({
+  t,
+  file,
+  href,
+  linkLabel,
+}: {
+  t: Text;
+  file: ExportFileInfo;
+  href?: string;
+  linkLabel?: string;
+}) {
+  const [head, tail] = splitFileName(file.name);
+  const name = (
+    <span className="flex min-w-0 font-mono text-xs whitespace-nowrap" title={file.name}>
+      {head ? <span className="min-w-0 truncate">{head}</span> : null}
+      <span className="shrink-0">{tail}</span>
+    </span>
+  );
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(file.hash);
+      notify.success(t.hashCopied, { id: 'export-hash' });
+    } catch {
+      notify.error(t.hashCopyFailed, { id: 'export-hash' });
+    }
+  }
+  return (
+    <div className="flex min-w-0 items-start gap-2.5" data-testid="export-file-row">
+      <FileCode aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {href ? (
+          <a
+            href={href}
+            download={file.name}
+            aria-label={linkLabel}
+            className={`flex min-w-0 rounded-sm text-accent-text underline underline-offset-4 ${focusRing}`}
+          >
+            {name}
+          </a>
+        ) : (
+          <span className="flex min-w-0 text-fg">{name}</span>
+        )}
+        <span className="flex min-w-0 items-center gap-1 text-xs text-fg-muted">
+          <span className="truncate whitespace-nowrap tabular-nums" data-testid="export-file-meta">
+            {fill(t.fileMeta, { size: formatFileSize(file.size), hash: shortHash(file.hash) })}
+          </span>
+          <Tooltip content={<span className="font-mono break-all">{file.hash}</span>}>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              aria-label={t.copyHash}
+              data-testid="export-file-copy"
+              data-hash={file.hash}
+              className="-my-1.5 size-7 shrink-0 [&_svg]:size-3.5"
+              onClick={() => void copy()}
+            >
+              <Copy aria-hidden />
+            </IconButton>
+          </Tooltip>
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -648,17 +738,15 @@ function History({
           id: 'files',
           header: c.files,
           cell: (info) => (
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex w-64 max-w-64 flex-col gap-2">
               {info.row.original.files.map((file) => (
-                <li key={file.name}>
-                  <a
+                <li key={file.name} className="min-w-0">
+                  <FileRow
+                    t={t}
+                    file={file}
                     href={file.downloadUrl}
-                    download={file.name}
-                    title={file.hash}
-                    className={`rounded-sm break-all text-accent-text underline underline-offset-4 ${focusRing}`}
-                  >
-                    {fill(t.redownload, { name: file.name })}
-                  </a>
+                    linkLabel={fill(t.redownload, { name: file.name })}
+                  />
                 </li>
               ))}
             </ul>

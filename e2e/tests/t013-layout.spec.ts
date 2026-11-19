@@ -155,7 +155,7 @@ test.describe('T013 layout view', () => {
     await expect(
       page.getByRole('tab', { name: new RegExp(fill(l.sheetTab, { n: 1 })) }),
     ).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('nesting-sheet-lines')).toContainText('Plaka 1: 8 parça');
+    await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-part-count', '8');
     await expect(page.getByTestId('nesting-sheets')).toHaveText('1');
     await expect(page.getByTestId('nesting-waste')).toHaveText(/^%\d+(,\d)?$/);
     // T197: the legend is a popover on the canvas (bottom-left).
@@ -163,7 +163,9 @@ test.describe('T013 layout view', () => {
     await expect(page.getByText(l.legend.waste)).toBeVisible();
     await page.keyboard.press('Escape');
     await pickOption(page.getByTestId('layout-select'), '1.1 · Yan dikme');
-    await expect(page.getByTestId('layout-info-grain')).toHaveText(l.info.grainYes);
+    await expect(page.getByTestId('layout-info-grain')).toHaveText(
+      fill(l.info.grainYes, { angle: '0' }),
+    );
     await expect(page.getByTestId('layout-info-size')).toHaveText('300 × 1.800 mm');
     await page.getByTestId('layout-canvas').scrollIntoViewIfNeeded();
     await page.screenshot({ path: '__screenshots__/t013-dizilim-gorunumu.png', fullPage: true });
@@ -290,19 +292,19 @@ test.describe('T013 layout view', () => {
     const tabs = page.getByRole('tab');
     await expect(tabs).toHaveCount(3);
     const counts: number[] = [];
-    for (let i = 1; i <= 3; i += 1) {
-      const line = await page.getByText(new RegExp(`^Plaka ${i}: \\d+ parça, fire`)).innerText();
-      counts.push(Number(/: (\d+) parça/.exec(line)?.[1]));
+    // T249: no per-plate lines; read each plate's part count from the canvas.
+    for (let i = 0; i < 3; i += 1) {
+      await tabs.nth(i).click();
+      await expect(tabs.nth(i)).toHaveAttribute('aria-selected', 'true');
+      counts.push(Number(await page.getByTestId('layout-canvas').getAttribute('data-part-count')));
     }
+    await tabs.nth(0).click();
     expect(counts.reduce((a, b) => a + b, 0)).toBe(30);
     await page.getByRole('tab', { name: new RegExp(`^${fill(l.sheetTab, { n: 2 })}`) }).click();
     await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('layout-canvas')).toHaveAttribute(
       'data-part-count',
       String(counts[1]),
-    );
-    await expect(page.getByTestId('nesting-sheet-lines')).toContainText(
-      `Plaka 2: ${counts[1]} parça`,
     );
     await page.getByRole('tab', { name: new RegExp(`^${fill(l.sheetTab, { n: 3 })}`) }).click();
     await expect(page.getByTestId('layout-canvas')).toHaveAttribute(

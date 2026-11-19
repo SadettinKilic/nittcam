@@ -13,7 +13,7 @@ import {
   type LengthUnit,
   type LongShortField,
 } from '@nittcam/core';
-import { FileUp } from 'lucide-react';
+import { FileUp, Info } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type DragEvent } from 'react';
 import { readCutListFile, type CutListFileError } from '../../lib/cut-list-file';
 import { fill, newPartId } from '../../lib/draft-project';
@@ -24,6 +24,10 @@ import {
   cn,
   fieldBase,
   fieldFocus,
+  IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -154,13 +158,26 @@ export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
       aria-labelledby={`${uid}-title`}
       className="flex min-w-0 flex-col gap-5 rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-5"
     >
+      {/* T250 (T248 import bullet): a one-sentence intro; the how-to sits in an info popover. */}
       <div className="flex flex-col gap-1">
-        <h2 id={`${uid}-title`} className="text-base font-semibold tracking-tight text-fg">
-          {t.title}
-        </h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 id={`${uid}-title`} className="text-base font-semibold tracking-tight text-fg">
+            {t.title}
+          </h2>
+          <Popover>
+            <PopoverTrigger asChild>
+              <IconButton size="sm" variant="ghost" aria-label={t.about}>
+                <Info aria-hidden />
+              </IconButton>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="flex w-80 flex-col gap-2 text-sm">
+              {intro ? <p className="text-fg">{intro}</p> : null}
+              <p className="text-fg-muted">{t.help}</p>
+            </PopoverContent>
+          </Popover>
+        </div>
         <p id={`${uid}-help`} className="text-sm text-fg-muted">
-          {intro ? `${intro} ` : ''}
-          {t.help}
+          {t.intro}
         </p>
       </div>
 
@@ -476,7 +493,12 @@ export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
         </>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
+      {/* T250 (T248 import bullet): the apply / cancel row sticks to the bottom of the panel, just
+          above the wizard footer, so "N satır ekle" is visible without scrolling. */}
+      <div
+        data-testid="import-actions"
+        className="sticky bottom-[var(--wizard-footer-h,0px)] z-10 -mx-4 -mb-4 flex flex-wrap gap-2 rounded-b-xl border-t border-border-subtle bg-surface/95 px-4 py-3 backdrop-blur-sm sm:-mx-5 sm:-mb-5 sm:px-5"
+      >
         <Button
           onClick={apply}
           disabled={!canApply}

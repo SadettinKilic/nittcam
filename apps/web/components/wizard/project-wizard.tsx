@@ -335,6 +335,7 @@ function WizardSession({
   const heading = useRef<HTMLHeadingElement>(null);
   const focusHeading = useRef(false);
   const footer = useRef<HTMLElement>(null);
+  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
 
   // B4b: publish the sticky footer's height (incl. the safe area) so the phone panel bar of the
   // canvas workspaces can stick just above it instead of sliding under it.
@@ -668,6 +669,7 @@ function WizardSession({
         revision={session.revision}
         saved={!session.dirty}
         saveState={session.saveState}
+        footerSlot={footerSlot}
       />
     );
   }
@@ -898,7 +900,12 @@ function WizardSession({
               <ArrowRight aria-hidden />
             </Button>
           ) : (
-            <span aria-hidden className="w-20" />
+            // T250 (D-040): the last step's main action ("İndir") is portalled in here.
+            <div
+              ref={setFooterSlot}
+              data-testid="wizard-footer-action"
+              className="flex min-w-20 shrink items-center justify-end gap-3"
+            />
           )}
         </div>
       </nav>
