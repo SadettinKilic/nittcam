@@ -266,3 +266,13 @@ describe('T140 blind pockets and ring grooves', () => {
     );
   });
 });
+
+describe('holes with an unconfirmed material set (B12a)', () => {
+  it('the toolpath refuses the whole job, holes included', () => {
+    const r = run([{ id: 'h', type: 'through', d: 35, cx: 200, cy: 150, tool: 2 }], (p) => {
+      for (const m of p.materials) m.unverified = true;
+    });
+    expect(codes(r)).toEqual(['CUTTING_PARAMS_UNVERIFIED']);
+    expect(r.toolpath.operations).toEqual([]);
+  });
+});
