@@ -490,3 +490,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - **Large slugs** follow the project's tab setting (tabs on → tabs on the cut-out too; off → none).
 - Order unchanged: every cut-out of a copy before its outer contour (D-023).
 - Tests: `toolpath.slug-tabs.property.test.ts` (round and rectangular small slugs held by ≥ 2 tabs or refused; the export passes every rule-9 check), `toolpath.inner.property.test.ts`, tester `b12-cutouts.tester.test.ts` (adjusted from "no tabs").
+
+## D-051 Golden-file approval delegated to PO + tester (2026-11-19, owner)
+- The owner: "daha önceki golden dosyaları nasıl test ettiyseniz buna da öyle bakın, siz bilirsiniz." New or changed golden G-code files are approved by the PO after the tester verifies them the same way as before: read back by the independent G-code reader, all §7.2 safety rules, gcode-safety review, existing goldens byte-identical unless the change is intended and explained.
+- PRs still carry `needs-human` for traceability; the PO notes "approved per D-051". Machine tests (air cut, test cut, field test) remain the owner's.
+- Tester queue: if more than 2 PRs wait for testing, the next free dev slot becomes a second tester until the queue is ≤ 1 (team max 5 unchanged).
