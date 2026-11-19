@@ -449,3 +449,12 @@ Review #3 found the canvases still read as generic blue boxes on grey, two diffe
 - A library material's "parameter set per machine" is the machine profile's set for the same kind and thickness; the library stores no feed/rpm/step-down of its own (old columns dropped).
 - The project keeps `stock.material` as the kind (export unchanged) plus an optional, display-only `stock.libraryId`.
 - Default materials are seeded once per company (when it has none); a company that deletes them all must not get them back silently.
+
+## D-045 No late dead ends; operator walkthrough in every design review (2026-11-19, CTO design review #4, design delegated by the owner)
+Review #4 did one real job as an operator (base cabinet 600 × 720 × 560, 2 shelves, one hand-typed part → G-code): 19 clicks and 5 typed values on the good path, but the natural material (seeded "Melamin 18 mm") passed steps 1–3 and failed on step 4, and the generator put an 8 mm back panel into an 18 mm cut list. Rules:
+- **Seeded things work together:** every seeded library material that the seeded example machine can sensibly cut has a parameter set on it. A fresh install reaches "İndir" with the defaults.
+- **Catch it where it is caused:** a problem that will block G-code is shown on the step that causes it, stays visible on the step indicator, and offers one action that leads to the fix and back. The user never meets it first on the simulation or export step.
+- **User text only:** no English sentences and no internal codes (e.g. "TOOLPATH", "No cutting parameters for …") on user screens.
+- **Generators respect the stock:** a generator never silently adds a row the project's stock cannot make (other thickness, other material). It shows the part and lets the user add it on purpose.
+- **Walkthrough metric:** every design review repeats this job and reports clicks, typed values and hesitations. Baseline: 19 clicks, 5 typed values, 5 screens. A change that adds clicks to this path needs a reason in its PR.
+- Decided by the reviewer; the owner may revisit. Tasks: B11a (T257–T260), riders T261–T263. Review: `docs/reviews/2026-11-19-cto-design-review-4.md`.
