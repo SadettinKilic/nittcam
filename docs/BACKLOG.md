@@ -589,6 +589,14 @@ Acceptance:
 - [ ] in the compact band layout (grid < 1040 px) the "Bant" cell shows four small edge marks (which edges have a band) and opens the four inputs in a popover; no bare checkbox
 Tester focus: typing 9000 into a width cell at 1440 and 1280 leaves every other cell's x position unchanged (bounding boxes); export CSV still writes 0; keyboard path through the band popover; axe.
 
+### T256 Floating Uyarılar panel never covers cells; toasts above the footer (rides with B11)   [status: todo]
+Spec: §4.1 · Depends: T253, T246 · Source: B8 tester r1 + B8a tester notes (2026-11-19)
+Acceptance:
+- [ ] the Parçalar "Uyarılar" panel auto-opens only when it fits right of the last grid column without covering any cell or header; otherwise it stays closed behind the issue chip (as at 1024 px)
+- [ ] once the user closes it, it stays closed for that project (remembered per project, survives reload) until a new issue type appears
+- [ ] toasts (e.g. "N satır eklendi · Geri al") sit above the wizard footer and never cover its right-hand button (İleri / İndir) at 1440 and 1024
+Tester focus: bounding boxes at 1440 and 1280 with issues: no overlap with grid cells; close → reload → still closed; toast box above footer box.
+
 ### T254 Board: fit to the sheet, grain glyph, focus ring (rides with B11, with T130)   [status: todo]
 Spec: §4.2, §2.4 · Depends: T243, T116 · Decision: D-040 (replaces the "fit frames the parts only" line of T243)
 Acceptance:
