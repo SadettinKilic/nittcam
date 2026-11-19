@@ -7,6 +7,7 @@ import {
   stockFromLibrary,
   type LibraryMaterial,
   type MachineProfile,
+  type MaterialKind,
   type Project,
 } from '@nittcam/core';
 
@@ -16,19 +17,28 @@ export const DEFAULT_SHEET = { width: 2800, height: 2070 } as const;
 /** Tool diameter (mm) when the machine is unknown: the example machine's 8 mm end mill. */
 export const FALLBACK_TOOL_DIAMETER = 8;
 
+/** Kinds a new project prefers, most common in workshops first (PO, D-046): MDF, Melamin, Kontrplak. */
+export const DEFAULT_KIND_ORDER: readonly MaterialKind[] = ['mdf', 'melamine', 'plywood'];
+
 /**
- * The library entry and thickness a new project starts on (T259, D-045): the first entry with a
- * thickness the machine has cutting parameters for. `undefined` when none can be cut.
+ * The library entry and thickness a new project starts on (T259, D-045, D-046): among the entries
+ * the machine can cut, the first in `DEFAULT_KIND_ORDER` (18 mm preferred within a kind), else the
+ * first cuttable entry in library order. `undefined` when none can be cut.
  */
 export function firstUsableLibraryStock(
   library: readonly (LibraryMaterial & { id: string })[],
   profile: Pick<MachineProfile, 'materials'>,
 ): { entry: LibraryMaterial & { id: string }; thickness: number } | undefined {
-  for (const entry of library) {
-    const link = libraryParamLinks(entry, profile).find((l) => l.params !== undefined);
-    if (link) return { entry, thickness: link.thickness };
+  const usable = library.flatMap((entry) => {
+    const cut = libraryParamLinks(entry, profile).filter((l) => l.params !== undefined);
+    const link = cut.find((l) => Math.abs(l.thickness - 18) <= 1e-6) ?? cut[0];
+    return link ? [{ entry, thickness: link.thickness }] : [];
+  });
+  for (const kind of DEFAULT_KIND_ORDER) {
+    const hit = usable.find((u) => u.entry.kind === kind);
+    if (hit) return hit;
   }
-  return undefined;
+  return usable[0];
 }
 
 /**

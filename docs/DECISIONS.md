@@ -464,4 +464,5 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - The seeded example machine ("Örnek router (Mach3)") gets parameter sets for Melamin 18 mm and Kontrplak 18 mm with the same values as its MDF 18 mm set. Akrilik 5 mm stays without a set and shows "ayar yok".
 - Each copied set carries a mark (`copiedFrom: 'mdf'`); the machine form shows "MDF 18 mm ayarından kopyalandı; kendi makinenizde doğrulayın." under it. The sets are editable like any other; editing a row drops the mark.
 - The profile stays an unverified example (`example: true`, "doğrulanmadı"); the unverified first-line warning and the air cut requirement are unchanged.
+- Default stock of a new project (PO, 2026-11-19): among the library entries the machine can cut, MDF first, then Melamin, then Kontrplak (18 mm preferred), else the first cuttable entry; not alphabetical.
 - Only newly seeded companies get the sets (existing databases keep their saved profile). Golden G-code files are unchanged.

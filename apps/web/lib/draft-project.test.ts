@@ -31,6 +31,32 @@ describe('new project stock (T259, D-045)', () => {
   });
 });
 
+describe('default entry tie-break (D-046)', () => {
+  const sorted = [...library].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+  const exampleish = {
+    materials: (['mdf', 'melamine', 'plywood'] as const).map((material) => ({
+      ...machine.profile.materials[0]!,
+      material,
+    })),
+  };
+
+  it('prefers MDF over alphabetical order', () => {
+    expect(sorted[0]?.kind).toBe('acrylic');
+    expect(firstUsableLibraryStock(sorted, exampleish)?.entry.kind).toBe('mdf');
+  });
+
+  it('then Melamin, then Kontrplak, then the first cuttable entry', () => {
+    const noMdf = { materials: exampleish.materials.filter((m) => m.material !== 'mdf') };
+    expect(firstUsableLibraryStock(sorted, noMdf)?.entry.kind).toBe('melamine');
+    const plyOnly = { materials: exampleish.materials.filter((m) => m.material === 'plywood') };
+    expect(firstUsableLibraryStock(sorted, plyOnly)?.entry.kind).toBe('plywood');
+    const acrylic = {
+      materials: [{ ...exampleish.materials[0]!, material: 'acrylic' as const, thickness: 5 }],
+    };
+    expect(firstUsableLibraryStock(sorted, acrylic)?.entry.kind).toBe('acrylic');
+  });
+});
+
 describe('stockHasGrain (T260)', () => {
   it('is true only for wood with a sheet grain', () => {
     const p = newProject(machine);
