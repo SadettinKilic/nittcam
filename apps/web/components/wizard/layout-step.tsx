@@ -170,9 +170,11 @@ export function LayoutStep({
       autoDone.current = true;
       const p = a.session.project;
       const hasLayout = p.layout.sheets.some((s) => s.placements.length > 0);
-      // T163: not while redo is possible (the user just undid the layout; an automatic run would
-      // drop the redo steps).
-      if (p.parts.length > 0 && !hasLayout && !a.session.canRedo) void a.nest();
+      // T163: not while a redo would bring a layout back (the user just undid it; an automatic run
+      // would drop the redo steps). Other redo steps (e.g. the phantom row the cut list took back
+      // with undo on leaving) do not stop the first-entry nesting.
+      const redoNests = a.session.redoCommand === 'runNesting';
+      if (p.parts.length > 0 && !hasLayout && !redoNests) void a.nest();
     }, 0);
     return () => clearTimeout(timer);
   }, []);
