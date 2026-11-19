@@ -225,7 +225,7 @@ function MaterialRow({
   const c = t.columns;
   return (
     <li
-      className="grid grid-cols-[1fr_auto] items-start gap-x-4 gap-y-2 rounded-xl border border-border bg-surface p-4 shadow-xs md:grid-cols-[minmax(10rem,1.2fr)_minmax(6rem,0.7fr)_minmax(9rem,1fr)_minmax(4rem,0.4fr)_minmax(10rem,1.3fr)_auto] md:items-center"
+      className="grid grid-cols-[1fr_auto] items-start gap-x-4 gap-y-2 rounded-xl border border-border bg-surface p-4 shadow-xs xl:grid-cols-[minmax(10rem,1.2fr)_minmax(6rem,0.7fr)_minmax(9rem,1fr)_minmax(4rem,0.4fr)_minmax(10rem,1.3fr)_auto] xl:items-center"
       data-testid="material-row"
       data-name={m.name}
     >
@@ -238,7 +238,7 @@ function MaterialRow({
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-1 md:order-last">
+      <div className="flex items-center gap-1 xl:order-last">
         <Tooltip content={t.edit}>
           <IconButton
             variant="ghost"
@@ -260,15 +260,15 @@ function MaterialRow({
           </IconButton>
         </Tooltip>
       </div>
-      <dl className="col-span-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4 md:col-span-4 md:grid-cols-[minmax(6rem,0.7fr)_minmax(9rem,1fr)_minmax(4rem,0.4fr)_minmax(10rem,1.3fr)]">
+      <dl className="col-span-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4 xl:col-span-4 xl:grid-cols-[minmax(6rem,0.7fr)_minmax(9rem,1fr)_minmax(4rem,0.4fr)_minmax(10rem,1.3fr)]">
         <div className="min-w-0">
-          <dt className="text-xs text-fg-muted md:sr-only">{c.thicknesses}</dt>
+          <dt className="text-xs text-fg-muted xl:sr-only">{c.thicknesses}</dt>
           <dd className="numeric text-fg" data-testid="material-thicknesses">
             {m.thicknesses.map((v) => mmFormat.format(v)).join(' · ')} mm
           </dd>
         </div>
         <div className="min-w-0">
-          <dt className="text-xs text-fg-muted md:sr-only">{c.sheets}</dt>
+          <dt className="text-xs text-fg-muted xl:sr-only">{c.sheets}</dt>
           <dd className="flex flex-col">
             {m.sheetSizes.map((s) => (
               <Measure key={`${s.width}x${s.height}`} value={[s.width, s.height]} unit="mm" />
@@ -276,7 +276,7 @@ function MaterialRow({
           </dd>
         </div>
         <div className="min-w-0">
-          <dt className="text-xs text-fg-muted md:sr-only">{c.grain}</dt>
+          <dt className="text-xs text-fg-muted xl:sr-only">{c.grain}</dt>
           <dd className="numeric text-fg">
             {m.grain === null
               ? t.grainNone
@@ -284,7 +284,7 @@ function MaterialRow({
           </dd>
         </div>
         <div className="min-w-0">
-          <dt className="text-xs text-fg-muted md:sr-only">{c.params}</dt>
+          <dt className="text-xs text-fg-muted xl:sr-only">{c.params}</dt>
           <dd className="flex flex-wrap gap-1" data-testid="material-params">
             {machines.length === 0 ? (
               <span className="text-fg-muted">{t.paramsNoMachine}</span>

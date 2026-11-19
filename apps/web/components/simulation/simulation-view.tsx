@@ -56,7 +56,7 @@ import {
   type ReactNode,
 } from 'react';
 import { fill } from '../../lib/draft-project';
-import type { SimulationResponse } from '../../lib/simulation-messages';
+import type { SimulationMeta, SimulationResponse } from '../../lib/simulation-messages';
 import { useSimulationWorker } from '../../lib/use-simulation-worker';
 import { drawnParts, type ViewState } from '../layout-view/model';
 import { clampScale, zoomAt } from '../layout-view/zoom';
@@ -71,6 +71,7 @@ import {
   readSimColors,
   simBounds,
   toolDiameterOf,
+  withPendingRevision,
   type Bounds,
   type SimColors,
   type SimText,
@@ -116,7 +117,17 @@ function ownsKey(target: EventTarget | null, key: string): boolean {
 interface Run {
   project: Project;
   machineKey: string;
+  meta: SimulationMeta;
   response: SimulationResponse;
+}
+
+/** What the program header says about the project (T262): the values the export writes. */
+export interface SimHeader {
+  projectName: string;
+  /** The saved revision. */
+  revision: number;
+  /** False while changes wait for the autosave: the download will carry a later revision. */
+  saved: boolean;
 }
 
 /** The selected machine's profile version, as the wizard loaded it. */
@@ -134,12 +145,14 @@ export function SimulationView({
   t,
   project,
   machine,
+  header,
   empty,
   left,
 }: {
   t: SimText;
   project: Project;
   machine: SimMachine | null;
+  header: SimHeader;
   /** Extra content for the settings panel (the wizard's warnings), T197. */
   left?: ReactNode;
   /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
@@ -152,23 +165,40 @@ export function SimulationView({
   const machineKey = machine ? `${machine.id}@${machine.pv.version}` : null;
   const hasLayout = project.layout.sheets.length > 0;
 
+  const { projectName, revision, saved } = header;
   useEffect(() => {
     if (!hasLayout || !machine || !machineKey) return;
     let live = true;
-    void runSimulation(project, machine.pv).then((response) => {
-      if (live) setRun({ project, machineKey, response });
+    const meta: SimulationMeta = { projectName, revision };
+    void runSimulation(project, machine.pv, meta).then((response) => {
+      if (live) setRun({ project, machineKey, meta, response });
     });
     return () => {
       live = false;
     };
-  }, [project, hasLayout, machine, machineKey, runSimulation]);
+  }, [project, hasLayout, machine, machineKey, runSimulation, projectName, revision]);
 
+  // A run for an older name or revision stays on screen until the new one arrives (the
+  // program is the same; only the header differs), so playback is not interrupted by an autosave.
   const fresh = run && run.project === project && run.machineKey === machineKey ? run : null;
   const response = fresh?.response ?? null;
   const result = response?.ok ? response.result : null;
   const sheets = result?.ok ? result.sheets : [];
   const sheet = Math.min(sheetIndex, Math.max(0, sheets.length - 1));
-  const sim = sheets[sheet] ?? null;
+  const generated = sheets[sheet] ?? null;
+  // T262: the revision is only known once the changes are saved; until then the header says so.
+  const pending = !saved || (fresh !== null && fresh.meta.revision !== revision);
+  const runRevision = fresh?.meta.revision ?? revision;
+  const sim = useMemo(
+    () =>
+      generated && pending
+        ? {
+            ...generated,
+            files: withPendingRevision(generated.files, runRevision, t.gcode.revisionPending),
+          }
+        : generated,
+    [generated, pending, runRevision, t.gcode.revisionPending],
+  );
 
   const all = useMemo(() => (result ? findings(result) : []), [result]);
   const errorCount = all.filter((f) => f.severity === 'error').length;

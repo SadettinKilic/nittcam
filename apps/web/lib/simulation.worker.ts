@@ -13,7 +13,7 @@ const scope = self as unknown as {
 };
 
 scope.addEventListener('message', (e) => {
-  const { id, project, profileVersion } = e.data;
+  const { id, project, profileVersion, meta } = e.data;
   try {
     const postId = profileVersion.profile.post.id;
     const post = POST_CONFIGS[postId];
@@ -21,7 +21,10 @@ scope.addEventListener('message', (e) => {
       scope.postMessage({ id, ok: false, error: 'unknownPost', detail: postId });
       return;
     }
-    const result = simulateProject(project, profileVersion, post, { projectName: 'NittCam' });
+    const result = simulateProject(project, profileVersion, post, {
+      projectName: meta.projectName,
+      revision: meta.revision,
+    });
     scope.postMessage({ id, ok: true, result });
   } catch (err) {
     scope.postMessage({

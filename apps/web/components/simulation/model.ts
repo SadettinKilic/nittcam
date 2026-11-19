@@ -1,4 +1,4 @@
-import type { SimMachineFrame, SimSheet } from '@nittcam/core';
+import type { SimFile, SimMachineFrame, SimSheet } from '@nittcam/core';
 import { readTokenColors } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
@@ -154,4 +154,28 @@ export function toolDiameterOf(sim: SimSheet, tool: number | null): number | nul
   if (tool !== null && sim.toolDiameters[tool] !== undefined) return sim.toolDiameters[tool];
   const any = Object.values(sim.toolDiameters)[0];
   return any ?? null;
+}
+
+/** Header lines searched for the revision (the post writes it in the first dozen lines). */
+const HEADER_SCAN = 20;
+
+/**
+ * The program as the panel shows it while the revision is not known yet (T262): the project has
+ * changes the autosave has not stored, so the downloaded file will carry a later revision. Only the
+ * header's "REVİZYON: n" (or ASCII "REVIZYON: n") text changes to `label`; line count and every other line stay as
+ * generated, so line numbers and seeking still match the program.
+ */
+export function withPendingRevision(
+  files: readonly SimFile[],
+  revision: number,
+  label: string,
+): SimFile[] {
+  const re = new RegExp(`(REV[İI]ZYON): ${revision}(?![0-9])`);
+  return files.map((f) => {
+    const i = f.lines.findIndex((l, k) => k < HEADER_SCAN && re.test(l));
+    if (i < 0) return f;
+    const lines = f.lines.slice();
+    lines[i] = (lines[i] ?? '').replace(re, `$1: ${label}`);
+    return { ...f, lines };
+  });
 }
