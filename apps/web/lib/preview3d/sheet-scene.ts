@@ -5,7 +5,7 @@
  * draw-call count stays bounded: one per shared shape + one merged mesh + waste + edges, so 300
  * parts never need more than ~150 + 3 calls (spec §3.8 perf budget). Pure data.
  */
-import { placedOutline, type Project } from '@nittcam/core';
+import { defaultSheet, placedOutline, sheetSizeOf, type Project } from '@nittcam/core';
 import { flatten } from './outlines';
 import { effectiveGrain } from './textures';
 import {
@@ -96,7 +96,7 @@ export function buildSheetScene(project: Project, sheet: number): SheetScene {
       key: `${pl.partId}#${pl.index}`,
       partId: pl.partId,
       transform: placementTransform(part, pl),
-      grain: effectiveGrain(part, pl.rot, project.stock.sheet.grain),
+      grain: effectiveGrain(part, pl.rot, defaultSheet(project).grain),
     });
     outlines.push(flatten(placedOutline(part, pl)));
   }
@@ -111,9 +111,9 @@ export function buildSheetScene(project: Project, sheet: number): SheetScene {
     instanced,
     merged: merged?.mesh ?? null,
     mergedGrain: merged?.grain ?? null,
-    wasteGrain: project.stock.sheet.grain ?? 0,
+    wasteGrain: defaultSheet(project).grain ?? 0,
     mergedRefs: singles.map((g) => g.instances[0]).filter((r): r is InstanceRef => !!r),
-    waste: wasteMesh(project.stock.sheet, T, outlines),
+    waste: wasteMesh(sheetSizeOf(project, sheet), T, outlines),
     edges: new Float32Array(edges),
     parts: count,
   };

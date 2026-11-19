@@ -6,7 +6,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Vertex } from '../geometry/types';
-import { MODE_WEIGHTS, nestProject } from '../nesting';
+import { nestProject } from '../nesting';
 import { goldenProfile, goldenProject } from '../post/golden.testing';
 import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import { parseProject, type Project } from '../schema';
@@ -49,12 +49,9 @@ function withOpenings(inners: Vertex[][], tabsOn = false): Project {
   if (!parsed.ok) throw new Error(JSON.stringify(parsed.issues));
   return {
     ...parsed.project,
-    // The fixture's mode is "fastest", which since T162 really changes the layout. The check
-    // assumes tabs do not depend on where the part lies, but the fastest toolpath picks the
-    // cut-out's start edge from the travel, so borderline slugs (e.g. 19 × 29) flip with the
-    // position (reported to the PO as a T270 follow-up). Keep the layout this test was written on.
-    layout: nestProject(parsed.project, { toolDiameter: TOOL_D, weights: MODE_WEIGHTS.minWaste })
-      .layout,
+    // The fixture's own mode ("fastest"); T273 keeps cut-out start edges holdable wherever the
+    // part lies, so the layout no longer needs pinning to minWaste.
+    layout: nestProject(parsed.project, { toolDiameter: TOOL_D }).layout,
   };
 }
 
