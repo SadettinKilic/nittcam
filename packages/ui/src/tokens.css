@@ -153,15 +153,18 @@
   /* ---- Canvas: wizard preview, layout view and simulation (T013, T020, T110) ------------- */
   /* Konva reads these at runtime and re-reads them when the theme changes (onThemeChange). */
   --color-canvas: #eceff3;
-  --color-sheet: #f6f8fb;
-  --color-sheet-waste: #e6eaf0;
-  --color-sheet-margin: #d5dbe4;
-  --color-sheet-edge: #5f6879;
+  /* Material tone (T251, D-040): stock sheet and parts are a warm, pale wood family; the sheet */
+  /* is the lighter step, parts one step stronger, with an ink outline. The well around them and */
+  /* every UI colour (selection, tools, guides = cobalt/info) stay cool. */
+  --color-sheet: #f7f1e6;
+  --color-sheet-waste: #f3ead9;
+  --color-sheet-margin: #e6d8bf;
+  --color-sheet-edge: #6e5a3e;
   --color-grid: #dde2e9;
-  --color-grain: #8a93a3;
-  --color-part: var(--color-brand-100);
-  --color-part-stroke: var(--color-brand-600);
-  --color-part-locked: var(--color-info-100);
+  --color-grain: #a08560;
+  --color-part: #eddcbd;
+  --color-part-stroke: #5c4a30;
+  --color-part-locked: #efdfc2;
   --color-part-locked-stroke: var(--color-info-800);
   --color-selection: var(--color-brand-600);
   --color-sim-depth-top: var(--color-brand-200);
@@ -172,8 +175,8 @@
   --color-sim-envelope: var(--color-neutral-400);
   --color-sim-zero: var(--color-danger-600);
   --color-sim-tab: var(--color-warning-400);
-  --color-sim-part: #fbfcfd;
-  --color-sim-part-stroke: #727c8d;
+  --color-sim-part: #efe2c9;
+  --color-sim-part-stroke: #8a7454;
   --color-sim-badge: var(--color-neutral-900);
   --color-sim-badge-fg: var(--color-neutral-0);
 
@@ -314,15 +317,15 @@
   --color-info-border: #0c3a55;
 
   --color-canvas: #0f1115;
-  --color-sheet: #1a1e25;
-  --color-sheet-waste: #14171c;
-  --color-sheet-margin: #232831;
-  --color-sheet-edge: #7d8798;
+  --color-sheet: #2a251d;
+  --color-sheet-waste: #241f18;
+  --color-sheet-margin: #1e1812;
+  --color-sheet-edge: #9c8665;
   --color-grid: #1d2128;
-  --color-grain: #6b7484;
-  --color-part: #1a2a5c;
-  --color-part-stroke: var(--color-brand-300);
-  --color-part-locked: #0b3049;
+  --color-grain: #7d6a4e;
+  --color-part: #3e3426;
+  --color-part-stroke: #c7ae86;
+  --color-part-locked: #47392a;
   --color-part-locked-stroke: var(--color-info-300);
   --color-selection: var(--color-brand-400);
   --color-sim-depth-top: var(--color-brand-200);
@@ -333,8 +336,8 @@
   --color-sim-envelope: var(--color-neutral-600);
   --color-sim-zero: var(--color-danger-400);
   --color-sim-tab: var(--color-warning-300);
-  --color-sim-part: #1e232b;
-  --color-sim-part-stroke: #7d8798;
+  --color-sim-part: #352d22;
+  --color-sim-part-stroke: #9c8665;
   --color-sim-badge: #eceef2;
   --color-sim-badge-fg: #0d0f12;
 

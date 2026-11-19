@@ -779,7 +779,10 @@ function Legend({ t, margin, grain }: { t: Text; margin: number; grain: number |
         {l.part}
       </li>
       <li className="flex items-center gap-1.5">
-        <span className={`${swatch} border-part-locked-stroke bg-part-locked`} aria-hidden="true" />
+        <span
+          className={`${swatch} border-dashed border-part-locked-stroke bg-part-locked`}
+          aria-hidden="true"
+        />
         {l.locked}
       </li>
       <li className="flex items-center gap-1.5">
