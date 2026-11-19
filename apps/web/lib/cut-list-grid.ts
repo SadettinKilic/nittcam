@@ -2,7 +2,7 @@
  * Pure helpers of the cut-list grid (T118, T119; spec §4.1): cell text ↔ values, validation and
  * spreadsheet-style keyboard navigation. No React here, so the rules are unit-tested.
  */
-import { parseCutListNumber, type Part } from '@nittcam/core';
+import { parseCutListNumber, signedArea, type Part, type Project } from '@nittcam/core';
 
 export type EdgeKey = 'top' | 'right' | 'bottom' | 'left';
 
@@ -109,4 +109,67 @@ export function navTarget(
 /** Number of edges with a band, for the compact "Bant" cell glyph and its label. */
 export function bandedEdges(part: Pick<Part, 'edgeBand'>): EdgeKey[] {
   return EDGES.filter((e) => part.edgeBand[e] > 0);
+}
+
+/** Area of one piece in mm² (rect: w × h minus the rounded corners; freeform: outline − inners). */
+export function partArea(part: Part): number {
+  if (part.kind === 'rect') {
+    const { w, h, r } = part.params;
+    return w * h - (4 - Math.PI) * r * r;
+  }
+  const outer = Math.abs(signedArea({ vertices: part.outline, closed: true }));
+  const inner = part.inners.reduce(
+    (sum, c) => sum + Math.abs(signedArea({ vertices: c, closed: true })),
+    0,
+  );
+  return outer - inner;
+}
+
+export interface CutListSummary {
+  rows: number;
+  pieces: number;
+  /** Total part area in m² (every copy counted). */
+  areaM2: number;
+  /** Rough sheet count: total area / usable sheet area (inside the margin), rounded up. */
+  sheets: number;
+}
+
+/** Footer numbers of the cut list (T119). The sheet count is an estimate, not a nesting result. */
+export function cutListSummary(
+  project: Pick<Project, 'parts' | 'stock' | 'nesting'>,
+): CutListSummary {
+  const { parts } = project;
+  const pieces = parts.reduce((sum, p) => sum + p.qty, 0);
+  const area = parts.reduce((sum, p) => sum + partArea(p) * p.qty, 0);
+  const m = project.nesting.margin;
+  const usable =
+    Math.max(0, project.stock.sheet.width - 2 * m) *
+    Math.max(0, project.stock.sheet.height - 2 * m);
+  const sheets = area > 0 && usable > 0 ? Math.ceil(area / usable - 1e-9) : 0;
+  return { rows: parts.length, pieces, areaM2: area / 1e6, sheets };
+}
+
+/** Grain choice of the bulk edit (T119): keep, or set free / fixed. */
+export type GrainChoice = '__keep__' | 'free' | 'fixed';
+
+/** `updateParts` params from the bulk-edit form (T119); `null` when nothing is to change. */
+export function bulkParams(
+  ids: readonly string[],
+  form: {
+    qty: number | null;
+    grain: GrainChoice;
+    angle: number;
+    edges: Record<EdgeKey, number | null>;
+    prefix: string;
+  },
+): Record<string, unknown> | null {
+  const params: Record<string, unknown> = { ids };
+  if (form.qty !== null) params.qty = form.qty;
+  if (form.grain !== '__keep__') params.grain = { mode: form.grain, angle: form.angle };
+  const band = Object.fromEntries(
+    EDGES.flatMap((e) => (form.edges[e] === null ? [] : [[e, form.edges[e]]])),
+  );
+  if (Object.keys(band).length > 0) params.edgeBand = band;
+  if (form.prefix !== '') params.namePrefix = form.prefix;
+  return Object.keys(params).length > 1 ? params : null;
 }

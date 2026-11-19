@@ -237,3 +237,108 @@ test.describe('T246 feedback', () => {
     await expect(page.locator('#paste-panel').getByText(t.subtitle)).toBeVisible();
   });
 });
+
+test.describe('T119 row actions, multi-select, bulk edit', () => {
+  test('row menu: duplicate, move down, delete with an undo toast', async ({ page }) => {
+    await page.goto(URL);
+    await pasteRows(page, THREE, 3);
+    const menu = (n: number) => page.getByRole('button', { name: fill(t.rowMenu.label, { n }) });
+
+    await menu(1).click();
+    await page.getByRole('menuitem', { name: t.rowMenu.duplicate }).click();
+    await expect(cell(page, 2, t.columns.name)).toHaveValue('Yan');
+
+    await menu(1).click();
+    await page.getByRole('menuitem', { name: t.rowMenu.moveDown }).click();
+    await expect(cell(page, 1, t.columns.name)).toHaveValue('Yan');
+    await expect(cell(page, 3, t.columns.name)).toHaveValue('Raf');
+    await menu(3).click();
+    await page.getByRole('menuitem', { name: t.rowMenu.moveUp }).click();
+    await expect(cell(page, 2, t.columns.name)).toHaveValue('Raf');
+
+    await menu(2).click();
+    await page.getByRole('menuitem', { name: t.rowMenu.remove }).click();
+    await expect(page.getByTestId('cut-list-count')).toHaveText(
+      fill(t.count, { rows: 3, pieces: 6 }),
+    );
+    const toast = page
+      .locator('[data-sonner-toast]')
+      .filter({ hasText: fill(t.removed, { count: 1 }) });
+    await toast.getByRole('button', { name: t.undo }).click();
+    await expect(cell(page, 2, t.columns.name)).toHaveValue('Raf');
+  });
+
+  test('Ctrl/Shift multi-select, Ctrl+D and Delete act on the selection', async ({ page }) => {
+    await page.goto(URL);
+    await pasteRows(page, THREE, 3);
+    await page.getByTestId('row-select-1').click();
+    await page.getByTestId('row-select-3').click({ modifiers: ['Shift'] });
+    await expect(page.getByTestId('selection-bar')).toContainText(
+      fill(t.select.count, { count: 3 }),
+    );
+    await page.getByTestId('row-select-2').click({ modifiers: ['Control'] });
+    await expect(page.getByTestId('selection-bar')).toContainText(
+      fill(t.select.count, { count: 2 }),
+    );
+
+    // Ctrl+D on a selected row duplicates the selection (each copy after its original).
+    await page.getByTestId('row-select-1').focus();
+    await page.keyboard.press('Control+d');
+    await expect(page.getByTestId('cut-list-count')).toHaveText(
+      fill(t.count, { rows: 5, pieces: 12 }),
+    );
+    await expect(cell(page, 2, t.columns.name)).toHaveValue('Yan');
+    await expect(cell(page, 5, t.columns.name)).toHaveValue('Kapak');
+
+    // Delete outside a text cell removes the selection; one undo brings it back.
+    await page.getByTestId('row-select-1').focus();
+    await page.keyboard.press('Delete');
+    await expect(page.getByTestId('cut-list-count')).toHaveText(
+      fill(t.count, { rows: 3, pieces: 8 }),
+    );
+    await page.getByTestId('wizard-undo').click();
+    await expect(page.getByTestId('cut-list-count')).toHaveText(
+      fill(t.count, { rows: 5, pieces: 12 }),
+    );
+  });
+
+  test('bulk edit of 50 rows is one undo step; footer summary matches a hand calculation', async ({
+    page,
+  }) => {
+    await page.goto(URL);
+    const lines = ['Ad\tEn\tBoy\tAdet'];
+    for (let i = 1; i <= 50; i++) lines.push(`P${i}\t500\t400\t1`);
+    await pasteRows(page, lines.join('\n'), 50);
+    // 50 × 0.2 m² = 10 m²; usable 2800 × 2070 sheet minus the default margin → 2 sheets.
+    await expect(page.getByTestId('cut-list-area')).toHaveText(
+      fill(t.summary.area, { area: '10' }),
+    );
+    await expect(page.getByTestId('cut-list-sheets')).toHaveAttribute('data-value', '2');
+
+    await page.getByTestId('row-select-all').click();
+    await expect(page.getByTestId('selection-bar')).toContainText(
+      fill(t.select.count, { count: 50 }),
+    );
+    await page.getByTestId('bulk-open').click();
+    const sheet = page.getByTestId('bulk-edit');
+    await sheet.getByTestId('bulk-qty').fill('2');
+    await sheet.getByTestId('bulk-edge-top').fill('0,8');
+    await sheet.getByTestId('bulk-prefix').fill('Mutfak ');
+    await sheet.getByTestId('bulk-apply').click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByTestId('cut-list-count')).toHaveText(
+      fill(t.count, { rows: 50, pieces: 100 }),
+    );
+    await expect(cell(page, 1, t.columns.name)).toHaveValue('Mutfak P1');
+    await expect(page.getByTestId('cut-list-area')).toHaveText(
+      fill(t.summary.area, { area: '20' }),
+    );
+
+    await page.getByTestId('wizard-undo').click();
+    await expect(page.getByTestId('cut-list-count')).toHaveText(
+      fill(t.count, { rows: 50, pieces: 50 }),
+    );
+    await expect(cell(page, 1, t.columns.name)).toHaveValue('P1');
+    await expectNoA11yViolations(page, { exclude: ['[data-sonner-toaster]'] });
+  });
+});

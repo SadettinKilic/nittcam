@@ -172,13 +172,14 @@ test.describe('T011 cut list', () => {
     await expect(h).toHaveValue('100');
     await expect(h).not.toHaveAttribute('aria-invalid', 'true');
 
-    await page
-      .getByRole('button', { name: fill(t.rowAction, { action: t.duplicate, n: 1 }) })
-      .click();
+    // T119: row actions live in the row menu.
+    await page.getByRole('button', { name: fill(t.rowMenu.label, { n: 1 }) }).click();
+    await page.getByRole('menuitem', { name: t.rowMenu.duplicate }).click();
     await expect(cell(page, 2, t.columns.name)).toHaveValue('Yan dikme');
     await expect(cell(page, 2, t.columns.w)).toHaveValue('300,5');
 
-    await page.getByRole('button', { name: fill(t.rowAction, { action: t.remove, n: 1 }) }).click();
+    await page.getByRole('button', { name: fill(t.rowMenu.label, { n: 1 }) }).click();
+    await page.getByRole('menuitem', { name: t.rowMenu.remove }).click();
     await expect(cell(page, 2, t.columns.name)).toHaveCount(0);
 
     // Undo: remove, duplicate, width, name, add — one step each.

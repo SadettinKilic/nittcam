@@ -2,6 +2,8 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   bandedEdges,
+  bulkParams,
+  cutListSummary,
   formatInput,
   navColumns,
   navTarget,
@@ -111,5 +113,68 @@ describe('cut-list grid navigation (T118)', () => {
         },
       ),
     );
+  });
+});
+
+describe('cut-list summary and bulk params (T119)', () => {
+  const sheet = { width: 2800, height: 2070, grain: null };
+  const rect = (id: string, w: number, h: number, qty: number, r = 0) =>
+    ({
+      id,
+      name: id,
+      qty,
+      grain: { mode: 'free', angle: 0 },
+      kind: 'rect',
+      params: { w, h, r },
+      inners: [],
+      holes: [],
+      edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+      templates: [],
+    }) as const;
+
+  it('matches a hand calculation: rows, pieces, m² and sheets inside the margin', () => {
+    // 8 × 560 × 720 + 4 × 564 × 560 = 3 225 600 + 1 263 360 = 4 488 960 mm² = 4.48896 m².
+    const s = cutListSummary({
+      parts: [rect('a', 560, 720, 8), rect('b', 564, 560, 4)],
+      stock: { material: 'mdf', thickness: 18, sheet, useOffcuts: false },
+      nesting: { mode: 'minWaste', gap: 8, margin: 10 },
+    } as never);
+    expect(s.rows).toBe(2);
+    expect(s.pieces).toBe(12);
+    expect(s.areaM2).toBeCloseTo(4.48896, 9);
+    // Usable: 2780 × 2050 = 5 699 000 mm² → 1 sheet.
+    expect(s.sheets).toBe(1);
+  });
+
+  it('rounds the sheet estimate up and counts rounded corners', () => {
+    const s = cutListSummary({
+      parts: [rect('a', 1000, 1000, 6, 10)],
+      stock: { material: 'mdf', thickness: 18, sheet, useOffcuts: false },
+      nesting: { mode: 'minWaste', gap: 8, margin: 10 },
+    } as never);
+    expect(s.areaM2).toBeCloseTo((6 * (1e6 - (4 - Math.PI) * 100)) / 1e6, 9);
+    expect(s.sheets).toBe(2);
+  });
+
+  it('bulk params carry only the filled fields', () => {
+    const edges = { top: null, right: null, bottom: null, left: null };
+    const base = { qty: null, grain: '__keep__' as const, angle: 0, edges, prefix: '' };
+    expect(bulkParams(['a'], base)).toBeNull();
+    expect(
+      bulkParams(['a', 'b'], {
+        ...base,
+        qty: 3,
+        grain: 'fixed',
+        angle: 30,
+        edges: { ...edges, top: 0.8, left: 0 },
+        prefix: 'Mutfak ',
+      }),
+    ).toEqual({
+      ids: ['a', 'b'],
+      qty: 3,
+      grain: { mode: 'fixed', angle: 30 },
+      edgeBand: { top: 0.8, left: 0 },
+      namePrefix: 'Mutfak ',
+    });
   });
 });

@@ -453,7 +453,7 @@
     "pasteOpen": "Excel'den yapıştır",
     "undo": "Geri al",
     "redo": "Yinele",
-    "shortcuts": "Enter alt satıra, Tab sonraki hücreye geçer; oklarla gezinin, F2 ile düzenleyin, Esc vazgeçer. Tablo dışında Ctrl+Z geri alır.",
+    "shortcuts": "Enter alt satıra, Tab sonraki hücreye geçer; oklarla gezinin, F2 ile düzenleyin, Esc vazgeçer. Satır numarasına Ctrl/Shift ile tıklayarak çoklu seçin; Ctrl+D çoğaltır, Delete seçili satırları siler (hücre dışında). Tablo dışında Ctrl+Z geri alır.",
     "count": "{rows} satır · toplam {pieces} parça",
     "defaultName": "Parça {n}",
     "columns": {
@@ -547,6 +547,8 @@
         "edgeLong2": "Uzun 2 (U2)",
         "edgeShort1": "Kısa 1 (K1)",
         "edgeShort2": "Kısa 2 (K2)",
+        "grainAngle": "Damar açısı",
+        "note": "Not",
         "ignore": "Kullanma"
       },
       "preview": "Önizleme",
@@ -577,7 +579,8 @@
         "NOT_POSITIVE": "{field} sıfırdan büyük olmalı.",
         "INVALID_QTY": "Adet 1 veya daha büyük tam sayı olmalı.",
         "INVALID_GRAIN": "Damar kilidi evet/hayır (1/0, x) olmalı.",
-        "INVALID_EDGE_BAND": "{field}: bant kalınlığı mm cinsinden sayı olmalı (ör. 0,8). Bant yoksa boş bırakın, - veya yok yazın."
+        "INVALID_EDGE_BAND": "{field}: bant kalınlığı mm cinsinden sayı olmalı (ör. 0,8). Bant yoksa boş bırakın, - veya yok yazın.",
+        "INVALID_GRAIN_ANGLE": "{field}: 0 ile 180 arasında bir açı olmalı (derece)."
       },
       "warnings": {
         "EMPTY": "Yapıştırılan metinde satır yok.",
@@ -635,7 +638,48 @@
       "label": "Parça kartları",
       "title": "Satır {n}"
     },
-    "edgeHeader": "{edge} bant"
+    "edgeHeader": "{edge} bant",
+    "select": {
+      "row": "Satır {n}: seç",
+      "all": "Tüm satırları seç",
+      "count": "{count} satır seçili",
+      "clear": "Seçimi kaldır",
+      "bulkEdit": "Toplu düzenle"
+    },
+    "rowMenu": {
+      "label": "Satır {n} işlemleri",
+      "duplicate": "Çoğalt",
+      "moveUp": "Yukarı taşı",
+      "moveDown": "Aşağı taşı",
+      "remove": "Sil"
+    },
+    "removed": "{count} satır silindi.",
+    "duplicated": "{count} satır çoğaltıldı.",
+    "updated": "{count} satır güncellendi.",
+    "bulk": {
+      "title": "Toplu düzenleme",
+      "description": "{count} satıra uygulanır. Boş bırakılan alan değişmez.",
+      "qty": "Adet",
+      "grain": "Damar",
+      "grainKeep": "Değiştirme",
+      "grainFree": "Serbest",
+      "grainFixed": "Sabit",
+      "edges": "Kenar bandı (mm)",
+      "edgeKeep": "değişmez",
+      "prefix": "Ad öneki",
+      "prefixHint": "Her adın başına eklenir, ör. \"Mutfak \".",
+      "apply": "Uygula",
+      "cancel": "Vazgeç",
+      "close": "Kapat",
+      "nothing": "Değiştirilecek bir alan girin."
+    },
+    "summary": {
+      "area": "{area} m²",
+      "sheets": "≈ {count} plaka",
+      "sheetsHint": "Tahmin: toplam parça alanı / plakanın kenar payı içindeki alanı. Kesin sayı dizilimden sonra.",
+      "label": "Kesim listesi özeti",
+      "shortcuts": "Kısayollar"
+    }
   },
   "layout": {
     "workspace": {

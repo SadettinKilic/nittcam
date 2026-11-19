@@ -298,6 +298,7 @@ describe('commandToolDefinitions (future AI tools)', () => {
         'setSheetSize',
         'setThickness',
         'updatePart',
+        'updateParts',
       ].sort(),
     );
     for (const tool of tools) {
