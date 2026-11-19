@@ -66,6 +66,8 @@ export interface CabinetPart {
   h: number;
   grain: { mode: 'fixed' | 'free'; angle: number };
   edgeBand: { top: number; right: number; bottom: number; left: number };
+  /** Board thickness of this part, mm (the back may differ from the carcass, T260). */
+  thickness: number;
 }
 
 export type CabinetError = 'tooNarrow' | 'tooLow' | 'tooShallow' | 'doorsTooSmall';
@@ -93,7 +95,7 @@ export function cabinetParts(params: CabinetParams): CabinetResult {
   // Front edge: sides are D × H (front = left edge), shelves etc. are inner × depth (front = bottom).
   const sideBand = { ...NONE, left: b };
   const frontBand = { ...NONE, bottom: b };
-  const parts: CabinetPart[] = [
+  const parts: Omit<CabinetPart, 'thickness'>[] = [
     { role: 'side', qty: 2, w: sideDepth, h: H, grain: vertical, edgeBand: sideBand },
     { role: 'top', qty: 1, w: inner, h: depth, grain: along, edgeBand: frontBand },
     { role: 'bottom', qty: 1, w: inner, h: depth, grain: along, edgeBand: frontBand },
@@ -137,7 +139,13 @@ export function cabinetParts(params: CabinetParams): CabinetResult {
   if (p > 0) parts.push({ role: 'plinth', qty: 1, w: inner, h: p, grain: along, edgeBand: NONE });
   return {
     ok: true,
-    parts: parts.map((x) => ({ ...x, w: round(x.w), h: round(x.h), edgeBand: { ...x.edgeBand } })),
+    parts: parts.map((x) => ({
+      ...x,
+      w: round(x.w),
+      h: round(x.h),
+      edgeBand: { ...x.edgeBand },
+      thickness: x.role === 'back' ? bt : t,
+    })),
   };
 }
 
@@ -179,4 +187,30 @@ export function cabinetFrontView(params: CabinetParams): FrontRect[] {
     }
   }
   return out;
+}
+
+/** Cabinet parts split by what the project's stock can make (T260, D-045). */
+export interface CabinetStockSplit {
+  /** Parts to add: those in the stock's thickness, plus the others when asked for. */
+  rows: CabinetPart[];
+  /** Parts in another thickness (e.g. an 8 mm back for an 18 mm list); never added silently. */
+  other: CabinetPart[];
+}
+
+/**
+ * Fits generated parts to the project's stock (D-045 "generators respect the stock"): parts of
+ * another thickness are left out unless `includeOther`; on a stock without grain every row is
+ * free to rotate (a fixed grain would only constrain nesting for nothing).
+ */
+export function cabinetPartsForStock(
+  parts: readonly CabinetPart[],
+  stock: { thickness: number; hasGrain: boolean },
+  includeOther = false,
+): CabinetStockSplit {
+  const same = (p: CabinetPart) => Math.abs(p.thickness - stock.thickness) <= 1e-6;
+  const fit = (p: CabinetPart): CabinetPart =>
+    stock.hasGrain ? p : { ...p, grain: { mode: 'free', angle: 0 } };
+  const other = parts.filter((p) => !same(p)).map(fit);
+  const rows = parts.filter((p) => includeOther || same(p)).map(fit);
+  return { rows, other };
 }

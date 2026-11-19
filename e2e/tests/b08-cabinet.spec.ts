@@ -27,8 +27,16 @@ test.describe('T122 cabinet generator', () => {
     const dialog = page.getByTestId('cabinet-dialog');
     await expect(dialog).toBeVisible();
     await expect(page.getByTestId('cabinet-group')).toHaveValue(fill(c.defaultGroup, { n: 1 }));
-    // Default base unit: 2 sides, top, bottom, 1 shelf, back, 1 door = 7 pieces in 6 rows.
+    // Default base unit: 2 sides, top, bottom, 1 shelf, 1 door = 6 pieces in 5 rows; the 8 mm
+    // back is not in the 18 mm list unless ticked (T260, D-045).
+    await expect(page.getByTestId('cabinet-add')).toHaveText(fill(c.add, { count: 6 }));
+    await expect(dialog.locator('[data-part=back][data-other]')).toContainText(
+      fill(c.otherBoard, { t: '8' }),
+    );
+    await page.getByTestId('cabinet-include-other').click();
     await expect(page.getByTestId('cabinet-add')).toHaveText(fill(c.add, { count: 7 }));
+    await page.getByTestId('cabinet-include-other').click();
+    await expect(page.getByTestId('cabinet-add')).toHaveText(fill(c.add, { count: 6 }));
     await expect(dialog.locator('[data-role=door]')).toHaveCount(1);
     await expectNoA11yViolations(page);
     // Live preview: two doors and three shelves show at once.
@@ -45,7 +53,7 @@ test.describe('T122 cabinet generator', () => {
     await page.getByTestId('cabinet-depth').press('Enter');
     await expect(dialog).toHaveCount(0);
     await expect(page.getByTestId('cut-list-count')).toHaveText(
-      fill(t.count, { rows: 6, pieces: 10 }),
+      fill(t.count, { rows: 5, pieces: 9 }),
     );
     await expect(cell(page, 1, t.columns.name)).toHaveValue(c.roles.side);
     await expect(cell(page, 1, t.columns.w)).toHaveValue('560');
@@ -67,6 +75,8 @@ test.describe('T122 cabinet generator', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openNewProject(page, 'parcalar');
     await page.getByTestId('cabinet-open').click();
+    // Added on purpose: the 8 mm back joins the list with its thickness as a note (T260).
+    await page.getByTestId('cabinet-include-other').click();
     await page.getByTestId('cabinet-add').click();
     await expect(page.getByTestId('cut-list-count')).toHaveText(
       fill(t.count, { rows: 6, pieces: 7 }),

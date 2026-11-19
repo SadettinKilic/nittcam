@@ -7,6 +7,7 @@ import {
   cabinetFrontView,
   cabinetParamsSchema,
   cabinetParts,
+  cabinetPartsForStock,
   DEFAULT_CABINET,
   type CabinetParams,
   type CabinetPart,
@@ -193,5 +194,49 @@ describe('generated rows in a project (D-041)', () => {
     expect(removed.project.parts.find((p) => p.id === 'cab-1')?.group).toBeUndefined();
     stack.undo();
     expect(stack.project).toEqual(before);
+  });
+});
+
+describe('cabinetPartsForStock (T260, D-045)', () => {
+  const two = { ...DEFAULT_CABINET, shelves: 2 };
+  const parts = (() => {
+    const r = cabinetParts(two);
+    if (!r.ok) throw new Error('cabinet');
+    return r.parts;
+  })();
+  const count = (ps: readonly { qty: number }[]) => ps.reduce((s, p) => s + p.qty, 0);
+
+  it('gives every part its board thickness (the back its own)', () => {
+    for (const p of parts) expect(p.thickness).toBe(p.role === 'back' ? 8 : 18);
+  });
+
+  it('leaves the 8 mm back out of an 18 mm list unless asked for', () => {
+    const split = cabinetPartsForStock(parts, { thickness: 18, hasGrain: true });
+    expect(count(split.rows)).toBe(7);
+    expect(split.rows.some((p) => p.role === 'back')).toBe(false);
+    expect(split.other.map((p) => p.role)).toEqual(['back']);
+    const all = cabinetPartsForStock(parts, { thickness: 18, hasGrain: true }, true);
+    expect(count(all.rows)).toBe(8);
+  });
+
+  it('keeps the back when it is the stock thickness', () => {
+    const same = cabinetParts({ ...two, back: { mode: 'inset', thickness: 18 } });
+    if (!same.ok) throw new Error('cabinet');
+    const split = cabinetPartsForStock(same.parts, { thickness: 18, hasGrain: true });
+    expect(split.other).toEqual([]);
+    expect(count(split.rows)).toBe(8);
+  });
+
+  it('frees the grain on a stock without grain, keeps it otherwise', () => {
+    const free = cabinetPartsForStock(parts, { thickness: 18, hasGrain: false }, true);
+    for (const p of free.rows) expect(p.grain.mode).toBe('free');
+    const fixed = cabinetPartsForStock(parts, { thickness: 18, hasGrain: true });
+    expect(fixed.rows.find((p) => p.role === 'side')?.grain).toEqual({ mode: 'fixed', angle: 90 });
+  });
+
+  it('is pure: the input parts are not changed', () => {
+    const before = structuredClone(parts);
+    cabinetPartsForStock(parts, { thickness: 18, hasGrain: false }, true);
+    expect(parts).toEqual(before);
   });
 });

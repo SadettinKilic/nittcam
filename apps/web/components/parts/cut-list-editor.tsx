@@ -96,7 +96,7 @@ import {
   type SortKey,
   type ViewItem,
 } from '../../lib/cut-list-view';
-import { fill, newPartId } from '../../lib/draft-project';
+import { fill, newPartId, stockHasGrain } from '../../lib/draft-project';
 import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
@@ -1410,7 +1410,7 @@ export function CutListEditor({
 
   /** T122: the generated rows in one importCutList = one undo step (D-041). */
   function addCabinet(generated: Parameters<typeof cabinetRows>[0], group: string): boolean {
-    const rows = cabinetRows(generated, t.cabinet.roles, group, newPartId);
+    const rows = cabinetRows(generated, t.cabinet.roles, group, newPartId, project.stock.thickness);
     const ok = run('importCutList', { parts: rows });
     if (ok) {
       notify.success(
@@ -1693,6 +1693,7 @@ export function CutListEditor({
                 if (!o) setCabinetOpen(0);
               }}
               thickness={project.stock.thickness}
+              hasGrain={stockHasGrain(project.stock)}
               defaultGroup={nextCabinetName(
                 t.cabinet.defaultGroup,
                 parts.map((p) => p.group),
