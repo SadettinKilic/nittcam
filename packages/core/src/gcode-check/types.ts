@@ -86,6 +86,11 @@ export interface ExpectedPart {
    * loop's bounding box, sheet frame. Omitted = none.
    */
   inners?: readonly { cx: number; cy: number }[];
+  /**
+   * Its through holes (T139), each cut through at its centre: a drilled hole (plunges only) or a
+   * cleared through pocket (its wall ring). Omitted = none.
+   */
+  holes?: readonly { cx: number; cy: number }[];
 }
 
 export interface GcodeCheckTolerance {

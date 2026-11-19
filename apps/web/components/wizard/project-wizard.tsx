@@ -12,7 +12,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { findMaterialParams } from '@nittcam/core';
+import { findMaterialParams, findTool } from '@nittcam/core';
 import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
@@ -533,6 +533,9 @@ function WizardSession({
       />
     ) : null;
   const toolDiameter = toolDiameterFor(project, profile);
+  // T138: a drawn hole takes the stock material set's tool (else the first tool, else T1).
+  const holeToolNo =
+    (profile && findMaterialParams(profile, project.stock)?.tool) ?? profile?.tools[0]?.number ?? 1;
 
   const go = useCallback(
     (next: StepKey) => {
@@ -714,6 +717,10 @@ function WizardSession({
         onToList={() => setPartsView('list')}
         viewSwitch={switchInCanvas ? viewSwitch : undefined}
         toolDiameter={toolDiameter}
+        holeTool={{
+          number: holeToolNo,
+          diameter: (profile && findTool(profile, holeToolNo)?.diameter) ?? toolDiameter,
+        }}
         initialSelection={partsSelection}
         onSelectionChange={setPartsSelection}
       />

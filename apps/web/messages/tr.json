@@ -960,8 +960,11 @@
       "NO_OPERATIONS": "Kesilecek parça yok.",
       "DEPTH_EXCEEDS_FLUTE_LENGTH": "Kesim derinliği takımın kesici boyunu aşıyor.",
       "SMALL_PART_UNSECURED": "Küçük parça sabitlenemiyor (köprü yerleşmedi).",
-      "SMALL_SLUG_UNSECURED": "İç kesimden düşecek küçük parçaya (göbek) 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün ya da cep olarak boşaltın (cep boşaltma yakında).",
-      "HOLES_NOT_SUPPORTED": "Delikler bu sürümde kesilmiyor.",
+      "SMALL_SLUG_UNSECURED": "İç kesimden düşecek küçük parçaya (göbek) 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin (delik içi tamamen boşaltılır, göbek kalmaz).",
+      "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç kesime değiyor.",
+      "HOLE_SMALLER_THAN_TOOL": "Delik çapı takım çapından küçük.",
+      "GROOVE_NARROWER_THAN_TOOL": "Kanal genişliği takım çapından dar; takım bu kanalı açamaz.",
+      "HOLE_DEPTH_INVALID": "Kör delik derinliği malzeme kalınlığından küçük olmalı.",
       "INNER_OFFSET_FAILED": "İç kesim bu takım için çok küçük; takım boşluğa girmiyor.",
       "INNER_SPLIT": "Takım iç kesimin dar bir boğazından geçemiyor.",
       "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor, dış hatla kesişiyor ya da başka bir iç kesime değiyor; parça bu haliyle kesilemez.",
@@ -1412,6 +1415,7 @@
       "codes": {
         "PART_LARGER_THAN_SHEET": "Parça plakaya sığmıyor (kenar payı dahil).",
         "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Delik derinliği plaka kalınlığından az olmalı.",
+        "HOLE_DEPTH_NEAR_THICKNESS": "Cep derinliği kalınlığa çok yakın: altta 1 mm'den az malzeme kalıyor, delip geçebilir.",
         "TOOL_NOT_IN_PROFILE": "Seçilen takım bu makinede yok.",
         "HOLE_SMALLER_THAN_TOOL": "Delik, takımdan küçük.",
         "GROOVE_NARROWER_THAN_TOOL": "Kanal, takımdan dar.",
@@ -1421,6 +1425,7 @@
         "NO_CUTTING_PARAMS": "Makinede bu malzeme ve kalınlık için kesim ayarı yok.",
         "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı.",
         "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
+        "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
         "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar."
       },
@@ -1778,6 +1783,7 @@
       "circle": "Çember",
       "line": "Çizgi",
       "arc": "Yay",
+      "hole": "Delik",
       "dim": "Ölçü"
     },
     "inner": {
@@ -1924,6 +1930,28 @@
         "qty": "Adet 1 ya da daha büyük bir tam sayı olmalı.",
         "fillet": "Bu köşe yuvarlatılamaz (iki düz kenar arasında değil).",
         "failed": "Değişiklik uygulanamadı."
+      },
+      "hole": {
+        "title": "Delikler",
+        "holeN": "Delik {n}",
+        "remove": "Delik {n} sil",
+        "type": {
+          "pocket": "Cep",
+          "through": "Geçme",
+          "groove": "Kanal"
+        },
+        "filled": "İçini boşalt",
+        "ringOnly": "Sadece çember (kanal)",
+        "ringOnlyOn": "Açık",
+        "through": "Boydan boya (geçme)",
+        "d": "Çap",
+        "cx": "Merkez X",
+        "cy": "Merkez Y",
+        "depth": "Derinlik",
+        "grooveWidth": "Kanal genişliği",
+        "tool": "Takım no",
+        "invalid": "Geçerli bir değer girin.",
+        "refused": "Bu değer uygulanamadı: delik parçanın içinde kalmalı, derinlik ve kanal genişliği geçerli olmalı."
       }
     },
     "copied": "{count} parça kopyalandı",
@@ -1958,7 +1986,9 @@
       "cancel": "Vazgeç",
       "bendHandle": "Kavis tutamağı"
     },
-    "actionsBar": "Seçim işlemleri"
+    "actionsBar": "Seçim işlemleri",
+    "holeHint": "Parçanın üstünde merkeze tıkla, çapı sürükleyerek büyüt, ikinci tıklamayla bitir.",
+    "holeRefused": "Delik buraya eklenemedi: parçanın içinde kalmalı ve iç boşluklara değmemeli."
   },
   "materialLibrary": {
     "title": "Malzemeler",

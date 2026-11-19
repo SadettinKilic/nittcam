@@ -12,7 +12,7 @@ import { offset } from '../geometry/offset';
 import { bbox, normalize } from '../geometry/polyline';
 import type { Polyline } from '../geometry/types';
 import type { Project } from '../schema';
-import { placedInners, placedOutline } from '../toolpath';
+import { placedHoleCentre, placedInners, placedOutline } from '../toolpath';
 import type { ExpectedPart } from './types';
 
 function centre(pl: Polyline): { cx: number; cy: number } {
@@ -44,6 +44,12 @@ export function expectedLayout(project: Project, sheet: number, toolDiameter = 0
       copy: pl.index,
       ...centre(placedOutline(part, pl)),
       inners: placedInners(part, pl).map((c) => innerCentre(c, toolDiameter / 2)),
+      holes: part.holes
+        .filter((h) => h.type === 'through')
+        .map((h) => {
+          const c = placedHoleCentre(part, pl, h);
+          return { cx: c.x, cy: c.y };
+        }),
     });
   }
   return out;
