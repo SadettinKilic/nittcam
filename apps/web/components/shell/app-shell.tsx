@@ -31,7 +31,13 @@ import {
   isPageClaimedKey,
   isTypingTarget,
 } from '../../lib/shortcuts';
-import { isSidebarCollapsed, setSidebarCollapsed, subscribeSidebar } from '../../lib/sidebar-state';
+import {
+  RAIL_BELOW_PX,
+  isSidebarCollapsed,
+  setSidebarCollapsed,
+  subscribeSidebar,
+  syncSidebar,
+} from '../../lib/sidebar-state';
 import { CommandMenu, type CommandActions } from './command-menu';
 import { ShortcutKeys, useIsMac } from './keys';
 import { ShellProvider } from './shell-context';
@@ -165,6 +171,13 @@ export function AppShell({ t, company, children }: AppShellProps) {
     };
     wide.addEventListener('change', onChange);
     return () => wide.removeEventListener('change', onChange);
+  }, []);
+
+  // T263: crossing 1440 px switches between the workspace rail rule and the stored choice.
+  useEffect(() => {
+    const laptop = window.matchMedia(`(min-width: ${RAIL_BELOW_PX}px)`);
+    laptop.addEventListener('change', syncSidebar);
+    return () => laptop.removeEventListener('change', syncSidebar);
   }, []);
 
   if (bare) return <>{children}</>;

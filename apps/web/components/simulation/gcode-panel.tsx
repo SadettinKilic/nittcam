@@ -89,6 +89,8 @@ export const GcodePanel = memo(function GcodePanel({
               return (
                 <div
                   key={`f${row.file}`}
+                  data-testid="gcode-file"
+                  data-name={row.name}
                   style={style}
                   className="absolute inset-x-0 flex items-center truncate border-b border-border-subtle bg-surface-hover px-2 font-sans text-2xs font-semibold text-fg-muted"
                 >

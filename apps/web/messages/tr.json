@@ -1101,7 +1101,8 @@
       "title": "G-code",
       "label": "G-code satırları. Bir satıra tıklayınca simülasyon o satıra gider.",
       "file": "Dosya: {name}",
-      "lineWord": "Satır"
+      "lineWord": "Satır",
+      "revisionPending": "kaydedilince"
     },
     "zStrip": {
       "label": "Z derinliği / zaman. Tıklayınca o ana gidilir.",
