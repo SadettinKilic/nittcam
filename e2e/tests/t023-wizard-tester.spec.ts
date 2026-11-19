@@ -14,6 +14,7 @@ import {
   watchConsole,
   wizardReady,
   SEEDED,
+  openIssues,
 } from './wizard-helpers';
 
 /**
@@ -491,7 +492,7 @@ test.describe('T023 tester: wizard step 1', () => {
     await goStep(page, 'parcalar');
     await paste(page, 'Ad\tEn\tBoy\tAdet\nBüyük\t6000\t300\t1', 1);
     const panel = page.getByTestId('validation-panel');
-    await expect(panel).toBeVisible();
+    await openIssues(page);
     // Grouped headings in Turkish, errors and warnings counted.
     await expect(panel).toContainText(w.issues.groups.stock);
     await expect(panel).toContainText(w.issues.groups.parts);

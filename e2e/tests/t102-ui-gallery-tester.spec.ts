@@ -76,7 +76,11 @@ test.describe('B1 tester: keyboard-only overlays and theme', () => {
       [o.menuTrigger, 'menu'],
       [o.popoverTrigger, 'dialog'],
     ] as const) {
-      const trigger = page.getByRole('button', { name, exact: true });
+      // B11: the gallery's InspectorGroup demo has a group titled "Yan panel" too; the overlay
+      // triggers are the buttons with a popup.
+      const trigger = page
+        .getByRole('button', { name, exact: true })
+        .and(page.locator('[aria-haspopup]'));
       await trigger.focus();
       await page.keyboard.press('Enter');
       await expect(page.getByRole(role)).toBeVisible();

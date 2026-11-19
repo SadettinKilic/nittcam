@@ -127,3 +127,20 @@ export function rulerTicks(min: number, max: number, step: number): number[] {
 export function zoomPercent(scale: number): number {
   return Math.round(scale * 100);
 }
+
+/**
+ * What "fit" frames (T254, D-040 amends T243): with the sheet outline on, the union of the sheet
+ * and the parts, so all four sheet edges and its label are in view; with it off, the parts only.
+ * Undefined when there is nothing to frame (no parts, outline off).
+ */
+export function fitTarget(parts: Box | null | undefined, sheet: Box | null): Box | undefined {
+  if (parts && sheet) {
+    return {
+      minX: Math.min(parts.minX, sheet.minX),
+      minY: Math.min(parts.minY, sheet.minY),
+      maxX: Math.max(parts.maxX, sheet.maxX),
+      maxY: Math.max(parts.maxY, sheet.maxY),
+    };
+  }
+  return parts ?? sheet ?? undefined;
+}

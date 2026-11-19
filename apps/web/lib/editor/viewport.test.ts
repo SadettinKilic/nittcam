@@ -2,6 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   fitBox,
+  fitTarget,
   gridLevels,
   rulerStep,
   rulerTicks,
@@ -93,5 +94,29 @@ describe('editor viewport (T124)', () => {
       expect([1, 2, 5]).toContain(Math.round(m));
     }
     expect(rulerTicks(-15, 31, 10)).toEqual([-10, 0, 10, 20, 30]);
+  });
+});
+
+describe('fitTarget (T254, D-040)', () => {
+  const sheet = { minX: 0, minY: 0, maxX: 2800, maxY: 2070 };
+  const parts = { minX: -500, minY: 300, maxX: 1200, maxY: 2500 };
+  it('outline on: the union of the sheet and the parts', () => {
+    expect(fitTarget(parts, sheet)).toEqual({ minX: -500, minY: 0, maxX: 2800, maxY: 2500 });
+  });
+  it('outline off: the parts only; nothing to frame: undefined', () => {
+    expect(fitTarget(parts, null)).toEqual(parts);
+    expect(fitTarget(undefined, sheet)).toEqual(sheet);
+    expect(fitTarget(undefined, null)).toBeUndefined();
+  });
+  it('the fitted view shows all four sheet edges inside the canvas with 48 px padding', () => {
+    const box = fitTarget(parts, sheet);
+    if (!box) throw new Error('no box');
+    const v = fitBox(box, 900, 700, { top: 22, right: 0, bottom: 0, left: 46 }, 48);
+    const tl = toScreen(v, { x: sheet.minX, y: sheet.maxY });
+    const br = toScreen(v, { x: sheet.maxX, y: sheet.minY });
+    expect(tl.x).toBeGreaterThanOrEqual(46 + 48 - 0.5);
+    expect(tl.y).toBeGreaterThanOrEqual(22 + 48 - 0.5);
+    expect(br.x).toBeLessThanOrEqual(900 - 48 + 0.5);
+    expect(br.y).toBeLessThanOrEqual(700 - 48 + 0.5);
   });
 });

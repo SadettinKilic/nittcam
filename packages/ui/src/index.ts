@@ -156,7 +156,13 @@ export {
   type DomainIconProps,
 } from './components/domain-icons';
 export { Measure, formatMeasure, type MeasureProps } from './components/measure';
-export { InspectorRow, InspectorRows, type InspectorRowProps } from './components/inspector-row';
+export {
+  InspectorGroup,
+  InspectorRow,
+  InspectorRows,
+  type InspectorGroupProps,
+  type InspectorRowProps,
+} from './components/inspector-row';
 export {
   GrainArrow,
   GrainDial,

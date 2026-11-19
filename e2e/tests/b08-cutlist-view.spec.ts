@@ -151,13 +151,12 @@ test.describe('T253 quiet zeros and a grid that stays put', () => {
       await cell(page, 1, t.columns.w).fill('9000');
       await cell(page, 1, t.columns.w).press('Tab');
       await expect(page.getByTestId('cut-list-issue-chip')).toHaveAttribute('data-count', '1');
-      // The Uyarılar panel floats over the page; the grid keeps every cell in place.
-      await expect(page.getByTestId('validation-panel')).toBeVisible();
-      expect(await boxes()).toEqual(before);
-      // The chip closes and reopens it.
-      const chip = page.getByTestId('cut-list-issue-chip');
-      await chip.click();
+      // T256: the panel does not fit right of the last column at this width, so it stays closed
+      // behind the chip; the grid keeps every cell in place.
       await expect(page.getByTestId('validation-panel')).toHaveCount(0);
+      expect(await boxes()).toEqual(before);
+      // The chip opens it.
+      const chip = page.getByTestId('cut-list-issue-chip');
       await chip.click();
       // The chip moves focus into the panel (next frame); Esc there closes it.
       await expect(page.locator('[data-testid=validation-panel] h2 button')).toBeFocused();

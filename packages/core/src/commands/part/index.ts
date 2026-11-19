@@ -308,4 +308,6 @@ export const duplicatePart = defineCommand({
 
 export { mirrorPart, movePart, pasteParts, removeParts, rotatePart, setPartsGrain } from './board';
 export { drawPart, setSegmentBulge } from './draw';
+export { moveVertex, setOutline, setSegmentAngle, setSegmentLength } from './edit';
+export { addDogbone, convertToFreeform, filletCorners } from './corners';
 export { duplicateParts, reorderParts, updateParts } from './list';

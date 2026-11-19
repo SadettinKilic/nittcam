@@ -50,7 +50,12 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         for (const o of overlays) {
           // Same scroll position behind every overlay (focus restore after Escape moves it).
           await page.evaluate(() => window.scrollTo(0, 0));
-          await page.getByRole('button', { name: o.open, exact: true }).click();
+          // B11: the InspectorGroup demo has a group heading titled "Yan panel" too; the overlay
+          // triggers are the buttons with a popup.
+          await page
+            .getByRole('button', { name: o.open, exact: true })
+            .and(page.locator('[aria-haspopup]'))
+            .click();
           await expect(page.getByRole(o.role)).toBeVisible();
           // Modal layers aria-hide the page behind them (focus is trapped), so axe checks the layer.
           await expectNoA11yViolations(page, { include: `[role="${o.role}"]` });
