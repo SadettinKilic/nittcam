@@ -2,16 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type APIRequestContext, type Download, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import {
-  buildToolpath,
-  checkGcodeFiles,
-  expectedLayouts,
-  parsePostConfig,
-  type GcodeCheckFilesResult,
-  type MachineProfile,
-  type VerificationState,
-  type Project,
-} from '../../packages/core/src/index';
+import { verifyDownloaded, type MachineDetail } from './nc-verify';
 import {
   chooseMachine,
   closeWorkspacePanel,
@@ -48,12 +39,6 @@ const CABINET = [
 const CABINET_ROWS = 5;
 const CABINET_PIECES = 16;
 
-interface MachineDetail {
-  id: string;
-  state: VerificationState;
-  profile: MachineProfile & { post: { id: string } };
-}
-
 /** The workshop's machine profile: a copy of the seeded example under its own name (via API). */
 async function createWorkshopMachine(request: APIRequestContext): Promise<string> {
   const list = (await (await request.get('/api/machines')).json()) as { id: string }[];
@@ -76,52 +61,6 @@ async function noHorizontalScroll(page: Page) {
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
-}
-
-/**
- * The independent verification: re-derives the expected toolpath and layout from the SAVED project
- * and the machine profile, then runs the reader + automatic checks over the downloaded bytes.
- */
-async function verifyDownloaded(
-  request: APIRequestContext,
-  id: string,
-  files: { name: string; content: string; sheet: number }[],
-): Promise<GcodeCheckFilesResult & { partsCut: number; partsExpected: number }> {
-  const detail = (await (await request.get(`/api/projects/${id}`)).json()) as { project: Project };
-  const project = detail.project;
-  const machine = (await (
-    await request.get(`/api/machines/${project.machine.machineId}`)
-  ).json()) as MachineDetail;
-  const postRaw: unknown = JSON.parse(
-    await readFile(
-      new URL(`../../packages/machines/${machine.profile.post.id}/v1/post.json`, import.meta.url),
-      'utf8',
-    ),
-  );
-  const cfg = parsePostConfig(postRaw);
-  if (!cfg.ok) throw new Error('post config invalid');
-  const tp = buildToolpath(project, machine.profile, {});
-  expect(tp.ok).toBe(true);
-  if (!tp.ok) throw new Error('toolpath failed');
-  const result = checkGcodeFiles(files, {
-    profile: machine.profile,
-    verification: machine.state,
-    post: cfg.config,
-    toolpath: tp.toolpath,
-    stock: {
-      thickness: project.stock.thickness,
-      sheetWidth: project.stock.sheet.width,
-      sheetHeight: project.stock.sheet.height,
-    },
-    layout: expectedLayouts(project),
-  });
-  const sum = (f: (r: GcodeCheckFilesResult['files'][number]) => number | null) =>
-    result.files.reduce((n, r) => n + (f(r) ?? 0), 0);
-  return {
-    ...result,
-    partsCut: sum((r) => r.result.summary.partsCut),
-    partsExpected: sum((r) => r.result.summary.partsExpected),
-  };
 }
 
 async function runFlow(page: Page, mobile: boolean) {
