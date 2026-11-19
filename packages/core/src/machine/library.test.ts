@@ -130,3 +130,30 @@ describe('stockFromLibrary + applyLibraryMaterial', () => {
     expect(r2.project.stock.libraryId).toBeUndefined();
   });
 });
+
+describe('library sheet size quantity (T164)', () => {
+  it('accepts an optional integer qty and keeps it through de-duplication', () => {
+    const r = libraryMaterialSchema.parse({
+      ...DEFAULT_LIBRARY[0],
+      sheetSizes: [
+        { width: 2800, height: 2070, qty: 4 },
+        { width: 2800, height: 2070, qty: 9 },
+        { width: 2440, height: 1220 },
+      ],
+    });
+    expect(r.sheetSizes).toEqual([
+      { width: 2800, height: 2070, qty: 4 },
+      { width: 2440, height: 1220 },
+    ]);
+  });
+
+  it('rejects qty 0 and fractions', () => {
+    for (const qty of [0, 2.5]) {
+      const r = libraryMaterialSchema.safeParse({
+        ...DEFAULT_LIBRARY[0],
+        sheetSizes: [{ width: 2800, height: 2070, qty }],
+      });
+      expect(r.success).toBe(false);
+    }
+  });
+});
