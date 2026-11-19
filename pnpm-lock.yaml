@@ -117,6 +117,9 @@ importers:
 
   packages/core:
     dependencies:
+      dxf-parser:
+        specifier: 1.1.2
+        version: 1.1.2
       immer:
         specifier: 11.2.9
         version: 11.2.9
@@ -2355,6 +2358,9 @@ packages:
       sqlite3:
         optional: true
 
+  dxf-parser@1.1.2:
+    resolution: {integrity: sha512-GPTumUvRkounlIazLIyJMmTWt+nlg+ksS0Hdm8jWvejmZKBTz6gvHTam76wRm4PQMma5sgKLThblQyeIJcH79Q==}
+
   electron-to-chromium@1.5.486:
     resolution: {integrity: sha512-rpybw4Ac4ak/An6G1Me2+61xzwobowDGyuJe71QHHOVpkZv4fPVobsLl7WH6zHSKusAMpaHxGKTpOvpy7+r3dQ==}
 
@@ -2777,6 +2783,10 @@ packages:
 
   lodash.merge@4.6.2:
     resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
+
+  loglevel@1.9.2:
+    resolution: {integrity: sha512-HgMmCqIJSAKqo68l0rS2AanEWfkxaZ5wNiEFb5ggm08lDs9Xl2KxBlX3PTcaD2chBM1gXAYf491/M2Rv8Jwayg==}
+    engines: {node: '>= 0.6.0'}
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
@@ -5187,6 +5197,10 @@ snapshots:
       '@types/pg': 8.23.1
       pg: 8.23.1
 
+  dxf-parser@1.1.2:
+    dependencies:
+      loglevel: 1.9.2
+
   electron-to-chromium@1.5.486: {}
 
   enhanced-resolve@5.27.0:
@@ -5613,6 +5627,8 @@ snapshots:
       p-locate: 5.0.0
 
   lodash.merge@4.6.2: {}
+
+  loglevel@1.9.2: {}
 
   lru-cache@5.1.1:
     dependencies:

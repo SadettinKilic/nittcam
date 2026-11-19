@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../../apps/web/messages/tr.json' with { type: 'json' };
 import { KITCHEN, goStep, openNewProject, paste } from '../wizard-helpers';
@@ -115,6 +116,28 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
         await expect(page.getByTestId('cabinet-dialog')).toBeVisible();
         await expectNoA11yViolations(page);
         await snap(page, `t122-cabinet-dialog-${vp}-${theme}`, { fullPage: false });
+      });
+
+      test('DXF import dialog: preview, report, layers (T146)', async ({ page }) => {
+        await page.route('**/api/settings/dxf-layers', (route) =>
+          route.fulfill({ json: { map: {} } }),
+        );
+        await openNewProject(page, 'parcalar');
+        await page.getByTestId('dxf-open').click();
+        const dialog = page.getByTestId('dxf-dialog');
+        await dialog
+          .getByTestId('dxf-file')
+          .setInputFiles(
+            fileURLToPath(
+              new URL(
+                '../../../packages/core/src/dxf/__fixtures__/rect-lines-gaps.dxf',
+                import.meta.url,
+              ),
+            ),
+          );
+        await expect(dialog.getByTestId('dxf-preview')).toBeVisible();
+        await expectNoA11yViolations(page);
+        await snap(page, `t146-dxf-dialog-${vp}-${theme}`, { fullPage: false });
       });
 
       test('steps 1–5: machine, parts, layout, simulation, export (T109–T111)', async ({
