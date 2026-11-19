@@ -60,7 +60,7 @@ Look: modern, calm, corporate (Linear / Vercel class). Neutral graphite surfaces
 - Responsive: 390 / 768 / 1024 / 1440 px, no page-level horizontal scroll.
 - Heavy work (nesting, toolpath) runs in a Web Worker; the UI never freezes.
 - The UI never mutates the project directly; it always calls commands (command-layer skill).
-- Menu (T194a): live items Ana sayfa, Makineler, Projeler, Oluştur (kept until FQ4 is answered) and a prominent "+ Yeni proje" at the top; items not built yet (Şablonlar, Ayarlar) in a muted "Yakında" group at the bottom, never between live items. One accent-filled "Yeni proje" per screen (the sidebar one; pages repeat it only below 768 px). Domain icons (`RouterIcon`, `SheetIcon`, `GrainIcon`, `NestingIcon`, `ToolpathIcon`, `AirCutIcon` from `@nittcam/ui`, lucide-compatible) for CNC concepts; never the chip/drill icon for a machine. UI text says "dışa aktarma", not "export".
+- Menu (T194a): live items Ana sayfa, Makineler, Projeler, Ayarlar (live since T121; "Oluştur" removed in T247) and a prominent "+ Yeni proje" at the top; items not built yet (e.g. Şablonlar) in a muted "Yakında" group at the bottom, never between live items. One accent-filled "Yeni proje" per screen (the sidebar one; pages repeat it only below 768 px). Domain icons (`RouterIcon`, `SheetIcon`, `GrainIcon`, `NestingIcon`, `ToolpathIcon`, `AirCutIcon` from `@nittcam/ui`, lucide-compatible) for CNC concepts; never the chip/drill icon for a machine. UI text says "dışa aktarma", not "export".
 - Visual QA: `pnpm e2e:visual` (Playwright `visual` project, 1440×900 and 390×844, light + dark, `snap()` and `expectNoA11yViolations()` from `e2e/tests/visual/helpers.ts`).
 
 ## Notices (T199, Fable review #1)
