@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { nest } from './nest';
+import { better, nest, type Candidate } from './nest';
 import { invariantViolations } from './nest.testing';
 import type { NestingInput, NestPart } from './types';
 
@@ -108,5 +108,35 @@ describe('multiple sheet sizes (T164)', () => {
       ),
       { numRuns: 60, seed: 164 },
     );
+  });
+});
+
+describe('candidate ranking with several sizes (T164, D-056)', () => {
+  const area = (r: ReturnType<typeof nest>) => r.sheets.reduce((s, st) => s + st.sheetArea, 0);
+
+  it('mixed sizes nest every copy on less area than the big size alone', () => {
+    const parts = [part('a', 1100, 1100, 4)];
+    const mixed = nest(input(parts, { sheets: [BIG, SMALL] }));
+    const bigOnly = nest(input(parts));
+    expect(mixed.unplaced).toEqual([]);
+    expect(mixed.layout.sheets.length).toBeGreaterThan(bigOnly.layout.sheets.length);
+    expect(area(mixed)).toBeLessThan(area(bigOnly));
+    expect(invariantViolations(input(parts, { sheets: [BIG, SMALL] }), mixed)).toEqual([]);
+  });
+
+  it('better(): with several sizes the total area ranks before the sheet count, then the cost', () => {
+    const cand = (dims: { width: number; height: number }[], total: number, unplaced = 0) =>
+      ({
+        layout: dims.map(() => []),
+        dims,
+        unplaced: Array.from({ length: unplaced }, () => ({})),
+        cost: { total },
+      }) as unknown as Candidate;
+    const fourSmall = cand([SMALL, SMALL, SMALL, SMALL], 9);
+    const twoBig = cand([BIG, BIG], 1);
+    expect(better(fourSmall, twoBig, true)).toBe(true);
+    expect(better(twoBig, fourSmall, false)).toBe(true); // one size: the count first, as before
+    expect(better(cand([SMALL], 2), cand([SMALL], 3), true)).toBe(true); // same area: the cost
+    expect(better(cand([BIG, BIG], 1), cand([SMALL], 1, 1), true)).toBe(true); // unplaced first
   });
 });

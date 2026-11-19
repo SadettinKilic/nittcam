@@ -446,7 +446,7 @@ function stripUndefined(w: Partial<ObjectiveWeights>): Partial<ObjectiveWeights>
   return out;
 }
 
-interface Candidate {
+export interface Candidate {
   ordering: PartOrdering;
   heuristic: PlacerHeuristic;
   layout: Placement[][];
@@ -457,10 +457,19 @@ interface Candidate {
   cost: ObjectiveCost;
 }
 
-function better(a: Candidate, b: Candidate): boolean {
+/** Total area of a candidate's sheets, mm². */
+const sheetArea = (c: Candidate) => c.dims.reduce((s, d) => s + d.width * d.height, 0);
+
+/**
+ * Candidate ranking: fewer unplaced copies, then fewer sheets, then the objective. With several
+ * stock sizes (`mixed`, D-056) the total sheet area replaces the sheet count (two small sheets
+ * can beat one big one), then the objective. One size: the area is the count times one size, but
+ * the count is compared as before so single-size results stay byte-identical.
+ */
+export function better(a: Candidate, b: Candidate, mixed: boolean): boolean {
   return (
     (a.unplaced.length - b.unplaced.length ||
-      a.layout.length - b.layout.length ||
+      (mixed ? sheetArea(a) - sheetArea(b) : a.layout.length - b.layout.length) ||
       a.cost.total - b.cost.total) < 0
   );
 }
@@ -583,7 +592,7 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
         stats,
         cost,
       };
-      if (best === null || better(cand, best)) best = cand;
+      if (best === null || better(cand, best, dims.length > 1)) best = cand;
     }
   }
   hooks.onProgress?.(count, total);
