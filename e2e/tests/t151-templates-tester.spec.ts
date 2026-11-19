@@ -16,8 +16,8 @@ for (const [w, h] of [
     );
     expect(noScroll).toBe(true);
     const res = await new AxeBuilder({ page }).analyze();
-    expect(
-      res.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical'),
-    ).toEqual([]);
+    expect(res.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual(
+      [],
+    );
   });
 }

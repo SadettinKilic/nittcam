@@ -15,6 +15,7 @@ test.describe('T247 shell tidy', () => {
       tr.nav.home,
       tr.nav.machines,
       tr.nav.projects,
+      tr.nav.templates,
       tr.nav.settings,
     ]);
     await expect(nav.getByText(tr.nav.create, { exact: true })).toHaveCount(0);
