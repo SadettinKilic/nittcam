@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Zero-dependency local server for the team dashboard: http://localhost:4321 (PORT env overrides)
 //   GET  /state.json    team state (.team/state.json + .team/limits.json)
-//   GET  /api/roadmap   milestones, batches and tasks parsed from docs/BACKLOG.md (cached, re-read on change)
+//   GET  /api/roadmap   milestones, batches and tasks parsed from docs/BACKLOG.md on origin/main (what has landed; cached per commit)
+//                       BACKLOG_FILE=<path> reads a file instead (preview/testing); without git it falls back to the checkout's file
 //   GET  /api/ci        latest GitHub Actions runs via `gh` (cached 60 s; {available:false} without gh)
 //   POST /api/answer    {id, answer} -> `status.mjs answered <id> "<answer>"` (answer a question from the phone)
 import { createServer } from 'node:http';
@@ -14,7 +15,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 let root = join(here, '..', '..');
 try { root = dirname(execSync('git rev-parse --path-format=absolute --git-common-dir', { cwd: here, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()); } catch {}
 const stateFile = process.env.STATE_FILE || join(root, '.team', 'state.json'); // STATE_FILE: test with sample data
-const backlogFile = join(root, 'docs', 'BACKLOG.md');
+const backlogFile = process.env.BACKLOG_FILE || join(root, 'docs', 'BACKLOG.md');
 const statusCli = join(here, '..', 'team', 'status.mjs');
 const port = Number(process.env.PORT || 4321);
 
@@ -58,14 +59,19 @@ export function parseBacklog(md) {
     } else if ((m = line.match(BATCH_RE))) {
       const nm = (m[2].match(/\(([^)]*)\)/) || [])[1] || '';
       batch = { id: m[1], name: clean(nm.replace(/;.*$/, '')), tasks: [] }; ms.batches.push(batch);
-    } else if (/^### .*riders/i.test(line)) {
-      batch = { id: 'Ek', name: 'diğer paketlere eklenen işler', tasks: [] }; ms.batches.push(batch);
+    } else if ((m = line.match(/^### (.*?)\briders?\b/i))) {
+      // "### CTO review #4 riders: T261–T263 (...)": riders ship with other batches; keep the review in the name
+      const src = m[1].replace(/review/i, 'inceleme').replace(/[:\s]+$/, '').trim();
+      batch = { id: 'Ek', name: (src ? src + ' ekleri' : 'ekler') + ', başka paketlerle gelir', tasks: [] }; ms.batches.push(batch);
+    } else if (/^### /.test(line) && !/^### T\d/.test(line)) {
+      batch = null; // any other sub-heading ends the batch (notes, deferred text)
     }
   }
   for (const x of milestones) {
     x.batches = x.batches.filter((b) => b.tasks.length);
     const all = x.batches.flatMap((b) => b.tasks);
-    x.total = all.length; x.done = all.filter((t) => t.status === 'done').length;
+    const counted = all.filter((t) => t.status !== 'deferred'); // deferred tasks moved elsewhere (e.g. T248 → mobile pass)
+    x.total = counted.length; x.done = counted.filter((t) => t.status === 'done').length;
     x.active = all.some((t) => t.status === 'doing' || t.status === 'review');
   }
   return milestones;
@@ -80,22 +86,34 @@ const expandIds = (s) => {
   return ids;
 };
 
-let roadmapCache = { mtime: 0, body: null, velAt: 0, vel: null };
-async function roadmap() {
+// BACKLOG as it is on origin/main (statuses are set to done in the integration PR, D-054), so a stale or
+// switched local checkout never shows old statuses. Any agent's `git fetch` refreshes origin/main.
+async function backlogSource() {
+  if (!process.env.BACKLOG_FILE) {
+    const rev = (await run('git', ['rev-parse', 'origin/main']))?.trim();
+    if (rev) return { key: rev, ref: 'origin/main', read: () => run('git', ['show', 'origin/main:docs/BACKLOG.md'], { maxBuffer: 8 << 20 }) };
+  }
   const st = await stat(backlogFile);
+  return { key: 'file:' + st.mtimeMs, ref: process.env.BACKLOG_FILE ? 'dosya' : 'çalışma kopyası', read: () => readFile(backlogFile, 'utf8') };
+}
+
+let roadmapCache = { key: '', body: null, velAt: 0, vel: null };
+async function roadmap() {
+  const src = await backlogSource();
   const now = Date.now();
   if (now - roadmapCache.velAt > 5 * 60_000) {
     // velocity: task ids in commit subjects that reached main in the last 24 h
     const log = (await run('git', ['log', '--since=24 hours ago', '--format=%s', 'origin/main'])) ?? (await run('git', ['log', '--since=24 hours ago', '--format=%s', 'main'])) ?? '';
     roadmapCache.vel = expandIds(log).size; roadmapCache.velAt = now; roadmapCache.body = null;
   }
-  if (roadmapCache.body && roadmapCache.mtime === st.mtimeMs) return roadmapCache.body;
-  const milestones = parseBacklog(await readFile(backlogFile, 'utf8'));
+  if (roadmapCache.body && roadmapCache.key === src.key) return roadmapCache.body;
+  const md = await src.read();
+  if (!md) throw new Error('BACKLOG okunamadı (' + src.ref + ')');
+  const milestones = parseBacklog(md);
   const pre = []; for (const m of milestones) { if (m.later) break; pre.push(m); }
   const total = pre.reduce((a, m) => a + m.total, 0), done = pre.reduce((a, m) => a + m.done, 0);
-  const branch = (await run('git', ['rev-parse', '--abbrev-ref', 'HEAD'])) || '';
-  roadmapCache = { ...roadmapCache, mtime: st.mtimeMs, body: JSON.stringify({
-    milestones, total, done, doneLast24h: roadmapCache.vel, branch: branch.trim(), file: 'docs/BACKLOG.md', read: new Date().toISOString(),
+  roadmapCache = { ...roadmapCache, key: src.key, body: JSON.stringify({
+    milestones, total, done, doneLast24h: roadmapCache.vel, source: src.ref, file: 'docs/BACKLOG.md', read: new Date().toISOString(),
   }) };
   return roadmapCache.body;
 }
