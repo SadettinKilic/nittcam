@@ -458,3 +458,10 @@ Review #4 did one real job as an operator (base cabinet 600 × 720 × 560, 2 she
 - **Generators respect the stock:** a generator never silently adds a row the project's stock cannot make (other thickness, other material). It shows the part and lets the user add it on purpose.
 - **Walkthrough metric:** every design review repeats this job and reports clicks, typed values and hesitations. Baseline: 19 clicks, 5 typed values, 5 screens. A change that adds clicks to this path needs a reason in its PR.
 - Decided by the reviewer; the owner may revisit. Tasks: B11a (T257–T260), riders T261–T263. Review: `docs/reviews/2026-11-19-cto-design-review-4.md`.
+
+## D-047 Review findings are triaged; polish waits; small batches (2026-11-19, owner)
+- Design/CTO reviews keep finding things; they must not slow delivery. The PO triages every finding:
+  - **Must-fix now** (next batch, at most 3 tasks per review): machine safety, wrong output, a flow that blocks or dead-ends, data loss, accessibility blockers, a core-workflow usability blocker.
+  - **Polish queue** (everything else, e.g. visual polish, spacing, wording, nice-to-haves): noted in BACKLOG "Polish queue (M9)" with the review reference; done in the M9 polish phase.
+- Batches: at most 3 tasks plus 1 small rider, so one dev context lasts the whole batch.
+- Field test stays after M9 (owner cannot do one earlier).
