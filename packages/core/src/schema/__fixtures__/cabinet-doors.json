@@ -55,15 +55,44 @@
       },
       "templates": [
         {
+          "instanceId": "t1",
           "templateId": "hinge-cup-35",
           "version": 2,
-          "params": {
-            "d": 35,
-            "edgeDistance": 22.5,
-            "count": 2,
-            "mirror": false
+          "name": "Menteşe çanağı 35",
+          "geometry": {
+            "holes": [
+              {
+                "id": "h1",
+                "type": "pocket",
+                "d": 35,
+                "cx": 0,
+                "cy": 0,
+                "depth": 12.5,
+                "tool": 2
+              }
+            ],
+            "inners": []
           },
-          "overrides": []
+          "defaults": {
+            "count": 2,
+            "spacing": 516,
+            "edgeDistance": 22.5,
+            "d": {}
+          },
+          "params": {
+            "count": 2,
+            "spacing": 516,
+            "edgeDistance": 22.5,
+            "d": {}
+          },
+          "overrides": [],
+          "placement": {
+            "x": 22.5,
+            "y": 358,
+            "rot": 0,
+            "mirror": false,
+            "edge": "left"
+          }
         }
       ]
     },
@@ -129,15 +158,44 @@
       },
       "templates": [
         {
+          "instanceId": "t1",
           "templateId": "hinge-cup-35",
           "version": 2,
-          "params": {
-            "d": 35,
-            "edgeDistance": 22.5,
-            "count": 2,
-            "mirror": true
+          "name": "Menteşe çanağı 35",
+          "geometry": {
+            "holes": [
+              {
+                "id": "h1",
+                "type": "pocket",
+                "d": 35,
+                "cx": 0,
+                "cy": 0,
+                "depth": 12.5,
+                "tool": 2
+              }
+            ],
+            "inners": []
           },
-          "overrides": []
+          "defaults": {
+            "count": 2,
+            "spacing": 516,
+            "edgeDistance": 22.5,
+            "d": {}
+          },
+          "params": {
+            "count": 2,
+            "spacing": 516,
+            "edgeDistance": 22.5,
+            "d": {}
+          },
+          "overrides": [],
+          "placement": {
+            "x": 373.5,
+            "y": 358,
+            "rot": 180,
+            "mirror": true,
+            "edge": "right"
+          }
         }
       ]
     }

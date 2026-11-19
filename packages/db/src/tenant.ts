@@ -343,6 +343,7 @@ export type ProjectCommandRow = typeof projectCommands.$inferSelect;
 export type MachineRow = typeof machinesTable.$inferSelect;
 export type MachineProfileVersionRow = typeof machineProfileVersions.$inferSelect;
 export type TemplateVersionRow = typeof templateVersions.$inferSelect;
+export type TemplateRow = typeof templatesTable.$inferSelect;
 export type ValidationRow = typeof validations.$inferSelect;
 
 /**
@@ -899,6 +900,60 @@ function templatesRepo(db: Db, companyId: string) {
           })
           .returning();
         return rows[0] as TemplateVersionRow;
+      });
+    },
+    /** A new template with its version 1 in one transaction (T147 "şablon olarak kaydet"). */
+    async createWithVersion(
+      name: string,
+      values: NewTemplateVersion,
+    ): Promise<{ template: TemplateRow; version: TemplateVersionRow }> {
+      return db.transaction(async (tx) => {
+        const created = await tx.insert(templatesTable).values({ companyId, name }).returning();
+        const template = created[0] as TemplateRow;
+        const rows = await tx
+          .insert(templateVersions)
+          .values({
+            companyId,
+            templateId: template.id,
+            version: 1,
+            params: values.params,
+            geometry: values.geometry,
+          })
+          .returning();
+        return { template, version: rows[0] as TemplateVersionRow };
+      });
+    },
+    /** One version of a company template; `null` when the template or version is not the company's. */
+    async getVersion(templateId: string, version: number): Promise<TemplateVersionRow | null> {
+      const rows = await db
+        .select()
+        .from(templateVersions)
+        .where(
+          and(
+            eq(templateVersions.templateId, templateId),
+            eq(templateVersions.companyId, companyId),
+            eq(templateVersions.version, version),
+          ),
+        );
+      return rows[0] ?? null;
+    },
+    /** Every company template with its latest version (T148 "Şablon ekle", T149 update check). */
+    async listLatest(): Promise<{ template: TemplateRow; version: TemplateVersionRow }[]> {
+      const all = await db
+        .select()
+        .from(templatesTable)
+        .where(eq(templatesTable.companyId, companyId))
+        .orderBy(asc(templatesTable.name), asc(templatesTable.id));
+      const versions = await db
+        .select()
+        .from(templateVersions)
+        .where(eq(templateVersions.companyId, companyId))
+        .orderBy(asc(templateVersions.version));
+      const latest = new Map<string, TemplateVersionRow>();
+      for (const v of versions) latest.set(v.templateId, v);
+      return all.flatMap((template) => {
+        const version = latest.get(template.id);
+        return version ? [{ template, version }] : [];
       });
     },
     async listVersions(templateId: string): Promise<TemplateVersionRow[]> {

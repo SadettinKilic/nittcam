@@ -16,6 +16,8 @@ import type { Messages } from '../../lib/messages';
 import { ariaKeyShortcuts, shortcutById, shortcutText, type ShortcutId } from '../../lib/shortcuts';
 import { HoleProperties } from './hole-properties';
 import { PartProperties, type Run, type SubSelection } from './properties';
+import { TemplateProperties } from './template-properties';
+import type { PendingTemplate } from '../../lib/editor/template-place';
 import { useIsMac } from '../shell/keys';
 
 export interface InspectorActions {
@@ -104,6 +106,8 @@ export function EditorInspector({
   sub = null,
   onSub,
   toolRadius,
+  pendingTemplate = null,
+  onPendingTemplate,
 }: {
   t: Messages['editor']['inspector'];
   project: Project;
@@ -118,6 +122,9 @@ export function EditorInspector({
   toolRadius?: number;
   /** With nothing selected: counts, total area and extents of the board (T242). */
   summary?: BoardSummary;
+  /** The template being placed (T148), with its setter; without the setter no template group. */
+  pendingTemplate?: PendingTemplate | null;
+  onPendingTemplate?: (p: PendingTemplate | null) => void;
 }) {
   const first = selected[0];
   const part = first ? project.parts.find((p) => p.id === first.id) : undefined;
@@ -212,6 +219,15 @@ export function EditorInspector({
               run={run}
               thickness={project.stock.thickness}
               toolDiameter={(toolRadius ?? 0) * 2}
+            />
+          ) : null}
+          {selected.length === 1 && part && run && onPendingTemplate ? (
+            <TemplateProperties
+              t={t.template}
+              part={part}
+              run={run}
+              pending={pendingTemplate}
+              onPending={onPendingTemplate}
             />
           ) : null}
         </>

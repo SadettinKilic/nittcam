@@ -17,6 +17,7 @@ import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
+import { TemplateUpdatePrompt } from '../editor/template-update';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
 import { untitledName } from '../../lib/untitled-name';
 import { CutListEditor } from '../parts/cut-list-editor';
@@ -928,6 +929,12 @@ function WizardSession({
       data-workspace={workspace ? '' : undefined}
       className={`mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col gap-3 px-4 pt-1 sm:gap-5 sm:px-6 sm:pt-5 ${workspace ? 'max-w-none max-sm:gap-2 lg:h-[calc(100dvh-3.5rem)] lg:gap-2 lg:overflow-hidden lg:pt-2' : 'max-w-[96rem] lg:px-8'}`}
     >
+      {/* T149: a newer version of a template this project uses asks before updating. */}
+      <TemplateUpdatePrompt
+        t={messages.editor.inspector.template}
+        project={project}
+        run={session.run}
+      />
       {phone ? (
         <>
           <header
