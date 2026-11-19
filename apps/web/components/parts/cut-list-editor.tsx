@@ -444,8 +444,8 @@ function buildColumns(t: Text, wideBands: boolean, narrow: boolean, ctx: { curre
           column.display({
             id: `edge-${edge}`,
             header: fill(t.edgeHeader, { edge: t.edge[edge] }),
-            size: 64,
-            minSize: 52,
+            size: 78,
+            minSize: 60,
             cell: (info) => (
               <EdgeInput
                 t={c().t}

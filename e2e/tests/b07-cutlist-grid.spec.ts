@@ -260,6 +260,43 @@ async function flickToLightRow(page: Page, column: number) {
   );
 }
 
+test.describe('B7 r3: band headers and the grain angle', () => {
+  for (const width of [1440, 1920]) {
+    test(`${width} px: the four band headers fit without truncation, no sideways scroll`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(URL);
+      await pasteRows(page, THREE, 3);
+      for (const edge of ['top', 'bottom', 'left', 'right'] as const) {
+        const head = page.getByTestId(`edge-col-${edge}`).locator('span').first();
+        await expect(head).toHaveText(fill(t.edgeHeader, { edge: t.edge[edge] }));
+        expect(await head.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+      }
+      const scroll = page.getByTestId('cut-list-scroll');
+      expect(await scroll.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+    });
+  }
+
+  test('a fixed angle ("0°") uses the UI font with tabular figures', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(URL);
+    await pasteRows(page, THREE, 3);
+    await page
+      .getByRole('checkbox', { name: fill(t.cellLabel, { n: 1, column: t.columns.grain }) })
+      .click();
+    const grain = page.getByTestId('grain-cell-1');
+    await expect(grain).toHaveText(/0°/);
+    const [font, body, numeric] = await grain.evaluate((el) => [
+      getComputedStyle(el).fontFamily,
+      getComputedStyle(document.body).fontFamily,
+      getComputedStyle(el).fontVariantNumeric,
+    ]);
+    expect(font).toBe(body);
+    expect(numeric).toContain('tabular-nums');
+  });
+});
+
 test.describe('B7 r3: a press on a light row', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });

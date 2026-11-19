@@ -380,8 +380,8 @@ export function GrainCell({
       className={cn(
         buttonVariants({ variant: 'ghost', size: 'sm' }),
         'h-control-sm gap-1 px-1.5',
-        // Angles are figures (tabular); "Serbest" is a word in the UI font.
-        fixed ? 'font-mono text-fg tabular-nums' : 'text-fg-subtle',
+        // Angles are figures (tabular) and "Serbest" a word, both in the UI font (B7 r2).
+        fixed ? 'text-fg tabular-nums' : 'text-fg-subtle',
       )}
       aria-label={fill(g.edit, { n, angle: fixed ? deg : g.free })}
       data-testid={`grain-cell-${n}`}
