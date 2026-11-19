@@ -344,6 +344,20 @@ test.describe('T119 row actions, multi-select, bulk edit', () => {
     await expect(cell(page, 1, t.columns.name)).toHaveValue('P1');
     await expectNoA11yViolations(page, { exclude: ['[data-sonner-toaster]'] });
   });
+
+  test('Enter in a bulk edit field applies the sheet', async ({ page }) => {
+    await page.goto(URL);
+    await pasteRows(page, ['Ad\tEn\tBoy\tAdet', 'A\t500\t400\t1', 'B\t500\t400\t1'].join('\n'), 2);
+    await page.getByTestId('row-select-all').click();
+    await page.getByTestId('bulk-open').click();
+    const sheet = page.getByTestId('bulk-edit');
+    await sheet.getByTestId('bulk-qty').fill('3');
+    await sheet.getByTestId('bulk-qty').press('Enter');
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByTestId('cut-list-count')).toHaveText(
+      fill(t.count, { rows: 2, pieces: 6 }),
+    );
+  });
 });
 
 test.describe('T120 import and export', () => {

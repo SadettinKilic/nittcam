@@ -99,80 +99,90 @@ export function BulkEditSheet({
           <SheetTitle>{b.title}</SheetTitle>
           <SheetDescription>{fill(b.description, { count: ids.length })}</SheetDescription>
         </SheetHeader>
-        <SheetBody className="flex flex-col gap-5 py-5">
-          <FormField label={b.qty} id="bulk-qty">
-            <NumberInput
-              value={qty}
-              onValueChange={setQty}
-              min={1}
-              step={1}
-              maxDecimals={0}
-              data-testid="bulk-qty"
-            />
-          </FormField>
-          <div className="flex flex-col gap-2">
-            <label htmlFor="bulk-grain" className="text-sm font-medium text-fg">
-              {b.grain}
-            </label>
-            <Select value={grain} onValueChange={(v) => setGrain(v as GrainChoice)}>
-              <SelectTrigger id="bulk-grain" data-testid="bulk-grain" data-value={grain}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__keep__">{b.grainKeep}</SelectItem>
-                <SelectItem value="free">{b.grainFree}</SelectItem>
-                <SelectItem value="fixed">{b.grainFixed}</SelectItem>
-              </SelectContent>
-            </Select>
-            {grain === 'fixed' ? (
-              <GrainDial
-                value={angle}
-                onValueChange={setAngle}
-                onValueCommit={setAngle}
-                labels={grainDialLabels()}
-                data-testid="bulk-grain-dial"
+        {/* A form, so Enter in any field applies (like the other dialogs). */}
+        <form
+          className="contents"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            apply();
+          }}
+        >
+          <SheetBody className="flex flex-col gap-5 py-5">
+            <FormField label={b.qty} id="bulk-qty">
+              <NumberInput
+                value={qty}
+                onValueChange={setQty}
+                min={1}
+                step={1}
+                maxDecimals={0}
+                data-testid="bulk-qty"
               />
-            ) : null}
-          </div>
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-2 text-sm font-medium text-fg">{b.edges}</legend>
-            <div className="grid grid-cols-2 gap-3">
-              {EDGES.map((edge) => (
-                <FormField key={edge} label={t.edge[edge]} id={`bulk-edge-${edge}`}>
-                  <NumberInput
-                    value={edges[edge]}
-                    onValueChange={(v) => setEdges((cur) => ({ ...cur, [edge]: v }))}
-                    min={0}
-                    step={0.1}
-                    placeholder={b.edgeKeep}
-                    data-testid={`bulk-edge-${edge}`}
-                  />
-                </FormField>
-              ))}
+            </FormField>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="bulk-grain" className="text-sm font-medium text-fg">
+                {b.grain}
+              </label>
+              <Select value={grain} onValueChange={(v) => setGrain(v as GrainChoice)}>
+                <SelectTrigger id="bulk-grain" data-testid="bulk-grain" data-value={grain}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__keep__">{b.grainKeep}</SelectItem>
+                  <SelectItem value="free">{b.grainFree}</SelectItem>
+                  <SelectItem value="fixed">{b.grainFixed}</SelectItem>
+                </SelectContent>
+              </Select>
+              {grain === 'fixed' ? (
+                <GrainDial
+                  value={angle}
+                  onValueChange={setAngle}
+                  onValueCommit={setAngle}
+                  labels={grainDialLabels()}
+                  data-testid="bulk-grain-dial"
+                />
+              ) : null}
             </div>
-          </fieldset>
-          <FormField label={b.prefix} hint={b.prefixHint} id="bulk-prefix">
-            <Input
-              value={prefix}
-              maxLength={60}
-              onChange={(e) => setPrefix(e.target.value)}
-              data-testid="bulk-prefix"
-            />
-          </FormField>
-          {error ? (
-            <p role="alert" className="text-sm font-medium text-danger-text">
-              {error}
-            </p>
-          ) : null}
-        </SheetBody>
-        <SheetFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {b.cancel}
-          </Button>
-          <Button onClick={apply} data-testid="bulk-apply">
-            {b.apply}
-          </Button>
-        </SheetFooter>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-2 text-sm font-medium text-fg">{b.edges}</legend>
+              <div className="grid grid-cols-2 gap-3">
+                {EDGES.map((edge) => (
+                  <FormField key={edge} label={t.edge[edge]} id={`bulk-edge-${edge}`}>
+                    <NumberInput
+                      value={edges[edge]}
+                      onValueChange={(v) => setEdges((cur) => ({ ...cur, [edge]: v }))}
+                      min={0}
+                      step={0.1}
+                      placeholder={b.edgeKeep}
+                      data-testid={`bulk-edge-${edge}`}
+                    />
+                  </FormField>
+                ))}
+              </div>
+            </fieldset>
+            <FormField label={b.prefix} hint={b.prefixHint} id="bulk-prefix">
+              <Input
+                value={prefix}
+                maxLength={60}
+                onChange={(e) => setPrefix(e.target.value)}
+                data-testid="bulk-prefix"
+              />
+            </FormField>
+            {error ? (
+              <p role="alert" className="text-sm font-medium text-danger-text">
+                {error}
+              </p>
+            ) : null}
+          </SheetBody>
+          <SheetFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {b.cancel}
+            </Button>
+            <Button type="submit" data-testid="bulk-apply">
+              {b.apply}
+            </Button>
+          </SheetFooter>
+        </form>
       </SheetContent>
     </Sheet>
   );
