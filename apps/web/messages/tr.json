@@ -2214,6 +2214,7 @@
       "params": "Kesim ayarı"
     },
     "grainNone": "Yok",
+    "sheetQty": "× {n} adet",
     "grainValue": "{angle}°",
     "paramsOk": "{machine}: tamam",
     "paramsMissing": "{machine}: {list} mm için ayar yok",
