@@ -4,6 +4,7 @@
 //   GET  /api/roadmap   milestones, batches and tasks parsed from docs/BACKLOG.md on origin/main (what has landed; cached per commit)
 //                       BACKLOG_FILE=<path> reads a file instead (preview/testing); without git it falls back to the checkout's file
 //   GET  /api/ci        latest GitHub Actions runs via `gh` (cached 60 s; {available:false} without gh)
+//   GET  /api/prs       open PRs via `gh` (number, title, branch, labels; cached 60 s; {available:false} without gh)
 //   POST /api/answer    {id, answer} -> `status.mjs answered <id> "<answer>"` (answer a question from the phone)
 import { createServer } from 'node:http';
 import { execSync, execFile } from 'node:child_process';
@@ -133,6 +134,19 @@ async function ci() {
   await ciBusy; return ciCache.body;
 }
 
+let prCache = { at: 0, body: JSON.stringify({ available: false }) }, prBusy = null;
+async function prs() {
+  if (Date.now() - prCache.at < 60_000) return prCache.body;
+  if (!prBusy) prBusy = (async () => {
+    let out = null;
+    for (const g of ghCmd) { out = await run(g, ['pr', 'list', '--state', 'open', '--limit', '30', '--json', 'number,title,headRefName,labels,isDraft']); if (out) break; }
+    let list = null; try { list = JSON.parse(out); } catch {}
+    prCache = { at: Date.now(), body: JSON.stringify(list ? { available: true, prs: list.map((p) => ({ number: p.number, title: p.title, branch: p.headRefName, draft: !!p.isDraft, labels: (p.labels || []).map((l) => l.name) })) } : { available: false }) };
+    prBusy = null;
+  })();
+  await prBusy; return prCache.body;
+}
+
 const send = (res, code, body, type = 'application/json; charset=utf-8') => { res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
 createServer(async (req, res) => {
@@ -147,6 +161,7 @@ createServer(async (req, res) => {
       try { return send(res, 200, await roadmap()); } catch (e) { return send(res, 200, JSON.stringify({ milestones: [], error: String(e.message || e) })); }
     }
     if (url.startsWith('/api/ci')) return send(res, 200, await ci());
+    if (url.startsWith('/api/prs')) return send(res, 200, await prs());
     if (url.startsWith('/api/answer') && req.method === 'POST') {
       let raw = ''; for await (const c of req) { raw += c; if (raw.length > 4000) break; }
       let b = {}; try { b = JSON.parse(raw); } catch {}
