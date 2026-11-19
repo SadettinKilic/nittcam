@@ -27,6 +27,89 @@ export const GOLDEN_FIXTURES = [
 ] as const;
 
 /**
+ * Hole fixtures (T139–T140): built here with fixed placements (no nesting), so the golden file
+ * shows exactly the cases listed. MDF 18 mm, example profile (T1 Ø6, T2 Ø8, set tool T2).
+ */
+export const GOLDEN_HOLE_FIXTURES = [
+  {
+    id: 'holes-through',
+    name: 'Geçme delikler',
+    revision: 1,
+    /**
+     * Panel 400 × 300, two copies (0° and 90°): Ø8 T2 = drill (pecks), Ø35 T2 = helical entry +
+     * cleared through pocket, Ø20 T1 = cleared through pocket with the other tool (tool change).
+     */
+    holes: [
+      { id: 'h1', type: 'through', d: 8, cx: 60, cy: 60, tool: 2 },
+      { id: 'h2', type: 'through', d: 35, cx: 200, cy: 150, tool: 2 },
+      { id: 'h3', type: 'through', d: 20, cx: 340, cy: 240, tool: 1 },
+    ],
+  },
+] as const;
+
+/** The panel project of a hole fixture: two copies, the second turned 90°. */
+export function holeFixtureProject(holes: readonly unknown[]): Project {
+  const parsed = parseProject({
+    schemaVersion: 2,
+    machine: { machineId: 'golden', profileVersion: 1 },
+    stock: {
+      material: 'mdf',
+      thickness: 18,
+      sheet: { width: 2800, height: 2070, grain: 0 },
+      useOffcuts: false,
+    },
+    parts: [
+      {
+        id: 'panel',
+        name: 'Panel',
+        qty: 2,
+        grain: { mode: 'free', angle: 0 },
+        kind: 'rect',
+        params: { w: 400, h: 300, r: 0 },
+        inners: [],
+        holes: structuredClone(holes),
+        edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+        templates: [],
+      },
+    ],
+    nesting: { mode: 'minWaste', gap: 10, margin: 12 },
+    layout: {
+      sheets: [
+        {
+          placements: [
+            { partId: 'panel', index: 0, x: 100, y: 100, rot: 0, locked: false },
+            { partId: 'panel', index: 1, x: 700, y: 100, rot: 90, locked: false },
+          ],
+        },
+      ],
+    },
+    cutting: { tabs: { auto: false }, leadIn: 'arc', direction: 'climb' },
+  });
+  if (!parsed.ok) throw new Error(`hole fixture invalid: ${JSON.stringify(parsed.issues)}`);
+  return parsed.project;
+}
+
+/** Every golden fixture id with its project (the existing three keep their rect-only derivative). */
+export function goldenFixtureProjects(
+  toolDiameter: number,
+): { id: string; name: string; revision: number; project: Project }[] {
+  return [
+    ...GOLDEN_FIXTURES.map((fx) => ({
+      id: fx.id,
+      name: fx.name,
+      revision: fx.revision,
+      project: goldenProject(fx.json, toolDiameter),
+    })),
+    ...GOLDEN_HOLE_FIXTURES.map((fx) => ({
+      id: fx.id,
+      name: fx.name,
+      revision: fx.revision,
+      project: holeFixtureProject(fx.holes),
+    })),
+  ];
+}
+
+/**
  * Rect-only derivative of a fixture (M1 cuts no holes or inner contours): rect parts only, holes,
  * inners and templates removed, MDF 18 mm (the example profile's parameter set), re-nested.
  */
@@ -86,8 +169,8 @@ export function goldenCases(): GoldenCase[] {
     const set = profile.materials.find((m) => m.material === 'mdf' && m.thickness === 18);
     const tool = profile.tools.find((t) => t.number === set?.tool);
     if (!tool) throw new Error('golden profile has no MDF 18 tool');
-    for (const fx of GOLDEN_FIXTURES) {
-      const project = goldenProject(fx.json, tool.diameter);
+    for (const fx of goldenFixtureProjects(tool.diameter)) {
+      const project = fx.project;
       const tp = buildToolpath(project, profile);
       if (!tp.ok) throw new Error(`golden toolpath failed: ${JSON.stringify(tp.errors)}`);
       const version: PostProfileVersion = { profile, version: 1, verification: 'draft' };

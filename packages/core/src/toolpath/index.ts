@@ -40,3 +40,11 @@ export type {
   OrderedItem,
   SheetOrderStats,
 } from './order';
+export {
+  HOLE_DEFAULTS,
+  buildHoleOperation,
+  grooveRings,
+  holeOperationKind,
+  placedHoleCentre,
+  pocketRings,
+} from './holes';

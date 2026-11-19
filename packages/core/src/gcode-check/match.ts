@@ -268,6 +268,12 @@ export function cutLoops(sm: readonly SheetMove[], d: Derived, push: Push): CutL
       }
     }
     const first = cut[0] as SheetMove;
+    const v0 = verts[0] as P3;
+    if (!best && verts.every((v) => xyDist(v, v0) <= tol)) {
+      // Straight down and up only: a drilled through hole (T139) at that XY.
+      loops.push({ cx: v0.x, cy: v0.y, line: first.line });
+      continue;
+    }
     if (!best) {
       push(
         'LAYOUT',
@@ -304,13 +310,15 @@ export function cutLoops(sm: readonly SheetMove[], d: Derived, push: Push): CutL
 
 /** Closed through cuts the layout expects: every placed copy plus each of its cut-outs (T134). */
 export function expectedLoopCount(expected: readonly ExpectedPart[]): number {
-  return expected.reduce((n, e) => n + 1 + (e.inners?.length ?? 0), 0);
+  return expected.reduce((n, e) => n + 1 + (e.inners?.length ?? 0) + (e.holes?.length ?? 0), 0);
 }
 
 interface ExpectedLoop {
   part: ExpectedPart;
   /** Cut-out index; undefined = the part's outer contour. */
   inner?: number;
+  /** Through-hole index (T139). */
+  hole?: number;
   cx: number;
   cy: number;
 }
@@ -329,6 +337,7 @@ export function matchLayout(
   const want: ExpectedLoop[] = expected.flatMap((part) => [
     { part, cx: part.cx, cy: part.cy },
     ...(part.inners ?? []).map((c, inner) => ({ part, inner, cx: c.cx, cy: c.cy })),
+    ...(part.holes ?? []).map((c, hole) => ({ part, hole, cx: c.cx, cy: c.cy })),
   ]);
   const free = new Set(want.map((_, i) => i));
   const extra: CutLoop[] = [];
@@ -354,7 +363,7 @@ export function matchLayout(
       0,
       inners === 0
         ? `The program cuts ${loops.length} parts, the layout has ${expected.length}.`
-        : `The program cuts ${loops.length} closed loops, the layout has ${expected.length} parts and ${inners} cut-outs (${want.length}).`,
+        : `The program cuts ${loops.length} closed loops, the layout has ${expected.length} parts and ${inners} cut-outs or through holes (${want.length}).`,
     );
   }
   for (const l of extra) {
@@ -368,9 +377,11 @@ export function matchLayout(
   for (const i of free) {
     const e = want[i] as ExpectedLoop;
     const what =
-      e.inner === undefined
-        ? `Part ${e.part.partId} copy ${e.part.copy}`
-        : `Cut-out ${e.inner + 1} of part ${e.part.partId} copy ${e.part.copy}`;
+      e.hole !== undefined
+        ? `Through hole ${e.hole + 1} of part ${e.part.partId} copy ${e.part.copy}`
+        : e.inner === undefined
+          ? `Part ${e.part.partId} copy ${e.part.copy}`
+          : `Cut-out ${e.inner + 1} of part ${e.part.partId} copy ${e.part.copy}`;
     push(
       'LAYOUT',
       'PART_MISSING',
