@@ -444,3 +444,8 @@ Review #3 found the canvases still read as generic blue boxes on grey, two diffe
 - The product will rarely be used from a phone. Build and polish for PC; at phone widths screens must only not break (no page-level horizontal scroll, primary action reachable, no crash, axe clean).
 - Phone-specific polish moves to a "Mobile UI pass" (one or two batches before the field test). T248 deferred there; T249 phone bullet split out as T255; T248 import-panel bullet moved to T250. B8a is now T249–T251.
 - Tester and reviews focus on 1440 px; 390 px is a smoke check. Goal: faster progress.
+
+## D-044 Material library links cutting parameters, never copies them (2026-11-19, dev T121, PO accepted)
+- A library material's "parameter set per machine" is the machine profile's set for the same kind and thickness; the library stores no feed/rpm/step-down of its own (old columns dropped).
+- The project keeps `stock.material` as the kind (export unchanged) plus an optional, display-only `stock.libraryId`.
+- Default materials are seeded once per company (when it has none); a company that deletes them all must not get them back silently.
