@@ -43,8 +43,9 @@ async function fpsDuring(page: Page, act: () => Promise<void>): Promise<number> 
 }
 
 /**
- * Time from the pointer press to the frame after the canvas's selection changed (ms), measured in
- * the page; `null` when the click selected nothing new.
+ * Time from the pointer release (the board selects on release) to the frame after the canvas's
+ * selection changed (ms), measured in the page; the press-to-release gap is the test driver's, not
+ * the board's. `null` when the click selected nothing new.
  */
 async function selectLatency(page: Page, canvas: Locator, x: number, y: number) {
   await page.evaluate(() => {
@@ -53,7 +54,7 @@ async function selectLatency(page: Page, canvas: Locator, x: number, y: number) 
     const before = el.dataset.selection ?? '';
     w.__sel = new Promise((resolve) => {
       let t0 = 0;
-      el.addEventListener('pointerdown', () => (t0 = performance.now()), {
+      el.addEventListener('pointerup', () => (t0 = performance.now()), {
         capture: true,
         once: true,
       });

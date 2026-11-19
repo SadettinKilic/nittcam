@@ -374,6 +374,12 @@ export function DrawingBoard({
     [stock.width, stock.height],
   );
   const touched = useRef(false);
+  // Stable for the memoised part list rows (T137).
+  const selectFromList = useCallback(
+    (id: string, additive: boolean) =>
+      dispatch(additive ? { type: 'toggle', id } : { type: 'select', ids: [id] }),
+    [],
+  );
   const fit = useCallback(() => {
     touched.current = false;
     if (size.w > 0 && size.h > 0) {
@@ -1355,9 +1361,7 @@ export function DrawingBoard({
           t={t.parts}
           project={project}
           selection={selection}
-          onSelect={(id, additive) =>
-            dispatch(additive ? { type: 'toggle', id } : { type: 'select', ids: [id] })
-          }
+          onSelect={selectFromList}
         />
       }
       right={
