@@ -33,7 +33,9 @@ const TOKENS: Record<keyof SceneColors, string> = {
   sheetEdge: '--color-sheet-edge',
   part: '--color-part',
   partStroke: '--color-part-stroke',
-  table: '--color-sim-table',
+  // The 2D simulation table token is a line colour (light in dark mode); the envelope tone
+  // reads as a calm machine bed in both themes.
+  table: '--color-sim-envelope',
   grid: '--color-grid',
   gridSection: '--color-border-strong',
   shadow: '--color-fg',

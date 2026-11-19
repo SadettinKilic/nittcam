@@ -13,12 +13,7 @@ import { ContactShadows, Grid, OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { Project } from '@nittcam/core';
 import { useEffect, useMemo, useRef, type ComponentRef } from 'react';
-import {
-  BufferGeometry,
-  Float32BufferAttribute,
-  NeutralToneMapping,
-  type PerspectiveCamera,
-} from 'three';
+import { MeshStandardMaterial, NeutralToneMapping, type PerspectiveCamera } from 'three';
 type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
 import {
   INTRO_MS,
@@ -30,7 +25,7 @@ import {
   type CameraPose,
   type ViewPreset,
 } from '../../lib/preview3d/camera';
-import { sheetOutlines } from '../../lib/preview3d/outlines';
+import { PartsLayer } from './parts-layer';
 import { TABLE_THICKNESS, buildStage, type TableSpec } from '../../lib/preview3d/stage';
 
 /** Colours of the scene, read from the design tokens (never hard-coded; ui-conventions). */
@@ -77,7 +72,17 @@ export default function Scene(props: SceneProps) {
     () => buildStage(stock.sheet, stock.thickness, table),
     [stock.sheet, stock.thickness, table],
   );
-  const outlines = useMemo(() => sheetOutlines(project, sheet), [project, sheet]);
+  const materials = useMemo(
+    () => ({ part: matte(colors.part), waste: matte(colors.sheet) }),
+    [colors.part, colors.sheet],
+  );
+  useEffect(
+    () => () => {
+      materials.part.dispose();
+      materials.waste.dispose();
+    },
+    [materials],
+  );
   const { width: W, height: H } = stage.sheet;
   const T = stage.thickness;
   const tb = stage.table;
@@ -106,11 +111,13 @@ export default function Scene(props: SceneProps) {
             <boxGeometry args={[tb.w, tb.h, TABLE_THICKNESS]} />
             <meshStandardMaterial color={colors.table} roughness={0.95} metalness={0} />
           </mesh>
-          <mesh position={[W / 2, H / 2, T / 2]} data-testid="preview3d-sheet">
-            <boxGeometry args={[W, H, T]} />
-            <meshStandardMaterial color={colors.sheet} roughness={0.9} metalness={0} />
-          </mesh>
-          <EdgeLines outlines={outlines} z={T + 0.2} color={colors.partStroke} />
+          <PartsLayer
+            project={project}
+            sheet={sheet}
+            partMaterial={materials.part}
+            wasteMaterial={materials.waste}
+            edgeColor={colors.partStroke}
+          />
         </group>
       </group>
 
@@ -144,34 +151,16 @@ export default function Scene(props: SceneProps) {
   );
 }
 
-/** Thin lines along the part contours (technical-drawing feel); one draw call for all. */
-function EdgeLines({ outlines, z, color }: { outlines: number[][]; z: number; color: string }) {
-  const geometry = useMemo(() => {
-    const pos: number[] = [];
-    for (const flat of outlines) {
-      const n = flat.length / 2;
-      for (let i = 0; i < n; i++) {
-        const j = (i + 1) % n;
-        pos.push(
-          flat[2 * i] ?? 0,
-          flat[2 * i + 1] ?? 0,
-          z,
-          flat[2 * j] ?? 0,
-          flat[2 * j + 1] ?? 0,
-          z,
-        );
-      }
-    }
-    const g = new BufferGeometry();
-    g.setAttribute('position', new Float32BufferAttribute(pos, 3));
-    return g;
-  }, [outlines, z]);
-  useEffect(() => () => geometry.dispose(), [geometry]);
-  return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial color={color} />
-    </lineSegments>
-  );
+/** Matte, non-glossy surface; pushed back a hair so the edge lines draw on top. */
+function matte(color: string): MeshStandardMaterial {
+  return new MeshStandardMaterial({
+    color,
+    roughness: 0.92,
+    metalness: 0,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
+  });
 }
 
 /**
