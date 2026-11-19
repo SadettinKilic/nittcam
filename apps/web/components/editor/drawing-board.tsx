@@ -22,6 +22,7 @@ import {
   Maximize,
   MousePointer2,
   PenLine,
+  Ruler,
   Spline,
   Square,
   SquareDashed,
@@ -60,6 +61,7 @@ import {
 import { claimPageKeys } from '../../lib/shortcuts';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
+import { dimOwner, segmentLabels } from '../../lib/editor/dims';
 import { miniBarRailClear } from '../../lib/editor/mini-bar';
 import {
   SNAP_TOGGLES,
@@ -127,7 +129,7 @@ function typing(target: EventTarget | null): boolean {
 }
 
 /** Plain keys the board owns while open (global shortcuts skip them). */
-const BOARD_KEYS = ['v', 'h', 'r', 'c', 'l', 'a', 'f', '+', '=', '-'] as const;
+const BOARD_KEYS = ['v', 'h', 'r', 'c', 'l', 'a', 'd', 'f', '+', '=', '-'] as const;
 
 /** One pointer gesture on the canvas. */
 type Gesture =
@@ -239,6 +241,9 @@ export function DrawingBoard({
   const [typed, setTyped] = useState<{ values: string[]; active: number }>(NO_TYPED);
   const [drawAt, setDrawAt] = useState<Pt | null>(null);
   const [lock, setLock] = useState(false);
+  // Dimension tool (T133): the first picked point; the second click adds the dimension.
+  const dimTool = state.tool === 'dim';
+  const [dimA, setDimA] = useState<Pt | null>(null);
   const docked = useMediaQuery('(max-width: 639px)', false);
   const fields = drawTool ? fieldsFor(drawTool, draft) : [];
   const typedValues: Typed = {};
@@ -424,6 +429,7 @@ export function DrawingBoard({
     dispatch({ type: 'tool', tool });
     setTyped(NO_TYPED);
     setSnapMark(null);
+    setDimA(null);
     setDraft((d) =>
       d?.kind === 'path' && (tool === 'line' || tool === 'arc') ? { ...d, pending: null } : null,
     );
@@ -543,6 +549,7 @@ export function DrawingBoard({
       else if (k === 'c' && !e.shiftKey) setTool('circle');
       else if (k === 'l' && !e.shiftKey) setTool('line');
       else if (k === 'a' && !e.shiftKey) setTool('arc');
+      else if (k === 'd' && !e.shiftKey) setTool('dim');
       else if (k === 'f') fit();
       else if (k === '+' || k === '=') zoomBy(1.25);
       else if (k === '-') zoomBy(1 / 1.25);
@@ -602,6 +609,10 @@ export function DrawingBoard({
       return;
     }
     if (e.button !== 0) return;
+    if (dimTool) {
+      placeDim(drawPoint(w, e.altKey).point);
+      return;
+    }
     if (drawTool) {
       // Rectangle and circle start on press (drag or click-click); paths add points on release.
       const before = draft;
@@ -647,6 +658,43 @@ export function DrawingBoard({
         ? { kind: 'pan', last: s }
         : { kind: 'marquee', start: w, startScreen: s, additive: e.shiftKey, moved: false };
   }
+
+  /**
+   * Dimension tool (T133): the first click picks a, the second adds the dimension a–b to the part
+   * whose box holds both points (the selected one first) and selects it. Esc drops the first point.
+   */
+  function placeDim(point: Pt) {
+    if (!dimA) {
+      setDimA(point);
+      return;
+    }
+    setDimA(null);
+    if (Math.hypot(point.x - dimA.x, point.y - dimA.y) < 1e-3) return;
+    const owner = dimOwner(parts, dimA, point, singleId);
+    if (!owner) {
+      notify.info(t.dim.noPart);
+      return;
+    }
+    const a = { x: tidy(dimA.x), y: tidy(dimA.y) };
+    const b = { x: tidy(point.x), y: tidy(point.y) };
+    if (run('addDimension', { id: owner, dimId: newPartId().replace(/^p-/, 'd-'), a, b })) {
+      dispatch({ type: 'select', ids: [owner] });
+    }
+  }
+
+  // Dimension tool keys: Esc drops the first point, a second Esc returns to Seç.
+  useEffect(() => {
+    if (!dimTool) return;
+    function onKey(e: KeyboardEvent) {
+      if (typing(e.target) || e.key !== 'Escape') return;
+      if (dimA) setDimA(null);
+      else setTool('select');
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [dimTool, dimA, setTool]);
 
   /** The grabbed part's outline vertex nearest to the press point: the point that snaps. */
   function anchorOf(id: string, at: Pt): Pt {
@@ -700,7 +748,7 @@ export function DrawingBoard({
     setCursor(w);
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, s);
     const g = gesture.current;
-    if (drawTool && (!g || g.kind === 'draw')) {
+    if ((drawTool || dimTool) && (!g || g.kind === 'draw')) {
       const r = drawPoint(w, e.altKey);
       setDrawAt(r.point);
       setLock(e.shiftKey);
@@ -999,6 +1047,8 @@ export function DrawingBoard({
         {railTool('circle', t.tools.circle, 'C', <Circle aria-hidden />)}
         {railTool('line', t.tools.line, 'L', <PenLine aria-hidden />)}
         {railTool('arc', t.tools.arc, 'A', <Spline aria-hidden />)}
+        <span aria-hidden className="mx-2 my-0.5 h-px bg-border" />
+        {railTool('dim', t.tools.dim, 'D', <Ruler aria-hidden />)}
       </div>
       {viewSwitch ? (
         <div
@@ -1205,6 +1255,17 @@ export function DrawingBoard({
             corners={vertexHandles}
             grains={grains}
             focus={focusMark}
+            segmentLabels={
+              state.tool === 'select' && single && view && !drag && !bend
+                ? segmentLabels(
+                    single.outline,
+                    single.inners,
+                    view.scale,
+                    subShown?.kind === 'segment' ? subShown.index : null,
+                  )
+                : null
+            }
+            dimPreview={dimTool && dimA && drawAt ? { a: dimA, b: drawAt } : null}
             drawText={{ close: t.draw.close, open: t.draw.open }}
           />
         </CanvasBoundary>
@@ -1266,7 +1327,11 @@ export function DrawingBoard({
               ? t.draw.hints.bend
               : drawTool
                 ? t.draw.hints[hintFor(drawTool, draft, draftView)]
-                : null
+                : dimTool
+                  ? dimA
+                    ? t.dim.hintSecond
+                    : t.dim.hintFirst
+                  : null
           }
           snapName={draftView?.closing ? t.draw.close : snapMark ? t.snap[snapMark.kind] : null}
         />

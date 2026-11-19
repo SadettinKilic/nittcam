@@ -82,6 +82,10 @@ function mapPart(
     h.cy = c.y;
   }
   part.inners = part.inners.map((c) => normalize(contourMap(poly(c)), 'inner').vertices);
+  // Dimensions (T133) are points in the part frame: they turn and flip with the part.
+  if (part.dims) {
+    part.dims = part.dims.map((d) => ({ id: d.id, a: map(d.a), b: map(d.b) }));
+  }
   if (part.kind === 'rect') {
     if (swap) part.params = { w: part.params.h, h: part.params.w, r: part.params.r };
     // The outline is only a cache of params (D-010).

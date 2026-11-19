@@ -15,6 +15,7 @@ function rect(id: string, x: number, y: number, w: number, h: number): BoardPart
     ],
     inners: [],
     holes: [],
+    dims: [],
     box: { minX: x, minY: y, maxX: x + w, maxY: y + h },
   };
 }

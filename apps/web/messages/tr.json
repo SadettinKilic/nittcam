@@ -1729,7 +1729,13 @@
       "rect": "Dikdörtgen",
       "circle": "Çember",
       "line": "Çizgi",
-      "arc": "Yay"
+      "arc": "Yay",
+      "dim": "Ölçü"
+    },
+    "dim": {
+      "hintFirst": "Ölçünün ilk noktasına tıklayın",
+      "hintSecond": "İkinci noktaya tıklayın · Esc vazgeç",
+      "noPart": "Ölçü bir parçanın üzerinde olmalı: iki nokta da aynı parçanın içinde kalsın."
     },
     "view": {
       "zoomIn": "Yakınlaştır",
@@ -1795,7 +1801,8 @@
         "grain": "Damar",
         "operation": "İşlem",
         "segment": "Kenar",
-        "vertex": "Köşe"
+        "vertex": "Köşe",
+        "dims": "Ölçüler"
       },
       "name": "Ad",
       "width": "En",
@@ -1804,6 +1811,8 @@
       "segmentPick": "Kenar seç",
       "vertexPick": "Köşe seç",
       "segmentN": "Kenar {n}",
+      "dimN": "Ölçü {n}",
+      "dimRemove": "Ölçü {n} sil",
       "vertexN": "Köşe {n}",
       "length": "Uzunluk",
       "angle": "Açı",

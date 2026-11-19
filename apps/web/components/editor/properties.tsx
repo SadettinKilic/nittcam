@@ -21,6 +21,7 @@ import {
 import {
   Button,
   GrainDial,
+  IconButton,
   Input,
   InspectorGroup,
   InspectorRow as Row,
@@ -34,7 +35,9 @@ import {
   Switch,
   Tooltip,
 } from '@nittcam/ui';
+import { X } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
+import { formatMm } from '../../lib/canvas-labels';
 import { fill } from '../../lib/draft-project';
 import { grainDialLabels } from '../../lib/grain-labels';
 import type { Messages } from '../../lib/messages';
@@ -418,6 +421,32 @@ export function PartProperties({
           ) : null}
         </InspectorRows>
       </InspectorGroup>
+
+      {part.dims && part.dims.length > 0 ? (
+        <InspectorGroup title={t.groups.dims} data-testid="prop-group-dims">
+          <InspectorRows>
+            {part.dims.map((d, i) => (
+              <Row
+                key={d.id}
+                label={fill(t.dimN, { n: i + 1 })}
+                valueProps={{ className: 'flex items-center justify-end gap-1' }}
+                data-testid="prop-dim"
+              >
+                <span>{formatMm(Math.hypot(d.b.x - d.a.x, d.b.y - d.a.y))}</span>
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  aria-label={fill(t.dimRemove, { n: i + 1 })}
+                  data-testid="prop-dim-remove"
+                  onClick={() => run('removeDimension', { id: part.id, dimId: d.id })}
+                >
+                  <X aria-hidden />
+                </IconButton>
+              </Row>
+            ))}
+          </InspectorRows>
+        </InspectorGroup>
+      ) : null}
 
       <InspectorGroup title={t.groups.segment} data-testid="prop-group-segment">
         <InspectorRows>
