@@ -633,18 +633,15 @@ test.describe('T023 tester: wizard flow', () => {
     await wizardReady(page);
     await expect(page.locator('[data-testid^=wizard-step-][aria-current=step]')).toHaveCount(1);
   });
-  test('menu: Şablonlar and Ayarlar sit in the Yakında group, the others navigate', async ({
+  test('menu: Şablonlar and Ayarlar are live (no Yakında group), the others navigate', async ({
     page,
   }) => {
     const problems = watchConsole(page);
     await page.goto('/');
     const nav = page.getByRole('navigation', { name: tr.nav.label });
-    const soon = nav.getByRole('list', { name: tr.nav.soonGroup });
-    // T121: Ayarlar is live (Malzemeler); Şablonlar stays in Yakında.
-    await expect(soon.getByText(tr.nav.templates, { exact: true })).toBeVisible();
-    await expect(soon.getByText(tr.nav.settings, { exact: true })).toHaveCount(0);
-    // They are not links (no dead end), or they lead to a page that says yakında.
-    expect(await nav.getByRole('link', { name: tr.nav.templates }).count()).toBeLessThanOrEqual(1);
+    // T151: Şablonlar is live (after Ayarlar, T121): no Yakında group, both are links.
+    await expect(nav.getByRole('list', { name: tr.nav.soonGroup })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: tr.nav.templates })).toHaveCount(1);
     const targets: [string, RegExp][] = [
       [tr.nav.machines, /\/makineler/],
       [tr.nav.projects, /\/projeler$/],

@@ -2374,5 +2374,60 @@
     "back": "Başka dosya",
     "added": "{file}: {count} parça eklendi",
     "failed": "Parçalar eklenemedi."
+  },
+  "templatesPage": {
+    "title": "Şablonlar",
+    "subtitle": "Şirket şablonları ve hazır kütüphane. Düzenlemek yeni sürüm oluşturur; şablonu kullanan projeler kendi kopyalarını korur.",
+    "company": "Şirket şablonları",
+    "ready": "Hazır kütüphane",
+    "readyNote": "Hazır şablonların ölçüleri üretici verisiyle doğrulanacak. Kullanmadan önce kendi ürününüzle karşılaştırın.",
+    "empty": "Henüz şirket şablonu yok. Çizimde delikleri seçip \"Şablon olarak kaydet\" ile oluşturun ya da hazır bir şablonu kopyalayın.",
+    "showArchived": "Arşivi göster",
+    "loading": "Şablonlar yükleniyor…",
+    "loadError": "Şablonlar yüklenemedi.",
+    "retry": "Yenile",
+    "version": "Sürüm {v}",
+    "summary": "{count} adet · aralık {spacing} mm · kenardan {edge} mm",
+    "badges": {
+      "ready": "Hazır",
+      "unverified": "Doğrulanacak",
+      "archived": "Arşivde"
+    },
+    "actions": {
+      "label": "{name} işlemleri",
+      "edit": "Düzenle",
+      "history": "Sürüm geçmişi",
+      "duplicate": "Kopyala",
+      "archive": "Arşivle",
+      "restore": "Arşivden çıkar"
+    },
+    "preview": "{name} önizlemesi",
+    "copyName": "{name} (kopya)",
+    "edit": {
+      "title": "{name}: parametreler",
+      "description": "Kaydetmek sürüm {v} oluşturur. Bu şablonu kullanan projeler etkilenmez; açıldıklarında güncelleme sorulur.",
+      "name": "Ad",
+      "count": "Adet",
+      "spacing": "Aralık",
+      "edgeDistance": "Kenardan mesafe",
+      "diameter": "Çap ({id})",
+      "save": "Yeni sürüm kaydet",
+      "cancel": "Vazgeç",
+      "invalid": "Değerleri kontrol edin.",
+      "unchanged": "Değişiklik yok."
+    },
+    "history": {
+      "title": "{name}: sürüm geçmişi",
+      "loading": "Sürümler yükleniyor…",
+      "loadError": "Sürümler yüklenemedi.",
+      "close": "Kapat"
+    },
+    "toast": {
+      "saved": "\"{name}\" sürüm {v} kaydedildi.",
+      "duplicated": "\"{name}\" oluşturuldu.",
+      "archived": "\"{name}\" arşivlendi.",
+      "restored": "\"{name}\" arşivden çıkarıldı.",
+      "failed": "İşlem yapılamadı. Tekrar deneyin."
+    }
   }
 }

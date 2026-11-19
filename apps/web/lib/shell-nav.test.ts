@@ -67,3 +67,13 @@ describe('breadcrumbs', () => {
     expect(breadcrumbs('/makineler/m1')).toEqual([{ key: 'notFound' }]);
   });
 });
+
+describe('Şablonlar page (T151)', () => {
+  it('is a live menu item with its own crumb', () => {
+    expect(NAV_ITEMS.find((i) => i.key === 'templates')?.href).toBe('/sablonlar');
+    expect(NAV_ITEMS.every((i) => i.href)).toBe(true);
+    expect(isNavActive('templates', '/sablonlar')).toBe(true);
+    expect(isNavActive('templates', '/makineler')).toBe(false);
+    expect(breadcrumbs('/sablonlar')).toEqual([{ key: 'templates' }]);
+  });
+});

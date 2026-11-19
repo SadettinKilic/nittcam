@@ -40,3 +40,30 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     return handleTemplateError(err);
   }
 }
+
+/**
+ * PATCH /api/templates/:id `{ archived: boolean }` → archives or restores a company template
+ * (T151). Archived templates leave "Şablon ekle"; projects keep their copy (spec §4.7). Ready
+ * library templates cannot be archived (404).
+ */
+export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  if (!UUID.test(id)) return templateError({ error: 'not_found' }, 404);
+  let archived: unknown;
+  try {
+    archived = ((await request.json()) as { archived?: unknown } | null)?.archived;
+  } catch {
+    return templateError({ error: 'bad_request' }, 400);
+  }
+  if (typeof archived !== 'boolean') return templateError({ error: 'bad_request' }, 400);
+  try {
+    const scope = await companyScope();
+    const updated = await scope.templates.update(id, { archivedAt: archived ? new Date() : null });
+    if (!updated) return templateError({ error: 'not_found' }, 404);
+    const version = (await scope.templates.listVersions(id)).at(-1);
+    if (!version) return templateError({ error: 'not_found' }, 404);
+    return NextResponse.json(toItem(updated, version));
+  } catch (err) {
+    return handleTemplateError(err);
+  }
+}

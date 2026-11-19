@@ -22,7 +22,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: 'home', href: '/' },
   { key: 'machines', href: '/makineler' },
   { key: 'projects', href: '/projeler' },
-  { key: 'templates' },
+  { key: 'templates', href: '/sablonlar' },
   { key: 'settings', href: SETTINGS_HREF },
 ];
 
@@ -38,6 +38,8 @@ export function isNavActive(key: NavKey, pathname: string): boolean {
     case 'create':
       // Not in the menu (T247); kept for M11.
       return false;
+    case 'templates':
+      return isUnder(pathname, '/sablonlar');
     case 'settings':
       return isUnder(pathname, '/ayarlar');
     default:
@@ -79,6 +81,7 @@ export function breadcrumbs(pathname: string): Crumb[] {
     if (second === 'yeni') return [{ key: 'projects', href: '/projeler' }, { key: 'newProject' }];
     if (parts.length === 2) return [{ key: 'projects', href: '/projeler' }, { key: 'project' }];
   }
+  if (first === 'sablonlar' && parts.length === 1) return [{ key: 'templates' }];
   if (first === 'ayarlar' && second === 'malzemeler' && parts.length === 2) {
     return [{ key: 'settings', href: SETTINGS_HREF }, { key: 'materials' }];
   }

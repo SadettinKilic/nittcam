@@ -23,6 +23,8 @@ export function toItem(template: TemplateRow, version: TemplateVersionRow): Temp
     version: version.version,
     geometry: version.geometry as unknown as TemplateGeometry,
     params: version.params as unknown as TemplateParams,
+    ...(template.archivedAt ? { archived: true as const } : {}),
+    createdAt: version.createdAt.toISOString(),
   };
 }
 
