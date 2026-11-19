@@ -15,6 +15,7 @@ import {
   notify,
 } from '@nittcam/ui';
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -162,6 +163,20 @@ export function TextCell<T>({
     setError(rejected);
     return false;
   }
+
+  // A row that scrolls out of the virtual window unmounts its inputs without a blur: commit the
+  // typed text then, so an edit is never dropped (B7 r2). Invalid text has nowhere to show its
+  // error once the cell is gone, so it is dropped as Esc would.
+  const commitLatest = useRef(commit);
+  useLayoutEffect(() => {
+    commitLatest.current = commit;
+  });
+  useEffect(
+    () => () => {
+      if (pending.current !== null) commitLatest.current();
+    },
+    [],
+  );
 
   function startEditing(input: HTMLInputElement) {
     editing.current = true;
