@@ -1154,9 +1154,10 @@ export function DrawingBoard({
       data-selection={state.selection.join(',')}
       className={cn(
         // T254: the focus ring is an overlay above the Konva stage, so all four sides show
-        // (an inset box-shadow on this element is painted under the canvas).
+        // (an inset box-shadow on this element is painted under the canvas). An inset outline,
+        // not a ring, so it stays visible in forced-colors mode.
         'absolute inset-0 touch-none overflow-hidden outline-none select-none',
-        'focus-visible:after:pointer-events-none focus-visible:after:absolute focus-visible:after:inset-0 focus-visible:after:z-10 focus-visible:after:ring-2 focus-visible:after:ring-focus focus-visible:after:ring-inset',
+        'focus-visible:after:pointer-events-none focus-visible:after:absolute focus-visible:after:inset-0 focus-visible:after:z-10 focus-visible:after:outline-solid focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus',
         panMode ? 'cursor-grab' : drawTool ? 'cursor-crosshair' : 'cursor-default',
       )}
       onPointerDown={onPointerDown}

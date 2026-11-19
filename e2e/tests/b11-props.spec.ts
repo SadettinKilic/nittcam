@@ -164,8 +164,18 @@ test.describe('T254 board fit and focus ring', () => {
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
     await expect(canvas).toBeFocused();
-    const shadow = await canvas.evaluate((el) => getComputedStyle(el, '::after').boxShadow);
-    expect(shadow).toMatch(/inset/);
+    // An inset outline (not a box-shadow ring), so it survives forced-colors mode.
+    const ring = await canvas.evaluate((el) => {
+      const s = getComputedStyle(el, '::after');
+      return {
+        style: s.outlineStyle,
+        width: parseFloat(s.outlineWidth),
+        offset: parseFloat(s.outlineOffset),
+      };
+    });
+    expect(ring.style).toBe('solid');
+    expect(ring.width).toBeGreaterThan(0);
+    expect(ring.offset).toBeLessThan(0);
     const pos = await canvas.evaluate((el) => getComputedStyle(el, '::after').position);
     expect(pos).toBe('absolute');
   });
@@ -321,5 +331,33 @@ test.describe('T256 floating Uyarılar panel', () => {
     await expect(page.getByTestId('cut-list-issue-chip')).toHaveAttribute('data-count', /\d/);
     await page.waitForTimeout(500);
     await expect(panel).toHaveCount(0);
+  });
+});
+
+test.describe('B11 fix round 1: focus stays visible in forced-colors mode', () => {
+  test('InspectorGroup heading and the board overlay draw an outline, not a box-shadow', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await page.goto('/dev/ui');
+    const heading = page.locator('[data-slot="inspector-group"] button[aria-expanded]').first();
+    await heading.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(heading).toBeFocused();
+    const s = await heading.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { style: cs.outlineStyle, width: parseFloat(cs.outlineWidth) };
+    });
+    expect(s.style).toBe('solid');
+    expect(s.width).toBeGreaterThan(0);
+
+    const canvas = await openBoard(page);
+    await canvas.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(canvas).toBeFocused();
+    const after = await canvas.evaluate((el) => getComputedStyle(el, '::after').outlineStyle);
+    expect(after).toBe('solid');
   });
 });

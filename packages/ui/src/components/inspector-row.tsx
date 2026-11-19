@@ -3,6 +3,7 @@
 import { ChevronRight } from 'lucide-react';
 import { useId, useState, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 import { cn } from '../lib/cn';
+import { focusRing } from '../lib/styles';
 
 export interface InspectorRowProps extends Omit<ComponentPropsWithoutRef<'div'>, 'children'> {
   /** Label on the left (muted). */
@@ -87,7 +88,10 @@ export function InspectorGroup({
           aria-expanded={open}
           aria-controls={id}
           onClick={() => setOpen((o) => !o)}
-          className="-ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1 text-left text-xs font-semibold text-fg-muted outline-none hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
+          className={cn(
+            '-ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1 text-left text-xs font-semibold text-fg-muted hover:text-fg',
+            focusRing,
+          )}
         >
           <ChevronRight
             aria-hidden
