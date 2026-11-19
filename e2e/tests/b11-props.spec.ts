@@ -1,6 +1,14 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { KITCHEN, fill, openNewProject, paste, pickOption } from './wizard-helpers';
+import {
+  KITCHEN,
+  fill,
+  openNewProject,
+  paste,
+  pickOption,
+  projectId,
+  saved,
+} from './wizard-helpers';
 
 // B11: T130 properties panel, T254 board fit / focus ring.
 
@@ -264,5 +272,54 @@ test.describe('T131 / T132 corner tools', () => {
     );
     await page.getByTestId('prop-dogbone').click();
     await expect(notice).toHaveCount(0);
+  });
+});
+
+test.describe('T256 floating Uyarılar panel', () => {
+  const ct = tr.cutList;
+  const wCell = (page: Page, n: number) =>
+    page.getByLabel(fill(ct.cellLabel, { n, column: ct.columns.w }), { exact: true });
+
+  async function withIssue(page: Page, width: number) {
+    await page.setViewportSize({ width, height: 900 });
+    await openNewProject(page, 'parcalar');
+    await paste(page, KITCHEN, 5);
+    await wCell(page, 1).fill('9000');
+    await wCell(page, 1).press('Tab');
+    await expect(page.getByTestId('cut-list-issue-chip')).toHaveAttribute('data-count', /\d/);
+  }
+
+  for (const width of [1440, 1280]) {
+    test(`${width}: no room beside the grid, so the panel stays closed behind the chip`, async ({
+      page,
+    }) => {
+      await withIssue(page, width);
+      await page.waitForTimeout(300);
+      await expect(page.getByTestId('validation-panel')).toHaveCount(0);
+    });
+  }
+
+  test('1920: opens by itself beside the last column, covers no cell; closed stays closed', async ({
+    page,
+  }) => {
+    await withIssue(page, 1920);
+    const panel = page.getByTestId('validation-panel');
+    await expect(panel).toBeVisible();
+    const pb = await panel.boundingBox();
+    const grid = await page.getByTestId('cut-list-grid').boundingBox();
+    if (!pb || !grid) throw new Error('no box');
+    // Right of every header and cell.
+    expect(pb.x).toBeGreaterThanOrEqual(grid.x + grid.width);
+    // Close from the chip → reload → still closed for this project.
+    await saved(page);
+    await page.getByTestId('cut-list-issue-chip').click();
+    await expect(panel).toHaveCount(0);
+    const id = await projectId(page);
+    await saved(page);
+    expect(id).toBeTruthy();
+    await page.reload();
+    await expect(page.getByTestId('cut-list-issue-chip')).toHaveAttribute('data-count', /\d/);
+    await page.waitForTimeout(500);
+    await expect(panel).toHaveCount(0);
   });
 });

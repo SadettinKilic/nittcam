@@ -615,6 +615,7 @@ function WizardSession({
         run={session.run}
         onUndo={session.undo}
         issuesPanel={validation}
+        issuesKey={session.projectId ?? undefined}
       />
     );
     // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats

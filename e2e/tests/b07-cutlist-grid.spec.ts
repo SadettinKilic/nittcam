@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { expectNoA11yViolations } from './visual/helpers';
-import { fill, watchConsole } from './wizard-helpers';
+import { fill, openIssues, watchConsole } from './wizard-helpers';
 
 /** B7: cut list grid v2 (T118) and its feedback (T246). */
 
@@ -375,7 +375,8 @@ test.describe('T246 feedback', () => {
     await cell(page, 1, t.columns.w).fill('9000');
     await cell(page, 1, t.columns.w).press('Tab');
     await expect(chip).toHaveText(fill(t.issueChip.count, { count: 1 }));
-    await expect(page.getByTestId('validation-panel')).toBeVisible();
+    // T256: at this width the panel does not fit beside the grid, so it opens from the chip.
+    await openIssues(page);
     await expect(page.getByTestId('row-issue-1')).toHaveAttribute(
       'data-codes',
       'PART_LARGER_THAN_SHEET',
