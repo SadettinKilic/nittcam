@@ -6,6 +6,9 @@ import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { expectNoA11yViolations } from './visual/helpers';
 import { fill, openIssues, watchConsole } from './wizard-helpers';
 
+/** Perf budgets apply as written in CI; local runs on a loaded PC get PERF_BUDGET_SCALE (default 3, D-048). */
+const BUDGET = process.env.CI ? 1 : Number(process.env.PERF_BUDGET_SCALE ?? 3);
+
 /** B7: cut list grid v2 (T118) and its feedback (T246). */
 
 const t = tr.cutList;
@@ -198,7 +201,7 @@ test.describe('T118 grid v2', () => {
         }),
     );
     test.info().annotations.push({ type: 'fps', description: fps.toFixed(1) });
-    expect(fps).toBeGreaterThanOrEqual(50);
+    expect(fps).toBeGreaterThanOrEqual(50 / BUDGET);
 
     // Commit time of one edit (command + validation), measured in the page.
     await page.getByTestId('cut-list-scroll').evaluate((el) => (el.scrollTop = 0));
@@ -210,7 +213,7 @@ test.describe('T118 grid v2', () => {
       return performance.now() - t0;
     });
     test.info().annotations.push({ type: 'commit-ms', description: ms.toFixed(1) });
-    expect(ms).toBeLessThan(50);
+    expect(ms).toBeLessThan(50 * BUDGET);
     await expect(page.getByTestId('cut-list-count')).toHaveText(
       fill(t.count, { rows: 1000, pieces: 1001 }),
     );

@@ -1,0 +1,57 @@
+# D-048: shared setup of the e2e shards and the visual job: install, build (Next cache), and
+# Playwright chromium (browser cache; system deps from apt with retries, because a flaky Ubuntu
+# mirror failed main run 44521302128). The apt deps also bring the fonts the Linux baselines were
+# captured with, so they are always installed the same way.
+name: e2e setup
+description: pnpm install, web build and Playwright chromium for the e2e and visual jobs
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+
+    - uses: actions/setup-node@v5
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+
+    - name: Install
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Next build cache
+      uses: actions/cache@v4
+      with:
+        path: apps/web/.next/cache
+        key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'apps/web/**/*.css', 'apps/web/messages/**', 'packages/*/src/**') }}
+        restore-keys: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
+    - name: Build
+      shell: bash
+      run: pnpm build
+
+    - name: Playwright version
+      id: pw
+      shell: bash
+      run: echo "version=$(node -p "require('./e2e/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+    - name: Playwright browser cache
+      id: pw-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+
+    - name: Install Playwright chromium
+      if: steps.pw-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm --filter @nittcam/e2e exec playwright install chromium
+
+    - name: Install Playwright system deps (3 tries)
+      shell: bash
+      run: |
+        for i in 1 2 3; do
+          pnpm --filter @nittcam/e2e exec playwright install-deps chromium && exit 0
+          echo "::warning::playwright install-deps failed (try $i), retrying"
+          sleep $((i * 10))
+        done
+        exit 1

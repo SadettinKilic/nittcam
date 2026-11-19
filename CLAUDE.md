@@ -26,7 +26,7 @@ Web CAM for CNC routers: cut list / drawing / DXF / AI chat → nesting → tool
 4. PO updates `.team/HANDOFF.md` after every task transition. Agents commit WIP to their task branch often, so nothing lives only in memory.
 
 ## Commands
-`pnpm dev` · `pnpm test` · `pnpm lint` · `pnpm typecheck` · `pnpm e2e` · `pnpm team` (dashboard at http://localhost:4321)
+`pnpm dev` · `pnpm test` · `pnpm lint` · `pnpm typecheck` · `pnpm e2e:local <specs>` (low memory: 1 worker, one local e2e on the PC at a time) · `pnpm e2e:changed` · `pnpm ci:full <branch>` · `pnpm ci:baselines <branch>` · `pnpm ci:gate <pr>` · `pnpm team` (dashboard at http://localhost:4321)
 Windows shell PATH: `export PATH="$PATH:/c/Users/sadik/AppData/Roaming/npm:/c/Program Files/GitHub CLI"` if `pnpm` or `gh` is not found.
 
 ## Invariant rules
@@ -38,7 +38,7 @@ Windows shell PATH: `export PATH="$PATH:/c/Users/sadik/AppData/Roaming/npm:/c/Pr
 - No GPL/AGPL dependencies (MIT, BSD, Apache-2.0, BSL-1.0 are OK; MPL-2.0 only as a devDependency, OFL-1.1 for fonts, D-032).
 
 ## Human gates (ask the owner)
-Machine tests, scope decisions, pricing, golden file changes, anything in spec §14.2 "Açık maddeler". PO merges normal PRs after green CI and tester approval. **Lean CI (owner, 2026-11-18):** PR pushes run only fast checks; the full e2e/visual job runs after every merge on main and once before a merge via `gh workflow run CI --ref <branch>` (PO merges only after that full run is green on the PR head). Docs-only changes run nothing.
+Machine tests, scope decisions, pricing, golden file changes, anything in spec §14.2 "Açık maddeler". PO merges normal PRs after green CI and tester approval. **Lean CI (owner, 2026-11-18; D-048):** PR pushes run only fast checks. The full check (5 e2e shards + visual/axe + build + db, ~5 min) runs after every merge on main and before a merge on demand: `pnpm ci:full <branch>`, or `pnpm ci:baselines <branch>` when the batch changes screens on purpose (same full run, and it commits the changed Linux baselines to the branch). The PO merges only when `pnpm ci:gate <pr>` says OK (all required jobs green on the PR head; a CI baseline commit on top is accepted). Docs-only changes run nothing.
 
 ## Git
 - Identity: `sadi.kilicc@gmail.com` (repo-local config). Remote: `SadettinKilic/nittcam`.
