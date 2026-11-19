@@ -130,13 +130,116 @@ export const edgeBandSchema = z.strictObject({
   left: nonNegativeMm,
 });
 
-/** A copy of a template as used in the project (spec §4.7). */
+// ---------------------------------------------------------------------------
+// Templates (T147, spec §4.7): a parametric group of holes, inner contours and lines
+// ---------------------------------------------------------------------------
+
+/**
+ * Operation of a template contour (T147). Same shape as the per-contour operation of T142
+ * (`inside` | `online` with depth | `none`); kept separate so templates do not depend on it.
+ */
+export const templateContourOpSchema = z.discriminatedUnion(
+  'kind',
+  [
+    z.strictObject({ kind: z.literal('inside') }),
+    z.strictObject({ kind: z.literal('none') }),
+    z.strictObject({ kind: z.literal('online'), depth: positiveMm }),
+  ],
+  { error: 'operation must be "inside", "online" (with depth) or "none"' },
+);
+
+/**
+ * Geometry of a template in its own frame (T147): local +x points into the part away from the
+ * reference edge, local +y runs along that edge, the origin is the reference point (the edge
+ * distance is measured to it). Holes keep their own ids (unique within the template).
+ */
+export const templateGeometrySchema = z
+  .strictObject({
+    holes: z.array(holeSchema).max(200, { error: 'at most 200 holes' }),
+    inners: z
+      .array(z.strictObject({ contour: contourSchema, op: templateContourOpSchema.optional() }))
+      .max(50, { error: 'at most 50 inner contours' }),
+    lines: z
+      .array(
+        z.strictObject({
+          vertices: z.array(vertexSchema).min(2, { error: 'a line needs at least 2 vertices' }),
+          op: templateContourOpSchema,
+        }),
+      )
+      .max(200, { error: 'at most 200 lines' })
+      .optional(),
+  })
+  .superRefine((g, ctx) => {
+    const ids = new Set<string>();
+    g.holes.forEach((h, i) => {
+      if (ids.has(h.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `duplicate hole id "${h.id}"`,
+          path: ['holes', i, 'id'],
+        });
+      }
+      ids.add(h.id);
+    });
+    if (g.holes.length + g.inners.length + (g.lines?.length ?? 0) === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'a template needs at least one hole, contour or line',
+        path: [],
+      });
+    }
+  });
+
+/**
+ * Template parameters (spec §4.7 "çap, kenardan mesafe, adet, aralık"): `count` copies of the
+ * group, `spacing` mm apart along local +y and centred on the origin; `edgeDistance` = reference
+ * edge → origin; `d` = diameter per template hole id (absent = the hole's own diameter).
+ */
+export const templateParamsSchema = z.strictObject({
+  count: positiveInt.max(50, { error: 'at most 50 copies' }),
+  spacing: nonNegativeMm,
+  edgeDistance: nonNegativeMm,
+  d: z.record(z.string(), positiveMm),
+});
+
+/** A part edge a template is anchored to (T148). */
+export const templateEdgeSchema = z.enum(['left', 'right', 'bottom', 'top'], {
+  error: 'edge must be "left", "right", "bottom" or "top"',
+});
+
+/**
+ * Where a template instance sits on its part (T148): the origin (part frame, mm), the rotation
+ * (CCW degrees), `mirror` = flipped along the edge (local y → −y, applied before the rotation;
+ * left / right door) and the anchored edge (`null` = free; anchored = the origin keeps
+ * `edgeDistance` from that edge).
+ */
+export const templatePlacementSchema = z.strictObject({
+  x: coord,
+  y: coord,
+  rot: rotationSchema,
+  mirror: z.boolean({ error: 'must be true or false' }),
+  edge: templateEdgeSchema.nullable(),
+});
+
+/**
+ * A copy of a template as used in the project (spec §4.7 "Kopya ve sürüm"): the template's
+ * geometry and default params of `version` are copied, so a later template edit never changes the
+ * project until the user accepts the update (T149).
+ */
 export const templateRefSchema = z.strictObject({
+  /** Unique within the part; prefixes the ids of the holes it creates. */
+  instanceId: nonEmptyId.max(40, { error: 'at most 40 characters' }),
   templateId: nonEmptyId,
   version: positiveInt,
-  params: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])),
-  /** Names of the template fields the user changed by hand (feeds the update conflict warning). */
+  name: z.string({ error: 'must be a string' }).max(80, { error: 'at most 80 characters' }),
+  geometry: templateGeometrySchema,
+  /** The template's params of `version` (the base the update conflict check compares with). */
+  defaults: templateParamsSchema,
+  /** Current values (defaults + the user's changes). */
+  params: templateParamsSchema,
+  /** Names of the params the user changed by hand (`count`, `spacing`, `edgeDistance`, `d.<hole id>`). */
   overrides: z.array(z.string()),
+  placement: templatePlacementSchema,
 });
 
 /**
@@ -351,6 +454,18 @@ export const projectSchema = z
         }
         holeIds.add(hole.id);
       });
+      // Template instances (T148) are addressed by instance id within the part.
+      const instanceIds = new Set<string>();
+      part.templates.forEach((ref, t) => {
+        if (instanceIds.has(ref.instanceId)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `duplicate template instance id "${ref.instanceId}" in part "${part.id}"`,
+            path: ['parts', i, 'templates', t, 'instanceId'],
+          });
+        }
+        instanceIds.add(ref.instanceId);
+      });
       if (qtyById.has(part.id)) {
         ctx.addIssue({
           code: 'custom',
@@ -402,6 +517,11 @@ export type GrooveHole = z.infer<typeof grooveHoleSchema>;
 export type Hole = z.infer<typeof holeSchema>;
 export type EdgeBand = z.infer<typeof edgeBandSchema>;
 export type TemplateRef = z.infer<typeof templateRefSchema>;
+export type TemplateGeometry = z.infer<typeof templateGeometrySchema>;
+export type TemplateParams = z.infer<typeof templateParamsSchema>;
+export type TemplatePlacement = z.infer<typeof templatePlacementSchema>;
+export type TemplateEdge = z.infer<typeof templateEdgeSchema>;
+export type TemplateContourOp = z.infer<typeof templateContourOpSchema>;
 export type DimensionLine = z.infer<typeof dimensionLineSchema>;
 export type RectParams = z.infer<typeof rectParamsSchema>;
 export type RectPart = z.infer<typeof rectPartSchema>;

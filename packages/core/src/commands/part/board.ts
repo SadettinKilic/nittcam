@@ -16,8 +16,10 @@ import {
   rectPartSchema,
   type Part,
   type Project,
+  type TemplatePlacement,
   type Vertex,
 } from '../../schema';
+import { mirrorPlacement, turnPlacement } from '../../template';
 import { defineCommand } from '../types';
 
 const idList = z
@@ -75,6 +77,7 @@ function mapPart(
   map: Mapper,
   contourMap: (pl: Polyline) => Polyline,
   swap: boolean,
+  placementMap: (pl: TemplatePlacement) => TemplatePlacement,
 ): void {
   for (const h of part.holes) {
     const c = map({ x: h.cx, y: h.cy });
@@ -82,6 +85,8 @@ function mapPart(
     h.cy = c.y;
   }
   part.inners = part.inners.map((c) => normalize(contourMap(poly(c)), 'inner').vertices);
+  // Template instances (T148) move with the holes and contours they created.
+  for (const ref of part.templates) ref.placement = placementMap(ref.placement);
   // Dimensions (T133) are points in the part frame: they turn and flip with the part.
   if (part.dims) {
     part.dims = part.dims.map((d) => ({ id: d.id, a: map(d.a), b: map(d.b) }));
@@ -120,7 +125,7 @@ export const mirrorPart = defineCommand({
       const map: Mapper = (p) => (h ? { x: sx - p.x, y: p.y } : { x: p.x, y: sy - p.y });
       const contourMap = (pl: Polyline) =>
         h ? translate(mirror(pl, 'x'), sx, 0) : translate(mirror(pl, 'y'), 0, sy);
-      mapPart(part, map, contourMap, false);
+      mapPart(part, map, contourMap, false, (pl) => mirrorPlacement(pl, params.axis, map));
       const band = part.edgeBand;
       part.edgeBand = h
         ? { ...band, left: band.right, right: band.left }
@@ -176,7 +181,7 @@ export const rotatePart = defineCommand({
       const contourMap = (pl: Polyline) =>
         translate(rotate(translate(pl, -b.minX, -b.minY), turns), s.x + b.minX, s.y + b.minY);
       const swap = turns !== 180;
-      mapPart(part, map, contourMap, swap);
+      mapPart(part, map, contourMap, swap, (pl) => turnPlacement(pl, turns as 90 | 180 | 270, map));
       // Edge bands turn with the sides: CCW 90° sends right → top → left → bottom → right.
       const e = part.edgeBand;
       part.edgeBand =

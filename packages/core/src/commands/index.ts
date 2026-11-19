@@ -25,3 +25,9 @@ export {
   lockPlacement,
   lockPlacementParamsSchema,
 } from './nesting';
+export {
+  addTemplate,
+  updateTemplateInstance,
+  removeTemplateInstance,
+  nextInstanceId,
+} from './part/templates';

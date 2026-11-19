@@ -94,4 +94,16 @@ describe('immutable versions', () => {
       { w: 450 },
     ]);
   });
+
+  it('listLatest returns the newest version; old versions stay unchanged (T147)', async () => {
+    const { template } = await scope.templates.createWithVersion('Kulp', {
+      params: { spacing: 96 },
+      geometry: { holes: [] },
+    });
+    await scope.templates.addVersion(template.id, { params: { spacing: 128 }, geometry: {} });
+    const row = (await scope.templates.listLatest()).find((x) => x.template.id === template.id);
+    expect(row?.version.version).toBe(2);
+    expect(row?.version.params).toEqual({ spacing: 128 });
+    expect((await scope.templates.getVersion(template.id, 1))?.params).toEqual({ spacing: 96 });
+  });
 });

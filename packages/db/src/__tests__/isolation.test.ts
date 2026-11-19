@@ -222,6 +222,23 @@ describe('tenant isolation', () => {
     expect(await a.templates.listVersions(seedB.templates.id)).toEqual([]);
   });
 
+  it("template library helpers (T147) only see the company's own templates", async () => {
+    expect(await a.templates.getVersion(seedB.templates.id, 1)).toBeNull();
+    const own = await a.templates.createWithVersion('Menteşe A', {
+      params: { count: 1 },
+      geometry: {},
+    });
+    expect(own.version.version).toBe(1);
+    expect(own.template.companyId).toBe(own.version.companyId);
+    const listA = await a.templates.listLatest();
+    const listB = await b.templates.listLatest();
+    expect(listA.map((x) => x.template.id)).toContain(own.template.id);
+    expect(listA.map((x) => x.template.id)).not.toContain(seedB.templates.id);
+    expect(listB.map((x) => x.template.id)).not.toContain(own.template.id);
+    expect(await b.templates.getVersion(own.template.id, 1)).toBeNull();
+    expect((await a.templates.getVersion(own.template.id, 1))?.params).toEqual({ count: 1 });
+  });
+
   it("composite FKs reject rows that point at another company's rows", async () => {
     await expect(
       a.tools.create({ machineId: seedB.machines.id, number: 9, type: 'flat', diameter: 6 }),
