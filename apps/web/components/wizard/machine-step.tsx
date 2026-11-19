@@ -553,7 +553,7 @@ function SheetSizesPick({
                 onCheckedChange={(v) => toggle(s, v === true)}
               />
               <label htmlFor={box} className="text-fg tabular-nums">
-                {fill(t.preset, { a: mm(s.height), b: mm(s.width) })}
+                {fill(t.sheetsOption, { w: mm(s.width), h: mm(s.height) })}
                 <span className="ml-1.5 text-xs text-fg-muted">
                   {isDefault(s)
                     ? t.sheetsDefault

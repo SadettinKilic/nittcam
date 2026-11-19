@@ -7,6 +7,8 @@ import { useNestProgress, type NestProgressStore } from '../../lib/nesting-progr
 import { Button, IconButton, Popover, PopoverContent, PopoverTrigger, Progress } from '@nittcam/ui';
 import { Info, LayoutGrid, TriangleAlert } from 'lucide-react';
 
+const sizeFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+
 type Text = Messages['cutList']['nesting'];
 
 const percent = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
@@ -151,8 +153,8 @@ export function NestingPanel({
                 {summary.bySize.map((b) => (
                   <li key={`${b.width}x${b.height}`}>
                     {fill(t.bySize, {
-                      w: String(b.width),
-                      h: String(b.height),
+                      w: sizeFormat.format(b.width),
+                      h: sizeFormat.format(b.height),
                       count: String(b.sheets),
                       waste: pct(b.wastePercent),
                     })}

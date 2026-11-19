@@ -1338,6 +1338,7 @@
       "custom": "Özel ölçü",
       "sheetsMulti": "Dizilimde kullanılacak boylar",
       "sheetsMultiHint": "Seçili plaka hep kullanılır. Dizilim işaretli boylardan toplam plaka alanı en az olanı seçer; stok adedi girilmişse aşmaz.",
+      "sheetsOption": "En {w} · Boy {h} mm",
       "sheetsDefault": "seçili plaka",
       "sheetsStock": "stokta {n} adet",
       "width": "En, X yönü (mm)",
