@@ -116,7 +116,7 @@ export function NumberRow({
           maxDecimals={maxDecimals}
           invalid={invalid || error !== null}
           aria-describedby={error ? `${id}-error` : undefined}
-          className="w-36"
+          className="w-36 max-w-full"
           data-testid={testId}
           onFocus={() => setFocused(true)}
           onBlur={() => {
@@ -301,7 +301,12 @@ function OperationRow({
             })
           }
         >
-          <SelectTrigger id={id} className="w-44" data-testid={testId} data-value={current.kind}>
+          <SelectTrigger
+            id={id}
+            className="w-44 max-w-full"
+            data-testid={testId}
+            data-value={current.kind}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
