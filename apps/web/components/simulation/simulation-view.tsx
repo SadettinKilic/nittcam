@@ -148,6 +148,7 @@ export function SimulationView({
   header,
   empty,
   left,
+  notice,
 }: {
   t: SimText;
   project: Project;
@@ -155,6 +156,8 @@ export function SimulationView({
   header: SimHeader;
   /** Extra content for the settings panel (the wizard's warnings), T197. */
   left?: ReactNode;
+  /** T269: the "Son sürüme geç" box when the machine has a newer profile version. */
+  notice?: ReactNode;
   /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
   empty: { noLayout: React.ReactNode; noMachine: React.ReactNode };
 }) {
@@ -265,6 +268,7 @@ export function SimulationView({
           <strong className="font-semibold">{t.banner}</strong> <span>{t.bannerDetail}</span>
         </span>
       </p>
+      {notice}
       {hasLayout && machine && profile ? (
         <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface px-panel py-3 shadow-xs">
           <p className="text-sm text-fg" data-testid="sim-machine-name">

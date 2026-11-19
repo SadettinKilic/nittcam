@@ -28,6 +28,7 @@ import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
 import { IssuesOkChip } from './issues-ok-chip';
 import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
 import { ProfileStatusChip, profileReasons } from './profile-status';
+import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 import { ValidationPanel } from './validation-panel';
 import {
   STEPS,
@@ -408,13 +409,25 @@ function WizardSession({
       live = false;
     };
   }, []);
+  // `details` holds each machine's latest version; `detail` is the selected machine's latest.
   const detail = details[machineId] ?? null;
+  // T269: everything the wizard previews (validation, step 1 values, Dizilim tool, Simülasyon)
+  // uses the profile version the project is bound to, the same one the export uses. Older
+  // versions are fetched by `machineId@version`; the latest one is reused from `details`.
+  const [versions, setVersions] = useState<Record<string, MachineDetail>>({});
+  const [pinnedVersion, setPinnedVersion] = useState(init.project.machine.profileVersion);
+  const pinnedKey = `${machineId}@${pinnedVersion}`;
+  const pinned: MachineDetail | null =
+    detail && detail.version === pinnedVersion ? detail : (versions[pinnedKey] ?? null);
   const session = useProjectSession({
     initial: init,
-    machine: detail?.profile ?? null,
+    machine: pinned?.profile ?? null,
     onCreated: created,
   });
   const project = session.project;
+  if (project.machine.profileVersion !== pinnedVersion) {
+    setPinnedVersion(project.machine.profileVersion);
+  }
   // T258: back from "Kesim ayarı ekle" (`?profil=son`): the project moves to the machine's
   // latest profile version, which has the new parameter set (export uses the project's version).
   const [takeLatest, setTakeLatest] = useState(
@@ -465,7 +478,29 @@ function WizardSession({
     };
   }, [machineId, known, details]);
 
-  const profile = detail?.profile ?? null;
+  // T269: the project's (older) version, once the latest is known to differ.
+  const needsPinned =
+    known && detail !== null && detail.version !== pinnedVersion && !versions[pinnedKey];
+  useEffect(() => {
+    if (!needsPinned) return;
+    let live = true;
+    fetch(`/api/machines/${encodeURIComponent(machineId)}?version=${pinnedVersion}`, {
+      cache: 'no-store',
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(String(res.status));
+        const d = (await res.json()) as MachineDetail;
+        if (live) setVersions((all) => ({ ...all, [`${d.id}@${d.version}`]: d }));
+      })
+      .catch(() => {
+        if (live) setDetailError(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [needsPinned, machineId, pinnedVersion]);
+
+  const profile = pinned?.profile ?? null;
   // D-045 / T258: a problem that blocks G-code is marked on the step that causes it, on every step.
   const params = profile !== null ? findMaterialParams(profile, project.stock) : undefined;
   const noParams = profile !== null && params === undefined;
@@ -475,12 +510,28 @@ function WizardSession({
     : params?.unverified
       ? { makine: t.steps.errors.unverifiedParams }
       : {};
-  const simMachine: SimMachine | null = useMemo(() => {
-    const d = details[machineId];
-    return d
-      ? { id: d.id, pv: { profile: d.profile, version: d.version, verification: d.state } }
-      : null;
-  }, [details, machineId]);
+  const simMachine: SimMachine | null = useMemo(
+    () =>
+      pinned
+        ? {
+            id: pinned.id,
+            pv: { profile: pinned.profile, version: pinned.version, verification: pinned.state },
+          }
+        : null,
+    [pinned],
+  );
+  // T269: the "Son sürüme geç" box on step 1, Simülasyon and Dışa aktar.
+  const gap = known ? versionGap(project.machine, detail) : null;
+  const versionNotice =
+    gap !== null ? (
+      <ProfileVersionNotice
+        t={t.machine}
+        machineId={project.machine.machineId}
+        version={project.machine.profileVersion}
+        latest={gap}
+        run={session.run}
+      />
+    ) : null;
   const toolDiameter = toolDiameterFor(project, profile);
 
   const go = useCallback(
@@ -627,7 +678,8 @@ function WizardSession({
               project={project}
               machines={machines}
               library={library}
-              detail={detail}
+              detail={pinned}
+              latest={detail}
               issues={session.issues}
               run={session.run}
             />
@@ -700,6 +752,7 @@ function WizardSession({
         t={messages.simulation}
         project={project}
         machine={simMachine}
+        notice={versionNotice}
         header={{
           projectName: session.name,
           revision: session.revision,
@@ -734,6 +787,7 @@ function WizardSession({
         states={messages.machines.state}
         project={project}
         machine={simMachine}
+        notice={versionNotice}
         projectId={session.projectId}
         revision={session.revision}
         saved={!session.dirty}

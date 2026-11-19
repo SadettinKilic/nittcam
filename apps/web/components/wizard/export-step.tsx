@@ -91,6 +91,7 @@ export function ExportStep({
   states,
   project,
   machine,
+  notice,
   projectId,
   revision,
   saved,
@@ -102,6 +103,8 @@ export function ExportStep({
   states: States;
   project: Project;
   machine: SimMachine | null;
+  /** T269: the "Son sürüme geç" box when the machine has a newer profile version. */
+  notice?: React.ReactNode;
   projectId: string | null;
   revision: number;
   /** False while changes wait for the autosave. */
@@ -335,6 +338,7 @@ export function ExportStep({
             {t.checks}
           </h2>
           {status}
+          {notice}
           {preview?.profile ? (
             <div className="flex flex-col gap-1 text-xs text-fg-muted" data-testid="export-profile">
               <p>
@@ -344,14 +348,6 @@ export function ExportStep({
                   state: states[preview.profile.verification],
                 })}
               </p>
-              {preview.profile.version < preview.profile.latestVersion ? (
-                <p className="text-warning-text" data-testid="export-profile-old">
-                  {fill(t.profileOld, {
-                    version: preview.profile.version,
-                    latest: preview.profile.latestVersion,
-                  })}
-                </p>
-              ) : null}
               {preview.post ? (
                 <p>{fill(t.post, { name: preview.post.name, version: preview.post.version })}</p>
               ) : null}
