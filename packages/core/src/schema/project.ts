@@ -139,6 +139,16 @@ export const templateRefSchema = z.strictObject({
   overrides: z.array(z.string()),
 });
 
+/**
+ * A linear dimension on the drawing (T133, spec §4.4 "ölçü"): the aligned distance between two
+ * points in the part frame. A non-cut annotation: nesting, toolpath and export ignore it.
+ */
+export const dimensionLineSchema = z.strictObject({
+  id: nonEmptyId,
+  a: z.strictObject({ x: coord, y: coord }),
+  b: z.strictObject({ x: coord, y: coord }),
+});
+
 /** A part's grain (D-034); `angle` is in the part's own frame, [0, 180). */
 export const partGrainSchema = z.strictObject({
   mode: z.enum(['free', 'fixed'], { error: 'grain mode must be "free" or "fixed"' }),
@@ -174,6 +184,8 @@ const partBase = {
   holes: z.array(holeSchema),
   edgeBand: edgeBandSchema,
   templates: z.array(templateRefSchema),
+  /** Linear dimensions in the part frame (T133); annotations only, never cut. Absent = none. */
+  dims: z.array(dimensionLineSchema).max(200, { error: 'at most 200 dimensions' }).optional(),
   /**
    * Position of the part's local origin on the drawing board, mm (T124, D-037). Editor-only
    * placement: nesting, toolpath and export ignore it. Absent = the board arranges the part.
@@ -390,6 +402,7 @@ export type GrooveHole = z.infer<typeof grooveHoleSchema>;
 export type Hole = z.infer<typeof holeSchema>;
 export type EdgeBand = z.infer<typeof edgeBandSchema>;
 export type TemplateRef = z.infer<typeof templateRefSchema>;
+export type DimensionLine = z.infer<typeof dimensionLineSchema>;
 export type RectParams = z.infer<typeof rectParamsSchema>;
 export type RectPart = z.infer<typeof rectPartSchema>;
 export type FreeformPart = z.infer<typeof freeformPartSchema>;

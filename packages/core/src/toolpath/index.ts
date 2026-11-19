@@ -4,6 +4,7 @@ export * from './depth';
 export {
   buildToolpath,
   placedOutline,
+  placedInners,
   outerContourPath,
   innerContourPath,
   TOOLPATH_DEFAULTS,

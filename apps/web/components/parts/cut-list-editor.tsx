@@ -2,6 +2,7 @@
 
 import {
   cutListToCsv,
+  partBoxSize,
   type CutListPartInput,
   type Part,
   type Project,
@@ -225,7 +226,20 @@ function SizeCell({
   field: 'w' | 'h';
 }) {
   const { t } = ctx;
-  if (part.kind !== 'rect') return <span className="block px-2 text-right text-fg-muted">–</span>;
+  if (part.kind !== 'rect') {
+    // Freeform part (T135): the drawing is the source; W/H are its bounding box, read-only here.
+    const value = formatInput(partBoxSize(part)[field]);
+    return (
+      <span
+        className="flex h-9 flex-col items-end justify-center px-2 text-right leading-tight text-fg-muted"
+        title={t.freeformSize}
+        data-testid={`cell-${field}-freeform`}
+      >
+        {field === 'w' ? <span className="text-[10px] text-fg-subtle">{t.freeform}</span> : null}
+        <span className="font-mono text-sm tabular-nums">{value}</span>
+      </span>
+    );
+  }
   return (
     <TextCell
       row={row}
@@ -602,6 +616,35 @@ interface GridRowProps {
 }
 
 /** What a light row shows in a column: the cell's value as plain text. */
+/** Part id of the grid row that holds `el` (T261), or null. */
+function rowIdOf(el: EventTarget | null): string | null {
+  return el instanceof Element
+    ? (el.closest('tr[data-part-id]')?.getAttribute('data-part-id') ?? null)
+    : null;
+}
+
+/** Do command params name this part (`id` or `ids`)? An edit of the row (T261). */
+function namesPart(params: unknown, id: string): boolean {
+  if (typeof params !== 'object' || params === null) return false;
+  const p = params as { id?: unknown; ids?: unknown };
+  return p.id === id || (Array.isArray(p.ids) && p.ids.includes(id));
+}
+
+/** A row exactly as Enter appended it: 100 × 100, one piece, nothing else set (T261). */
+function untouchedNewRow(part: Part): boolean {
+  return (
+    part.kind === 'rect' &&
+    part.params.w === 100 &&
+    part.params.h === 100 &&
+    part.params.r === 0 &&
+    part.qty === 1 &&
+    part.note === undefined &&
+    part.group === undefined &&
+    part.grain.mode === 'free' &&
+    Object.values(part.edgeBand).every((v) => v === 0)
+  );
+}
+
 function lightText(t: Text, part: Part, index: number, col: string): string {
   const rect = part.kind === 'rect';
   switch (col) {
@@ -611,7 +654,7 @@ function lightText(t: Text, part: Part, index: number, col: string): string {
       return part.name;
     case 'w':
     case 'h':
-      return rect ? formatInput(part.params[col]) : '–';
+      return rect ? formatInput(part.params[col]) : formatInput(partBoxSize(part)[col]);
     case 'qty':
       return String(part.qty);
     case 'grain':
@@ -655,6 +698,7 @@ const GridRow = memo(function GridRow({
       aria-rowindex={position + 2}
       aria-selected={selected}
       data-testid="cut-list-row"
+      data-part-id={part.id}
       // No color transition on rows: a transition on every row made scrolling restyle-heavy (T118).
       className={selected ? 'bg-accent-subtle' : 'hover:bg-surface-subtle'}
     >
@@ -1137,6 +1181,8 @@ export function CutListEditor({
   onUndo,
   issuesPanel,
   issuesKey,
+  initialSelection,
+  onSelectionChange,
 }: {
   t: Text;
   project: Project;
@@ -1151,6 +1197,10 @@ export function CutListEditor({
   issuesPanel?: ReactNode;
   /** Project id: a closed Uyarılar panel is remembered per project (T256). */
   issuesKey?: string | undefined;
+  /** Selected part ids when the grid opens (shared with the drawing board, T135). */
+  initialSelection?: readonly string[];
+  /** Reports every selection change (Liste ↔ Çizim keep one selection, T135). */
+  onSelectionChange?: (ids: string[]) => void;
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -1177,7 +1227,9 @@ export function CutListEditor({
     writeDismissed(issuesKey, issueCodes);
   }
   const issuesContent = useRef<HTMLDivElement>(null);
-  const [selection, setSelection] = useState<ReadonlySet<string>>(() => new Set());
+  const [selection, setSelection] = useState<ReadonlySet<string>>(
+    () => new Set(initialSelection ?? []),
+  );
   const anchor = useRef<string | null>(null);
   const focusNext = useRef<string | null>(null);
   const pasteButton = useRef<HTMLButtonElement>(null);
@@ -1242,6 +1294,9 @@ export function CutListEditor({
     return parts.filter((p) => selection.has(p.id) && have.has(p.id)).map((p) => p.id);
   }, [parts, selection]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const reportSelection = useRef(onSelectionChange);
+  reportSelection.current = onSelectionChange;
+  useEffect(() => reportSelection.current?.(selected), [selected]);
 
   // The cell a keyboard move is still heading for (its row is mounting). A key that arrives
   // meanwhile moves on from there, not from the cell that still has focus, so 40 fast ArrowDowns
@@ -1278,13 +1333,48 @@ export function CutListEditor({
     }
   });
 
-  function addRow(col = 'name') {
+  // T261: a row that Enter appended on the last row and the user never edited is a phantom; it
+  // is removed when focus leaves it or the grid goes away (step change, Liste → Çizim). Rows from
+  // "Satır ekle" are kept. Any command that names the row (an edit) makes it a real row.
+  const phantom = useRef<string | null>(null);
+  // The parts list right after the phantom was added: unchanged since → the add is the last
+  // step, so it is taken back with undo (no extra history step to undo later).
+  const phantomParts = useRef<readonly Part[] | null>(null);
+  const undoRef = useRef(onUndo);
+  useEffect(() => {
+    undoRef.current = onUndo;
+  });
+  useEffect(() => {
+    const id = phantom.current;
+    if (id && phantomParts.current === null && parts.some((p) => p.id === id)) {
+      phantomParts.current = parts;
+    }
+  });
+  function dropPhantom() {
+    const id = phantom.current;
+    if (!id) return;
+    phantom.current = null;
+    const at = phantomParts.current;
+    phantomParts.current = null;
+    const part = latest.current.parts.find((p) => p.id === id);
+    if (!part || !untouchedNewRow(part)) return;
+    if (latest.current.parts === at && undoRef.current) undoRef.current();
+    else latest.current.run('removeParts', { ids: [id] });
+  }
+  useEffect(() => () => dropPhantom(), []);
+
+  function addRow(col = 'name', fromEnter = false) {
+    const id = newPartId();
     const ok = run('addPart', {
-      id: newPartId(),
+      id,
       name: fill(t.defaultName, { n: parts.length + 1 }),
       params: { w: 100, h: 100, r: 0 },
     });
     if (ok) {
+      if (fromEnter) {
+        phantom.current = id;
+        phantomParts.current = null;
+      }
       // The new row has no group and no issue yet: drop what would hide it (T123).
       setQuery('');
       setIssuesOnly(false);
@@ -1301,7 +1391,7 @@ export function CutListEditor({
     if (position < 0) return;
     const target = navTarget(position, from.col, dir, order.length, cols, enter);
     if (!target) return;
-    if ('append' in target) addRow(target.col === 'actions' ? 'name' : target.col);
+    if ('append' in target) addRow(target.col === 'actions' ? 'name' : target.col, true);
     else focusCell(order[target.row] ?? 0, target.col);
   };
 
@@ -1389,7 +1479,10 @@ export function CutListEditor({
     () => ({
       current: {
         t,
-        run: (name: string, params: unknown) => latest.current.run(name, params),
+        run: (name: string, params: unknown) => {
+          if (phantom.current && namesPart(params, phantom.current)) phantom.current = null;
+          return latest.current.run(name, params);
+        },
         navigate: ((row, col, dir, enter) =>
           latest.current.navigate(row, col, dir, enter)) as Navigate,
         allIds: () => latest.current.parts.map((p) => p.id),
@@ -1756,6 +1849,17 @@ export function CutListEditor({
           ) : null}
           <div
             ref={scrollRef}
+            onBlur={(e) => {
+              const id = phantom.current;
+              if (!id) return;
+              const from = rowIdOf(e.target);
+              if (from !== id || rowIdOf(e.relatedTarget) === id) return;
+              // Undo / redo take the row back themselves; dropping it first would make the
+              // click undo the drop instead (the row would seem to come back).
+              const to = e.relatedTarget;
+              if (to instanceof Element && to.closest('[data-history]')) return;
+              dropPhantom();
+            }}
             className={cn(
               'relative max-w-full overflow-auto',
               parts.length === 0 ? '' : 'max-h-[max(22rem,calc(100dvh-20rem))]',

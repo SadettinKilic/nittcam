@@ -488,6 +488,8 @@
     },
     "cellLabel": "Satır {n}: {column}",
     "edgeLabel": "Satır {n}: {edge} kenar bandı (mm)",
+    "freeform": "Serbest",
+    "freeformSize": "Serbest şekil: en ve boy çizimden gelir (sınır kutusu); Çizim görünümünde düzenlenir.",
     "grainCell": {
       "edit": "Satır {n}: damar açısı {angle}",
       "free": "Serbest",
@@ -958,8 +960,11 @@
       "NO_OPERATIONS": "Kesilecek parça yok.",
       "DEPTH_EXCEEDS_FLUTE_LENGTH": "Kesim derinliği takımın kesici boyunu aşıyor.",
       "SMALL_PART_UNSECURED": "Küçük parça sabitlenemiyor (köprü yerleşmedi).",
+      "SMALL_SLUG_UNSECURED": "İç kesimden düşecek küçük parçaya (göbek) 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün ya da cep olarak boşaltın (cep boşaltma yakında).",
       "HOLES_NOT_SUPPORTED": "Delikler bu sürümde kesilmiyor.",
-      "INNER_CONTOURS_NOT_SUPPORTED": "İç konturlar bu sürümde kesilmiyor.",
+      "INNER_OFFSET_FAILED": "İç kesim bu takım için çok küçük; takım boşluğa girmiyor.",
+      "INNER_SPLIT": "Takım iç kesimin dar bir boğazından geçemiyor.",
+      "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor, dış hatla kesişiyor ya da başka bir iç kesime değiyor; parça bu haliyle kesilemez.",
       "SPINDLE_INVALID": "Devir spindle aralığının dışında.",
       "SPINDLE_RPM_RANGE": "Devir spindle aralığının dışında.",
       "SPINDLE_NO_RPM": "Spindle devir yazılmadan çalıştırılıyor.",
@@ -1016,6 +1021,7 @@
       "LEAD_SHORTENED": "Giriş/çıkış hareketi kısaltıldı.",
       "LEAD_REMOVED": "Giriş/çıkış hareketi yer olmadığı için kaldırıldı.",
       "SMALL_PART_AUTO_TABS": "Küçük parçaya otomatik köprü eklendi.",
+      "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
       "TABS_REDUCED": "Köprü sayısı azaltıldı.",
       "TABS_NOT_PLACED": "Köprüler yerleştirilemedi.",
       "UNPLACED_COPIES": "Bazı parçalar plakaya yerleşmedi ve kesilmeyecek.",
@@ -1414,7 +1420,9 @@
         "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
         "NO_CUTTING_PARAMS": "Makinede bu malzeme ve kalınlık için kesim ayarı yok.",
         "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı.",
-        "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor."
+        "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
+        "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
+        "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar."
       },
       "other": "Kontrol {code}"
     }
@@ -1769,7 +1777,27 @@
       "rect": "Dikdörtgen",
       "circle": "Çember",
       "line": "Çizgi",
-      "arc": "Yay"
+      "arc": "Yay",
+      "dim": "Ölçü"
+    },
+    "inner": {
+      "title": "İç kesim olarak ekle?",
+      "body": "Çizdiğiniz şekil \"{name}\" parçasının içinde. İç kesim olarak eklenirse parçadan oyulur (pencere, boşluk); isterseniz ayrı bir parça olarak da ekleyebilirsiniz.",
+      "asInner": "İç kesim olarak ekle",
+      "asPart": "Ayrı parça olarak ekle",
+      "cancel": "Vazgeç",
+      "errors": {
+        "degenerate": "İç kesimin alanı yok.",
+        "crossing": "İç kesim kendini kesiyor.",
+        "outside": "İç kesim parçanın içinde kalmalı; kenara değmemeli.",
+        "overlap": "İç kesim başka bir iç kesime değiyor ya da onunla üst üste.",
+        "tooSmall": "İç kesim {d} mm takım için çok küçük ya da çok dar."
+      }
+    },
+    "dim": {
+      "hintFirst": "Ölçünün ilk noktasına tıklayın",
+      "hintSecond": "İkinci noktaya tıklayın · Esc vazgeç",
+      "noPart": "Ölçü bir parçanın üzerinde olmalı: iki nokta da aynı parçanın içinde kalsın."
     },
     "view": {
       "zoomIn": "Yakınlaştır",
@@ -1802,7 +1830,10 @@
       "title": "Parçalar",
       "count": "{count} parça",
       "qty": "×{qty}",
-      "unnamed": "Adsız parça"
+      "unnamed": "Adsız parça",
+      "search": "Parça ara",
+      "searchPlaceholder": "Ara: ad, not, grup",
+      "noMatch": "Eşleşen parça yok."
     },
     "inspector": {
       "title": "Özellikler",
@@ -1835,7 +1866,9 @@
         "grain": "Damar",
         "operation": "İşlem",
         "segment": "Kenar",
-        "vertex": "Köşe"
+        "vertex": "Köşe",
+        "dims": "Ölçüler",
+        "inners": "İç kesimler"
       },
       "name": "Ad",
       "width": "En",
@@ -1844,6 +1877,10 @@
       "segmentPick": "Kenar seç",
       "vertexPick": "Köşe seç",
       "segmentN": "Kenar {n}",
+      "dimN": "Ölçü {n}",
+      "innerN": "İç kesim {n}",
+      "innerRemove": "İç kesim {n} sil",
+      "dimRemove": "Ölçü {n} sil",
       "vertexN": "Köşe {n}",
       "length": "Uzunluk",
       "angle": "Açı",

@@ -302,20 +302,41 @@ export function cutLoops(sm: readonly SheetMove[], d: Derived, push: Push): CutL
   return loops;
 }
 
-/** Every expected part cut exactly once at its place; nothing else cut through. */
+/** Closed through cuts the layout expects: every placed copy plus each of its cut-outs (T134). */
+export function expectedLoopCount(expected: readonly ExpectedPart[]): number {
+  return expected.reduce((n, e) => n + 1 + (e.inners?.length ?? 0), 0);
+}
+
+interface ExpectedLoop {
+  part: ExpectedPart;
+  /** Cut-out index; undefined = the part's outer contour. */
+  inner?: number;
+  cx: number;
+  cy: number;
+}
+
+/**
+ * Every expected part, and every cut-out of every placed copy (T134), cut exactly once at its
+ * place; nothing else cut through. A cut-out is a closed through cut at a known place inside its
+ * copy (its expected centre turns and moves with the copy); any other loop is still an error.
+ */
 export function matchLayout(
   loops: readonly CutLoop[],
   expected: readonly ExpectedPart[],
   d: Derived,
   push: Push,
 ): void {
-  const free = new Set(expected.map((_, i) => i));
+  const want: ExpectedLoop[] = expected.flatMap((part) => [
+    { part, cx: part.cx, cy: part.cy },
+    ...(part.inners ?? []).map((c, inner) => ({ part, inner, cx: c.cx, cy: c.cy })),
+  ]);
+  const free = new Set(want.map((_, i) => i));
   const extra: CutLoop[] = [];
   for (const l of loops) {
     let bestI = -1;
     let bestD = Infinity;
     for (const i of free) {
-      const e = expected[i] as ExpectedPart;
+      const e = want[i] as ExpectedLoop;
       const dist = Math.hypot(e.cx - l.cx, e.cy - l.cy);
       if (dist < bestD) {
         bestD = dist;
@@ -325,12 +346,15 @@ export function matchLayout(
     if (bestI >= 0 && bestD <= d.layoutTol) free.delete(bestI);
     else extra.push(l);
   }
-  if (loops.length !== expected.length) {
+  const inners = want.length - expected.length;
+  if (loops.length !== want.length) {
     push(
       'LAYOUT',
       'PART_COUNT',
       0,
-      `The program cuts ${loops.length} parts, the layout has ${expected.length}.`,
+      inners === 0
+        ? `The program cuts ${loops.length} parts, the layout has ${expected.length}.`
+        : `The program cuts ${loops.length} closed loops, the layout has ${expected.length} parts and ${inners} cut-outs (${want.length}).`,
     );
   }
   for (const l of extra) {
@@ -342,12 +366,16 @@ export function matchLayout(
     );
   }
   for (const i of free) {
-    const e = expected[i] as ExpectedPart;
+    const e = want[i] as ExpectedLoop;
+    const what =
+      e.inner === undefined
+        ? `Part ${e.part.partId} copy ${e.part.copy}`
+        : `Cut-out ${e.inner + 1} of part ${e.part.partId} copy ${e.part.copy}`;
     push(
       'LAYOUT',
       'PART_MISSING',
       0,
-      `Part ${e.partId} copy ${e.copy} at (${e.cx.toFixed(3)}, ${e.cy.toFixed(3)}) is not cut.`,
+      `${what} at (${e.cx.toFixed(3)}, ${e.cy.toFixed(3)}) is not cut.`,
     );
   }
 }

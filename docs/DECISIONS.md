@@ -482,3 +482,11 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - **Desktop-first visual matrix (D-043):** phone dark captures keep no baseline (still captured and axe-checked); 33 baselines removed (126 → 93). Desktop light/dark and phone light keep baselines. Restore in the mobile UI pass.
 - **Local:** `pnpm e2e:local <specs>` (1 worker, one local e2e on the PC at a time via a lock in the temp dir), `pnpm e2e:changed`. `e2e/__screenshots__/` is git-ignored (local review captures). Local timing budgets are ×3 (`PERF_BUDGET_SCALE`); **CI budgets unchanged**.
 - **Unchanged:** golden-file guard + `needs-human`, G-code safety and property tests, axe serious/critical = fail, db tenancy tests on Postgres, perf budgets in CI, no merge without the gate.
+
+## D-049 Cut-out slugs follow the small-part rule (2026-11-19, owner; B12 tester round 1 question)
+- **Why:** the slug of a cut-out is a loose piece of material once the last pass closes; a small one can be thrown by the cutter (shop practice, WorkSafe/OSHA "object thrown by the cutter" hazard). Spec §6.3 / §2.4 and D-022 only named parts.
+- **Rule:** the slug of an inner contour is "small" by the D-022 threshold (area < 50 000 mm² **or** shorter bounding-box side < 100 mm, measured on the placed cut-out). A small slug gets **at least 2 tabs** on its inner contour even when tabs are off for the project (warning `SMALL_SLUG_AUTO_TABS`), same tab width/height/count rules as small parts, evenly spaced. Inner-contour tabs may sit on **arcs** too (round openings), but only inside one segment long enough for the whole raised span, so an arc too short for a tab gets none. Parts' outer contours keep straight-segment tabs only (golden files unchanged).
+- **No room for 2 tabs → export-blocking `SMALL_SLUG_UNSECURED`** (Turkish text suggests a larger opening or clearing it as a pocket; pocket clearing arrives with B14).
+- **Large slugs** follow the project's tab setting (tabs on → tabs on the cut-out too; off → none).
+- Order unchanged: every cut-out of a copy before its outer contour (D-023).
+- Tests: `toolpath.slug-tabs.property.test.ts` (round and rectangular small slugs held by ≥ 2 tabs or refused; the export passes every rule-9 check), `toolpath.inner.property.test.ts`, tester `b12-cutouts.tester.test.ts` (adjusted from "no tabs").

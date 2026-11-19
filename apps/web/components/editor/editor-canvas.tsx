@@ -17,6 +17,7 @@ import {
   type Viewport,
 } from '../../lib/editor/viewport';
 import type { DraftView } from '../../lib/editor/draw-tool';
+import { dimText, type SegmentLabel } from '../../lib/editor/dims';
 import type { EditorColors } from './colors';
 
 /** Width of the rulers on the top and left edges, px. */
@@ -57,6 +58,10 @@ export interface EditorCanvasProps {
   corners?: readonly Pt[];
   /** The segment or vertex the properties panel edits (T130), drawn in the accent. */
   focus?: EditorFocus | null;
+  /** Length labels of the selected part's segments (T133), board mm. */
+  segmentLabels?: readonly SegmentLabel[] | null;
+  /** Dimension tool in progress (T133): first point and the cursor, board mm. */
+  dimPreview?: { a: Pt; b: Pt } | null;
 }
 
 /** Segment or vertex picked for the properties panel, board mm. */
@@ -326,6 +331,8 @@ function drawSelection(ctx: Ctx, p: EditorCanvasProps) {
   ] as const) {
     ctx.fillRect(x - 3, y - 3, 6, 6);
   }
+  // With segment length labels (T133) the top edge carries its own length: no second chip there.
+  if (p.segmentLabels && p.segmentLabels.length > 0) return;
   const text = sizeText(box.maxX - box.minX, box.maxY - box.minY);
   ctx.font = `11px ${canvasMonoFont()}`;
   ctx.textAlign = 'center';
@@ -338,6 +345,88 @@ function drawSelection(ctx: Ctx, p: EditorCanvasProps) {
   ctx.fill();
   ctx.fillStyle = p.colors.selectionText;
   ctx.fillText(text, cx, a.y - 11);
+}
+
+/** Offset of a dimension line from the measured points, px on screen. */
+const DIM_OFFSET_PX = 16;
+
+/**
+ * One linear dimension (T133): extension lines, the dimension line with tick marks, offset to
+ * the left of a → b, and its length in a chip. Fixed screen size at every zoom.
+ */
+function drawDimension(ctx: Ctx, p: EditorCanvasProps, a0: Pt, b0: Pt, preview: boolean) {
+  const a = toScreen(p.view, a0);
+  const b = toScreen(p.view, b0);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;
+  // Screen Y is down: the left of travel on screen is (dy, -dx).
+  const nx = dy / len;
+  const ny = -dx / len;
+  const o = DIM_OFFSET_PX;
+  const a2 = { x: a.x + nx * o, y: a.y + ny * o };
+  const b2 = { x: b.x + nx * o, y: b.y + ny * o };
+  const color = preview ? p.colors.accent : p.colors.dim;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash(preview ? [4, 3] : []);
+  ctx.beginPath();
+  ctx.moveTo(a.x + nx * 3, a.y + ny * 3);
+  ctx.lineTo(a2.x + nx * 4, a2.y + ny * 4);
+  ctx.moveTo(b.x + nx * 3, b.y + ny * 3);
+  ctx.lineTo(b2.x + nx * 4, b2.y + ny * 4);
+  ctx.moveTo(a2.x, a2.y);
+  ctx.lineTo(b2.x, b2.y);
+  // 45° ticks at both ends (architectural style, readable at any angle).
+  for (const q of [a2, b2]) {
+    ctx.moveTo(q.x - 4 * (dx / len + nx), q.y - 4 * (dy / len + ny));
+    ctx.lineTo(q.x + 4 * (dx / len + nx), q.y + 4 * (dy / len + ny));
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  chip(
+    ctx,
+    dimText(a0, b0),
+    (a2.x + b2.x) / 2 + nx * 10,
+    (a2.y + b2.y) / 2 + ny * 10,
+    preview ? p.colors.accent : p.colors.ruler,
+    preview ? p.colors.selectionText : p.colors.text,
+  );
+}
+
+/** Persistent dimensions of every part (T133), then the dimension tool's preview. */
+function drawDimensions(ctx: Ctx, p: EditorCanvasProps) {
+  for (const part of p.parts) {
+    if (part.dims.length === 0) continue;
+    const d = p.selection.has(part.id) && p.drag ? p.drag : { x: 0, y: 0 };
+    for (const dim of part.dims) {
+      drawDimension(
+        ctx,
+        p,
+        { x: dim.a.x + d.x, y: dim.a.y + d.y },
+        { x: dim.b.x + d.x, y: dim.b.y + d.y },
+        false,
+      );
+    }
+  }
+  if (p.dimPreview) drawDimension(ctx, p, p.dimPreview.a, p.dimPreview.b, true);
+}
+
+/** Segment length chips of the selected part (T133); the active segment in the accent. */
+function drawSegmentLabels(ctx: Ctx, p: EditorCanvasProps) {
+  if (!p.segmentLabels || p.drag) return;
+  for (const l of p.segmentLabels) {
+    const s = toScreen(p.view, l.at);
+    chip(
+      ctx,
+      l.text,
+      s.x,
+      s.y,
+      l.active ? p.colors.accent : p.colors.ruler,
+      l.active ? p.colors.selectionText : p.colors.text,
+    );
+  }
 }
 
 function drawMarquee(ctx: Ctx, p: EditorCanvasProps) {
@@ -656,7 +745,9 @@ export default function EditorCanvas(props: EditorCanvasProps) {
             drawParts(ctx, props);
             drawOrigin(ctx, props);
             drawLabels(ctx, props);
+            drawDimensions(ctx, props);
             drawSelection(ctx, props);
+            drawSegmentLabels(ctx, props);
             drawMarquee(ctx, props);
             drawHandles(ctx, props);
             drawCorners(ctx, props);

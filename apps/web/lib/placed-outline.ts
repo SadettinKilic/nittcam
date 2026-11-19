@@ -1,4 +1,10 @@
-import { placedOutline, sampleSegment, type Part } from '@nittcam/core';
+import {
+  placedInners,
+  placedOutline,
+  sampleSegment,
+  type Part,
+  type Polyline,
+} from '@nittcam/core';
 
 const QUARTER = 1e-6;
 
@@ -16,7 +22,18 @@ export function isQuarterTurn(rot: number): boolean {
  */
 export function footprintOutline(part: Part, rot: number, h: number): number[] | null {
   if (part.kind === 'rect' && isQuarterTurn(rot)) return null;
-  const poly = placedOutline(part, { x: 0, y: 0, rot });
+  return flat(placedOutline(part, { x: 0, y: 0, rot }), h);
+}
+
+/**
+ * The inner contours (cut-outs, T134) of a placed part in the same frame as `footprintOutline`:
+ * they turn and move with the part. Empty for a part without cut-outs.
+ */
+export function footprintInners(part: Part, rot: number, h: number): number[][] {
+  return placedInners(part, { x: 0, y: 0, rot }).map((p) => flat(p, h));
+}
+
+function flat(poly: Polyline, h: number): number[] {
   const n = poly.vertices.length;
   const out: number[] = [];
   for (let i = 0; i < n; i++) {
