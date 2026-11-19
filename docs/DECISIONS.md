@@ -458,3 +458,10 @@ Review #4 did one real job as an operator (base cabinet 600 × 720 × 560, 2 she
 - **Generators respect the stock:** a generator never silently adds a row the project's stock cannot make (other thickness, other material). It shows the part and lets the user add it on purpose.
 - **Walkthrough metric:** every design review repeats this job and reports clicks, typed values and hesitations. Baseline: 19 clicks, 5 typed values, 5 screens. A change that adds clicks to this path needs a reason in its PR.
 - Decided by the reviewer; the owner may revisit. Tasks: B11a (T257–T260), riders T261–T263. Review: `docs/reviews/2026-11-19-cto-design-review-4.md`.
+
+## D-046 Example machine cuts the seeded Melamin 18 and Kontrplak 18 with copied MDF 18 values (2026-11-19, owner)
+The owner answered Q009 (T257, CTO review #4 K1): yes.
+- The seeded example machine ("Örnek router (Mach3)") gets parameter sets for Melamin 18 mm and Kontrplak 18 mm with the same values as its MDF 18 mm set. Akrilik 5 mm stays without a set and shows "ayar yok".
+- Each copied set carries a mark (`copiedFrom: 'mdf'`); the machine form shows "MDF 18 mm ayarından kopyalandı; kendi makinenizde doğrulayın." under it. The sets are editable like any other; editing a row drops the mark.
+- The profile stays an unverified example (`example: true`, "doğrulanmadı"); the unverified first-line warning and the air cut requirement are unchanged.
+- Only newly seeded companies get the sets (existing databases keep their saved profile). Golden G-code files are unchanged.

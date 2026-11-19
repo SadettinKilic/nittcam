@@ -809,8 +809,13 @@ export function MachineForm({
               renderRow={(i) => {
                 const m = profile.materials[i] as MaterialParams;
                 const path = (k: keyof MaterialParams) => `materials[${i}].${k}`;
+                // D-046: an edited row is the user's own; the "copied from" mark goes away.
                 const set = (fn: (x: MaterialParams) => void) =>
-                  update((p) => fn(p.materials[i] as MaterialParams));
+                  update((p) => {
+                    const x = p.materials[i] as MaterialParams;
+                    fn(x);
+                    delete x.copiedFrom;
+                  });
                 const cell = (
                   k: 'thickness' | 'feed' | 'plungeFeed' | 'rpm' | 'stepDown' | 'tool',
                   label: string,
@@ -829,16 +834,31 @@ export function MachineForm({
                   />
                 );
                 return [
-                  <SelectField
-                    key="m"
-                    compact
-                    path={path('material')}
-                    label={f.material}
-                    value={m.material}
-                    options={o.material}
-                    error={e(path('material'))}
-                    onChange={(v) => set((x) => void (x.material = v))}
-                  />,
+                  <div key="m" className="flex min-w-0 flex-col gap-1">
+                    <SelectField
+                      compact
+                      path={path('material')}
+                      label={f.material}
+                      value={m.material}
+                      options={o.material}
+                      error={e(path('material'))}
+                      onChange={(v) => set((x) => void (x.material = v))}
+                    />
+                    {m.copiedFrom ? (
+                      <p
+                        className="flex items-start gap-1 text-xs text-warning-text"
+                        data-testid="material-copied-note"
+                      >
+                        <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                        {t.form.copiedFrom
+                          .replace(
+                            '{from}',
+                            (o.material as Record<string, string>)[m.copiedFrom] ?? m.copiedFrom,
+                          )
+                          .replace('{thickness}', String(m.thickness).replace('.', ','))}
+                      </p>
+                    ) : null}
+                  </div>,
                   cell('thickness', f.thickness, u.mm),
                   cell('feed', f.feed, u.feed),
                   cell('plungeFeed', f.plungeFeed, u.feed),

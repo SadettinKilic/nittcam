@@ -218,7 +218,15 @@ describe('seeded example "Örnek router (Mach3)" (T020, D-028)', () => {
     expect(p.zZero.reference).toBe('materialTop');
     expect(p.rapidFeed).toBe(10000);
     expect(p.tools).toEqual(defaultMachineProfile().tools);
-    expect(p.materials).toEqual(defaultMachineProfile().materials);
+    // D-046 (T257): MDF 18 as in the generic profile, plus Melamin 18 and Kontrplak 18 copied
+    // from it and marked as copied.
+    const [mdf] = defaultMachineProfile().materials;
+    expect(p.materials).toEqual([
+      mdf,
+      { ...mdf, material: 'melamine', copiedFrom: 'mdf' },
+      { ...mdf, material: 'plywood', copiedFrom: 'mdf' },
+    ]);
+    expect(p.materials.some((m) => m.material === 'acrylic')).toBe(false);
   });
 
   it('legacy detection: the old seed (with or without rapid feed) only', () => {

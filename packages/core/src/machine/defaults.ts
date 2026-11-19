@@ -79,7 +79,8 @@ export const EXAMPLE_PROFILE_NAME = 'Örnek router (Mach3)';
  * The example machine seeded for every new company since T020 (D-016, D-028): a Mach3 router
  * with a manual tool change, 3100 × 2200 × 200 mm travel and a 3050 × 2150 table, so the draft
  * sheet (2800 × 2070) and the example post export end to end. Same tools (6 and 8 mm) and MDF
- * 18 parameters as the generic profile. Still an unverified example (`example: true`).
+ * 18 parameters as the generic profile, plus Melamin 18 and Kontrplak 18 sets copied from MDF 18
+ * (D-046). Still an unverified example (`example: true`).
  */
 export function exampleMachineProfile(): MachineProfile {
   const p = defaultMachineProfile();
@@ -100,6 +101,14 @@ export function exampleMachineProfile(): MachineProfile {
   p.rapidFeed = 10000;
   p.toolChanger = { type: 'manual', capacity: 1, lengthCompensation: false };
   p.post = { id: 'mach3', version: '1.0.0' };
+  // D-046 (owner, T257): the seeded library's Melamin 18 and Kontrplak 18 cut out of the box with
+  // the MDF 18 values, marked as copied; the profile stays an unverified example (air cut first).
+  const mdf = p.materials.find((m) => m.material === 'mdf' && m.thickness === 18);
+  if (mdf) {
+    for (const material of ['melamine', 'plywood'] as const) {
+      p.materials.push({ ...mdf, material, copiedFrom: 'mdf' });
+    }
+  }
   return machineProfileSchema.parse(p);
 }
 
