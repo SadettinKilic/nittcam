@@ -5,6 +5,7 @@ import type Konva from 'konva';
 import { Layer, Shape, Stage } from 'react-konva';
 import { formatMm, partLabel, sizeText, LINE_HEIGHT } from '../../lib/canvas-labels';
 import { canvasMonoFont } from '../../lib/canvas-theme';
+import { grainArrowPoints } from '../../lib/grain-texture';
 import {
   gridLevels,
   rulerStep,
@@ -50,7 +51,17 @@ export interface EditorCanvasProps {
   drawText?: { close: string; open: string };
   /** Bend handles of the selected part (segment middles), board mm (T129). */
   handles?: readonly Pt[];
+  /** Grain angle (part frame, degrees) of every fixed-grain part, by id (T254). */
+  grains?: ReadonlyMap<string, number>;
+  /** Corner nodes of the selected part (square), board mm (T130). */
+  corners?: readonly Pt[];
+  /** The segment or vertex the properties panel edits (T130), drawn in the accent. */
+  focus?: EditorFocus | null;
 }
+
+/** Segment or vertex picked for the properties panel, board mm. */
+export type EditorFocus =
+  { kind: 'segment'; p0: Pt; p1: Pt; bulge: number } | { kind: 'vertex'; at: Pt };
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -242,6 +253,46 @@ function drawLabels(ctx: Ctx, p: EditorCanvasProps) {
       ctx.fillStyle = i === 0 ? colors.text : colors.dim;
       ctx.fillText(line, c.x, top + i * fontPx * LINE_HEIGHT);
     });
+    const grain = p.grains?.get(part.id);
+    if (grain !== undefined) {
+      // The layout canvas glyph (T254): a two-headed arrow below the label at the grain angle.
+      const corner = toScreen(v, { x: part.box.minX + d.x, y: part.box.maxY + d.y });
+      const [x1, y1, x2, y2] = grainArrowPoints(grain, w, h, label.font, label.lines.length);
+      drawGrainArrow(
+        ctx,
+        { x: corner.x + x1 * v.scale, y: corner.y + y1 * v.scale },
+        { x: corner.x + x2 * v.scale, y: corner.y + y2 * v.scale },
+        fontPx,
+        colors.text,
+      );
+    }
+  }
+}
+
+/** A two-headed arrow a ↔ b in screen px, heads sized from the label font (layout canvas). */
+function drawGrainArrow(ctx: Ctx, a: Pt, b: Pt, font: number, color: string) {
+  const len = font * 0.35;
+  const half = font * 0.15;
+  const ang = Math.atan2(b.y - a.y, b.x - a.x);
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1, font * 0.08);
+  ctx.stroke();
+  for (const [tip, dir] of [
+    [b, ang],
+    [a, ang + Math.PI],
+  ] as const) {
+    const bx = tip.x - Math.cos(dir) * len;
+    const by = tip.y - Math.sin(dir) * len;
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(bx - Math.sin(dir) * half, by + Math.cos(dir) * half);
+    ctx.lineTo(bx + Math.sin(dir) * half, by - Math.cos(dir) * half);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
   }
 }
 
@@ -364,6 +415,43 @@ function drawHandles(ctx: Ctx, p: EditorCanvasProps) {
     ctx.fillStyle = p.colors.ruler;
     ctx.fill();
     ctx.strokeStyle = p.colors.selection;
+    ctx.stroke();
+  }
+}
+
+/**
+ * Corner nodes (6 px squares, T130) and the picked segment (3 px accent stroke) or vertex
+ * (filled accent square) of the properties panel.
+ */
+function drawCorners(ctx: Ctx, p: EditorCanvasProps) {
+  const { view: v, colors } = p;
+  const f = p.focus;
+  if (f?.kind === 'segment') {
+    const s0 = toScreen(v, f.p0);
+    ctx.beginPath();
+    ctx.moveTo(s0.x, s0.y);
+    traceSegment(ctx, f.p0, f.p1, f.bulge, v);
+    ctx.strokeStyle = colors.accent;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+  ctx.lineWidth = 1.5;
+  for (const c of p.corners ?? []) {
+    const s = toScreen(v, c);
+    ctx.beginPath();
+    ctx.rect(Math.round(s.x) - 3.5, Math.round(s.y) - 3.5, 7, 7);
+    ctx.fillStyle = colors.ruler;
+    ctx.fill();
+    ctx.strokeStyle = colors.selection;
+    ctx.stroke();
+  }
+  if (f?.kind === 'vertex') {
+    const s = toScreen(v, f.at);
+    ctx.beginPath();
+    ctx.rect(Math.round(s.x) - 5, Math.round(s.y) - 5, 10, 10);
+    ctx.fillStyle = colors.accent;
+    ctx.fill();
+    ctx.strokeStyle = colors.ruler;
     ctx.stroke();
   }
 }
@@ -571,6 +659,7 @@ export default function EditorCanvas(props: EditorCanvasProps) {
             drawSelection(ctx, props);
             drawMarquee(ctx, props);
             drawHandles(ctx, props);
+            drawCorners(ctx, props);
             drawDraft(ctx, props);
             drawSnap(ctx, props);
             drawRulers(ctx, props);

@@ -277,6 +277,9 @@ test.describe('axe and captures: 1440 / 390, light / dark', () => {
         await page.setViewportSize({ width, height: width > 600 ? 900 : 844 });
         await page.goto(URL);
         await pasteRows(page, THREE, 3);
+        // T256: the toast now sits just above the footer, where the paste button was clicked; a
+        // hovered toast never times out, so move the pointer off it first.
+        await page.mouse.move(1, 1);
         await page.locator('[data-sonner-toast]').first().waitFor({ state: 'detached' });
         // An issue row (part larger than the sheet) brings the warning icon and panel.
         await cell(page, 2, t.columns.w).fill('9000');

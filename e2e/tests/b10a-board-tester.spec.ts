@@ -475,11 +475,14 @@ test.describe('B10a tester T243 reference frame', () => {
     page,
   }) => {
     const canvas = await openBoard(page, 1440, 900);
-    const withParts = (await view(canvas)).scale;
     const c = await box(canvas);
     const sheetFit = Math.min((c.width - 46 - 96) / 2800, (c.height - 22 - 96) / 2070);
-    // Parts' extents are smaller than the sheet, so the padded part fit zooms in further.
-    expect(withParts).toBeGreaterThan(sheetFit);
+    // T254 (D-040) amends T243: with the outline on, fit frames sheet ∪ parts (never closer
+    // than the sheet fit); with the outline off, the parts alone zoom in further.
+    expect((await view(canvas)).scale).toBeLessThanOrEqual(sheetFit + 1e-6);
+    await page.getByTestId('editor-sheet').click();
+    await expect.poll(async () => (await view(canvas)).scale).toBeGreaterThan(sheetFit);
+    const withParts = (await view(canvas)).scale;
     // Zoom in, F fits back to the same view.
     await canvas.hover();
     await page.keyboard.press('+');

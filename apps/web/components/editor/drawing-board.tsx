@@ -69,6 +69,7 @@ import {
 } from '../../lib/editor/store';
 import {
   fitBox,
+  fitTarget,
   gridLevels,
   toScreen,
   toWorld,
@@ -80,8 +81,9 @@ import { CanvasBoundary } from '../feedback/canvas-boundary';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { readEditorColors, type EditorColors } from './colors';
 import { DynamicInput } from './dynamic-input';
-import { RULER_PX, type SnapGlyph } from './editor-canvas';
+import { RULER_PX, type EditorFocus, type SnapGlyph } from './editor-canvas';
 import { BoardActionBar, EditorInspector } from './inspector';
+import type { SubSelection } from './properties';
 import { boardSummary } from '../../lib/editor/summary';
 import { BoardPartList } from './part-list';
 import { StatusBar } from './status-bar';
@@ -117,7 +119,10 @@ function typing(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
     (target.isContentEditable ||
-      target.closest('input, textarea, select, [role="combobox"], [role="dialog"]') !== null)
+      // An open Select's listbox too: its Esc closes the list, not the board selection (T130).
+      target.closest(
+        'input, textarea, select, [role="combobox"], [role="listbox"], [role="dialog"]',
+      ) !== null)
   );
 }
 
@@ -129,7 +134,8 @@ type Gesture =
   | { kind: 'pan'; last: Pt }
   | { kind: 'pinch'; dist: number; mid: Pt }
   | { kind: 'marquee'; start: Pt; startScreen: Pt; additive: boolean; moved: boolean }
-  | { kind: 'press'; id: string; start: Pt; startScreen: Pt; additive: boolean }
+  /** `corner`: the press started on a corner node of the selected part (a click picks it). */
+  | { kind: 'press'; id: string; start: Pt; startScreen: Pt; additive: boolean; corner?: number }
   | { kind: 'move'; ids: string[]; start: Pt; anchor: Pt }
   /** Drawing-tool press; `before` is the draft to restore if a pinch takes over. */
   | { kind: 'draw'; startScreen: Pt; placed: boolean; before: DrawDraft | null }
@@ -156,11 +162,14 @@ export function DrawingBoard({
   run,
   onToList,
   viewSwitch,
+  toolDiameter,
 }: {
   t: T;
   project: Project;
   run: (command: string, params: unknown) => boolean;
   onToList: () => void;
+  /** Cutting tool diameter of the selected machine, mm (inner-corner rule, dogbone; T131). */
+  toolDiameter?: number;
   /** Liste / Çizim switch placed in the canvas toolbar band (below 1024 px, T240). */
   viewSwitch?: ReactNode;
 }) {
@@ -210,6 +219,15 @@ export function DrawingBoard({
         ]),
       ),
     [project.parts, t.parts],
+  );
+  // Fixed-grain parts show the layout canvas's grain arrow (T254); rotate / mirror turn the
+  // stored angle (D-038), so the glyph follows them.
+  const grains = useMemo(
+    () =>
+      new Map(
+        project.parts.filter((p) => p.grain.mode === 'fixed').map((p) => [p.id, p.grain.angle]),
+      ),
+    [project.parts],
   );
   const selection = useMemo(() => new Set(state.selection), [state.selection]);
   const view = state.view;
@@ -295,6 +313,35 @@ export function DrawingBoard({
     };
   }, [bend, parts]);
 
+  // Properties panel (T130): a segment or vertex of the single selected part. It is dropped when
+  // the selection changes; an index past the outline (after an edit or undo) shows nothing.
+  const single = selected.length === 1 ? selected[0] : undefined;
+  const [sub, setSub] = useState<SubSelection>(null);
+  const singleId = single?.id ?? null;
+  const [subOwner, setSubOwner] = useState<string | null>(singleId);
+  if (subOwner !== singleId) {
+    setSubOwner(singleId);
+    setSub(null);
+  }
+  const subShown = sub && single && sub.index < single.outline.length ? sub : null;
+  /** Corner nodes of the selected part (square handles; a click picks the vertex). */
+  const vertexHandles = useMemo(
+    () =>
+      state.tool === 'select' && single && !drag
+        ? single.outline.map((v) => ({ x: v.x, y: v.y }))
+        : [],
+    [state.tool, single, drag],
+  );
+  const focusMark = useMemo((): EditorFocus | null => {
+    if (!subShown || !single) return null;
+    const vs = single.outline;
+    const a = vs[subShown.index];
+    if (!a) return null;
+    if (subShown.kind === 'vertex') return { kind: 'vertex', at: { x: a.x, y: a.y } };
+    const b = vs[(subShown.index + 1) % vs.length] ?? a;
+    return { kind: 'segment', p0: { x: a.x, y: a.y }, p1: { x: b.x, y: b.y }, bulge: a.bulge };
+  }, [subShown, single]);
+
   // Selected ids that disappear (removed, undone) leave the selection.
   const ids = useMemo(() => project.parts.map((p) => p.id), [project.parts]);
   useEffect(() => dispatch({ type: 'prune', ids }), [ids]);
@@ -312,10 +359,16 @@ export function DrawingBoard({
       const top = FIT_INSETS.top + (viewSwitch ? BAND_PX : 0);
       dispatch({
         type: 'view',
-        view: fitBox(bounds ?? sheetBox, size.w, size.h, { ...FIT_INSETS, top }, FIT_PADDING),
+        view: fitBox(
+          fitTarget(bounds, state.sheet ? sheetBox : null) ?? sheetBox,
+          size.w,
+          size.h,
+          { ...FIT_INSETS, top },
+          FIT_PADDING,
+        ),
       });
     }
-  }, [bounds, sheetBox, size.w, size.h, viewSwitch]);
+  }, [bounds, sheetBox, state.sheet, size.w, size.h, viewSwitch]);
   const fitRef = useRef(fit);
   useEffect(() => {
     fitRef.current = fit;
@@ -340,7 +393,7 @@ export function DrawingBoard({
   const hasParts = parts.length > 0;
   useEffect(() => {
     if (!touched.current && size.w > 0) fitRef.current();
-  }, [size.w, size.h, hasParts]);
+  }, [size.w, size.h, hasParts, state.sheet]);
   useEffect(() => onThemeChange(() => setColors((c) => (c ? readEditorColors() : c))), []);
 
   const zoomBy = useCallback(
@@ -564,6 +617,8 @@ export function DrawingBoard({
     }
     // Bend handle of the selected part: ≥ 24 px hit area (44 px on touch).
     const reach = e.pointerType === 'touch' ? 22 : 12;
+    // A corner node picks that vertex for the properties panel (T130).
+    const corner = vertexHandles.findIndex((h) => dist(toScreen(view, h), s) <= reach);
     const handle = bendHandles.find((h) => dist(toScreen(view, h.at), s) <= reach);
     if (handle) {
       gesture.current = { kind: 'bend', ...handle };
@@ -571,8 +626,19 @@ export function DrawingBoard({
       return;
     }
     const hit = hitPart(parts, w, 4 / view.scale);
-    if (hit) {
+    if (hit && (corner < 0 || hit !== single?.id || e.shiftKey)) {
       gesture.current = { kind: 'press', id: hit, start: w, startScreen: s, additive: e.shiftKey };
+      return;
+    }
+    if (corner >= 0 && single) {
+      gesture.current = {
+        kind: 'press',
+        id: single.id,
+        start: w,
+        startScreen: s,
+        additive: false,
+        corner,
+      };
       return;
     }
     // Empty canvas: one finger pans on touch; mouse/pen draws a selection box.
@@ -710,10 +776,15 @@ export function DrawingBoard({
           index: g.index,
           bulge: Math.round(b.bulge * 1e6) / 1e6,
         });
+      } else {
+        // A click on the segment middle (no bend) picks the segment for the properties panel.
+        setSub({ kind: 'segment', index: g.index });
       }
       return;
     }
-    if (g.kind === 'press') {
+    if (g.kind === 'press' && g.corner !== undefined) {
+      setSub({ kind: 'vertex', index: g.corner });
+    } else if (g.kind === 'press') {
       dispatch(g.additive ? { type: 'toggle', id: g.id } : { type: 'select', ids: [g.id] });
     } else if (g.kind === 'move') {
       const d = drag;
@@ -791,7 +862,10 @@ export function DrawingBoard({
       if (
         target instanceof HTMLElement &&
         (target.isContentEditable ||
-          target.closest('input, textarea, select, [role="combobox"], [role="dialog"]') !== null)
+          // An open Select's listbox too: its Esc closes the list, not the board selection (T130).
+          target.closest(
+            'input, textarea, select, [role="combobox"], [role="listbox"], [role="dialog"]',
+          ) !== null)
       ) {
         return;
       }
@@ -1079,7 +1153,11 @@ export function DrawingBoard({
       data-view={view ? `${view.scale},${view.x},${view.y}` : undefined}
       data-selection={state.selection.join(',')}
       className={cn(
-        'absolute inset-0 touch-none overflow-hidden outline-none select-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset',
+        // T254: the focus ring is an overlay above the Konva stage, so all four sides show
+        // (an inset box-shadow on this element is painted under the canvas). An inset outline,
+        // not a ring, so it stays visible in forced-colors mode.
+        'absolute inset-0 touch-none overflow-hidden outline-none select-none',
+        'focus-visible:after:pointer-events-none focus-visible:after:absolute focus-visible:after:inset-0 focus-visible:after:z-10 focus-visible:after:outline-solid focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus',
         panMode ? 'cursor-grab' : drawTool ? 'cursor-crosshair' : 'cursor-default',
       )}
       onPointerDown={onPointerDown}
@@ -1124,6 +1202,9 @@ export function DrawingBoard({
             draft={bendView ?? draftView}
             draftLabel={bendView ? null : draftLabel}
             handles={bendHandles.map((h) => h.at)}
+            corners={vertexHandles}
+            grains={grains}
+            focus={focusMark}
             drawText={{ close: t.draw.close, open: t.draw.open }}
           />
         </CanvasBoundary>
@@ -1165,6 +1246,10 @@ export function DrawingBoard({
           selected={selected}
           summary={summary}
           actions={editActions}
+          run={run}
+          sub={subShown}
+          onSub={setSub}
+          toolRadius={toolDiameter ? toolDiameter / 2 : 0}
         />
       }
       canvas={canvas}

@@ -186,3 +186,14 @@ export async function closeWorkspacePanel(page: Page) {
   await page.keyboard.press('Escape');
   await expect(open).toHaveCount(0);
 }
+
+/**
+ * Opens the cut list's floating Uyarılar panel from its chip when it is closed. T256: it opens by
+ * itself only where it fits beside the grid without covering cells (not at 1280–1440 px).
+ */
+export async function openIssues(page: Page) {
+  const panel = page.getByTestId('validation-panel');
+  if (await panel.isVisible()) return;
+  await page.getByTestId('cut-list-issue-chip').click();
+  await expect(panel).toBeVisible();
+}

@@ -100,6 +100,11 @@ import { fill, newPartId, stockHasGrain } from '../../lib/draft-project';
 import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
+import { mayAutoOpen, readDismissed, writeDismissed } from '../../lib/issues-dismissed';
+
+/** Width of the floating Uyarılar panel (22rem) and its gap to the grid, px (T256). */
+const ISSUES_PANEL_PX = 352;
+const ISSUES_GAP_PX = 16;
 import {
   BandCell,
   EdgeInput,
@@ -770,6 +775,8 @@ function Grid({
   sort,
   onSort,
   onToggleGroup,
+  reserveRight = 0,
+  onTotalSize,
 }: {
   t: Text;
   parts: readonly Part[];
@@ -784,6 +791,10 @@ function Grid({
   sort: Sort | null;
   onSort: (key: SortKey) => void;
   onToggleGroup: (key: string) => void;
+  /** Width (px) kept free right of the last column for the Uyarılar panel (T256). */
+  reserveRight?: number;
+  /** Reports the columns' total width (px), so the editor knows whether the panel fits. */
+  onTotalSize?: (px: number) => void;
 }) {
   const columns = useMemo(
     () => buildColumns(t, wideBands, narrow, ctx),
@@ -883,10 +894,15 @@ function Grid({
   });
   lightState.full = nextFull;
 
+  const totalSize = table.getTotalSize();
+  useLayoutEffect(() => onTotalSize?.(totalSize), [totalSize, onTotalSize]);
   return (
     <table
       className="w-full table-fixed border-separate border-spacing-0 text-left text-sm"
-      style={{ minWidth: table.getTotalSize() }}
+      style={{
+        minWidth: table.getTotalSize(),
+        maxWidth: reserveRight > 0 ? `calc(100% - ${reserveRight}px)` : undefined,
+      }}
       aria-labelledby="cut-list-title"
       aria-rowcount={items.length + 1}
       data-testid="cut-list-grid"
@@ -1120,6 +1136,7 @@ export function CutListEditor({
   run,
   onUndo,
   issuesPanel,
+  issuesKey,
 }: {
   t: Text;
   project: Project;
@@ -1132,23 +1149,32 @@ export function CutListEditor({
    * moves or changes its columns when the first issue appears.
    */
   issuesPanel?: ReactNode;
+  /** Project id: a closed Uyarılar panel is remembered per project (T256). */
+  issuesKey?: string | undefined;
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [cabinetOpen, setCabinetOpen] = useState(0);
-  // T253: the Uyarılar panel floats from the issue chip. From 1280 px it opens by itself when the
-  // first issue appears (and on a step entered with issues); it closes when the issues are gone.
-  const wideScreen = useMediaQuery('(min-width: 1280px)');
+  // T253 + T256: the Uyarılar panel floats from the issue chip. It opens by itself (when the first
+  // issue appears, or on a step entered with issues) only where it fits right of the last grid
+  // column without covering a cell or header: there the grid always keeps that gutter free, so it
+  // never moves when issues come. Elsewhere it stays closed behind the chip. Once the user closes
+  // it, it stays closed for the project (remembered across reloads) until a new issue type shows.
   const [issuesOpen, setIssuesOpen] = useState(false);
   const hasIssues = issues.length > 0 && issuesPanel !== undefined;
   const [issuesShown, setIssuesShown] = useState(false);
-  // State follows props during render (no effect): open once per run of issues.
-  if (hasIssues && wideScreen && !issuesShown) {
-    setIssuesShown(true);
-    setIssuesOpen(true);
-  } else if (!hasIssues && (issuesShown || issuesOpen)) {
-    setIssuesShown(false);
+  const [dismissed, setDismissed] = useState<string[] | null>(() => readDismissed(issuesKey));
+  const [gridTotal, setGridTotal] = useState(0);
+  const issueCodes = useMemo(() => [...new Set(issues.map((i) => i.code))], [issues]);
+  // A new project gets its id on the first save: a panel closed before that is remembered then.
+  useEffect(() => {
+    if (issuesKey && dismissed) writeDismissed(issuesKey, dismissed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the id arrives
+  }, [issuesKey]);
+  function closeIssues() {
     setIssuesOpen(false);
+    setDismissed(issueCodes);
+    writeDismissed(issuesKey, issueCodes);
   }
   const issuesContent = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<ReadonlySet<string>>(() => new Set());
@@ -1161,6 +1187,24 @@ export function CutListEditor({
   const width = useWidth(scrollRef);
   const wideBands = !phone && width >= WIDE_BANDS_MIN;
   const narrow = !phone && width > 0 && width < NARROW_GRID_MAX;
+  const issuesFit =
+    issuesPanel !== undefined &&
+    !phone &&
+    gridTotal > 0 &&
+    width >= gridTotal + ISSUES_PANEL_PX + ISSUES_GAP_PX;
+  // State follows props during render (no effect): open once per run of issues.
+  if (
+    hasIssues &&
+    !issuesOpen &&
+    (!issuesShown || dismissed !== null) &&
+    mayAutoOpen(issuesFit, issueCodes, dismissed)
+  ) {
+    setIssuesShown(true);
+    setIssuesOpen(true);
+  } else if (!hasIssues && (issuesShown || issuesOpen)) {
+    setIssuesShown(false);
+    setIssuesOpen(false);
+  }
 
   const parts = project.parts;
   const summary = cutListSummary(project);
@@ -1460,7 +1504,10 @@ export function CutListEditor({
         />
       ) : null}
 
-      <Popover open={issuesOpen && hasIssues} onOpenChange={setIssuesOpen}>
+      <Popover
+        open={issuesOpen && hasIssues}
+        onOpenChange={(open) => (open ? setIssuesOpen(true) : closeIssues())}
+      >
         <section
           aria-labelledby="cut-list-title"
           data-density="compact"
@@ -1520,7 +1567,7 @@ export function CutListEditor({
                     aria-controls={issuesPanel && issuesOpen ? 'cut-list-issues' : undefined}
                     onClick={() => {
                       if (issuesOpen) {
-                        setIssuesOpen(false);
+                        closeIssues();
                         return;
                       }
                       setIssuesOpen(true);
@@ -1755,6 +1802,8 @@ export function CutListEditor({
                 sort={sort}
                 onSort={(key) => setSort((prev) => nextSort(prev, key))}
                 onToggleGroup={toggleGroup}
+                reserveRight={issuesFit ? ISSUES_PANEL_PX + ISSUES_GAP_PX : 0}
+                onTotalSize={setGridTotal}
               />
             )}
           </div>

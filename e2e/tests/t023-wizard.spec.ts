@@ -15,6 +15,7 @@ import {
   STEP_KEYS,
   wizardReady,
   watchConsole,
+  openIssues,
 } from './wizard-helpers';
 
 /**
@@ -417,6 +418,7 @@ test.describe('T023 wizard', () => {
     await pickOption(page.getByTestId('wizard-material'), tr.materials.pvc);
     await goStep(page, 'parcalar');
     const panel = page.getByTestId('validation-panel');
+    await openIssues(page);
     await expect(panel.locator('[data-code=NO_CUTTING_PARAMS]')).toHaveText(
       w.issues.codes.NO_CUTTING_PARAMS,
     );

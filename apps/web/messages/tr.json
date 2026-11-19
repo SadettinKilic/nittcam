@@ -1822,6 +1822,64 @@
         "area": "Toplam alan",
         "extents": "Kapladığı alan",
         "areaUnit": "m²"
+      },
+      "groups": {
+        "part": "Parça",
+        "grain": "Damar",
+        "operation": "İşlem",
+        "segment": "Kenar",
+        "vertex": "Köşe"
+      },
+      "name": "Ad",
+      "width": "En",
+      "height": "Boy",
+      "grainFixed": "Damar sabit",
+      "segmentPick": "Kenar seç",
+      "vertexPick": "Köşe seç",
+      "segmentN": "Kenar {n}",
+      "vertexN": "Köşe {n}",
+      "length": "Uzunluk",
+      "angle": "Açı",
+      "arcRadius": "Yay yarıçapı",
+      "straight": "Düz",
+      "pickHint": "Tuvalde bir kenarın ortasına ya da bir köşeye tıklayın.",
+      "operation": {
+        "outer": "Dış kontur",
+        "outerCut": "Dıştan kesim",
+        "inners": "İç kontur",
+        "holes": "Delik"
+      },
+      "convert": "Serbest şekle dönüştür",
+      "convertHint": "Dikdörtgen çizgi ve yaylara çevrilir; en, boy ve yarıçap alanları kalkar.",
+      "fillet": "Köşeyi yuvarla",
+      "filletAll": "Tüm köşeler",
+      "filletRadius": "Yuvarlama yarıçapı",
+      "filletClamped": "Yarıçap komşu kenarlara sığmadı; {r} mm olarak uygulandı.",
+      "concave": {
+        "title": "Takım iç köşeye giremez",
+        "body": "{count} iç köşe takım yarıçapından ({r} mm) dar. Bu köşeler kesimde yuvarlak çıkar.",
+        "fix": "Otomatik düzelt",
+        "fixed": "{count} iç köşe {r} mm yarıçapla yuvarlatıldı."
+      },
+      "dogbone": {
+        "title": "Geçme köşesi",
+        "dogbone": "Dogbone",
+        "tbone": "T-bone",
+        "add": "Taşma aç",
+        "prev": "Gelen kenar",
+        "next": "Giden kenar",
+        "added": "İç köşeye {r} mm yarıçaplı taşma açıldı."
+      },
+      "errors": {
+        "index": "Bu kenar ya da köşe artık yok.",
+        "length": "0'dan büyük bir değer girin.",
+        "degenerate": "Bu değerle şekil alanını kaybeder ya da ters döner.",
+        "crossing": "Bu değerle şeklin kenarları birbirini keser.",
+        "radius": "Yay yarıçapı kenar uzunluğunun yarısından küçük olamaz.",
+        "rectRadius": "Köşe yarıçapı kısa kenarın yarısını geçemez.",
+        "qty": "Adet 1 ya da daha büyük bir tam sayı olmalı.",
+        "fillet": "Bu köşe yuvarlatılamaz (iki düz kenar arasında değil).",
+        "failed": "Değişiklik uygulanamadı."
       }
     },
     "copied": "{count} parça kopyalandı",

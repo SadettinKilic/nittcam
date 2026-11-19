@@ -127,6 +127,10 @@ test.describe('T125 selection and edit commands', () => {
     await expect(canvas).toHaveAttribute('data-selection', /,/);
     const box = await canvas.boundingBox();
     if (!box) throw new Error('canvas');
+    // B11 (T256): toasts sit above the footer now, i.e. over the canvas's bottom-right corner
+    // where this drag starts; let the paste toast go first.
+    await page.mouse.move(0, 0);
+    await page.locator('[data-sonner-toast]').first().waitFor({ state: 'detached' });
     await page.mouse.move(box.x + box.width - 6, box.y + box.height - 6);
     await page.mouse.down();
     await page.mouse.move(box.x + 30, box.y + 30, { steps: 6 });

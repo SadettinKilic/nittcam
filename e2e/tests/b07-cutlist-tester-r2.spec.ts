@@ -237,6 +237,9 @@ test.describe('round-2 axe: light rows and tablet columns', () => {
         await page.setViewportSize({ width, height: width > 600 ? 900 : 844 });
         await page.goto(URL);
         await pasteMany(page, 300);
+        // B11 (T256): toasts now sit above the footer; at 390 the pointer left on the paste
+        // dialog's apply button hovers the toast, which pauses it. Move the pointer away.
+        await page.mouse.move(0, 0);
         await page.locator('[data-sonner-toast]').first().waitFor({ state: 'detached' });
         const id = width === 390 ? 'cut-list-cards' : 'cut-list-scroll';
         await page.getByTestId(id).evaluate((el) => {

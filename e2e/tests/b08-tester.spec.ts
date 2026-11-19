@@ -8,6 +8,7 @@ import {
   projectId,
   saved,
   watchConsole,
+  openIssues,
 } from './wizard-helpers';
 
 // B8 tester (T122, T123, T253): three generated cabinets against a hand calculation, one undo per
@@ -323,7 +324,8 @@ test.describe('B8 tester: floating Uyarılar at 1440', () => {
     await cell(page, 1, t.columns.w).fill('9000');
     await cell(page, 1, t.columns.w).press('Tab');
     const panel = page.getByTestId('validation-panel');
-    await expect(panel).toBeVisible();
+    // T256: no auto-open at 1440 (it would cover cells); the chip opens it on purpose.
+    await openIssues(page);
     const pb = await panel.boundingBox();
     const report: string[] = [`panel ${JSON.stringify(pb)}`];
     for (let n = 1; n <= 5; n++) {
