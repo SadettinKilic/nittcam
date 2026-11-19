@@ -3,11 +3,12 @@
 name: CI
 
 #
-# Lean CI (owner, 2026-11-18; Actions minutes): every PR push runs only the fast `build` job
-# (and the db job). The full check (D-048: chromium e2e in 5 parallel shards + a separate
-# visual/axe job, ~5 min wall clock) runs only
-#   - after every merge (push to main), and
-#   - on demand before a merge: `gh workflow run CI --ref <branch> [-f baselines=update]`.
+# Lean CI (owner, 2026-11-18; Actions minutes): every PR push and every push to main runs only the
+# fast `build` job (and the db job). The full check (D-048: chromium e2e in 5 parallel shards + a
+# separate visual/axe job, ~5 min wall clock) runs only on demand (workflow_dispatch):
+#   `gh workflow run CI --ref <branch> [-f baselines=update]`. Since D-054 DevOps runs it once on
+#   `integration/<n>` and lands exactly that tree on main, so a second full run after the merge
+#   would be a duplicate.
 # With baselines=update the visual job rewrites changed Linux baselines and commits them to the
 # branch in the same run; that run still counts for the merge gate, because the gate
 # (`node tools/ci/full-run-ok.mjs <pr>`) accepts a head that is only that bot baseline commit.
@@ -81,7 +82,7 @@ jobs:
   # red e2e no longer skips the visual step (both always report).
   e2e:
     name: e2e · chromium (shard ${{ matrix.shard }}/5)
-    if: github.event_name != 'pull_request' && inputs.scope != 'visual'
+    if: github.event_name == 'workflow_dispatch' && inputs.scope != 'visual'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -131,7 +132,7 @@ jobs:
   # shows them too). axe still fails the job. The merge gate accepts that bot commit as the head.
   visual:
     name: ${{ inputs.baselines == 'update' && 'visual · axe (baseline update)' || 'visual · axe' }}
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
