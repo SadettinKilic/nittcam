@@ -251,9 +251,9 @@ test.describe('band columns by width', () => {
       const compact = await page
         .getByRole('columnheader', { name: t.columns.band, exact: true })
         .count();
-      // Exactly one band layout is shown, and it matches the grid width rule (≥ 1040 px = wide).
+      // Exactly one band layout is shown, and it matches the grid width rule (≥ 1080 px, T123 = wide).
       expect(wide + compact > 0 && !(wide > 0 && compact > 0)).toBe(true);
-      expect(wide > 0, `grid ${gridWidth}px`).toBe(gridWidth >= 1040);
+      expect(wide > 0, `grid ${gridWidth}px`).toBe(gridWidth >= 1080);
       const scroll = await page.getByTestId('cut-list-scroll').evaluate((el) => ({
         sw: el.scrollWidth,
         cw: el.clientWidth,

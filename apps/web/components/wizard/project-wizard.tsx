@@ -611,24 +611,13 @@ function WizardSession({
         issues={session.issues}
         run={session.run}
         onUndo={session.undo}
-        onShowIssues={() =>
-          document
-            .querySelector<HTMLButtonElement>('[data-testid=validation-panel] h2 button')
-            ?.focus()
-        }
+        issuesPanel={validation}
       />
     );
-    // T246: no issues = no Uyarılar panel (a 'Sorun yok' chip in the table header); the table
-    // takes the full width. With issues the panel returns on the left.
-    if (session.issues.length === 0) {
-      partsFullWidth = true;
-      both = editor;
-    } else {
-      left = (
-        <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-20">{validation}</aside>
-      );
-      right = editor;
-    }
+    // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats
+    // from the issue chip, so the grid never moves or changes its columns while the user types.
+    partsFullWidth = true;
+    both = editor;
   } else if (step === 'dizilim') {
     both = (
       <LayoutStep

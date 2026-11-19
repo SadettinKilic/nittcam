@@ -91,6 +91,11 @@ interface TextCellProps<T> {
   rejected: string;
   navigate?: Navigate | undefined;
   maxLength?: number | undefined;
+  /**
+   * T253: a zero shows as a dimmed "–" until the cell has focus (then the number, to edit). The
+   * value itself stays 0.
+   */
+  quietZero?: boolean | undefined;
 }
 
 /**
@@ -113,6 +118,7 @@ export function TextCell<T>({
   rejected,
   navigate,
   maxLength,
+  quietZero = false,
 }: TextCellProps<T>) {
   const [draft, setDraftState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -224,6 +230,7 @@ export function TextCell<T>({
   }
 
   const errorId = `${id}-error`;
+  const quiet = quietZero && draft === null && !error && value === '0';
   return (
     <div className="relative">
       <input
@@ -237,7 +244,12 @@ export function TextCell<T>({
         aria-label={label}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        className={cn(inputClass, numeric && 'text-right tabular-nums', className)}
+        className={cn(
+          inputClass,
+          numeric && 'text-right tabular-nums',
+          quiet && 'peer [&:not(:focus)]:text-transparent',
+          className,
+        )}
         value={draft ?? value}
         onMouseDown={() => {
           pointer.current = true;
@@ -266,6 +278,15 @@ export function TextCell<T>({
         }}
         onKeyDown={onKeyDown}
       />
+      {quiet ? (
+        <span
+          aria-hidden
+          data-quiet-zero=""
+          className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-[7px] text-sm text-fg-subtle peer-focus:hidden"
+        >
+          –
+        </span>
+      ) : null}
       {error ? (
         <p
           id={errorId}
@@ -444,17 +465,20 @@ export function GrainCell({
   );
 }
 
-/** A 4-side glyph: the banded edges drawn thick in accent, the others thin (T118 compact). */
+/**
+ * Four separate edge marks (T118, T253): the banded edges thick in accent, the others thin and
+ * quiet. The marks do not meet at the corners, so an unbanded part never reads as a checkbox.
+ */
 export function BandGlyph({ sides }: { sides: readonly EdgeKey[] }) {
   const on = (e: EdgeKey) => sides.includes(e);
   const line = (e: EdgeKey) =>
     on(e) ? 'stroke-accent-text [stroke-width:2.5]' : 'stroke-border-strong [stroke-width:1]';
   return (
     <svg viewBox="0 0 16 16" aria-hidden className="size-4 shrink-0" fill="none">
-      <line x1="2" y1="2" x2="14" y2="2" className={line('top')} strokeLinecap="round" />
-      <line x1="2" y1="14" x2="14" y2="14" className={line('bottom')} strokeLinecap="round" />
-      <line x1="2" y1="2" x2="2" y2="14" className={line('left')} strokeLinecap="round" />
-      <line x1="14" y1="2" x2="14" y2="14" className={line('right')} strokeLinecap="round" />
+      <line x1="5" y1="2" x2="11" y2="2" className={line('top')} strokeLinecap="round" />
+      <line x1="5" y1="14" x2="11" y2="14" className={line('bottom')} strokeLinecap="round" />
+      <line x1="2" y1="5" x2="2" y2="11" className={line('left')} strokeLinecap="round" />
+      <line x1="14" y1="5" x2="14" y2="11" className={line('right')} strokeLinecap="round" />
     </svg>
   );
 }
@@ -485,6 +509,7 @@ export function EdgeInput({
       id={id}
       numeric
       className="px-1.5"
+      quietZero
       label={fill(t.edgeLabel, { n: row + 1, edge: t.edge[edge] })}
       value={formatInput(part.edgeBand[edge])}
       current={part.edgeBand[edge]}

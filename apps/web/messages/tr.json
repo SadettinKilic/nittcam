@@ -470,7 +470,8 @@
       "actions": "İşlem",
       "grainHeader": "Damar",
       "band": "Bant",
-      "note": "Not"
+      "note": "Not",
+      "group": "Grup"
     },
     "edge": {
       "top": "Üst",
@@ -758,6 +759,25 @@
         "tooShallow": "Derinlik, arkalık kalınlığından büyük olmalı.",
         "doorsTooSmall": "Kapak boşlukları kapaklara yer bırakmıyor."
       }
+    },
+    "view": {
+      "label": "Görünüm",
+      "search": "Ara",
+      "searchPlaceholder": "Ad, grup, not ya da ölçü ara",
+      "clearSearch": "Aramayı temizle",
+      "group": "Grupla",
+      "groupHint": "Satırları grup etiketine (dolap, etiket) göre topla",
+      "issuesOnly": "Hatalı satırlar",
+      "issuesOnlyHint": "Yalnız uyarısı olan satırları göster",
+      "shown": "{shown} / {total} satır gösteriliyor",
+      "reset": "Görünümü sıfırla",
+      "viewOnlyHint": "Arama, sıralama ve gruplama yalnız görünümü değiştirir; projedeki parça sırası aynı kalır.",
+      "noMatch": "Bu görünümde satır yok.",
+      "ungrouped": "Grupsuz",
+      "groupCount": "{rows} satır · {pieces} parça"
+    },
+    "issuesPanel": {
+      "label": "Uyarılar"
     }
   },
   "layout": {
