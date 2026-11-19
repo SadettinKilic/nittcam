@@ -24,6 +24,13 @@ import {
   surfaceOf,
   type MaterialLook,
 } from '../../lib/preview3d/textures';
+import {
+  SLOT_FRAGMENT_BODY,
+  SLOT_FRAGMENT_HEAD,
+  SLOT_VERTEX_BODY,
+  SLOT_VERTEX_HEAD,
+  type SlotUniforms,
+} from './slots';
 
 export interface StockMaterials {
   part: Material;
@@ -62,20 +69,34 @@ uniform vec3 uBandColor;
 varying float vBand;`;
 
 const FRAGMENT_MAP = /* glsl */ `#include <map_fragment>
-diffuseColor.rgb = mix(diffuseColor.rgb, uBandColor, step(0.5, vBand));`;
+diffuseColor.rgb = mix(diffuseColor.rgb, uBandColor, step(0.5, vBand));
+${SLOT_FRAGMENT_BODY}`;
 
-function patch(material: Material, band: Color): void {
+function patch(material: Material, band: Color, slots: SlotUniforms): void {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uGrainScale = { value: new Vector2(1 / TILE_MM.along, 1 / TILE_MM.across) };
     shader.uniforms.uBandColor = { value: band };
+    Object.assign(shader.uniforms, slots);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', VERTEX_HEAD)
+      .replace('#include <common>', VERTEX_HEAD + SLOT_VERTEX_HEAD)
+      .replace('#include <begin_vertex>', SLOT_VERTEX_BODY)
       .replace('#include <uv_vertex>', VERTEX_UV);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', FRAGMENT_HEAD)
+      .replace('#include <common>', FRAGMENT_HEAD + SLOT_FRAGMENT_HEAD)
       .replace('#include <map_fragment>', FRAGMENT_MAP);
   };
   material.customProgramCacheKey = () => 'nittcam-stock';
+}
+
+/** Edge lines follow the lift of their part (T155); no highlight on the lines. */
+export function patchLines(material: Material, slots: SlotUniforms): void {
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, slots);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>${SLOT_VERTEX_HEAD}`)
+      .replace('#include <begin_vertex>', SLOT_VERTEX_BODY);
+  };
+  material.customProgramCacheKey = () => 'nittcam-edges';
 }
 
 function texture(look: MaterialLook, base: string): DataTexture {
@@ -100,6 +121,7 @@ export function stockMaterials(
   base: string,
   bandColor: string,
   simple: boolean,
+  slots: SlotUniforms,
 ): StockMaterials {
   const band = new Color(bandColor);
   const offset = { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 };
@@ -109,8 +131,8 @@ export function stockMaterials(
       color: new Color(base).lerp(new Color(1, 1, 1), 0.12),
       ...offset,
     });
-    patch(part, band);
-    patch(waste, band);
+    patch(part, band, slots);
+    patch(waste, band, slots);
     return {
       part,
       waste,
@@ -130,8 +152,8 @@ export function stockMaterials(
     color: new Color(1, 1, 1).multiplyScalar(1.08),
     ...offset,
   });
-  patch(part, band);
-  patch(waste, band);
+  patch(part, band, slots);
+  patch(waste, band, slots);
   return {
     part,
     waste,

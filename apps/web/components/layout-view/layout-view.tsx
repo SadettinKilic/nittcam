@@ -56,8 +56,9 @@ import {
 } from 'lucide-react';
 import { Preview3D } from '../preview3d/preview3d';
 import type { CameraCommand } from '../preview3d/scene';
-import type { ViewPreset } from '../../lib/preview3d/camera';
+import { PRESET_MS, type ViewPreset } from '../../lib/preview3d/camera';
 import { hasWebGL2 } from '../../lib/preview3d/capability';
+import { registerLeaveTransition } from '../../lib/preview3d/leave';
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { onThemeChange } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
@@ -215,6 +216,16 @@ export function LayoutView({
   function preset(p: ViewPreset) {
     setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true }));
   }
+
+  // T155 (§3.6): wizard "İleri" with 3D open → ease to the top view first; none with reduced motion.
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)', false);
+  useEffect(() => {
+    if (!show3d || reducedMotion) return;
+    return registerLeaveTransition(() => {
+      setCamera((c) => ({ preset: 'top', nonce: c.nonce + 1, animate: true }));
+      return PRESET_MS + 60;
+    });
+  }, [show3d, reducedMotion]);
 
   const stock = useMemo(() => sheetSizeOf(project, sheet), [project, sheet]);
   const height = size.h;

@@ -25,6 +25,17 @@ export interface InstanceRef {
   transform: PlacementTransform;
   /** Effective grain of this copy in the sheet frame, degrees [0, 180) (T154, D-034). */
   grain: number;
+  /** Copy number on this sheet in placement order (= index into `drawnParts`): the shader slot (T155). */
+  slot: number;
+}
+
+/** Footprint of one copy in the sheet frame, for picking (T155). */
+export interface SlotOutline {
+  ring: number[];
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
 }
 
 export interface ShapeGroup {
@@ -45,8 +56,14 @@ export interface SheetScene {
   /** Grain of the waste (the sheet grain; 0 without one). */
   wasteGrain: number;
   waste: MeshData;
+  /** Per vertex of `merged`: the copy slot (lift and highlight, T155). */
+  mergedSlots: Float32Array | null;
   /** Edge lines of every part in the sheet frame (one draw call). */
   edges: Float32Array;
+  /** Per edge vertex: the copy slot. */
+  edgeSlots: Float32Array;
+  /** Outer outline of every copy, by slot. */
+  outlines: SlotOutline[];
   parts: number;
 }
 
@@ -97,6 +114,7 @@ export function buildSheetScene(project: Project, sheet: number): SheetScene {
       partId: pl.partId,
       transform: placementTransform(part, pl),
       grain: effectiveGrain(part, pl.rot, defaultSheet(project).grain),
+      slot: count - 1,
     });
     outlines.push(flatten(placedOutline(part, pl)));
   }
@@ -104,17 +122,24 @@ export function buildSheetScene(project: Project, sheet: number): SheetScene {
   const singles: ShapeGroup[] = [];
   for (const g of groups.values()) (g.instances.length > 1 ? instanced : singles).push(g);
   const edges: number[] = [];
+  const edgeSlots: number[] = [];
   for (const g of groups.values())
-    for (const inst of g.instances) bakeEdges(g.mesh.edges, inst.transform, edges);
+    for (const inst of g.instances) {
+      bakeEdges(g.mesh.edges, inst.transform, edges);
+      while (edgeSlots.length < edges.length / 3) edgeSlots.push(inst.slot);
+    }
   const merged = singles.length > 0 ? mergeBaked(singles) : null;
   return {
     instanced,
     merged: merged?.mesh ?? null,
     mergedGrain: merged?.grain ?? null,
+    mergedSlots: merged?.slots ?? null,
     wasteGrain: defaultSheet(project).grain ?? 0,
     mergedRefs: singles.map((g) => g.instances[0]).filter((r): r is InstanceRef => !!r),
     waste: wasteMesh(sheetSizeOf(project, sheet), T, outlines),
     edges: new Float32Array(edges),
+    edgeSlots: new Float32Array(edgeSlots),
+    outlines: outlines.map(slotOutline),
     parts: count,
   };
 }
@@ -122,6 +147,49 @@ export function buildSheetScene(project: Project, sheet: number): SheetScene {
 /** Draw calls of the part layer: instanced shapes + merged + waste + edges. */
 export function partDrawCalls(scene: SheetScene): number {
   return scene.instanced.length + (scene.merged ? 1 : 0) + 1 + (scene.edges.length > 0 ? 1 : 0);
+}
+
+function slotOutline(ring: number[]): SlotOutline {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i + 1 < ring.length; i += 2) {
+    const x = ring[i] ?? 0;
+    const y = ring[i + 1] ?? 0;
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+  return { ring, minX, minY, maxX, maxY };
+}
+
+/**
+ * Slot of the copy under the sheet-frame point (x, y), or -1. Picking runs on the 2D outlines
+ * (bbox, then even-odd test), so hovering 300 parts never ray-casts the merged mesh. The last
+ * copy wins on (invalid) overlaps, like the 2D view that draws it on top.
+ */
+export function pickSlot(outlines: readonly SlotOutline[], x: number, y: number): number {
+  for (let s = outlines.length - 1; s >= 0; s--) {
+    const o = outlines[s];
+    if (!o || x < o.minX || x > o.maxX || y < o.minY || y > o.maxY) continue;
+    if (insideRing(o.ring, x, y)) return s;
+  }
+  return -1;
+}
+
+function insideRing(r: readonly number[], x: number, y: number): boolean {
+  let inside = false;
+  const n = r.length / 2;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = r[2 * i] ?? 0;
+    const yi = r[2 * i + 1] ?? 0;
+    const xj = r[2 * j] ?? 0;
+    const yj = r[2 * j + 1] ?? 0;
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
 }
 
 function bakeEdges(src: Float32Array, t: PlacementTransform, out: number[]) {
@@ -132,7 +200,11 @@ function bakeEdges(src: Float32Array, t: PlacementTransform, out: number[]) {
 }
 
 /** Bakes single-copy shapes into one mesh in the sheet frame. */
-function mergeBaked(groups: ShapeGroup[]): { mesh: MeshData; grain: Float32Array } {
+function mergeBaked(groups: ShapeGroup[]): {
+  mesh: MeshData;
+  grain: Float32Array;
+  slots: Float32Array;
+} {
   let nv = 0;
   let ni = 0;
   for (const g of groups) {
@@ -143,6 +215,7 @@ function mergeBaked(groups: ShapeGroup[]): { mesh: MeshData; grain: Float32Array
   const normals = new Float32Array(nv);
   const bands = new Float32Array(nv / 3);
   const grain = new Float32Array(nv / 3);
+  const slots = new Float32Array(nv / 3);
   const indices = new Uint32Array(ni);
   let pv = 0;
   let pi = 0;
@@ -154,6 +227,7 @@ function mergeBaked(groups: ShapeGroup[]): { mesh: MeshData; grain: Float32Array
     const t = inst.transform;
     bands.set(g.mesh.bands, pv / 3);
     grain.fill(inst.grain, pv / 3, pv / 3 + g.mesh.bands.length);
+    slots.fill(inst.slot, pv / 3, pv / 3 + g.mesh.bands.length);
     const { positions: P, normals: N, indices: I } = g.mesh;
     const r = (t.rot * Math.PI) / 180;
     const c = Math.cos(r);
@@ -188,5 +262,6 @@ function mergeBaked(groups: ShapeGroup[]): { mesh: MeshData; grain: Float32Array
       throughOpenings,
     },
     grain,
+    slots,
   };
 }

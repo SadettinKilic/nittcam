@@ -7,10 +7,21 @@
  * the 2D view (via `onFallback`) when the scene crashes or WebGL is lost.
  */
 import { Button, IconButton, Skeleton, Tooltip, cn } from '@nittcam/ui';
-import { Gauge, RotateCcw } from 'lucide-react';
-import type { Project } from '@nittcam/core';
+import { EyeOff, Gauge, Move, RotateCcw, Undo2, X } from 'lucide-react';
+import { sheetSizeOf, type Project } from '@nittcam/core';
 import dynamic from 'next/dynamic';
-import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
+import {
+  Component,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ErrorInfo,
+  type ReactNode,
+} from 'react';
+import { sizeText } from '../../lib/canvas-labels';
+import { drawnParts, type DrawnPart } from '../layout-view/model';
+import { clampOffset, explodeMax } from '../../lib/preview3d/interaction';
 import { onThemeChange, readTokenColors } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
@@ -25,7 +36,7 @@ import {
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
 import { useMediaQuery } from '../../lib/use-media-query';
-import type { CameraCommand, SceneColors } from './scene';
+import type { CameraCommand, SceneColors, SceneInteraction } from './scene';
 
 type Text = Messages['layout']['preview3d'];
 
@@ -47,6 +58,7 @@ const TOKENS: Record<keyof FlatColors, string> = {
   band: '--color-mat-band',
   simTool: '--color-sim-tool',
   simRapid: '--color-sim-rapid',
+  highlight: '--color-accent',
 };
 
 function readColors(): SceneColors {
@@ -83,6 +95,10 @@ export interface Preview3DProps {
   /** The scene could not run (crash, lost context): the owner shows the 2D view. */
   onFallback: () => void;
   partCount: number;
+  /** Per-slot extra lift in mm (cutting playback, T157). */
+  lifts?: ArrayLike<number> | null;
+  /** Extra overlay content inside the scene's host (playback controls, banner; T157). */
+  children?: ReactNode;
 }
 
 export function Preview3D({
@@ -94,6 +110,8 @@ export function Preview3D({
   onPreset,
   onFallback,
   partCount,
+  lifts,
+  children,
 }: Preview3DProps) {
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)', false);
   // Opened by a click (never server-rendered), so the tokens can be read on the first render.
@@ -112,6 +130,39 @@ export function Preview3D({
   }
 
   useEffect(() => onThemeChange(() => setColors(readColors())), []);
+
+  // T155: view-only interaction; nothing here is written to the project.
+  const [moveSheet, setMoveSheet] = useState(false);
+  const [offset, setOffset] = useState<readonly [number, number]>([0, 0]);
+  const [hideWaste, setHideWaste] = useState(false);
+  const [explode, setExplode] = useState(0);
+  const [selected, setSelected] = useState(-1);
+  const copies = useMemo(() => drawnParts(project, sheet), [project, sheet]);
+  // A new sheet (or a new layout) starts at rest (state reset during render, no effect).
+  const [restFor, setRestFor] = useState({ sheet, layout: project.layout });
+  if (restFor.sheet !== sheet || restFor.layout !== project.layout) {
+    setRestFor({ sheet, layout: project.layout });
+    setSelected(-1);
+    setOffset([0, 0]);
+  }
+  const sheetSize = sheetSizeOf(project, sheet);
+  const lift = (explode / 100) * explodeMax(project.stock.thickness);
+  const interaction: SceneInteraction = {
+    explode: lift,
+    hideWaste,
+    moveSheet,
+    offset,
+    onOffset: (o) => setOffset(clampOffset(o, sheetSize)),
+    selected,
+    onSelect: setSelected,
+    onHover: (slot) => {
+      if (host.current) host.current.dataset.hover = String(slot);
+    },
+    lifts: lifts ?? null,
+  };
+  const moved = offset[0] !== 0 || offset[1] !== 0;
+  const picked = selected >= 0 ? copies[selected] : undefined;
+  const active = 'bg-accent-subtle text-accent-text hover:text-accent-text';
 
   // Camera reports go straight to the DOM (no React render per frame).
   const onCamera = (viewInverse: ArrayLike<number>, pose: CameraPose) => {
@@ -143,6 +194,10 @@ export function Preview3D({
       data-reduced-motion={reduced ? 'true' : 'false'}
       data-simple={simple ? 'true' : 'false'}
       data-material={materialLook(project.stock.material)}
+      data-offset={`${offset[0]},${offset[1]}`}
+      data-selected={picked?.key ?? ''}
+      data-explode={Math.round(lift)}
+      data-hide-waste={hideWaste ? 'true' : 'false'}
       role="application"
       aria-label={fill(t.canvasLabel, { n: sheet + 1, count: partCount })}
       tabIndex={0}
@@ -165,12 +220,15 @@ export function Preview3D({
             command={command}
             onCamera={onCamera}
             onStats={onStats}
+            interaction={interaction}
           />
         </SceneBoundary>
       ) : (
         <Loading />
       )}
       <ViewCube t={t} cubeRef={cube} onPreset={onPreset} />
+      {picked ? <InfoCard t={t} part={picked} onClose={() => setSelected(-1)} /> : null}
+      {children}
       {/* Presets inside the 3D view (bottom right, where the 2D read-out sits), so the shared
           tab row of the canvas keeps its room (T249). */}
       <div
@@ -236,8 +294,113 @@ export function Preview3D({
             <span className="hidden @md:inline">{t.simple}</span>
           </Button>
         </Tooltip>
+        <div
+          role="group"
+          aria-label={t.toolsLabel}
+          data-testid="preview3d-tools"
+          className="pointer-events-auto flex max-w-[calc(100cqw-1rem)] flex-wrap items-center gap-1 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm"
+        >
+          <Tooltip content={t.moveSheetTip}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={cn('h-7 px-2', moveSheet && active)}
+              aria-pressed={moveSheet}
+              aria-label={t.moveSheet}
+              data-testid="preview3d-move"
+              onClick={() => setMoveSheet(!moveSheet)}
+            >
+              <Move aria-hidden />
+              <span className="hidden @lg:inline">{t.moveSheet}</span>
+            </Button>
+          </Tooltip>
+          {moved ? (
+            <Tooltip content={t.snapBackTip}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
+                data-testid="preview3d-snap-back"
+                onClick={() => setOffset([0, 0])}
+              >
+                <Undo2 aria-hidden />
+                {t.snapBack}
+              </Button>
+            </Tooltip>
+          ) : null}
+          <Tooltip content={t.hideWaste}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={cn('h-7 px-2', hideWaste && active)}
+              aria-pressed={hideWaste}
+              aria-label={t.hideWaste}
+              data-testid="preview3d-hide-waste"
+              onClick={() => setHideWaste(!hideWaste)}
+            >
+              <EyeOff aria-hidden />
+              <span className="hidden @lg:inline">{t.hideWaste}</span>
+            </Button>
+          </Tooltip>
+          <label
+            className="flex items-center gap-1.5 px-1.5 text-xs text-fg-muted"
+            title={t.explodeTip}
+          >
+            <span className="hidden @md:inline">{t.explode}</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={explode}
+              onChange={(e) => setExplode(Number(e.target.value))}
+              aria-label={t.explode}
+              aria-valuetext={`${Math.round(lift)} mm`}
+              data-testid="preview3d-explode"
+              className="h-7 w-24 cursor-pointer accent-(--color-accent)"
+            />
+          </label>
+        </div>
       </div>
     </div>
+  );
+}
+
+/** Info card of the selected part (T155, spec §3.8): number as in 2D, name, size, grain. */
+function InfoCard({ t, part, onClose }: { t: Text; part: DrawnPart; onClose: () => void }) {
+  const i = t.info;
+  const title = fill(i.title, { label: part.label });
+  return (
+    <section
+      aria-label={title}
+      data-testid="preview3d-info"
+      className="absolute top-16 left-3 z-10 w-56 rounded-lg border border-border bg-surface/95 p-3 text-sm shadow-md backdrop-blur-sm"
+    >
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <h3 className="font-semibold text-fg" data-testid="preview3d-info-label">
+          {title}
+        </h3>
+        <IconButton
+          size="sm"
+          variant="ghost"
+          className="-mt-1 -mr-1 size-6"
+          aria-label={i.close}
+          onClick={onClose}
+        >
+          <X aria-hidden />
+        </IconButton>
+      </div>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+        <dt className="text-fg-muted">{i.name}</dt>
+        <dd className="truncate text-fg">{part.name.trim() || i.unnamed}</dd>
+        <dt className="text-fg-muted">{i.size}</dt>
+        <dd className="font-mono text-fg tabular-nums">{sizeText(part.w, part.h)}</dd>
+        <dt className="text-fg-muted">{i.grain}</dt>
+        <dd className="text-fg">
+          {part.grainAngle === null ? i.grainFree : `${Math.round(part.grainAngle)}°`}
+        </dd>
+      </dl>
+    </section>
   );
 }
 

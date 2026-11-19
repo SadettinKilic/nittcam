@@ -25,6 +25,7 @@ import { DrawingBoard } from '../editor/drawing-board';
 import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
 import { LayoutStep } from './layout-step';
+import { runLeaveTransition } from '../../lib/preview3d/leave';
 import { tableSpecOf } from '../../lib/preview3d/stage';
 import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
 import { IssuesOkChip } from './issues-ok-chip';
@@ -1103,7 +1104,12 @@ function WizardSession({
           {nextKey ? (
             <Button
               data-testid="wizard-next"
-              onClick={() => go(nextKey)}
+              onClick={() => {
+                // T155: with the 3D view open the camera first eases to the top view (§3.6).
+                const wait = runLeaveTransition();
+                if (wait > 0) window.setTimeout(() => go(nextKey), wait);
+                else go(nextKey);
+              }}
               title={fill(t.steps.nextStep, { name: t.steps[nextKey] })}
             >
               {t.next}

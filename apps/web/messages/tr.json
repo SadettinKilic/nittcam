@@ -926,7 +926,24 @@
       "simpleAuto": "Görüntü yavaş kaldığı için basit moda geçildi. Düğmeyle geri açabilirsiniz.",
       "view2dTip": "2D görünüm",
       "view3dTip": "3D önizleme",
-      "presetsLabel": "Hazır görünümler"
+      "presetsLabel": "Hazır görünümler",
+      "toolsLabel": "3D araçları",
+      "moveSheet": "Plakayı taşı",
+      "moveSheetTip": "Plakayı tabla üzerinde sürükleyin. Yalnızca görünümdür: dizilim ve makine ofseti değişmez.",
+      "snapBack": "Yerine al",
+      "snapBackTip": "Plakayı tabladaki yerine geri koy",
+      "explode": "Ayır/kaldır",
+      "explodeTip": "Parçaları plakadan yukarı kaldırır",
+      "hideWaste": "Fireyi gizle",
+      "info": {
+        "title": "Parça {label}",
+        "name": "Ad",
+        "size": "Ölçü",
+        "grain": "Damar",
+        "grainFree": "Serbest",
+        "unnamed": "(adsız)",
+        "close": "Bilgi kartını kapat"
+      }
     }
   },
   "simulation": {
