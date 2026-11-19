@@ -26,6 +26,9 @@ import {
 import { NEW_PROJECT_HREF } from '../../lib/shell-nav';
 import {
   OPEN_SHORTCUTS_EVENT,
+  SHORTCUT_GROUPS,
+  currentPageGroup,
+  type ShortcutGroup,
   SHORTCUTS,
   createShortcutMatcher,
   isPageClaimedKey,
@@ -65,6 +68,8 @@ export function AppShell({ t, company, children }: AppShellProps) {
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  // T136: a page's own sheet (the board's) instead of the full list; null = every group.
+  const [helpGroup, setHelpGroup] = useState<ShortcutGroup | null>(null);
   // Overlays open from state (no Radix Trigger): give focus back to whoever opened them.
   const drawerFocus = useReturnFocus();
   const paletteFocus = useReturnFocus();
@@ -86,6 +91,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
       openHelp: () =>
         window.setTimeout(() => {
           rememberHelp();
+          setHelpGroup(null);
           setHelpOpen(true);
         }, 0),
     }),
@@ -94,8 +100,10 @@ export function AppShell({ t, company, children }: AppShellProps) {
 
   // Pages open the help too (the board status bar "?", T242).
   useEffect(() => {
-    const open = () => {
+    const open = (e: Event) => {
+      const detail = e instanceof CustomEvent ? (e.detail as unknown) : null;
       rememberHelp();
+      setHelpGroup(SHORTCUT_GROUPS.find((g) => g === detail) ?? null);
       setHelpOpen(true);
     };
     window.addEventListener(OPEN_SHORTCUTS_EVENT, open);
@@ -129,6 +137,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
           break;
         case 'help':
           rememberHelp();
+          setHelpGroup(currentPageGroup());
           setHelpOpen(true);
           break;
         case 'toggleTheme':
@@ -243,6 +252,8 @@ export function AppShell({ t, company, children }: AppShellProps) {
         <ShortcutsDialog
           open={helpOpen}
           onOpenChange={setHelpOpen}
+          group={helpGroup}
+          onShowAll={() => setHelpGroup(null)}
           t={t.shortcuts}
           onCloseAutoFocus={helpFocus.onCloseAutoFocus}
         />
