@@ -21,6 +21,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | Fable review #2 follow-ups | T240–T247 (8) | B10a (T240–T243) + riders (T244–T247) | board usable on a phone, canvas gets the space, one tool-state language (D-039) |
 | Fable review #3 follow-ups | T248–T254 (7) | B8a (T248–T251) + riders (T252–T254) | phone cut list and simulation usable, one inspector pattern, download is the last step's primary action, canvas has a material tone (D-040) |
 | CTO review #4 follow-ups | T257–T263 (7) | B11a (T257–T260) + riders (T261–T263) | the default path cuts out of the box, blocking errors are caught at step 1, the cabinet generator adds only parts the stock can make, laptop widths keep the canvas (D-045) |
+| CTO review #5 must-fixes | T264–T266 (3) | B12a | "Kesim ayarı ekle" returns to the same project, a prefilled parameter set is never saved blind, corner tools fit the properties panel (D-047: everything else went to the polish queue) |
 | M3 Kesim listesi, malzeme, damar kadranı | T112–T123 (12) | B5–B8 | free-angle grain respected from cut list to G-code; cut list editable without Excel |
 | M4 Çizim tahtası I: editör | T124–T137 (14) | B9–B13 | a drawn freeform part with fillets is nested and gives checked G-code |
 | M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
@@ -33,13 +34,15 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
 | M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
 
-**Before the field test: 124 tasks in 36 batches** (+ 7 from CTO review #4, `docs/reviews/2026-11-19-cto-design-review-4.md`: T257–T263, one new batch B11a; T255 and T256 were added on 2026-11-19 and are not in this count; before that: 117 tasks in 35 batches = 94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11; + 7 from review #3, `docs/reviews/2026-11-19-fable-design-review-3.md`: T248–T254). The "~90 % / field-test ready" line is the end of M9 (T193).
+**Before the field test: 127 tasks in 37 batches** (+ 3 from CTO review #5, `docs/reviews/2026-11-19-cto-design-review-5.md`: T264–T266, one new batch B12a; before that 124 tasks in 36 batches: + 7 from CTO review #4, `docs/reviews/2026-11-19-cto-design-review-4.md`: T257–T263, one new batch B11a; T255 and T256 were added on 2026-11-19 and are not in this count; before that: 117 tasks in 35 batches = 94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11; + 7 from review #3, `docs/reviews/2026-11-19-fable-design-review-3.md`: T248–T254). The "~90 % / field-test ready" line is the end of M9 (T193).
 
 **Order note (2026-11-18, D-035 amendment):** after B4b come B9–B10 (drawing board foundation, T124–T129), then **B10a** (Fable review #2 must-fixes, T240–T243), then M3 B5–B8, then B11+.
 
 **Order note (2026-11-19, Fable review #3):** **B8a** (T248–T251) runs right after B8 and before B11. T252 and T253 ride with B8, T254 rides with B11. No other batch moves.
 
 **Order note (2026-11-19, CTO review #4):** **B11a** (T257–T260) runs right after B11 and before B12. T261 rides with B12, T262 and T263 ride with B13. No other batch moves.
+
+**Order note (2026-11-19, CTO review #5, D-047):** **B12a** (T264–T266) runs right after B12 and before B13. Everything else from that review is in "Polish queue (M9; D-047)". No other batch moves.
 
 ---
 
@@ -731,6 +734,35 @@ Acceptance:
 - [ ] drawing arranges parts in a non-overlapping drawing area (drawing positions are not nesting positions)
 Tester focus: e2e create in grid → visible in editor and back; freeform W/H not editable in grid.
 
+### Batch B12a: T264–T266 (CTO review #5 must-fixes; runs right after B12, before B13)
+
+Source: `docs/reviews/2026-11-19-cto-design-review-5.md`. Rules: D-047 (max 3 must-fix tasks, each at most half a day), D-045, D-046. Desktop-first (D-043): checks at 1440 and 1024; 390 is a smoke check.
+
+### T264 "Kesim ayarı ekle" always returns to the same project   [status: todo]
+Spec: §3.7 · Depends: T258 · Decision: D-045
+Acceptance:
+- [ ] on a new project whose first edit is the material, clicking "Kesim ayarı ekle" at any moment (also within 1 s, before the first autosave has finished) opens the machine form with a return path to that project's id; "Projeye dön" lands on the same project with the same name, material and thickness (today: `donus=/projeler/yeni`, the return opens a new empty MDF project that says "Sorun yok" and the first project is orphaned)
+- [ ] the address bar on the machine form is the `/makineler?...` URL (today the late autosave rewrites it to the project URL while the form is shown)
+- [ ] no extra project is created by the round trip (project count +1 at most)
+Tester focus: e2e with the click right after the pick (no wait) and after 4 s; project id, name and material before and after; Projeler count; the existing b11a spec picks the material first and must now assert the material after the return.
+
+### T265 A parameter set added by the fix flow is never saved blind   [status: todo]
+Spec: §2.4, §3.7 · Depends: T258, T257 · Decision: D-046, D-045
+Acceptance:
+- [ ] the row that "Kesim ayarı ekle" prefills (feed 5.000, rpm 18.000, step-down 6, first tool; the form's generic starting values) carries a visible note under it, in the same place and style as the copied-set note: "Başlangıç değerleri; bu malzeme için doğrulanmadı. Kendi makinenizde doğrulayın." The mark is stored with the set and is dropped when the user edits a value of that row (same behaviour as `copiedFrom`)
+- [ ] the prefilled step-down is never larger than the sheet thickness (Akrilik 5 mm starts at 5, not 6)
+- [ ] the first value field of that row has focus and the row is scrolled into view with the "Paso" and "Takım no" columns visible at 1440 (today they are behind the table's horizontal scroll)
+- [ ] golden G-code files unchanged; the seeded sets and D-046 notes unchanged
+Tester focus: Akrilik 5, PVC and Masif ahşap through the fix flow; the note survives save and reload and disappears after an edit; step-down clamp; golden files byte-identical.
+
+### T266 Corner tools fit the properties panel and stay reachable   [status: todo]
+Spec: §4.4, §3.6 · Depends: T130, T131, T132
+Acceptance:
+- [ ] the properties panel never scrolls sideways: content width = panel width at 1440 and 1024 (today 294 px in a 264 px panel; the "Yuvarlama yarıçapı" field ends at x = 1446 on a 1440 px screen and at x = 1030 on 1024, its unit is off screen)
+- [ ] when a corner is picked (on the canvas or in the list) the "Köşe" group is scrolled into view, so radius, "Köşeyi yuvarla" and "Taşma aç" are visible without scrolling at 1440 × 900 and 1024 × 768 (today the group starts at y = 863 under the footer at 1440 and at y = 752 at 1024)
+- [ ] a toast never covers the "Köşe" group fields while a corner is picked (today "İç köşeye 4 mm yarıçaplı taşma açıldı." sits on X / Y / radius)
+Tester focus: scrollWidth = clientWidth of the panel scroller at both widths; bounding boxes of the radius field and both buttons after a canvas corner click; toast box against the group box; axe.
+
 ### Batch B13: T136–T137 (editor polish and tests)
 
 Riders in this batch: T262 and T263 with T137 (CTO review #4; text in "CTO review #4 riders" in the M3 section).
@@ -1126,10 +1158,29 @@ Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
 - "Dolap ekle" dialog at 390: the "Çift kapak" radio label runs under the "Kapak boşluğu" field; labels wrap to two and three lines. Stack the door row and the gap field.
 - Ayarlar → Malzemeler cards at 390: the "Kesim ayarı" chip is cut after the machine name ("Örnek router (Mach3):…"); the status itself is not readable (T257 shortens the chip text; check it here).
 - Smoke result at 390 × 844: no page-level horizontal scroll on home, Malzemeler, steps 1–5 and the cabinet dialog; "İleri" / "İndir" reachable on every step.
+- CTO review #5 (2026-11-19) smoke at 390 × 844: no page-level horizontal scroll on home, step 1, the board, the cut list, the cabinet dialog, Malzemeler and the machine form; "İleri" reachable. For the pass: the machine form's "Malzeme parametreleri" table needs a card layout on phones (7 columns behind a horizontal scroll).
 
 ## Polish queue (M9; D-047)
 
 Non-blocking review findings parked here by the PO (review ref + one line each). The M9 polish phase turns them into tasks.
+
+From CTO review #5 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-5.md`):
+- Board: no way to add a corner to a shape ("kenarı böl / köşe ekle"); a rectangle converted to freeform keeps 4 corners, so an L or a notch cannot be made from it and must be redrawn with the line tool. Best candidate to pull forward with T137 (`docs/reviews/2026-11-19-cto-5/board-properties-1440-light.png`)
+- Board: no "seçime yakınlaş"; the board opens on the whole 2.800 × 2.070 sheet (%18), a 200 mm part is drawn 35 px wide and "Tümünü göster" keeps the sheet in frame (`docs/reviews/2026-11-19-cto-5/board-line-draw-1440-light.png`)
+- Board: corner X / Y are board coordinates with decimals (604,56 / 402,34); offer part-relative coordinates or snap the first click to whole mm (`docs/reviews/2026-11-19-cto-5/board-properties-1440-light.png`)
+- Board: corner numbers shift after a fillet (inner corner "Köşe 4" became "Köşe 5"); show the number of the picked corner on the canvas or keep numbering stable (`docs/reviews/2026-11-19-cto-5/board-dogbone-toast-1440-light.png`)
+- Board: line tool needs an angle typed for every edge (5 of 12 typed values on an L); take the direction from arrow keys or the mouse when only a length is typed (`docs/reviews/2026-11-19-cto-5/board-line-draw-1440-light.png`)
+- Board: editing an edge length on a right-angled shape skews the neighbour edge (185 → 205 made the arm end 44,72 mm at 116,57°); offer "keep right angles" for orthogonal shapes (spec §4.4 rule, owner decision) (review text, walkthrough 2 item 8)
+- Board: the part label ("1 Parça 1 / 200 × 150") sits at the bounding-box centre, outside an L-shaped part (`docs/reviews/2026-11-19-cto-5/board-properties-1440-light.png`)
+- Board at 1024: the tool rail covers the left edge of the drawing after a zoom; keep a canvas inset for the rail (`docs/reviews/2026-11-19-cto-5/board-properties-1024-light.png`)
+- Board: a selected part loses its wood tone (pale blue fill); keep the tone and show selection with the outline only (`docs/reviews/2026-11-19-cto-5/board-properties-1440-light.png`, `board-properties-1440-dark.png`)
+- Dizilim / Simülasyon: a small part on a full sheet is 30 px; frame the used area first, the sheet on "Tümünü göster" (review text, walkthrough 2 item 9)
+- Machine form: "Malzeme parametreleri" table is 1.095 px wide in an 828 px (1440) / 476 px (1024) area; "Paso", "Takım no" and "Sil" are behind a horizontal scroll (`docs/reviews/2026-11-19-cto-5/machine-params-1440-light.png`, `machine-params-1024-light.png`)
+- Machine form opened from "Kesim ayarı ekle": the section nav highlights "Takımlar" instead of "Malzeme parametreleri" and the breadcrumb reads "Projeler › Proje" (`docs/reviews/2026-11-19-cto-5/machine-params-1440-light.png`)
+- Machine form: the copied-set note wraps to four lines in the 140 px material column; let it span the row (`docs/reviews/2026-11-19-cto-5/machine-params-1440-light.png`)
+- Step 1: "Kütüphanedeki kalınlıklar: 18 mm [18]" says nothing when the library has one thickness and it is already selected; show the row only when there is a choice (`docs/reviews/2026-11-19-cto-5/wizard-step1-default-1440-light.png`)
+- Step 1: with the red "kesim ayarı yok" box open, "Plaka ölçüsü" drops under the footer at 1440 × 900; tighten the box or the spacing (`docs/reviews/2026-11-19-cto-5/wizard-step1-no-params-1440-light.png`)
+- Cut list: the opened "Uyarılar" panel covers the band / Not / Grup cells and row menus of the first rows at 1440; clicking an issue should scroll to and focus its row, then the panel can close (`docs/reviews/2026-11-19-cto-5/cutlist-issues-1440-light.png`)
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
