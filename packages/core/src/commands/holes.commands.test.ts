@@ -154,6 +154,20 @@ describe('hole commands (T138)', () => {
       ]),
     );
   });
+
+  it('validation: a blind depth leaving less than 1 mm is a warning (T140)', () => {
+    const p1 = run(load(), 'addHole', { id: 'side', hole: cup });
+    const near = structuredClone(p1);
+    const thickness = near.stock.thickness;
+    part(near).holes = [
+      { ...cup, depth: thickness - 0.5 },
+      { ...cup, id: 'ok', cy: 300, depth: thickness - 1 },
+    ];
+    const issues = validateProject(near).filter((i) => i.code === 'HOLE_DEPTH_NEAR_THICKNESS');
+    expect(issues.map((i) => [i.severity, i.path])).toEqual([
+      ['warning', 'parts[0].holes[0].depth'],
+    ]);
+  });
 });
 
 describe('hole geometry (T138)', () => {

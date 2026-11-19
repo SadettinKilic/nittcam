@@ -45,6 +45,22 @@ export const GOLDEN_HOLE_FIXTURES = [
       { id: 'h3', type: 'through', d: 20, cx: 340, cy: 240, tool: 1 },
     ],
   },
+  {
+    id: 'holes-blind',
+    name: 'Kör delik ve kanallar',
+    revision: 1,
+    /**
+     * Same panel and copies (T140): Ø35 × 12.5 hinge cup (helical entry + cleared rings), Ø8 × 10
+     * blind drill (pecks), Ø60 groove 8 wide × 3 (one ring = tool width), Ø80 groove 14 wide × 4
+     * (rings across the width). All T2.
+     */
+    holes: [
+      { id: 'h1', type: 'pocket', d: 35, depth: 12.5, cx: 100, cy: 150, tool: 2 },
+      { id: 'h2', type: 'pocket', d: 8, depth: 10, cx: 60, cy: 60, tool: 2 },
+      { id: 'h3', type: 'groove', d: 60, grooveWidth: 8, depth: 3, cx: 230, cy: 150, tool: 2 },
+      { id: 'h4', type: 'groove', d: 80, grooveWidth: 14, depth: 4, cx: 330, cy: 200, tool: 2 },
+    ],
+  },
 ] as const;
 
 /** The panel project of a hole fixture: two copies, the second turned 90°. */

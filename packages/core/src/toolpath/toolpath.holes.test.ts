@@ -166,3 +166,103 @@ describe('T139 property: any through hole is safe and stays inside its wall', ()
     );
   });
 });
+
+describe('T140 blind pockets and ring grooves', () => {
+  const feedsOf = (op: Operation) => operationMoves(op).filter((m) => m.kind !== 'rapid');
+
+  it('blind pocket: nothing below the depth, the wall at d/2 (tool edge) ± EPS', () => {
+    const r = run([{ id: 'h', type: 'pocket', d: 35, depth: 12.5, cx: 100, cy: 150, tool: 2 }]);
+    expect(r.errors).toEqual([]);
+    for (const op of holeOps(r)) {
+      expect(op.kind).toBe('pocket');
+      const c = op.copy === 0 ? { x: 200, y: 250 } : { x: 850, y: 200 };
+      const f = feedsOf(op);
+      expect(Math.min(...f.map((m) => m.z))).toBeCloseTo(-12.5, 9);
+      for (const m of f) expect(m.z).toBeGreaterThanOrEqual(-12.5 - EPS);
+      const wall = Math.max(...f.map((m) => Math.hypot(m.x - c.x, m.y - c.y))) + 4;
+      expect(Math.abs(wall - 35 / 2)).toBeLessThanOrEqual(EPS);
+    }
+    expect(toolpathSafetyViolations(r.toolpath)).toEqual([]);
+  });
+
+  it('blind hole as wide as the tool: pecks down to the depth only', () => {
+    const r = run([{ id: 'h', type: 'pocket', d: 8, depth: 10, cx: 60, cy: 60, tool: 2 }]);
+    const op = holeOps(r)[0] as Operation;
+    expect(op.kind).toBe('drill');
+    expect(op.passDepths.at(-1)).toBeCloseTo(-10, 9);
+    expect(Math.min(...feedsOf(op).map((m) => m.z))).toBeCloseTo(-10, 9);
+  });
+
+  it('groove: one ring when the width equals the tool, rings across a wider groove', () => {
+    const one = run([
+      { id: 'g', type: 'groove', d: 60, grooveWidth: 8, depth: 3, cx: 230, cy: 150, tool: 2 },
+    ]);
+    const wide = run([
+      { id: 'g', type: 'groove', d: 80, grooveWidth: 14, depth: 4, cx: 330, cy: 200, tool: 2 },
+    ]);
+    for (const [r, inner, outer, c] of [
+      [one, 30, 30, { x: 330, y: 250 }],
+      [wide, 37, 43, { x: 430, y: 300 }],
+    ] as const) {
+      expect(r.errors).toEqual([]);
+      const op = holeOps(r).find((o) => o.copy === 0) as Operation;
+      expect(op.kind).toBe('groove');
+      const radii = feedsOf(op)
+        .filter((m) => m.z < 0)
+        .map((m) => Math.hypot(m.x - c.x, m.y - c.y));
+      expect(Math.min(...radii)).toBeCloseTo(inner, 9);
+      expect(Math.max(...radii)).toBeCloseTo(outer, 9);
+      expect(Math.min(...feedsOf(op).map((m) => m.z))).toBeCloseTo(r === one ? -3 : -4, 9);
+    }
+    expect(toolpathSafetyViolations(wide.toolpath)).toEqual([]);
+  });
+
+  it('refused: a groove narrower than the tool, a blind depth not below the thickness', () => {
+    expect(
+      codes(
+        run([
+          { id: 'g', type: 'groove', d: 60, grooveWidth: 6, depth: 3, cx: 230, cy: 150, tool: 2 },
+        ]),
+      ),
+    ).toEqual(['GROOVE_NARROWER_THAN_TOOL']);
+    expect(
+      codes(run([{ id: 'h', type: 'pocket', d: 35, depth: 18, cx: 100, cy: 150, tool: 2 }])),
+    ).toEqual(['HOLE_DEPTH_INVALID']);
+  });
+
+  it('property: any blind pocket or groove stays within its depth and its ring', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 80, max: 500 }).map((v) => v / 10),
+        fc.integer({ min: 5, max: 175 }).map((v) => v / 10),
+        fc.integer({ min: 0, max: 60 }).map((v) => v / 10),
+        fc.boolean(),
+        (d, depth, extra, groove) => {
+          const hole = groove
+            ? {
+                id: 'g',
+                type: 'groove',
+                d: d + 10,
+                grooveWidth: 8 + extra,
+                depth,
+                cx: 200,
+                cy: 150,
+                tool: 2,
+              }
+            : { id: 'h', type: 'pocket', d, depth, cx: 200, cy: 150, tool: 2 };
+          const r = run([hole]);
+          expect(r.errors).toEqual([]);
+          expect(toolpathSafetyViolations(r.toolpath)).toEqual([]);
+          const op = holeOps(r).find((o) => o.copy === 0) as Operation;
+          const outerEdge = groove ? (d + 10 + 8 + extra) / 2 : d / 2;
+          for (const m of feedsOf(op)) {
+            expect(m.z).toBeGreaterThanOrEqual(-depth - EPS);
+            expect(Math.hypot(m.x - 300, m.y - 250) + 4).toBeLessThanOrEqual(outerEdge + EPS);
+          }
+          expect(Math.min(...feedsOf(op).map((m) => m.z))).toBeCloseTo(-depth, 9);
+        },
+      ),
+      { numRuns: 60 },
+    );
+  });
+});

@@ -1409,6 +1409,7 @@
       "codes": {
         "PART_LARGER_THAN_SHEET": "Parça plakaya sığmıyor (kenar payı dahil).",
         "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Delik derinliği plaka kalınlığından az olmalı.",
+        "HOLE_DEPTH_NEAR_THICKNESS": "Cep derinliği kalınlığa çok yakın: altta 1 mm'den az malzeme kalıyor, delip geçebilir.",
         "TOOL_NOT_IN_PROFILE": "Seçilen takım bu makinede yok.",
         "HOLE_SMALLER_THAN_TOOL": "Delik, takımdan küçük.",
         "GROOVE_NARROWER_THAN_TOOL": "Kanal, takımdan dar.",

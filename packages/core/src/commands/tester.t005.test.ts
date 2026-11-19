@@ -211,11 +211,13 @@ describe('T005 tester: validation scenarios', () => {
     expect(stack.issues).toEqual([]);
   });
 
-  it('pocket depth == thickness is flagged; thickness - 0.1 is not', () => {
+  it('pocket depth == thickness is flagged; thickness - 0.1 only warns (T140 thin skin)', () => {
     const eq = load((j) => (j.parts[0].holes[0].depth = j.stock.thickness));
     expect(validateProject(eq).map((i) => i.code)).toEqual(['HOLE_DEPTH_NOT_BELOW_THICKNESS']);
     const below = load((j) => (j.parts[0].holes[0].depth = j.stock.thickness - 0.1));
-    expect(validateProject(below)).toEqual([]);
+    expect(validateProject(below).map((i) => [i.code, i.severity])).toEqual([
+      ['HOLE_DEPTH_NEAR_THICKNESS', 'warning'],
+    ]);
   });
 });
 

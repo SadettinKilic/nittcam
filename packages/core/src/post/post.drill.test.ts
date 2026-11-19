@@ -111,3 +111,26 @@ describe('reader: G81 expansion', () => {
     }
   });
 });
+
+describe('T140 blind pocket depth vs the Z reference', () => {
+  const BLIND = [{ id: 'h', type: 'pocket', d: 35, depth: 12.5, cx: 100, cy: 150, tool: 2 }];
+
+  it.each(['materialTop', 'table'] as const)('%s: deepest Z = the pocket bottom', (reference) => {
+    const profile = goldenProfile('generic');
+    profile.zZero = { ...profile.zZero, reference };
+    const project = holeFixtureProject(BLIND);
+    const tp = buildToolpath(project, profile);
+    expect(tp.errors).toEqual([]);
+    const res = run({ toolpath: tp.toolpath, profile, config: postConfig('generic') });
+    expect(res.errors).toEqual([]);
+    const text = res.files[0]?.content ?? '';
+    const read = readGcode(text);
+    expect(read.errors).toEqual([]);
+    const zOffset = reference === 'table' ? 18 : 0;
+    const pocketZ = read.moves
+      .filter((m) => m.type !== 'rapid')
+      .filter((m) => Math.hypot(m.to.x - 200, m.to.y - 250) < 20)
+      .map((m) => m.to.z);
+    expect(Math.min(...pocketZ)).toBeCloseTo(zOffset - 12.5, 3);
+  });
+});

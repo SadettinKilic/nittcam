@@ -19,6 +19,7 @@ export type ValidationSeverity = 'error' | 'warning';
 export type ValidationCode =
   | 'PART_LARGER_THAN_SHEET'
   | 'HOLE_DEPTH_NOT_BELOW_THICKNESS'
+  | 'HOLE_DEPTH_NEAR_THICKNESS'
   | 'TOOL_NOT_IN_PROFILE'
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
@@ -101,6 +102,9 @@ export const partLargerThanSheet: ValidationRule = (project) => {
   return issues;
 };
 
+/** Material a blind hole must leave under it before the "too close" warning, mm (T140). */
+export const HOLE_MIN_SKIN = 1;
+
 function isBlind(hole: Hole): hole is Extract<Hole, { depth: number }> {
   return hole.type === 'pocket' || hole.type === 'groove';
 }
@@ -108,14 +112,26 @@ function isBlind(hole: Hole): hole is Extract<Hole, { depth: number }> {
 /**
  * (b) Blind depth must be smaller than the stock thickness (spec §4.5 "Kör derinlik malzeme
  * kalınlığından küçük olmalı"). Applies to pockets and grooves, the two hole types with a depth.
- * The "too close" warning of §4.5 needs a threshold the spec does not give yet (open question).
+ * Too close (§4.5 "çok yakınsa uyarı", T140): less than HOLE_MIN_SKIN mm left under it is a warning.
  */
 export const holeDepthBelowThickness: ValidationRule = (project) => {
   const { thickness } = project.stock;
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     part.holes.forEach((hole, h) => {
-      if (!isBlind(hole) || hole.depth < thickness) return;
+      if (!isBlind(hole)) return;
+      if (hole.depth < thickness) {
+        // Blind but with less than HOLE_MIN_SKIN mm left: it may break through (T140).
+        if (thickness - hole.depth < HOLE_MIN_SKIN - EPS) {
+          issues.push({
+            code: 'HOLE_DEPTH_NEAR_THICKNESS',
+            severity: 'warning',
+            path: formatPath(['parts', i, 'holes', h, 'depth']),
+            message: `${hole.type} "${hole.id}" in part "${part.id}" leaves ${mm(thickness - hole.depth)} mm under it (less than ${HOLE_MIN_SKIN} mm of the ${thickness} mm stock)`,
+          });
+        }
+        return;
+      }
       issues.push({
         code: 'HOLE_DEPTH_NOT_BELOW_THICKNESS',
         severity: 'error',
