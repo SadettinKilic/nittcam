@@ -265,16 +265,34 @@ function materialsRepo(db: Db, companyId: string) {
       const rows = await db.delete(materials).where(own(id)).returning({ id: materials.id });
       return rows.length > 0;
     },
-    /** Inserts the default library when the company has no entry yet; returns the count added. */
+    /**
+     * Seeds the default library once per company (D-044): only when the company was never seeded
+     * and has no entry; the company row remembers it, so an emptied library stays empty. Returns
+     * the count added.
+     */
     async seedDefaults(): Promise<number> {
-      const existing = await db
-        .select({ id: materials.id })
-        .from(materials)
-        .where(eq(materials.companyId, companyId))
-        .limit(1);
-      if (existing.length > 0) return 0;
-      await db.insert(materials).values(DEFAULT_LIBRARY.map((m) => ({ ...m, companyId })));
-      return DEFAULT_LIBRARY.length;
+      return db.transaction(async (tx) => {
+        // Lock the company row: two first requests must not seed twice.
+        const company = await tx
+          .select({ seededAt: companiesTable.materialsSeededAt })
+          .from(companiesTable)
+          .where(eq(companiesTable.id, companyId))
+          .for('update');
+        if (!company[0] || company[0].seededAt) return 0;
+        const existing = await tx
+          .select({ id: materials.id })
+          .from(materials)
+          .where(eq(materials.companyId, companyId))
+          .limit(1);
+        if (existing.length === 0) {
+          await tx.insert(materials).values(DEFAULT_LIBRARY.map((m) => ({ ...m, companyId })));
+        }
+        await tx
+          .update(companiesTable)
+          .set({ materialsSeededAt: new Date() })
+          .where(eq(companiesTable.id, companyId));
+        return existing.length === 0 ? DEFAULT_LIBRARY.length : 0;
+      });
     },
   };
 }

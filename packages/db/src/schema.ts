@@ -86,6 +86,11 @@ export const companies = pgTable('companies', {
   plan: text('plan').notNull().default('trial'),
   /** Monthly AI quota in requests (§9.1 "AI kotası"). */
   aiQuotaMonthly: integer('ai_quota_monthly').notNull().default(0),
+  /**
+   * When the default material library was offered to this company (D-044): set once, so a
+   * company that deletes every entry does not get them back on the next server start.
+   */
+  materialsSeededAt: timestamp('materials_seeded_at', { withTimezone: true, mode: 'date' }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

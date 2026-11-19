@@ -32,6 +32,26 @@ describe('material library repository (T121)', () => {
     expect(await b.materials.list()).toEqual([]);
   });
 
+  it('never re-seeds a company that deleted every entry (D-044, server restart)', async () => {
+    const c = forCompany(handle.db, (await newCompany(handle, 'C')).id);
+    expect(await c.materials.seedDefaults()).toBe(DEFAULT_LIBRARY.length);
+    for (const m of await c.materials.list()) await c.materials.remove(m.id);
+    expect(await c.materials.list()).toEqual([]);
+    // A restart = a fresh scope on the same database.
+    const again = forCompany(handle.db, c.companyId);
+    expect(await again.materials.seedDefaults()).toBe(0);
+    expect(await again.materials.list()).toEqual([]);
+  });
+
+  it('a company that already has entries is marked seeded without getting defaults', async () => {
+    const d = forCompany(handle.db, (await newCompany(handle, 'D')).id);
+    await d.materials.create(entry);
+    expect(await d.materials.seedDefaults()).toBe(0);
+    await d.materials.remove((await d.materials.list())[0]?.id ?? '');
+    expect(await d.materials.seedDefaults()).toBe(0);
+    expect(await d.materials.list()).toEqual([]);
+  });
+
   it('creates, updates and removes an entry; values are normalised by core', async () => {
     const row = await a.materials.create(entry);
     expect(row.thicknesses).toEqual([12, 18]);
