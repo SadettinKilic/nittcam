@@ -73,7 +73,7 @@ function issue(
   severity: ToolpathSeverity,
   partId: string | null,
   message: string,
-  extra: { copy?: number; sheet?: number } = {},
+  extra: { copy?: number; sheet?: number; inner?: number } = {},
 ): ToolpathIssue {
   return { code, severity, partId, message, ...extra };
 }
@@ -407,7 +407,7 @@ function buildOuterOperation(
           isInner
             ? `${what}: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs; it would be cut free. Make the opening larger or clear it as a pocket.`
             : `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free.`,
-          where,
+          isInner ? { ...where, inner: ctx.inner as number } : where,
         ),
       );
     } else if (tabs.length === 0) {

@@ -68,7 +68,14 @@ export function turkish(code: string): string {
 /** Every issue of an `exportNc` run, with its stage and Turkish text (CHECK_FAILED copies left out). */
 export function violationsOf(r: ExportNcResult): ExportViolation[] {
   const out: ExportViolation[] = [];
+  const cutOuts = new Set<string>();
   for (const i of r.toolpathIssues) {
+    // T270: one line per cut-out (named by part and number in the UI), not one per copy.
+    if (i.inner !== undefined) {
+      const key = `${i.code}/${i.partId ?? ''}/${i.inner}`;
+      if (cutOuts.has(key)) continue;
+      cutOuts.add(key);
+    }
     out.push({
       stage: 'toolpath',
       rule: 'TOOLPATH',
@@ -76,6 +83,8 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
       severity: i.severity,
       message: turkish(i.code),
       ...(i.sheet !== undefined ? { sheet: i.sheet } : {}),
+      ...(i.partId !== null ? { partId: i.partId } : {}),
+      ...(i.inner !== undefined ? { inner: i.inner } : {}),
     });
   }
   for (const i of [...r.postErrors, ...r.postWarnings]) {
@@ -101,6 +110,16 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
     });
   }
   return out;
+}
+
+/** Part id and cut-out index of a `parts[i].inners[k]` validation path (T270). */
+function cutOutOf(
+  data: { parts: readonly { id: string }[] },
+  path: string,
+): { partId: string; inner: number } | undefined {
+  const m = /^parts\[(\d+)\]\.inners\[(\d+)\]/.exec(path);
+  const part = m ? data.parts[Number(m[1])] : undefined;
+  return m && part ? { partId: part.id, inner: Number(m[2]) } : undefined;
 }
 
 /** Sheet index of a `layout.sheets[s]...` validation path. */
@@ -199,6 +218,7 @@ export async function runExport(
         stage: 'toolpath',
         violations: blocking.map((i): ExportViolation => {
           const sheet = sheetOf(i.path);
+          const cutOut = cutOutOf(data, i.path);
           return {
             stage: 'toolpath',
             rule: EXPORT_BLOCKING_CODES.has(i.code) ? 'LAYOUT' : 'TOOLPATH',
@@ -206,6 +226,7 @@ export async function runExport(
             severity: 'error',
             message: turkish(i.code),
             ...(sheet !== undefined ? { sheet } : {}),
+            ...(cutOut ?? {}),
           };
         }),
       },

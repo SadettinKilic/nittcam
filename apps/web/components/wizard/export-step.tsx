@@ -91,6 +91,8 @@ export function ExportStep({
   states,
   project,
   machine,
+  notice,
+  onOpenPart,
   projectId,
   revision,
   saved,
@@ -102,6 +104,10 @@ export function ExportStep({
   states: States;
   project: Project;
   machine: SimMachine | null;
+  /** T269: the "Son sürüme geç" box when the machine has a newer profile version. */
+  notice?: React.ReactNode;
+  /** T270: opens a part on the drawing board (a blocked cut-out links there). */
+  onOpenPart?: (partId: string) => void;
   projectId: string | null;
   revision: number;
   /** False while changes wait for the autosave. */
@@ -319,7 +325,12 @@ export function ExportStep({
           <CircleAlert aria-hidden className="size-4 shrink-0" />
           {fill(t.failed, { count: errorCount(current.preview) })}
         </p>
-        <Violations t={t} violations={current.preview.violations} />
+        <Violations
+          t={t}
+          violations={current.preview.violations}
+          parts={project.parts}
+          onOpenPart={onOpenPart}
+        />
       </div>
     );
   }
@@ -335,6 +346,7 @@ export function ExportStep({
             {t.checks}
           </h2>
           {status}
+          {notice}
           {preview?.profile ? (
             <div className="flex flex-col gap-1 text-xs text-fg-muted" data-testid="export-profile">
               <p>
@@ -344,14 +356,6 @@ export function ExportStep({
                   state: states[preview.profile.verification],
                 })}
               </p>
-              {preview.profile.version < preview.profile.latestVersion ? (
-                <p className="text-warning-text" data-testid="export-profile-old">
-                  {fill(t.profileOld, {
-                    version: preview.profile.version,
-                    latest: preview.profile.latestVersion,
-                  })}
-                </p>
-              ) : null}
               {preview.post ? (
                 <p>{fill(t.post, { name: preview.post.name, version: preview.post.version })}</p>
               ) : null}
@@ -619,7 +623,23 @@ function ChecklistItem({
   );
 }
 
-function Violations({ t, violations }: { t: Text; violations: ExportViolation[] }) {
+function Violations({
+  t,
+  violations,
+  parts,
+  onOpenPart,
+}: {
+  t: Text;
+  violations: ExportViolation[];
+  parts: readonly { id: string; name: string }[];
+  onOpenPart?: ((partId: string) => void) | undefined;
+}) {
+  // T270: "Kapak · İç kesim 3" for a cut-out of a known part.
+  const place = (v: ExportViolation) => {
+    if (v.inner === undefined || v.partId === undefined) return null;
+    const name = parts.find((p) => p.id === v.partId)?.name;
+    return name ? fill(t.innerPlace, { name, n: v.inner + 1 }) : null;
+  };
   const errors = violations.filter((v) => v.severity === 'error');
   if (errors.length === 0) return null;
   return (
@@ -632,7 +652,25 @@ function Violations({ t, violations }: { t: Text; violations: ExportViolation[] 
             className="min-w-0 rounded-md border border-border-subtle bg-surface-subtle px-2.5 py-1.5 break-words"
           >
             <span className="font-medium text-danger-text">{ruleLabel(t.ruleLabels, v.rule)}</span>{' '}
+            {place(v) ? (
+              <span className="font-medium" data-testid="export-violation-place">
+                {place(v)}:{' '}
+              </span>
+            ) : null}
             {v.message}
+            {place(v) && v.partId !== undefined && onOpenPart ? (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  data-testid="export-violation-open-part"
+                  onClick={() => onOpenPart(v.partId as string)}
+                  className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {t.openPart}
+                </button>
+              </>
+            ) : null}
             {v.file && v.line ? (
               <span className="text-fg-muted">
                 {' '}

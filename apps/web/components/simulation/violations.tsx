@@ -15,6 +15,16 @@ export interface Finding {
   sheet?: number;
   /** 1-based G-code line; 0 or missing = the whole program. */
   line?: number;
+  /** The part concerned (toolpath issues). */
+  partId?: string;
+  /** Its inner contour (0-based), for an issue about a cut-out (T270). */
+  inner?: number;
+}
+
+/** Part names for the place of a cut-out issue, and the way to the drawing board (T270). */
+export interface PartLinks {
+  parts?: readonly { id: string; name: string }[];
+  onOpenPart?: ((partId: string) => void) | undefined;
 }
 
 const RULE_ORDER = [
@@ -40,13 +50,22 @@ const RULE_ORDER = [
 export function findings(result: SimulateResult): Finding[] {
   const out: Finding[] = [];
   const ex = result.export;
+  const cutOuts = new Set<string>();
   for (const i of ex.toolpathIssues) {
+    // T270: one line per cut-out, not one per copy of the part.
+    if (i.inner !== undefined) {
+      const key = `${i.code}/${i.partId ?? ''}/${i.inner}`;
+      if (cutOuts.has(key)) continue;
+      cutOuts.add(key);
+    }
     out.push({
       group: 'TOOLPATH',
       severity: i.severity,
       code: i.code,
       message: i.message,
       ...(i.sheet !== undefined ? { sheet: i.sheet } : {}),
+      ...(i.partId !== null ? { partId: i.partId } : {}),
+      ...(i.inner !== undefined ? { inner: i.inner } : {}),
     });
   }
   const checked = ex.check !== null;
@@ -95,7 +114,22 @@ function groupTitle(t: SimText, group: string): string {
   return (t.rules as Record<string, string>)[group] ?? group;
 }
 
-function FindingList({ t, items }: { t: SimText; items: readonly Finding[] }) {
+/** "Kapak · İç kesim 3" for an issue about a cut-out of a known part (T270). */
+function innerPlace(t: SimText, f: Finding, links: PartLinks): string | null {
+  if (f.inner === undefined || f.partId === undefined) return null;
+  const name = links.parts?.find((p) => p.id === f.partId)?.name;
+  return name ? fill(t.blocked.innerPlace, { name, n: f.inner + 1 }) : null;
+}
+
+function FindingList({
+  t,
+  items,
+  links = {},
+}: {
+  t: SimText;
+  items: readonly Finding[];
+  links?: PartLinks;
+}) {
   const groups = new Map<string, Finding[]>();
   for (const f of items) groups.set(f.group, [...(groups.get(f.group) ?? []), f]);
   const ordered = [...groups.entries()].sort(
@@ -119,15 +153,21 @@ function FindingList({ t, items }: { t: SimText; items: readonly Finding[] }) {
                 data-code={f.code}
                 className="flex flex-col gap-0.5 rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm sm:flex-row sm:items-baseline sm:gap-3"
               >
-                <span className="shrink-0 font-mono text-xs text-fg-muted">
-                  {f.sheet !== undefined && !f.file
-                    ? `${fill(t.sheetTab, { n: f.sheet + 1 })} · `
-                    : ''}
-                  {f.file ? `${f.file} · ` : ''}
-                  {f.line && f.line > 0
-                    ? fill(t.blocked.line, { line: f.line })
-                    : t.blocked.wholeProgram}
-                </span>
+                {innerPlace(t, f, links) ? (
+                  <span className="shrink-0 text-xs font-medium" data-testid="violation-place">
+                    {innerPlace(t, f, links)}
+                  </span>
+                ) : (
+                  <span className="shrink-0 font-mono text-xs text-fg-muted">
+                    {f.sheet !== undefined && !f.file
+                      ? `${fill(t.sheetTab, { n: f.sheet + 1 })} · `
+                      : ''}
+                    {f.file ? `${f.file} · ` : ''}
+                    {f.line && f.line > 0
+                      ? fill(t.blocked.line, { line: f.line })
+                      : t.blocked.wholeProgram}
+                  </span>
+                )}
                 <span className="min-w-0">
                   {codeText(t, f.code)}
                   {/* D-045: the engine's English sentence only for a code without Turkish text. */}
@@ -137,6 +177,16 @@ function FindingList({ t, items }: { t: SimText; items: readonly Finding[] }) {
                     </span>
                   )}
                 </span>
+                {f.partId !== undefined && f.inner !== undefined && links.onOpenPart ? (
+                  <button
+                    type="button"
+                    data-testid="violation-open-part"
+                    onClick={() => links.onOpenPart?.(f.partId as string)}
+                    className="shrink-0 rounded-sm text-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:ml-auto"
+                  >
+                    {t.blocked.openPart}
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -147,11 +197,19 @@ function FindingList({ t, items }: { t: SimText; items: readonly Finding[] }) {
 }
 
 /** The blocked state (§7.2 rule 9): no simulation, no download, the reasons grouped by rule. */
-export function Violations({ t, result }: { t: SimText; result: SimulateResult }) {
+export function Violations({
+  t,
+  result,
+  parts,
+  onOpenPart,
+}: { t: SimText; result: SimulateResult } & PartLinks) {
+  const links: PartLinks = { ...(parts ? { parts } : {}), onOpenPart };
   const all = findings(result);
   const errors = all.filter((f) => f.severity === 'error');
   const warnings = all.filter((f) => f.severity === 'warning');
   const stage = result.export.stage;
+  // T270: the Makineler hint only when an error is not about a drawn cut-out.
+  const machineRelated = errors.some((f) => f.inner === undefined);
   return (
     <section
       role="alert"
@@ -174,7 +232,7 @@ export function Violations({ t, result }: { t: SimText; result: SimulateResult }
           <p className="text-sm text-fg-muted">{t.blocked.stage[stage]}</p>
         </div>
       </div>
-      <FindingList t={t} items={errors} />
+      <FindingList t={t} items={errors} links={links} />
       {warnings.length > 0 ? (
         <details className="text-sm">
           <summary className="cursor-pointer font-medium">
@@ -185,12 +243,14 @@ export function Violations({ t, result }: { t: SimText; result: SimulateResult }
           </div>
         </details>
       ) : null}
-      <p className="text-sm">
-        {t.blocked.machinesHint}{' '}
-        <Link href="/makineler" className="rounded-sm font-medium text-accent-text underline">
-          {t.machine.link}
-        </Link>
-      </p>
+      {machineRelated ? (
+        <p className="text-sm">
+          {t.blocked.machinesHint}{' '}
+          <Link href="/makineler" className="rounded-sm font-medium text-accent-text underline">
+            {t.machine.link}
+          </Link>
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -18,6 +18,10 @@ export interface ExportViolation {
   line?: number;
   /** 0-based sheet index. */
   sheet?: number;
+  /** The part concerned (toolpath issues). */
+  partId?: string;
+  /** Its inner contour (0-based), for an issue about a cut-out (T270). */
+  inner?: number;
 }
 
 /** What the pre-export checklist shows (spec §6.5), taken from the profile and the stock. */

@@ -188,6 +188,8 @@ export interface ToolpathIssue {
   message: string;
   copy?: number;
   sheet?: number;
+  /** Inner contour index (0-based) of the part, for issues about a cut-out (T270). */
+  inner?: number;
 }
 
 export type LeadType = 'arc' | 'line' | 'none';

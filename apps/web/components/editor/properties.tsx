@@ -37,7 +37,8 @@ import {
   Switch,
   Tooltip,
 } from '@nittcam/ui';
-import { X } from 'lucide-react';
+import { CircleAlert, X } from 'lucide-react';
+import { useInnerIssues } from './inner-issues';
 import { useEffect, useId, useRef, useState } from 'react';
 import { formatMm, sizeText } from '../../lib/canvas-labels';
 import { fill } from '../../lib/draft-project';
@@ -278,6 +279,8 @@ export function PartProperties({
   const fixed = part.grain.mode === 'fixed';
   const [liveGrain, setLiveGrain] = useState<number | null>(null);
   const op = t.operation;
+  // T270: cut-outs whose slug has no room for 2 tabs (the wizard's validation).
+  const innerIssues = useInnerIssues(part.id);
   const segName = (i: number) => fill(t.segmentN, { n: i + 1 });
   const verName = (i: number) => fill(t.vertexN, { n: i + 1 });
 
@@ -442,14 +445,25 @@ export function PartProperties({
           <InspectorRows>
             {part.inners.map((inner, i) => {
               const b = bbox(contour(inner));
+              const bad = innerIssues.has(i);
               return (
                 <Row
                   key={i}
                   label={fill(t.innerN, { n: i + 1 })}
                   valueProps={{ className: 'flex items-center justify-end gap-1' }}
                   data-testid="prop-inner"
+                  data-error={bad ? 'slug' : undefined}
                 >
-                  <span>{sizeText(b.maxX - b.minX, b.maxY - b.minY)}</span>
+                  {bad ? (
+                    <CircleAlert
+                      role="img"
+                      aria-label={fill(t.innerSlugUnsecured, { n: i + 1 })}
+                      className="size-4 shrink-0 text-danger-text"
+                    />
+                  ) : null}
+                  <span className={bad ? 'text-danger-text' : undefined}>
+                    {sizeText(b.maxX - b.minX, b.maxY - b.minY)}
+                  </span>
                   <IconButton
                     size="sm"
                     variant="ghost"
@@ -463,6 +477,19 @@ export function PartProperties({
               );
             })}
           </InspectorRows>
+          {[...innerIssues]
+            .sort((a, b) => a - b)
+            .map((i) => (
+              <p
+                key={i}
+                role="alert"
+                data-testid="prop-inner-error"
+                className="mt-1 flex items-start gap-1.5 text-xs text-danger-text"
+              >
+                <CircleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                {fill(t.innerSlugUnsecured, { n: i + 1 })}
+              </p>
+            ))}
         </InspectorGroup>
       ) : null}
 

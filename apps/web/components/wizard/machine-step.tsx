@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from '@nittcam/ui';
 import { NumberField } from './number-field';
+import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 
 import { canvasWellClass } from './panels';
 
@@ -91,6 +92,7 @@ export function MachineFields({
   machines,
   library,
   detail,
+  latest,
   issues,
   run,
   returnTo,
@@ -109,10 +111,14 @@ export function MachineFields({
   library: readonly MaterialItem[];
   project: Project;
   machines: readonly MachineListItem[];
+  /** T269: the profile version the project is bound to (all values on this step come from it). */
   detail: MachineDetail | null;
+  /** The machine's latest version, for the "Son sürüme geç" box. */
+  latest?: MachineDetail | null;
   issues: readonly ValidationIssue[];
   run: Run;
 }) {
+  const gap = versionGap(project.machine, latest ?? null);
   const ids = { machine: useId(), material: useId() };
   const router = useRouter();
   const [leaving, setLeaving] = useState(false);
@@ -167,7 +173,12 @@ export function MachineFields({
           <SelectContent>
             {machines.map((m) => (
               <SelectItem key={m.id} value={m.id}>
-                {fill(t.option, { name: m.name, version: m.version })}
+                {/* T269: the project's machine shows the version the project is bound to. */}
+                {fill(t.option, {
+                  name: m.name,
+                  version:
+                    m.id === project.machine.machineId ? project.machine.profileVersion : m.version,
+                })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -183,24 +194,14 @@ export function MachineFields({
           </p>
         ) : null}
         {/* T199: the unverified-profile notice is the header chip (ProfileStatusChip). */}
-        {detail && known && detail.version !== project.machine.profileVersion ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-info-border bg-info-subtle px-3 py-2 text-xs text-info-text">
-            <span>
-              {fill(t.profileNewer, {
-                old: project.machine.profileVersion,
-                latest: detail.version,
-              })}
-            </span>
-            <button
-              type="button"
-              className={`h-control-sm rounded-md border border-border-strong bg-surface px-2.5 font-medium text-fg shadow-xs hover:bg-surface-hover ${focusRing}`}
-              onClick={() =>
-                run('setMachine', { machineId: detail.id, profileVersion: detail.version })
-              }
-            >
-              {t.useLatest}
-            </button>
-          </div>
+        {known && gap !== null ? (
+          <ProfileVersionNotice
+            t={t}
+            machineId={project.machine.machineId}
+            version={project.machine.profileVersion}
+            latest={gap}
+            run={run}
+          />
         ) : null}
       </div>
 

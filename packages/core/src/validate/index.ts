@@ -13,6 +13,7 @@ import type { Hole, Project } from '../schema';
 import { deriveOutline, formatPath } from '../schema';
 import { checkHolePlacement } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
+import { unsecuredSlugs } from '../toolpath/slug-check';
 
 export type ValidationSeverity = 'error' | 'warning';
 
@@ -31,7 +32,8 @@ export type ValidationCode =
   | 'SHEET_LARGER_THAN_TABLE'
   | 'HOLE_OUTSIDE_PART'
   | 'INNER_CONTOUR_INVALID'
-  | 'INNER_CONTOUR_TOO_SMALL';
+  | 'INNER_CONTOUR_TOO_SMALL'
+  | 'INNER_SLUG_UNSECURED';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -398,6 +400,22 @@ export const innerContourRules: ValidationRule = (project, context) => {
   return issues;
 };
 
+/**
+ * (g2) A cut-out whose slug has no room for 2 tabs (T270, D-049, D-045): the toolpath refuses it
+ * (`SMALL_SLUG_UNSECURED`, the cutter could throw the slug), so it is an error on the cut-out where
+ * it is drawn, from the same `buildToolpath` rule (`unsecuredSlugs`). Skipped without a profile.
+ */
+export const innerSlugTabs: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || !project.parts.some((p) => p.inners.length > 0)) return [];
+  return unsecuredSlugs(project, machine).map(({ part, inner }) => ({
+    code: 'INNER_SLUG_UNSECURED' as const,
+    severity: 'error' as const,
+    path: formatPath(['parts', part, 'inners', inner]),
+    message: `inner contour ${inner + 1} of part "${project.parts[part]?.name ?? ''}": no room for 2 tabs on its slug`,
+  }));
+};
+
 /** Rules run after every command, in this order. */
 export const VALIDATION_RULES: readonly ValidationRule[] = [
   partLargerThanSheet,
@@ -410,6 +428,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   sheetLargerThanTable,
   holeInsidePart,
   innerContourRules,
+  innerSlugTabs,
 ];
 
 /** Runs every rule and returns the combined list (errors and warnings, in rule order). */
