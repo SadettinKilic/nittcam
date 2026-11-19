@@ -293,6 +293,7 @@ describe('commandToolDefinitions (future AI tools)', () => {
         'duplicatePart',
         'importCutList',
         'runNesting',
+        'setNestingMode',
         'setNestingOptions',
         'removePart',
         'setMachine',

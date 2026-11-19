@@ -17,6 +17,39 @@ function load(mutate: (j: any) => void = () => {}): Project {
   return r.project;
 }
 
+describe('setNestingMode (T162)', () => {
+  it('sets the mode; one undo step; the same mode records nothing', () => {
+    const stack = new CommandStack(load());
+    const r = stack.execute('setNestingMode', { mode: 'minToolChanges' }, ctx);
+    expect(r.ok && r.changed).toBe(true);
+    expect(stack.project.nesting.mode).toBe('minToolChanges');
+    const again = stack.execute('setNestingMode', { mode: 'minToolChanges' }, ctx);
+    expect(again.ok && again.changed).toBe(false);
+    stack.undo();
+    expect(stack.project.nesting.mode).toBe('fastest');
+  });
+
+  it('rejects unknown modes and extra fields; is an AI tool', () => {
+    const p = load();
+    expect(applyCommand(p, 'setNestingMode', { mode: 'cheapest' })).toMatchObject({ ok: false });
+    expect(applyCommand(p, 'setNestingMode', { mode: 'fastest', gap: 2 })).toMatchObject({
+      ok: false,
+    });
+    const tool = commandToolDefinitions().find((d) => d.name === 'setNestingMode')!;
+    expect(Object.keys(tool.inputSchema['properties'] as object)).toEqual(['mode']);
+  });
+
+  it('runNesting passes the contour tool to the placer', () => {
+    const p = load((j) => {
+      j.nesting.mode = 'minWaste';
+    });
+    const a = applyCommand(clone(p), 'runNesting', { toolDiameter: 8, contourTool: 1 });
+    expect(a.ok).toBe(true);
+    if (!a.ok) return;
+    expect(a.project.layout).toEqual(nestProject(p, { toolDiameter: 8, contourTool: 1 }).layout);
+  });
+});
+
 describe('setNestingOptions', () => {
   it('sets only the given fields; one undo step each', () => {
     const stack = new CommandStack(load());
@@ -99,9 +132,12 @@ describe('runNesting', () => {
     }
   });
 
-  it('is an AI tool that takes only the tool diameter (the AI never supplies placements)', () => {
+  it('is an AI tool that takes only the tool diameter and contour tool (the AI never supplies placements)', () => {
     const tool = commandToolDefinitions().find((t) => t.name === 'runNesting')!;
-    expect(Object.keys(tool.inputSchema['properties'] as object)).toEqual(['toolDiameter']);
+    expect(Object.keys(tool.inputSchema['properties'] as object)).toEqual([
+      'toolDiameter',
+      'contourTool',
+    ]);
   });
 });
 

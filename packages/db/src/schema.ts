@@ -208,9 +208,9 @@ export const materials = pgTable(
     tone: text('tone').notNull().default('natural'),
     /** Default sheet grain, degrees [0, 180); null = no grain. */
     grain: doublePrecision('grain'),
-    /** Stock sheet sizes, mm. */
+    /** Stock sheet sizes, mm; optional `qty` = sheets in stock (T164, absent = no limit). */
     sheetSizes: jsonb('sheet_sizes')
-      .$type<{ width: number; height: number }[]>()
+      .$type<{ width: number; height: number; qty?: number | undefined }[]>()
       .notNull()
       .default([]),
     createdAt: createdAt(),

@@ -4,10 +4,19 @@
  * Pure and deterministic: no randomness, stable sorts with id/index tie-breakers, first candidate
  * wins ties, so the same input gives a byte-identical result.
  */
-import { allowedRotations } from '../geometry/grain';
+import { allowedRotations, rotationPolicyOf } from '../geometry/grain';
 import { contour, signedArea } from '../geometry/polyline';
 import { isQuarterTurn } from '../geometry/transform';
-import { deriveOutline, type Placement, type Project } from '../schema';
+import {
+  defaultSheet,
+  deriveOutline,
+  sheetSizeOf,
+  stockSheetSizes,
+  type Placement,
+  type Project,
+} from '../schema';
+import { cutOrder, type OrderItem } from '../toolpath/order';
+import { loopSegments, pathLength } from '../toolpath/path';
 import { compareScore, GuillotineBin, MaxRectsBin, type Bin, type Fit } from './bins';
 import {
   fitsUsableAny,
@@ -76,6 +85,9 @@ export function placementRect(
 interface Item {
   partId: string;
   index: number;
+  /** Tool set key (sorted tool numbers) and its size, for the `toolGroup` ordering. */
+  group: string;
+  groupSize: number;
   /** Footprint of the first option (orderings use it). */
   w: number;
   h: number;
@@ -93,6 +105,7 @@ export function nestPartRotations(part: NestPart): readonly number[] {
 function orderKey(item: Item, ordering: PartOrdering): number {
   switch (ordering) {
     case 'area':
+    case 'toolGroup':
       return item.w * item.h;
     case 'longestSide':
       return Math.max(item.w, item.h);
@@ -111,6 +124,10 @@ function ordered(items: readonly Item[], ordering: PartOrdering): Item[] {
     .map((item) => ({ item, key: orderKey(item, ordering) }))
     .sort(
       (a, b) =>
+        (ordering === 'toolGroup'
+          ? a.item.groupSize - b.item.groupSize ||
+            (a.item.group < b.item.group ? -1 : a.item.group > b.item.group ? 1 : 0)
+          : 0) ||
         b.key - a.key ||
         (a.item.partId < b.item.partId ? -1 : a.item.partId > b.item.partId ? 1 : 0) ||
         a.item.index - b.item.index,
@@ -140,12 +157,29 @@ interface Context {
   s: number;
   /** The bin area: usable area grown by `s` (so an inflated part inside it = part inside usable). */
   area: Rect;
+  /** Stock sheet sizes (T164); one entry = the single-size path. */
+  dims: readonly SheetDim[];
+  /** Bin area per size (`areas[0]` = `area`). */
+  areas: readonly Rect[];
+  /** Tools one copy of each part needs, sorted (the contour tool included, T162). */
+  tools: ReadonlyMap<string, readonly number[]>;
+  /** Outer contour length of each part, mm. */
+  perimeters: ReadonlyMap<string, number>;
+  contourTool: number;
 }
 
 interface Packed {
   /** New placements per sheet (locked ones are not included). */
   sheets: Placement[][];
+  /** Size index (into `ctx.dims`) of each sheet (T164). */
+  sizeOf: number[];
   unplaced: UnplacedPart[];
+}
+
+interface SheetDim {
+  width: number;
+  height: number;
+  qty?: number | undefined;
 }
 
 function inflate(r: Rect, s: number): Rect {
@@ -157,14 +191,20 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
   const { input, s } = ctx;
   const bins: Bin[] = [];
   const sheets: Placement[][] = [];
-  const openSheet = (): Bin => {
-    const bin = makeBin(heuristic, ctx.area);
+  const sizeOf: number[] = [];
+  const used = ctx.dims.map(() => 0);
+  const openSheet = (k: number): Bin => {
+    const bin = makeBin(heuristic, ctx.areas[k] ?? ctx.area);
     bins.push(bin);
     sheets.push([]);
+    sizeOf.push(k);
+    used[k] = (used[k] ?? 0) + 1;
     return bin;
   };
-  for (const locked of input.locked) {
-    const bin = openSheet();
+  const sizeIndex = (k: number | undefined): number =>
+    k !== undefined && Number.isInteger(k) && k >= 0 && k < ctx.dims.length ? k : 0;
+  for (const [li, locked] of input.locked.entries()) {
+    const bin = openSheet(sizeIndex(input.lockedSizes?.[li]));
     for (const pl of locked) {
       const r = placementRect(pl, ctx.sizes);
       if (r) bin.occupy(inflate(r, s));
@@ -195,7 +235,45 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
     });
   };
 
-  for (const item of items) {
+  /**
+   * Size of the next new sheet for `items[from]` (T164): among the sizes with stock left that
+   * take the item, the one whose greedy fill of the remaining items wastes the smallest share of
+   * the sheet; ties by list order. A single size skips the trial (the old path).
+   */
+  const pickSize = (from: number): number | null => {
+    const item = items[from];
+    if (!item) return null;
+    const open: number[] = [];
+    ctx.dims.forEach((d, k) => {
+      if (d.qty !== undefined && (used[k] ?? 0) >= d.qty) return;
+      if (ctx.dims.length === 1 || tryBin(makeBin(heuristic, ctx.areas[k] ?? ctx.area), item)) {
+        open.push(k);
+      }
+    });
+    if (open.length <= 1) return open[0] ?? null;
+    let best: number | null = null;
+    let bestWaste = Infinity;
+    for (const k of open) {
+      const d = ctx.dims[k] as SheetDim;
+      const trial = makeBin(heuristic, ctx.areas[k] ?? ctx.area);
+      let partArea = 0;
+      for (let j = from; j < items.length; j++) {
+        const it = items[j] as Item;
+        const hit = tryBin(trial, it);
+        if (!hit) continue;
+        trial.occupy({ x: hit.fit.x, y: hit.fit.y, w: hit.opt.w + 2 * s, h: hit.opt.h + 2 * s });
+        partArea += hit.opt.w * hit.opt.h;
+      }
+      const waste = 1 - partArea / (d.width * d.height);
+      if (waste < bestWaste - 1e-12) {
+        bestWaste = waste;
+        best = k;
+      }
+    }
+    return best;
+  };
+
+  for (const [at, item] of items.entries()) {
     let done = false;
     for (const [i, bin] of bins.entries()) {
       const hit = tryBin(bin, item);
@@ -206,7 +284,12 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
       }
     }
     if (done) continue;
-    const bin = openSheet();
+    const k = pickSize(at);
+    if (k === null) {
+      unplaced.push({ partId: item.partId, index: item.index, reason: 'NO_STOCK' });
+      continue;
+    }
+    const bin = openSheet(k);
     const hit = tryBin(bin, item);
     if (hit) {
       place(bins.length - 1, item, hit.fit, hit.opt);
@@ -214,10 +297,12 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
       // Defensive (items too large are filtered before packing): never leave an empty sheet.
       bins.pop();
       sheets.pop();
+      sizeOf.pop();
+      used[k] = (used[k] ?? 1) - 1;
       unplaced.push({ partId: item.partId, index: item.index, reason: 'TOO_LARGE' });
     }
   }
-  return { sheets, unplaced };
+  return { sheets, sizeOf, unplaced };
 }
 
 /** Statistics of one sheet's placements (bounding-box areas, raw sheet area). */
@@ -253,8 +338,8 @@ function wasteArea(
   ctx: Context,
   sheets: readonly (readonly Placement[])[],
   stats: readonly SheetStats[],
+  dims: readonly SheetDim[],
 ): number {
-  const { width, height } = ctx.input.sheet;
   let waste = 0;
   sheets.forEach((placements, i) => {
     const st = stats[i];
@@ -263,6 +348,7 @@ function wasteArea(
       waste += st.wasteArea;
       return;
     }
+    const { width, height } = dims[i] ?? ctx.input.sheet;
     let right = 0;
     let top = 0;
     for (const pl of placements) {
@@ -275,6 +361,76 @@ function wasteArea(
     waste += Math.max(0, used - st.partArea);
   });
   return waste;
+}
+
+/**
+ * Estimated XY path of a layout, mm (T162, "from the toolpath model"): the outer contour lengths
+ * plus the travel between copies in the order `cutOrder` gives (holes per tool, then the outer
+ * contour; small parts first; tools grouped; from the sheet origin; no 2-opt). Every copy is
+ * entered at its footprint centre: an estimate, the toolpath computes the real path.
+ */
+function pathEstimate(ctx: Context, layout: readonly (readonly Placement[])[]): number {
+  let length = 0;
+  const items: OrderItem[] = [];
+  layout.forEach((placements, sheet) => {
+    for (const pl of placements) {
+      const r = placementRect(pl, ctx.sizes);
+      if (!r) continue;
+      length += ctx.perimeters.get(pl.partId) ?? 2 * (r.w + r.h);
+      const centre = { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+      const part = `${pl.partId}#${pl.index}`;
+      for (const tool of ctx.tools.get(pl.partId) ?? []) {
+        if (tool === ctx.contourTool) continue;
+        items.push({ sheet, part, cls: 'drill', tool, area: 0, starts: [centre] });
+      }
+      items.push({
+        sheet,
+        part,
+        cls: 'outer',
+        tool: ctx.contourTool,
+        area: r.w * r.h,
+        starts: [centre],
+      });
+    }
+  });
+  if (items.length > 0) {
+    length += cutOrder(items, { mode: ctx.input.mode, maxEvaluations: 0 }).rapid;
+  }
+  return length;
+}
+
+/** Tool changes of a layout: per sheet, the distinct tools of its copies minus one. */
+function toolChangeCount(ctx: Context, layout: readonly (readonly Placement[])[]): number {
+  let n = 0;
+  for (const placements of layout) {
+    const tools = new Set<number>();
+    for (const pl of placements) for (const t of ctx.tools.get(pl.partId) ?? []) tools.add(t);
+    if (tools.size > 1) n += tools.size - 1;
+  }
+  return n;
+}
+
+/**
+ * The objective (spec §6.2): `waste·A + λ·L + μ·N + ν·C`. A term whose weight is 0 adds nothing;
+ * with `all` false it is not even measured (min-waste stays as fast as before T162).
+ */
+function objective(
+  ctx: Context,
+  layout: readonly (readonly Placement[])[],
+  stats: readonly SheetStats[],
+  dims: readonly SheetDim[],
+  weights: ObjectiveWeights,
+  all: boolean,
+): ObjectiveCost {
+  const waste = wasteArea(ctx, layout, stats, dims);
+  const cut = all || weights.cutLength !== 0 ? pathEstimate(ctx, layout) : 0;
+  const changes = all || weights.toolChanges !== 0 ? toolChangeCount(ctx, layout) : 0;
+  const handling = layout.length;
+  let total = weights.waste * waste;
+  if (weights.cutLength !== 0) total += weights.cutLength * cut;
+  if (weights.toolChanges !== 0) total += weights.toolChanges * changes;
+  if (weights.handling !== 0) total += weights.handling * handling;
+  return { wasteArea: waste, cutLength: cut, toolChanges: changes, handling, total };
 }
 
 function weightsOf(input: NestingInput): ObjectiveWeights {
@@ -290,32 +446,70 @@ function stripUndefined(w: Partial<ObjectiveWeights>): Partial<ObjectiveWeights>
   return out;
 }
 
-interface Candidate {
+export interface Candidate {
   ordering: PartOrdering;
   heuristic: PlacerHeuristic;
   layout: Placement[][];
+  /** Size of each sheet (T164). */
+  dims: SheetDim[];
   unplaced: UnplacedPart[];
   stats: SheetStats[];
   cost: ObjectiveCost;
 }
 
-function better(a: Candidate, b: Candidate): boolean {
+/** Total area of a candidate's sheets, mm². */
+const sheetArea = (c: Candidate) => c.dims.reduce((s, d) => s + d.width * d.height, 0);
+
+/**
+ * Candidate ranking: fewer unplaced copies, then fewer sheets, then the objective. With several
+ * stock sizes (`mixed`, D-056) the total sheet area replaces the sheet count (two small sheets
+ * can beat one big one), then the objective. One size: the area is the count times one size, but
+ * the count is compared as before so single-size results stay byte-identical.
+ */
+export function better(a: Candidate, b: Candidate, mixed: boolean): boolean {
   return (
     (a.unplaced.length - b.unplaced.length ||
-      a.layout.length - b.layout.length ||
+      (mixed ? sheetArea(a) - sheetArea(b) : a.layout.length - b.layout.length) ||
       a.cost.total - b.cost.total) < 0
   );
 }
 
+/** Optional callbacks of a placer run (T163). They never change the result. */
+export interface NestHooks {
+  /**
+   * Called after every ordering × heuristic candidate with the number done and the total, so a
+   * worker can report progress. Deterministic: the same calls for the same input.
+   */
+  onProgress?: ((done: number, total: number) => void) | undefined;
+}
+
 /** Runs the placer. Locked placements are copied unchanged and act as obstacles on their sheet. */
-export function nest(input: NestingInput): NestingResult {
+export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult {
   const sizes = new Map<string, PartShape>();
   for (const p of input.parts) {
     if (!sizes.has(p.id)) sizes.set(p.id, { w: p.w, h: p.h, outline: p.outline });
   }
   const s = partSpacing(input.toolDiameter, input.gap);
-  const usable = usableSize(input.sheet, input.margin);
+  const dims: readonly SheetDim[] =
+    input.sheets && input.sheets.length > 0 ? input.sheets : [input.sheet];
+  const usables = dims.map((d) => usableSize(d, input.margin));
+  const usable = usables[0] ?? usableSize(input.sheet, input.margin);
+  // Tool numbers are positive; -1 stands for an unknown contour tool distinct from every hole tool.
+  const contourTool = input.contourTool ?? -1;
+  const tools = new Map<string, readonly number[]>();
+  const perimeters = new Map<string, number>();
+  for (const p of input.parts) {
+    if (tools.has(p.id)) continue;
+    tools.set(
+      p.id,
+      [...new Set([contourTool, ...(p.holeTools ?? [])])].sort((a, b) => a - b),
+    );
+    perimeters.set(p.id, p.outline ? pathLength(loopSegments(p.outline)) : 2 * (p.w + p.h));
+  }
   const ctx: Context = {
+    tools,
+    perimeters,
+    contourTool,
     input,
     sizes,
     s,
@@ -325,6 +519,13 @@ export function nest(input: NestingInput): NestingResult {
       w: usable.width + 2 * s,
       h: usable.height + 2 * s,
     },
+    dims,
+    areas: usables.map((u) => ({
+      x: input.margin - s,
+      y: input.margin - s,
+      w: u.width + 2 * s,
+      h: u.height + 2 * s,
+    })),
   };
 
   const lockedKeys = new Set<string>();
@@ -343,47 +544,58 @@ export function nest(input: NestingInput): NestingResult {
     );
     for (let index = 0; index < part.qty; index++) {
       if (lockedKeys.has(`${part.id}#${index}`)) continue;
-      if (!fitsUsableAny(options, usable)) {
+      if (!usables.some((u) => fitsUsableAny(options, u))) {
         tooLarge.push({ partId: part.id, index, reason: 'TOO_LARGE' });
         continue;
       }
       const first = options[0] as RotationOption;
-      items.push({ partId: part.id, index, w: first.w, h: first.h, options });
+      const set = tools.get(part.id) ?? [];
+      items.push({
+        partId: part.id,
+        index,
+        w: first.w,
+        h: first.h,
+        options,
+        group: set.join(','),
+        groupSize: set.length,
+      });
     }
   });
 
   const weights = weightsOf(input);
   let best: Candidate | null = null;
   let count = 0;
-  for (const ordering of PART_ORDERINGS) {
+  // `toolGroup` only differs from `area` when the copies need different tool sets (T162).
+  const groups = new Set(items.map((it) => it.group));
+  const orderings: readonly PartOrdering[] =
+    groups.size > 1 ? [...PART_ORDERINGS, 'toolGroup'] : PART_ORDERINGS;
+  const total = orderings.length * PLACER_HEURISTICS.length;
+  for (const ordering of orderings) {
     const list = ordered(items, ordering);
     for (const heuristic of PLACER_HEURISTICS) {
       count++;
+      if (count > 1) hooks.onProgress?.(count - 1, total);
       const packed = pack(ctx, list, heuristic);
       const layout = packed.sheets.map((added, i) => [
         ...(input.locked[i] ?? []).map((pl) => ({ ...pl })),
         ...added,
       ]);
-      const stats = layout.map((pls, i) => sheetStats(i, pls, input.sheet, sizes));
-      const waste = wasteArea(ctx, layout, stats);
-      const cost: ObjectiveCost = {
-        wasteArea: waste,
-        cutLength: 0,
-        toolChanges: 0,
-        handling: 0,
-        total: weights.waste * waste,
-      };
+      const sheetDims = layout.map((_, i) => dims[packed.sizeOf[i] ?? 0] ?? input.sheet);
+      const stats = layout.map((pls, i) => sheetStats(i, pls, sheetDims[i] ?? input.sheet, sizes));
+      const cost = objective(ctx, layout, stats, sheetDims, weights, false);
       const cand: Candidate = {
         ordering,
         heuristic,
         layout,
+        dims: sheetDims,
         unplaced: [...tooLarge, ...packed.unplaced],
         stats,
         cost,
       };
-      if (best === null || better(cand, best)) best = cand;
+      if (best === null || better(cand, best, dims.length > 1)) best = cand;
     }
   }
+  hooks.onProgress?.(count, total);
   // At least one ordering × heuristic always runs, so `best` is set.
   if (best === null) throw new Error('nest: no candidate was tried');
   const win: Candidate = best;
@@ -394,7 +606,15 @@ export function nest(input: NestingInput): NestingResult {
     (a, b) => (a.partId < b.partId ? -1 : a.partId > b.partId ? 1 : 0) || a.index - b.index,
   );
   return {
-    layout: { sheets: win.layout.map((placements) => ({ placements })) },
+    // A size per sheet only with several stock sizes (T164): single-size layouts stay identical.
+    layout: {
+      sheets: win.layout.map((placements, i) => {
+        const d = win.dims[i];
+        return dims.length > 1 && d
+          ? { size: { width: d.width, height: d.height }, placements }
+          : { placements };
+      }),
+    },
     sheetCount: win.layout.length,
     sheets: win.stats,
     partArea,
@@ -402,7 +622,8 @@ export function nest(input: NestingInput): NestingResult {
     wastePercent,
     utilisationPercent: sheetArea > 0 ? 100 - wastePercent : 0,
     unplaced,
-    cost: win.cost,
+    // Every term measured for the report; the total (and so the choice) is unchanged.
+    cost: objective(ctx, win.layout, win.stats, win.dims, weights, true),
     strategy: { ordering: win.ordering, heuristic: win.heuristic },
     candidates: count,
     info: rotatedBboxInfo(win.layout, sizes),
@@ -439,6 +660,8 @@ function rotatedBboxInfo(
 export interface NestProjectOptions {
   /** Cutting tool diameter in mm, from the selected machine profile. */
   toolDiameter: number;
+  /** Tool number of the outer contours (the material set's tool); absent = unknown (T162). */
+  contourTool?: number | undefined;
   weights?: Partial<ObjectiveWeights> | undefined;
 }
 
@@ -453,28 +676,47 @@ export function nestingInputFromProject(
 ): NestingInput {
   const locked = project.layout.sheets.map((sheet) => sheet.placements.filter((p) => p.locked));
   while (locked.length > 0 && locked[locked.length - 1]?.length === 0) locked.pop();
+  // T164: several stock sizes only when the project lists them (absent = the single-size path).
+  const stockSizes = project.stock.sheets ? stockSheetSizes(project) : null;
+  const multi = stockSizes
+    ? {
+        sheets: stockSizes,
+        lockedSizes: locked.map((_, i) => {
+          const own = sheetSizeOf(project, i);
+          const k = stockSizes.findIndex((d) => d.width === own.width && d.height === own.height);
+          return Math.max(0, k);
+        }),
+      }
+    : {};
   return {
-    sheet: { width: project.stock.sheet.width, height: project.stock.sheet.height },
+    ...multi,
+    sheet: { width: defaultSheet(project).width, height: defaultSheet(project).height },
     parts: project.parts.map((part) => ({
       id: part.id,
       ...partBoxSize(part),
       qty: part.qty,
       // The grain rule (D-034): the single source of allowed rotations.
-      rotations: allowedRotations(part, project.stock.sheet),
+      rotations: allowedRotations(part, defaultSheet(project), rotationPolicyOf(project.nesting)),
       outline: contour(deriveOutline(part)),
+      holeTools: part.holes.map((h) => h.tool),
     })),
     gap: project.nesting.gap,
     margin: project.nesting.margin,
     toolDiameter: options.toolDiameter,
     mode: project.nesting.mode,
     locked,
+    contourTool: options.contourTool,
     weights: options.weights,
   };
 }
 
 /** Nests a project's parts. */
-export function nestProject(project: Project, options: NestProjectOptions): NestingResult {
-  return nest(nestingInputFromProject(project, options));
+export function nestProject(
+  project: Project,
+  options: NestProjectOptions,
+  hooks: NestHooks = {},
+): NestingResult {
+  return nest(nestingInputFromProject(project, options), hooks);
 }
 
 /** Summary of a stored layout (for the UI after `runNesting`). */
@@ -487,13 +729,27 @@ export interface LayoutSummary {
   utilisationPercent: number;
   /** Part copies with no placement, by part id then copy index. */
   unplaced: { partId: string; index: number }[];
+  /** The report per sheet size (T164), in the order sizes first appear in the layout. */
+  bySize: SizeSummary[];
+}
+
+/** Sheets of one size in a layout (T164). */
+export interface SizeSummary {
+  width: number;
+  height: number;
+  /** Layout sheets of this size. */
+  sheets: number;
+  partArea: number;
+  sheetArea: number;
+  wastePercent: number;
 }
 
 /** Sheet count, waste % and unplaced copies of a project's current layout. Pure. */
 export function summarizeLayout(project: Project): LayoutSummary {
   const sizes = new Map(project.parts.map((p) => [p.id, partShape(p)]));
-  const sheet = project.stock.sheet;
-  const sheets = project.layout.sheets.map((sh, i) => sheetStats(i, sh.placements, sheet, sizes));
+  const sheets = project.layout.sheets.map((sh, i) =>
+    sheetStats(i, sh.placements, sheetSizeOf(project, i), sizes),
+  );
   const placed = new Set<string>();
   for (const sh of project.layout.sheets) {
     for (const pl of sh.placements) placed.add(`${pl.partId}#${pl.index}`);
@@ -510,7 +766,26 @@ export function summarizeLayout(project: Project): LayoutSummary {
   const partArea = sheets.reduce((sum, st) => sum + st.partArea, 0);
   const sheetArea = sheets.reduce((sum, st) => sum + st.sheetArea, 0);
   const wastePercent = sheetArea > 0 ? (100 * (sheetArea - partArea)) / sheetArea : 0;
+  const bySize = new Map<string, SizeSummary>();
+  sheets.forEach((st, i) => {
+    const { width, height } = sheetSizeOf(project, i);
+    const key = `${width}x${height}`;
+    const s = bySize.get(key) ?? {
+      width,
+      height,
+      sheets: 0,
+      partArea: 0,
+      sheetArea: 0,
+      wastePercent: 0,
+    };
+    s.sheets += 1;
+    s.partArea += st.partArea;
+    s.sheetArea += st.sheetArea;
+    s.wastePercent = s.sheetArea > 0 ? (100 * (s.sheetArea - s.partArea)) / s.sheetArea : 0;
+    bySize.set(key, s);
+  });
   return {
+    bySize: [...bySize.values()],
     sheetCount: sheets.length,
     sheets,
     partArea,

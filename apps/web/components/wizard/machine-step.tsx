@@ -11,6 +11,8 @@ import {
   type MaterialKind,
   type Project,
   type ValidationIssue,
+  defaultSheet,
+  stockSheetSizes,
 } from '@nittcam/core';
 import { Plus, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
@@ -27,6 +29,7 @@ import type { Messages } from '../../lib/messages';
 import { focusRing } from '../page/page-header';
 import {
   Button,
+  Checkbox,
   GrainDial,
   Measure,
   Select,
@@ -124,6 +127,7 @@ export function MachineFields({
   const router = useRouter();
   const [leaving, setLeaving] = useState(false);
   const { stock } = project;
+  const sheet = defaultSheet(project);
   const kind = materialKindOf(stock.material);
   const profile = detail?.profile ?? null;
   const known = machines.some((m) => m.id === project.machine.machineId);
@@ -132,7 +136,7 @@ export function MachineFields({
   const presets: readonly Preset[] = entry
     ? entry.sheetSizes.map((s) => ({ a: s.height, b: s.width }))
     : SHEET_PRESETS;
-  const preset = presetIndex(presets, stock.sheet);
+  const preset = presetIndex(presets, sheet);
   const [customOpen, setCustomOpen] = useState(false);
   const custom = preset < 0 || customOpen;
   const thicknesses = entry
@@ -444,19 +448,22 @@ export function MachineFields({
           <div className="grid grid-cols-2 gap-2">
             <NumberField
               label={t.width}
-              value={stock.sheet.width}
+              value={sheet.width}
               testId="wizard-sheet-width"
               errors={errors}
-              onCommit={(width) => run('setSheetSize', { width, height: stock.sheet.height })}
+              onCommit={(width) => run('setSheetSize', { width, height: sheet.height })}
             />
             <NumberField
               label={t.height}
-              value={stock.sheet.height}
+              value={sheet.height}
               testId="wizard-sheet-height"
               errors={errors}
-              onCommit={(height) => run('setSheetSize', { width: stock.sheet.width, height })}
+              onCommit={(height) => run('setSheetSize', { width: sheet.width, height })}
             />
           </div>
+        ) : null}
+        {entry && entry.sheetSizes.length > 1 ? (
+          <SheetSizesPick t={t} project={project} library={entry.sheetSizes} run={run} />
         ) : null}
         {tableIssue && profile ? (
           <p
@@ -465,8 +472,8 @@ export function MachineFields({
             className="rounded-lg border border-warning-border bg-warning-subtle px-3 py-2.5 text-sm text-warning-text"
           >
             {fill(t.tableWarning, {
-              w: mm(stock.sheet.width),
-              h: mm(stock.sheet.height),
+              w: mm(sheet.width),
+              h: mm(sheet.height),
               tw: mm(profile.table.width),
               td: mm(profile.table.depth),
             })}
@@ -488,6 +495,81 @@ const SKIN_DEFAULT = 0.5;
  * T143: "Son pasoda ince tabaka bırak" — small parts keep a thin skin instead of tabs; a cleanup
  * pass at the end of each sheet cuts it through. Tabs and skin are alternatives per project.
  */
+type LibrarySize = { width: number; height: number; qty?: number | undefined };
+
+/**
+ * T164: further library sheet sizes the nesting may use besides the chosen sheet (always used and
+ * listed first). One `setStockSheets` per change, so every tick is one undo step.
+ */
+function SheetSizesPick({
+  t,
+  project,
+  library,
+  run,
+}: {
+  t: Text;
+  project: Project;
+  library: readonly LibrarySize[];
+  run: Run;
+}) {
+  const id = useId();
+  const sheet = defaultSheet(project);
+  const listed = stockSheetSizes(project);
+  const same = (a: { width: number; height: number }, b: { width: number; height: number }) =>
+    a.width === b.width && a.height === b.height;
+  const isDefault = (s: LibrarySize) => same(s, sheet);
+  const isOn = (s: LibrarySize) => isDefault(s) || listed.some((l) => same(l, s));
+  const toggle = (s: LibrarySize, on: boolean) => {
+    const first = library.find(isDefault) ?? { width: sheet.width, height: sheet.height };
+    const rest = library.filter((x) => !isDefault(x) && (same(x, s) ? on : isOn(x)));
+    const sheets = [first, ...rest].map((x) => ({
+      width: x.width,
+      height: x.height,
+      ...(x.qty !== undefined ? { qty: x.qty } : {}),
+    }));
+    run('setStockSheets', { sheets });
+  };
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="wizard-sheet-sizes">
+      <p className="text-sm font-medium text-fg" id={`${id}-label`}>
+        {t.sheetsMulti}
+      </p>
+      <p className="text-xs text-fg-muted" id={`${id}-hint`}>
+        {t.sheetsMultiHint}
+      </p>
+      <ul
+        className="flex flex-col gap-1.5"
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-hint`}
+      >
+        {library.map((s, i) => {
+          const box = `${id}-${i}`;
+          return (
+            <li key={`${s.width}x${s.height}`} className="flex min-h-8 items-center gap-2 text-sm">
+              <Checkbox
+                id={box}
+                checked={isOn(s)}
+                disabled={isDefault(s)}
+                onCheckedChange={(v) => toggle(s, v === true)}
+              />
+              <label htmlFor={box} className="text-fg tabular-nums">
+                {fill(t.sheetsOption, { w: mm(s.width), h: mm(s.height) })}
+                <span className="ml-1.5 text-xs text-fg-muted">
+                  {isDefault(s)
+                    ? t.sheetsDefault
+                    : s.qty !== undefined
+                      ? fill(t.sheetsStock, { n: String(s.qty) })
+                      : ''}
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function ThinSkin({
   t,
   project,
@@ -545,6 +627,7 @@ export function SheetGrain({
   onGrainPreview?: (angle: number | null) => void;
 }) {
   const { stock } = project;
+  const sheet = defaultSheet(project);
   if (!materialHasGrain(materialKindOf(stock.material))) {
     return (
       <p className="text-xs text-fg-muted" data-testid="sheet-grain-none">
@@ -553,7 +636,7 @@ export function SheetGrain({
     );
   }
   // T259: a wood stock without grain ("Yok", e.g. library MDF): say so; one click gives it one.
-  if (stock.sheet.grain === null) {
+  if (sheet.grain === null) {
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5" data-testid="sheet-grain-off">
         <p className="text-xs text-fg-muted">{t.grainOff}</p>
@@ -572,11 +655,11 @@ export function SheetGrain({
     <fieldset className="flex flex-col gap-2" data-testid="sheet-grain">
       <legend className="mb-1.5 text-sm font-medium text-fg">{t.grain}</legend>
       <GrainDial
-        value={stock.sheet.grain}
+        value={sheet.grain}
         onValueChange={(a) => onGrainPreview?.(a)}
         onValueCommit={(a) => {
           onGrainPreview?.(null);
-          if (a !== stock.sheet.grain) run('setGrain', { grain: a });
+          if (a !== sheet.grain) run('setGrain', { grain: a });
         }}
         labels={grainDialLabels()}
         data-testid="sheet-grain-dial"

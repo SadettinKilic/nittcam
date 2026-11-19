@@ -83,9 +83,26 @@ export const kitchenGrain30: NestingInput = {
   ),
 };
 
+/**
+ * The kitchen with hardware drilling (T162): contours with T1, hinge cups on the doors with T3,
+ * shelf-pin rows on the sides with T2, handle holes on the drawer fronts with T4. The tool sets
+ * differ per part, so the fewest-tool-changes mode has something to group.
+ */
+export const kitchenHardware: NestingInput = {
+  ...kitchenCabinets,
+  contourTool: 1,
+  parts: kitchenCabinets.parts.map((part) => {
+    if (part.id === 'door') return { ...part, holeTools: [3] };
+    if (part.id.endsWith('-side')) return { ...part, holeTools: [2] };
+    if (part.id === 'drawer-front') return { ...part, holeTools: [4] };
+    return part;
+  }),
+};
+
 export const BENCH_DATASETS: readonly { name: string; input: NestingInput }[] = [
   { name: 'kitchen cabinets', input: kitchenCabinets },
   { name: 'shelf sets', input: shelfSets },
   { name: 'many small parts', input: manySmallParts },
   { name: 'kitchen, grain 30°', input: kitchenGrain30 },
+  { name: 'kitchen with hardware', input: kitchenHardware },
 ];

@@ -5,12 +5,19 @@
  */
 import { EPS } from '../geometry';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
-import { allowedRotations, rotationAllowed } from '../geometry/grain';
+import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../geometry/grain';
 import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
-import { deriveOutline, formatPath, innerOperation } from '../schema';
+import {
+  defaultSheet,
+  deriveOutline,
+  stockSheetSizes,
+  sheetSizeOf,
+  formatPath,
+  innerOperation,
+} from '../schema';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { lineLeavesPart } from '../editor/lines';
@@ -78,16 +85,23 @@ function mm(v: number): string {
  * outline (T006). The gap and tool diameter only matter between parts and are not counted.
  */
 export const partLargerThanSheet: ValidationRule = (project) => {
-  const { width, height } = project.stock.sheet;
+  const { width, height } = defaultSheet(project);
   const { margin } = project.nesting;
-  const usable = usableSize(project.stock.sheet, margin);
+  const usable = usableSize(defaultSheet(project), margin);
+  const usables = [usable, ...stockSheetSizes(project).map((d) => usableSize(d, margin))];
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     const size = partBoxSize(part);
     // The forced grain rotation counts (D-034): the same footprints the placer tries.
-    const rotations = allowedRotations(part, project.stock.sheet);
-    if (fitsUsableAny(rotationOptions(partShape(part), rotations), usable)) return;
-    const locked = part.grain.mode === 'fixed' && project.stock.sheet.grain !== null;
+    const rotations = allowedRotations(
+      part,
+      defaultSheet(project),
+      rotationPolicyOf(project.nesting),
+    );
+    const options = rotationOptions(partShape(part), rotations);
+    // T164: with several stock sizes a part only needs to fit one of them.
+    if (usables.some((u) => fitsUsableAny(options, u))) return;
+    const locked = part.grain.mode === 'fixed' && defaultSheet(project).grain !== null;
     const how = !locked
       ? 'in any orientation'
       : rotations.every((r) => r === 0 || r === 180)
@@ -263,8 +277,9 @@ export const placementGrain: ValidationRule = (project) => {
   project.layout.sheets.forEach((sheet, s) => {
     sheet.placements.forEach((pl, p) => {
       const part = parts.get(pl.partId);
-      if (!part || rotationAllowed(part, project.stock.sheet, pl.rot)) return;
-      const allowed = allowedRotations(part, project.stock.sheet);
+      const policy = rotationPolicyOf(project.nesting);
+      if (!part || rotationAllowed(part, defaultSheet(project), pl.rot, policy)) return;
+      const allowed = allowedRotations(part, defaultSheet(project), policy);
       const what = pl.locked ? 'locked copy' : 'copy';
       issues.push({
         code: pl.locked ? 'LOCKED_PLACEMENT_GRAIN' : 'PLACEMENT_GRAIN',
@@ -331,19 +346,33 @@ export const unverifiedCuttingParams: ValidationRule = (project, context) => {
 export const sheetLargerThanTable: ValidationRule = (project, context) => {
   const machine = context?.machine;
   if (!machine) return [];
-  const { width, height } = project.stock.sheet;
   const off = machine.origin.sheetOffset;
-  const fits =
-    off.x + width <= machine.table.width + EPS && off.y + height <= machine.table.depth + EPS;
-  if (fits) return [];
-  return [
-    {
+  // Every stock size and every size a layout sheet uses (T164), the default sheet first, once each.
+  const sizes = [
+    { ...defaultSheet(project), path: 'stock.sheet' },
+    ...stockSheetSizes(project).map((s, i) => ({ ...s, path: `stock.sheets.${i}` })),
+    ...project.layout.sheets.map((_, i) => ({
+      ...sheetSizeOf(project, i),
+      path: `layout.sheets.${i}.size`,
+    })),
+  ];
+  const seen = new Set<string>();
+  const out: ValidationIssue[] = [];
+  for (const { width, height, path } of sizes) {
+    const key = `${width}x${height}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const fits =
+      off.x + width <= machine.table.width + EPS && off.y + height <= machine.table.depth + EPS;
+    if (fits) continue;
+    out.push({
       code: 'SHEET_LARGER_THAN_TABLE',
       severity: 'warning',
-      path: 'stock.sheet',
+      path,
       message: `the ${mm(width)} × ${mm(height)} mm sheet does not fit the ${mm(machine.table.width)} × ${mm(machine.table.depth)} mm table`,
-    },
-  ];
+    });
+  }
+  return out;
 };
 
 /**

@@ -165,6 +165,12 @@ export interface GcodeCheckFile {
 export type GcodeCheckFilesContext = Omit<GcodeCheckContext, 'sheet' | 'operations' | 'layout'> & {
   /** Expected parts per sheet index (`expectedLayout` for every sheet); omitted = skipped. */
   layout?: ReadonlyMap<number, readonly ExpectedPart[]> | null;
+  /**
+   * Own sheet size per sheet index (T164, several stock sizes). A sheet without an entry uses
+   * `stock.sheetWidth` × `stock.sheetHeight`. The frame, the table fit and the sheet limits of
+   * each sheet's files are checked against that sheet's size.
+   */
+  sheetSizes?: ReadonlyMap<number, { sheetWidth: number; sheetHeight: number }>;
 };
 
 export interface GcodeCheckFilesResult {

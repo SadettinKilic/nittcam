@@ -9,6 +9,7 @@ import {
   summarizeLayout,
   type Project,
   type VerificationState,
+  defaultSheet,
 } from '@nittcam/core';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -102,7 +103,7 @@ export function layoutThumb(project: Project): LayoutThumb | null {
   }
   if (out.length === 0) return null;
   return {
-    sheet: { width: project.stock.sheet.width, height: project.stock.sheet.height },
+    sheet: { width: defaultSheet(project).width, height: defaultSheet(project).height },
     sheets: project.layout.sheets.length,
     parts: out,
     utilisation: summarizeLayout(project).utilisationPercent,

@@ -49,6 +49,8 @@ function withOpenings(inners: Vertex[][], tabsOn = false): Project {
   if (!parsed.ok) throw new Error(JSON.stringify(parsed.issues));
   return {
     ...parsed.project,
+    // The fixture's own mode ("fastest"); T273 keeps cut-out start edges holdable wherever the
+    // part lies, so the layout no longer needs pinning to minWaste.
     layout: nestProject(parsed.project, { toolDiameter: TOOL_D }).layout,
   };
 }

@@ -9,6 +9,7 @@ import {
   type MachineProfile,
   type MaterialKind,
   type Project,
+  defaultSheet,
 } from '@nittcam/core';
 
 /** The sheet a new project starts with: a common 2070 × 2800 mm board, long side along X. */
@@ -66,7 +67,7 @@ export function newProject(
     const base = newProject(machine);
     const pick = stockFromLibrary(usable.entry, {
       thickness: usable.thickness,
-      sheet: base.stock.sheet,
+      sheet: defaultSheet(base),
     });
     base.stock = {
       ...base.stock,
@@ -130,5 +131,5 @@ export function fill(text: string, values: Record<string, string | number>): str
  * (null, e.g. library MDF) have none (T259, T260).
  */
 export function stockHasGrain(stock: Project['stock']): boolean {
-  return materialHasGrain(materialKindOf(stock.material)) && stock.sheet.grain !== null;
+  return materialHasGrain(materialKindOf(stock.material)) && defaultSheet({ stock }).grain !== null;
 }

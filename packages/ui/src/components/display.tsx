@@ -113,6 +113,34 @@ export function Skeleton({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
+/* ---------------------------------------------------------------- Progress */
+
+/**
+ * Determinate progress bar (T163). `value` in [0, max]; the accessible name comes from
+ * `aria-label` / `aria-labelledby`. The fill width is not animated (reduced motion safe).
+ */
+export function Progress({
+  value,
+  max = 100,
+  className,
+  ...props
+}: Omit<ComponentProps<'div'>, 'role' | 'children'> & { value: number; max?: number }) {
+  const v = Math.min(Math.max(value, 0), max);
+  const pct = max > 0 ? (100 * v) / max : 0;
+  return (
+    <div
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={max}
+      aria-valuenow={v}
+      className={cn('h-1.5 w-full overflow-hidden rounded-full bg-surface-active', className)}
+      {...props}
+    >
+      <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------- Kbd */
 
 export function Kbd({ className, ...props }: ComponentProps<'kbd'>) {

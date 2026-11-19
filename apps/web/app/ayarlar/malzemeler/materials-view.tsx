@@ -271,7 +271,14 @@ function MaterialRow({
           <dt className="text-xs text-fg-muted xl:sr-only">{c.sheets}</dt>
           <dd className="flex flex-col">
             {m.sheetSizes.map((s) => (
-              <Measure key={`${s.width}x${s.height}`} value={[s.width, s.height]} unit="mm" />
+              <span key={`${s.width}x${s.height}`} className="flex items-baseline gap-1.5">
+                <Measure value={[s.width, s.height]} unit="mm" />
+                {s.qty !== undefined ? (
+                  <span className="numeric text-xs text-fg-muted" data-testid="material-sheet-qty">
+                    {fill(t.sheetQty, { n: s.qty })}
+                  </span>
+                ) : null}
+              </span>
             ))}
           </dd>
         </div>

@@ -44,6 +44,7 @@ import {
   type Project,
   type SimMachineFrame,
   type SimSheet,
+  sheetSizeOf,
 } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import {
@@ -332,7 +333,7 @@ export function SimulationView({
             t={t}
             sim={sim}
             project={project}
-            machine={result.machine}
+            machine={sim.machine ?? result.machine}
             left={side}
             tabs={tabs}
           />
@@ -437,7 +438,7 @@ function Player({
   const box = useRef<HTMLDivElement>(null);
   const timeRef = useRef(0);
   const duration = sim.duration;
-  const stock = project.stock.sheet;
+  const stock = useMemo(() => sheetSizeOf(project, sim.sheet), [project, sim.sheet]);
   // T259: no grain chip or legend line when the sheet has no grain (or the material has none).
   const sheetGrain = materialHasGrain(materialKindOf(project.stock.material)) ? stock.grain : null;
   const bounds = useMemo(() => simBounds(stock, machine), [stock, machine]);

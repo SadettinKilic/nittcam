@@ -7,6 +7,7 @@ export {
   setThickness,
   setThinSkin,
   setSheetSize,
+  setStockSheets,
   setGrain,
 } from './plate';
 export * from './log';
@@ -25,8 +26,12 @@ export {
 } from './part';
 export {
   setNestingOptions,
+  setNestingMode,
   runNesting,
   runNestingParamsSchema,
+  runNestingWithProgress,
+  type RunNestingApplied,
+  type RunNestingParams,
   lockPlacement,
   lockPlacementParamsSchema,
 } from './nesting';

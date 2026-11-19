@@ -15,7 +15,8 @@ export interface MaterialDraft {
   kind: MaterialKind;
   tone: MaterialTone;
   thicknesses: (number | null)[];
-  sheets: { width: number | null; height: number | null }[];
+  /** `qty` null = no limit (T164). */
+  sheets: { width: number | null; height: number | null; qty: number | null }[];
   grainOn: boolean;
   grain: number | null;
 }
@@ -28,7 +29,7 @@ export function emptyDraft(): MaterialDraft {
     kind: 'mdf',
     tone: 'natural',
     thicknesses: [18],
-    sheets: [{ width: 2800, height: 2070 }],
+    sheets: [{ width: 2800, height: 2070, qty: null }],
     grainOn: false,
     grain: 0,
   };
@@ -40,7 +41,7 @@ export function draftFrom(m: LibraryMaterial): MaterialDraft {
     kind: m.kind,
     tone: m.tone,
     thicknesses: [...m.thicknesses],
-    sheets: m.sheetSizes.map((s) => ({ width: s.width, height: s.height })),
+    sheets: m.sheetSizes.map((s) => ({ width: s.width, height: s.height, qty: s.qty ?? null })),
     grainOn: m.grain !== null,
     grain: m.grain ?? 0,
   };
@@ -52,15 +53,24 @@ export function toMaterial(
 ): { ok: true; material: LibraryMaterial } | { ok: false; errors: MaterialFormErrors } {
   const errors: MaterialFormErrors = {};
   const thicknesses = d.thicknesses.filter((t): t is number => t !== null);
-  const sheets = d.sheets.filter(
-    (s): s is { width: number; height: number } => s.width !== null && s.height !== null,
+  const sheets = d.sheets.flatMap((s) =>
+    s.width !== null && s.height !== null
+      ? [{ width: s.width, height: s.height, ...(s.qty !== null ? { qty: s.qty } : {}) }]
+      : [],
   );
   const grain = materialHasGrain(d.kind) && d.grainOn ? d.grain : null;
   if (d.name.trim() === '') errors.name = true;
   if (thicknesses.length === 0 || thicknesses.some((t) => !(t > 0 && t <= 200))) {
     errors.thicknesses = true;
   }
-  if (sheets.length === 0 || sheets.some((s) => !(s.width > 0 && s.height > 0))) {
+  if (
+    sheets.length === 0 ||
+    sheets.some(
+      (s) =>
+        !(s.width > 0 && s.height > 0) ||
+        (s.qty !== undefined && !(Number.isInteger(s.qty) && s.qty >= 1)),
+    )
+  ) {
     errors.sheets = true;
   }
   if (

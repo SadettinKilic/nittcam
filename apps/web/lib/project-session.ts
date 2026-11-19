@@ -227,6 +227,7 @@ export function useProjectSession({
     restoredCount: boot.replayed.length,
     canUndo: stack.canUndo,
     canRedo: stack.canRedo,
+    redoCommand: stack.redoCommand,
     dirty: queue.dirty,
     run,
     recordApplied,

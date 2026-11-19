@@ -100,6 +100,7 @@ export {
   CardHeader,
   CardTitle,
   Kbd,
+  Progress,
   Skeleton,
   badgeVariants,
   type BadgeProps,

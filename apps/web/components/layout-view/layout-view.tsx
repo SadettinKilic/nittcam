@@ -8,9 +8,11 @@ import {
   type PlacementCheck,
   type Project,
   type ValidationIssue,
+  sheetSizeOf,
 } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import {
+  memo,
   useCallback,
   useEffect,
   useId,
@@ -75,7 +77,9 @@ import {
   type ViewState,
 } from './model';
 
-const LayoutCanvas = dynamic(() => import('./layout-canvas'), { ssr: false });
+// Memoised (B22): a "Diz" run toggles `renesting` and messages on this view; the canvas with its
+// many shapes must not redraw on the main thread for that (long tasks with 1500 copies).
+const LayoutCanvas = memo(dynamic(() => import('./layout-canvas'), { ssr: false }));
 
 type Text = Messages['layout'];
 
@@ -212,7 +216,7 @@ export function LayoutView({
     setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true }));
   }
 
-  const stock = project.stock.sheet;
+  const stock = useMemo(() => sheetSizeOf(project, sheet), [project, sheet]);
   const height = size.h;
   const parts = useMemo(() => drawnParts(project, sheet), [project, sheet]);
   const byKey = useMemo(() => new Map(parts.map((p) => [p.key, p])), [parts]);
@@ -313,6 +317,10 @@ export function LayoutView({
     [onLock, check, reason, t],
   );
 
+  const onViewChange = useCallback(
+    (v: ViewState) => setView({ ...v, scale: clampScale(v.scale) }),
+    [],
+  );
   const onSelect = useCallback((key: string | null) => {
     setSelected(key);
     setPending(null);
@@ -779,7 +787,7 @@ export function LayoutView({
               selected={current?.key ?? null}
               conflicts={conflicts}
               pending={pending}
-              onViewChange={(v) => setView({ ...v, scale: clampScale(v.scale) })}
+              onViewChange={onViewChange}
               onSelect={onSelect}
               onDragMove={editable ? onDragMove : noopMove}
               onDrop={editable ? onDrop : noopDrop}

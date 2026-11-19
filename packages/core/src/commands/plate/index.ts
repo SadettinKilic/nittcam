@@ -1,6 +1,6 @@
 /** Plate and machine commands (spec §5.1 "Plaka ve makine"). */
 import { z } from 'zod';
-import { machineRefSchema, stockSchema } from '../../schema';
+import { machineRefSchema, projectSheetSizeSchema, stockSchema } from '../../schema';
 import { defineCommand } from '../types';
 
 /** Selects the machine profile the project uses. Selecting is allowed for AI; editing a profile is not. */
@@ -56,6 +56,8 @@ export const applyLibraryMaterial = defineCommand({
     draft.stock.sheet.width = params.width;
     draft.stock.sheet.height = params.height;
     draft.stock.sheet.grain = params.grain;
+    // The size list belonged to the previous stock: the library entry gives one size (T164).
+    delete draft.stock.sheets;
   },
 });
 
@@ -80,6 +82,47 @@ export const setSheetSize = defineCommand({
   apply: (draft, params) => {
     draft.stock.sheet.width = params.width;
     draft.stock.sheet.height = params.height;
+    // With several stock sizes the default sheet is the first listed one (T164): it changes with
+    // it, keeps its stock quantity, and a later entry of the same size is dropped.
+    const list = draft.stock.sheets;
+    if (list && list[0]) {
+      list[0].width = params.width;
+      list[0].height = params.height;
+      draft.stock.sheets = list.filter(
+        (s, i) => i === 0 || s.width !== params.width || s.height !== params.height,
+      );
+    }
+  },
+});
+
+/**
+ * The stock sheet sizes the nesting may use, in order, with optional stock quantities (T164,
+ * D-056). The first size becomes the default sheet (grain unchanged). One size without a
+ * quantity is stored as the plain single size (no `stock.sheets`), exactly as before T164.
+ */
+export const setStockSheets = defineCommand({
+  name: 'setStockSheets',
+  area: 'plate',
+  description:
+    'Set the stock sheet sizes the nesting may use (mm), first = default sheet; optional qty = ' +
+    'sheets in stock (absent = no limit). Sizes must differ.',
+  aiTool: false,
+  params: z.strictObject({
+    sheets: z
+      .array(projectSheetSizeSchema)
+      .min(1, { error: 'at least one sheet size' })
+      .max(8, { error: 'at most 8 sheet sizes' })
+      .refine((l) => new Set(l.map((s) => `${s.width}x${s.height}`)).size === l.length, {
+        error: 'sheet sizes must differ',
+      }),
+  }),
+  apply: (draft, params) => {
+    const [first] = params.sheets;
+    if (!first) return;
+    draft.stock.sheet.width = first.width;
+    draft.stock.sheet.height = first.height;
+    if (params.sheets.length === 1 && first.qty === undefined) delete draft.stock.sheets;
+    else draft.stock.sheets = params.sheets.map((s) => ({ ...s }));
   },
 });
 
