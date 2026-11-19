@@ -5,3 +5,4 @@ export * from './edit';
 export * from './corners';
 export * from './holes';
 export * from './inners';
+export * from './lines';

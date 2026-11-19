@@ -17,6 +17,7 @@ import { layerKey, layerOp, mergeLayerMap, dxfLayerMapSchema } from './layers';
 import { dxfImportParts, planDxfImport } from './plan';
 import { readDxf } from './read';
 import { recognizeParts } from './recognize';
+import { defaultOnlineDepth } from '../editor/lines';
 import type { DxfDrawing, DxfPath } from './types';
 
 const ctx: CommandContext = { actor: 'user', at: '2026-11-19T10:00:00Z' };
@@ -171,7 +172,7 @@ describe('recognizeParts', () => {
     expect(forced.parts.every((p) => p.inners.length === 0)).toBe(true);
   });
 
-  it('inside/drill contours outside any part are orphans; pocket/online wait for T142', () => {
+  it('inside/drill contours outside any part are orphans; pocket waits', () => {
     const j = joinPaths([
       piece('OUT', rect(0, 0, 100, 100), true),
       piece('IN', rect(200, 0, 10, 10), true),
@@ -265,5 +266,59 @@ describe('importDxf command', () => {
       parts,
     });
     expect(taken.ok).toBe(false);
+  });
+});
+
+describe('T277: "Çizgi üzerinden" layers become on-line lines of their part', () => {
+  const j = () =>
+    joinPaths([
+      piece('0', rect(100, 100, 300, 200), true),
+      // open engraving line inside the part, a closed text frame inside, one line outside
+      piece('GRAVUR', [v(150, 150), v(250, 150)]),
+      piece('GRAVUR', rect(300, 150, 40, 40), true),
+      piece('GRAVUR', [v(500, 150), v(600, 150)]),
+    ]);
+
+  it('lines inside a part are attached to it; a line in no part is reported, not imported', () => {
+    const r = recognizeParts(j(), { GRAVUR: 'online' });
+    expect(r.parts).toHaveLength(1);
+    expect(r.parts[0]!.inners).toHaveLength(0);
+    expect(r.parts[0]!.lines).toHaveLength(2);
+    expect(r.open).toEqual([]);
+    expect(r.pending).toEqual([]);
+    expect(r.lineOrphans).toHaveLength(1);
+    // the closed frame comes back as an open line that ends where it starts
+    const frame = r.parts[0]!.lines.find((l) => l.poly.vertices.length === 5)!;
+    expect(frame.poly.vertices[4]).toEqual(
+      frame.poly.vertices[0] && { ...frame.poly.vertices[0], bulge: 0 },
+    );
+  });
+
+  it('importDxf stores them part-local with the given depth; in the part frame', () => {
+    const plan = recognizeParts(j(), { GRAVUR: 'online' });
+    const parts = dxfImportParts(
+      plan,
+      () => 'sign',
+      () => 'Tabela',
+      undefined,
+      1,
+    );
+    expect(parts[0]!.lines.map((l) => l.op)).toEqual([
+      { kind: 'online', depth: 1 },
+      { kind: 'online', depth: 1 },
+    ]);
+    const r = applyCommand(projectOf({ parts: [] }), 'importDxf', { parts, at: { x: 0, y: 0 } });
+    if (!r.ok) throw new Error(r.error.message);
+    const part = r.project.parts[0]!;
+    expect(part.lines?.map((l) => l.vertices.map((p) => [p.x, p.y]))).toContainEqual([
+      [50, 50],
+      [150, 50],
+    ]);
+  });
+
+  it('default depth: 1 mm, half the thickness on stock of 1 mm or less', () => {
+    expect(defaultOnlineDepth(18)).toBe(1);
+    expect(defaultOnlineDepth(1)).toBe(0.5);
+    expect(defaultOnlineDepth(0.8)).toBe(0.4);
   });
 });

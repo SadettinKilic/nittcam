@@ -72,8 +72,8 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
   const cutOuts = new Set<string>();
   for (const i of r.toolpathIssues) {
     // T270: one line per cut-out (named by part and number in the UI), not one per copy.
-    if (i.inner !== undefined || i.hole !== undefined) {
-      const key = `${i.code}/${i.partId ?? ''}/${i.inner ?? ''}/${i.hole ?? ''}`;
+    if (i.inner !== undefined || i.hole !== undefined || i.openLine !== undefined) {
+      const key = `${i.code}/${i.partId ?? ''}/${i.inner ?? ''}/${i.hole ?? ''}/${i.openLine ?? ''}`;
       if (cutOuts.has(key)) continue;
       cutOuts.add(key);
     }
@@ -87,6 +87,7 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
       ...(i.partId !== null ? { partId: i.partId } : {}),
       ...(i.inner !== undefined ? { inner: i.inner } : {}),
       ...(i.hole !== undefined ? { hole: i.hole } : {}),
+      ...(i.openLine !== undefined ? { openLine: i.openLine } : {}),
     });
   }
   for (const i of [...r.postErrors, ...r.postWarnings]) {
@@ -121,13 +122,17 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
 function cutOutOf(
   data: { parts: readonly { id: string }[] },
   path: string,
-): { partId: string; inner: number } | { partId: string; hole: number } | undefined {
-  const m = /^parts\[(\d+)\]\.(inners|holes)\[(\d+)\]/.exec(path);
+):
+  | { partId: string; inner: number }
+  | { partId: string; hole: number }
+  | { partId: string; openLine: number }
+  | undefined {
+  const m = /^parts\[(\d+)\]\.(inners|holes|lines)\[(\d+)\]/.exec(path);
   const part = m ? data.parts[Number(m[1])] : undefined;
   if (!m || !part) return undefined;
-  return m[2] === 'inners'
-    ? { partId: part.id, inner: Number(m[3]) }
-    : { partId: part.id, hole: Number(m[3]) };
+  const k = Number(m[3]);
+  if (m[2] === 'inners') return { partId: part.id, inner: k };
+  return m[2] === 'holes' ? { partId: part.id, hole: k } : { partId: part.id, openLine: k };
 }
 
 /** Sheet index of a `layout.sheets[s]...` validation path. */

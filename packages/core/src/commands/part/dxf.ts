@@ -11,6 +11,7 @@ import { bbox, contour } from '../../geometry/polyline';
 import {
   contourSchema,
   holeSchema,
+  openLineSchema,
   rectPartSchema,
   type FreeformPart,
   type Project,
@@ -32,6 +33,8 @@ const dxfPartSchema = z.strictObject({
   inners: z.array(contourSchema).default([]),
   /** Holes from circles on a `drill` layer; centres in drawing millimetres (stored part-local). */
   holes: z.array(holeSchema).default([]),
+  /** On-line (engraving) lines from "Çizgi üzerinden" layers, drawing millimetres (T277). */
+  lines: z.array(openLineSchema).default([]),
 });
 
 export const importDxfParamsSchema = z.strictObject({
@@ -103,6 +106,18 @@ export const importDxf = defineCommand({
           cx: tidy(h.cx - placed.at.x),
           cy: tidy(h.cy - placed.at.y),
         })),
+        ...(p.lines.length > 0
+          ? {
+              lines: p.lines.map((l) => ({
+                vertices: l.vertices.map((v) => ({
+                  x: tidy(v.x - placed.at.x),
+                  y: tidy(v.y - placed.at.y),
+                  bulge: v.bulge,
+                })),
+                op: l.op,
+              })),
+            }
+          : {}),
         edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
         templates: [],
         draw: { x: tidy(origin.x + placed.at.x - minX), y: tidy(origin.y + placed.at.y - minY) },

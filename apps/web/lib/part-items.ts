@@ -16,11 +16,16 @@ export interface ItemRef {
   partId?: string | undefined;
   inner?: number | undefined;
   hole?: number | undefined;
+  /** Open line (T277). */
+  openLine?: number | undefined;
 }
 
 /** The issue names a drawn cut-out or hole of a part ("Çizimde aç" applies). */
 export function onDrawnItem(f: ItemRef): boolean {
-  return f.partId !== undefined && (f.inner !== undefined || f.hole !== undefined);
+  return (
+    f.partId !== undefined &&
+    (f.inner !== undefined || f.hole !== undefined || f.openLine !== undefined)
+  );
 }
 
 /**
@@ -28,7 +33,7 @@ export function onDrawnItem(f: ItemRef): boolean {
  * item, plus hole errors the machine's tool table can fix (D-045: a second link, never the only way).
  */
 export function machineRelated(f: ItemRef): boolean {
-  if (f.inner !== undefined) return false;
+  if (f.inner !== undefined || f.openLine !== undefined) return false;
   if (f.hole !== undefined) return MACHINE_FIXABLE_HOLE_CODES.has(f.code);
   return true;
 }
@@ -37,7 +42,7 @@ export function machineRelated(f: ItemRef): boolean {
 export function itemPlace(
   f: ItemRef,
   parts: readonly { id: string; name: string }[] | undefined,
-  text: { innerPlace: string; holePlace: string },
+  text: { innerPlace: string; holePlace: string; linePlace: string },
   fill: (template: string, values: Record<string, string | number>) => string,
 ): string | null {
   if (f.partId === undefined) return null;
@@ -45,6 +50,7 @@ export function itemPlace(
   if (!name) return null;
   if (f.inner !== undefined) return fill(text.innerPlace, { name, n: f.inner + 1 });
   if (f.hole !== undefined) return fill(text.holePlace, { name, n: f.hole + 1 });
+  if (f.openLine !== undefined) return fill(text.linePlace, { name, n: f.openLine + 1 });
   return null;
 }
 

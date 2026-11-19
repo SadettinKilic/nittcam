@@ -10,8 +10,9 @@ import { z } from 'zod';
  * - `outside`: always a part outline (dış kesim)
  * - `inside`: always an inner contour of the part around it (iç kesim)
  * - `drill`: delik; circles are hole candidates, other shapes inner contours
- * - `pocket`: cep, and `online`: çizgi üzerinden: per-contour operations arrive with T142; until
- *   then these contours are reported and not imported
+ * - `online`: çizgi üzerinden: open and closed contours become on-line (engraving) lines of the
+ *   part they lie in (T277); a line in no part is reported
+ * - `pocket`: cep: reported and not imported yet
  * - `ignore`: not imported
  */
 export const DXF_LAYER_OPS = [
@@ -26,12 +27,13 @@ export const DXF_LAYER_OPS = [
 export const dxfLayerOpSchema = z.enum(DXF_LAYER_OPS, { error: 'unknown layer operation' });
 export type DxfLayerOp = z.infer<typeof dxfLayerOpSchema>;
 
-/** Operations the import can apply today (the others wait for T142 per-contour operations). */
+/** Operations the import can apply today (`pocket` still waits). */
 export const DXF_LAYER_OPS_READY: readonly DxfLayerOp[] = [
   'auto',
   'outside',
   'inside',
   'drill',
+  'online',
   'ignore',
 ];
 

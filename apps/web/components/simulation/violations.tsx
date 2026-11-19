@@ -22,6 +22,8 @@ export interface Finding {
   inner?: number;
   /** Its hole (0-based), for an issue about a hole (T275). */
   hole?: number;
+  /** Its open line (0-based), for an issue about a line (T277). */
+  openLine?: number;
 }
 
 /** Part names for the place of a cut-out issue, and the way to the drawing board (T270). */
@@ -56,8 +58,8 @@ export function findings(result: SimulateResult): Finding[] {
   const cutOuts = new Set<string>();
   for (const i of ex.toolpathIssues) {
     // T270: one line per cut-out, not one per copy of the part.
-    if (i.inner !== undefined || i.hole !== undefined) {
-      const key = `${i.code}/${i.partId ?? ''}/${i.inner ?? ''}/${i.hole ?? ''}`;
+    if (i.inner !== undefined || i.hole !== undefined || i.openLine !== undefined) {
+      const key = `${i.code}/${i.partId ?? ''}/${i.inner ?? ''}/${i.hole ?? ''}/${i.openLine ?? ''}`;
       if (cutOuts.has(key)) continue;
       cutOuts.add(key);
     }
@@ -70,6 +72,7 @@ export function findings(result: SimulateResult): Finding[] {
       ...(i.partId !== null ? { partId: i.partId } : {}),
       ...(i.inner !== undefined ? { inner: i.inner } : {}),
       ...(i.hole !== undefined ? { hole: i.hole } : {}),
+      ...(i.openLine !== undefined ? { openLine: i.openLine } : {}),
     });
   }
   const checked = ex.check !== null;

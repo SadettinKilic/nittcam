@@ -11,6 +11,7 @@ import { postConfig } from '../gcode-check/check.testing';
 import { exportNc } from '../export';
 import { goldenProfile } from '../post/golden.testing';
 import { parseProject, type Project } from '../schema';
+import { validateProject } from '../validate';
 import { buildToolpath } from './build';
 import { clone, machineOf, projectOf } from './toolpath.testing';
 import type { Move, Operation } from './types';
@@ -263,5 +264,43 @@ describe('on-line operations in the toolpath (T142)', () => {
       ),
       { numRuns: 40 },
     );
+  });
+});
+
+describe('T277: an open line stays inside its part (tool radius included)', () => {
+  const line = (x0: number, x1: number, y = 100) => ({
+    vertices: [
+      { x: x0, y, bulge: 0 },
+      { x: x1, y, bulge: 0 },
+    ],
+    op: { kind: 'online', depth: 1 },
+  });
+  const lineErrors = (p: Project) =>
+    buildToolpath(p, machineOf())
+      .errors.filter((e) => e.code === 'LINE_OUTSIDE_PART')
+      .map((e) => e.openLine);
+  const flagged = (p: Project) =>
+    validateProject(p, { machine: machineOf() })
+      .filter((i) => i.code === 'LINE_OUTSIDE_PART')
+      .map((i) => i.path);
+
+  it('a line past the 300 mm part (B15 tester case) is refused by the validation and the toolpath', () => {
+    const p = base([line(100, 600, 180)]);
+    expect(lineErrors(p)).toEqual([0]);
+    expect(flagged(p)).toEqual(['parts[0].lines[0]']);
+  });
+
+  it('a line that crosses the outline by 0.1 mm, or whose groove does, is refused', () => {
+    expect(lineErrors(base([line(200, 300.1, 180)]))).toEqual([0]);
+    // Ends 1 mm from the edge: the Ø8 (or Ø6) tool groove reaches past it.
+    expect(lineErrors(base([line(200, 299, 180)]))).toEqual([0]);
+  });
+
+  it('a line well inside passes; a line with operation none is not checked', () => {
+    expect(lineErrors(base([line(160, 280, 180)]))).toEqual([]);
+    expect(flagged(base([line(160, 280, 180)]))).toEqual([]);
+    const off = { ...line(100, 600, 180), op: { kind: 'none' } };
+    expect(lineErrors(base([off]))).toEqual([]);
+    expect(flagged(base([off]))).toEqual([]);
   });
 });

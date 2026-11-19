@@ -43,6 +43,7 @@ import {
 import { toolpathSafetyViolations } from './safety';
 import { buildHoleOperation, holeOperationKind, holeStart, placedHoleCentre } from './holes';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
+import { lineLeavesPart } from '../editor/lines';
 import { summarizeToolpath } from './stats';
 import { buildOnlineOperation, onlineStart } from './online';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
@@ -88,7 +89,7 @@ function issue(
   severity: ToolpathSeverity,
   partId: string | null,
   message: string,
-  extra: { copy?: number; sheet?: number; inner?: number; hole?: number } = {},
+  extra: { copy?: number; sheet?: number; inner?: number; hole?: number; openLine?: number } = {},
 ): ToolpathIssue {
   return { code, severity, partId, message, ...extra };
 }
@@ -928,6 +929,21 @@ export function buildToolpath(
   // flute length. Checked once per part; cut per placed copy.
   const onlineDepths = new Map<string, number[]>();
   for (const part of project.parts) {
+    // T277: an engraved open line that leaves its part (tool radius included) would cut the
+    // neighbour; the same rule as the validation (`lineLeavesPart`).
+    const outlineVs = deriveOutline(part);
+    (part.lines ?? []).forEach((l, k) => {
+      if (l.op.kind !== 'online' || !lineLeavesPart(outlineVs, l.vertices, toolRadius)) return;
+      errors.push(
+        issue(
+          'LINE_OUTSIDE_PART',
+          'error',
+          part.id,
+          `Line ${k + 1}: it leaves the part outline (tool radius ${toolRadius} mm included).`,
+          { openLine: k },
+        ),
+      );
+    });
     const ops: { what: string; op: ContourOperation }[] = [
       { what: 'Outline', op: outlineOperation(part) },
       ...part.inners.map((_, k) => ({

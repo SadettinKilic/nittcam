@@ -18,6 +18,7 @@ import {
   withVertexAt,
   ALLOWED_OPERATIONS,
   contourOperation,
+  defaultOnlineDepth,
   type ContourRef,
   type OutlineEdit,
   type Part,
@@ -256,9 +257,6 @@ function Picker({
   );
 }
 
-/** Default depth of a new on-line (engraving) operation, mm (T142). */
-const ONLINE_DEPTH = 1;
-
 /**
  * Operation of one contour (T142): a picker of the kinds the contour allows and, for `online`,
  * the depth. Both run `setOperation` (DXF layer mapping, T145, writes the same field).
@@ -270,6 +268,7 @@ function OperationRow({
   label,
   contour,
   testId,
+  thickness,
 }: {
   t: T;
   part: Part;
@@ -277,6 +276,8 @@ function OperationRow({
   label: string;
   contour: ContourRef;
   testId: string;
+  /** Stock thickness, mm: the default on-line depth stays below it (T277). */
+  thickness: number;
 }) {
   const id = useId();
   const current = contourOperation(part, contour);
@@ -296,11 +297,11 @@ function OperationRow({
               id: part.id,
               contour,
               kind,
-              ...(kind === 'online' ? { depth: ONLINE_DEPTH } : {}),
+              ...(kind === 'online' ? { depth: defaultOnlineDepth(thickness) } : {}),
             })
           }
         >
-          <SelectTrigger id={id} className="w-36" data-testid={testId} data-value={current.kind}>
+          <SelectTrigger id={id} className="w-44" data-testid={testId} data-value={current.kind}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -339,6 +340,7 @@ export function PartProperties({
   sub,
   onSub,
   toolRadius = 0,
+  thickness = 18,
 }: {
   t: T;
   part: Part;
@@ -349,6 +351,8 @@ export function PartProperties({
   onSub: (sub: SubSelection) => void;
   /** Tool radius of the selected machine, mm (inner-corner rule, dogbone; T131/T132). */
   toolRadius?: number;
+  /** Stock thickness, mm (default on-line depth, T277). */
+  thickness?: number;
 }) {
   const outline = deriveOutline(part);
   const n = outline.length;
@@ -511,6 +515,7 @@ export function PartProperties({
             label={op.outer}
             contour={{ type: 'outline' }}
             testId="prop-op-outline"
+            thickness={thickness}
           />
           {part.inners.length > 0 ? (
             <Row label={op.inners} valueProps={{ 'data-testid': 'prop-op-inners' }}>
@@ -526,6 +531,7 @@ export function PartProperties({
               label={fill(t.innerN, { n: i + 1 })}
               contour={{ type: 'inner', index: i }}
               testId={`prop-op-inner-${i}`}
+              thickness={thickness}
             />
           ))}
           {(part.lines ?? []).map((_, i) => (
@@ -537,6 +543,7 @@ export function PartProperties({
               label={fill(op.lineN, { n: i + 1 })}
               contour={{ type: 'line', index: i }}
               testId={`prop-op-line-${i}`}
+              thickness={thickness}
             />
           ))}
           {part.holes.length > 0 ? (

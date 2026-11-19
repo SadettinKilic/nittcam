@@ -1232,6 +1232,7 @@ export function DrawingBoard({
         onImport={addDxf}
         newId={newPartId}
         {...(holeTool ? { holeTool: holeTool.number } : {})}
+        thickness={project.stock.thickness}
       />
     ) : null;
 

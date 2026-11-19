@@ -13,6 +13,7 @@ import type { Hole, Project } from '../schema';
 import { deriveOutline, formatPath, innerOperation } from '../schema';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
+import { lineLeavesPart } from '../editor/lines';
 import { unsecuredSlugs } from '../toolpath/slug-check';
 
 export type ValidationSeverity = 'error' | 'warning';
@@ -33,7 +34,8 @@ export type ValidationCode =
   | 'HOLE_OUTSIDE_PART'
   | 'INNER_CONTOUR_INVALID'
   | 'INNER_CONTOUR_TOO_SMALL'
-  | 'INNER_SLUG_UNSECURED';
+  | 'INNER_SLUG_UNSECURED'
+  | 'LINE_OUTSIDE_PART';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -426,6 +428,32 @@ export const innerSlugTabs: ValidationRule = (project, context) => {
   }));
 };
 
+/**
+ * (i) An engraved open line (T142 on-line operation) must stay inside its part, the tool radius
+ * included (T277, D-045): otherwise it cuts into the neighbour part. Error on the line where it
+ * is drawn or imported; the toolpath refuses it too (`lineLeavesPart`). The tool is the cutting
+ * tool (`validationToolDiameter`); without a profile only the line itself is checked.
+ */
+export const lineInsidePart: ValidationRule = (project, context) => {
+  const radius = validationToolDiameter(project, context) / 2;
+  const issues: ValidationIssue[] = [];
+  project.parts.forEach((part, i) => {
+    const lines = part.lines ?? [];
+    if (lines.length === 0) return;
+    const outline = deriveOutline(part);
+    lines.forEach((line, k) => {
+      if (line.op.kind !== 'online' || !lineLeavesPart(outline, line.vertices, radius)) return;
+      issues.push({
+        code: 'LINE_OUTSIDE_PART',
+        severity: 'error',
+        path: formatPath(['parts', i, 'lines', k]),
+        message: `line ${k + 1} of part "${part.name}" leaves the part outline (tool radius ${mm(radius)} mm included)`,
+      });
+    });
+  });
+  return issues;
+};
+
 /** Rules run after every command, in this order. */
 export const VALIDATION_RULES: readonly ValidationRule[] = [
   partLargerThanSheet,
@@ -439,6 +467,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   holeInsidePart,
   innerContourRules,
   innerSlugTabs,
+  lineInsidePart,
 ];
 
 /** Runs every rule and returns the combined list (errors and warnings, in rule order). */

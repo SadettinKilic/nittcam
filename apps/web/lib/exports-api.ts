@@ -24,6 +24,8 @@ export interface ExportViolation {
   inner?: number;
   /** Its hole (0-based), for an issue about a hole (T275). */
   hole?: number;
+  /** Its open line (0-based), for an issue about a line (T277). */
+  openLine?: number;
 }
 
 /** What the pre-export checklist shows (spec §6.5), taken from the profile and the stock. */

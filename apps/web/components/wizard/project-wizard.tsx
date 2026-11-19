@@ -522,7 +522,11 @@ function WizardSession({
   )
     ? t.steps.errors.holeInvalid
     : undefined;
-  const partsError = slugError ?? holeError;
+  // T277: an engraved line that leaves its part likewise.
+  const lineError = session.issues.some((i) => i.code === 'LINE_OUTSIDE_PART')
+    ? t.steps.errors.lineOutside
+    : undefined;
+  const partsError = slugError ?? holeError ?? lineError;
   const stepErrors: StepErrors = {
     ...(machineError ? { makine: machineError } : {}),
     ...(partsError ? { parcalar: partsError } : {}),

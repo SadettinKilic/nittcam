@@ -10,6 +10,8 @@ import type { BBox, Point, Polyline, Vertex } from '../geometry/types';
 import { insidePolygon } from '../toolpath/lead';
 import type { DxfContour, DxfJoinResult, DxfOpenChain } from './join';
 import { layerOp, type DxfLayerMap, type DxfLayerOp } from './layers';
+import { insideContour } from '../editor/holes';
+import { linePoints } from '../editor/lines';
 
 /** An inner contour of a recognised part (world mm, CW). */
 export interface DxfInner {
@@ -26,6 +28,11 @@ export interface DxfPart {
   outline: Polyline;
   layer: string;
   inners: DxfInner[];
+  /**
+   * Contours and open chains on `online` ("Çizgi üzerinden") layers inside this part (T277), world
+   * mm, as open polylines (a closed contour repeats its first point at the end).
+   */
+  lines: { poly: Polyline; layer: string }[];
   box: BBox;
 }
 
@@ -35,8 +42,10 @@ export interface DxfRecognition {
   open: DxfOpenChain[];
   /** Closed contours mapped to `inside`/`drill` that lie in no part. */
   orphans: DxfContour[];
-  /** Contours on `pocket` / `online` layers: waiting for T142, not imported. */
+  /** Contours on `pocket` layers: not imported yet (reported). */
   pending: DxfContour[];
+  /** Lines on `online` layers that lie inside no part (T277): reported, not imported. */
+  lineOrphans: { poly: Polyline; layer: string }[];
   /** Contours (and open chains) on `ignore` layers. */
   ignored: number;
 }
@@ -50,6 +59,14 @@ interface Node {
   probe: Point;
   parent: number | undefined;
   role: 'part' | 'inner' | 'orphan';
+}
+
+/** A closed contour as an open line (T277): its first point repeated at the end. */
+function closedAsOpen(poly: Polyline): Polyline {
+  const vs = poly.vertices.map((v) => ({ x: v.x, y: v.y, bulge: v.bulge }));
+  const first = vs[0];
+  if (!poly.closed || !first) return { closed: false, vertices: vs };
+  return { closed: false, vertices: [...vs, { x: first.x, y: first.y, bulge: 0 }] };
 }
 
 /** Polygon of a contour for point-in-polygon tests (arcs sampled). */
@@ -92,6 +109,7 @@ export function recognizeParts(
 ): DxfRecognition {
   let ignored = 0;
   const pending: DxfContour[] = [];
+  const online: { poly: Polyline; layer: string }[] = [];
   const nodes: Node[] = [];
   for (const c of joined.contours) {
     const op = layerOp(map, c.layer);
@@ -99,8 +117,12 @@ export function recognizeParts(
       ignored += 1;
       continue;
     }
-    if (op === 'pocket' || op === 'online') {
+    if (op === 'pocket') {
       pending.push(c);
+      continue;
+    }
+    if (op === 'online') {
+      online.push({ poly: closedAsOpen(c.poly), layer: c.layer });
       continue;
     }
     const area = Math.abs(signedArea(c.poly));
@@ -117,9 +139,11 @@ export function recognizeParts(
     });
   }
   const open = joined.open.filter((o) => {
-    const skip = layerOp(map, o.layer) === 'ignore';
-    if (skip) ignored += 1;
-    return !skip;
+    const op = layerOp(map, o.layer);
+    if (op === 'ignore') ignored += 1;
+    // T277: an open chain on a "Çizgi üzerinden" layer is an engraving line, not an error.
+    if (op === 'online') online.push({ poly: o.poly, layer: o.layer });
+    return op !== 'ignore' && op !== 'online';
   });
   // Largest first, so every parent is decided before its children.
   const order = nodes
@@ -151,6 +175,7 @@ export function recognizeParts(
       outline: normalize(node.c.poly, 'outer'),
       layer: node.c.layer,
       inners: [],
+      lines: [],
       box: node.box,
     };
     partOf.set(idx, part);
@@ -170,7 +195,21 @@ export function recognizeParts(
       ...(node.c.circle ? { circle: node.c.circle } : {}),
     });
   }
+  // T277: each line goes to the smallest part whose outline holds all of it; else it is reported.
+  const lineOrphans: { poly: Polyline; layer: string }[] = [];
+  const bySize = order.filter((i) => partOf.has(i)).reverse();
+  for (const line of online) {
+    const box = bbox(line.poly);
+    const pts = linePoints(line.poly.vertices);
+    const owner = bySize.find((i) => {
+      const node = nodes[i] as Node;
+      return boxInside(box, node.box) && pts.every((p) => insideContour(p, node.c.poly.vertices));
+    });
+    const part = owner === undefined ? undefined : partOf.get(owner);
+    if (part) part.lines.push(line);
+    else lineOrphans.push(line);
+  }
   // Report order: left to right, then bottom to top (stable, independent of file order).
   parts.sort((a, b) => a.box.minX - b.box.minX || a.box.minY - b.box.minY);
-  return { parts, open, orphans, pending, ignored };
+  return { parts, open, orphans, pending, lineOrphans, ignored };
 }

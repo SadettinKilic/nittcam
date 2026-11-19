@@ -45,7 +45,11 @@ describe('holeErrors (T275)', () => {
 
 describe('itemPlace / machineRelated (T270, T275)', () => {
   const parts = [{ id: 'kapak', name: 'Kapak' }];
-  const text = { innerPlace: '{name} · İç kesim {n}', holePlace: '{name} · Delik {n}' };
+  const text = {
+    innerPlace: '{name} · İç kesim {n}',
+    holePlace: '{name} · Delik {n}',
+    linePlace: '{name} · Çizgi {n}',
+  };
 
   it('names the hole and the cut-out by part and 1-based number', () => {
     expect(itemPlace({ code: 'X', partId: 'kapak', hole: 2 }, parts, text, fill)).toBe(
@@ -67,5 +71,10 @@ describe('itemPlace / machineRelated (T270, T275)', () => {
     expect(machineRelated({ code: 'HOLE_SMALLER_THAN_TOOL', hole: 0 })).toBe(true);
     expect(machineRelated({ code: 'HOLE_DEPTH_INVALID', hole: 0 })).toBe(false);
     expect(machineRelated({ code: 'HOLE_OUTSIDE_PART', hole: 0 })).toBe(false);
+    // T277: an open line leaving its part is fixed on the drawing.
+    expect(machineRelated({ code: 'LINE_OUTSIDE_PART', openLine: 1 })).toBe(false);
+    expect(itemPlace({ code: 'X', partId: 'kapak', openLine: 1 }, parts, text, fill)).toBe(
+      'Kapak · Çizgi 2',
+    );
   });
 });
