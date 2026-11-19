@@ -8,7 +8,6 @@ describe('NAV_ITEMS', () => {
       'machines',
       'projects',
       'templates',
-      'create',
       'settings',
     ]);
   });
@@ -24,8 +23,9 @@ describe('isNavActive', () => {
     expect(active('/makineler/abc/dogrulama')).toEqual(['machines']);
     expect(active('/projeler')).toEqual(['projects']);
     expect(active('/projeler/123')).toEqual(['projects']);
-    expect(active('/projeler/yeni')).toEqual(['create']);
-    expect(active('/projeler/yeni/parcalar')).toEqual(['create']);
+    // T247: no "Oluştur" item; the new-project wizard belongs to Projeler.
+    expect(active('/projeler/yeni')).toEqual(['projects']);
+    expect(active('/projeler/yeni/parcalar')).toEqual(['projects']);
     expect(active('/ayarlar/malzemeler')).toEqual(['settings']);
   });
 

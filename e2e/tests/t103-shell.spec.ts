@@ -68,7 +68,6 @@ test.describe('app shell', () => {
       tr.nav.home,
       tr.nav.machines,
       tr.nav.projects,
-      tr.nav.create,
       tr.nav.settings,
     ]);
     // T121: Ayarlar is live (Malzemeler); only Şablonlar is still yakında.

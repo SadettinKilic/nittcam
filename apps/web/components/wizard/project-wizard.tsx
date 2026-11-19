@@ -53,6 +53,7 @@ import {
   CloudCheck,
   Info,
   Loader2,
+  Pencil,
   Lock,
   Redo2,
   TriangleAlert,
@@ -700,6 +701,8 @@ function WizardSession({
           machineId={simMachine.id}
         />
       ) : null}
+      {/* T247: the save state shows once per screen: the top-bar dot on phones, the footer text
+          from 640 px (the badge stays in the DOM for its data attributes). */}
       <ShellStatus>
         <Badge
           dot
@@ -715,7 +718,7 @@ function WizardSession({
           data-testid="save-status"
           data-state={session.saveState}
           data-revision={session.revision}
-          className="max-w-full min-w-0 shrink"
+          className="max-w-full min-w-0 shrink sm:hidden"
         >
           <span className="truncate max-[399px]:sr-only">{saveText}</span>
         </Badge>
@@ -921,7 +924,9 @@ function AutosaveIndicator({
     <span
       data-testid="autosave-indicator"
       data-state={state}
-      className={`flex items-center gap-1.5 whitespace-nowrap ${state === 'error' ? 'font-medium text-danger-text' : 'text-fg-muted'}`}
+      role="status"
+      // T247: phones keep the top-bar dot instead (one save state per screen).
+      className={`flex items-center gap-1.5 whitespace-nowrap max-sm:hidden ${state === 'error' ? 'font-medium text-danger-text' : 'text-fg-muted'}`}
     >
       {icon}
       {t[state]}
@@ -1216,24 +1221,32 @@ function NameField({
   return (
     // B4b: in the one-row header (≥ 1400 px) the name yields first, down to 10rem (ellipsis + title).
     <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:max-[1399px]:min-w-64 min-[1400px]:min-w-40 min-[1400px]:flex-[0_1_20rem]">
-      <span className="px-2 text-xs font-medium text-fg-subtle">{label}</span>
-      <input
-        ref={input}
-        type="text"
-        data-testid="project-name"
-        title={text ?? value}
-        value={text ?? value}
-        maxLength={120}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            commit();
-          } else if (e.key === 'Escape') setText(null);
-        }}
-        className="h-10 w-full max-w-xl rounded-md border text-ellipsis border-transparent bg-transparent px-2 text-lg font-semibold tracking-tight text-fg transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid hover:border-border focus-visible:border-border-strong focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus sm:text-xl"
-      />
+      {/* T247: from 1280 px the caption goes; the name is the title (the label stays for AT). */}
+      <span className="px-2 text-xs font-medium text-fg-subtle min-[1280px]:sr-only">{label}</span>
+      <span className="group/name relative w-full max-w-xl">
+        <input
+          ref={input}
+          type="text"
+          data-testid="project-name"
+          title={text ?? value}
+          value={text ?? value}
+          maxLength={120}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commit();
+            } else if (e.key === 'Escape') setText(null);
+          }}
+          className="peer h-10 w-full rounded-md border text-ellipsis border-transparent bg-transparent pr-8 pl-2 text-lg font-semibold tracking-tight text-fg transition-colors duration-(--duration-fast) outline-none focus-visible:outline-solid hover:border-border focus-visible:border-border-strong focus-visible:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus sm:text-xl"
+        />
+        <Pencil
+          aria-hidden
+          data-testid="project-name-pencil"
+          className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-fg-subtle opacity-0 transition-opacity duration-(--duration-fast) group-hover/name:opacity-100 peer-focus:opacity-0"
+        />
+      </span>
     </label>
   );
 }

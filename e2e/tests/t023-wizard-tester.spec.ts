@@ -641,7 +641,6 @@ test.describe('T023 tester: wizard flow', () => {
       [tr.nav.machines, /\/makineler/],
       [tr.nav.projects, /\/projeler$/],
       [tr.nav.home, /\/$/],
-      [tr.nav.create, /\/projeler\/yeni/],
     ];
     for (const [label, url] of targets) {
       await nav.getByRole('link', { name: label }).first().click();
@@ -858,7 +857,8 @@ test.describe('T023 tester: widths and keyboard', () => {
     await page.keyboard.press('Enter');
     await expect(page.getByRole('listbox')).toBeHidden();
     await expect(material).not.toHaveAttribute('data-value', before ?? '');
-    await expect(page.getByTestId('save-status')).toBeVisible();
+    // T247: from 640 px the save state is the footer text (the top-bar chip is hidden).
+    await expect(page.getByTestId('autosave-indicator')).toBeVisible();
     const preset = page.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' }));
     await preset.focus();
     await page.keyboard.press('Space');

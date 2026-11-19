@@ -1,7 +1,10 @@
 // App shell navigation model (T103, spec §3.3): menu items, active state and breadcrumbs.
 // Pure: no React, no Next; the shell components map keys to icons and text.
 
-/** Menu keys of spec §3.3, in menu order. Text lives under `nav` in tr.json. */
+/**
+ * Menu keys of spec §3.3. Text lives under `nav` in tr.json. `create` (Oluştur) is not in the
+ * menu since T247 (same target as "Yeni proje"); it returns with the AI chat in M11.
+ */
 export type NavKey = 'home' | 'machines' | 'projects' | 'templates' | 'create' | 'settings';
 
 export interface NavItem {
@@ -20,11 +23,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: 'machines', href: '/makineler' },
   { key: 'projects', href: '/projeler' },
   { key: 'templates' },
-  { key: 'create', href: NEW_PROJECT_HREF },
   { key: 'settings', href: SETTINGS_HREF },
 ];
 
-/** Is the current page under this menu item? Oluştur owns the new-project wizard. */
+/** Is the current page under this menu item? Projeler owns the new-project wizard too (T247). */
 export function isNavActive(key: NavKey, pathname: string): boolean {
   switch (key) {
     case 'home':
@@ -32,12 +34,10 @@ export function isNavActive(key: NavKey, pathname: string): boolean {
     case 'machines':
       return pathname === '/makineler' || pathname.startsWith('/makineler/');
     case 'projects':
-      return (
-        pathname === '/projeler' ||
-        (pathname.startsWith('/projeler/') && !isUnder(pathname, NEW_PROJECT_HREF))
-      );
+      return isUnder(pathname, '/projeler');
     case 'create':
-      return isUnder(pathname, NEW_PROJECT_HREF);
+      // Not in the menu (T247); kept for M11.
+      return false;
     case 'settings':
       return isUnder(pathname, '/ayarlar');
     default:
