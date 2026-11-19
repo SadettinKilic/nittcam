@@ -47,7 +47,7 @@ export function firstUsableLibraryStock(
 /**
  * A new project (T023): the given machine profile version and the default sheet. The stock is the
  * company library's first entry the machine can cut (T259), else the profile's first material set
- * (else MDF 18 mm). Nothing is stored until the first change (D-029).
+ * (the first verified one, T271; else MDF 18 mm). Nothing is stored until the first change (D-029).
  */
 export function newProject(
   machine?: {
@@ -57,7 +57,10 @@ export function newProject(
   },
   library: readonly (LibraryMaterial & { id: string })[] = [],
 ): Project {
-  const set = machine?.profile.materials[0];
+  // T271: the first verified set; with none verified the first set stays (its unconfirmed
+  // starting values block G-code and step 1 shows "Kesim ayarını doğrula", T265).
+  const sets = machine?.profile.materials ?? [];
+  const set = sets.find((m) => !m.unverified) ?? sets[0];
   const usable = machine ? firstUsableLibraryStock(library, machine.profile) : undefined;
   if (usable) {
     const base = newProject(machine);

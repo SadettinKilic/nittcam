@@ -1,4 +1,4 @@
-import { DEFAULT_LIBRARY, defaultMachineProfile } from '@nittcam/core';
+import { DEFAULT_LIBRARY, defaultMachineProfile, findMaterialParams } from '@nittcam/core';
 import { describe, expect, it } from 'vitest';
 import { firstUsableLibraryStock, newProject, stockHasGrain } from './draft-project';
 
@@ -33,6 +33,27 @@ describe('new project stock (T259, D-045)', () => {
 
 const mdfSet = machine.profile.materials[0];
 if (!mdfSet) throw new Error('example profile has no set');
+
+describe('new project never defaults to an unverified set (T271)', () => {
+  const base = defaultMachineProfile();
+  const first = base.materials[0]!;
+  const other = { ...first, thickness: 16 };
+  const mark = <T extends object>(m: T) => ({ ...m, unverified: true as const });
+  it('skips an unverified first set for the first verified one', () => {
+    const profile = { ...base, materials: [mark(first), other] };
+    const second = other;
+    const p = newProject({ id: 'm1', version: 1, profile });
+    expect([p.stock.material, p.stock.thickness]).toEqual([second.material, second.thickness]);
+  });
+  it('with no verified set, keeps the first (unconfirmed) one, which blocks G-code', () => {
+    const profile = { ...base, materials: [mark(first), mark(other)] };
+    const p = newProject({ id: 'm1', version: 1, profile });
+    expect([p.stock.material, p.stock.thickness]).toEqual([first.material, first.thickness]);
+    expect(findMaterialParams(profile, p.stock)?.unverified).toBe(true);
+    // the library default never picks an unconfirmed set either
+    expect(firstUsableLibraryStock(library, profile)).toBeUndefined();
+  });
+});
 
 describe('default entry tie-break (D-046)', () => {
   const sorted = [...library].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
