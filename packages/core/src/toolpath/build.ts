@@ -485,9 +485,15 @@ function buildOuterOperation(
     // T272: an outer contour keeps straight-edge tabs; only when none fit there (all-arc outlines
     // such as discs and the sign letter "O") may tabs sit on arcs, each inside one arc segment
     // long enough for the whole raised span (clear of corners and joins), as for slugs (D-049).
-    // The arc the tool rolls around a sharp corner (radius = tool radius) is a corner: never used.
+    // The arc the tool rolls around a sharp corner (radius = tool radius) is a corner: never used,
+    // nor a rounded corner (≤ 90° next to a straight edge, T284 / D-058).
     if (tabs.length === 0 && !isInner)
-      tabs = placeTabs(segs, { ...tabOpts, onArcs: true, minArcRadius: toolRadius });
+      tabs = placeTabs(segs, {
+        ...tabOpts,
+        onArcs: true,
+        minArcRadius: toolRadius,
+        noCornerArcs: true,
+      });
     if (tabs.length === 0 && small) {
       // An unheld small part can fly off the vacuum: refused; thin skin (T143) is the way out.
       errors.push(
