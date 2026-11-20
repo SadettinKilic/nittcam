@@ -45,13 +45,13 @@ describe('T274: tools in order of use, manual change re-zero', () => {
     const nc = r.files[0]!.content;
     const order = r.tools!.sheets[0]!.tools.map((t) => t.number);
     expect(order).toEqual(promptedTools(nc));
-    expect(order).toEqual([2, 1, 2]);
-    expect(r.tools!.manualChanges).toBe(2);
+    expect(order).toEqual([1, 2]);
+    expect(r.tools!.manualChanges).toBe(1);
     expect(r.tools!.rezeroZ).toBe(true);
     // every in-program stop asks to re-zero Z, right before M0; the first-tool question does not
     const lines = nc.split(/\r?\n/);
     const stops = lines.flatMap((l, i) => (l === 'M0' ? [i] : []));
-    expect(stops).toHaveLength(3);
+    expect(stops).toHaveLength(2);
     expect(lines[stops[0]! - 1]).toMatch(/TAKILI MI/);
     for (const i of stops.slice(1)) {
       expect(lines[i - 1]).toMatch(
@@ -103,7 +103,7 @@ describe('T274: tools in order of use, manual change re-zero', () => {
     const r = exportNc(holeFixtureProject(THROUGH), pv('generic'), postConfig('generic'));
     expect(r.ok).toBe(true);
     expect(r.tools!.mode).toBe('auto');
-    expect(r.tools!.sheets[0]!.tools.map((t) => t.number)).toEqual([2, 1, 2]);
+    expect(r.tools!.sheets[0]!.tools.map((t) => t.number)).toEqual([1, 2]);
     expect(r.tools!.manualChanges).toBe(0);
     expect(r.tools!.rezeroZ).toBe(false);
     expect(r.files[0]!.content).not.toContain('Z SIFIRLA');
@@ -115,12 +115,12 @@ describe('T274: tools in order of use, manual change re-zero', () => {
     const off = exportNc(holeFixtureProject(THROUGH), pv('mach3', true), cfg);
     const plain = exportNc(holeFixtureProject(THROUGH), pv('mach3'), postConfig('mach3'));
     expect(off.ok && plain.ok).toBe(true);
-    expect(off.tools!.manualChanges).toBe(2);
+    expect(off.tools!.manualChanges).toBe(1);
     expect(off.tools!.rezeroZ).toBe(false);
     const a = off.files[0]!.content;
     const b = plain.files[0]!.content;
     expect(a).not.toContain('Z SIFIRLA');
-    expect(a).toContain('(TAKIM DEGISTIR: T1 D6.000, sonra cycle start)');
+    expect(a).toContain('(TAKIM DEGISTIR: T2 D8.000, sonra cycle start)');
     const code = (s: string) => s.split(/\r?\n/).filter((l) => !l.startsWith('('));
     expect(code(a)).toEqual(code(b));
   });

@@ -47,6 +47,8 @@ export interface SheetDrawing {
   height: number;
   /** True when the sheet is cut from a stock offcut (T168). */
   offcut: boolean;
+  /** B51: the stock offcut's id (its `offcuts` row), for the PDF's "Artık parçadan" line. */
+  offcutId?: string;
   /** Sheet grain angle, degrees [0, 180); null = the sheet has no grain. */
   grain: number | null;
   /** Edge margin of the nesting, mm. */
@@ -125,6 +127,7 @@ export function layoutDrawing(entered: Project): SheetDrawing[] {
       width: size.width,
       height: size.height,
       offcut: sheet.offcutId !== undefined,
+      ...(sheet.offcutId !== undefined ? { offcutId: sheet.offcutId } : {}),
       grain: size.grain === null ? null : normalizeGrain(size.grain),
       margin: project.nesting.margin,
       parts: parts.map((p) => p.part),

@@ -21,7 +21,15 @@ import {
   type CompanyMark,
 } from './document';
 import { addReportPages, reportPageCount } from './report-pages';
-import { addLayoutPages, contentBox, drawFrame, mm, type PageHeader } from './layout-pages';
+import {
+  addLayoutPages,
+  contentBox,
+  drawFrame,
+  mm,
+  type PageHeader,
+  type PdfMachine,
+  type PdfOffcut,
+} from './layout-pages';
 
 const messages = getMessages();
 const t = messages.pdf;
@@ -35,17 +43,24 @@ export interface ProjectPdfInput {
   cutSeconds: number | null;
   /** Company name and logo for the page header (T301); none = no company mark. */
   company?: CompanyMark | null;
+  /** The pinned machine profile, for the program-zero mark (B51); null/absent = no mark. */
+  machine?: PdfMachine | undefined;
+  /** B51: the stock offcuts the layout cuts from, by id. */
+  offcuts?: Readonly<Record<string, PdfOffcut>> | undefined;
 }
 
 /** Turkish material label and thickness for the page header. */
 export function materialLabel(project: Project): string {
-  const kind = materialKindOf(project.stock.material);
+  return materialText(project.stock.material, project.stock.thickness);
+}
+
+/** "MDF, 18 mm" for a material id and thickness (the header and the offcut line, B51). */
+export function materialText(material: string, thickness: number): string {
+  const kind = materialKindOf(material);
   const names = messages.materials as Record<string, string>;
   const name =
-    kind !== null && names[kind]
-      ? names[kind]
-      : fill(names['unknown'] ?? '{id}', { id: project.stock.material });
-  return fill(t.material, { material: name, thickness: mm(project.stock.thickness) });
+    kind !== null && names[kind] ? names[kind] : fill(names['unknown'] ?? '{id}', { id: material });
+  return fill(t.material, { material: name, thickness: mm(thickness) });
 }
 
 export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Array> {
@@ -68,7 +83,17 @@ export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Arr
     const box = contentBox(page);
     centred(page, t.empty, box.x + box.width / 2, box.y + box.height / 2, fonts.regular, 11, MUTED);
   } else {
-    addLayoutPages(doc, fonts, head, sheets, paper, 0, pageCount);
+    addLayoutPages(
+      doc,
+      fonts,
+      head,
+      sheets,
+      paper,
+      0,
+      pageCount,
+      input.machine ?? null,
+      input.offcuts ?? {},
+    );
   }
   addReportPages(doc, fonts, head, report, paper, layoutPages, pageCount);
   return saveDocument(doc);

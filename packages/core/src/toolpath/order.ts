@@ -151,6 +151,7 @@ export function toolChanges(items: readonly OrderItem[], seq: readonly OrderedIt
 /**
  * Greedy list schedule of one sheet's items (indices in input order). `nearest` = use the distance
  * key (nearest neighbour); otherwise ties fall to the input order (the naive constrained order).
+ * `toolPref` = the order in which tools are picked at a tool change (and for the first tool).
  */
 function schedule(
   items: readonly OrderItem[],
@@ -158,6 +159,7 @@ function schedule(
   mode: CutOrderMode,
   origin: Point,
   nearest: boolean,
+  toolPref?: readonly number[],
 ): number[] {
   const n = idx.length;
   const preds: number[] = new Array<number>(n).fill(0);
@@ -201,7 +203,12 @@ function schedule(
         }
       }
       const key = [
-        tool !== null && it.tool !== tool ? 1 : 0,
+        // Current tool first; at a change (or the first tool) the preferred order, if any (B51).
+        it.tool === tool
+          ? 0
+          : tool === null && !toolPref
+            ? 0
+            : 1 + (toolPref?.indexOf(it.tool) ?? 0),
         CUT_CLASS_RANK[it.cls],
         it.cls === 'outer' ? it.area : 0,
         d,
@@ -373,6 +380,67 @@ function twoOpt(
   return { order, dp, evaluations };
 }
 
+/** Tool changes of an order of item indices. */
+function changesOf(items: readonly OrderItem[], order: readonly number[]): number {
+  let n = 0;
+  for (let i = 1; i < order.length; i++) {
+    if (
+      (items[order[i] as number] as OrderItem).tool !==
+      (items[order[i - 1] as number] as OrderItem).tool
+    )
+      n++;
+  }
+  return n;
+}
+
+/** All orderings of `xs` (lexicographic by input order). */
+function permutations(xs: readonly number[]): number[][] {
+  if (xs.length <= 1) return [xs.slice()];
+  const out: number[][] = [];
+  xs.forEach((x, i) => {
+    for (const rest of permutations([...xs.slice(0, i), ...xs.slice(i + 1)]))
+      out.push([x, ...rest]);
+  });
+  return out;
+}
+
+/** Up to this many tools on one sheet every tool order is tried (5! = 120 greedy runs). */
+const MAX_TOOL_ORDER_SEARCH = 5;
+
+/**
+ * B51 (D-091, CTO #7): the "first needed" tool choice can make a change too many (T2 → T3 → T2 when
+ * T3 drills holes the T2 outer contour waits for; T3 → T2 is enough). Tries the greedy schedule
+ * with every order of the sheet's tools at a change and returns the order with the fewest changes
+ * (ties: the shorter rapid, then the first order), or undefined when none beats the plain greedy
+ * schedule. Constraints still hold: every candidate is a list schedule over the same precedence.
+ */
+function toolPreference(
+  items: readonly OrderItem[],
+  idx: readonly number[],
+  mode: CutOrderMode,
+  origin: Point,
+): number[] | undefined {
+  const tools = [...new Set(idx.map((i) => (items[i] as OrderItem).tool))].sort((a, b) => a - b);
+  if (tools.length < 2 || tools.length > MAX_TOOL_ORDER_SEARCH) return undefined;
+  let bestChanges = changesOf(items, schedule(items, idx, mode, origin, true));
+  // Every tool runs at least once: fewer than (tools - 1) changes is impossible.
+  if (bestChanges <= tools.length - 1) return undefined;
+  let best: number[] | undefined;
+  let bestRapid = Infinity;
+  for (const pref of permutations(tools)) {
+    const cand = schedule(items, idx, mode, origin, true, pref);
+    const c = changesOf(items, cand);
+    if (c > bestChanges || (c === bestChanges && !best)) continue;
+    const r = dpFrom(items, cand, origin, { f: [], from: [] }, 0);
+    if (c < bestChanges || r < bestRapid - IMPROVE_EPS) {
+      best = pref;
+      bestChanges = c;
+      bestRapid = r;
+    }
+  }
+  return best;
+}
+
 /**
  * Cut order of `items` (spec §6.3). Items are processed sheet by sheet (ascending sheet index);
  * within a sheet the input order is the naive order and the final tie-break.
@@ -394,9 +462,10 @@ export function cutOrder(items: readonly OrderItem[], options: CutOrderOptions):
   for (const sheet of sheetIds) {
     const idx = bySheet.get(sheet) as number[];
     const placementRapid = rapidLength(items, defaults(idx), origin);
-    const naive = schedule(items, idx, mode, origin, false);
+    const pref = toolPreference(items, idx, mode, origin);
+    const naive = schedule(items, idx, mode, origin, false, pref);
     const naiveRapid = rapidLength(items, defaults(naive), origin);
-    const greedy = schedule(items, idx, mode, origin, true);
+    const greedy = schedule(items, idx, mode, origin, true, pref);
     const dpG: Dp = { f: [], from: [] };
     const dpN: Dp = { f: [], from: [] };
     const g = dpFrom(items, greedy, origin, dpG, 0);

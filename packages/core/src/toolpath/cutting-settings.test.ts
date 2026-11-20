@@ -166,9 +166,11 @@ describe('KESİM header line (T288, K3)', () => {
     return r.files[0]?.content ?? '';
   };
 
-  it('absent for the settings of a new project (byte-identical output), present otherwise', () => {
-    // A new project's settings (tabs on every part, arc, climb) add no line.
-    expect(exportFirst(run(project(), 'setTabs', { mode: 'all' }))).not.toMatch(/KES[İI]M/);
+  it('present in every file, a new project with default settings too (D-091)', () => {
+    // D-091 (B51): the operator sees tabs, lead-in and direction in any program.
+    expect(exportFirst(run(project(), 'setTabs', { mode: 'all' }))).toMatch(
+      /KES[İI]M: k[öo]pr[üu] her par[çc]ada 4 adet 10.000 x 3.000 mm, giri[şs] yay, y[öo]n climb/,
+    );
     expect(exportFirst(project())).toMatch(/KES[İI]M: k[öo]pr[üu] yaln[ıi]z/);
     const text = exportFirst(
       run(run(project(), 'setTabs', { mode: 'all', count: 3 }), 'setLeadIn', { leadIn: 'line' }),

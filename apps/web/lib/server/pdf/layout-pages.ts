@@ -2,7 +2,15 @@
  * PDF layout pages (T172, spec §6.6 "plaka dizilimi", §2.4): one landscape page per layout sheet
  * with the numbered parts, grain arrows, the sheet's dimensions and each part's cut size.
  */
-import { fitSheet, PAPER_SIZES, type PaperSize, type SheetDrawing } from '@nittcam/core';
+import {
+  fitSheet,
+  machineFrame,
+  PAPER_SIZES,
+  toMachineXY,
+  type MachineProfile,
+  type PaperSize,
+  type SheetDrawing,
+} from '@nittcam/core';
 import { degrees, type PDFDocument, type PDFPage } from 'pdf-lib';
 import { fill } from '../../fill';
 import { getMessages } from '../../messages';
@@ -61,6 +69,21 @@ function drawLogo(page: PDFPage, company: PdfCompany | null | undefined, top: nu
   });
   return w + 8;
 }
+
+/** What the sheet page needs of the machine to mark program zero (B51); null = not known. */
+/** B51 (D-091): what the sheet page tells about a stock offcut, by offcut id. */
+export interface PdfOffcut {
+  width: number;
+  height: number;
+  /** "MDF 18". */
+  material: string;
+  /** Source project name; null = none (added by hand or the project is gone). */
+  source: string | null;
+  /** Short record number: the first 8 characters of the offcut id. */
+  ref: string;
+}
+
+export type PdfMachine = Pick<MachineProfile, 'origin' | 'zZero' | 'workEnvelope'> | null;
 
 const nf = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 export const mm = (v: number): string => nf.format(v);
@@ -150,7 +173,7 @@ function ringPath(
   return `${d}Z`;
 }
 
-function drawSheet(page: PDFPage, fonts: PdfFonts, sheet: SheetDrawing): void {
+function drawSheet(page: PDFPage, fonts: PdfFonts, sheet: SheetDrawing, machine: PdfMachine): void {
   const box = contentBox(page);
   const area = {
     x: box.x + DIM_ROOM,
@@ -212,6 +235,7 @@ function drawSheet(page: PDFPage, fonts: PdfFonts, sheet: SheetDrawing): void {
     color: MUTED,
     rotate: degrees(90),
   });
+  if (machine) drawOrigin(page, fonts, sheet, machine, px, py, dimY - 6);
 
   for (const part of sheet.parts) {
     page.drawSvgPath(ringPath(part.outline, svg), {
@@ -244,36 +268,53 @@ function drawSheet(page: PDFPage, fonts: PdfFonts, sheet: SheetDrawing): void {
     const bh = part.box.h * s;
     const cx = px(part.box.x + part.box.w / 2);
     const cy = py(part.box.y + part.box.h / 2);
+    // B51: the grain arrow sits in the bottom-left corner of the footprint. When the part is too
+    // narrow or too low for that, the text keeps clear of it: narrower lines beside a left-edge
+    // arrow, the text above a bottom-edge arrow, and no name/size lines when neither fits.
+    let textW = bw - 6;
+    let textCy = cy;
+    let room = bh;
+    let nameOk = true;
     if (part.grainAngle !== null) {
       const len = Math.max(8, Math.min(30, Math.min(bw, bh) * 0.45));
-      // Bottom-left corner of the footprint, clear of the centred text.
       const r = len / 2 + 5;
-      const ax = bw > 2 * r + 4 ? px(part.box.x) + r : cx;
-      const ay = bh > 2 * r + 4 ? py(part.box.y) + r : cy;
+      const fitsX = bw > 2 * r + 4;
+      const fitsY = bh > 2 * r + 4;
+      const ax = fitsX ? px(part.box.x) + r : cx;
+      const ay = fitsY ? py(part.box.y) + r : cy;
       grainArrow(page, ax, ay, part.grainAngle, len, ACCENT);
+      if (fitsX && !fitsY) textW = bw - 4 * r - 6;
+      else if (!fitsX && fitsY) {
+        room = bh - 2 * r;
+        textCy = cy + r;
+      } else if (!fitsX && !fitsY) nameOk = false;
     }
     const numSize = Math.max(
       4,
-      Math.min(10, bh * 0.35, (bw - 4) / Math.max(1, fonts.bold.widthOfTextAtSize(part.number, 1))),
+      Math.min(
+        10,
+        room * 0.35,
+        (Math.max(textW, 4) + 2) / Math.max(1, fonts.bold.widthOfTextAtSize(part.number, 1)),
+      ),
     );
     const lines: { value: string; size: number; bold: boolean }[] = [
       { value: part.number, size: numSize, bold: true },
     ];
     const small = Math.min(7, numSize * 0.8);
-    if (bh > numSize + 2 * small + 8 && small >= 4) {
+    if (nameOk && textW > 12 && room > numSize + 2 * small + 8 && small >= 4) {
       lines.push({
-        value: fitText(part.name, fonts.regular, small, bw - 6),
+        value: fitText(part.name, fonts.regular, small, textW),
         size: small,
         bold: false,
       });
       lines.push({
-        value: fitText(`${mm(part.width)} × ${mm(part.height)}`, fonts.regular, small, bw - 6),
+        value: fitText(`${mm(part.width)} × ${mm(part.height)}`, fonts.regular, small, textW),
         size: small,
         bold: false,
       });
     }
     const total = lines.reduce((sum, l) => sum + l.size + 1.5, 0);
-    let y = cy + total / 2;
+    let y = textCy + total / 2;
     for (const l of lines) {
       y -= l.size + 1.5;
       centred(
@@ -289,6 +330,63 @@ function drawSheet(page: PDFPage, fonts: PdfFonts, sheet: SheetDrawing): void {
   }
 }
 
+/**
+ * The sheet corner nearest program zero (sheet frame `cx`, `cy`) and its machine coordinates
+ * (`x`, `y`; 0 when the sheet sits at zero). `left` = the corner is on the left (B51).
+ */
+export function originMark(
+  sheet: Pick<SheetDrawing, 'width' | 'height'>,
+  machine: NonNullable<PdfMachine>,
+): { cx: number; cy: number; x: number; y: number; left: boolean } {
+  const frame = machineFrame(machine, {
+    thickness: 0,
+    sheetWidth: sheet.width,
+    sheetHeight: sheet.height,
+  });
+  const cx = frame.inX === 1 ? 0 : sheet.width;
+  const cy = frame.inY === 1 ? 0 : sheet.height;
+  const m = toMachineXY(frame, cx, cy);
+  // + 0 turns -0 into 0
+  return { cx, cy, x: m.x + 0, y: m.y + 0, left: frame.inX === 1 };
+}
+
+/**
+ * B51 (D-091, CTO #11): marks the sheet corner at program zero with a dot and its machine
+ * coordinates ("X0 Y0 · ön sol"), so the operator lays the sheet on the table from the paper.
+ * The text sits below the sheet, on the corner's side.
+ */
+function drawOrigin(
+  page: PDFPage,
+  fonts: PdfFonts,
+  sheet: SheetDrawing,
+  machine: NonNullable<PdfMachine>,
+  px: (x: number) => number,
+  py: (y: number) => number,
+  textY: number,
+): void {
+  const { cx, cy, x, y, left } = originMark(sheet, machine);
+  page.drawCircle({ x: px(cx), y: py(cy), size: 2.6, color: ACCENT });
+  const label = fill(t.origin, {
+    x: mm(x),
+    y: mm(y),
+    corner: t.corners[machine.origin.corner],
+  });
+  if (left) text(page, label, px(0), textY, fonts.bold, 7, ACCENT);
+  else right(page, label, px(sheet.width), textY, fonts.bold, 7, ACCENT);
+}
+
+/** "Artık parçadan: 1200 × 800 · MDF 18 · Mutfak · kayıt 1a2b3c4d"; plain when the row is unknown. */
+export function offcutLine(o: PdfOffcut | undefined): string {
+  if (!o) return t.offcut;
+  return fill(t.offcutInfo, {
+    w: mm(o.width),
+    h: mm(o.height),
+    material: o.material,
+    source: o.source ?? t.offcutNoSource,
+    ref: o.ref,
+  });
+}
+
 /** Adds one page per layout sheet; returns the pages added. */
 export function addLayoutPages(
   doc: PDFDocument,
@@ -298,6 +396,8 @@ export function addLayoutPages(
   paper: PaperSize,
   pageOffset: number,
   pageCount: number,
+  machine: PdfMachine = null,
+  offcuts: Readonly<Record<string, PdfOffcut>> = {},
 ): PDFPage[] {
   const size = PAPER_SIZES[paper];
   return sheets.map((sheet, i) => {
@@ -306,7 +406,7 @@ export function addLayoutPages(
       fill(t.sheetSize, { w: mm(sheet.width), h: mm(sheet.height) }),
       sheet.grain === null ? t.noGrain : fill(t.grain, { angle: mm(sheet.grain) }),
       fill(t.parts, { count: sheet.parts.length }),
-      ...(sheet.offcut ? [t.offcut] : []),
+      ...(sheet.offcut ? [offcutLine(sheet.offcutId ? offcuts[sheet.offcutId] : undefined)] : []),
     ].join(' · ');
     drawFrame(
       page,
@@ -318,7 +418,7 @@ export function addLayoutPages(
       pageCount,
       t.legend,
     );
-    drawSheet(page, fonts, sheet);
+    drawSheet(page, fonts, sheet, machine);
     if (sheet.grain !== null) {
       // Sheet grain left of the title.
       const { width, height } = page.getSize();

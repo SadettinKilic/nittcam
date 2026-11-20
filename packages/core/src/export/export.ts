@@ -102,19 +102,15 @@ export function exportNc(
 }
 
 /**
- * T288 (K3): the tabs, lead-in and direction the toolpath used, for the "KESİM" header line, when
- * any of them differs from the defaults (tabs on every part with the material set's values, as a
- * new project starts: no skin, arc lead-in, climb): a default project keeps its byte-identical output (golden files).
+ * T288 (K3): the tabs, lead-in and direction the toolpath used, for the "KESİM" header line.
+ * D-091 (B51): written in every file, default settings too, so the operator sees the setup in any
+ * program before the field test.
  */
 export function cuttingMeta(
   project: Project,
   profile: PostProfileVersion['profile'],
-): { cutting?: PostCuttingMeta } {
+): { cutting: PostCuttingMeta } {
   const c = cuttingSettingsOf(project, profile);
-  const own = Object.values(c.tabs.source).includes('project');
-  const isDefault =
-    c.tabMode === 'all' && !own && c.skin === null && c.leadIn === 'arc' && c.direction === 'climb';
-  if (isDefault) return {};
   const cutting: PostCuttingMeta = {
     tabMode: c.tabMode,
     tabCount: c.tabs.count,

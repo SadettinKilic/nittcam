@@ -18,6 +18,7 @@ import { fill } from '../../lib/fill';
 import {
   gridOf,
   labelQuery,
+  validStart,
   loadLabelSettings,
   saveLabelSettings,
   type LabelChoice,
@@ -76,9 +77,11 @@ export function ExportLabels({
   };
   const valid =
     (settings.preset !== 'custom' || labelGridSchema.safeParse(settings.custom).success) &&
-    labelOffsetSchema.safeParse(settings.offset).success;
+    labelOffsetSchema.safeParse(settings.offset).success &&
+    validStart(settings.start, gridOf(settings));
   const grid = gridOf(settings);
-  const pages = Math.max(1, Math.ceil(pieces / (grid.cols * grid.rows)));
+  const perPage = grid.cols * grid.rows;
+  const pages = Math.max(1, Math.ceil((pieces + Math.max(0, settings.start - 1)) / perPage));
   const link = buttonVariants({ variant: 'outline', size: 'sm' });
 
   const setGrid = (key: keyof LabelGrid, v: number | null) =>
@@ -147,6 +150,17 @@ export function ExportLabels({
         </div>
         <p className="text-xs text-fg-muted">{t.offsetHint}</p>
       </fieldset>
+      {/* B51: a half-used label sheet starts at its first free label. */}
+      <FormField label={t.start} hint={fill(t.startHint, { max: perPage })}>
+        <NumberInput
+          inputSize="sm"
+          value={Number.isFinite(settings.start) ? settings.start : null}
+          onValueChange={(v) => update({ ...settings, start: v ?? Number.NaN })}
+          min={1}
+          maxDecimals={0}
+          data-testid="labels-start"
+        />
+      </FormField>
       {!valid ? (
         <p
           className="text-xs font-medium text-danger-text"

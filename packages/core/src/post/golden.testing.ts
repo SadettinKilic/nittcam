@@ -408,7 +408,7 @@ export function goldenCases(): GoldenCase[] {
         projectName: fx.name,
         revision: fx.revision,
         fileStem: fx.id,
-        // T288: the same KESİM header line as exportNc (absent for default cutting settings).
+        // T288: the same KESİM header line as exportNc (every file, D-091).
         ...cuttingMeta(project, profile),
         stock: {
           material: project.stock.material,
