@@ -27,10 +27,10 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await applyTheme(page, 'light');
   // The frame-rate watch (D-033) would turn on Basit mod, then 2D, on a CPU-rendered canvas
-  // during playback. The T159 hook feeds it a synthetic 1000 fps clock, so the captures always
-  // show the normal 3D view; the slow chain itself is covered in b21-preview3d-perf.spec.ts.
+  // during playback; the T159 test switch keeps the normal 3D view in the captures. The slow
+  // chain itself is covered in b21-preview3d-perf.spec.ts.
   await page.addInitScript(() => {
-    (window as unknown as { __nittcam3dSlow: number }).__nittcam3dSlow = 1000;
+    (window as unknown as { __nittcam3dNoAuto: boolean }).__nittcam3dNoAuto = true;
   });
 });
 
