@@ -1453,6 +1453,7 @@ Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by
 ### Not polish (moved)
 - Mode-card click long task 225–375 ms → T186 performance sweep.
 - Flaky `geometry/offset.property.test.ts` and `t249-panels.spec.ts:55`, missing browser test for DXF "Çizgi üzerinden" mapping → T190 regression scenarios (task only if seen again).
+- Flaky `b21-preview3d-perf.spec.ts:69` (300 parts, first frame ≤ 1.5 s) failed once on a loaded CI runner (integration/13, green on retry) → T186 performance sweep (task only if seen again).
 - Manual tool change 20 mm above the material, no park position → field-test list.
 - Removed as done or covered: project name appending (T283), holes in Dizilim (B24), multi-file "İndir" label (T176 zip), Çizim view remembered (T290).
 
