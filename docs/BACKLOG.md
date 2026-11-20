@@ -1358,7 +1358,7 @@ Acceptance:
 - [ ] goldens unchanged for default values; any new golden verified per D-051
 Tester focus: gcode-safety checklist on each option; undo; export equals preview.
 
-### T289 Machine archive   [status: todo]
+### T289 Machine archive   [status: done]
 Gap E2 (CTO #10). Spec: §3.4 · Depends: T107
 Acceptance:
 - [ ] archive a machine (soft delete, "Geri al" toast), also the sample machine; tenant-scoped API
@@ -1373,12 +1373,12 @@ Gap E5 (CTO #10). Spec: §3.4
 Acceptance:
 - [x] "Aç" opens the step after the last completed one (layout → Dizilim, export → Dışa aktar); `?adim=` in the URL wins; Çizim / Liste view remembered
 
-### T291 Offcut stock: manual add, edit, delete   [status: todo]
+### T291 Offcut stock: manual add, edit, delete   [status: done]
 Gap E3 (CTO #10); owner 2026-11-20: manual add in scope (Q011). Spec: §6.2
 Acceptance:
 - [ ] "Artık parça ekle" (material, thickness, width, length, grain); edit and delete a stock offcut (with "Geri al"); tab kept in the URL (`?sekme=artik`)
 
-### T292 Other-thickness parts to a new project   [status: todo]
+### T292 Other-thickness parts to a new project   [status: done]
 Gap E7 (CTO #10); owner 2026-11-20: before the field test (Q011).
 Acceptance:
 - [ ] cabinet dialog / cut list: "Ayrı plaka parçalarını yeni projeye aktar" → new project with the same machine, the chosen material/thickness, parts filled in; the source project links to it; multi-material inside one project stays out of scope
