@@ -1250,19 +1250,19 @@ Tester focus: left/right doors, mirrored placement, manual move onto the hinge e
 
 ### Batch B25: T172–T174 (PDF)
 
-### T172 PDF engine and layout pages   [status: todo]
+### T172 PDF engine and layout pages   [status: done]
 Spec: §6.6, §8.3 · Depends: T171
 Acceptance:
 - [ ] pdf-lib + embedded Turkish-capable font (OFL); A4/A3 landscape sheet pages with numbered parts, grain arrows, dimensions; generated on the server from the saved revision; deterministic bytes (fixed metadata dates)
 Tester focus: Turkish characters (ğüşıöç İ) render; same input → same hash; page count = sheets.
 
-### T173 PDF part list, edge bands, waste report   [status: todo]
+### T173 PDF part list, edge bands, waste report   [status: done]
 Spec: §6.6, §4.8 · Depends: T172
 Acceptance:
 - [ ] numbered part list (name, finish/cut size, qty, grain, banded edges marked), waste % and area, sheet count, estimated cut time
 Tester focus: numbers vs layout data; banded edge marks for all 4 edges.
 
-### T174 Part labels   [status: todo]
+### T174 Part labels   [status: done]
 Spec: §2.4, §6.6 · Depends: T172
 Acceptance:
 - [ ] label sheet presets (A4 3×8, 2×7, custom mm grid); label: project, part number, name, size, grain arrow, edge band glyph, sheet number; print offset calibration setting
