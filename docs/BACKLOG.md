@@ -1366,20 +1366,23 @@ Acceptance:
 - [ ] Ana sayfa counts ignore archived machines
 Tester focus: archive/undo, new-project picker, old project opens; tenancy.
 
+### Batch B34: T290–T292 (project flow follow-ups; after B27)
+
 ### T290 Project opens at the step where work stopped   [status: todo]
-Gap E5 (CTO #10). Rides with B27 (T178–T180). Spec: §3.4
+Gap E5 (CTO #10). Spec: §3.4
 Acceptance:
 - [ ] "Aç" opens the step after the last completed one (layout → Dizilim, export → Dışa aktar); `?adim=` in the URL wins; Çizim / Liste view remembered
 
-### T291 Offcut stock: edit and delete   [status: todo]
-Gap E3 (CTO #10). Rides with B27. Spec: §6.2
+### T291 Offcut stock: manual add, edit, delete   [status: todo]
+Gap E3 (CTO #10); owner 2026-11-20: manual add in scope (Q011). Spec: §6.2
 Acceptance:
-- [ ] edit and delete a stock offcut (with "Geri al"); tab kept in the URL (`?sekme=artik`); manual add waits for the owner's scope answer (Q: E3)
+- [ ] "Artık parça ekle" (material, thickness, width, length, grain); edit and delete a stock offcut (with "Geri al"); tab kept in the URL (`?sekme=artik`)
 
-### Parked for the owner's scope decision
-- E3 manual add of old offcuts into stock (spec §6.2 only says "from the layout").
-- E7 parts of another thickness (8 mm cabinet back): "move separate-sheet parts to a new project". Suggested after the field test.
-
+### T292 Other-thickness parts to a new project   [status: todo]
+Gap E7 (CTO #10); owner 2026-11-20: before the field test (Q011).
+Acceptance:
+- [ ] cabinet dialog / cut list: "Ayrı plaka parçalarını yeni projeye aktar" → new project with the same machine, the chosen material/thickness, parts filled in; the source project links to it; multi-material inside one project stays out of scope
+Tester focus: parts and sizes equal the excluded ones; both projects nest and export.
 
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
 
@@ -1401,104 +1404,57 @@ Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
 
 ## Polish queue (M9; D-047)
 
-Non-blocking review findings parked here by the PO (review ref + one line each). The M9 polish phase turns them into tasks.
+Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by screen. Source in brackets (#5 = CTO review 5, T = tester). The M9 polish phase takes **one group per batch** (P1–P5), not item by item; inside a group the dev may skip an item that costs more than an hour and note it. Items marked ★ were seen in 2+ reviews: do them first.
 
-From CTO review #5 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-5.md`):
-- Board: no way to add a corner to a shape ("kenarı böl / köşe ekle"); a rectangle converted to freeform keeps 4 corners, so an L or a notch cannot be made from it and must be redrawn with the line tool. Best candidate to pull forward with T137 (`docs/reviews/2026-11-19-cto-5/board-properties-1440-light.png`)
-- Board: no "seçime yakınlaş"; the board opens on the whole 2.800 × 2.070 sheet (%18), a 200 mm part is drawn 35 px wide and "Tümünü göster" keeps the sheet in frame (`docs/reviews/2026-11-19-cto-5/board-line-draw-1440-light.png`)
-- Board: corner X / Y are board coordinates with decimals (604,56 / 402,34); offer part-relative coordinates or snap the first click to whole mm (`docs/reviews/2026-11-19-cto-5/board-properties-1440-light.png`)
-- Board: corner numbers shift after a fillet (inner corner "Köşe 4" became "Köşe 5"); show the number of the picked corner on the canvas or keep numbering stable (`docs/reviews/2026-11-19-cto-5/board-dogbone-toast-1440-light.png`)
-- Board: line tool needs an angle typed for every edge (5 of 12 typed values on an L); take the direction from arrow keys or the mouse when only a length is typed (`docs/reviews/2026-11-19-cto-5/board-line-draw-1440-light.png`)
-- Board: editing an edge length on a right-angled shape skews the neighbour edge (185 → 205 made the arm end 44,72 mm at 116,57°); offer "keep right angles" for orthogonal shapes (spec §4.4 rule, owner decision) (review text, walkthrough 2 item 8)
-- Board: the part label ("1 Parça 1 / 200 × 150") sits at the bounding-box centre, outside an L-shaped part (`docs/reviews/2026-11-19-cto-5/board-properties-1440-light.png`)
-- Board at 1024: the tool rail covers the left edge of the drawing after a zoom; keep a canvas inset for the rail (`docs/reviews/2026-11-19-cto-5/board-properties-1024-light.png`)
-- Board: a selected part loses its wood tone (pale blue fill); keep the tone and show selection with the outline only (`docs/reviews/2026-11-19-cto-5/board-properties-1440-light.png`, `board-properties-1440-dark.png`)
-- Dizilim / Simülasyon: a small part on a full sheet is 30 px; frame the used area first, the sheet on "Tümünü göster" (review text, walkthrough 2 item 9)
-- Machine form: "Malzeme parametreleri" table is 1.095 px wide in an 828 px (1440) / 476 px (1024) area; "Paso", "Takım no" and "Sil" are behind a horizontal scroll (`docs/reviews/2026-11-19-cto-5/machine-params-1440-light.png`, `machine-params-1024-light.png`)
-- Machine form opened from "Kesim ayarı ekle": the section nav highlights "Takımlar" instead of "Malzeme parametreleri" and the breadcrumb reads "Projeler › Proje" (`docs/reviews/2026-11-19-cto-5/machine-params-1440-light.png`)
-- Machine form: the copied-set note wraps to four lines in the 140 px material column; let it span the row (`docs/reviews/2026-11-19-cto-5/machine-params-1440-light.png`)
-- Step 1: "Kütüphanedeki kalınlıklar: 18 mm [18]" says nothing when the library has one thickness and it is already selected; show the row only when there is a choice (`docs/reviews/2026-11-19-cto-5/wizard-step1-default-1440-light.png`)
-- Step 1: with the red "kesim ayarı yok" box open, "Plaka ölçüsü" drops under the footer at 1440 × 900; tighten the box or the spacing (`docs/reviews/2026-11-19-cto-5/wizard-step1-no-params-1440-light.png`)
-- Cut list: the opened "Uyarılar" panel covers the band / Not / Grup cells and row menus of the first rows at 1440; clicking an issue should scroll to and focus its row, then the panel can close (`docs/reviews/2026-11-19-cto-5/cutlist-issues-1440-light.png`)
+### P1 Çizim tahtası
+- Add a corner / split an edge on a shape (L or notch without redrawing) [#5]
+- Zoom to selection; corner X/Y part-relative or whole mm; stable corner numbers, picked corner shown on canvas [#5]
+- Line tool: take the direction from arrow keys / mouse when only a length is typed; "keep right angles" when editing an edge of an orthogonal shape [#5]
+- ★ Labels: part label inside the shape (L parts), edge-length labels do not overlap on small parts [#5, #6]
+- Selection keeps the wood tone (outline only); tool rail keeps a canvas inset at 1024; small part: corner handle wins over the edge handle [#5, #7]
+- Inner cut: select, move, resize after it is added; "İç kesim olarak ekle?" dialog fits, Enter works, asked once [#6]
+- Holes: select, drag and number on the canvas; "continue with the same values"; blind vs through look different; hole tool takes a diameter like the circle (one convention) [#7]
+- Hole snapping: no centre snap when zoomed out; finer snap near hinge positions (22,5 mm) [T B14, T B14a]
+- ★ Properties panel: holes and template instances as collapsed summary rows (panel is 1.500–2.500 px today) [#7, #8]
+- Right-click menu: duplicate, delete, rotate, add template [#10]
+- Hints and tour: hint texts not cut (Delik, Seç, Kaydır), shortcut sheet lists Alt, tour explains hole properties and does not cover the board/toolbar [#7, T B13]
 
-From CTO review #6 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-6.md`):
-- Board: an inner cut cannot be selected, moved, sized or positioned relative to the part after it is added; only delete and redraw (best candidate to pull forward)
-- "İç kesim olarak ekle?" dialog: main button overflows the dialog by 18 px; focus on "Vazgeç" and Enter does not run the button; blur hides the drawn shape; asked again for every inner cut
-- Board, Dizilim, Simülasyon: inner cut filled with the part colour, does not read as a hole; part label sits over the opening
-- Board: edge length labels of a small selected part overlap each other and the part (%39 on a 200 × 150 bracket; %18 window)
-- Cut list: no marker on a row that has inner cuts
-- Simülasyon: "Köprü sayısı azaltıldı." names no part or inner cut
-- Toolpath: no lead-in arc / ramp on inner contours, the plunge mark stays on the visible edge of the opening (decide with golden impact)
-- Toolpath: passes above tab height still lift 0,25 mm over tab gaps (acrylic 5 mm); needless moves
-- Machine form, 1024: arriving from the fix flow, "Değerleri doğruladım" is under the sticky save bar
-- Cut list: cabinet toast says "5 satır eklendi", button says "7 parça ekle"; use one unit
-- Dışa aktar: profile version gap is a small yellow line; after T269 keep it as the box
-- Wizard header: two rows on Makine / Dışa aktar at 1400–1410 (sidebar open, scrollbar), 1280 and 1024; container threshold ~1095 px (B13r tester, CTO #6)
-- Ayarlar → Malzemeler at 1024: the table scrolls inside its box (Paso, Takım no on the right); "Kesim ayarı" label cuts the machine name (B12a/B13r testers)
+### P2 Dizilim, Simülasyon, 3D
+- ★ "Fit to job" as the default view on small jobs (2D and 3D), sheet on "Tümünü göster" [#5, #8, #9, #10]
+- ★ Inner cuts read as holes (not part fill), labels not over openings or other parts; mirrored left/right doors distinguishable, template instances drawn [#6, #8, #9]
+- ★ Feedback when an option gains nothing (true shape 45°/15°, part-in-hole: "iç boşluğa 0 parça"); mode cards show path/time and tool-change count [#8, #9, #10]
+- Dizilim Ayarlar panel: compact so "Diz" does not move; no half row at the top; "Diz" progress shows "Diziliyor… %40 · İptal" [#8, #9]
+- Simülasyon: toolbar not clipped (3D at 1440) and not over the table frame; "Köprü sayısı azaltıldı" names the part; hole operations note the tool's rpm/plunge [#6, #7, #8, #10]
+- ★ Assembly 3D: first camera fits the whole cabinet; door opacity / outline so it reads closed; hinge cups visible [T B21b, #9, #10]
+- Console: THREE.Clock deprecated warning on every 3D open (use THREE.Timer) [#10]
 
-From B16 tester (2026-11-19, #80):
-- DXF dialog: focus goes to <body> on close instead of "DXF içe aktar"; first focus lands on the hidden file input (no visible focus)
-- DXF dialog: `data-testid="dxf-open"` used twice (toolbar button and the "kapalı değil" note, `dxf-import-dialog.tsx:301`)
-- DXF join: a single LINE drawn over an edge of a closed LWPOLYLINE is not treated as a duplicate and shows as an open chain warning
-- DXF report: "İç kontur / delik" is one number; show holes separately so the drill mapping is visible
-- Hole tool: second click snaps to the centre when zoomed out, hole comes out at tool diameter (B14 tester)
-- Editor tour card covers the board bottom at 1440 and the toolbar at 390 (B13 tester)
+### P3 Kesim listesi, adım 1, makine formu, DXF
+- Cut list: "Uyarılar" panel does not cover cells, clicking an issue focuses its row; row marker for parts with inner cuts; edge band unit "mm"; a name-only row is not counted in the part total; cabinet toast and button use the same unit [#5, #6, #9, #10]
+- Paste: skipped rows (e.g. size 0) are named with the reason in the preview [#10]
+- Step 1: thickness row only when there is a choice; red "kesim ayarı yok" box does not push "Plaka ölçüsü" under the footer [#5]
+- ★ Machine form and Ayarlar → Malzemeler: parameter table fits 1440 and 1024 without horizontal scroll; copied-set note spans the row; from the fix flow the section nav and breadcrumb are right and "Değerleri doğruladım" is not under the sticky bar; "Projeye dön" back to the project [#5, #6, #7]
+- Wizard header stays one row down to ~1095 px container width [#6]
+- DXF dialog: focus returns to "DXF içe aktar", first focus visible; duplicate `data-testid="dxf-open"`; a LINE over a closed polyline edge counts as duplicate; report shows holes separately [T B16]
 
-From CTO review #7 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-7.md`):
-- Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi" mode); golden impact; best candidate to pull forward
-- Holes cannot be selected or dragged on the canvas and have no number
-- Holes group sits at the bottom of the panel, 1.488 px for 6 holes; use collapsed summary rows
-- No hole copy / "continue with the same values" (16 of 27 typed values repeat on the door panel)
-- Circle tool asks for a radius, hole tool for a diameter
-- Hint texts: hole hint cut off and worded "tıkla / bitir"; Seç hint cut at 1440, Kaydır at 1024
-- Blind and through holes look the same on the board; Dizilim draws no holes or inner cuts
-- From the Simülasyon box to Makineler there is no "Projeye dön"; the Çizim view is not remembered on reopen
-- Clicking the project name field appends to "Adsız proje"
-- Shortcut sheet lacks Alt; the tour has no sentence for hole properties
-- Small part at %45: the short edge handle is picked instead of the corner
-- Hole tool runs with the Ø8 tool's rpm and plunge values; note it on Simülasyon
-- Field-test list (not a task): manual tool change happens 20 mm above the material, no park position; decide on the owner's machine
-- Baselines (D-045): kitchen cabinet 16 / 5, L bracket 22 / 12, hinged door 38 / 27 (58 / 28 first time). DXF sign walkthrough moves to review #8
+### P4 Kabuk, bildirimler, ana sayfa
+- ★ Toasts close on step change and never cover the panel / scale bar [#8, #9, #10]
+- Command palette: Şablonlar, Ayarlar / Malzemeler, Makine doğrulama and in-project step commands [#10]
+- Empty 0-part drafts do not fill "Son projeler"; home card date not truncated [#10]
+- Offcuts: proposals not pre-ticked; "Stoğa kaydet" gives a toast; the list shows the source project name [#9, #10]
+- Şablonlar thumbnails to scale [#8]
+- Dışa aktar: profile-version gap shown as the box, not a small yellow line (check after T269) [#6]
 
-From the B14a tester (2026-11-19):
-- Hinge cup at zoom %100 snaps to the 5 mm grid, so 22,5 mm must be typed; offer a finer snap near hinge positions
-- DXF import "Çizgi üzerinden" layer mapping has no browser test (unit tests only)
-- Flaky: `geometry/offset.property.test.ts` failed once on PR #108 CI after T280 (seed not recorded); `e2e/tests/t249-panels.spec.ts:55` Dizilim inspector row label "3.1 · Kapak" vs "8.1 · Kapak" flaky twice. Turn into a task if seen again.
-- 3D Montaj görünümü: the door is drawn see-through (opacity 0.45, no depth write) and reads as an open cabinet; stronger opacity or an outline (B21b tester)
-- Nesting mode card click is one main-thread task of 225–375 ms while the layout view runs (outside the T281 window); split or defer (B21b dev)
+### P5 Output (golden impact: tester gcode-safety review, D-051)
+- Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi") [#7]
+- Float residue in G-code (`Y117.9999`): clean before rounding [#8]
+- Lead-in arc / ramp on inner contours, plunge mark off the visible edge (check what T288 already covers) [#6]
+- Passes above tab height do not lift over tab gaps [#6]
 
-From CTO review #8 (2026-11-20, `docs/reviews/2026-11-20-cto-design-review-8.md`):
-- Dizilim: holes and template instances not drawn on parts; mirrored left/right doors indistinguishable (raise priority)
-- Board: properties panel 2.511 px on a templated door; show instances and holes as collapsed rows
-- Simülasyon 3D: toolbar clipped on the right at 1440
-- Simülasyon 2D/3D: small jobs sit in a corner; add "fit to job" view or make it the default
-- Toast "dosya.dxf: 3 parça eklendi · Geri al" stays across steps and covers the G-code panel on step 4; close on step change
-- Nesting mode cards: show path/time for "En hızlı", change count for "En az takım değişimi"; note on single-tool jobs
-- Şablonlar page thumbnails not to scale (Ø35 cup smaller than Ø6 hole)
-- G-code: float residue (`Y117.9999`); clean before rounding to 4 decimals (check golden impact)
-- Dizilim "Diz" progress bar has no text; add "Diziliyor… %40 · İptal"
-
-From CTO review #9 (2026-11-20, `docs/reviews/2026-11-20-cto-design-review-9.md`):
-- Toast "1 satır eklendi" / "dosya.dxf: 3 parça eklendi" stays across steps and covers the panel and scale bar (repeat of #8)
-- Assembly 3D: first camera does not fit the assembly (bottom cut off); hinge cups too faint on the see-through door
-- Dizilim: no feedback when true-shape (45°/15°) or part-in-hole change nothing ("iç boşluğa 0 parça", "45° kazanç yok"); merge with the mode-card item
-- Dizilim / Simülasyon: no "fit to job" on small jobs; letter labels overlap the parts (repeat of #8)
-- Dizilim Ayarlar panel grew long: "Diz" moves down when options open; half a row cut at the top when scrolled
-- Cut list: edge band cells have no unit ("1"); show "1 mm" or "(mm)" in the header
-- Offcut proposals are pre-ticked and go to stock in one click; reconsider the default
-
-### From CTO review #10 (2026-11-20)
-- Command palette: Şablonlar, Ayarlar / Malzemeler, Makine doğrulama pages and in-project step commands missing
-- Empty drafts pile up (0-part projects fill "Son projeler"); hide or filter them
-- Home project card: "Son dışa aktarma 20 Kas 20…" truncated
-- Offcut "Stoğa kaydet": no toast; offcut list lacks the source project name
-- Multi-file export "İndir" label unclear until T176 zip lands ("Dosyaları hazırla")
-- Simülasyon view toolbar covers the table frame's top-right corner
-- Cut list: a name-only row without size counts in the footer part total
-- Paste: skipped 0-size row must be named with its reason in the preview (check)
-- Drawing board: no right-click menu (duplicate, delete, rotate, add template)
-- Console: THREE.Clock deprecated warning on every 3D open (use THREE.Timer)
-- Still open from #9: sticky toast over the scale bar, assembly camera cut, no "fit to job", no feedback when true-shape / in-hole change nothing
+### Not polish (moved)
+- Mode-card click long task 225–375 ms → T186 performance sweep.
+- Flaky `geometry/offset.property.test.ts` and `t249-panels.spec.ts:55`, missing browser test for DXF "Çizgi üzerinden" mapping → T190 regression scenarios (task only if seen again).
+- Manual tool change 20 mm above the material, no park position → field-test list.
+- Removed as done or covered: project name appending (T283), holes in Dizilim (B24), multi-file "İndir" label (T176 zip), Çizim view remembered (T290).
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
