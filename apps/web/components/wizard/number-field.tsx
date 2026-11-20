@@ -26,6 +26,7 @@ export function NumberField({
   list,
   unit = null,
   bounds,
+  note,
 }: {
   label: string;
   value: number;
@@ -43,6 +44,8 @@ export function NumberField({
    * it (or not whole when `integer`) is refused before the command runs.
    */
   bounds?: { min: number; max?: number; integer?: boolean; message: string } | undefined;
+  /** T300: a standing note under the field (a hint, or a warning that does not refuse the value). */
+  note?: { text: string; tone: 'muted' | 'warning'; testId?: string } | undefined;
 }) {
   const id = useId();
   const [text, setTextState] = useState<string | null>(null);
@@ -108,7 +111,10 @@ export function NumberField({
           list={list}
           data-testid={testId}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${id}-error` : undefined}
+          aria-describedby={
+            [error ? `${id}-error` : '', note ? `${id}-note` : ''].filter(Boolean).join(' ') ||
+            undefined
+          }
           className={cn(inputClass, 'text-right tabular-nums', unit && 'pr-10')}
           value={text ?? formatInput(value)}
           onChange={(e) => {
@@ -130,6 +136,18 @@ export function NumberField({
       {error ? (
         <p id={`${id}-error`} className="text-xs font-medium text-danger-text">
           {error}
+        </p>
+      ) : null}
+      {note ? (
+        <p
+          id={`${id}-note`}
+          data-testid={note.testId}
+          className={cn(
+            'text-xs',
+            note.tone === 'warning' ? 'font-medium text-warning-text' : 'text-fg-muted',
+          )}
+        >
+          {note.text}
         </p>
       ) : null}
     </div>

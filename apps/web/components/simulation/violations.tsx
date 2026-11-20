@@ -36,7 +36,15 @@ export interface PartLinks {
   onOpenRow?: ((partId: string) => void) | undefined;
   /** T298: opens step 1 on the thin-skin thickness field. */
   onOpenSkin?: (() => void) | undefined;
+  /**
+   * T300 (CTO #12 E1, D-085): the sheet margin is below the tool radius. A work-envelope or
+   * sheet-edge error then names the margin and links to the Dizilim field, not to Makineler.
+   */
+  margin?: { hint: string; onOpen: () => void } | undefined;
 }
+
+/** T300: errors a too-small sheet margin causes (the tool leaves the sheet or the envelope). */
+export const MARGIN_CODES: ReadonlySet<string> = new Set(['OUT_OF_ENVELOPE', 'CUT_OUTSIDE_SHEET']);
 
 /** T298: findings fixed in the step-1 thin-skin field. */
 export const SKIN_CODES: ReadonlySet<string> = new Set(['SMALL_PART_SKIN_OUT_OF_BOUNDS']);
@@ -256,6 +264,7 @@ export function Violations({
   onOpenPart,
   onOpenRow,
   onOpenSkin,
+  margin,
 }: {
   t: SimText;
   result: SimulateResult;
@@ -268,7 +277,11 @@ export function Violations({
   const warnings = all.filter((f) => f.severity === 'warning');
   const stage = result.export.stage;
   // T270 / T275: the Makineler hint only for an error whose fix may be on the machine.
-  const machineHint = errors.some(machineRelated);
+  // T300: when the margin explains an envelope error, that error points to the margin instead.
+  const marginHint = margin && errors.some((f) => MARGIN_CODES.has(f.code)) ? margin : null;
+  const machineHint = errors.some(
+    (f) => machineRelated(f) && !(marginHint && MARGIN_CODES.has(f.code)),
+  );
   return (
     <section
       role="alert"
@@ -301,6 +314,19 @@ export function Violations({
             <FindingList t={t} items={warnings} />
           </div>
         </details>
+      ) : null}
+      {marginHint ? (
+        <p className="text-sm" data-testid="sim-margin-hint">
+          {marginHint.hint}{' '}
+          <button
+            type="button"
+            data-testid="violation-open-margin"
+            onClick={marginHint.onOpen}
+            className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            {t.blocked.openMargin}
+          </button>
+        </p>
       ) : null}
       {machineHint ? (
         <p className="text-sm">

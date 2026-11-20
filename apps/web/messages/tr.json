@@ -1124,7 +1124,9 @@
       "openPart": "Çizimde aç",
       "openRow": "Parçalara git",
       "openCutting": "Kesim ayarlarına git",
-      "openSkin": "Tabaka kalınlığına git"
+      "openSkin": "Tabaka kalınlığına git",
+      "marginHint": "Sebep büyük olasılıkla kenar payı: {margin} mm, Ø{tool} takım için en az {min} mm olmalı.",
+      "openMargin": "Kenar payına git"
     },
     "rules": {
       "R1": "Kural 1 · Birim, mutlak koordinat, düzlem ve iş ofseti baştan yazılır",
@@ -1253,7 +1255,8 @@
       "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
       "SMALL_PART_SKIN_OUT_OF_BOUNDS": "İnce tabaka bu küçük parçayı tutamaz (kalınlık 0,2 mm ile kalınlık − 1 mm arası olmalı); parça son pasoda serbest kalır. 1. adımda tabaka kalınlığını düzeltin.",
       "SMALL_PART_TAB_TOO_SMALL": "Köprü bu küçük parçayı tutamayacak kadar küçük (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası); parça serbest kalır. Kesim ayarlarında köprü ölçüsünü düzeltin ya da “Köprü: Kapalı” seçin.",
-      "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası)."
+      "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası).",
+      "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -1605,7 +1608,8 @@
         "unverifiedParams": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı; G-code üretilemez.",
         "slugUnsecured": "Bir iç kesimin göbeğine 2 köprü sığmıyor; G-code üretilemez.",
         "holeInvalid": "Bir delik bu makineyle delinemiyor ya da parçaya uymuyor; G-code üretilemez.",
-        "lineOutside": "Bir çizgi parçanın dışına taşıyor; G-code üretilemez."
+        "lineOutside": "Bir çizgi parçanın dışına taşıyor; G-code üretilemez.",
+        "marginLow": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar."
       },
       "nextStep": "Sonraki: {name}",
       "counter": "{n} / {total}"
@@ -1744,7 +1748,9 @@
       "gap": "Parça arası boşluk (mm)",
       "margin": "Kenar payı (mm)",
       "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
-      "noParts": "Önce Parçalar adımında parça ekleyin."
+      "noParts": "Önce Parçalar adımında parça ekleyin.",
+      "marginWarning": "Kenar payı Ø{tool} takım için en az {min} mm olmalı; yoksa takım plakanın dışına çıkar.",
+      "gapNote": "Takım çapına (Ø{tool} mm) ek boşluk."
     },
     "simulation": {
       "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında “Diz” ile parçaları yerleştirin.",
@@ -1900,7 +1906,8 @@
         "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
         "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
         "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
-        "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin."
+        "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
+        "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün."
       },
       "other": "Kontrol {code}"
     },
@@ -2988,7 +2995,8 @@
         "failed": "Kaydedilemedi. Tekrar deneyin.",
         "materialsTitle": "Malzeme varsayılanları",
         "materialsHint": "Malzeme, kalınlık, plaka ölçüsü ve damar malzeme kütüphanesinde; kesim değerleri ve tab ölçüleri makinenin malzeme ayarında.",
-        "materialsLink": "Malzeme kütüphanesine git"
+        "materialsLink": "Malzeme kütüphanesine git",
+        "marginNote": "Takım yarıçapından küçük olursa takım plakanın dışına çıkar (örneğin Ø8 takım için en az 4 mm). Takım projede seçildiğinde Dizilim uyarır."
       }
     },
     "dxf": {

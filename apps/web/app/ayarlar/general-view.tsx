@@ -302,7 +302,8 @@ function DefaultsCard({ t, initial }: { t: DefaultsText; initial: ProjectDefault
   }
 
   const mm = (key: 'gap' | 'margin') => (
-    <FormField label={t[key]}>
+    // T300 (D-085): the margin default says the tool-radius rule (the tool is not known here).
+    <FormField label={t[key]} hint={key === 'margin' ? t.marginNote : undefined}>
       <NumberInput
         data-testid={`settings-default-${key}`}
         value={v[key]}

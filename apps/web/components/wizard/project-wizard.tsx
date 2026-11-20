@@ -12,7 +12,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { findMaterialParams, findTool } from '@nittcam/core';
+import { findMaterialParams, findTool, minSheetMargin } from '@nittcam/core';
 import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
@@ -100,6 +100,7 @@ import { setSidebarWorkspace } from '../../lib/sidebar-state';
 import { PageSkeleton } from '../feedback/page-skeleton';
 import { ShellStatus, useShellTitle } from '../shell/shell-context';
 
+const mmText = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
 const NEW_PATH = '/projeler/yeni';
 
 /** `?profil=son`: move the project to the machine's latest profile version on entry (T258). */
@@ -689,9 +690,14 @@ function WizardSession({
     ? t.steps.errors.lineOutside
     : undefined;
   const partsError = slugError ?? holeError ?? lineError;
+  // T300 (CTO #12 E1, D-085): a sheet margin below the tool radius marks Dizilim (a warning there).
+  const layoutError = session.issues.some((i) => i.code === 'MARGIN_BELOW_TOOL_RADIUS')
+    ? t.steps.errors.marginLow
+    : undefined;
   const stepErrors: StepErrors = {
     ...(machineError ? { makine: machineError } : {}),
     ...(partsError ? { parcalar: partsError } : {}),
+    ...(layoutError ? { dizilim: layoutError } : {}),
   };
   const simMachine: SimMachine | null = useMemo(
     () =>
@@ -732,6 +738,30 @@ function WizardSession({
     [session.projectId],
   );
   // T298: "Tabaka kalınlığına git" opens step 1 on the thin-skin field.
+  // T300: "Kenar payına git" from a Simülasyon finding back to the Dizilim field.
+  const openMargin = useCallback(() => {
+    go('dizilim');
+    let tries = 0;
+    const focus = () => {
+      const el = document.querySelector<HTMLInputElement>('[data-testid="layout-margin"]');
+      if (el) {
+        el.scrollIntoView({ block: 'nearest' });
+        el.focus();
+      } else if (++tries < 30) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }, [go]);
+  const marginLow = session.issues.some((i) => i.code === 'MARGIN_BELOW_TOOL_RADIUS');
+  const marginLink = marginLow
+    ? {
+        hint: fill(messages.simulation.blocked.marginHint, {
+          margin: mmText.format(project.nesting.margin),
+          tool: mmText.format(toolDiameter),
+          min: mmText.format(minSheetMargin(toolDiameter)),
+        }),
+        onOpen: openMargin,
+      }
+    : undefined;
   const openSkin = useCallback(() => {
     go('makine');
     let tries = 0;
@@ -1110,6 +1140,7 @@ function WizardSession({
         onOpenPart={openPart}
         onOpenRow={openRow}
         onOpenSkin={openSkin}
+        margin={marginLink}
         header={{
           projectName: session.name,
           revision: session.revision,
