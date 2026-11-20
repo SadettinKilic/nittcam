@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { defaultMachineProfile, type MachineProfile } from '@nittcam/core';
 import {
   Badge,
@@ -32,10 +33,14 @@ import type { ParamFix } from '../../lib/machine-form';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
-import { MachineForm } from './machine-form';
-import { MaintenanceDialog } from './maintenance-dialog';
 import { MaintenanceBadge } from '../../components/machines/maintenance-badge';
 import { localDay, maintenanceView } from '../../lib/maintenance';
+
+/** The machine form (post configs, profile schema) and the maintenance log load on demand (T186). */
+const MachineForm = dynamic(() => import('./machine-form').then((m) => m.MachineForm));
+const MaintenanceDialog = dynamic(() =>
+  import('./maintenance-dialog').then((m) => m.MaintenanceDialog),
+);
 
 type Text = Messages['machines'];
 

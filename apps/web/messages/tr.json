@@ -242,13 +242,6 @@
       "projects": "Projeler",
       "hint": "İpucu: istediğiniz sayfayı {keys} ile arayabilirsiniz."
     },
-    "error": {
-      "title": "Bir şeyler ters gitti",
-      "text": "Sayfa açılırken beklenmeyen bir hata oldu. Tekrar deneyin; sorun sürerse sayfayı yenileyin.",
-      "retry": "Tekrar dene",
-      "home": "Ana sayfaya dön",
-      "reference": "Hata kodu: {digest}"
-    },
     "canvas": {
       "title": "Önizleme gösterilemedi",
       "text": "Çizim alanında bir hata oldu. Projeniz kaydedildi; önizlemeyi yeniden deneyebilirsiniz.",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import tr from '../messages/tr.json';
+import { getMessages } from './messages';
 import {
   ONBOARDING_KEY,
   onboardingMessages,
@@ -8,6 +8,8 @@ import {
   type OnboardingStorage,
 } from './onboarding';
 import { STEPS } from './wizard-steps';
+
+const tr = getMessages();
 
 function memory(
   initial: Record<string, string> = {},
