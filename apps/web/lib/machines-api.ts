@@ -11,6 +11,8 @@ export interface MachineListItem {
   state: VerificationState;
   example: boolean;
   table: { width: number; depth: number };
+  /** Archived (T289): hidden from new projects and Ana sayfa counts; old projects still use it. */
+  archived: boolean;
 }
 
 export interface MachineDetail {
@@ -25,3 +27,14 @@ export type ApiError =
   | { error: 'not_found' }
   | { error: 'bad_request' }
   | { error: 'server_error' };
+
+/**
+ * Machines a project may pick (T289): the active ones, plus the machine the project is already
+ * bound to even when it was archived later (the old project keeps opening on it).
+ */
+export function pickableMachines(
+  machines: readonly MachineListItem[],
+  currentId: string | null = null,
+): MachineListItem[] {
+  return machines.filter((m) => !m.archived || m.id === currentId);
+}

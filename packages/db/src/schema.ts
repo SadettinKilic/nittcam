@@ -128,6 +128,11 @@ export const machines = pgTable(
     model: text('model').notNull().default(''),
     /** Maintenance log entries (§9.1 "bakım kaydı"); shape is decided with the machine screens. */
     maintenanceLog: jsonb('maintenance_log').$type<unknown[]>().notNull().default([]),
+    /**
+     * Archived (T289): hidden from the new-project picker, Makineler's active list and Ana sayfa
+     * counts; kept for the projects and exports that use it, restorable. Null = active.
+     */
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -273,12 +278,23 @@ export const projects = pgTable(
     data: jsonb('data').$type<Project>().notNull(),
     /** Soft delete (T178): hidden from Projeler and Ana sayfa, restorable; exports kept. Null = live. */
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+    /**
+     * The project this one was split off from (T292: parts of another board thickness moved to a
+     * new project). Same company; the source lists it as "Ayrı plaka projesi". Null = none.
+     */
+    sourceProjectId: uuid('source_project_id'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique('projects_company_id_id_uq').on(t.companyId, t.id),
     index('projects_company_updated_idx').on(t.companyId, t.updatedAt),
+    index('projects_company_source_idx').on(t.companyId, t.sourceProjectId),
+    foreignKey({
+      name: 'projects_source_fk',
+      columns: [t.companyId, t.sourceProjectId],
+      foreignColumns: [t.companyId, t.id],
+    }).onDelete('restrict'),
     check('projects_revision_positive', sql`${t.revision} >= 1`),
   ],
 );
@@ -460,6 +476,11 @@ export const offcuts = pgTable(
     grain: integer('grain'),
     sourceProjectId: uuid('source_project_id'),
     status: offcutStatus('status').notNull().default('available'),
+    /**
+     * Soft delete (T291): hidden from the stock and the nesting; "Geri al" restores it with the
+     * same id, so a layout that cuts from it keeps its link. Null = in stock.
+     */
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

@@ -76,7 +76,8 @@ async function loadDashboard(): Promise<Dashboard> {
     ]);
     const last = new Map(latest.map((e) => [e.projectId, e]));
     const sorted = [...rows].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-    const machineItems = machines.map(machineItem);
+    // T289: archived machines count nowhere on Ana sayfa (old projects still name them).
+    const machineItems = machines.map(machineItem).filter((m) => !m.archived);
     return {
       ok: true,
       stats: dashboardStats({

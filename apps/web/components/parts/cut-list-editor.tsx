@@ -102,6 +102,7 @@ import {
   type ViewItem,
 } from '../../lib/cut-list-view';
 import { fill, newPartId, stockHasGrain } from '../../lib/draft-project';
+import type { SplitTarget } from '../../lib/split-project';
 import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
 import { DxfImportDialog } from './dxf-import-dialog';
 import type { Messages } from '../../lib/messages';
@@ -1239,6 +1240,7 @@ export function CutListEditor({
   holeTool,
   focusPart = null,
   onFocusedPart,
+  splitOff,
 }: {
   t: Text;
   project: Project;
@@ -1265,6 +1267,16 @@ export function CutListEditor({
   focusPart?: string | null;
   /** Called once the grid has taken `focusPart` (the wizard forgets the request). */
   onFocusedPart?: () => void;
+  /**
+   * T292: "Dolap ekle" may send its other-thickness parts to a new project (saved projects only).
+   * `onSplit` gets the cut-list rows (no thickness note: they are the new project's board).
+   */
+  splitOff?:
+    | {
+        materials: Messages['materials'];
+        onSplit: (rows: ReturnType<typeof cabinetRows>, target: SplitTarget, group: string) => void;
+      }
+    | undefined;
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [dxfOpen, setDxfOpen] = useState(0);
@@ -1964,6 +1976,26 @@ export function CutListEditor({
                 parts.map((p) => p.group),
               )}
               onAdd={addCabinet}
+              split={
+                splitOff
+                  ? {
+                      material: project.stock.material,
+                      materials: splitOff.materials,
+                      onSplit: (generated, target, group) =>
+                        splitOff.onSplit(
+                          cabinetRows(
+                            generated,
+                            t.cabinet.roles,
+                            group,
+                            newPartId,
+                            target.thickness,
+                          ),
+                          target,
+                          group,
+                        ),
+                    }
+                  : undefined
+              }
             />
           ) : null}
           {selected.length > 0 ? (

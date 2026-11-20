@@ -38,9 +38,10 @@ export async function GET(request?: Request) {
 }
 
 /**
- * POST /api/projects `{ id?, name, project, commands? }` → creates the project at revision 1 (status
- * taslak) with the commands that produced it (201, the project detail). With a client-generated
- * `id` (UUID, D-030) the create is idempotent: a repeat returns the stored project (200).
+ * POST /api/projects `{ id?, name, project, commands?, sourceProjectId? }` → creates the project at
+ * revision 1 (status taslak) with the commands that produced it (201, the project detail). With a
+ * client-generated `id` (UUID, D-030) the create is idempotent: a repeat returns the stored project
+ * (200). T292: `sourceProjectId` links a project split off from another one.
  */
 export async function POST(request: Request) {
   const body = await readBody(request);
@@ -53,9 +54,19 @@ export async function POST(request: Request) {
   }
   const commands = readCommands(body['commands']);
   if (!commands.ok) return commands.response;
+  const source = body['sourceProjectId'];
+  if (source !== undefined && (typeof source !== 'string' || !UUID.test(source))) {
+    return apiError({ error: 'bad_request' }, 400);
+  }
   try {
     const scope = await companyScope();
-    const values = { name, data: body['project'], commands: commands.entries };
+    // T292: the source must be a live project of the company (another company's id → 400).
+    const sourceProjectId = typeof source === 'string' ? source.toLowerCase() : null;
+    const sourceRow = sourceProjectId ? await scope.projects.get(sourceProjectId) : null;
+    if (sourceProjectId && (!sourceRow || sourceRow.deletedAt !== null)) {
+      return apiError({ error: 'bad_request' }, 400);
+    }
+    const values = { name, data: body['project'], commands: commands.entries, sourceProjectId };
     if (typeof id === 'string') {
       const res = await scope.projects.createOnce({ ...values, id: id.toLowerCase() });
       return NextResponse.json(toDetail(res.row), { status: res.created ? 201 : 200 });
