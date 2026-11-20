@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { untitledName } from './untitled-name';
+import { isUntitledName, untitledName } from './untitled-name';
 
 const BASE = 'Adsız proje';
 
@@ -25,5 +25,31 @@ describe('untitledName', () => {
         .map((n) => (n === 1 ? BASE : `${BASE} ${n}`));
       expect(existing).not.toContain(untitledName(BASE, existing));
     }
+  });
+});
+
+describe('isUntitledName (T283)', () => {
+  it('accepts the base and numbered defaults', () => {
+    expect(isUntitledName(BASE, BASE)).toBe(true);
+    expect(isUntitledName(BASE, `${BASE} 2`)).toBe(true);
+    expect(isUntitledName(BASE, ' adsız proje 12 ')).toBe(true);
+  });
+
+  it('rejects user names', () => {
+    for (const n of [
+      'Mutfak alt dolap 60',
+      `${BASE}Mutfak`,
+      `${BASE} 1`,
+      `${BASE} 02`,
+      `${BASE} x`,
+      '',
+    ])
+      expect(isUntitledName(BASE, n)).toBe(false);
+  });
+
+  it('accepts every name untitledName hands out', () => {
+    const names: string[] = [];
+    for (let i = 0; i < 5; i++) names.push(untitledName(BASE, names));
+    for (const n of names) expect(isUntitledName(BASE, n)).toBe(true);
   });
 });
