@@ -64,16 +64,27 @@ test('B33 tester T288: panel dark + axe, tab height ≥ thickness refused, expor
   await expect(panel).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('sim-check-status')).toBeVisible({ timeout: 30_000 });
 
-  // The tab fields show their whole value (10 mm must not read as "1").
-  for (const k of ['count', 'width', 'height']) {
-    const input = page.getByTestId(`sim-cutting-${k}`);
-    const m = await input.evaluate((el: HTMLInputElement) => ({
-      value: el.value,
-      scroll: el.scrollWidth,
-      client: el.clientWidth,
-    }));
-    expect(m.scroll, `${k} ${JSON.stringify(m)}`).toBeLessThanOrEqual(m.client);
+  // The tab fields show their whole value (10 mm must not read as "1"), also in a narrow panel.
+  for (const width of [1440, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(300);
+    for (const k of ['count', 'width', 'height']) {
+      const input = page.getByTestId(`sim-cutting-${k}`);
+      await input.fill(k === 'count' ? '12' : '12.5');
+      const m = await input.evaluate((el: HTMLInputElement) => ({
+        value: el.value,
+        scroll: el.scrollWidth,
+        client: el.clientWidth,
+      }));
+      expect(m.scroll, `${width} ${k} ${JSON.stringify(m)}`).toBeLessThanOrEqual(m.client);
+      await input.press('Escape');
+    }
+    await page.screenshot({ path: `__screenshots__/b33-sim-fields-${width}.png` });
   }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.reload();
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('sim-check-status')).toBeVisible({ timeout: 30_000 });
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await panel.scrollIntoViewIfNeeded();
