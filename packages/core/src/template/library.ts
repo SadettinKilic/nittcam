@@ -10,13 +10,18 @@
  * Holes use tool 1 (the first tool of the shipped profiles, 6 mm); the user picks another tool
  * per hole on the part. Pure data, versioned in code: a change here is a new `version`.
  */
-import type { Hole, TemplateGeometry, TemplateParams } from '../schema';
+import type { Hole, TemplateEdge, TemplateGeometry, TemplateParams } from '../schema';
 
 /** Id prefix of the ready templates (company templates have uuids). */
 export const READY_TEMPLATE_PREFIX = 'ready-';
 
+/** What a ready template is for (T286): hinges and handles must sit on opposite door edges. */
+export type ReadyTemplateKind = 'hinge' | 'handle';
+
 export interface ReadyTemplate {
   id: string;
+  /** Hinge / handle; absent for the other ready templates. */
+  kind?: ReadyTemplateKind;
   name: string;
   version: number;
   geometry: TemplateGeometry;
@@ -47,6 +52,7 @@ const pocket = (id: string, d: number, depth: number, cx = 0, cy = 0): Hole => (
 function hinge(count: 2 | 3, spacing: number): ReadyTemplate {
   return {
     id: `${READY_TEMPLATE_PREFIX}hinge-35-${count}`,
+    kind: 'hinge',
     name: `Menteşe çukuru Ø35 (${count} menteşe)`,
     version: 1,
     geometry: { holes: [pocket('cup', CUP.d, CUP.depth)], inners: [] },
@@ -58,6 +64,7 @@ function hinge(count: 2 | 3, spacing: number): ReadyTemplate {
 function handle(spacing: 96 | 128 | 160): ReadyTemplate {
   return {
     id: `${READY_TEMPLATE_PREFIX}handle-${spacing}`,
+    kind: 'handle',
     name: `Kulp deliği ${spacing} mm`,
     version: 1,
     geometry: {
@@ -122,4 +129,70 @@ export function unverifiedTemplateNames(
     }
   }
   return out;
+}
+
+/**
+ * The kind of a template by id (T286): read from the ready library; company templates (uuid ids,
+ * ready copies included) have none, so they behave as before.
+ */
+export function templateKind(templateId: string): ReadyTemplateKind | undefined {
+  return readyTemplate(templateId)?.kind;
+}
+
+/** The edge across the part from `edge` (left <-> right, bottom <-> top). */
+export const OPPOSITE_EDGE: Readonly<Record<TemplateEdge, TemplateEdge>> = {
+  left: 'right',
+  right: 'left',
+  bottom: 'top',
+  top: 'bottom',
+};
+
+interface EdgeRef {
+  templateId: string;
+  placement: { edge: TemplateEdge | null };
+}
+
+/** Edges the hinge instances of a part sit on. */
+function hingeEdges(templates: readonly EdgeRef[]): Set<TemplateEdge> {
+  const out = new Set<TemplateEdge>();
+  for (const r of templates) {
+    if (r.placement.edge && templateKind(r.templateId) === 'hinge') out.add(r.placement.edge);
+  }
+  return out;
+}
+
+/**
+ * The default edge of a new template on a part (T286, review #9 A): a handle goes to the edge
+ * opposite the part's hinges (left hinges -> right handle, a mirrored door the other way);
+ * everything else, and a handle on a part without hinges, starts on the left edge as before.
+ */
+export function defaultTemplateEdge(
+  templateId: string,
+  templates: readonly EdgeRef[],
+): TemplateEdge {
+  if (templateKind(templateId) !== 'handle') return 'left';
+  const [hinge] = hingeEdges(templates);
+  return hinge ? OPPOSITE_EDGE[hinge] : 'left';
+}
+
+/** Instance ids of the handles that sit on a hinge edge of the same part (T286 warning). */
+export function handlesOnHingeEdge(
+  templates: readonly (EdgeRef & { instanceId: string })[],
+): string[] {
+  const hinges = hingeEdges(templates);
+  return templates
+    .filter(
+      (r) =>
+        templateKind(r.templateId) === 'handle' &&
+        r.placement.edge !== null &&
+        hinges.has(r.placement.edge),
+    )
+    .map((r) => r.instanceId);
+}
+
+/** Names of the parts with a handle on a hinge edge (T286; Dışa aktar checklist line), in order. */
+export function hingeEdgeHandleParts(
+  parts: readonly { name: string; templates: readonly (EdgeRef & { instanceId: string })[] }[],
+): string[] {
+  return parts.filter((p) => handlesOnHingeEdge(p.templates).length > 0).map((p) => p.name);
 }

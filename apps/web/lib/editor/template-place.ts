@@ -4,6 +4,7 @@
  * the ghost geometry. UI state only; the placement becomes one `addTemplate` command.
  */
 import {
+  defaultTemplateEdge,
   deriveTemplate,
   EDGE_ROTATION,
   type BBox,
@@ -104,7 +105,10 @@ export function templateGhost(pending: PendingTemplate, box: BBox, at: Pt): Temp
   };
 }
 
-/** A new pending placement: anchored to the left edge, centred along it. */
+/**
+ * A new pending placement, centred along its default edge: the left edge, or for a handle the edge
+ * opposite the part's hinges (T286; `templates` = the part's instances).
+ */
 export function startPlacement(
   partId: string,
   item: {
@@ -115,7 +119,18 @@ export function startPlacement(
     params: TemplateParams;
   },
   box: BBox,
+  templates: Parameters<typeof defaultTemplateEdge>[1] = [],
 ): PendingTemplate {
+  const edge = defaultTemplateEdge(item.id, templates);
+  const e = item.params.edgeDistance;
+  const cx = (box.minX + box.maxX) / 2;
+  const cy = (box.minY + box.maxY) / 2;
+  const at = {
+    left: { x: box.minX + e, y: cy },
+    right: { x: box.maxX - e, y: cy },
+    bottom: { x: cx, y: box.minY + e },
+    top: { x: cx, y: box.maxY - e },
+  }[edge];
   return {
     partId,
     templateId: item.id,
@@ -124,13 +139,7 @@ export function startPlacement(
     geometry: item.geometry,
     defaults: item.params,
     params: item.params,
-    placement: {
-      x: box.minX + item.params.edgeDistance,
-      y: (box.minY + box.maxY) / 2,
-      rot: 0,
-      mirror: false,
-      edge: 'left',
-    },
+    placement: { ...at, rot: EDGE_ROTATION[edge], mirror: false, edge },
   };
 }
 
