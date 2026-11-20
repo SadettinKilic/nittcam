@@ -1809,10 +1809,7 @@
     "density": {
       "comfortable": "Rahat (varsayılan, 40 px)",
       "compact": "Kompakt (data-density=\"compact\", 32 / 36 px)",
-      "rows": [
-        "Yan panel",
-        "Raf"
-      ]
+      "rows": ["Yan panel", "Raf"]
     },
     "colorGroups": {
       "surfaces": "Zemin ve yüzey",
@@ -1980,12 +1977,7 @@
       "placeholder": "Komut ara…",
       "empty": "Sonuç yok.",
       "group": "Sayfalar",
-      "items": [
-        "Ana sayfa",
-        "Projeler",
-        "Makineler",
-        "Şablonlar"
-      ]
+      "items": ["Ana sayfa", "Projeler", "Makineler", "Şablonlar"]
     }
   },
   "editor": {
