@@ -245,6 +245,16 @@
     "retry": "Tekrar dene",
     "empty": "Henüz makine yok. Başlamak için yeni bir makine ekleyin.",
     "example": "Örnek",
+    "archive": {
+      "action": "Arşivle",
+      "restore": "Geri yükle",
+      "undo": "Geri al",
+      "archived": "“{name}” arşivlendi. Yeni projelerde seçilemez; onu kullanan projeler açılmaya devam eder.",
+      "restored": "“{name}” arşivden çıkarıldı.",
+      "failed": "İşlem yapılamadı. Tekrar deneyin.",
+      "section": "Arşivlenen makineler ({n})",
+      "hint": "Arşivlenen makineler yeni projede seçilemez ve Ana sayfada sayılmaz; eski projeler ve dışa aktarmalar korunur."
+    },
     "columns": {
       "name": "Ad",
       "controller": "Kontrol ünitesi",
@@ -774,6 +784,16 @@
       "otherBoard": "{t} mm · ayrı plaka",
       "otherNote": "Bu parça {t} mm plakadan kesilmez; listeye kendiliğinden eklenmez.",
       "includeOther": "Yine de listeye ekle",
+      "split": {
+        "action": "Ayrı plaka parçalarını yeni projeye aktar",
+        "material": "Yeni projenin malzemesi",
+        "thickness": "Kalınlık",
+        "note": "{count} parça aynı makineyle yeni projeye gider; bu proje ona bağlantı gösterir.",
+        "projectName": "{name} · {t} mm",
+        "created": "“{name}” oluşturuldu: {count} parça.",
+        "open": "Projeyi aç",
+        "failed": "Yeni proje oluşturulamadı; ayrı plaka parçaları aktarılmadı. Tekrar deneyin."
+      },
       "doorCount": {
         "0": "Kapaksız",
         "1": "Tek kapak",
@@ -1382,7 +1402,7 @@
       "error": "Artık parçalar yüklenemedi.",
       "retry": "Tekrar dene",
       "empty": "Kayıtlı artık parça yok",
-      "emptyText": "Dizilimden sonra kalan büyük parçaları Dizilim adımında stoğa kaydedebilirsiniz.",
+      "emptyText": "Dizilimden sonra kalan büyük parçaları Dizilim adımında stoğa kaydedebilir ya da atölyedekileri elle ekleyebilirsiniz.",
       "count": "{count} artık parça",
       "columns": {
         "size": "Ölçü",
@@ -1405,7 +1425,37 @@
       "markUsed": "Kullanıldı say",
       "markAvailable": "Stoğa geri al",
       "statusFailed": "Durum değiştirilemedi.",
-      "openSource": "Projeyi aç"
+      "openSource": "Projeyi aç",
+      "add": "Artık parça ekle",
+      "edit": "Düzelt",
+      "delete": "Sil",
+      "rowAction": "{action}: {size}, {material}",
+      "undo": "Geri al",
+      "form": {
+        "titleNew": "Artık parça ekle",
+        "titleEdit": "Artık parçayı düzelt",
+        "description": "Atölyede duran parçayı stoğa girin. Dizilim, aynı malzeme ve kalınlıktaki projelerde onu önce kullanır.",
+        "material": "Malzeme",
+        "thickness": "Kalınlık",
+        "width": "En",
+        "height": "Boy",
+        "grain": "Damar",
+        "grainNone": "Damarsız",
+        "grain0": "Boyuna (0°)",
+        "grain90": "Enine (90°)",
+        "grainNoneHint": "Bu malzemede damar yok.",
+        "save": "Kaydet",
+        "cancel": "Vazgeç",
+        "invalid": "En, boy ve kalınlık 0'dan büyük ve en çok 10.000 mm olmalı.",
+        "unchanged": "Değişiklik yok."
+      },
+      "toast": {
+        "added": "Artık parça eklendi: {size}.",
+        "saved": "Artık parça kaydedildi: {size}.",
+        "deleted": "Artık parça silindi: {size}.",
+        "restored": "Artık parça geri alındı: {size}.",
+        "failed": "İşlem yapılamadı. Tekrar deneyin."
+      }
     }
   },
   "materials": {
@@ -1421,6 +1471,10 @@
     "unknown": "{id} (tanınmayan malzeme)"
   },
   "wizard": {
+    "links": {
+      "source": "Kaynak proje",
+      "derived": "Ayrı plaka projeleri"
+    },
     "profileStatus": {
       "chip": "Profil doğrulanmadı",
       "verify": "Makine doğrulama: air cut ve test kesimi"

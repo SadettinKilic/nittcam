@@ -374,6 +374,12 @@ function validProject(data: unknown): Project {
   return result.project;
 }
 
+/** A linked project (T292). */
+export interface ProjectLink {
+  id: string;
+  name: string;
+}
+
 export interface NewProject {
   /** Client-generated id (D-030); the database generates one when it is missing. */
   id?: string;
@@ -385,6 +391,8 @@ export interface NewProject {
   commands?: readonly CommandLogEntry[];
   /** User who created it (same company); stored on the command rows. */
   userId?: string;
+  /** T292: the project it was split off from (same company, checked by the caller). */
+  sourceProjectId?: string | null;
 }
 
 export interface SaveProject {
@@ -463,6 +471,36 @@ function projectsRepo(db: Db, companyId: string) {
       const row = rows[0];
       return row ? upgradeRow(row) : null;
     },
+    /**
+     * T292: the live project this one was split off from, and the live projects split off from
+     * it (oldest first). Empty for an unknown id or another company's project.
+     */
+    async links(id: string): Promise<{ source: ProjectLink | null; derived: ProjectLink[] }> {
+      const self = await db
+        .select({ source: projectsTable.sourceProjectId })
+        .from(projectsTable)
+        .where(scope(id));
+      const sourceId = self[0]?.source ?? null;
+      const live = (extra: ReturnType<typeof eq>) =>
+        and(eq(projectsTable.companyId, companyId), isNull(projectsTable.deletedAt), extra);
+      const pick = { id: projectsTable.id, name: projectsTable.name };
+      const source = sourceId
+        ? ((
+            await db
+              .select(pick)
+              .from(projectsTable)
+              .where(live(eq(projectsTable.id, sourceId)))
+          )[0] ?? null)
+        : null;
+      const derived = self[0]
+        ? await db
+            .select(pick)
+            .from(projectsTable)
+            .where(live(eq(projectsTable.sourceProjectId, id)))
+            .orderBy(asc(projectsTable.createdAt), asc(projectsTable.id))
+        : [];
+      return { source, derived };
+    },
     async create(values: NewProject): Promise<ProjectRow> {
       const data = validProject(values.data);
       return db.transaction(async (tx) => {
@@ -472,6 +510,7 @@ function projectsRepo(db: Db, companyId: string) {
             companyId,
             name: values.name,
             ...(values.status ? { status: values.status } : {}),
+            ...(values.sourceProjectId ? { sourceProjectId: values.sourceProjectId } : {}),
             data,
             revision: 1,
           })
@@ -499,6 +538,7 @@ function projectsRepo(db: Db, companyId: string) {
             companyId,
             name: values.name,
             ...(values.status ? { status: values.status } : {}),
+            ...(values.sourceProjectId ? { sourceProjectId: values.sourceProjectId } : {}),
             data,
             revision: 1,
           })
@@ -868,7 +908,22 @@ function machinesRepo(db: Db, companyId: string) {
       return machine ? withProfile(machine) : null;
     },
     /**
+     * Archive or restore (T289): an archived machine keeps its profile versions, validations and
+     * exports, so projects bound to it still open and old exports stay; callers hide it from the
+     * new-project picker and the Ana sayfa counts (`machine.archivedAt`).
+     * Null for an unknown id or another company's machine.
+     */
+    async setArchived(machineId: string, archived: boolean): Promise<MachineRow | null> {
+      const rows = await db
+        .update(machinesTable)
+        .set({ archivedAt: archived ? new Date() : null })
+        .where(ownedMachine(machineId))
+        .returning();
+      return rows[0] ?? null;
+    },
+    /**
      * Every machine that has a valid profile version, oldest first, with its verification state.
+     * Archived machines are included (`machine.archivedAt` set; old projects still name them).
      * Machines without a T010 profile (none exist outside tests) are left out.
      */
     async listWithProfiles(): Promise<MachineWithProfile[]> {
@@ -995,6 +1050,7 @@ function templatesRepo(db: Db, companyId: string) {
 }
 
 export type ExportRow = typeof exportsTable.$inferSelect;
+export type OffcutRow = typeof offcuts.$inferSelect;
 export type NewExport = NewRow<typeof exportsTable> & { id?: string };
 
 /** The fields that make two exports the same (D-030 idempotency). */
@@ -1008,6 +1064,32 @@ export type ExportKey = Pick<
   | 'kind'
   | 'sha256'
 >;
+
+/**
+ * Offcut stock (T168, T291). `list` leaves out soft-deleted offcuts (stock tab and nesting);
+ * `get` and `update` still reach them, so "Geri al" and the post-export "used" marking work.
+ */
+function offcutsRepo(db: Db, companyId: string) {
+  const base = mutable(db, companyId, offcuts);
+  return {
+    ...base,
+    async list(): Promise<OffcutRow[]> {
+      return db
+        .select()
+        .from(offcuts)
+        .where(and(eq(offcuts.companyId, companyId), isNull(offcuts.deletedAt)));
+    },
+    /** Soft delete or restore (T291); null for an unknown id or another company's offcut. */
+    async setDeleted(id: string, deleted: boolean): Promise<OffcutRow | null> {
+      const rows = await db
+        .update(offcuts)
+        .set({ deletedAt: deleted ? new Date() : null, updatedAt: new Date() })
+        .where(and(eq(offcuts.id, id), eq(offcuts.companyId, companyId)))
+        .returning();
+      return rows[0] ?? null;
+    },
+  };
+}
 
 function exportsRepo(db: Db, companyId: string) {
   const sameKey = (k: ExportKey) =>
@@ -1170,7 +1252,7 @@ export function forCompany(db: Db, companyId: string) {
     projectCommands: reader(db, companyId, projectCommands),
     exports: exportsRepo(db, companyId),
     validations: appendOnly(db, companyId, validations),
-    offcuts: mutable(db, companyId, offcuts),
+    offcuts: offcutsRepo(db, companyId),
     chatMessages: appendOnly(db, companyId, chatMessages),
     aiUsage: aiUsageRepo(db, companyId),
   };

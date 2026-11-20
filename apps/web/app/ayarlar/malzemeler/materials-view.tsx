@@ -53,10 +53,13 @@ async function loadProfiles(): Promise<{ name: string; profile: MachineProfile }
     if (!res.ok) return [];
     const list = (await res.json()) as MachineListItem[];
     const details = await Promise.all(
-      list.map(async (m) => {
-        const r = await fetch(`/api/machines/${m.id}`, { cache: 'no-store' });
-        return r.ok ? ((await r.json()) as MachineDetail) : null;
-      }),
+      // T289: archived machines are not used for new work, so their sets are not listed.
+      list
+        .filter((m) => !m.archived)
+        .map(async (m) => {
+          const r = await fetch(`/api/machines/${m.id}`, { cache: 'no-store' });
+          return r.ok ? ((await r.json()) as MachineDetail) : null;
+        }),
     );
     return details
       .filter((d): d is MachineDetail => d !== null)

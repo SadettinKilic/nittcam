@@ -14,6 +14,7 @@ export function toListItem(m: MachineWithProfile): MachineListItem {
     state: m.state,
     example: m.profile.example,
     table: m.profile.table,
+    archived: m.machine.archivedAt !== null,
   };
 }
 
