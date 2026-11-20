@@ -152,7 +152,7 @@ export async function runExport(
   profileVersionId?: string,
 ): Promise<RunResult> {
   const project = await scope.projects.get(projectId);
-  if (!project) return { kind: 'notFound' };
+  if (!project || project.deletedAt !== null) return { kind: 'notFound' };
   if (project.revision !== revision) {
     return { kind: 'conflict', currentRevision: project.revision };
   }

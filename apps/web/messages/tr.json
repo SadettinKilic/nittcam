@@ -1308,6 +1308,36 @@
     "emptyAction": "İlk projeyi oluştur",
     "noMatch": "“{q}” ile eşleşen proje yok.",
     "count": "{count} proje",
+    "countOf": "{shown} / {count} proje",
+    "filters": {
+      "label": "Filtreler",
+      "status": "Durum",
+      "machine": "Makine",
+      "material": "Malzeme",
+      "all": "Tümü",
+      "clear": "Filtreleri temizle"
+    },
+    "sort": {
+      "label": "Sırala",
+      "updated": "Son değişen",
+      "name": "Ada göre (A–Z)",
+      "nameDesc": "Ada göre (Z–A)",
+      "oldest": "En eski",
+      "deleted": "Son silinen"
+    },
+    "page": {
+      "label": "Sayfalar",
+      "prev": "Önceki sayfa",
+      "next": "Sonraki sayfa",
+      "of": "Sayfa {page} / {pages}"
+    },
+    "lists": {
+      "deleted": "Silinenler"
+    },
+    "deletedEmpty": "Silinen proje yok.",
+    "deletedEmptyText": "Sildiğiniz projeler burada kalır; geri yükleyebilirsiniz.",
+    "deletedAt": "Silindi: {date}",
+    "restore": "Geri yükle",
     "columns": {
       "name": "Ad",
       "status": "Durum",
@@ -1315,7 +1345,8 @@
       "material": "Malzeme",
       "updated": "Güncellendi",
       "actions": "İşlem",
-      "lastExport": "Son dışa aktarma"
+      "lastExport": "Son dışa aktarma",
+      "deletedAt": "Silinme"
     },
     "status": {
       "draft": "Taslak",
@@ -1400,6 +1431,15 @@
     "loading": "Proje yükleniyor…",
     "loadError": "Proje yüklenemedi.",
     "notFound": "Proje bulunamadı.",
+    "deletedProject": {
+      "title": "“{name}” silindi",
+      "titleNoName": "Bu proje silindi",
+      "text": "Silinen proje açılmaz. Geri yükleyip kaldığınız yerden devam edebilirsiniz.",
+      "restore": "Geri yükle",
+      "deletedList": "Silinenler",
+      "restored": "“{name}” geri yüklendi.",
+      "restoreFailed": "Proje geri yüklenemedi. Tekrar deneyin."
+    },
     "backToList": "Projelere dön",
     "retry": "Tekrar dene",
     "machinesError": "Makineler yüklenemedi.",
