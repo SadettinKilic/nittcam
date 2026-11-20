@@ -510,6 +510,15 @@ function projectsRepo(db: Db, companyId: string) {
         : [];
       return { source, derived };
     },
+    /**
+     * Project status (T179, spec §3.4: taslak → üretildi → tamamlandı). Status is not project
+     * data: the revision and `updatedAt` stay. Null for an unknown id or another company's project.
+     */
+    async setStatus(id: string, status: ProjectRow['status']): Promise<ProjectRow | null> {
+      const rows = await db.update(projectsTable).set({ status }).where(scope(id)).returning();
+      const row = rows[0];
+      return row ? upgradeRow(row) : null;
+    },
     async create(values: NewProject): Promise<ProjectRow> {
       const data = validProject(values.data);
       return db.transaction(async (tx) => {
@@ -1179,12 +1188,12 @@ function exportsRepo(db: Db, companyId: string) {
         .where(and(eq(exportsTable.companyId, companyId), eq(exportsTable.projectId, projectId)))
         .orderBy(desc(exportsTable.createdAt), desc(exportsTable.id));
     },
-    /** The newest export of every project of the company (Projeler list). */
+    /** The newest NC export of every project of the company (Projeler list; T176: not DXF/PDF). */
     async latestPerProject(): Promise<ExportRow[]> {
       return db
         .selectDistinctOn([exportsTable.projectId])
         .from(exportsTable)
-        .where(eq(exportsTable.companyId, companyId))
+        .where(and(eq(exportsTable.companyId, companyId), eq(exportsTable.kind, 'nc')))
         .orderBy(exportsTable.projectId, desc(exportsTable.createdAt), desc(exportsTable.id));
     },
   };

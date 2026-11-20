@@ -1777,7 +1777,9 @@
         "post": "Post",
         "profile": "Profil sürümü",
         "state": "Doğrulama",
-        "files": "Dosyalar"
+        "files": "Dosyalar",
+        "kind": "Tür",
+        "actions": "İşlem"
       },
       "historyRevision": "Rev. {n}",
       "historyProfile": "Sürüm {n}",
@@ -1788,7 +1790,31 @@
         "profile": "Bu makine profili sürümü doğrulanmadı (air cut + test kesimi gerekli).",
         "example": "Bu bir örnek profil: kendi makineniz için yeni bir makine profili oluşturup doğrulayın.",
         "post": "Post işlemci henüz gerçek makinede test edilmedi; dosyalar bu yüzden uyarıyı taşır."
-      }
+      },
+      "zip": "Tümünü indir (.zip)",
+      "kinds": {
+        "nc": "NC",
+        "dxf-dizilim": "DXF dizilim",
+        "dxf-parcalar": "DXF parçalar",
+        "pdf-a4": "PDF A4",
+        "pdf-a3": "PDF A3",
+        "etiket": "Etiket"
+      },
+      "reexport": "Yeniden üret",
+      "reexportLabel": "{kind}, Rev. {n}: yeniden üret",
+      "reexportBusy": "Üretiliyor…",
+      "reexportSame": "Aynı dosya üretildi; kayıt değişmedi.",
+      "reexportNew": "Yeni kayıt eklendi.",
+      "reexportStateChanged": "Doğrulama durumu değiştiği için yeni kayıt eklendi; eski kayıt duruyor.",
+      "reexportError": "Yeniden üretilemedi.",
+      "reexportFailed": "Bu revizyon artık kontrollerden geçmiyor ({count} hata).",
+      "reexportMissing": "Bu eski kayıt için proje anlık görüntüsü yok; yeniden üretilemez.",
+      "reexportAcceptConfirm": "Kabul et ve üret",
+      "reexportCancel": "Vazgeç",
+      "reexportConfirm": "Üret ve indir",
+      "reexportChecklistTitle": "Rev. {n} NC dosyasını yeniden üret",
+      "reexportChecklistBody": "Makine dosyası: ilk dışa aktarmadaki kontrol listesini yeniden onaylayın.",
+      "stateChanged": "doğrulama durumu değişti"
     },
     "issues": {
       "title": "Uyarılar",
@@ -1829,9 +1855,18 @@
       },
       "other": "Kontrol {code}"
     },
+    "report": {
+      "title": "Proje raporu",
+      "hint": "PDF raporundaki değerler, kaydedilmiş revizyondan.",
+      "loading": "Rapor hesaplanıyor…",
+      "error": "Rapor alınamadı.",
+      "waitSave": "Önce değişiklikler kaydedilsin.",
+      "noLayout": "Rapor için önce dizilim gerekir.",
+      "unplaced": "{count} parça dizilmedi"
+    },
     "documents": {
-      "title": "Belgeler (PDF) ve etiketler",
-      "hint": "Kaydedilmiş revizyondan sunucuda üretilir: plaka dizilimi, parça listesi ve fire raporu.",
+      "title": "DXF, PDF ve etiketler",
+      "hint": "Her dosya kaydedilmiş revizyondan sunucuda üretilir ve geçmişe yazılır.",
       "a4": "PDF aç (A4)",
       "a3": "PDF aç (A3)",
       "waitSave": "Önce değişiklikler kaydedilsin.",
@@ -1858,8 +1893,25 @@
         "offsetY": "Aşağı (mm)",
         "open": "Etiketleri aç (PDF)",
         "count": "{count} etiket, {pages} sayfa",
-        "invalid": "Izgara A4 sayfaya sığmıyor veya bir değer aralık dışında."
-      }
+        "invalid": "Izgara A4 sayfaya sığmıyor veya bir değer aralık dışında.",
+        "download": "İndir"
+      },
+      "preview": "Önizle",
+      "download": "İndir",
+      "failed": "Dosya üretilemedi. Tekrar deneyin.",
+      "dxfLayout": "DXF: plaka dizilimi",
+      "dxfParts": "DXF: parçalar tek tek",
+      "pdfA4": "PDF A4: dizilim, parça listesi, fire",
+      "pdfA3": "PDF A3: dizilim, parça listesi, fire"
+    },
+    "projectStatus": {
+      "title": "Proje durumu",
+      "hintDraft": "Başarılı bir NC dışa aktarmasından sonra durum \"üretildi\" olur.",
+      "hintProduced": "Kesim bitince projeyi tamamlandı olarak işaretleyin.",
+      "hintCompleted": "Proje tamamlandı.",
+      "markCompleted": "Tamamlandı olarak işaretle",
+      "markProduced": "Üretildi durumuna geri al",
+      "error": "Durum değiştirilemedi."
     }
   },
   "verification": {
@@ -2930,5 +2982,16 @@
       "shortcutsTitle": "Klavye kısayolları",
       "shortcutsHint": "Her yerde ? tuşu bu listeyi açar. Metin kutusuna yazarken kısayollar çalışmaz (komut paleti hariç)."
     }
+  },
+  "exportReadme": {
+    "title": "NittCAM · {project} · Rev. {revision}",
+    "noName": "Adsız proje",
+    "generator": "Üretici: {id} {version}",
+    "verification": "Makine doğrulama durumu: {state}",
+    "sheetsTitle": "Plaka → dosya",
+    "filesTitle": "Dosyalar",
+    "sheetLine": "Plaka {n}: {name}  (sha256 {hash})",
+    "fileLine": "{name}  (sha256 {hash})",
+    "note": "Dosyalar NittCAM dışa aktarma geçmişindeki dosyaların aynısıdır; sha256 değerleri geçmişteki özetlerle karşılaştırılabilir."
   }
 }

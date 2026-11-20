@@ -2,7 +2,7 @@ import type { PaperSize } from '@nittcam/core';
 import { companyScope } from '../../../../../lib/server/company';
 import { apiError, sha256Hex } from '../../../../../lib/server/exports';
 import { estimateCutSeconds } from '../../../../../lib/server/pdf/cut-time';
-import { asciiStem } from '../../../../../lib/server/pdf/document';
+import { asciiStem } from '../../../../../lib/server/file-names';
 import { renderProjectPdf } from '../../../../../lib/server/pdf/project-pdf';
 import { UUID } from '../../../../../lib/server/projects';
 

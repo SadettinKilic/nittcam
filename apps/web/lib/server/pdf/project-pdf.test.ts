@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { PDFDocument } from 'pdf-lib';
 import { describe, expect, it } from 'vitest';
-import { asciiStem, PDF_FIXED_DATE } from './document';
+import { asciiStem } from '../file-names';
+import { PDF_FIXED_DATE } from './document';
 import { pdfTestProject } from './pdf.testing';
 import { renderProjectPdf } from './project-pdf';
 

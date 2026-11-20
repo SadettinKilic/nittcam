@@ -101,8 +101,12 @@ export interface StoredExportFile extends ExportFileInfo {
 }
 
 /** A stored export (POST result, history row). */
+export type ExportKind = 'nc' | 'dxf' | 'pdf' | 'report';
+
 export interface ExportRecord {
   exportId: string;
+  /** NC program, DXF or PDF (T176); `post.id` names the document type of a DXF/PDF. */
+  kind: ExportKind;
   projectId: string;
   revision: number;
   /** ISO 8601 (UTC); the date lives here, never in the file (D-025). */
@@ -116,6 +120,41 @@ export interface ExportRecord {
   /** sha256 of the manifest (`<sha256>  <name>` per file). */
   hash: string;
   files: StoredExportFile[];
+  /** "Tümünü indir (.zip)" (T176, CTO #10 E4): set when the export has more than one file. */
+  zipUrl: string | null;
+  /**
+   * E6 (D-060, T179): an earlier export of the same revision and type was made with another machine
+   * verification state, so this is a new record ("doğrulama durumu değişti"), never an overwrite.
+   */
+  stateChanged: boolean;
+}
+
+/** POST /api/exports/:id/reexport (T179) */
+export interface ReexportRequest {
+  /** Needed again when the regenerated NC files are unverified (§7.2 rule 10). */
+  acceptUnverified?: boolean;
+  /**
+   * NC only (D-071): the operator ticked the same pre-export checklist as the export step (origin,
+   * tool, air cut, tool changes, unverified templates). Without it the server answers 428
+   * `checklist_required` with the checklist data of the regenerated program.
+   */
+  checklistConfirmed?: boolean;
+}
+
+/** 428 of an NC re-export without the checklist: what the dialog asks (D-071). */
+export interface ReexportChecklistRequired {
+  error: 'checklist_required';
+  checklist: ExportChecklistInfo | null;
+  needsAcceptance: boolean;
+  /** Unverified ready templates of that revision (T282 line). */
+  templates: string[];
+  /** Parts with a handle on a hinge edge (T286 warning line). */
+  hingeHandles: string[];
+}
+
+/** Re-export URL of a history row (T179). */
+export function reexportUrl(exportId: string): string {
+  return `/api/exports/${encodeURIComponent(exportId)}/reexport`;
 }
 
 /** POST result: the record, and whether this request created it (false = idempotent repeat). */
@@ -127,10 +166,12 @@ export type ExportApiError =
   | { error: 'conflict'; currentRevision: number }
   | { error: 'export_failed'; stage: ExportStage; violations: ExportViolation[] }
   | { error: 'acceptance_required' }
+  | ReexportChecklistRequired
   | { error: 'not_found' }
   | { error: 'bad_request' }
   | { error: 'hash_mismatch' }
   | { error: 'file_missing' }
+  | { error: 'snapshot_missing' }
   | { error: 'server_error' };
 
 /** The short form of a hash shown in the UI (T250: first 8 characters; the full hash is one
@@ -173,4 +214,9 @@ export function ruleLabel(labels: Readonly<Record<string, string>>, rule: string
   const n = /^R([0-9]+)$/.exec(rule);
   if (n) return (labels.rule ?? '{n}').replace('{n}', n[1] ?? '');
   return labels[rule] ?? labels.unknown ?? '';
+}
+
+/** "Tümünü indir (.zip)" link of an export (T176): every file plus `OKU.txt`. */
+export function zipUrl(exportId: string): string {
+  return `/api/exports/${encodeURIComponent(exportId)}/zip`;
 }

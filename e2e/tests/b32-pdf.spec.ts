@@ -24,7 +24,7 @@ test('T172: PDF links open the saved revision as a PDF with stable bytes', async
   const box = page.getByTestId('export-documents');
   await expect(box.getByText(d.hint)).toBeVisible();
   const a4 = box.getByTestId('export-pdf-a4');
-  await expect(a4).toHaveText(d.a4);
+  await expect(a4).toHaveText(d.preview);
   await expect(a4).toHaveAttribute('target', '_blank');
   const href = await a4.getAttribute('href');
   expect(href).toMatch(/\/api\/projects\/[0-9a-f-]{36}\/pdf\?revision=\d+&paper=a4$/);

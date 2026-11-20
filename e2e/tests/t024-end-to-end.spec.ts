@@ -177,7 +177,12 @@ async function runFlow(page: Page, mobile: boolean) {
     await take(d);
   } else {
     await download.click();
-    const links = page.getByTestId('export-ready').getByRole('link');
+    // T176: one link per sheet plus "Tümünü indir (.zip)".
+    await expect(page.getByTestId('export-zip')).toHaveText(w.export.zip);
+    const links = page
+      .getByTestId('export-ready')
+      .getByRole('link')
+      .filter({ hasNotText: w.export.zip });
     await expect(links).toHaveCount(sheets);
     for (let i = 0; i < sheets; i++) {
       const [d] = await Promise.all([page.waitForEvent('download'), links.nth(i).click()]);
