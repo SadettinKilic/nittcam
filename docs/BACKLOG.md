@@ -1281,6 +1281,7 @@ Spec: §6.6 · Depends: T173, T174, T175
 > Note from CTO review #4 (2026-11-19): at 1440 the left column is half empty while the right one scrolls and the history table is below the fold; when this step is rebuilt, balance the two columns so the history is visible without scrolling.
 Acceptance:
 - [ ] export step offers NC, DXF, PDF, labels; each regenerated on the server and stored in `exports` with type, hash, revision; history shows all types; NC rules unchanged (checks, acceptance)
+- [ ] (CTO #10 E4) more than one file: "Tümünü indir (.zip)" in one click (same names and bytes as single downloads), `OKU.txt` maps sheet → file; single downloads stay
 Tester focus: NC gate cannot be bypassed by the new UI; hashes stable; history entries per type.
 
 ### T177 Project report card   [status: todo]
@@ -1303,6 +1304,7 @@ Tester focus: e2e search/filter/copy; deleted project hidden but restorable; ten
 Spec: §3.4, §6.6 · Depends: T176, T178
 Acceptance:
 - [ ] taslak → üretildi (after a successful NC export) → tamamlandı (manual); re-export from history regenerates from that revision
+- [ ] (CTO #10 E6, D-060) the export record stores the machine verification state; re-export with the same state gives the same bytes; if the state changed, a new record "doğrulama durumu değişti" is added instead of overwriting
 Tester focus: status transitions; re-export of an old revision gives the same hash as before.
 
 ### T180 Ana sayfa with real data   [status: todo]
@@ -1333,6 +1335,51 @@ Acceptance:
 Tester focus: preferences persist and apply on reload; compact density screenshots.
 
 ---
+
+## CTO review #10 follow-ups (2026-11-20, D-047; review `docs/reviews/2026-11-20-cto-design-review-10.md`)
+
+### Batch B33: T287–T289 (must-fix A + gaps E1, E2; runs now on Dev 2, parallel with B32)
+
+### T287 Unplaced part: no green check on Simülasyon, named lock on Dışa aktar   [status: todo]
+Must-fix A (CTO #10). Spec: §3.6, §6.5, §7.2
+Acceptance:
+- [ ] a part that is not in the layout (does not fit, or added after nesting) means the Simülasyon summary never shows "Tüm kontroller geçti"; it shows "1 kontrol geçmedi" with the part name, open; same result source as Dışa aktar (K2)
+- [ ] Dışa aktar "Geçmeyen kontroller" names the part ("Satır 2 · Tezgah: plakaya sığmıyor") and "Parçalara git" focuses that row
+- [ ] Dizilim shows the unplaced count above the canvas without scrolling (chip next to the sheet tabs); "İleri" not blocked
+- [ ] goldens unchanged; NC lock never relaxed
+Tester focus: oversize part, part added after nesting, deleting it turns all three steps green; 1440 light/dark; axe.
+
+### T288 Cutting settings UI: tabs, lead-in, direction   [status: todo]
+Gap E1 (CTO #10). Spec: §6.3, §7.2 · gcode-safety review
+Acceptance:
+- [ ] Simülasyon left panel "Kesim ayarları": tabs (all parts / small parts only / off), count, width, height; lead-in (arc / line); direction (climb / conventional)
+- [ ] every change is a command (undoable); preview and tab count update at once; the server export uses the same values; the file header shows them
+- [ ] with tabs off, the small-part safety rule (§6.3, §7.2) still forces tabs or thin skin
+- [ ] goldens unchanged for default values; any new golden verified per D-051
+Tester focus: gcode-safety checklist on each option; undo; export equals preview.
+
+### T289 Machine archive   [status: todo]
+Gap E2 (CTO #10). Spec: §3.4 · Depends: T107
+Acceptance:
+- [ ] archive a machine (soft delete, "Geri al" toast), also the sample machine; tenant-scoped API
+- [ ] archived machine cannot be picked for a new project; old projects using it still open, old exports stay
+- [ ] Ana sayfa counts ignore archived machines
+Tester focus: archive/undo, new-project picker, old project opens; tenancy.
+
+### T290 Project opens at the step where work stopped   [status: todo]
+Gap E5 (CTO #10). Rides with B27 (T178–T180). Spec: §3.4
+Acceptance:
+- [ ] "Aç" opens the step after the last completed one (layout → Dizilim, export → Dışa aktar); `?adim=` in the URL wins; Çizim / Liste view remembered
+
+### T291 Offcut stock: edit and delete   [status: todo]
+Gap E3 (CTO #10). Rides with B27. Spec: §6.2
+Acceptance:
+- [ ] edit and delete a stock offcut (with "Geri al"); tab kept in the URL (`?sekme=artik`); manual add waits for the owner's scope answer (Q: E3)
+
+### Parked for the owner's scope decision
+- E3 manual add of old offcuts into stock (spec §6.2 only says "from the layout").
+- E7 parts of another thickness (8 mm cabinet back): "move separate-sheet parts to a new project". Suggested after the field test.
+
 
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
 
@@ -1439,6 +1486,19 @@ From CTO review #9 (2026-11-20, `docs/reviews/2026-11-20-cto-design-review-9.md`
 - Dizilim Ayarlar panel grew long: "Diz" moves down when options open; half a row cut at the top when scrolled
 - Cut list: edge band cells have no unit ("1"); show "1 mm" or "(mm)" in the header
 - Offcut proposals are pre-ticked and go to stock in one click; reconsider the default
+
+### From CTO review #10 (2026-11-20)
+- Command palette: Şablonlar, Ayarlar / Malzemeler, Makine doğrulama pages and in-project step commands missing
+- Empty drafts pile up (0-part projects fill "Son projeler"); hide or filter them
+- Home project card: "Son dışa aktarma 20 Kas 20…" truncated
+- Offcut "Stoğa kaydet": no toast; offcut list lacks the source project name
+- Multi-file export "İndir" label unclear until T176 zip lands ("Dosyaları hazırla")
+- Simülasyon view toolbar covers the table frame's top-right corner
+- Cut list: a name-only row without size counts in the footer part total
+- Paste: skipped 0-size row must be named with its reason in the preview (check)
+- Drawing board: no right-click menu (duplicate, delete, rotate, add template)
+- Console: THREE.Clock deprecated warning on every 3D open (use THREE.Timer)
+- Still open from #9: sticky toast over the scale bar, assembly camera cut, no "fit to job", no feedback when true-shape / in-hole change nothing
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
