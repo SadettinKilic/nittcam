@@ -28,6 +28,8 @@ describe('/api/settings/dxf-layers (T145)', () => {
 
   it('rejects unknown operations and malformed bodies', async () => {
     expect((await put({ layers: { A: 'laser' } })).status).toBe(400);
-    expect((await put({ map: {} })).status).toBe(400);
+    // T182: `{ map }` alone is the editor's replace; mixed or unknown keys stay malformed.
+    expect((await put({ map: {}, layers: {} })).status).toBe(400);
+    expect((await put({ maps: {} })).status).toBe(400);
   });
 });

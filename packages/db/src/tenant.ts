@@ -5,7 +5,11 @@
  * company-agnostic query is `companies.create`.
  */
 import {
+  addMaintenanceEntry,
   currentVerificationState,
+  maintenanceEntrySchema,
+  parseMaintenanceLog,
+  type MaintenanceEntry,
   DEFAULT_LIBRARY,
   libraryMaterialSchema,
   type LibraryMaterial,
@@ -75,6 +79,11 @@ export class InvalidMachineProfile extends Error {
   constructor(readonly issues: MachineProfileIssue[]) {
     super(`invalid machine profile: ${issues.map((i) => `${i.path}: ${i.message}`).join('; ')}`);
   }
+}
+
+/** A maintenance log entry failed core `maintenanceEntrySchema`; nothing was written (T181). */
+export class InvalidMaintenanceEntry extends Error {
+  override readonly name = 'InvalidMaintenanceEntry';
 }
 
 /** A material library entry failed core `libraryMaterialSchema`; nothing was written (T121). */
@@ -920,6 +929,36 @@ function machinesRepo(db: Db, companyId: string) {
         .where(ownedMachine(machineId))
         .returning();
       return rows[0] ?? null;
+    },
+    /**
+     * Manual maintenance log (T181), oldest first; invalid stored entries are skipped. Null for
+     * an unknown id or another company's machine.
+     */
+    async maintenance(machineId: string): Promise<MaintenanceEntry[] | null> {
+      const rows = await db
+        .select({ log: machinesTable.maintenanceLog })
+        .from(machinesTable)
+        .where(ownedMachine(machineId));
+      return rows[0] ? parseMaintenanceLog(rows[0].log) : null;
+    },
+    /**
+     * Records a maintenance (T181): validated, appended, sorted, bounded. Throws
+     * `InvalidMaintenanceEntry` for a bad entry; null for an unknown or foreign machine.
+     */
+    async addMaintenance(machineId: string, json: unknown): Promise<MaintenanceEntry[] | null> {
+      const parsed = maintenanceEntrySchema.safeParse(json);
+      if (!parsed.success) throw new InvalidMaintenanceEntry(parsed.error.issues[0]?.message ?? '');
+      return db.transaction(async (tx) => {
+        const rows = await tx
+          .select({ log: machinesTable.maintenanceLog })
+          .from(machinesTable)
+          .where(ownedMachine(machineId))
+          .for('update');
+        if (!rows[0]) return null;
+        const log = addMaintenanceEntry(parseMaintenanceLog(rows[0].log), parsed.data);
+        await tx.update(machinesTable).set({ maintenanceLog: log }).where(ownedMachine(machineId));
+        return log;
+      });
     },
     /**
      * Every machine that has a valid profile version, oldest first, with its verification state.

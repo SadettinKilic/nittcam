@@ -78,6 +78,13 @@
       "when": 1795188180203,
       "tag": "0010_t292_project_source",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795191126696,
+      "tag": "0012_t182_company_defaults",
+      "breakpoints": true
     }
   ]
 }

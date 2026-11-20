@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import type { CameraCommand } from '../../components/preview3d/scene';
 import { PRESET_MS, type CameraPose, type ViewPreset } from './camera';
 import { registerLeaveTransition } from './leave';
-import { useMediaQuery } from '../use-media-query';
+import { useReducedMotion } from '../use-preferences';
 import { hasWebGL2 } from './capability';
 
 export type ViewMode = '2d' | '3d';
@@ -40,7 +40,7 @@ export function useView3d(available: boolean) {
   const [camera, setCamera] = useState<CameraCommand>(initialCommand);
   const show3d = available && mode === '3d';
   // T155 (§3.6): wizard "İleri" with 3D open → ease to the top view first; none with reduced motion.
-  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)', false);
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (!show3d || reducedMotion) return;
     return registerLeaveTransition(() => {

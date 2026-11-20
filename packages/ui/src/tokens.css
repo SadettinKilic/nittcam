@@ -265,7 +265,8 @@
 
 /* ---- Density (T195) ----------------------------------------------------------------------
  * A container opts in with data-density="compact" (drawing-board property panel, long cut
- * lists): controls 32 px, table rows 36 px, panel padding 12 px. Not a user setting yet (T183).
+ * lists): controls 32 px, table rows 36 px, panel padding 12 px. On <html> it is the
+ * user's Ayarlar → Görünüm choice (T183) and applies to every screen.
  * Comfortable stays the default because 40 px keeps tablet touch targets (spec §3.7). */
 [data-density='compact'] {
   --spacing-control-md: 2rem;
@@ -477,4 +478,14 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* The same cut when the user picks "Hareketi azalt" in Ayarlar → Görünüm (T183). */
+:root[data-motion='reduce'] *,
+:root[data-motion='reduce'] *::before,
+:root[data-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }

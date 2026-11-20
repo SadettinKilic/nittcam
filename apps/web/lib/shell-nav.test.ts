@@ -54,11 +54,21 @@ describe('breadcrumbs', () => {
     ]);
   });
 
-  it('gives Ayarlar → Malzemeler (T121)', () => {
+  it('gives Ayarlar → Malzemeler / DXF katmanları / Görünüm (T121, T182, T183)', () => {
+    expect(breadcrumbs('/ayarlar')).toEqual([{ key: 'settings' }]);
     expect(breadcrumbs('/ayarlar/malzemeler')).toEqual([
-      { key: 'settings', href: '/ayarlar/malzemeler' },
+      { key: 'settings', href: '/ayarlar' },
       { key: 'materials' },
     ]);
+    expect(breadcrumbs('/ayarlar/dxf')).toEqual([
+      { key: 'settings', href: '/ayarlar' },
+      { key: 'dxfLayers' },
+    ]);
+    expect(breadcrumbs('/ayarlar/gorunum')).toEqual([
+      { key: 'settings', href: '/ayarlar' },
+      { key: 'appearance' },
+    ]);
+    expect(breadcrumbs('/ayarlar/yok')).toEqual([{ key: 'notFound' }]);
   });
 
   it('ignores a trailing slash and reports unknown paths as not found', () => {

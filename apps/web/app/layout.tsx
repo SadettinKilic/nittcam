@@ -6,6 +6,7 @@ import { ClientErrorReporter } from '../components/feedback/client-error-reporte
 import { AppShell } from '../components/shell/app-shell';
 import { DEFAULT_COMPANY_NAME } from '../lib/company-defaults';
 import { defaultLocale, getMessages } from '../lib/messages';
+import { PREFERENCES_INIT_SCRIPT } from '../lib/preferences';
 import { SIDEBAR_INIT_SCRIPT } from '../lib/sidebar-state';
 import './globals.css';
 
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: PREFERENCES_INIT_SCRIPT }} />
       </head>
       <body>
         <ClientErrorReporter />

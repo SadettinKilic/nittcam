@@ -1263,9 +1263,9 @@ export function CutListEditor({
   onSelectionChange,
   dxfText,
   holeTool,
+  splitOff,
   focusPart = null,
   onFocusedPart,
-  splitOff,
 }: {
   t: Text;
   project: Project;
@@ -1288,10 +1288,6 @@ export function CutListEditor({
   dxfText?: Messages['dxfImport'];
   /** Tool number for holes made from DXF circles on a "Delik" layer (T145). */
   holeTool?: number;
-  /** T287: "Parçalara git" from a blocking issue: the part whose name cell gets focus on open. */
-  focusPart?: string | null;
-  /** Called once the grid has taken `focusPart` (the wizard forgets the request). */
-  onFocusedPart?: () => void;
   /**
    * T292: "Dolap ekle" may send its other-thickness parts to a new project (saved projects only).
    * `onSplit` gets the cut-list rows (no thickness note: they are the new project's board).
@@ -1302,6 +1298,10 @@ export function CutListEditor({
         onSplit: (rows: ReturnType<typeof cabinetRows>, target: SplitTarget, group: string) => void;
       }
     | undefined;
+  /** T287: "Parçalara git" from a blocking issue: the part whose name cell gets focus on open. */
+  focusPart?: string | null;
+  /** Called once the grid has taken `focusPart` (the wizard forgets the request). */
+  onFocusedPart?: () => void;
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [dxfOpen, setDxfOpen] = useState(0);
