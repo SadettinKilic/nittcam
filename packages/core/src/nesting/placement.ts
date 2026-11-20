@@ -7,6 +7,13 @@ import { EPS } from '../geometry/constants';
 import { sheetSizeOf, type Placement, type Project } from '../schema';
 import { partShape, type PartShape } from './fit';
 import { placementRect } from './nest';
+import {
+  footprintContours,
+  footprintsOverlap,
+  moveFootprint,
+  rectOutline,
+  shapeOption,
+} from './shape';
 import type { Rect } from './types';
 
 /** A part copy on a sheet. */
@@ -30,6 +37,11 @@ export interface PlacementCheck {
 export interface PlacementCheckOptions {
   /** Cutting tool diameter, mm (from the machine profile). */
   toolDiameter: number;
+  /**
+   * The layout comes from the true-shape engine (T165): bbox conflicts are re-checked on the real
+   * footprints. Absent = the rectangle rule (bbox clearance), unchanged.
+   */
+  trueShape?: boolean | undefined;
 }
 
 /** True when the check found nothing wrong. */
@@ -84,11 +96,35 @@ export function checkPlacement(
     if (other.partId === candidate.partId && other.index === candidate.index) continue;
     const o = placementRect(other, sizes);
     if (!o) continue;
-    if (rectClearance(r, o) < spacing - EPS) {
+    if (
+      rectClearance(r, o) < spacing - EPS &&
+      (!options.trueShape || shapesConflict(candidate, other, sizes, spacing))
+    ) {
       conflicts.push({ partId: other.partId, index: other.index });
     }
   }
   return { outsideSheet, inMargin, conflicts };
+}
+
+/**
+ * Whether two placements whose bounding boxes are too close really conflict (T165): their true
+ * footprints (outline + spacing/2, round tool) overlap. Bboxes are only a pre-filter, so a
+ * true-shape layout (interlocked shapes, diagonal neighbours) is not reported. Without an outline
+ * the w × h rectangle is the shape.
+ */
+function shapesConflict(
+  a: Placement,
+  b: Placement,
+  sizes: ReadonlyMap<string, PartShape>,
+  spacing: number,
+): boolean {
+  const fp = (pl: Placement) => {
+    const shape = sizes.get(pl.partId) as PartShape;
+    const outline = shape.outline ?? rectOutline(shape.w, shape.h);
+    const option = shapeOption(outline, footprintContours(outline, [], spacing / 2), pl.rot);
+    return moveFootprint(option.fp, pl.x, pl.y);
+  };
+  return footprintsOverlap(fp(a), fp(b));
 }
 
 /** Sheet index and position in the sheet's list of a part copy; null when it is not placed. */

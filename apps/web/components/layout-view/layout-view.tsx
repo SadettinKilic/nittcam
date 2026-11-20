@@ -3,6 +3,7 @@
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 import {
   checkPlacement,
+  nestingEngineOf,
   placementIsValid,
   summarizeLayout,
   type PlacementCheck,
@@ -243,7 +244,7 @@ function LayoutViewImpl({
         project,
         sheet,
         { partId: part.partId, index: part.index, x, y, rot: part.rot, locked: true },
-        { toolDiameter },
+        { toolDiameter, trueShape: nestingEngineOf(project) === 'trueShape' },
       ),
     [project, sheet, toolDiameter],
   );

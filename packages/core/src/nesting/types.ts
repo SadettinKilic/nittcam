@@ -34,6 +34,8 @@ export interface NestPart {
    * `contourTool` they are the tools one copy needs (μ·N_toolchange). Absent = none.
    */
   holeTools?: readonly number[] | undefined;
+  /** Inner contours in the local frame (true-shape part-in-hole zones, T166). */
+  inners?: readonly Polyline[] | undefined;
 }
 
 /**
@@ -107,6 +109,13 @@ export interface NestingInput {
   contourTool?: number | undefined;
   /** Overrides of the mode's weight preset. */
   weights?: Partial<ObjectiveWeights> | undefined;
+  /** Placer engine; absent = `maxrects` (the rectangle placer, byte-identical to before T165). */
+  engine?: NestingEngine | undefined;
+  /**
+   * True-shape only (T166): inner contours of a part become hole zones where small parts may be
+   * placed. Absent/false = every footprint is solid (conservative).
+   */
+  partInHole?: boolean | undefined;
 }
 
 /** Why a part copy was not placed. */
@@ -133,7 +142,19 @@ export type PartOrdering =
 
 /** Placement heuristics tried. */
 export type PlacerHeuristic =
-  'maxrects-bssf' | 'maxrects-baf' | 'maxrects-bl' | 'guillotine-bssf' | 'guillotine-baf';
+  | 'maxrects-bssf'
+  | 'maxrects-baf'
+  | 'maxrects-bl'
+  | 'guillotine-bssf'
+  | 'guillotine-baf'
+  /** True-shape bottom-left placer (T165). */
+  | 'trueshape-bl';
+
+/**
+ * Placer engine (T165–T167): `maxrects` = the rectangle placer (D-019, non-axis angles by the
+ * rotated bbox); `trueShape` = real footprints (outline + tool radius + gap/2).
+ */
+export type NestingEngine = 'maxrects' | 'trueShape';
 
 export interface SheetStats {
   index: number;

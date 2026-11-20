@@ -1427,9 +1427,13 @@
       "rotation": "Parça döndürme",
       "rotations": {
         "free": "Serbest (90° adımlarla)",
+        "step45": "45° adımlarla (gerçek şekil)",
+        "step15": "15° adımlarla (gerçek şekil, yavaş)",
         "none": "Döndürme yok (çizildiği gibi)"
       },
       "rotationHint": "Damar yönü sabit parçalar her zaman damara göre yerleşir.",
+      "partInHole": "Küçük parçaları iç boşluklara yerleştir",
+      "partInHoleHint": "Büyük parçaların iç kesimlerine küçük parçalar dizilir; önce iç parça kesilir.",
       "gap": "Parça arası boşluk (mm)",
       "margin": "Kenar payı (mm)",
       "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
