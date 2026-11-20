@@ -679,3 +679,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-086 "Changed after üretildi" (T303, 2026-11-20, Dev 1)
 - NC file-name limit: already met by T295 (D-073): `buildFileName` shortens only the project part to the machine's "Dosya adı en fazla" and keeps `_r<rev>_S<n>` whole; T303 adds a regression test (24-character limit, revision 12).
 - A produced / completed project whose saved revision is newer than its newest NC file keeps its status, plus: Projeler shows a warning badge "değişti" next to the status (title and screen-reader text "Üretildikten sonra değişti (Rev. 2; son NC Rev. 1)"); the export step's "Proje durumu" card says the same with "Güncel revizyonla NC üret", which focuses the pre-export checklist (D-071/D-072). The status itself is not changed automatically. `GET /api/projects/:id` returns `lastNcRevision`.
+
+## D-087 2 000-row paste: measured cause and fix (T304, 2026-11-21, Dev 1)
+- The "~9 s" freeze of D-079 was mostly the test driver: Playwright `fill` sends the 2 000 lines through the browser's typing path (6–10 s even in a bare `<textarea>`); a real Ctrl+V of the same text takes ~0,1 s. The perf spec now puts the text in with one input event (as a paste does).
+- App fixes: the paste preview renders only the visible rows above 150 rows (TanStack virtualizer, spacer rows keep the scroll height); applying runs the command at once and the wizard re-render as a React transition, so it is split into short tasks.
+- Measured locally (2 000 rows, paste + preview + apply): ~0,5 s, longest main-thread task ~130 ms. The perf spec guards < 2 s and ≤ 200 ms (was < 20 s).

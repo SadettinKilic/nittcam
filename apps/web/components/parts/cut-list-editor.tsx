@@ -64,6 +64,7 @@ import {
 } from 'lucide-react';
 import {
   memo,
+  startTransition,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -1657,7 +1658,12 @@ export function CutListEditor({
   }
 
   function applyPaste(rows: CutListPartInput[]): boolean {
-    const ok = run('importCutList', { parts: rows });
+    // T304: the command runs now (its result decides whether the panel closes); the re-render of
+    // the wizard with the new rows is a transition, so React splits it instead of one long task.
+    let ok = false;
+    startTransition(() => {
+      ok = run('importCutList', { parts: rows });
+    });
     if (ok) {
       setPasteOpen(false);
       notify.success(fill(t.paste.applied, { count: rows.length }), {
