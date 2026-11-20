@@ -92,7 +92,7 @@ import {
   type SimText,
 } from './model';
 import { SummaryCard } from './summary-card';
-import { findings, Violations, type Finding } from './violations';
+import { findings, Violations, type Finding, type PartLinks } from './violations';
 import { ZStrip } from './z-strip';
 
 const SimulationCanvas = dynamic(() => import('./simulation-canvas'), { ssr: false });
@@ -157,6 +157,7 @@ export function SimulationView({
   onOpenPart,
   onOpenRow,
   onOpenSkin,
+  margin,
   view3d,
 }: {
   t: SimText;
@@ -177,6 +178,8 @@ export function SimulationView({
   onOpenRow?: (partId: string) => void;
   /** T298: "Tabaka kalınlığına git" opens step 1 on the thin-skin field. */
   onOpenSkin?: () => void;
+  /** T300: the sheet margin is below the tool radius: the hint and "Kenar payına git". */
+  margin?: PartLinks['margin'];
   /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
   empty: { noLayout: React.ReactNode; noMachine: React.ReactNode };
 }) {
@@ -284,6 +287,7 @@ export function SimulationView({
         onOpenPart={onOpenPart}
         onOpenRow={onOpenRow}
         onOpenSkin={onOpenSkin}
+        margin={margin}
       />
     );
   } else if (sim) {
@@ -392,7 +396,12 @@ export function SimulationView({
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-4 lg:min-h-0 lg:overflow-y-auto">
+    // T299 (CTO #12 B): the locked view is its own scroll box. `main` is a fixed-height workspace
+    // with `overflow: hidden` at lg, so without `h-full` this box grew past it and nothing scrolled.
+    <div
+      data-testid="sim-scroll"
+      className="flex w-full min-w-0 flex-col gap-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain"
+    >
       {body}
       {side}
     </div>

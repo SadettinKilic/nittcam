@@ -26,14 +26,19 @@ const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
  * server export reads the same project values. The values shown are the ones the toolpath uses
  * (`cuttingSettingsOf`: project > material set > built-in default).
  */
-/** T294: scrolls to the "Kesim ayarları" panel and focuses its tab choice. */
+/**
+ * T294: scrolls to the "Kesim ayarları" panel and focuses its first refused field (T299), else its
+ * tab choice. `block: 'nearest'` scrolls only as far as needed inside the step's own scroll box,
+ * so the fixed workspace (`main`) and its footer never move (CTO #12 B).
+ */
 export function focusCuttingSettings() {
   const panel = document.querySelector<HTMLElement>('[data-testid="sim-cutting"]');
   if (!panel) return;
-  panel.scrollIntoView({ block: 'start' });
-  panel
-    .querySelector<HTMLInputElement>('input[type="radio"]:checked')
-    ?.focus({ preventScroll: true });
+  panel.scrollIntoView({ block: 'nearest' });
+  const target =
+    panel.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+    panel.querySelector<HTMLInputElement>('input[type="radio"]:checked');
+  target?.focus({ preventScroll: true });
 }
 
 /** T294: one line for Özet: "Köprü: her parçada 4 × 10 × 3 mm · Giriş: yay · Yön: climb". */
