@@ -24,7 +24,8 @@ describe('segmentLabels (T133)', () => {
     expect(labels.map((l) => l.text)).toEqual(['600', '400', '600', '400']);
     // bottom edge: label below it (outside), 18 px = 18 mm at scale 1
     expect(labels[0]?.at).toEqual({ x: 300, y: -18 });
-    expect(labels[1]?.at).toEqual({ x: 618, y: 200 });
+    // right edge: the chip clears the edge by its half width + 5 px air (B50)
+    expect(labels[1]?.at).toEqual({ x: 600 + chipWidthPx('400') / 2 + 5, y: 200 });
   });
 
   it('keeps a constant screen size: the offset shrinks in mm as the zoom grows', () => {
@@ -44,7 +45,26 @@ describe('segmentLabels (T133)', () => {
     const labels = segmentLabels(SQUARE, [hole], 1);
     expect(labels).toHaveLength(8);
     // first inner segment runs up the left side: right of travel = +x, into the opening
-    expect(labels[4]?.at).toEqual({ x: 118, y: 200 });
+    expect(labels[4]?.at).toEqual({ x: 100 + chipWidthPx('200') / 2 + 5, y: 200 });
+  });
+
+  it('leaves out a chip that would overlap another one; longer and active segments win (B50)', () => {
+    // a 200 × 150 console with a 40 mm step at 39 % (CTO #6): short chips crowd the corner
+    const step = [v(0, 0), v(200, 0), v(200, 150), v(110, 150), v(110, 110), v(0, 110)];
+    const labels = segmentLabels(step, [], 0.39);
+    for (let i = 0; i < labels.length; i++) {
+      for (let j = i + 1; j < labels.length; j++) {
+        const a = labels[i] as (typeof labels)[number];
+        const b = labels[j] as (typeof labels)[number];
+        const apart =
+          Math.abs(a.at.x - b.at.x) * 0.39 >= (chipWidthPx(a.text) + chipWidthPx(b.text)) / 2 ||
+          Math.abs(a.at.y - b.at.y) * 0.39 >= 18;
+        expect(apart).toBe(true);
+      }
+    }
+    expect(labels.map((l) => l.text)).toContain('200');
+    const active = segmentLabels(step, [], 0.39, 3);
+    expect(active.find((l) => l.active)?.text).toBe('40');
   });
 
   it('arc length for a bent segment', () => {

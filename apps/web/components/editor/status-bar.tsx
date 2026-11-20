@@ -51,7 +51,11 @@ export function StatusBar({
     >
       <span className="flex min-w-0 flex-1 items-center gap-2" data-testid="editor-cursor">
         {hint ? (
-          <span className="truncate font-sans text-fg" title={hint} data-testid="editor-hint">
+          <span
+            className="line-clamp-2 font-sans leading-tight whitespace-normal text-fg"
+            title={hint}
+            data-testid="editor-hint"
+          >
             {hint}
           </span>
         ) : (
