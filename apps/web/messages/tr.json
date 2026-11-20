@@ -42,8 +42,21 @@
       "machinesPending": "{n} makine doğrulama bekliyor",
       "machinesAllVerified": "Bütün makineler doğrulanmış",
       "waste": "Ortalama fire",
-      "wasteHint": "Kesimden sonra raporlanacak",
-      "soon": "Yakında"
+      "wasteHint": "Son 30 gün, {n} proje"
+    },
+    "waste": {
+      "title": "Fire özeti",
+      "description": "Son 30 günde dizilimi değişen projeler",
+      "average": "Ortalama fire",
+      "wasteArea": "Fire alanı",
+      "sheets": "Plaka",
+      "chartLabel": "Proje başına fire yüzdesi, en yeni üstte",
+      "bar": "{name}: fire {value}, {sheets} plaka",
+      "more": "+{n} proje daha (toplama dahil)",
+      "emptyTitle": "Son 30 günde dizilim yok",
+      "empty": "Bir projeyi dizdiğinizde fire oranı burada görünür.",
+      "scaleStart": "%0",
+      "scaleEnd": "%100"
     },
     "recent": "Son projeler",
     "recentDescription": "En son değiştirdiğiniz projeler",

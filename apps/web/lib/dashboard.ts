@@ -69,6 +69,8 @@ export function machinesByUrgency<T extends { state: VerificationState; name: st
 /** A small drawing of the first sheet: sheet size and part footprints in sheet mm (y up). */
 export interface LayoutThumb {
   sheet: { width: number; height: number };
+  /** Stock material id (`project.stock.material`), for the sheet tint (T180). */
+  material: string;
   sheets: number;
   /** `outline`: the true outline of a turned or drawn part (footprint frame, Y down; T116). */
   parts: { x: number; y: number; w: number; h: number; outline: number[] | null }[];
@@ -107,8 +109,82 @@ export function layoutThumb(entered: Project): LayoutThumb | null {
   if (out.length === 0) return null;
   return {
     sheet: { width: defaultSheet(project).width, height: defaultSheet(project).height },
+    material: project.stock.material,
     sheets: project.layout.sheets.length,
     parts: out,
     utilisation: summarizeLayout(project).utilisationPercent,
   };
+}
+
+/** Days the home page waste summary looks back (T180). */
+export const WASTE_WINDOW_DAYS = 30;
+/** At most this many project bars in the waste chart (newest first). */
+export const WASTE_MAX_BARS = 6;
+
+/** The layout numbers of one project's report (`ReportSummary`, T177) the waste summary needs. */
+export interface WasteInput {
+  id: string;
+  name: string;
+  updatedAt: Date;
+  summary: { sheetCount: number; wastePercent: number; wasteAreaM2: number; sheetAreaM2: number };
+}
+
+export interface WasteSummary {
+  /** Projects with a layout changed in the window. */
+  projects: number;
+  sheets: number;
+  wasteAreaM2: number;
+  sheetAreaM2: number;
+  /** Area-weighted: total waste area / total sheet area (not the mean of the project percents). */
+  wastePercent: number;
+  bars: { id: string; name: string; wastePercent: number; sheets: number; updatedAt: Date }[];
+}
+
+/**
+ * Waste of the last `WASTE_WINDOW_DAYS` days (T180, D-070): every project whose layout was changed
+ * in the window (`updatedAt`, newest first), from the same report numbers as the PDF. Null when no
+ * project in the window has a layout.
+ */
+export function wasteSummary(rows: readonly WasteInput[], now: Date): WasteSummary | null {
+  const since = now.getTime() - WASTE_WINDOW_DAYS * DAY_MS;
+  const inWindow = rows
+    .filter((r) => {
+      const t = r.updatedAt.getTime();
+      return r.summary.sheetCount > 0 && t > since && t <= now.getTime();
+    })
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime() || a.id.localeCompare(b.id));
+  if (inWindow.length === 0) return null;
+  let sheets = 0;
+  let wasteAreaM2 = 0;
+  let sheetAreaM2 = 0;
+  for (const r of inWindow) {
+    sheets += r.summary.sheetCount;
+    wasteAreaM2 += r.summary.wasteAreaM2;
+    sheetAreaM2 += r.summary.sheetAreaM2;
+  }
+  return {
+    projects: inWindow.length,
+    sheets,
+    wasteAreaM2,
+    sheetAreaM2,
+    wastePercent: sheetAreaM2 > 0 ? (100 * wasteAreaM2) / sheetAreaM2 : 0,
+    bars: inWindow.slice(0, WASTE_MAX_BARS).map((r) => ({
+      id: r.id,
+      name: r.name,
+      wastePercent: r.summary.wastePercent,
+      sheets: r.summary.sheetCount,
+      updatedAt: r.updatedAt,
+    })),
+  };
+}
+
+/**
+ * Projects worth a card under "Son projeler" (P4, CTO #10): an untouched draft without parts is
+ * not one; anything with parts or another status is.
+ */
+export function isRecentWorthy(p: {
+  status: string;
+  data: { parts: readonly unknown[] };
+}): boolean {
+  return p.status !== 'draft' || p.data.parts.length > 0;
 }

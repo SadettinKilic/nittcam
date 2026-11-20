@@ -1307,11 +1307,11 @@ Acceptance:
 - [x] (CTO #10 E6, D-060) the export record stores the machine verification state; re-export with the same state gives the same bytes; if the state changed, a new record "doğrulama durumu değişti" is added instead of overwriting
 Tester focus: status transitions; re-export of an old revision gives the same hash as before.
 
-### T180 Ana sayfa with real data   [status: todo]
-Spec: §3.4 · Depends: T177, T178
+### T180 Ana sayfa with real data   [status: review]
+Spec: §3.4 · Depends: T177, T178 · Decision: D-070 (B39)
 Acceptance:
-- [ ] recent projects, machines needing verification, waste summary chart (last 30 days, accessible colours), quick actions
-- [ ] project cards use a larger layout thumbnail (16:10, sheet with material tint and part outlines, plate count as stacked sheets) or the 3D PNG from T160 when one exists
+- [x] recent projects, machines needing verification, waste summary chart (last 30 days, accessible colours), quick actions
+- [x] project cards use a larger layout thumbnail (16:10, sheet with material tint and part outlines, plate count as stacked sheets) or the 3D PNG from T160 when one exists (no stored PNG exists, D-070)
 Tester focus: numbers match seeded data; chart readable in dark mode; axe.
 
 ### Batch B28: T181–T183 (machines and settings)
