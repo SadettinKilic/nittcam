@@ -624,3 +624,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - `setTabs` refuses a width below 3 mm, a height below 1 mm or above thickness − 1 mm; the Kesim ayarları fields say the range ("En az 3 mm.", "1–17 mm arası olmalı.", "1–20 arası tam sayı girin.").
 - The toolpath checks the size it really uses (project > material set > built-in): a small part or small slug held by tabs below the bounds is the error `SMALL_PART_TAB_TOO_SMALL` (NC blocked on Simülasyon and Dışa aktar); a large part only gets the warning `TABS_TOO_SMALL`. Old and hand-edited projects and small material-set values are caught the same way. Small parts on a thin skin ("Köprü: Kapalı") use no tabs and are not affected. `options.tabs` sizes (the low-level geometry hook of the property tests, no UI or command reaches it) are not checked.
 - Tab findings link to the Kesim ayarları panel; the "no room for 2 tabs" text names the panel's real choice "Köprü: Kapalı" instead of the old "Son pasoda ince tabaka bırak".
+
+## D-082 CTO review #12 triage (2026-11-20, PO)
+- M8 is closed when B41 (#139) lands and T298 + T301 are done. Must-fix A → T298 (thin-skin bounds, safety), B → T299, gap E1 → T300: batch B47 on Dev 2 before polish P3. E2 → T301, E3 → T302, T295/T296 follow-ups → T303: batch B48 on Dev 1 after B42. 14 polish items into P2–P5.
+- Thin-skin bounds proposal: ≥ 0,2 mm and ≤ thickness − 1 mm (final numbers by dev + tester, tuned in the field test).
