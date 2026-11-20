@@ -7,6 +7,7 @@ import { EPS } from '../geometry';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../geometry/grain';
 import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
+import { nestingEngineOf } from '../nesting/nest';
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
@@ -234,11 +235,13 @@ export function validationToolDiameter(project: Project, context?: ValidationCon
 export const lockedPlacementInvalid: ValidationRule = (project, context) => {
   const toolDiameter = validationToolDiameter(project, context);
   const sizes = partSizes(project);
+  // A true-shape layout (T167) is checked on the real footprints, not the bboxes.
+  const trueShape = nestingEngineOf(project) === 'trueShape';
   const issues: ValidationIssue[] = [];
   project.layout.sheets.forEach((sheet, s) => {
     sheet.placements.forEach((pl, p) => {
       if (!pl.locked || !sizes.has(pl.partId)) return;
-      const check = checkPlacement(project, s, pl, { toolDiameter }, sizes);
+      const check = checkPlacement(project, s, pl, { toolDiameter, trueShape }, sizes);
       const reasons: string[] = [];
       if (check.outsideSheet) reasons.push('lies outside the sheet');
       if (check.inMargin) reasons.push(`lies in the ${mm(project.nesting.margin)} mm margin`);

@@ -44,7 +44,7 @@ export interface ShapePacked {
   unplaced: UnplacedPart[];
 }
 
-/** How many of the best uncompacted candidates are compacted. */
+/** How many of the best uncompacted candidates are compacted (plus the best per rotation). */
 const COMPACT_TOP = 3;
 /** Bisection steps of one slide (precision ≈ sheet size / 2^steps). */
 const SLIDE_STEPS = 14;
@@ -202,7 +202,16 @@ function findSpot(sheet: SheetState, item: ShapeItem, margin: number): Spot | nu
     return at(good);
   };
   let best: Spot | null = null;
-  for (const s of found.slice(0, COMPACT_TOP)) {
+  // The best few overall plus the best spot of every rotation: a rotation that interlocks only
+  // shows its value after compaction (a 180° triangle next to a 0° one).
+  const pool: Spot[] = found.slice(0, COMPACT_TOP);
+  const seenOpt = new Set(pool.map((p) => p.opt));
+  for (const f of found) {
+    if (seenOpt.has(f.opt)) continue;
+    seenOpt.add(f.opt);
+    pool.push(f);
+  }
+  for (const s of pool) {
     const c = slide(slide(slide(s, 'y'), 'x'), 'y');
     if (best === null || rank(item, c, best) < 0) best = c;
   }

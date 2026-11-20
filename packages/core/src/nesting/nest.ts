@@ -44,6 +44,7 @@ import {
   type NestingResult,
   type NestPart,
   type ObjectiveCost,
+  type NestingEngine,
   type ObjectiveWeights,
   type PartOrdering,
   type PlacerHeuristic,
@@ -767,6 +768,8 @@ export interface NestProjectOptions {
   /** Tool number of the outer contours (the material set's tool); absent = unknown (T162). */
   contourTool?: number | undefined;
   weights?: Partial<ObjectiveWeights> | undefined;
+  /** Forces a placer engine; absent = `nestingEngineOf(project)` (T167). */
+  engine?: NestingEngine | undefined;
 }
 
 /**
@@ -813,7 +816,34 @@ export function nestingInputFromProject(
     contourTool: options.contourTool,
     weights: options.weights,
     partInHole: project.nesting.partInHole === true,
+    engine: options.engine ?? nestingEngineOf(project),
   };
+}
+
+/** Whether a closed outline is an axis-aligned rectangle (4 straight, axis-parallel edges). */
+function isAxisRect(vertices: readonly { x: number; y: number; bulge: number }[]): boolean {
+  if (vertices.length !== 4 || vertices.some((v) => v.bulge !== 0)) return false;
+  return vertices.every((a, i) => {
+    const b = vertices[(i + 1) % 4] as { x: number; y: number };
+    return a.x === b.x || a.y === b.y;
+  });
+}
+
+/**
+ * Engine selection (T167, spec §6.2): rectangles at axis angles stay with MaxRects; a freeform
+ * part (not an axis-aligned rectangle; a rounded-corner rect part counts as a rectangle), a part
+ * with a non-axis allowed rotation (grain, step policy) or part-in-hole with an inner cutout
+ * switches the whole job to true-shape (mixed jobs: true-shape for all).
+ */
+export function nestingEngineOf(project: Project): NestingEngine {
+  const sheet = defaultSheet(project);
+  const policy = rotationPolicyOf(project.nesting);
+  for (const part of project.parts) {
+    if (part.kind !== 'rect' && !isAxisRect(deriveOutline(part))) return 'trueShape';
+    if (allowedRotations(part, sheet, policy).some((r) => !isQuarterTurn(r))) return 'trueShape';
+    if (project.nesting.partInHole === true && part.inners.length > 0) return 'trueShape';
+  }
+  return 'maxrects';
 }
 
 /** Nests a project's parts. */

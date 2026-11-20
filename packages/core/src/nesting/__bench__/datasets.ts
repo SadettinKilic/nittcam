@@ -106,3 +106,69 @@ export const BENCH_DATASETS: readonly { name: string; input: NestingInput }[] = 
   { name: 'kitchen, grain 30°', input: kitchenGrain30 },
   { name: 'kitchen with hardware', input: kitchenHardware },
 ];
+
+// ---- True-shape datasets (T167) ----
+
+const vx = (x: number, y: number, bulge = 0) => ({ x, y, bulge });
+const shapePart = (
+  id: string,
+  qty: number,
+  vertices: ReturnType<typeof vx>[],
+  rotations: readonly number[] = [0, 90, 180, 270],
+): NestPart => {
+  const xs = vertices.map((v) => v.x);
+  const ys = vertices.map((v) => v.y);
+  // Arc bulges only on half circles here, so the vertex box is exact for the shapes below
+  // except the round ones, whose box is given by the diameter.
+  return {
+    id,
+    w: Math.max(...xs) - Math.min(...xs),
+    h: Math.max(...ys) - Math.min(...ys),
+    qty,
+    rotations,
+    outline: { closed: true, vertices },
+  };
+};
+const tri = (s: number, t: number) => [vx(0, 0), vx(s, 0), vx(0, t)];
+const ell = (w: number, h: number, a: number) => [
+  vx(0, 0),
+  vx(w, 0),
+  vx(w, a),
+  vx(a, a),
+  vx(a, h),
+  vx(0, h),
+];
+const trap = (w: number, h: number, c: number) => [vx(0, 0), vx(w, 0), vx(w - c, h), vx(c, h)];
+const arch = (w: number, h: number) => [vx(0, 0), vx(w, 0), vx(w, h, 1), vx(0, h)];
+
+/**
+ * Freeform workshop mix (T167): corner shelves (triangles), L brackets, trapezoid side panels and
+ * arched tops, 300 copies in all, quarter turns. MaxRects places them by their boxes.
+ */
+export const freeformMix: NestingInput = {
+  ...base,
+  parts: [
+    shapePart('corner-shelf', 90, tri(450, 450)),
+    shapePart('l-bracket', 80, ell(400, 300, 90)),
+    shapePart('trapezoid', 70, trap(600, 350, 150)),
+    // Arched top: a 500 wide panel 250 high plus a half circle of radius 250 → 500 × 500 box.
+    { ...shapePart('arch', 60, arch(500, 250)), h: 500 },
+  ],
+};
+
+/** The kitchen with its grain-locked fronts at 30°: non-axis angles (rotated bbox vs true shape). */
+export const kitchenGrain30Shapes: NestingInput = {
+  ...kitchenGrain30,
+  parts: kitchenGrain30.parts.map((part) => ({
+    ...part,
+    outline: {
+      closed: true,
+      vertices: [vx(0, 0), vx(part.w, 0), vx(part.w, part.h), vx(0, part.h)],
+    },
+  })),
+};
+
+export const TRUE_SHAPE_DATASETS: readonly { name: string; input: NestingInput }[] = [
+  { name: 'freeform mix (300 copies)', input: freeformMix },
+  { name: 'kitchen, grain 30°', input: kitchenGrain30Shapes },
+];
