@@ -67,12 +67,14 @@ import { clampScale, zoomAt } from './zoom';
 import { PlateTabStrip } from '../wizard/plate-tab-strip';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { scaleBar } from '../../lib/canvas-labels';
+import { nextRotation, snapToNeighbours } from '../../lib/layout-edit';
 import { canvasTouchClass, isZoomedIn, useMediaQuery } from '../../lib/use-media-query';
 import {
   copyKey,
   drawnParts,
   fitView,
   readColors,
+  turnedPart,
   type CanvasColors,
   type DrawnPart,
   type ViewState,
@@ -90,7 +92,15 @@ export interface LockRequest {
   index: number;
   x?: number;
   y?: number;
+  /** New angle (T170, R key): only one of the part's allowed rotations. */
+  rot?: number;
   locked: boolean;
+}
+
+/** A placed copy (multi-select lock/unlock, T170). */
+export interface PlacementRef {
+  partId: string;
+  index: number;
 }
 
 export interface LayoutViewProps {
@@ -102,6 +112,8 @@ export interface LayoutViewProps {
   issues?: readonly ValidationIssue[];
   /** Runs `lockPlacement`; false when it was rejected. Without it the view is read-only. */
   onLock?: (request: LockRequest) => boolean;
+  /** Runs `lockPlacements` for a multi-selection (T170, one undo step); false when rejected. */
+  onLockMany?: (refs: PlacementRef[], locked: boolean) => boolean;
   /** "Yeniden diz": re-nests keeping the locked parts. Hidden when missing. */
   onRenest?: () => void;
   /** Bumped after each new "Diz" result; the parts fade/settle in (T196). */
@@ -167,6 +179,7 @@ function LayoutViewImpl({
   toolDiameter,
   issues = [],
   onLock,
+  onLockMany,
   onRenest,
   appearKey = 0,
   left,
@@ -180,6 +193,9 @@ function LayoutViewImpl({
   const sheet = Math.min(sheetState, Math.max(0, count - 1));
   const [selected, setSelected] = useState<string | null>(null);
   const [pending, setPending] = useState<{ x: number; y: number } | null>(null);
+  // T170: unsaved angle of the selected part (R key), and the further parts of a multi-selection.
+  const [pendingRot, setPendingRot] = useState<number | null>(null);
+  const [marked, setMarked] = useState<ReadonlySet<string>>(() => new Set());
   const [dragCheck, setDragCheck] = useState<{ key: string; check: PlacementCheck } | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [grid, setGrid] = useState(false);
@@ -199,8 +215,22 @@ function LayoutViewImpl({
   const stock = useMemo(() => sheetSizeOf(project, sheet), [project, sheet]);
   const height = size.h;
   const parts = useMemo(() => drawnParts(project, sheet), [project, sheet]);
-  const byKey = useMemo(() => new Map(parts.map((p) => [p.key, p])), [parts]);
+  const stored = useMemo(() => new Map(parts.map((p) => [p.key, p])), [parts]);
+  // T170: the selected part drawn at its pending angle; only that one object changes, so the other
+  // (memoised) shapes do not redraw.
+  const shownParts = useMemo(
+    () =>
+      pendingRot === null || selected === null
+        ? parts
+        : parts.map((p) => (p.key === selected ? turnedPart(project, p, pendingRot) : p)),
+    [parts, pendingRot, selected, project],
+  );
+  const byKey = useMemo(() => new Map(shownParts.map((p) => [p.key, p])), [shownParts]);
   const current = selected ? (byKey.get(selected) ?? null) : null;
+  const anyLocked = useMemo(
+    () => project.layout.sheets.some((sh) => sh.placements.some((pl) => pl.locked)),
+    [project],
+  );
   const summary = useMemo(() => summarizeLayout(project), [project]);
   const editable = onLock !== undefined;
 
@@ -233,6 +263,8 @@ function LayoutViewImpl({
     setSheet(i);
     setSelected(null);
     setPending(null);
+    setPendingRot(null);
+    setMarked(new Set());
     setDragCheck(null);
     setMessage(null);
     fit();
@@ -275,10 +307,13 @@ function LayoutViewImpl({
   const commit = useCallback(
     (part: DrawnPart, x: number, y: number): boolean => {
       setPending(null);
+      setPendingRot(null);
       setDragCheck(null);
       const onLock = lockRef.current;
       if (!onLock) return false;
-      if (x === part.x && y === part.y) {
+      const was = stored.get(part.key);
+      const turned = was !== undefined && was.rot !== part.rot;
+      if (x === part.x && y === part.y && !turned) {
         setMessage({ kind: 'ok', text: t.drop.unchanged });
         return true;
       }
@@ -287,7 +322,9 @@ function LayoutViewImpl({
         setMessage({ kind: 'error', text: reason(c) });
         return false;
       }
-      if (!onLock({ partId: part.partId, index: part.index, x, y, locked: true })) {
+      const req: LockRequest = { partId: part.partId, index: part.index, x, y, locked: true };
+      if (turned) req.rot = part.rot;
+      if (!onLock(req)) {
         setMessage({ kind: 'error', text: t.drop.rejected });
         return false;
       }
@@ -301,37 +338,125 @@ function LayoutViewImpl({
       });
       return true;
     },
-    [check, reason, t],
+    [check, reason, t, stored],
   );
 
   const onViewChange = useCallback(
     (v: ViewState) => setView({ ...v, scale: clampScale(v.scale) }),
     [],
   );
-  const onSelect = useCallback((key: string | null) => {
+  // Read inside onSelect without making it change on every click (the canvas is memoised).
+  const selectedRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
+  const onSelect = useCallback((key: string | null, additive?: boolean) => {
+    // T170: Shift/Ctrl+click toggles a part in the multi-selection (the part selected before joins
+    // it too); a plain click or a click on the empty sheet ends it.
+    const prev = selectedRef.current;
+    setMarked((m) => {
+      if (!additive || key === null) return m.size === 0 ? m : new Set();
+      const next = new Set(m);
+      if (prev !== null && prev !== key && next.size === 0) next.add(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    if (prev !== key) setPendingRot(null);
     setSelected(key);
     setPending(null);
     setDragCheck(null);
   }, []);
 
+  /** T170: snaps a dragged part next to its neighbours (tool diameter + gap) and the margins. */
+  const snapRef = useRef<(part: DrawnPart, x: number, y: number) => { x: number; y: number }>(
+    (_p, x, y) => ({ x, y }),
+  );
+  useEffect(() => {
+    snapRef.current = (part, x, y) =>
+      snapToNeighbours(
+        part,
+        x,
+        y,
+        parts.filter((o) => o.key !== part.key),
+        {
+          spacing: toolDiameter + project.nesting.gap,
+          // A few screen pixels, but never more than 10 mm: a drop meant to stay free stays free.
+          tolerance: view ? Math.min(6 / view.scale, 10) : 0,
+        },
+      );
+  }, [parts, toolDiameter, project.nesting.gap, view]);
+
   const onDragMove = useCallback(
-    (key: string, x: number, y: number) => {
+    (key: string, x: number, y: number, free?: boolean) => {
       const part = byKey.get(key);
       if (!part) return;
+      const to = free ? { x, y } : snapRef.current(part, x, y);
       setSelected(key);
-      setPending({ x, y });
-      setDragCheck({ key, check: check(part, x, y) });
+      setPending(to);
+      setDragCheck({ key, check: check(part, to.x, to.y) });
+      return to;
     },
     [byKey, check],
   );
 
   const onDrop = useCallback(
-    (key: string, x: number, y: number) => {
+    (key: string, x: number, y: number, free?: boolean) => {
       const part = byKey.get(key);
-      return part ? commit(part, x, y) : false;
+      if (!part) return false;
+      const to = free ? { x, y } : snapRef.current(part, x, y);
+      return commit(part, to.x, to.y);
     },
     [byKey, commit],
   );
+
+  /** T170 (R): turns the selected part to its next allowed angle, as a pending move. */
+  function rotate() {
+    if (!current) return;
+    const next = nextRotation(project, current.partId, current.rot);
+    if (next === null) {
+      setMessage({ kind: 'error', text: fill(t.rotate.fixed, { label: current.label }) });
+      return;
+    }
+    const base = pending ?? { x: current.x, y: current.y };
+    const turned = turnedPart(project, current, next);
+    setPendingRot(next);
+    setPending(base);
+    setDragCheck({ key: current.key, check: check(turned, base.x, base.y) });
+    setMessage({ kind: 'ok', text: fill(t.rotate.turned, { label: current.label, rot: next }) });
+  }
+
+  /** T170: toggles the selected part in the multi-selection (Space). */
+  function toggleMark() {
+    if (!current) return;
+    const key = current.key;
+    setMarked((m) => {
+      const next = new Set(m);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  /** T170: locks or unlocks the multi-selection in one undo step. */
+  function lockMarked(locked: boolean) {
+    if (!onLockMany || marked.size === 0) return;
+    const refs = [...marked].map((key) => {
+      const cut = key.lastIndexOf('#');
+      return { partId: key.slice(0, cut), index: Number(key.slice(cut + 1)) };
+    });
+    setPending(null);
+    setPendingRot(null);
+    setDragCheck(null);
+    if (!onLockMany(refs, locked)) {
+      setMessage({ kind: 'error', text: t.multi.rejected });
+      return;
+    }
+    setMessage({
+      kind: 'ok',
+      text: fill(locked ? t.multi.locked : t.multi.unlocked, { n: refs.length }),
+    });
+  }
 
   function nudge(dx: number, dy: number) {
     if (!current) return;
@@ -354,6 +479,18 @@ function LayoutViewImpl({
     if (move && current && editable) {
       e.preventDefault();
       nudge(move[0], move[1]);
+    } else if (
+      (e.key === 'r' || e.key === 'R') &&
+      current &&
+      editable &&
+      !e.ctrlKey &&
+      !e.metaKey
+    ) {
+      e.preventDefault();
+      rotate();
+    } else if (e.key === ' ' && current && onLockMany) {
+      e.preventDefault();
+      toggleMark();
     } else if (e.key === 'Enter' && current && pending) {
       e.preventDefault();
       commit(current, pending.x, pending.y);
@@ -361,7 +498,10 @@ function LayoutViewImpl({
       e.preventDefault();
       if (pending) {
         setPending(null);
+        setPendingRot(null);
         setDragCheck(null);
+      } else if (marked.size > 0) {
+        setMarked(new Set());
       } else {
         setSelected(null);
       }
@@ -468,7 +608,9 @@ function LayoutViewImpl({
       >
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold tracking-tight text-fg">{t.title}</h3>
-          {onRenest ? <RenestIconButton t={t} onRenest={onRenest} /> : null}
+          {onRenest ? (
+            <RenestIconButton t={t} onRenest={onRenest} unlockedOnly={anyLocked} />
+          ) : null}
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor={selectId} className="font-medium text-fg">
@@ -492,6 +634,7 @@ function LayoutViewImpl({
               onLock
                 ? () => {
                     setPending(null);
+                    setPendingRot(null);
                     setDragCheck(null);
                     onLock({
                       partId: current.partId,
@@ -506,6 +649,35 @@ function LayoutViewImpl({
           <div className="flex flex-col gap-0.5 text-xs text-fg-muted" data-testid="layout-hint">
             <p>{t.hint1}</p>
             <p>{t.hint2}</p>
+            <p>{t.hint3}</p>
+          </div>
+        ) : null}
+        {onLockMany && marked.size > 0 ? (
+          <div className="flex flex-col gap-2" data-testid="layout-multi">
+            <p className="font-medium text-fg">{fill(t.multi.count, { n: marked.size })}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => lockMarked(true)}
+                data-testid="layout-multi-lock"
+              >
+                <Lock aria-hidden />
+                {t.multi.lock}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => lockMarked(false)}
+                data-testid="layout-multi-unlock"
+              >
+                <LockOpen aria-hidden />
+                {t.multi.unlock}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setMarked(new Set())}>
+                {t.multi.clear}
+              </Button>
+            </div>
           </div>
         ) : null}
       </div>
@@ -732,11 +904,12 @@ function LayoutViewImpl({
               height={height}
               sheet={stock}
               margin={project.nesting.margin}
-              parts={parts}
+              parts={shownParts}
               view={view}
               colors={colors}
               grid={grid}
               selected={current?.key ?? null}
+              marked={marked}
               conflicts={conflicts}
               pending={pending}
               onViewChange={onViewChange}
@@ -802,14 +975,28 @@ export const LayoutView = memo(LayoutViewImpl);
  */
 export const RenestingContext = createContext(false);
 
-function RenestIconButton({ t, onRenest }: { t: Text; onRenest: () => void }) {
+/**
+ * "Yeniden diz". With locked parts on the layout it reads "Kilitsizleri yeniden diz" (T170): the
+ * run keeps every locked copy and re-places only the free ones.
+ */
+function RenestIconButton({
+  t,
+  onRenest,
+  unlockedOnly,
+}: {
+  t: Text;
+  onRenest: () => void;
+  unlockedOnly: boolean;
+}) {
   const renesting = useContext(RenestingContext);
+  const label = unlockedOnly ? t.renestUnlocked : t.renest;
   return (
-    <Tooltip content={t.renest}>
+    <Tooltip content={label}>
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label={renesting ? t.renesting : t.renest}
+        data-testid="layout-renest"
+        aria-label={renesting ? t.renesting : label}
         onClick={onRenest}
         disabled={renesting}
         aria-busy={renesting}
@@ -872,7 +1059,9 @@ const PartSelect = memo(function PartSelect({
   );
 });
 
-function noopMove() {}
+function noopMove(): undefined {
+  return undefined;
+}
 function noopDrop() {
   return false;
 }

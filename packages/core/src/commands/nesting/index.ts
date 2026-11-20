@@ -239,3 +239,48 @@ export const lockPlacement = defineCommand({
     }
   },
 });
+
+export const lockPlacementsParamsSchema = z.strictObject({
+  /** The placed copies to lock or unlock (T170 multi-select). */
+  refs: z
+    .array(
+      z.strictObject({
+        partId: placementSchema.shape.partId,
+        index: placementSchema.shape.index,
+      }),
+    )
+    .min(1, { error: 'pass at least one placement' })
+    .max(10_000),
+  /** Lock (default) or unlock them. */
+  locked: z.boolean({ error: 'must be true or false' }).default(true),
+});
+
+/**
+ * Locks or unlocks several placed copies in place (T170, spec §6.2): one undo step for a
+ * multi-selection. Positions and rotations are not touched. Not an AI tool (spec §5.4).
+ */
+export const lockPlacements = defineCommand({
+  name: 'lockPlacements',
+  area: 'nesting',
+  description: 'Lock or unlock several placed part copies in place.',
+  aiTool: false,
+  params: lockPlacementsParamsSchema,
+  check: (project, params) => {
+    const placed = new Set(
+      project.layout.sheets.flatMap((sh) => sh.placements.map((p) => `${p.partId}#${p.index}`)),
+    );
+    const missing = params.refs.find((r) => !placed.has(`${r.partId}#${r.index}`));
+    return missing ? `copy ${missing.index} of part "${missing.partId}" is not placed` : undefined;
+  },
+  apply: (draft, params) => {
+    const wanted = new Set(params.refs.map((r) => `${r.partId}#${r.index}`));
+    for (const sheet of draft.layout.sheets) {
+      for (const pl of sheet.placements) {
+        // Assign only real changes so an all-unchanged call records no undo step.
+        if (wanted.has(`${pl.partId}#${pl.index}`) && pl.locked !== params.locked) {
+          pl.locked = params.locked;
+        }
+      }
+    }
+  },
+});

@@ -848,7 +848,8 @@
     "title": "Plaka yerleşimi",
     "hint1": "Bir parçayı seçip sürükleyin; uygun yere bırakınca oraya kilitlenir.",
     "hint2": "Kilitli parçalara \"Yeniden diz\" dokunmaz.",
-    "canvasLabel": "Plaka {n} dizilimi: {count} parça. Seçili parçayı ok tuşlarıyla 1 mm (Shift ile 10 mm) kaydırın, Enter ile uygulayın, Esc ile vazgeçin.",
+    "hint3": "R: döndür · Shift+tık ya da Boşluk: çoklu seçim · Alt: yapışmadan sürükle",
+    "canvasLabel": "Plaka {n} dizilimi: {count} parça. Seçili parçayı ok tuşlarıyla 1 mm (Shift ile 10 mm) kaydırın, R ile döndürün, Enter ile uygulayın, Esc ile vazgeçin.",
     "sheetTabs": "Plakalar",
     "sheetTab": "Plaka {n}",
     "sheetTabWaste": "fire %{waste}",
@@ -905,6 +906,20 @@
     "lockedGrainIssue": "Kilitli parça {label} damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
     "placementGrainIssue": "Parça {label}: damar yönü değişti, parça damara ters duruyor. Yerleşimi yeniden dizin.",
     "renestStale": "Yerleşimi yenile",
+    "renestUnlocked": "Kilitsizleri yeniden diz",
+    "rotate": {
+      "turned": "Parça {label} {rot}° döndürüldü. Bırakın ya da Enter ile kaydedin, Esc ile vazgeçin.",
+      "fixed": "Parça {label} damar yönü nedeniyle başka bir açıya döndürülemez."
+    },
+    "multi": {
+      "count": "{n} parça seçili",
+      "lock": "Seçilenleri kilitle",
+      "unlock": "Kilitlerini aç",
+      "clear": "Seçimi bırak",
+      "locked": "{n} parça yerinde kilitlendi.",
+      "unlocked": "{n} parçanın kilidi açıldı.",
+      "rejected": "Kilit değiştirilemedi."
+    },
     "empty": "Dizilim yok.",
     "preview3d": {
       "switchLabel": "Görünüm",

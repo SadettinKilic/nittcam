@@ -90,36 +90,54 @@ export interface DrawnPart {
   inners: number[][];
 }
 
+type PartRow = { part: Project['parts'][number]; row: number };
+
+function drawPlacement(hit: PartRow, pl: Placement): DrawnPart {
+  const size = rotatedBoxSize(partShape(hit.part), pl.rot);
+  return {
+    key: copyKey(pl),
+    partId: pl.partId,
+    index: pl.index,
+    label: `${hit.row}.${pl.index + 1}`,
+    name: hit.part.name,
+    x: pl.x,
+    y: pl.y,
+    w: size.w,
+    h: size.h,
+    rot: pl.rot,
+    locked: pl.locked,
+    grainAngle:
+      hit.part.grain.mode === 'fixed' ? normalizeGrain(hit.part.grain.angle + pl.rot) : null,
+    outline: footprintOutline(hit.part, pl.rot, size.h),
+    inners: footprintInners(hit.part, pl.rot, size.h),
+  };
+}
+
 /** The placements of one sheet, ready to draw. Placements of unknown parts are skipped. */
 export function drawnParts(entered: Project, sheet: number): DrawnPart[] {
-  // T169: parts are drawn at their cut size (edge-band deduction).
   const project = toCutSizes(entered);
   const rows = new Map(project.parts.map((p, i) => [p.id, { part: p, row: i + 1 }]));
   const out: DrawnPart[] = [];
   for (const pl of project.layout.sheets[sheet]?.placements ?? []) {
     const hit = rows.get(pl.partId);
-    if (!hit) continue;
-    // Footprint = bbox of the rotated outline (quarter turns swap w × h exactly, D-034).
-    const size = rotatedBoxSize(partShape(hit.part), pl.rot);
-    out.push({
-      key: copyKey(pl),
-      partId: pl.partId,
-      index: pl.index,
-      label: `${hit.row}.${pl.index + 1}`,
-      name: hit.part.name,
-      x: pl.x,
-      y: pl.y,
-      w: size.w,
-      h: size.h,
-      rot: pl.rot,
-      locked: pl.locked,
-      grainAngle:
-        hit.part.grain.mode === 'fixed' ? normalizeGrain(hit.part.grain.angle + pl.rot) : null,
-      outline: footprintOutline(hit.part, pl.rot, size.h),
-      inners: footprintInners(hit.part, pl.rot, size.h),
-    });
+    if (hit) out.push(drawPlacement(hit, pl));
   }
   return out;
+}
+
+/**
+ * A drawn part turned to `rot` around its bottom-left corner (T170: R while dragging or with a
+ * pending move). Footprint, outline and grain arrow follow the new angle; x/y stay.
+ */
+export function turnedPart(entered: Project, part: DrawnPart, rot: number): DrawnPart {
+  const project = toCutSizes(entered);
+  const row = project.parts.findIndex((p) => p.id === part.partId);
+  const hit = project.parts[row];
+  if (!hit) return part;
+  return drawPlacement(
+    { part: hit, row: row + 1 },
+    { partId: part.partId, index: part.index, x: part.x, y: part.y, rot, locked: part.locked },
+  );
 }
 
 /** Scale and pan that show the whole sheet centred with `pad` pixels around it (room for the edge dimensions, T196). */
