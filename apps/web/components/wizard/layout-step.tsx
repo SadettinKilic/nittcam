@@ -33,13 +33,13 @@ import { NESTING_CANCELLED, useNestingWorker } from '../../lib/use-nesting-worke
 import { LayoutView, RenestingContext, type LockRequest } from '../layout-view/layout-view';
 import { NestingPanel } from '../parts/nesting-panel';
 import { LayoutGrid } from 'lucide-react';
-import { Button, cn, RadioGroup, RadioGroupItem } from '@nittcam/ui';
+import { Button, cn, RadioGroup, RadioGroupItem, Switch } from '@nittcam/ui';
 import { NumberField } from './number-field';
 import { WorkspaceLayout } from './workspace-layout';
 import type { TableSpec } from '../../lib/preview3d/stage';
 
 const MODES: readonly NestingMode[] = ['minWaste', 'fastest', 'minToolChanges'];
-const ROTATIONS: readonly NestingRotation[] = ['free', 'none'];
+const ROTATIONS: readonly NestingRotation[] = ['free', 'step45', 'step15', 'none'];
 
 const percent = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 
@@ -356,6 +356,7 @@ function NestSettings({
   const modeLabelId = useId();
   const rotationLabelId = useId();
   const rotationHintId = useId();
+  const partInHoleHintId = useId();
   const rotation: NestingRotation = project.nesting.rotation ?? 'free';
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -456,6 +457,19 @@ function NestSettings({
           </RadioGroup>
           <p id={rotationHintId} className="text-xs text-fg-muted">
             {t.rotationHint}
+          </p>
+          <label className="mt-1 flex items-center gap-2 text-sm text-fg">
+            <Switch
+              checked={project.nesting.partInHole === true}
+              onCheckedChange={(on) => run('setNestingOptions', { partInHole: on })}
+              disabled={running}
+              data-testid="layout-part-in-hole"
+              aria-describedby={partInHoleHintId}
+            />
+            {t.partInHole}
+          </label>
+          <p id={partInHoleHintId} className="text-xs text-fg-muted">
+            {t.partInHoleHint}
           </p>
         </div>
       </section>

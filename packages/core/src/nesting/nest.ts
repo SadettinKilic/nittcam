@@ -694,6 +694,14 @@ function trueShapeSetup(ctx: Context): {
     }
     return c;
   };
+  // With part-in-hole the cutouts are free area (the placer's free-area pre-check, T166).
+  const holeArea = new Map<string, number>();
+  if (input.partInHole) {
+    for (const part of parts.values()) {
+      const a = (part.inners ?? []).reduce((sum, c) => sum + Math.abs(signedArea(c)), 0);
+      if (a > 0) holeArea.set(part.id, a);
+    }
+  }
   const options = new Map<string, ShapeOption[]>();
   for (const part of parts.values()) {
     const c = contourOf(part);
@@ -720,7 +728,7 @@ function trueShapeSetup(ctx: Context): {
         partId: it.partId,
         index: it.index,
         options: options.get(it.partId) ?? [],
-        area: shape ? outlineArea(shape) : it.w * it.h,
+        area: (shape ? outlineArea(shape) : it.w * it.h) - (holeArea.get(it.partId) ?? 0),
       };
     },
   };

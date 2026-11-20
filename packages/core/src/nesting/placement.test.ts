@@ -327,6 +327,8 @@ describe('checkPlacement with true-shape footprints (T165)', () => {
     expect(checkPlacement(p, 0, cand, { toolDiameter: 6, trueShape: true }).conflicts).toEqual([]);
     const close = base([pl('a', 0, 10, 10), pl('b', 0, 115, 65)]); // 5·√2 ≈ 7.1 < 10
     const c2 = close.layout.sheets[0]!.placements[1]!;
-    expect(checkPlacement(close, 0, c2, { toolDiameter: 6, trueShape: true }).conflicts).toHaveLength(1);
+    expect(
+      checkPlacement(close, 0, c2, { toolDiameter: 6, trueShape: true }).conflicts,
+    ).toHaveLength(1);
   });
 });

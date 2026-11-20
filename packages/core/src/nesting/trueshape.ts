@@ -151,7 +151,11 @@ function findSpot(sheet: SheetState, item: ShapeItem, margin: number): Spot | nu
     const xs = uniqSorted([
       margin,
       ...sheet.fps
-        .map((f) => f.outer.maxX - o.fp.outer.minX + NUDGE)
+        .flatMap((f) => [
+          f.outer.maxX - o.fp.outer.minX + NUDGE,
+          // Part-in-hole (T166): the left edge of every hole zone.
+          ...f.holes.map((h) => h.minX - o.fp.outer.minX + NUDGE),
+        ])
         .filter((x) => x > margin && x <= xMax),
     ]);
     for (const x of xs) {
@@ -161,7 +165,12 @@ function findSpot(sheet: SheetState, item: ShapeItem, margin: number): Spot | nu
         margin,
         ...sheet.fps
           .filter((f) => f.outer.minX < hi && f.outer.maxX > lo)
-          .map((f) => f.outer.maxY - o.fp.outer.minY + NUDGE)
+          .flatMap((f) => [
+            f.outer.maxY - o.fp.outer.minY + NUDGE,
+            ...f.holes
+              .filter((h) => h.minX < hi && h.maxX > lo)
+              .map((h) => h.minY - o.fp.outer.minY + NUDGE),
+          ])
           .filter((y) => y > margin && y <= yMax),
       ]);
       for (const y of ys) {

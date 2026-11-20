@@ -57,6 +57,13 @@ test.describe('B22 nesting options', () => {
     await expect(rotation).toHaveAttribute('data-value', 'none');
     await page.keyboard.press('Control+z');
     await expect(rotation).toHaveAttribute('data-value', 'free');
+    // T166: step policies and the part-in-hole switch (off by default).
+    await page.getByRole('radio', { name: w.rotations.step45, exact: true }).click();
+    await expect(rotation).toHaveAttribute('data-value', 'step45');
+    const inHole = page.getByTestId('layout-part-in-hole');
+    await expect(inHole).toHaveAttribute('data-state', 'unchecked');
+    await inHole.click();
+    await expect(inHole).toHaveAttribute('data-state', 'checked');
     expect(problems).toEqual([]);
   });
 
