@@ -122,6 +122,22 @@ export interface ExportRecord {
   files: StoredExportFile[];
   /** "Tümünü indir (.zip)" (T176, CTO #10 E4): set when the export has more than one file. */
   zipUrl: string | null;
+  /**
+   * E6 (D-060, T179): an earlier export of the same revision and type was made with another machine
+   * verification state, so this is a new record ("doğrulama durumu değişti"), never an overwrite.
+   */
+  stateChanged: boolean;
+}
+
+/** POST /api/exports/:id/reexport (T179) */
+export interface ReexportRequest {
+  /** Needed again when the regenerated NC files are unverified (§7.2 rule 10). */
+  acceptUnverified?: boolean;
+}
+
+/** Re-export URL of a history row (T179). */
+export function reexportUrl(exportId: string): string {
+  return `/api/exports/${encodeURIComponent(exportId)}/reexport`;
 }
 
 /** POST result: the record, and whether this request created it (false = idempotent repeat). */
@@ -137,6 +153,7 @@ export type ExportApiError =
   | { error: 'bad_request' }
   | { error: 'hash_mismatch' }
   | { error: 'file_missing' }
+  | { error: 'snapshot_missing' }
   | { error: 'server_error' };
 
 /** The short form of a hash shown in the UI (T250: first 8 characters; the full hash is one

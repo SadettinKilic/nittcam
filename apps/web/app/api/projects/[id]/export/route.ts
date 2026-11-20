@@ -1,20 +1,16 @@
 import { NextResponse } from 'next/server';
-import { companyScope, companyStorage, defaultUser } from '../../../../../lib/server/company';
+import { companyScope } from '../../../../../lib/server/company';
 import {
   apiError,
-  exportFolder,
-  fileBytes,
   fileInfos,
-  manifestHash,
-  newExportId,
   profileInfo,
   runExport,
-  storedStage,
   toRecord,
 } from '../../../../../lib/server/exports';
 import { readBody, UUID } from '../../../../../lib/server/projects';
 import type { ExportPreview, ExportResponse } from '../../../../../lib/exports-api';
 import { markOffcutsUsed } from '../../../../../lib/server/offcuts';
+import { storeNcRun } from '../../../../../lib/server/nc-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -111,69 +107,9 @@ export async function POST(request: Request, ctx: RouteContext<'/api/projects/[i
     }
     // T168: the offcuts this layout cuts from are consumed by the export.
     await markOffcutsUsed(scope, run.project.data);
-    const machine = run.machine;
-    const infos = fileInfos(run.files);
-    const key = {
-      projectId: id,
-      projectRevision: revision,
-      machineProfileVersionId: machine.version.id,
-      postId: run.post.id,
-      postVersion: run.post.version,
-      kind: 'nc' as const,
-      sha256: manifestHash(infos),
-    };
-    const existing = await scope.exports.findSame(key);
-    if (existing) {
-      const out: ExportResponse = {
-        ...toRecord(existing, machine.version.version),
-        created: false,
-      };
-      return NextResponse.json(out);
-    }
-
-    const user = await defaultUser();
-    const storage = companyStorage(scope.companyId);
-    const exportId = newExportId();
-    const folder = exportFolder(exportId);
-    const stored = run.files.map((f, i) => {
-      const info = infos[i];
-      if (!info || info.name !== f.name) throw new Error('file list out of step');
-      return {
-        entry: {
-          name: f.name,
-          key: `${folder}/${f.name}`,
-          size: info.size,
-          sha256: info.hash,
-          sheet: f.sheet,
-        },
-        bytes: fileBytes(f),
-      };
-    });
-    const files = stored.map((s) => s.entry);
-    const now = new Date();
-    let saved;
-    try {
-      for (const s of stored) await storage.put(s.entry.key, s.bytes);
-      saved = await scope.exports.createOnce({
-        id: exportId,
-        ...key,
-        fileKey: folder,
-        files,
-        validationStage: storedStage(machine.state),
-        verificationState: machine.state,
-        unverified: run.needsAcceptance,
-        acceptedUnverifiedAt: run.needsAcceptance ? now : null,
-        acceptedBy: run.needsAcceptance ? user.id : null,
-        createdBy: user.id,
-      });
-    } catch (err) {
-      for (const f of files) await storage.delete(f.key);
-      throw err;
-    }
-    // A concurrent request stored the same export first: drop our copy, return theirs.
-    if (!saved.created) for (const f of files) await storage.delete(f.key);
+    const saved = await storeNcRun(scope, run);
     const out: ExportResponse = {
-      ...toRecord(saved.row, machine.version.version),
+      ...toRecord(saved.row, saved.profileVersion),
       created: saved.created,
     };
     return NextResponse.json(out, { status: saved.created ? 201 : 200 });

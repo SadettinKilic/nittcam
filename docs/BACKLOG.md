@@ -1284,10 +1284,10 @@ Acceptance:
 - [x] (CTO #10 E4) more than one file: "Tümünü indir (.zip)" in one click (same names and bytes as single downloads), `OKU.txt` maps sheet → file; single downloads stay
 Tester focus: NC gate cannot be bypassed by the new UI; hashes stable; history entries per type.
 
-### T177 Project report card   [status: todo]
+### T177 Project report card   [status: review]
 Spec: §6.6 · Depends: T176
 Acceptance:
-- [ ] report summary (waste %, area, sheets, estimated time, part count) on the project page and as data for the home page
+- [x] report summary (waste %, area, sheets, estimated time, part count) on the project page and as data for the home page
 Tester focus: values equal the PDF report values.
 
 ### Batch B27: T178–T180 (projects and home)
@@ -1300,11 +1300,11 @@ Acceptance:
 - [x] table with name, status, machine, material, date; search (Turkish folding), filters (status, machine, material), sort, pagination; copy project (new id, revision 1, exports not copied); soft delete with undo toast
 Tester focus: e2e search/filter/copy; deleted project hidden but restorable; tenancy unchanged.
 
-### T179 Project status flow and re-export   [status: todo]
+### T179 Project status flow and re-export   [status: review]
 Spec: §3.4, §6.6 · Depends: T176, T178
 Acceptance:
-- [ ] taslak → üretildi (after a successful NC export) → tamamlandı (manual); re-export from history regenerates from that revision
-- [ ] (CTO #10 E6, D-060) the export record stores the machine verification state; re-export with the same state gives the same bytes; if the state changed, a new record "doğrulama durumu değişti" is added instead of overwriting
+- [x] taslak → üretildi (after a successful NC export) → tamamlandı (manual); re-export from history regenerates from that revision
+- [x] (CTO #10 E6, D-060) the export record stores the machine verification state; re-export with the same state gives the same bytes; if the state changed, a new record "doğrulama durumu değişti" is added instead of overwriting
 Tester focus: status transitions; re-export of an old revision gives the same hash as before.
 
 ### T180 Ana sayfa with real data   [status: todo]

@@ -44,7 +44,13 @@ export async function POST(request: Request, ctx: RouteContext<'/api/projects/[i
       return apiError({ error: 'export_failed', stage: 'profile', violations: [] }, 422);
     }
     const doc = await buildDocument(scope, project, type, labels);
-    const stored = await storeDocument(scope, project, type, doc);
+    const stored = await storeDocument(
+      scope,
+      project,
+      type,
+      doc,
+      type === 'etiket' ? (rawLabels as string) : undefined,
+    );
     if (stored.kind === 'noMachine') {
       return apiError({ error: 'export_failed', stage: 'profile', violations: [] }, 422);
     }

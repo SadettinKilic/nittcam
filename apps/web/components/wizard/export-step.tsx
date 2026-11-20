@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { focusRing } from '../page/page-header';
 import { Callout } from './panels';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fill } from '../../lib/draft-project';
 import { itemPlace, machineRelated } from '../../lib/part-items';
@@ -40,6 +40,8 @@ import {
 import type { SaveState } from '../../lib/autosave';
 import { getMessages, type Messages } from '../../lib/messages';
 import { ExportDocuments } from './export-documents';
+import { ReexportButton } from './reexport-button';
+import { ProjectStatusCard } from './project-status-card';
 import { ReportCard } from './report-card';
 import type { SimMachine } from '../simulation/simulation-view';
 
@@ -170,6 +172,7 @@ export function ExportStep({
 
   // Export history of the project (refetched after each stored export).
   const [historyTick, setHistoryTick] = useState(0);
+  const refreshHistory = useCallback(() => setHistoryTick((n) => n + 1), []);
   const [history, setHistory] = useState<{
     key: string;
     rows: ExportRecord[] | null;
@@ -552,6 +555,12 @@ export function ExportStep({
               )
             : null}
         </section>
+        <ProjectStatusCard
+          t={getMessages().wizard.projectStatus}
+          names={getMessages().projects.status}
+          projectId={projectId}
+          tick={historyTick}
+        />
       </aside>
       {/* T176 (CTO #4): two balanced columns; the other files and the history sit on the right,
           so the history is in view without scrolling past the NC checklist. */}
@@ -569,6 +578,7 @@ export function ExportStep({
           t={t}
           states={states}
           rows={history?.key === historyKey ? history.rows : undefined}
+          onChanged={refreshHistory}
         />
       </div>
     </>
@@ -805,11 +815,14 @@ function History({
   t,
   states,
   rows,
+  onChanged,
 }: {
   t: Text;
   states: States;
   /** undefined = loading, null = error. */
   rows: ExportRecord[] | null | undefined;
+  /** T179: a re-export stored or found a record; the history reloads. */
+  onChanged: () => void;
 }) {
   const c = t.historyColumns;
   const columns = useMemo(
@@ -859,6 +872,14 @@ function History({
               <>
                 {(states as Record<string, string>)[r.verification] ?? r.verification}
                 {r.acceptedUnverifiedAt ? ` · ${t.historyAccepted}` : ''}
+                {r.stateChanged ? (
+                  <span
+                    data-testid="export-state-changed"
+                    className="mt-1 block text-xs font-medium text-warning-text"
+                  >
+                    {t.stateChanged}
+                  </span>
+                ) : null}
               </>
             );
           },
@@ -893,8 +914,20 @@ function History({
             </ul>
           ),
         }),
+        historyColumn.display({
+          id: 'actions',
+          header: c.actions,
+          cell: (info) => (
+            <ReexportButton
+              t={t}
+              record={info.row.original}
+              label={kindLabel(t, info.row.original)}
+              onDone={onChanged}
+            />
+          ),
+        }),
       ]),
-    [c, t, states],
+    [c, t, states, onChanged],
   );
   const table = useTable({
     features: historyFeatures,
@@ -943,6 +976,7 @@ function History({
                   <tr
                     key={row.id}
                     data-testid="export-history-row"
+                    data-hash={row.original.hash}
                     className="align-top transition-colors duration-(--duration-fast) hover:bg-surface-hover"
                   >
                     {row.getAllCells().map((cell) => (

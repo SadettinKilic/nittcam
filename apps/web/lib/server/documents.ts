@@ -6,9 +6,17 @@
  * same record (idempotent).
  */
 import { writeProjectDxf, type LabelGrid, type LabelOffset } from '@nittcam/core';
-import type { CompanyScope, ExportRow, ProjectRow } from '@nittcam/db';
+import type { CompanyScope, ExportRow } from '@nittcam/db';
 import { companyStorage, defaultUser } from './company';
-import { exportFolder, manifestHash, newExportId, sha256Hex, storedStage } from './exports';
+import { snapshotKey, writeSnapshot } from './export-snapshot';
+import {
+  exportFolder,
+  manifestHash,
+  newExportId,
+  sha256Hex,
+  storedStage,
+  type ExportSource,
+} from './exports';
 import { documentFileName } from './file-names';
 import { estimateCutSeconds } from './pdf/cut-time';
 import { renderLabelsPdf } from './pdf/labels-pdf';
@@ -45,7 +53,7 @@ export interface BuiltDocument {
 /** The file of one document type for a stored project (its current revision). */
 export async function buildDocument(
   scope: CompanyScope,
-  project: ProjectRow,
+  project: ExportSource,
   type: DocumentType,
   labels?: { grid: LabelGrid; offset: LabelOffset },
 ): Promise<BuiltDocument> {
@@ -91,9 +99,11 @@ export type StoreResult =
  */
 export async function storeDocument(
   scope: CompanyScope,
-  project: ProjectRow,
+  project: ExportSource,
   type: DocumentType,
   doc: BuiltDocument,
+  /** Label settings query string (`etiket`), kept in the snapshot for re-export (T179). */
+  labels?: string,
 ): Promise<StoreResult> {
   const pin = project.data.machine;
   const machine = await scope.machines.getProfileVersion(pin.machineId, {
@@ -130,9 +140,10 @@ export async function storeDocument(
     sha256: hash,
     sheet: 0,
   };
-  await storage.put(entry.key, doc.bytes);
   let saved;
   try {
+    await storage.put(entry.key, doc.bytes);
+    await writeSnapshot(storage, exportId, project, labels);
     saved = await scope.exports.createOnce({
       id: exportId,
       ...key,
@@ -147,9 +158,13 @@ export async function storeDocument(
     });
   } catch (err) {
     await storage.delete(entry.key);
+    await storage.delete(snapshotKey(exportId));
     throw err;
   }
-  if (!saved.created) await storage.delete(entry.key);
+  if (!saved.created) {
+    await storage.delete(entry.key);
+    await storage.delete(snapshotKey(exportId));
+  }
   return {
     kind: 'stored',
     row: saved.row,

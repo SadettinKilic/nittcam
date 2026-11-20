@@ -74,17 +74,34 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/projects/[id
  * PATCH /api/projects/:id `{ deleted: boolean }` → soft deletes or restores the project (T178).
  * A deleted project leaves Projeler and Ana sayfa; its data, history and exports are kept, so the
  * "Geri al" toast (or a later restore) brings it back. Company-scoped: another company's id is 404.
+ *
+ * PATCH `{ status: 'completed' | 'produced' }` (T179, spec §3.4): the manual step of the status
+ * flow. "taslak → üretildi" happens only through a stored NC export, so only üretildi ↔
+ * tamamlandı is allowed here (409 `bad_status` otherwise). The revision does not change.
  */
 export async function PATCH(request: Request, ctx: RouteContext<'/api/projects/[id]'>) {
   const { id } = await ctx.params;
   if (!UUID.test(id)) return apiError({ error: 'not_found' }, 404);
-  const deleted = (await readBody(request))?.['deleted'];
-  if (typeof deleted !== 'boolean') return apiError({ error: 'bad_request' }, 400);
+  const body = await readBody(request);
+  const deleted = body?.['deleted'];
+  const status = body?.['status'];
+  const manual = status === 'completed' || status === 'produced';
+  if (typeof deleted === 'boolean' ? status !== undefined : !manual) {
+    return apiError({ error: 'bad_request' }, 400);
+  }
   try {
     const scope = await companyScope();
-    const row = await scope.projects.setDeleted(id, deleted);
+    if (typeof deleted === 'boolean') {
+      const row = await scope.projects.setDeleted(id, deleted);
+      if (!row) return apiError({ error: 'not_found' }, 404);
+      return NextResponse.json({ id: row.id, deleted: row.deletedAt !== null });
+    }
+    const current = await scope.projects.get(id);
+    if (!current || current.deletedAt !== null) return apiError({ error: 'not_found' }, 404);
+    if (current.status === 'draft') return apiError({ error: 'bad_status' }, 409);
+    const row = await scope.projects.setStatus(id, status as 'completed' | 'produced');
     if (!row) return apiError({ error: 'not_found' }, 404);
-    return NextResponse.json({ id: row.id, deleted: row.deletedAt !== null });
+    return NextResponse.json({ id: row.id, status: row.status });
   } catch (err) {
     return handleError(err);
   }

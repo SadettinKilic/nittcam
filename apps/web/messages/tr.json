@@ -1641,7 +1641,8 @@
         "profile": "Profil sürümü",
         "state": "Doğrulama",
         "files": "Dosyalar",
-        "kind": "Tür"
+        "kind": "Tür",
+        "actions": "İşlem"
       },
       "historyRevision": "Rev. {n}",
       "historyProfile": "Sürüm {n}",
@@ -1661,7 +1662,19 @@
         "pdf-a4": "PDF A4",
         "pdf-a3": "PDF A3",
         "etiket": "Etiket"
-      }
+      },
+      "reexport": "Yeniden üret",
+      "reexportLabel": "{kind}, Rev. {n}: yeniden üret",
+      "reexportBusy": "Üretiliyor…",
+      "reexportSame": "Aynı dosya üretildi; kayıt değişmedi.",
+      "reexportNew": "Yeni kayıt eklendi.",
+      "reexportStateChanged": "Doğrulama durumu değiştiği için yeni kayıt eklendi; eski kayıt duruyor.",
+      "reexportError": "Yeniden üretilemedi.",
+      "reexportFailed": "Bu revizyon artık kontrollerden geçmiyor ({count} hata).",
+      "reexportMissing": "Bu eski kayıt için proje anlık görüntüsü yok; yeniden üretilemez.",
+      "reexportAcceptConfirm": "Kabul et ve üret",
+      "reexportCancel": "Vazgeç",
+      "stateChanged": "doğrulama durumu değişti"
     },
     "issues": {
       "title": "Uyarılar",
@@ -1749,6 +1762,15 @@
       "dxfParts": "DXF: parçalar tek tek",
       "pdfA4": "PDF A4: dizilim, parça listesi, fire",
       "pdfA3": "PDF A3: dizilim, parça listesi, fire"
+    },
+    "projectStatus": {
+      "title": "Proje durumu",
+      "hintDraft": "Başarılı bir NC dışa aktarmasından sonra durum \"üretildi\" olur.",
+      "hintProduced": "Kesim bitince projeyi tamamlandı olarak işaretleyin.",
+      "hintCompleted": "Proje tamamlandı.",
+      "markCompleted": "Tamamlandı olarak işaretle",
+      "markProduced": "Üretildi durumuna geri al",
+      "error": "Durum değiştirilemedi."
     }
   },
   "verification": {
