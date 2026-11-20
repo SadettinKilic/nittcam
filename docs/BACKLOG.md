@@ -1396,15 +1396,15 @@ Acceptance: as in review #11 section A: `setTabs` refuses width < 3 mm and heigh
 Gap E1 (CTO #11). Spec: §6.3
 Acceptance: as in review #11 section E1: "Kapalı → Her parçada" returns to the start state or the panel shows the thin skin the panel switched on; "Adet" says per part and the header matches the real count on small parts; the card is reachable at 1440 × 900 without scrolling the page (or a link from the summary); a one-line hint for climb / conventional.
 
-### T295 One file-name pattern for all exports   [status: done, B41]
+### T295 One file-name pattern for all exports   [status: done]
 CTO #11 (T176 gap). Rides with the next Dev 1 batch after B39.
 Acceptance: NC, DXF, PDF and labels share one pattern (project, revision, kind, sheet), ASCII; history and zip use it.
 
-### T296 Old-revision file is marked   [status: done, B41]
+### T296 Old-revision file is marked   [status: done]
 CTO #11 (T179 gap). Rides with T295.
 Acceptance: Projeler "İndir" and the history show an "eski revizyon" badge when the last file is from an older revision than the project; one click to regenerate.
 
-### T297 Main NC export needs the checklist confirmation on the server   [status: done, B41]
+### T297 Main NC export needs the checklist confirmation on the server   [status: done]
 PO decision D-072 (tester note on B37, model D-071). Spec: §7.2 · gcode-safety review
 Acceptance: `POST /api/projects/:id/export` without `checklistConfirmed: true` answers 428 `checklist_required` with the checklist data and stores nothing; a non-boolean is 400; the acceptance stays a separate 428; the export step sends the confirmation only after the checklist is done; tests that call the API directly send it; goldens unchanged.
 
