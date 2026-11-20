@@ -14,7 +14,7 @@ import {
   Tooltip,
   cn,
 } from '@nittcam/ui';
-import { Preview3D } from '../preview3d/preview3d';
+import { Preview3D, type FallbackReason } from '../preview3d/preview3d';
 import type { CameraCommand } from '../preview3d/scene';
 import type { ViewPreset } from '../../lib/preview3d/camera';
 import { hasWebGL2 } from '../../lib/preview3d/capability';
@@ -485,7 +485,7 @@ function Player({
 
   // T156: 2D / 3D switch of the playback; both views follow the same player.
   const [mode, setMode] = useState<'2d' | '3d'>('2d');
-  const [noWebGL, setNoWebGL] = useState(false);
+  const [noWebGL, setNoWebGL] = useState<FallbackReason | null>(null);
   const [camera, setCamera] = useState<CameraCommand>({
     preset: 'iso',
     from: 'top',
@@ -495,7 +495,7 @@ function Player({
   const show3d = view3d !== undefined && mode === '3d';
   function chooseMode(next: '2d' | '3d') {
     if (next === '3d' && !hasWebGL2()) {
-      setNoWebGL(true);
+      setNoWebGL('webgl');
       setMode('2d');
       return;
     }
@@ -734,7 +734,7 @@ function Player({
           className={`${floating} absolute inset-x-2 bottom-12 z-10 mx-auto flex max-w-md items-start gap-2 px-3 py-2 text-sm text-fg`}
         >
           <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-info-text" />
-          <span>{view3d.t.fallback}</span>
+          <span>{noWebGL === 'slow' ? view3d.t.fallbackSlow : view3d.t.fallback}</span>
         </div>
       ) : null}
       <div className={cn('pointer-events-none absolute bottom-2 left-2 z-10', show3d && 'hidden')}>
@@ -820,8 +820,8 @@ function Player({
               table={view3d.table}
               command={camera}
               onPreset={preset3d}
-              onFallback={() => {
-                setNoWebGL(true);
+              onFallback={(reason) => {
+                setNoWebGL(reason);
                 setMode('2d');
               }}
               partCount={parts.length}

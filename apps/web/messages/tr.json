@@ -906,6 +906,7 @@
       "canvasLabel": "Plaka {n} 3D önizlemesi: {count} parça. Sürükleyerek döndürün, tekerlekle yakınlaştırın, sağ tuşla (veya iki parmakla) kaydırın.",
       "loading": "3D önizleme yükleniyor…",
       "fallback": "Bu cihazda 3D önizleme açılamıyor (WebGL2 desteklenmiyor). 2D görünüm gösteriliyor.",
+      "fallbackSlow": "3D önizleme basit modda da yavaş kaldı. 2D görünüm gösteriliyor; 3D düğmesiyle yeniden deneyebilirsiniz.",
       "presets": {
         "top": "Üst",
         "iso": "İzometrik",
@@ -935,6 +936,11 @@
       "explode": "Ayır/kaldır",
       "explodeTip": "Parçaları plakadan yukarı kaldırır",
       "hideWaste": "Fireyi gizle",
+      "assembly": "Montaj görünümü",
+      "savePng": "Görüntü kaydet",
+      "savePngTip": "Görünen 3D görüntüyü PNG dosyası olarak indir",
+      "assemblyTip": "\"Dolap ekle\" ile üretilen parçalar kutu hâlinde (birleştirme detayı yok). Diğer parçalar gösterilmez.",
+      "assemblyLabel": "Montaj görünümü: {count} dolap. Sürükleyerek döndürün, tekerlekle yakınlaştırın, sağ tuşla kaydırın.",
       "toolpath": "Takım yolu",
       "toolpathTip": "Okunan G-code'un yolu: kesikli çizgi boşta hareket, renk kesim derinliği",
       "info": {

@@ -30,4 +30,58 @@ export class FpsWatch {
     }
     return false;
   }
+
+  /** Frame rate of the current continuous run (≥ 2 frames), else null (perf read-out, T159). */
+  rate(): number | null {
+    const n = this.times.length;
+    if (n < 2) return null;
+    const span = (this.times[n - 1] ?? 0) - (this.times[0] ?? 0);
+    return span > 0 ? ((n - 1) * 1000) / span : null;
+  }
+
+  /** Arms the watch again (Basit mod on: a second slow run falls back to 2D, T159). */
+  reset(): void {
+    this.times = [];
+    this.fired = false;
+  }
+}
+
+/**
+ * Test hook (T159): with `window.__nittcam3dSlow = <fps>` the watch sees a synthetic clock at that
+ * rate, so e2e can force the slow path on a fast machine. Not set in normal use.
+ */
+export function slowHookFps(): number | null {
+  if (typeof window === 'undefined') return null;
+  const v = (window as unknown as { __nittcam3dSlow?: unknown }).__nittcam3dSlow;
+  return typeof v === 'number' && v > 0 ? v : null;
+}
+
+/**
+ * Test switch (T159): with `window.__nittcam3dNoAuto = true` the real frame rate never turns on
+ * Basit mod or drops to 2D. A CPU-rendered (SwiftShader) CI canvas is always under 30 fps, so specs
+ * that do not test the slow chain set it; the chain itself is driven by `__nittcam3dSlow`, which
+ * still works with this switch on. Not set in normal use.
+ */
+export function autoDowngradeOff(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (window as unknown as { __nittcam3dNoAuto?: unknown }).__nittcam3dNoAuto === true;
+}
+
+/**
+ * Feeds the watch synthetic frames at `fps` from `clock` (test hook, T159) until it fires or
+ * `max` frames are fed, so one real frame covers the whole 3 s window: the slow chain does not
+ * depend on how fast a CPU-rendered (CI) canvas draws real frames. Returns the new clock.
+ */
+export function feedSlowHook(
+  watch: FpsWatch,
+  clock: number,
+  fps: number,
+  max = 256,
+): { clock: number; slow: boolean } {
+  let t = clock;
+  for (let i = 0; i < max; i++) {
+    t += 1000 / fps;
+    if (watch.frame(t)) return { clock: t, slow: true };
+  }
+  return { clock: t, slow: false };
 }
