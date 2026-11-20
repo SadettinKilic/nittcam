@@ -106,6 +106,12 @@ export function discretise(poly: Polyline, tol: number = NEST_CURVE_TOL): Point[
   return out;
 }
 
+/** The w × h rectangle (CCW) of a part without an outline. */
+export function rectOutline(w: number, h: number): Polyline {
+  const v = (x: number, y: number) => ({ x, y, bulge: 0 });
+  return { closed: true, vertices: [v(0, 0), v(w, 0), v(w, h), v(0, h)] };
+}
+
 /** Bounding-box rectangle (CCW) of a polyline grown by `s`: the fallback footprint. */
 function boxPoly(poly: Polyline, s: number): Polyline {
   const b = bbox(poly);
@@ -293,7 +299,5 @@ export function footprintsOverlap(a: Footprint, b: Footprint): boolean {
   const ra = [a.outer, ...a.holes];
   const rb = [b.outer, ...b.holes];
   for (const x of ra) for (const y of rb) if (ringsCross(x, y)) return true;
-  return (
-    probes(b, (x, y) => pointOccupied(a, x, y)) || probes(a, (x, y) => pointOccupied(b, x, y))
-  );
+  return probes(b, (x, y) => pointOccupied(a, x, y)) || probes(a, (x, y) => pointOccupied(b, x, y));
 }

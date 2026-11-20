@@ -17,6 +17,15 @@ import {
 } from '../schema';
 import { cutOrder, type OrderItem } from '../toolpath/order';
 import { loopSegments, pathLength } from '../toolpath/path';
+import {
+  footprintContours,
+  moveFootprint,
+  rectOutline,
+  shapeOption,
+  type ShapeOption,
+} from './shape';
+import { packTrueShape, type ShapeItem, type ShapePackInput } from './trueshape';
+import type { Polyline } from '../geometry/types';
 import { compareScore, GuillotineBin, MaxRectsBin, type Bin, type Fit } from './bins';
 import {
   fitsUsableAny,
@@ -146,6 +155,7 @@ function makeBin(heuristic: PlacerHeuristic, area: Rect): Bin {
     case 'guillotine-bssf':
       return new GuillotineBin(area, 'bssf');
     case 'guillotine-baf':
+    case 'trueshape-bl': // never packed here (true-shape has its own placer)
       return new GuillotineBin(area, 'baf');
   }
 }
@@ -305,15 +315,27 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
   return { sheets, sizeOf, unplaced };
 }
 
+/** A part's own outline area, mm² (the w × h rectangle without an outline). */
+export function outlineArea(shape: PartShape): number {
+  return shape.outline ? Math.abs(signedArea(shape.outline)) : shape.w * shape.h;
+}
+
 /** Statistics of one sheet's placements (bounding-box areas, raw sheet area). */
 export function sheetStats(
   index: number,
   placements: readonly Placement[],
   sheet: { width: number; height: number },
   sizes: ReadonlyMap<string, PartShape>,
+  /** True-shape layouts (T165) count each part's own outline area, not its bbox. */
+  trueArea = false,
 ): SheetStats {
   let partArea = 0;
   for (const pl of placements) {
+    const shape = sizes.get(pl.partId);
+    if (trueArea && shape) {
+      partArea += outlineArea(shape);
+      continue;
+    }
     const r = placementRect(pl, sizes);
     if (r) partArea += r.w * r.h;
   }
@@ -565,23 +587,36 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
   const weights = weightsOf(input);
   let best: Candidate | null = null;
   let count = 0;
+  const trueShape = input.engine === 'trueShape';
   // `toolGroup` only differs from `area` when the copies need different tool sets (T162).
   const groups = new Set(items.map((it) => it.group));
-  const orderings: readonly PartOrdering[] =
-    groups.size > 1 ? [...PART_ORDERINGS, 'toolGroup'] : PART_ORDERINGS;
-  const total = orderings.length * PLACER_HEURISTICS.length;
+  const orderings: readonly PartOrdering[] = trueShape
+    ? TRUE_SHAPE_ORDERINGS
+    : groups.size > 1
+      ? [...PART_ORDERINGS, 'toolGroup']
+      : PART_ORDERINGS;
+  const heuristics: readonly PlacerHeuristic[] = trueShape ? ['trueshape-bl'] : PLACER_HEURISTICS;
+  const shapes = trueShape ? trueShapeSetup(ctx) : null;
+  const total = orderings.length * heuristics.length;
   for (const ordering of orderings) {
     const list = ordered(items, ordering);
-    for (const heuristic of PLACER_HEURISTICS) {
+    for (const heuristic of heuristics) {
       count++;
       if (count > 1) hooks.onProgress?.(count - 1, total);
-      const packed = pack(ctx, list, heuristic);
+      const packed = shapes
+        ? packTrueShape(
+            shapes.input,
+            list.map((it) => shapes.item(it)),
+          )
+        : pack(ctx, list, heuristic);
       const layout = packed.sheets.map((added, i) => [
         ...(input.locked[i] ?? []).map((pl) => ({ ...pl })),
         ...added,
       ]);
       const sheetDims = layout.map((_, i) => dims[packed.sizeOf[i] ?? 0] ?? input.sheet);
-      const stats = layout.map((pls, i) => sheetStats(i, pls, sheetDims[i] ?? input.sheet, sizes));
+      const stats = layout.map((pls, i) =>
+        sheetStats(i, pls, sheetDims[i] ?? input.sheet, sizes, trueShape),
+      );
       const cost = objective(ctx, layout, stats, sheetDims, weights, false);
       const cand: Candidate = {
         ordering,
@@ -626,7 +661,68 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
     cost: objective(ctx, win.layout, win.stats, win.dims, weights, true),
     strategy: { ordering: win.ordering, heuristic: win.heuristic },
     candidates: count,
-    info: rotatedBboxInfo(win.layout, sizes),
+    // True-shape footprints are the real shapes: no rotated-bbox notes (D-034 stage 2).
+    info: trueShape ? [] : rotatedBboxInfo(win.layout, sizes),
+  };
+}
+
+/** Orderings the true-shape placer tries (each is one full placement run, T165). */
+export const TRUE_SHAPE_ORDERINGS: readonly PartOrdering[] = ['area', 'longestSide', 'height'];
+
+/**
+ * Footprints per part and rotation, and the locked obstacles, for the true-shape placer (T165).
+ * Footprint offset s = (toolDiameter + gap) / 2, the same spacing as the rectangle placer.
+ */
+function trueShapeSetup(ctx: Context): {
+  input: ShapePackInput;
+  item: (it: Item) => ShapeItem;
+} {
+  const { input, s, sizes } = ctx;
+  const parts = new Map<string, NestPart>();
+  for (const p of input.parts) if (!parts.has(p.id)) parts.set(p.id, p);
+  const contours = new Map<
+    string,
+    { outline: Polyline; fc: ReturnType<typeof footprintContours> }
+  >();
+  const contourOf = (part: NestPart) => {
+    let c = contours.get(part.id);
+    if (!c) {
+      const outline = part.outline ?? rectOutline(part.w, part.h);
+      const inners = input.partInHole ? (part.inners ?? []) : [];
+      c = { outline, fc: footprintContours(outline, inners, s) };
+      contours.set(part.id, c);
+    }
+    return c;
+  };
+  const options = new Map<string, ShapeOption[]>();
+  for (const part of parts.values()) {
+    const c = contourOf(part);
+    options.set(
+      part.id,
+      nestPartRotations(part).map((rot) => shapeOption(c.outline, c.fc, rot)),
+    );
+  }
+  const locked = input.locked.map((pls, i) => ({
+    size: input.lockedSizes?.[i] ?? 0,
+    obstacles: pls.flatMap((pl) => {
+      const part = parts.get(pl.partId);
+      if (!part) return [];
+      const c = contourOf(part);
+      return [moveFootprint(shapeOption(c.outline, c.fc, pl.rot).fp, pl.x, pl.y)];
+    }),
+  }));
+  const dimsOf = input.sheets && input.sheets.length > 0 ? input.sheets : [input.sheet];
+  return {
+    input: { dims: dimsOf, margin: input.margin, locked },
+    item: (it) => {
+      const shape = sizes.get(it.partId);
+      return {
+        partId: it.partId,
+        index: it.index,
+        options: options.get(it.partId) ?? [],
+        area: shape ? outlineArea(shape) : it.w * it.h,
+      };
+    },
   };
 }
 
