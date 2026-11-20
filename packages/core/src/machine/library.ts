@@ -9,7 +9,7 @@
 import { z } from 'zod';
 import { EPS } from '../geometry/constants';
 import { grainAngleSchema } from '../schema/project';
-import { materialKindSchema, type MachineProfile, type MaterialParams } from './profile';
+import { materialKindSchema } from './profile';
 
 /** Colour / texture keys of a board (drives the swatch; the 3D materials of M6 reuse them). */
 export const materialToneSchema = z.enum(
@@ -107,29 +107,6 @@ export const DEFAULT_LIBRARY: readonly LibraryMaterial[] = (
   grain,
   sheetSizes: SEED_SIZES.map((s) => ({ ...s })),
 }));
-
-/** One thickness of an entry with the machine's parameter set for it (or none). */
-export interface LibraryParamLink {
-  thickness: number;
-  params: MaterialParams | undefined;
-}
-
-/**
- * The parameter set a machine profile has for each thickness of a library entry (the "linked
- * parameter set per machine" of T121). A missing set is `undefined`: the wizard then shows the
- * "no cutting parameters" error, as for any stock.
- */
-export function libraryParamLinks(
-  material: Pick<LibraryMaterial, 'kind' | 'thicknesses'>,
-  profile: Pick<MachineProfile, 'materials'>,
-): LibraryParamLink[] {
-  return material.thicknesses.map((thickness) => ({
-    thickness,
-    params: profile.materials.find(
-      (m) => m.material === material.kind && Math.abs(m.thickness - thickness) <= EPS,
-    ),
-  }));
-}
 
 /**
  * The stock a library pick gives (T121, wizard step 1): the entry's kind, the current thickness

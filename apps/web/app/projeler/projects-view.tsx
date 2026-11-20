@@ -36,7 +36,7 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { OffcutStock } from './offcut-stock';
 import type { Messages } from '../../lib/messages';
 import {

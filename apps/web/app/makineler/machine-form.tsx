@@ -5,6 +5,7 @@ import {
   KNOWN_POSTS,
   parseMachineProfile,
   TOOLPATH_DEFAULTS,
+  defaultMachineProfile,
   type MachineProfile,
   type MachineProfileIssue,
   type MaterialKind,
@@ -39,7 +40,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { focusRing } from '../../components/page/page-header';
 import { CONTROLLER_LIBRARY, controllerProfile } from '../../lib/controller-library';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { ApiError, MachineDetail } from '../../lib/machines-api';
 import {
   FORM_SECTIONS,
@@ -62,7 +63,8 @@ export interface MachineFormProps {
   machineId: string | null;
   /** Latest profile version of an existing machine. */
   version?: number | undefined;
-  initial: MachineProfile;
+  /** The profile to edit; null = a new machine (T186: built here, in the lazy form chunk). */
+  initial: MachineProfile | null;
   onSaved: (detail: MachineDetail) => void;
   onCancel: () => void;
   /**
@@ -139,11 +141,19 @@ function useActiveSection(): FormSection {
   return active;
 }
 
+/** A new machine starts from the generic profile, not marked as an example, with no name. */
+function newMachineProfile(): MachineProfile {
+  const p = defaultMachineProfile();
+  p.example = false;
+  p.identity.name = '';
+  return p;
+}
+
 export function MachineForm({
   t,
   machineId,
   version,
-  initial,
+  initial: initialProp,
   onSaved,
   onCancel,
   addParams = null,
@@ -152,6 +162,7 @@ export function MachineForm({
   const o = t.form.options;
   const u = t.form.units;
   const router = useRouter();
+  const [initial] = useState(() => initialProp ?? newMachineProfile());
   const [start] = useState(() => (addParams ? withParamSet(initial, addParams) : null));
   const [profile, setProfile] = useState<MachineProfile>(start?.profile ?? initial);
   const [submitted, setSubmitted] = useState(false);

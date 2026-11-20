@@ -4,11 +4,11 @@ import { Button, ErrorState } from '@nittcam/ui';
 import { ServerCrash } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { fill } from '../lib/draft-project';
-import { getMessages } from '../lib/messages';
+import { fill } from '../lib/fill';
 import { reportClientError } from '../lib/report-client-error';
+import trError from '../messages/tr-error.json';
 
-const t = getMessages().feedback.error;
+const t = trError;
 
 /** Turkish error page inside the shell (T105): any uncaught render error of a page. */
 export default function PageError({

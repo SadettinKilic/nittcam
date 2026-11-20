@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
-import { getMessages } from '../lib/messages';
 import { reportClientError } from '../lib/report-client-error';
+import trError from '../messages/tr-error.json';
 import './globals.css';
 
-const t = getMessages().feedback.error;
+const t = trError;
 
 /** Last resort when the root layout itself fails (T105): plain page, no shell. */
 export default function GlobalError({

@@ -37,7 +37,7 @@ import {
 } from '../exports-api';
 import { blockingItems } from '../blocking-issues';
 import { ncNameOptions } from '../file-names';
-import { fill } from '../draft-project';
+import { fill } from '../fill';
 import { getMessages } from '../messages';
 
 export function sha256Hex(data: string | Uint8Array): string {

@@ -21,7 +21,7 @@ import {
 } from '@nittcam/ui';
 import { TriangleAlert } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { declineKey, pendingUpdates } from '../../lib/template-updates';
 import { fetchTemplates, type TemplateItem } from '../../lib/templates-api';

@@ -3,7 +3,7 @@
 import type { SimulateResult } from '@nittcam/core';
 import { focusCuttingSettings } from './cutting-settings';
 import Link from 'next/link';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { withBlocking } from '../../lib/blocking-issues';
 import { itemPlace, machineRelated, onDrawnItem, onPartRow } from '../../lib/part-items';
 import type { SimText } from './model';

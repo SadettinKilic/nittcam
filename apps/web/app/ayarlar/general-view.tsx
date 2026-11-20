@@ -24,6 +24,7 @@ import { ArrowRight, ImageOff, Trash2, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
+import { OnboardingSettingsCard } from '../../components/settings/onboarding-card';
 import { SettingsCard } from '../../components/settings/settings-card';
 import { LOGO_ACCEPT, logoProblem, type LogoProblem } from '../../lib/logo';
 import type { Messages } from '../../lib/messages';
@@ -35,7 +36,13 @@ type Load =
   { status: 'loading' } | { status: 'error' } | { status: 'ready'; data: CompanySettings };
 
 /** Ayarlar → Genel (T182, spec §3.4): company name and logo, new-project defaults. */
-export function GeneralView({ t }: { t: Text }) {
+export function GeneralView({
+  t,
+  onboarding,
+}: {
+  t: Text;
+  onboarding: Messages['onboarding']['settings'];
+}) {
   const g = t.general;
   const [load, setLoad] = useState<Load>({ status: 'loading' });
 
@@ -82,6 +89,7 @@ export function GeneralView({ t }: { t: Text }) {
               <ArrowRight aria-hidden className="size-4" />
             </Link>
           </SettingsCard>
+          <OnboardingSettingsCard t={onboarding} className="lg:col-span-2" />
         </div>
       )}
     </main>
