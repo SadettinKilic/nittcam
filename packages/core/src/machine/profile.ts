@@ -148,7 +148,37 @@ export const toolChangerSchema = z.strictObject({
   capacity: int().min(PROFILE_BOUNDS.toolCapacity.min).max(PROFILE_BOUNDS.toolCapacity.max),
   /** Tool length compensation (G43) available. */
   lengthCompensation: z.boolean({ error: 'must be true or false' }),
+  /**
+   * Park point for a manual tool change (T309): when `enabled`, the program goes up to safe Z and
+   * rapids to X/Y (program coordinates, G54, the numbers the controller shows) before the pause.
+   * Optional so older profiles stay valid; absent = off.
+   */
+  park: z
+    .strictObject({
+      enabled: z.boolean({ error: 'must be true or false' }),
+      x: num().min(-PROFILE_BOUNDS.axisXY.max).max(PROFILE_BOUNDS.axisXY.max),
+      y: num().min(-PROFILE_BOUNDS.axisXY.max).max(PROFILE_BOUNDS.axisXY.max),
+    })
+    .optional(),
 });
+
+/**
+ * Physical distance (right/back sense "into the table") of program X/Y from program zero, for the
+ * origin's corner and axis directions (same convention as the post's frame, D-025).
+ */
+export function intoTableFromProgram(
+  origin: Pick<z.infer<typeof originSchema>, 'corner' | 'xPositive' | 'yPositive'>,
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  const { corner, xPositive, yPositive } = origin;
+  const inX = corner === 'frontLeft' || corner === 'backLeft' ? 1 : -1;
+  const inY = corner === 'frontLeft' || corner === 'frontRight' ? 1 : -1;
+  return {
+    x: inX * (xPositive === 'right' ? 1 : -1) * x,
+    y: inY * (yPositive === 'back' ? 1 : -1) * y,
+  };
+}
 
 /** Tutma: vacuum, clamp or T-slot; vacuum on/off M codes ('' = none). */
 export const holdDownSchema = z.strictObject({
@@ -284,6 +314,17 @@ export const machineProfileSchema = z
   .superRefine((p, ctx) => {
     if (p.safeZ > p.workEnvelope.z) {
       crossIssue(ctx, ['safeZ'], 'safeZAboveTravel', 'safe Z must be within the Z travel');
+    }
+    const park = p.toolChanger.park;
+    if (park?.enabled) {
+      // T309: on the table and within the travel (§7.2 rule 6).
+      const into = intoTableFromProgram(p.origin, park.x, park.y);
+      if (into.x < 0 || into.x > Math.min(p.table.width, p.workEnvelope.x)) {
+        crossIssue(ctx, ['toolChanger', 'park', 'x'], 'parkOffTable', 'park X is off the table');
+      }
+      if (into.y < 0 || into.y > Math.min(p.table.depth, p.workEnvelope.y)) {
+        crossIssue(ctx, ['toolChanger', 'park', 'y'], 'parkOffTable', 'park Y is off the table');
+      }
     }
     if (p.holdDown.type === 'vacuum' && p.holdDown.vacuumOn === '' && p.holdDown.vacuumOff !== '') {
       crossIssue(

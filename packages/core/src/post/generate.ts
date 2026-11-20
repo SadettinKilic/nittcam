@@ -331,6 +331,30 @@ class Writer {
     this.ready = false;
   }
 
+  /**
+   * T309: before a manual tool change pause, go to the profile's park point: up to safe Z, then a
+   * rapid to park X/Y (program coordinates) at safe Z (rules 2 and 6). Nothing when it is off.
+   */
+  private park(): void {
+    const park = this.c.profile.toolChanger.park;
+    if (!park?.enabled) return;
+    const f = this.c.frame;
+    const safe = this.c.toolpath.safeZ;
+    if (Math.abs(this.pos.z - safe) > EPS) this.safeZ();
+    // Program X/Y → sheet frame (inverse of toMachine), so the envelope check and position agree.
+    const at: Point3 = { x: f.axX * park.x - f.originDx, y: f.axY * park.y - f.originDy, z: safe };
+    this.finite(at);
+    this.checkEnvelope(at);
+    this.comment('PARK: TAKIM DEĞİŞİM NOKTASI');
+    const words: string[] = [];
+    this.motionWord(this.c.cfg.motion.rapid, words);
+    this.axisWords(toMachine(f, at), words, true);
+    this.block(words);
+    this.pos = at;
+    this.xyKnown = true;
+    this.atSafeZOnly = false;
+  }
+
   private toolChange(op: Operation): void {
     const cfg = this.c.cfg;
     const first = this.tool === null;
@@ -347,6 +371,7 @@ class Writer {
         this.block(['G43', `H${op.tool}`]);
       }
     } else if (mode === 'manual' && !first) {
+      this.park();
       // No tool length offset: the new tool sticks out a different length, so Z must be re-zeroed (T274, K2).
       const offset = cfg.toolChange.lengthOffset && this.c.profile.toolChanger.lengthCompensation;
       this.comment(
@@ -356,6 +381,7 @@ class Writer {
       );
       this.block([cfg.toolChange.manualStop]);
     } else if (mode === 'manual' && cfg.toolChange.pauseForFirstTool) {
+      this.park();
       this.comment(`TAKIM ${label} TAKILI MI? DEVAM İÇİN CYCLE START`);
       this.block([cfg.toolChange.manualStop]);
     } else {

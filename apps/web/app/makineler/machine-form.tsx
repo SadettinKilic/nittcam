@@ -705,6 +705,46 @@ export function MachineForm({
                 onChange={(v) => update((p) => void (p.toolChanger.lengthCompensation = v))}
               />
             </div>
+            {profile.toolChanger.type === 'manual' ? (
+              <>
+                <div className="sm:col-span-2">
+                  <CheckField
+                    path="toolChanger.park.enabled"
+                    label={f.park}
+                    help={f.parkHelp}
+                    checked={profile.toolChanger.park?.enabled ?? false}
+                    onChange={(v) =>
+                      update(
+                        (p) =>
+                          void (p.toolChanger.park = {
+                            ...(p.toolChanger.park ?? { x: 0, y: 0 }),
+                            enabled: v,
+                          }),
+                      )
+                    }
+                  />
+                </div>
+                {profile.toolChanger.park?.enabled ? (
+                  <>
+                    {num(
+                      'toolChanger.park.x',
+                      f.parkX,
+                      profile.toolChanger.park.x,
+                      (p, v) => void (p.toolChanger.park = { ...p.toolChanger.park!, x: v }),
+                      u.mm,
+                      f.parkXYHelp,
+                    )}
+                    {num(
+                      'toolChanger.park.y',
+                      f.parkY,
+                      profile.toolChanger.park.y,
+                      (p, v) => void (p.toolChanger.park = { ...p.toolChanger.park!, y: v }),
+                      u.mm,
+                    )}
+                  </>
+                ) : null}
+              </>
+            ) : null}
           </Section>
 
           <Section id="holdDown" title={s.holdDown} hint={h.holdDown}>
