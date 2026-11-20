@@ -239,6 +239,7 @@ export function MachinesView({
           onSaved={onSaved}
           onCancel={() => setMode({ kind: 'list' })}
           addParams={mode.addParams}
+          focusTabs={fix?.field === 'tabs' && mode.machineId === fix.machineId}
         />
       ) : mode.kind === 'loading' ? (
         <div role="status" className="flex flex-col gap-4">

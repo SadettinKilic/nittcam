@@ -81,11 +81,14 @@ export interface ParamFix {
   machineId: string;
   set: { material: MaterialKind; thickness: number } | null;
   returnTo: string | null;
+  /** T302: `alan=kopru` lands on the set's tab fields instead of its feed. */
+  field?: 'tabs' | null;
 }
 
 export function paramFixHref(fix: ParamFix): string {
   const q = new URLSearchParams({ duzenle: fix.machineId });
   if (fix.set) q.set('ayar', `${fix.set.material}-${fix.set.thickness}`);
+  if (fix.field === 'tabs') q.set('alan', 'kopru');
   if (fix.returnTo) q.set('donus', fix.returnTo);
   return `/makineler?${q.toString()}`;
 }
@@ -109,7 +112,12 @@ export function parseParamFix(q: Record<string, string | string[] | undefined>):
     if ((MATERIAL_KINDS as readonly string[]).includes(material) && thickness > 0)
       set = { material, thickness };
   }
-  return { machineId, set, returnTo: safeReturnPath(one('donus')) };
+  return {
+    machineId,
+    set,
+    returnTo: safeReturnPath(one('donus')),
+    field: one('alan') === 'kopru' ? 'tabs' : null,
+  };
 }
 
 /**

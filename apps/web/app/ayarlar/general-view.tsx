@@ -26,6 +26,7 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
 import { OnboardingSettingsCard } from '../../components/settings/onboarding-card';
 import { SettingsCard } from '../../components/settings/settings-card';
+import { setCompanyBrand } from '../../lib/company-brand';
 import { fill } from '../../lib/draft-project';
 import { LOGO_ACCEPT, logoProblem, type LogoProblem } from '../../lib/logo';
 import type { Messages } from '../../lib/messages';
@@ -89,6 +90,15 @@ export function GeneralView({
               {g.defaults.materialsLink}
               <ArrowRight aria-hidden className="size-4" />
             </Link>
+            {/* T302: the tab sizes live in each machine's material sets. */}
+            <Link
+              href="/makineler"
+              data-testid="settings-machines-link"
+              className={`inline-flex w-fit items-center gap-1 rounded-sm text-sm font-medium text-accent-text hover:underline ${focusRing}`}
+            >
+              {g.defaults.machinesLink}
+              <ArrowRight aria-hidden className="size-4" />
+            </Link>
           </SettingsCard>
           <OnboardingSettingsCard t={onboarding} className="lg:col-span-2" />
         </div>
@@ -125,6 +135,7 @@ function CompanyCard({ t, data }: { t: Text['general']; data: CompanySettings })
       const body = (await res.json()) as CompanySettings;
       setName(body.name);
       setSavedName(body.name);
+      setCompanyBrand({ name: body.name, logoUrl: body.logoUrl });
       notify.success(c.saved);
     } catch {
       notify.error(c.failed);
@@ -153,6 +164,7 @@ function CompanyCard({ t, data }: { t: Text['general']; data: CompanySettings })
         return;
       }
       setLogoUrl(body.logoUrl);
+      setCompanyBrand({ logoUrl: body.logoUrl });
       notify.success(l.uploaded);
     } catch {
       setLogoError(l.problems.failed);
@@ -168,6 +180,7 @@ function CompanyCard({ t, data }: { t: Text['general']; data: CompanySettings })
       const res = await fetch('/api/settings/logo', { method: 'DELETE' });
       if (!res.ok) throw new Error(String(res.status));
       setLogoUrl(null);
+      setCompanyBrand({ logoUrl: null });
       setLogoError(null);
       notify.success(l.removed);
     } catch {

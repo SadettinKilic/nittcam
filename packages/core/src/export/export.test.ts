@@ -87,6 +87,24 @@ describe('exportNc', () => {
     expect(tagged.files.map((f) => f.content)).toEqual(plain.files.map((f) => f.content));
   });
 
+  it('T303: a long project name is shortened to the machine limit; revision and sheet stay whole', () => {
+    const g = golden('generic', 'mixed');
+    const profile = structuredClone(g.context.profile);
+    profile.constraints.maxFileNameLength = 24;
+    const pv = { profile, version: 1, verification: 'draft' as const };
+    const r = exportNc(g.project, pv, postConfig('generic'), {
+      projectName: 'Çekmeceli mutfak üst dolap takımı',
+      revision: 12,
+      fileStem: 'Cekmeceli_mutfak_ust_dolap_takimi',
+      revisionInFileName: true,
+    });
+    expect(r.ok).toBe(true);
+    for (const f of r.files) {
+      expect(f.name.length).toBeLessThanOrEqual(24);
+      expect(f.name).toMatch(/^Cekmeceli_[A-Za-z_]*_r12_S1./);
+    }
+  });
+
   it('is deterministic', () => {
     const g = golden('generic', 'shelf-set');
     const pv = { profile: g.context.profile, version: 1, verification: 'draft' as const };

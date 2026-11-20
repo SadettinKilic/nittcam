@@ -69,3 +69,31 @@ export function cuttingSettingsOf(project: Project, machine?: MachineProfile): C
     direction: project.cutting.direction,
   };
 }
+
+/**
+ * The tab sizes the project gets without its own values (T302, CTO #12 E3): the machine's material
+ * set when it has them, else the built-in default. What "Malzeme ayarına dön" goes back to.
+ */
+export function inheritedTabs(
+  project: Project,
+  machine?: MachineProfile,
+): { count: number; width: number; height: number; source: 'material' | 'default' } {
+  const { count, width, height } = project.cutting.tabs;
+  const own = count !== undefined || width !== undefined || height !== undefined;
+  const base = own
+    ? {
+        ...project,
+        cutting: {
+          ...project.cutting,
+          tabs: { ...project.cutting.tabs, count: undefined, width: undefined, height: undefined },
+        },
+      }
+    : project;
+  const tabs = cuttingSettingsOf(base as Project, machine).tabs;
+  return {
+    count: tabs.count,
+    width: tabs.width,
+    height: tabs.height,
+    source: tabs.source.count === 'material' ? 'material' : 'default',
+  };
+}

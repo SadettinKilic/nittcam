@@ -27,6 +27,7 @@ import {
   right,
   saveDocument,
   text,
+  type CompanyMark,
   type PdfFonts,
 } from './document';
 import { mm } from './layout-pages';
@@ -39,6 +40,8 @@ export interface LabelsPdfInput {
   revision: number;
   grid: LabelGrid;
   offset: LabelOffset;
+  /** Company name for the label foot (T301); the logo does not fit a label. */
+  company?: CompanyMark | null;
 }
 
 /** Labels per page and page count of a label run. */
@@ -81,11 +84,33 @@ function partGlyph(
   }
 }
 
+/**
+ * "Project · Company" in `maxWidth`: the project keeps up to 60 % when both do not fit, the company
+ * takes the rest (left out when not even a few letters fit).
+ */
+export function labelFoot(
+  projectName: string,
+  company: string,
+  fonts: PdfFonts,
+  size: number,
+  maxWidth: number,
+): string {
+  const both = company ? `${projectName} · ${company}` : projectName;
+  if (!company || fonts.regular.widthOfTextAtSize(both, size) <= maxWidth) {
+    return fitText(both, fonts.regular, size, maxWidth);
+  }
+  const project = fitText(projectName, fonts.regular, size, maxWidth * 0.6);
+  const rest = maxWidth - fonts.regular.widthOfTextAtSize(`${project} · `, size);
+  const name = fitText(company, fonts.regular, size, rest);
+  return name.length > 2 ? `${project} · ${name}` : project;
+}
+
 function drawLabel(
   page: PDFPage,
   fonts: PdfFonts,
   label: PartLabel,
   projectName: string,
+  company: string,
   x: number,
   y: number,
   w: number,
@@ -131,10 +156,10 @@ function drawLabel(
     );
   }
 
-  // Bottom line: project name.
+  // Bottom line: project name, then the company (T301) when there is room.
   text(
     page,
-    fitText(projectName, fonts.regular, 7 * k, sideW),
+    labelFoot(projectName, company, fonts, 7 * k, sideW),
     x + pad,
     y + pad,
     fonts.regular,
@@ -153,6 +178,7 @@ function drawLabel(
 export async function renderLabelsPdf(input: LabelsPdfInput): Promise<Uint8Array> {
   const { project, projectName, revision, grid, offset } = input;
   const { doc, fonts } = await newDocument(`${projectName}: ${t.title}`, `rev ${revision}`);
+  const company = input.company?.name.trim() ?? '';
   const labels = partLabels(project);
   const cells = labelCells(grid, offset);
   const pw = LABEL_PAGE.width * MM_TO_PT;
@@ -169,6 +195,7 @@ export async function renderLabelsPdf(input: LabelsPdfInput): Promise<Uint8Array
         fonts,
         label,
         projectName,
+        company,
         c.x * MM_TO_PT,
         ph - (c.y + c.height) * MM_TO_PT,
         c.width * MM_TO_PT,

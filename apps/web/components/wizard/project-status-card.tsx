@@ -1,8 +1,10 @@
 'use client';
 
 import { Badge, Button, notify } from '@nittcam/ui';
-import { CircleCheck, Undo2 } from 'lucide-react';
+import { CircleCheck, RefreshCw, TriangleAlert, Undo2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { changedAfterProduced } from '../../lib/export-current';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import {
   PROJECT_STATUS_TONE,
@@ -23,14 +25,22 @@ export function ProjectStatusCard({
   names,
   projectId,
   tick,
+  onRegenerate,
 }: {
   t: Text;
   names: Names;
   projectId: string | null;
   tick: number;
+  /** T303: go to the control that makes the NC file of the current revision. */
+  onRegenerate?: () => void;
 }) {
   const key = projectId ? `${projectId}#${tick}` : '';
-  const [state, setState] = useState<{ key: string; status: ProjectStatus } | null>(null);
+  const [state, setState] = useState<{
+    key: string;
+    status: ProjectStatus;
+    revision: number;
+    lastNcRevision: number | null;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!projectId) return;
@@ -39,7 +49,12 @@ export function ProjectStatusCard({
       .then(async (res) => {
         if (!live || !res.ok) return;
         const body = (await res.json()) as ProjectDetail;
-        setState({ key, status: body.status });
+        setState({
+          key,
+          status: body.status,
+          revision: body.revision,
+          lastNcRevision: body.lastNcRevision ?? null,
+        });
       })
       .catch(() => undefined);
     return () => {
@@ -48,7 +63,8 @@ export function ProjectStatusCard({
   }, [projectId, key]);
   // Keep the last known status while it is read again after an export.
   const status = state?.status ?? null;
-  if (!projectId || status === null) return null;
+  if (!projectId || status === null || !state) return null;
+  const changed = changedAfterProduced(status, state.revision, state.lastNcRevision);
 
   async function change(next: 'completed' | 'produced') {
     if (!projectId) return;
@@ -60,7 +76,7 @@ export function ProjectStatusCard({
         body: JSON.stringify({ status: next }),
       });
       if (!res.ok) throw new Error(String(res.status));
-      setState({ key, status: next });
+      setState((s) => (s ? { ...s, key, status: next } : s));
     } catch {
       notify.error(t.error, { id: 'project-status' });
     } finally {
@@ -85,6 +101,29 @@ export function ProjectStatusCard({
         </Badge>
       </div>
       <p className="text-xs text-fg-muted">{hint}</p>
+      {changed ? (
+        // T303: "Üretildi" no longer describes the file on the machine; say so, one click to redo.
+        <div
+          className="flex flex-col items-start gap-2 rounded-lg border border-warning-border bg-warning-subtle px-3 py-2 text-xs text-warning-text"
+          data-testid="project-status-changed"
+        >
+          <p className="flex items-start gap-1.5 font-medium">
+            <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+            {fill(t.changed, changed)}
+          </p>
+          {onRegenerate ? (
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="project-status-regenerate"
+              onClick={onRegenerate}
+            >
+              <RefreshCw aria-hidden />
+              {t.regenerate}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       {status === 'produced' ? (
         <Button
           variant="outline"

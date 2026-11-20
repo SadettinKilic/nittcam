@@ -13,6 +13,7 @@ import {
   type LengthUnit,
   type LongShortField,
 } from '@nittcam/core';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { FileUp, Info } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type DragEvent } from 'react';
 import { readCutListFile, type CutListFileError } from '../../lib/cut-list-file';
@@ -66,6 +67,11 @@ export interface PastePanelProps {
  * checks the column mapping, sees invalid rows with Turkish messages and answers the unit question
  * when sizes may be centimetres. Nothing reaches the project until "Uygula".
  */
+/** T304: the preview renders every row up to this many, then only the visible ones. */
+export const PREVIEW_VIRTUAL_FROM = 150;
+/** Estimated preview row height, px (one text line, py-1.5). */
+const PREVIEW_ROW_PX = 33;
+
 export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
   const uid = useId();
   const [text, setText] = useState('');
@@ -96,6 +102,32 @@ export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
       }),
     [text, delimiter, decimal, header, columns],
   );
+
+  // T304: a long paste (2 000 rows) rendered every preview row at once and froze the page for
+  // seconds (table layout of ~14 000 cells). Above PREVIEW_VIRTUAL_FROM rows only the rows in the
+  // preview box (plus a margin) are in the DOM; spacer rows keep the scroll height.
+  const previewRef = useRef<HTMLDivElement>(null);
+  const virtual = result.rows.length > PREVIEW_VIRTUAL_FROM;
+  // eslint-disable-next-line react-hooks/incompatible-library -- the virtualizer re-renders this component itself
+  const virtualizer = useVirtualizer({
+    count: virtual ? result.rows.length : 0,
+    getScrollElement: () => previewRef.current,
+    estimateSize: () => PREVIEW_ROW_PX,
+    overscan: 10,
+    initialRect: { width: 0, height: 384 },
+  });
+  const virtualItems = virtual ? virtualizer.getVirtualItems() : [];
+  const shownRows = virtual
+    ? virtualItems.flatMap((v) => {
+        const row = result.rows[v.index];
+        return row ? [row] : [];
+      })
+    : result.rows;
+  const padTop = virtual ? (virtualItems[0]?.start ?? 0) : 0;
+  const padBottom = virtual
+    ? virtualizer.getTotalSize() - (virtualItems[virtualItems.length - 1]?.end ?? 0)
+    : 0;
+  const colCount = result.columns.fields.length + 2;
 
   const validCount = result.rows.filter((r) => r.errors.length === 0).length;
   const invalidCount = result.rows.length - validCount;
@@ -342,7 +374,11 @@ export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
                 {t.edgeHelp}
               </p>
             ) : null}
-            <div className="relative max-h-96 max-w-full overflow-auto rounded-lg border border-border">
+            <div
+              ref={previewRef}
+              data-testid="paste-preview-scroll"
+              className="relative max-h-96 max-w-full overflow-auto rounded-lg border border-border"
+            >
               <table className="w-full text-left text-sm" aria-label={t.preview}>
                 <thead className="sticky top-0 bg-surface-subtle text-xs text-fg-muted">
                   <tr>
@@ -389,7 +425,12 @@ export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {result.rows.map((row) => {
+                  {padTop > 0 ? (
+                    <tr aria-hidden="true">
+                      <td colSpan={colCount} style={{ height: padTop, padding: 0 }} />
+                    </tr>
+                  ) : null}
+                  {shownRows.map((row) => {
                     const bad = row.errors.length > 0;
                     const badCols = new Set(row.errors.map((e) => e.col));
                     return (
@@ -435,6 +476,11 @@ export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
                       </tr>
                     );
                   })}
+                  {padBottom > 0 ? (
+                    <tr aria-hidden="true">
+                      <td colSpan={colCount} style={{ height: padBottom, padding: 0 }} />
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </div>

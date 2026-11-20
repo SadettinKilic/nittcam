@@ -1,5 +1,6 @@
 import type { PaperSize } from '@nittcam/core';
 import { companyScope } from '../../../../../lib/server/company';
+import { currentCompanyMark } from '../../../../../lib/server/company-mark';
 import { apiError, sha256Hex } from '../../../../../lib/server/exports';
 import { estimateCutSeconds } from '../../../../../lib/server/pdf/cut-time';
 import { exportFileName } from '../../../../../lib/file-names';
@@ -37,6 +38,7 @@ export async function GET(request: Request, ctx: RouteContext<'/api/projects/[id
       revision,
       paper,
       cutSeconds: await estimateCutSeconds(scope, project),
+      company: await currentCompanyMark(scope),
     });
     const name = exportFileName(project.name, revision, paper.toLowerCase(), 'pdf');
     const disposition = url.searchParams.get('download') === '1' ? 'attachment' : 'inline';

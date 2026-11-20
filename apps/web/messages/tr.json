@@ -462,6 +462,20 @@
         "text": "Çıkarsanız bu formda yaptığınız değişiklikler kaybolur.",
         "stay": "Düzenlemeye dön",
         "discard": "Değişiklikleri at"
+      },
+      "tabs": {
+        "title": "Köprü (tab) varsayılanı",
+        "own": "Bu set için köprü ölçüsü gir",
+        "defaultHint": "Boş: hazır varsayılan geçerli, {count} adet × {width} mm genişlik × {height} mm yükseklik (kalınlığın yarısı, en çok 3 mm).",
+        "ownHint": "Bu malzeme ve kalınlıktaki yeni projeler bu ölçülerle başlar; projede Kesim ayarlarından değiştirilebilir.",
+        "count": "Adet (parça başına)",
+        "width": "Genişlik (mm)",
+        "height": "Yükseklik (mm)",
+        "countHelp": "1–20 adet.",
+        "widthHelp": "En az {min} mm.",
+        "heightHelp": "Köprüde kalan malzeme: {min}–{max} mm.",
+        "summary": "Köprü: {count} × {width} × {height} mm",
+        "summaryDefault": "Köprü: hazır varsayılan"
       }
     },
     "errors": {
@@ -486,7 +500,8 @@
       "duplicateMaterial": "Bu malzeme ve kalınlık zaten var.",
       "unknownTool": "Bu numarada takım yok.",
       "plungeAboveFeed": "Dalma hızı beslemeden büyük olamaz.",
-      "rpmOutsideSpindle": "Devir, spindle aralığının dışında."
+      "rpmOutsideSpindle": "Devir, spindle aralığının dışında.",
+      "tabHeightAboveThickness": "Köprü yüksekliği malzeme kalınlığından en az 1 mm az olmalı."
     },
     "verify": "Doğrula",
     "emptyTitle": "Henüz makine yok",
@@ -1365,11 +1380,11 @@
       "width": "Genişlik",
       "height": "Yükseklik",
       "source": {
-        "material": "Değerler malzeme ayarından.",
-        "default": "Değerler hazır varsayılan.",
+        "material": "Değerler malzeme ayarından: {count} × {width} × {height} mm.",
+        "default": "Değerler hazır varsayılan: {count} × {width} × {height} mm.",
         "project": "Bu projeye özel değer var."
       },
-      "reset": "Malzeme ayarına dön",
+      "reset": "Malzeme ayarına dön ({count} × {width} × {height} mm)",
       "leadIn": "Giriş",
       "leadIns": {
         "arc": "Yay",
@@ -1400,7 +1415,8 @@
         "small": "yalnız küçük parçada {count} × {width} × {height} mm",
         "off": "kapalı, {skin} mm ince tabaka"
       },
-      "summaryEdit": "Kesim ayarları"
+      "summaryEdit": "Kesim ayarları",
+      "editMaterial": "Malzeme ayarında değiştir"
     }
   },
   "projects": {
@@ -1548,7 +1564,9 @@
         "restored": "Artık parça geri alındı: {size}.",
         "failed": "İşlem yapılamadı. Tekrar deneyin."
       }
-    }
+    },
+    "changed": "değişti",
+    "changedTitle": "Üretildikten sonra değişti (Rev. {current}; son NC Rev. {nc})"
   },
   "materials": {
     "mdf": "MDF",
@@ -1994,7 +2012,9 @@
       "hintCompleted": "Proje tamamlandı.",
       "markCompleted": "Tamamlandı olarak işaretle",
       "markProduced": "Üretildi durumuna geri al",
-      "error": "Durum değiştirilemedi."
+      "error": "Durum değiştirilemedi.",
+      "changed": "Üretildikten sonra değişti (Rev. {current}; son NC Rev. {nc}).",
+      "regenerate": "Güncel revizyonla NC üret"
     }
   },
   "verification": {
@@ -3020,7 +3040,7 @@
       },
       "logo": {
         "title": "Logo",
-        "hint": "PNG, JPEG veya WebP, en fazla 512 KB.",
+        "hint": "PNG, JPEG veya WebP, en fazla 512 KB. PDF çıktılarına yalnız PNG ve JPEG logo basılır.",
         "choose": "Logo yükle",
         "replace": "Logoyu değiştir",
         "remove": "Logoyu kaldır",
@@ -3037,7 +3057,7 @@
       },
       "defaults": {
         "title": "Yeni proje varsayılanları",
-        "hint": "Yeni açılan projeler bu değerlerle başlar; mevcut projeler değişmez. Köprü adedi, genişliği ve yüksekliği malzeme ayarından gelir.",
+        "hint": "Yeni açılan projeler bu değerlerle başlar; mevcut projeler değişmez. Köprü adedi, genişliği ve yüksekliği makinenin malzeme ayarından gelir (Makineler → Malzeme parametreleri).",
         "gap": "Parça arası boşluk",
         "margin": "Plaka kenar payı",
         "tabs": "Köprü (tab)",
@@ -3070,7 +3090,8 @@
         "materialsHint": "Malzeme, kalınlık, plaka ölçüsü ve damar malzeme kütüphanesinde; kesim değerleri ve köprü ölçüleri makinenin malzeme ayarında.",
         "materialsLink": "Malzeme kütüphanesine git",
         "range": "0–{max} mm arası olmalı; bu değer alınmadı.",
-        "marginNote": "Takım yarıçapından küçük olursa takım plakanın dışına çıkar (örneğin Ø8 takım için en az 4 mm). Takım projede seçildiğinde Dizilim uyarır."
+        "marginNote": "Takım yarıçapından küçük olursa takım plakanın dışına çıkar (örneğin Ø8 takım için en az 4 mm). Takım projede seçildiğinde Dizilim uyarır.",
+        "machinesLink": "Makinelerde malzeme ayarına git"
       }
     },
     "dxf": {

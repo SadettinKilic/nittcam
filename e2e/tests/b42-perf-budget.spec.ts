@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   KITCHEN,
+  fill,
   goStep,
   openNewProject,
   paste,
@@ -153,9 +154,23 @@ test('2 000-row cut list stays usable', async ({ page }) => {
     { length: 2_000 },
     (_, i) => `P${i + 1}\t${100 + (i % 37) * 13}\t${80 + (i % 23) * 17}\t1\thayır`,
   );
+  const text = ['Parça adı\tEn\tBoy\tAdet\tDamar', ...rows].join('\n');
+  await page.getByRole('button', { name: tr.cutList.pasteOpen }).click();
+  const area = page.getByLabel(tr.cutList.paste.textLabel);
+  await expect(area).toBeFocused();
   await watchLongTasks(page);
   const t0 = Date.now();
-  await paste(page, ['Parça adı\tEn\tBoy\tAdet\tDamar', ...rows].join('\n'), 2_000);
+  // T304: the text arrives in one input event, as a Ctrl+V paste does. Playwright's `fill` goes
+  // through the browser's typing path instead: 6–10 s for this text even in a bare <textarea>,
+  // which is the test driver, not the app (the "~9 s" of D-079).
+  await area.evaluate((el, value) => {
+    const ta = el as HTMLTextAreaElement;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(ta, value);
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }, text);
+  await page
+    .getByRole('button', { name: fill(tr.cutList.paste.applyCount, { count: 2_000 }) })
+    .click();
   await expect(page.getByTestId('cut-list-count')).toContainText('2000');
   const pasteMs = Date.now() - t0;
   const pasteLong = Math.max(0, ...(await longTasks(page)));
@@ -172,9 +187,9 @@ test('2 000-row cut list stays usable', async ({ page }) => {
   console.log(
     `T186 2 000 rows: paste ${pasteMs} ms (longest task ${pasteLong} ms), scroll end+back ${scrollMs} ms, longest task ${scrollLong} ms`,
   );
-  // Known (D-079): applying a 2 000-row paste is one long main-thread task (~9 s locally);
-  // follow-up task. Guard against it getting worse; scrolling and editing must stay smooth.
-  expect(pasteMs).toBeLessThan(20_000);
+  // T304: paste + preview + apply of 2 000 rows < 2 s, no main-thread task over 200 ms.
+  expect(pasteMs).toBeLessThan(2_000);
+  expect(pasteLong).toBeLessThanOrEqual(LONG_TASK_BUDGET_MS);
   expect(scrollMs).toBeLessThan(3_000);
   expect(scrollLong).toBeLessThanOrEqual(LONG_TASK_BUDGET_MS * 2);
 });

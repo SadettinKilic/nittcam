@@ -58,7 +58,7 @@ import {
   type ProjectListItem,
   type ProjectStatus,
 } from '../../lib/projects-api';
-import { isOldRevision } from '../../lib/export-current';
+import { changedAfterProduced, isOldRevision } from '../../lib/export-current';
 
 type Text = Messages['projects'];
 
@@ -598,6 +598,24 @@ function ProjectList({
                       >
                         {t.status[item.status]}
                       </Badge>
+                      {(() => {
+                        // T303: produced / completed, then saved again after the newest NC file.
+                        const changed = changedAfterProduced(
+                          item.status,
+                          item.revision,
+                          item.lastExport?.revision,
+                        );
+                        return changed ? (
+                          <Badge
+                            variant="warning"
+                            data-testid="project-status-changed"
+                            title={fill(t.changedTitle, changed)}
+                          >
+                            {t.changed}
+                            <span className="sr-only">: {fill(t.changedTitle, changed)}</span>
+                          </Badge>
+                        ) : null;
+                      })()}
                     </div>
                     <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted lg:contents lg:text-sm">
                       <div className="flex min-w-0 gap-1">
