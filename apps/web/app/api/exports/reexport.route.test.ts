@@ -16,7 +16,7 @@ import { POST as doExport } from '../projects/[id]/export/route';
 import { POST as documents } from '../projects/[id]/documents/route';
 import { GET as history } from '../projects/[id]/exports/route';
 import { GET as download } from './[id]/files/[name]/route';
-import { POST as reexport } from './[id]/reexport/route';
+import { GET as reexportAsk, POST as reexport } from './[id]/reexport/route';
 
 const json = (method: string, body: unknown) =>
   new Request('http://test', {
@@ -115,10 +115,34 @@ describe('status flow and re-export (T179)', () => {
     expect(saved.status).toBe(200);
     expect((await scope.projects.get(id))?.revision).toBe(d.revision + 1);
 
-    // Unverified files need the acceptance again.
-    expect((await reexport(json('POST', {}), ctx({ id: nc.exportId }))).status).toBe(428);
+    // D-071: an NC re-export first asks the checklist (428 with its data), then the acceptance.
+    const askList = await reexport(json('POST', {}), ctx({ id: nc.exportId }));
+    expect(askList.status).toBe(428);
+    const list = (await askList.json()) as {
+      error: string;
+      checklist: { tools: unknown[] } | null;
+      needsAcceptance: boolean;
+    };
+    expect(list.error).toBe('checklist_required');
+    expect(list.checklist?.tools.length).toBeGreaterThan(0);
+    expect(list.needsAcceptance).toBe(true);
+    // GET gives the same checklist without storing anything.
+    const asked = await reexportAsk(new Request('http://test'), ctx({ id: nc.exportId }));
+    expect(asked.status).toBe(200);
+    expect(await asked.json()).toEqual(list);
+    // Acceptance alone is not enough.
+    expect(
+      (await reexport(json('POST', { acceptUnverified: true }), ctx({ id: nc.exportId }))).status,
+    ).toBe(428);
+    // Checklist without the acceptance: unverified files still need it.
+    const askAccept = await reexport(
+      json('POST', { checklistConfirmed: true }),
+      ctx({ id: nc.exportId }),
+    );
+    expect(askAccept.status).toBe(428);
+    expect(((await askAccept.json()) as { error: string }).error).toBe('acceptance_required');
     const again = await reexport(
-      json('POST', { acceptUnverified: true }),
+      json('POST', { acceptUnverified: true, checklistConfirmed: true }),
       ctx({ id: nc.exportId }),
     );
     expect(again.status).toBe(200);
@@ -142,7 +166,7 @@ describe('status flow and re-export (T179)', () => {
       stage: 'air_cut_approved',
     });
     const changed = await reexport(
-      json('POST', { acceptUnverified: true }),
+      json('POST', { acceptUnverified: true, checklistConfirmed: true }),
       ctx({ id: nc.exportId }),
     );
     expect(changed.status).toBe(201);
@@ -154,7 +178,7 @@ describe('status flow and re-export (T179)', () => {
     expect(rec.hash).not.toBe(nc.hash);
     // Same state again → the same new record.
     const repeat = await reexport(
-      json('POST', { acceptUnverified: true }),
+      json('POST', { acceptUnverified: true, checklistConfirmed: true }),
       ctx({ id: nc.exportId }),
     );
     expect(((await repeat.json()) as ExportResponse).exportId).toBe(rec.exportId);
@@ -174,6 +198,11 @@ describe('status flow and re-export (T179)', () => {
       ctx({ id: randomUUID() }),
     );
     expect(bad.status).toBe(400);
+    const badList = await reexport(
+      json('POST', { checklistConfirmed: 'yes' }),
+      ctx({ id: randomUUID() }),
+    );
+    expect(badList.status).toBe(400);
     expect((await reexport(json('POST', {}), ctx({ id: randomUUID() }))).status).toBe(404);
     expect((await reexport(json('POST', {}), ctx({ id: 'nope' }))).status).toBe(404);
   });

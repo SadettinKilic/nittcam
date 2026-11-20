@@ -38,13 +38,24 @@ test('status flow and re-export from history', async ({ page }) => {
   await page.getByTestId('project-status-undo').click();
   await expect(badge).toHaveText(names.produced);
 
-  // Re-export the NC row: acceptance asked again, then the same record (no new row).
+  // Re-export the NC row: checklist and acceptance asked again, then the same record (no new row).
   const rows = page.getByTestId('export-history-row');
   await expect(rows).toHaveCount(1);
   const hash = await rows.first().getAttribute('data-hash');
   await rows.first().getByTestId('export-reexport').click();
   await expect(page.getByTestId('export-reexport-accept')).toBeVisible();
-  await page.getByTestId('export-reexport-confirm').click();
+  // D-071: the same checklist as the export step, then the acceptance; confirm is gated.
+  const confirm = page.getByTestId('export-reexport-confirm');
+  await expect(page.getByTestId('reexport-checklist')).toBeVisible();
+  await expect(confirm).toBeDisabled();
+  await page.getByTestId('reexport-check-origin').check();
+  await page.getByTestId('reexport-check-tool').check();
+  await expect(confirm).toBeDisabled();
+  await page.getByTestId('reexport-check-aircut').check();
+  await expect(confirm).toBeDisabled();
+  await page.getByTestId('reexport-accept').check();
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
   await expect(page.getByText(w.reexportSame)).toBeVisible();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toHaveAttribute('data-hash', hash ?? 'x');
