@@ -271,6 +271,8 @@ export const projects = pgTable(
     revision: integer('revision').notNull().default(1),
     /** Project JSON (§9.2), validated with core `parseProject` before every write. */
     data: jsonb('data').$type<Project>().notNull(),
+    /** Soft delete (T178): hidden from Projeler and Ana sayfa, restorable; exports kept. Null = live. */
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

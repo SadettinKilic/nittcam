@@ -13,7 +13,7 @@ import {
   Tooltip,
   notify,
 } from '@nittcam/ui';
-import { Copy, FolderPlus, Plus, Search } from 'lucide-react';
+import { Copy, FolderPlus, Plus, Search, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
@@ -50,6 +50,7 @@ function fold(s: string): string {
 
 /**
  * Projeler (spec §3.4): list with name, status, machine, material and date; search; open; copy;
+ * delete with "Geri al" (T178);
  * "+ Yeni proje". Data comes from `/api/projects`.
  */
 export function ProjectsView({ t, materials }: { t: Text; materials: Messages['materials'] }) {
@@ -57,6 +58,7 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [query, setQuery] = useState('');
   const [copying, setCopying] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setList({ status: 'loading' });
@@ -92,6 +94,48 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
       notify.error(t.copyFailed);
     } finally {
       setCopying(null);
+    }
+  }
+
+  async function setDeleted(id: string, deleted: boolean): Promise<void> {
+    const res = await fetch(`/api/projects/${id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deleted }),
+    });
+    if (!res.ok) throw new Error(String(res.status));
+  }
+
+  /**
+   * Soft delete (T178): no confirm dialog; the row leaves the list and the toast offers
+   * "Geri al" (the project, its history and exports are kept on the server).
+   */
+  async function remove(item: ProjectListItem) {
+    setDeleting(item.id);
+    try {
+      await setDeleted(item.id, true);
+      setList((l) =>
+        l.status === 'ready' ? { ...l, items: l.items.filter((i) => i.id !== item.id) } : l,
+      );
+      notify.success(fill(t.deleted, { name: item.name }), {
+        id: `project-deleted-${item.id}`,
+        duration: 8000,
+        action: { label: t.undo, onClick: () => void restore(item) },
+      });
+    } catch {
+      notify.error(t.deleteFailed);
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  async function restore(item: ProjectListItem) {
+    try {
+      await setDeleted(item.id, false);
+      await load();
+      notify.success(fill(t.restored, { name: item.name }));
+    } catch {
+      notify.error(t.restoreFailed);
     }
   }
 
@@ -194,7 +238,7 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
                 <span>{t.columns.material}</span>
                 <span>{t.columns.updated}</span>
                 <span>{t.columns.lastExport}</span>
-                <span className="w-24" />
+                <span className="w-32" />
               </div>
               <ul className="flex flex-col divide-y divide-border-subtle">
                 {shown.map((item) => (
@@ -272,7 +316,7 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
                         </dd>
                       </div>
                     </dl>
-                    <div className="flex shrink-0 items-center gap-1 lg:w-24 lg:justify-end">
+                    <div className="flex shrink-0 items-center gap-1 lg:w-32 lg:justify-end">
                       <Button asChild variant="outline" size="sm">
                         <Link
                           href={`/projeler/${item.id}`}
@@ -290,6 +334,18 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
                           onClick={() => void copy(item)}
                         >
                           <Copy aria-hidden />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip content={t.delete}>
+                        <IconButton
+                          size="sm"
+                          data-testid="project-delete"
+                          aria-label={fill(t.rowAction, { action: t.delete, name: item.name })}
+                          disabled={deleting !== null}
+                          loading={deleting === item.id}
+                          onClick={() => void remove(item)}
+                        >
+                          <Trash2 aria-hidden />
                         </IconButton>
                       </Tooltip>
                     </div>

@@ -18,7 +18,7 @@ import {
   type VerificationStage,
   type VerificationState,
 } from '@nittcam/core';
-import { and, asc, desc, eq, max, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, max, sql } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import type { Db } from './client';
 import {
@@ -436,9 +436,23 @@ function projectsRepo(db: Db, companyId: string) {
       const rows = await db
         .select()
         .from(projectsTable)
-        .where(eq(projectsTable.companyId, companyId))
+        .where(and(eq(projectsTable.companyId, companyId), isNull(projectsTable.deletedAt)))
         .orderBy(desc(projectsTable.updatedAt));
       return rows.map(upgradeRow);
+    },
+    /**
+     * Soft delete or restore (T178): a deleted project leaves `list` (Projeler, Ana sayfa) but keeps
+     * its data, commands and exports, so it can be restored. Does not touch `updatedAt` or the
+     * revision. Null for an unknown id or another company's project.
+     */
+    async setDeleted(id: string, deleted: boolean): Promise<ProjectRow | null> {
+      const rows = await db
+        .update(projectsTable)
+        .set({ deletedAt: deleted ? new Date() : null })
+        .where(scope(id))
+        .returning();
+      const row = rows[0];
+      return row ? upgradeRow(row) : null;
     },
     async create(values: NewProject): Promise<ProjectRow> {
       const data = validProject(values.data);

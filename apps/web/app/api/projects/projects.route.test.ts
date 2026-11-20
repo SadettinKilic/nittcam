@@ -12,7 +12,7 @@ import type {
   SaveResponse,
 } from '../../../lib/projects-api';
 import { GET as list, POST as create } from './route';
-import { GET as get, PUT as save } from './[id]/route';
+import { GET as get, PATCH as patch, PUT as save } from './[id]/route';
 import { POST as copy } from './[id]/copy/route';
 
 const AT = '2026-11-17T10:00:00.000+03:00';
@@ -175,5 +175,27 @@ describe('/api/projects', () => {
     );
     expect(missing.status).toBe(404);
     expect((await copy(json({ name: 'k' }), ctx(unknown))).status).toBe(404);
+  });
+
+  it('T178: delete hides the project from the list, Geri al restores it', async () => {
+    const created = (await (
+      await create(json({ name: 'Silinecek', project: project() }))
+    ).json()) as ProjectDetail;
+    const ids = async () => ((await (await list()).json()) as ProjectListItem[]).map((i) => i.id);
+    const del = await patch(json({ deleted: true }, 'PATCH'), ctx(created.id));
+    expect(del.status).toBe(200);
+    expect(await del.json()).toEqual({ id: created.id, deleted: true });
+    expect(await ids()).not.toContain(created.id);
+    // kept: still readable by id (exports and history stay)
+    expect((await get(new Request('http://test'), ctx(created.id))).status).toBe(200);
+    const back = await patch(json({ deleted: false }, 'PATCH'), ctx(created.id));
+    expect(await back.json()).toEqual({ id: created.id, deleted: false });
+    expect(await ids()).toContain(created.id);
+    // bad input / unknown id
+    expect((await patch(json({ deleted: 'yes' }, 'PATCH'), ctx(created.id))).status).toBe(400);
+    expect(
+      (await patch(json({ deleted: true }, 'PATCH'), ctx('00000000-0000-4000-8000-000000000000')))
+        .status,
+    ).toBe(404);
   });
 });
