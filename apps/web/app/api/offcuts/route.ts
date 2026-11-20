@@ -58,7 +58,10 @@ export async function POST(request: Request) {
           : null;
       created.push(await scope.offcuts.create(toInsert({ ...o, sourceProjectId: source })));
     }
-    return NextResponse.json(created.map((r) => toOffcutItem(r)), { status: 201 });
+    return NextResponse.json(
+      created.map((r) => toOffcutItem(r)),
+      { status: 201 },
+    );
   } catch (err) {
     console.error(err);
     return offcutError({ error: 'server_error' }, 500);
