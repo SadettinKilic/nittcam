@@ -23,17 +23,21 @@ test('T178: Projeler with the trash button is axe clean at 1440 and fits at 390'
   await expect(del).toBeVisible();
   const axe = () =>
     new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  const bad = (await axe()).violations.filter((v) => ['serious', 'critical'].includes(v.impact ?? ''));
+  const bad = (await axe()).violations.filter((v) =>
+    ['serious', 'critical'].includes(v.impact ?? ''),
+  );
   expect(bad.map((v) => v.id)).toEqual([]);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await page.getByTestId('projects-search').fill(name);
   await expect(page.getByTestId('project-row').filter({ hasText: name })).toHaveCount(1);
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-  ).toBe(true);
-  const bad2 = (await axe()).violations.filter((v) => ['serious', 'critical'].includes(v.impact ?? ''));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  const bad2 = (await axe()).violations.filter((v) =>
+    ['serious', 'critical'].includes(v.impact ?? ''),
+  );
   expect(bad2.map((v) => v.id)).toEqual([]);
 
   // API: unknown / foreign id answers 404 and never leaks.
