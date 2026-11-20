@@ -1,6 +1,7 @@
 'use client';
 
 import { summarizeLayout, type Project } from '@nittcam/core';
+import { useMemo } from 'react';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import { useNestProgress, type NestProgressStore } from '../../lib/nesting-progress';
@@ -39,7 +40,8 @@ export function NestingPanel({
   /** "İptal" while running (T163): stops the worker, the old layout stays. */
   onCancel?: (() => void) | undefined;
 }) {
-  const summary = summarizeLayout(project);
+  // T281: a run starting or stopping re-renders the panel; the summary only changes with the project.
+  const summary = useMemo(() => summarizeLayout(project), [project]);
   const pct = (v: number) => fill(t.percent, { value: percent.format(v) });
   return (
     <section

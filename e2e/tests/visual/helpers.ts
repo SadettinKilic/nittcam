@@ -1,6 +1,6 @@
 // Visual QA harness (T102, D-032, spec §11): screenshots and axe checks for every screen.
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -109,6 +109,28 @@ export async function snap(
     // Soft: a diff fails the test but later captures still run, so one CI run yields every
     // candidate baseline of a multi-step test (B4b round 2).
     await expect.soft(page).toHaveScreenshot(`${name}.png`, { fullPage });
+  }
+}
+
+/**
+ * Element capture (T161): like snap, but only the given element (the 3D canvas host), so chrome
+ * around it does not churn the baseline. WebGL runs on SwiftShader (CPU), which rasterises the
+ * same on the same image; maxDiffPixels only absorbs edge antialiasing noise (a few hundred
+ * pixels of a ~600 k pixel view; a moved part or camera changes tens of thousands).
+ */
+export async function snapElement(
+  page: Page,
+  target: Locator,
+  name: string,
+  opts: { maxDiffPixels?: number } = {},
+): Promise<void> {
+  await settle(page);
+  mkdirSync(SCREENSHOT_DIR, { recursive: true });
+  await target.screenshot({ path: join(SCREENSHOT_DIR, `${name}.png`), animations: 'disabled' });
+  if (compareBaselines && hasBaseline(name)) {
+    await expect
+      .soft(target)
+      .toHaveScreenshot(`${name}.png`, { maxDiffPixels: opts.maxDiffPixels ?? 300 });
   }
 }
 
