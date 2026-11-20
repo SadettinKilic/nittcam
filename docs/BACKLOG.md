@@ -1316,19 +1316,19 @@ Tester focus: numbers match seeded data; chart readable in dark mode; axe.
 
 ### Batch B28: T181–T183 (machines and settings)
 
-### T181 Machine maintenance and controller library   [status: todo]
+### T181 Machine maintenance and controller library   [status: done]
 Spec: §3.4, §7.1 · Depends: T107
 Acceptance:
 - [ ] manual maintenance log (last date, interval days, note) with reminder badge on Makineler and Ana sayfa; controller-family library pre-fills a new profile (generic, Mach3)
 Tester focus: reminder appears when overdue (fixed clock in test); pre-fill values match the post configs.
 
-### T182 Ayarlar: company, defaults, layer mapping   [status: todo]
+### T182 Ayarlar: company, defaults, layer mapping   [status: done]
 Spec: §3.4 · Depends: T121, T145
 Acceptance:
 - [ ] company name + logo upload (size/type limits), defaults (gap, margin, tabs, lead-in, edge-band mode), DXF layer mapping editor, material defaults link
 Tester focus: defaults used by a new project; upload limits; axe.
 
-### T183 Ayarlar: appearance and preferences   [status: todo]
+### T183 Ayarlar: appearance and preferences   [status: done]
 Spec: §3.7 · Depends: T182
 Acceptance:
 - [ ] theme, density (comfortable/compact; the compact tokens exist since T195, this adds the user setting), 3D simple mode, reduced motion override, shortcuts list
