@@ -1536,15 +1536,16 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 - Dışa aktar: the footer hint jumps to the checklist (or the list sits above Dosyalar); file names break at _ / - or are middle-truncated; report card time rounds like Simülasyon [#12]
 - Small server fixes: maintenance day in local time; client-log limit in bytes [T B38, T B43] (done in B46 #150, D-086)
 
-### P5 Output (golden impact: tester gcode-safety review, D-051)
-- Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi") [#7]
-- Float residue in G-code (`Y117.9999`): clean before rounding [#8] → T306 (nesting side)
-- Lead-in arc / ramp on inner contours, plunge mark off the visible edge (check what T288 already covers) [#6]
-- Passes above tab height do not lift over tab gaps [#6]
-- PDF sheet page: mark the origin corner (X0 / Y0, front left); grain arrow not over the name on small parts [#11]
-- Labels: "first free label" start position for a half-used sheet [#11]
-- Consider writing the `KESIM` header line in every file before the field test (golden impact) [#11]
-- Thin-skin cleanup pass enters with a straight plunge; consider a ramp (golden impact) [T B43]
+### P5 Output (golden impact: tester gcode-safety review, D-051)   [status: done, B51 #155; float residue → T306]
+Done in B51 (#155, D-091); goldens approved per D-051.
+- Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi") [#7] (done in B51)
+- Float residue in G-code (`Y117.9999`): clean before rounding [#8] → T306 (nesting side, open)
+- Lead-in arc / ramp on inner contours, plunge mark off the visible edge (check what T288 already covers) [#6] (checked in B51: already covered by T141/T288, no change)
+- Passes above tab height do not lift over tab gaps [#6] (checked in B51: already so, no change)
+- PDF sheet page: mark the origin corner (X0 / Y0, front left); grain arrow not over the name on small parts [#11] (done in B51)
+- Labels: "first free label" start position for a half-used sheet [#11] (done in B51)
+- Consider writing the `KESIM` header line in every file before the field test (golden impact) [#11] (done in B51)
+- Thin-skin cleanup pass enters with a straight plunge; consider a ramp (golden impact) [T B43] (checked in B51: straight plunge kept)
 
 ### Not polish (moved)
 - Mode-card click long task 225–375 ms → T186 performance sweep.
