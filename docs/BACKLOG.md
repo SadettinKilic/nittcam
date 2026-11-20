@@ -1404,6 +1404,33 @@ Acceptance: NC, DXF, PDF and labels share one pattern (project, revision, kind, 
 CTO #11 (T179 gap). Rides with T295.
 Acceptance: Projeler "İndir" and the history show an "eski revizyon" badge when the last file is from an older revision than the project; one click to regenerate.
 
+## CTO review #12 follow-ups (2026-11-20, D-047; review `docs/reviews/2026-11-20-cto-design-review-12.md`)
+
+M8 exit (CTO #12): closes when B41 (#139) lands and T298 + T301 are done.
+
+### Batch B47: T298–T300 (must-fix A, B + gap E1; Dev 2, before polish P3)
+
+### T298 Thin-skin thickness bounds   [status: todo]
+Must-fix A (CTO #12), safety; the other arm of T293. Spec: §6.3, §7.2 · gcode-safety review
+Acceptance: as review #12 section A: the step-1 field, the command and the validator refuse a skin below a minimum (PO proposal: ≥ 0,2 mm and ≤ thickness − 1 mm; numbers in DECISIONS, tuned in the field test); old / hand-edited projects are caught (NC blocked, finding named, link to the field); goldens unchanged for defaults.
+
+### T299 Simülasyon scrolls when checks fail; "Kesim ayarlarına git" keeps the layout   [status: todo]
+Must-fix B (CTO #12). Acceptance: as review #12 section B: the step content scrolls (no `overflow: hidden` trap) with 4+ findings at 1440 × 900 and 1024; the link scrolls the card into view without moving the footer over the fields.
+
+### T300 Too-small edge margin is caught at Dizilim, not as a machine error   [status: todo]
+Gap E1 (CTO #12), D-045. Acceptance: as review #12 E1: Dizilim warns when margin + lead-in does not fit the tool, before Simülasyon; the Simülasyon finding points to the margin setting, not to Makineler.
+
+### Batch B48: T301–T303 (M8 exit gap E2, gap E3, export follow-ups; Dev 1 after B42)
+
+### T301 Company name and logo are used   [status: todo]
+Gap E2 (CTO #12); needed to close M8. Acceptance: the sidebar shows the company name (not "Atölyem"); PDF pages and labels carry name and logo (deterministic bytes kept: same logo, same hash).
+
+### T302 Tab default in the material parameters   [status: todo]
+Gap E3 (CTO #12). Acceptance: the material parameter set has tab count / width / height fields with the T293 bounds; the three screens that point there land on them.
+
+### T303 Export follow-ups   [status: todo]
+CTO #12 on T295 / T296. Acceptance: the NC file name respects the machine file-name length limit (post config; shorten the project part, keep revision and sheet); a project changed after "üretildi" shows that the last file is older (status or badge), not a silent "üretildi".
+
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
 
 Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.
@@ -1448,6 +1475,8 @@ Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by
 - ★ Assembly 3D: first camera fits the whole cabinet; door opacity / outline so it reads closed; hinge cups visible [T B21b, #9, #10]
 - Console: THREE.Clock deprecated warning on every 3D open (use THREE.Timer) [#10]
 - Kesim ayarları card: tab options as one segmented row, three fields in one row; a field with a refused value shows the value in use ("kullanılan: 4") [#11]
+- Özet cutting-settings line wraps to two lines at 232 px and also names the thin skin; Özet warning count equals the Uyarılar panel; Dizilim says the part gap is added to the tool diameter [#12]
+- Phone: Simülasyon 3rd sheet tab cut at 390 (scrollable) [T B43]
 
 ### P3 Kesim listesi, adım 1, makine formu, DXF
 - Cut list: "Uyarılar" panel does not cover cells, clicking an issue focuses its row; row marker for parts with inner cuts; edge band unit "mm"; a name-only row is not counted in the part total; cabinet toast and button use the same unit [#5, #6, #9, #10]
@@ -1458,6 +1487,9 @@ Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by
 - DXF dialog: focus returns to "DXF içe aktar", first focus visible; duplicate `data-testid="dxf-open"`; a LINE over a closed polyline edge counts as duplicate; report shows holes separately [T B16]
 - Step 1 "ince tabaka" switch and Simülasyon "Köprü: Kapalı" use the same word and link to each other [#11]
 - Server accepts a grain value on a grainless offcut PATCH; T292 rows get a stray thickness note when the target thickness differs [T B36]
+- Out-of-range fields say the limit (Ayarlar defaults, offcut dialog) instead of a silent disabled Kaydet [#12]
+- ★ One vocabulary across Ayarlar / Simülasyon / step 1: Köprü, Kapalı, ince tabaka, Climb (tırmanma) [#11, #12]
+- "Ayrı plaka parçalarını yeni projeye aktar" also on an unsaved new project (saves first); a project on an archived machine shows "bu makine arşivlendi" on step 1 and Dışa aktar [#12]
 
 ### P4 Kabuk, bildirimler, ana sayfa   [status: done, B39]
 Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is already the box.
@@ -1468,6 +1500,10 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 - Şablonlar thumbnails to scale [#8]
 - Projeler: search / filter / sort kept in the URL; rows ≈ 100 px high, "Son dışa aktarma" one line + icon button; small layout thumbnail or sheet count to tell same-name projects apart [#11]
 - Dışa aktar: "PDF aç" plus a download option; history rows visible at 1440 × 900 without scrolling (CTO #4 not fully met) [#11, T B37]
+- ★ Projeler row 205 px on a 3-sheet project: one line + "3 dosya" / zip button, no mid-word breaks; search / filter / sort in the URL [#11, #12]
+- Ana sayfa: "Bu hafta dışa aktarma" counts NC only (or relabel), deleted projects not counted; "Makine yok" when no active machine [#12]
+- Dışa aktar: the footer hint jumps to the checklist (or the list sits above Dosyalar); file names break at _ / - or are middle-truncated; report card time rounds like Simülasyon [#12]
+- Small server fixes: maintenance day in local time; client-log limit in bytes [T B38, T B43]
 
 ### P5 Output (golden impact: tester gcode-safety review, D-051)
 - Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi") [#7]
@@ -1477,6 +1513,7 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 - PDF sheet page: mark the origin corner (X0 / Y0, front left); grain arrow not over the name on small parts [#11]
 - Labels: "first free label" start position for a half-used sheet [#11]
 - Consider writing the `KESIM` header line in every file before the field test (golden impact) [#11]
+- Thin-skin cleanup pass enters with a straight plunge; consider a ramp (golden impact) [T B43]
 
 ### Not polish (moved)
 - Mode-card click long task 225–375 ms → T186 performance sweep.
@@ -1543,6 +1580,7 @@ Acceptance:
 Tester focus: safety review of the extended test program; air-cut floor (D-031) holds for the new operations.
 
 ### T192 In-app help and "Yenilikler"   [status: todo]
+> CTO #12: add a search in the help.
 Spec: §8.2 · Depends: T190
 Acceptance:
 - [ ] Turkish help pages (getting started, cut list, drawing, grain, 3D, export, air cut) linked from the palette; "Yenilikler" dialog per release
