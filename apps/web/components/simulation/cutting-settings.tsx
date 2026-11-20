@@ -114,8 +114,9 @@ export function CuttingSettings({
       ) : null}
       {c.tabMode !== 'off' ? (
         <div className="flex flex-col gap-2">
-          {/* B44: the three fields in one row. */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* B44: the three fields in one row; the unit sits in the label so a narrow
+              field still shows its whole value. */}
+          <div className="grid grid-cols-3 items-end gap-2">
             <NumberField
               label={t.count}
               value={c.tabs.count}
@@ -126,8 +127,7 @@ export function CuttingSettings({
               onCommit={(count) => run('setTabs', { count })}
             />
             <NumberField
-              label={t.width}
-              unit={mm}
+              label={`${t.width} (${mm})`}
               value={c.tabs.width}
               testId="sim-cutting-width"
               errors={errors}
@@ -139,8 +139,7 @@ export function CuttingSettings({
               onCommit={(width) => run('setTabs', { width })}
             />
             <NumberField
-              label={t.height}
-              unit={mm}
+              label={`${t.height} (${mm})`}
               value={c.tabs.height}
               testId="sim-cutting-height"
               errors={errors}
