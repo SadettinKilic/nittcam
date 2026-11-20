@@ -9,6 +9,13 @@ import { nest } from './wizard-helpers';
  * PERF_BUDGET=1 on a machine with a GPU (the "mid laptop" reference); here it is logged.
  */
 test.use({ launchOptions: { args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] } });
+// T159: the real frame watch never downgrades the view on the CPU-rendered runner (fps.ts); the
+// slow chain is driven by the __nittcam3dSlow hook where a test needs it.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __nittcam3dNoAuto: boolean }).__nittcam3dNoAuto = true;
+  });
+});
 
 const t = tr.cutList;
 const pt = tr.layout.preview3d;

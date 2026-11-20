@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { FpsWatch, feedSlowHook, slowHookFps } from './fps';
+import { autoDowngradeOff, FpsWatch, feedSlowHook, slowHookFps } from './fps';
 
 /** Feeds `n` frames at `fps` from `start` ms; returns the fire count and the next time. */
 function feed(w: FpsWatch, fps: number, n: number, start = 0): { fired: number; t: number } {
@@ -46,6 +46,22 @@ describe('slowHookFps', () => {
     expect(slowHookFps()).toBeNull();
     g.window.__nittcam3dSlow = 10;
     expect(slowHookFps()).toBe(10);
+  });
+});
+
+describe('autoDowngradeOff (T159 CI determinism)', () => {
+  const g = globalThis as unknown as { window?: { __nittcam3dNoAuto?: unknown } };
+  afterEach(() => {
+    delete g.window;
+  });
+  it('is on only when the test switch is exactly true', () => {
+    expect(autoDowngradeOff()).toBe(false);
+    g.window = {};
+    expect(autoDowngradeOff()).toBe(false);
+    g.window.__nittcam3dNoAuto = 1;
+    expect(autoDowngradeOff()).toBe(false);
+    g.window.__nittcam3dNoAuto = true;
+    expect(autoDowngradeOff()).toBe(true);
   });
 });
 

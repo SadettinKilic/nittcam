@@ -4,6 +4,13 @@ import { fill, nest, openNewProject } from './wizard-helpers';
 
 /** B21 T158: "Montaj görünümü" shows generated cabinets as assembled boxes. */
 test.use({ launchOptions: { args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] } });
+// T159: the real frame watch never downgrades the view on the CPU-rendered runner (fps.ts); the
+// slow chain is driven by the __nittcam3dSlow hook where a test needs it.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __nittcam3dNoAuto: boolean }).__nittcam3dNoAuto = true;
+  });
+});
 
 const c = tr.cutList.cabinet;
 const pt = tr.layout.preview3d;

@@ -57,6 +57,17 @@ export function slowHookFps(): number | null {
 }
 
 /**
+ * Test switch (T159): with `window.__nittcam3dNoAuto = true` the real frame rate never turns on
+ * Basit mod or drops to 2D. A CPU-rendered (SwiftShader) CI canvas is always under 30 fps, so specs
+ * that do not test the slow chain set it; the chain itself is driven by `__nittcam3dSlow`, which
+ * still works with this switch on. Not set in normal use.
+ */
+export function autoDowngradeOff(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (window as unknown as { __nittcam3dNoAuto?: unknown }).__nittcam3dNoAuto === true;
+}
+
+/**
  * Feeds the watch synthetic frames at `fps` from `clock` (test hook, T159) until it fires or
  * `max` frames are fed, so one real frame covers the whole 3 s window: the slow chain does not
  * depend on how fast a CPU-rendered (CI) canvas draws real frames. Returns the new clock.

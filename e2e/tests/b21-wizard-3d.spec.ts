@@ -4,6 +4,13 @@ import { goStep, nest, openNewProject, paste } from './wizard-helpers';
 
 /** B21 T160: 2D / 3D in the wizard's sheet step, the camera kept across steps, PNG export. */
 test.use({ launchOptions: { args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] } });
+// T159: the real frame watch never downgrades the view on the CPU-rendered runner (fps.ts); the
+// slow chain is driven by the __nittcam3dSlow hook where a test needs it.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __nittcam3dNoAuto: boolean }).__nittcam3dNoAuto = true;
+  });
+});
 
 test('sheet step 3D, camera kept on the way to Dizilim, "Görüntü kaydet" downloads a PNG', async ({
   page,

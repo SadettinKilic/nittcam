@@ -17,7 +17,7 @@ import { NeutralToneMapping, Plane, Vector3, type PerspectiveCamera } from 'thre
 import type { ThreeEvent } from '@react-three/fiber';
 import { buildSheetScene, pickSlot, type SheetScene } from '../../lib/preview3d/sheet-scene';
 import { SlotState } from './slots';
-import { FpsWatch, feedSlowHook, slowHookFps } from '../../lib/preview3d/fps';
+import { autoDowngradeOff, FpsWatch, feedSlowHook, slowHookFps } from '../../lib/preview3d/fps';
 import { materialLook, type MaterialLook } from '../../lib/preview3d/textures';
 import { stockMaterials } from './materials';
 type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
@@ -494,7 +494,14 @@ function Rig({
       const fed = feedSlowHook(fps.current, fakeClock.current, fake);
       fakeClock.current = fed.clock;
       slow = fed.slow;
-    } else slow = fps.current.frame(now);
+    } else {
+      slow = fps.current.frame(now);
+      // Test switch: the real rate is still read out (data-fps) but never downgrades the view.
+      if (slow && autoDowngradeOff()) {
+        fps.current.reset();
+        slow = false;
+      }
+    }
     if (slow) onSlow?.();
     if (fake) invalidate(); // the test hook keeps frames coming until the watch fires
     onStats?.({
