@@ -1168,7 +1168,7 @@ Tester focus: quantity limit respected; property tests across mixed sizes.
 
 ### Batch B23: T165–T167 (true-shape nesting)
 
-### T165 True-shape engine I: footprints and collision   [status: todo]
+### T165 True-shape engine I: footprints and collision   [status: done]
 Spec: §6.2 (v3) · Depends: T113 · Decision: D-034
 Acceptance:
 - [ ] footprint = outline offset by tool radius + gap/2 (own offset), arcs discretised for collision only (cutting geometry stays exact)
@@ -1176,14 +1176,14 @@ Acceptance:
 - [ ] fast-check: no overlap of footprints, inside the sheet, deterministic
 Tester focus: property tests; exact overlap re-check with a different algorithm in the test.
 
-### T166 True-shape engine II: rotations and part-in-hole   [status: todo]
+### T166 True-shape engine II: rotations and part-in-hole   [status: done]
 Spec: §6.2 · Depends: T165
 Acceptance:
 - [ ] rotation candidates from `allowedRotations` (grain) plus a free-part step policy (90° default, 45°/15° options); optional small parts inside large inner cutouts
 - [ ] grain rule property: fixed parts only at grain-aligned angles
 Tester focus: grain property tests; part-in-hole never overlaps the hole's toolpath zone.
 
-### T167 Engine selection and utilisation benchmark   [status: todo]
+### T167 Engine selection and utilisation benchmark   [status: done]
 Spec: §6.2 · Depends: T166
 Acceptance:
 - [ ] rectangles at axis angles → MaxRects; freeform or non-axis grain parts → true-shape (mixed jobs: true-shape for all); time budget 300 parts ≤ 10 s in the worker
