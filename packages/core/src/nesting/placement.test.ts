@@ -124,10 +124,16 @@ describe('checkPlacement / LOCKED_PLACEMENT_INVALID (D-020)', () => {
 
   it('the tool diameter comes from the context, else 0 (gap only)', () => {
     const p = base([pl('a', 0, 10, 10), pl('b', 0, 116, 10, false)]); // 6 mm apart
-    expect(validateProject(p).map((i) => i.code)).toEqual([]);
-    expect(validateProject(p, { toolDiameter: 8 }).map((i) => i.code)).toEqual([
-      'LOCKED_PLACEMENT_INVALID',
-    ]);
+    expect(
+      validateProject(p)
+        .filter((i) => i.code !== 'PART_NOT_IN_LAYOUT')
+        .map((i) => i.code),
+    ).toEqual([]);
+    expect(
+      validateProject(p, { toolDiameter: 8 })
+        .filter((i) => i.code !== 'PART_NOT_IN_LAYOUT')
+        .map((i) => i.code),
+    ).toEqual(['LOCKED_PLACEMENT_INVALID']);
   });
 
   it('the placer output with every placement locked is valid', () => {

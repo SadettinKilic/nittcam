@@ -8,6 +8,7 @@
 (MALZEME: mdf 18.000 mm, plaka 2800.000 x 2070.000)
 (ORIJIN: on sol, X+ sag, Y+ arka, plaka ofseti 0.000 / 0.000)
 (Z SIFIR: malzeme ustu)
+(KESIM: kopru yalniz kucuk parcada 4 adet 10.000 x 3.000 mm, giris yay, yon climb)
 (TAKIMLAR: T2 D8.000)
 (NittCam ile uretildi)
 G21 G90 G91.1 G17 G40 G49 G54

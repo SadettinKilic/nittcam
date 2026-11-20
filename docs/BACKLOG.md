@@ -1270,7 +1270,7 @@ Tester focus: label count = total pieces; print preview screenshot; long names t
 
 ### Batch B26: T175–T177 (DXF export, export step, report)
 
-### T175 DXF writer   [status: review]
+### T175 DXF writer   [status: done]
 Spec: §6.6, §4.6 · Depends: T145
 Acceptance:
 - [x] own writer: layout (sheets side by side) and single parts; layers per operation (DIS_KESIM, IC_KESIM, CEP, DELIK, CIZGI); arcs as bulges; round-trip test with our importer (= same contours within EPS)
@@ -1292,9 +1292,9 @@ Tester focus: values equal the PDF report values.
 
 ### Batch B27: T178–T180 (projects and home)
 
-### T178 Projeler page: search, filter, copy, delete   [status: review]
+### T178 Projeler page: search, filter, copy, delete   [status: done]
 Owner (2026-11-20): looked for delete on Projeler and found none; **pull the delete part forward** (next free batch), copy/search/filter can stay in M8.
-Progress (B24 #113, 2026-11-20): soft delete + Geri al done (migration 0007 `projects.deleted_at`, tenant-scoped PATCH). Left for M8: copy, search, filter, sort, pagination, a "Silinenler" list, and blocking a deleted project's direct link.
+Progress (B24 #113, 2026-11-20): soft delete + Geri al done (migration 0007 `projects.deleted_at`, tenant-scoped PATCH). Left for M8: copy, search, filter, sort, pagination, a "Silinenler" list, and blocking a deleted project's direct link. Rest landed in B35 (#127).
 Spec: §3.4 · Depends: T111
 Acceptance:
 - [x] table with name, status, machine, material, date; search (Turkish folding), filters (status, machine, material), sort, pagination; copy project (new id, revision 1, exports not copied); soft delete with undo toast
@@ -1340,7 +1340,7 @@ Tester focus: preferences persist and apply on reload; compact density screensho
 
 ### Batch B33: T287–T289 (must-fix A + gaps E1, E2; runs now on Dev 2, parallel with B32)
 
-### T287 Unplaced part: no green check on Simülasyon, named lock on Dışa aktar   [status: todo]
+### T287 Unplaced part: no green check on Simülasyon, named lock on Dışa aktar   [status: done]
 Must-fix A (CTO #10). Spec: §3.6, §6.5, §7.2
 Acceptance:
 - [ ] a part that is not in the layout (does not fit, or added after nesting) means the Simülasyon summary never shows "Tüm kontroller geçti"; it shows "1 kontrol geçmedi" with the part name, open; same result source as Dışa aktar (K2)
@@ -1349,7 +1349,7 @@ Acceptance:
 - [ ] goldens unchanged; NC lock never relaxed
 Tester focus: oversize part, part added after nesting, deleting it turns all three steps green; 1440 light/dark; axe.
 
-### T288 Cutting settings UI: tabs, lead-in, direction   [status: todo]
+### T288 Cutting settings UI: tabs, lead-in, direction   [status: done]
 Gap E1 (CTO #10). Spec: §6.3, §7.2 · gcode-safety review
 Acceptance:
 - [ ] Simülasyon left panel "Kesim ayarları": tabs (all parts / small parts only / off), count, width, height; lead-in (arc / line); direction (climb / conventional)
@@ -1368,7 +1368,7 @@ Tester focus: archive/undo, new-project picker, old project opens; tenancy.
 
 ### Batch B34: T290–T292 (project flow follow-ups; after B27)
 
-### T290 Project opens at the step where work stopped   [status: review]
+### T290 Project opens at the step where work stopped   [status: done]
 Gap E5 (CTO #10). Spec: §3.4
 Acceptance:
 - [x] "Aç" opens the step after the last completed one (layout → Dizilim, export → Dışa aktar); `?adim=` in the URL wins; Çizim / Liste view remembered

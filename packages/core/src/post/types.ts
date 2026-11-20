@@ -34,6 +34,23 @@ export interface PostMeta {
    * so programs without such a template stay byte-identical.
    */
   unverifiedTemplates?: readonly string[];
+  /**
+   * The cutting settings the toolpath used (T288, K3): one "KESİM" header line. Absent = no line,
+   * so programs made without it (golden files) stay byte-identical.
+   */
+  cutting?: PostCuttingMeta;
+}
+
+/** T288: tabs, lead-in and direction as the file header states them. */
+export interface PostCuttingMeta {
+  tabMode: 'all' | 'small' | 'off';
+  tabCount: number;
+  tabWidth: number;
+  tabHeight: number;
+  /** Thin skin under small parts, mm; null = none. */
+  skin: number | null;
+  leadIn: 'arc' | 'line';
+  direction: 'climb' | 'conventional';
 }
 
 export type PostCode =

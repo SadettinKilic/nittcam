@@ -55,6 +55,7 @@ import {
   Maximize,
   RefreshCw,
   Square,
+  TriangleAlert,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -239,6 +240,7 @@ function LayoutViewImpl({
     [project],
   );
   const summary = useMemo(() => summarizeLayout(project), [project]);
+  const unplacedCount = summary.unplaced.length;
   const editable = onLock !== undefined;
 
   // Width of the drawing = width of its box (fits 390 px screens); refit when it changes.
@@ -704,36 +706,50 @@ function LayoutViewImpl({
             row whatever the canvas width; narrower screens keep the own tab row under 768 px of
             canvas (T199b). */}
         <div className="flex flex-col items-end gap-2 @3xl:flex-row @3xl:items-start @3xl:justify-between lg:flex-row lg:items-start lg:justify-between">
-          <PlateTabStrip
-            active={String(sheet)}
-            className={`${floating} max-w-full min-w-0 self-stretch p-0.5 @3xl:self-auto lg:self-auto`}
-            testId="sheet-tabs-scroll"
-          >
-            <TabsList
-              variant="segmented"
-              aria-label={t.sheetTabs}
-              className="h-auto w-max flex-nowrap justify-start"
+          <div className="flex max-w-full min-w-0 items-start gap-2 self-stretch @3xl:self-auto lg:self-auto">
+            <PlateTabStrip
+              active={String(sheet)}
+              className={`${floating} max-w-full min-w-0 p-0.5`}
+              testId="sheet-tabs-scroll"
             >
-              {project.layout.sheets.map((_, i) => {
-                const st = summary.sheets[i];
-                return (
-                  <TabsTrigger
-                    key={i}
-                    value={String(i)}
-                    className="relative h-8 shrink-0 gap-1 px-2 whitespace-nowrap"
-                  >
-                    {fill(t.sheetTab, { n: i + 1 })}
-                    {st ? (
-                      <span className="text-xs font-normal text-fg-subtle tabular-nums">
-                        {fill(t.sheetTabWaste, { waste: pctFormat.format(st.wastePercent) })}
-                      </span>
-                    ) : null}
-                    {st ? <UsageBar used={100 - st.wastePercent} /> : null}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </PlateTabStrip>
+              <TabsList
+                variant="segmented"
+                aria-label={t.sheetTabs}
+                className="h-auto w-max flex-nowrap justify-start"
+              >
+                {project.layout.sheets.map((_, i) => {
+                  const st = summary.sheets[i];
+                  return (
+                    <TabsTrigger
+                      key={i}
+                      value={String(i)}
+                      className="relative h-8 shrink-0 gap-1 px-2 whitespace-nowrap"
+                    >
+                      {fill(t.sheetTab, { n: i + 1 })}
+                      {st ? (
+                        <span className="text-xs font-normal text-fg-subtle tabular-nums">
+                          {fill(t.sheetTabWaste, { waste: pctFormat.format(st.wastePercent) })}
+                        </span>
+                      ) : null}
+                      {st ? <UsageBar used={100 - st.wastePercent} /> : null}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </PlateTabStrip>
+            {unplacedCount > 0 ? (
+              // T287 (CTO #10 A): parts that are not on any sheet, visible above the canvas without
+              // scrolling the side panel. Information only: "İleri" stays free.
+              <p
+                role="status"
+                data-testid="layout-unplaced-chip"
+                className="pointer-events-auto inline-flex shrink-0 items-center gap-1.5 self-center rounded-full border border-warning-border bg-warning-subtle px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-warning-text shadow-sm"
+              >
+                <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+                {fill(t.unplacedChip, { count: unplacedCount })}
+              </p>
+            ) : null}
+          </div>
           <div
             className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}
             data-testid="layout-tools"

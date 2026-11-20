@@ -1,7 +1,7 @@
 import { defaultMachineProfile, validateProject, type Project } from '@nittcam/core';
 import { describe, expect, it } from 'vitest';
 import { fill, newProject } from './draft-project';
-import { holeErrors, itemPlace, machineRelated, onDrawnItem } from './part-items';
+import { holeErrors, itemPlace, machineRelated, onDrawnItem, onPartRow } from './part-items';
 
 // T275: hole errors are named where the hole is drawn (B13a / T270 pattern).
 
@@ -76,5 +76,34 @@ describe('itemPlace / machineRelated (T270, T275)', () => {
     expect(itemPlace({ code: 'X', partId: 'kapak', openLine: 1 }, parts, text, fill)).toBe(
       'Kapak · Çizgi 2',
     );
+  });
+});
+
+describe('itemPlace rows / onPartRow (T287)', () => {
+  const parts = [
+    { id: 'raf', name: 'Raf' },
+    { id: 'tezgah', name: 'Tezgah' },
+  ];
+  const text = {
+    innerPlace: '{name} · İç kesim {n}',
+    holePlace: '{name} · Delik {n}',
+    linePlace: '{name} · Çizgi {n}',
+    rowPlace: 'Satır {n} · {name}',
+  };
+
+  it('an issue about the part itself names its 1-based row', () => {
+    expect(itemPlace({ code: 'PART_NOT_IN_LAYOUT', partId: 'tezgah' }, parts, text, fill)).toBe(
+      'Satır 2 · Tezgah',
+    );
+    expect(itemPlace({ code: 'X', partId: 'tezgah', hole: 0 }, parts, text, fill)).toBe(
+      'Tezgah · Delik 1',
+    );
+    expect(itemPlace({ code: 'X', partId: 'gone' }, parts, text, fill)).toBeNull();
+  });
+
+  it('"Parçalara git" only for a part issue without a drawn item', () => {
+    expect(onPartRow({ code: 'X', partId: 'raf' })).toBe(true);
+    expect(onPartRow({ code: 'X', partId: 'raf', inner: 0 })).toBe(false);
+    expect(onPartRow({ code: 'X' })).toBe(false);
   });
 });
