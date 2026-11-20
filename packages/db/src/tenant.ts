@@ -81,6 +81,36 @@ export class InvalidMachineProfile extends Error {
   }
 }
 
+/** One test-program download kept on the machine (T191, D-088). */
+export interface TestDownloadEntry {
+  /** `airCut` | `testCut` | `extAirCut` | `extTestCut`. */
+  kind: string;
+  name: string;
+  sha256: string;
+  /** Profile version the file was generated for. */
+  version: number;
+  /** ISO 8601. */
+  at: string;
+}
+
+/** At most this many downloads are kept per machine. */
+export const TEST_DOWNLOADS_MAX = 50;
+
+/** The stored log; entries of another shape are skipped. */
+export function parseTestDownloads(raw: unknown): TestDownloadEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (e): e is TestDownloadEntry =>
+      typeof e === 'object' &&
+      e !== null &&
+      typeof (e as TestDownloadEntry).kind === 'string' &&
+      typeof (e as TestDownloadEntry).name === 'string' &&
+      typeof (e as TestDownloadEntry).sha256 === 'string' &&
+      Number.isInteger((e as TestDownloadEntry).version) &&
+      typeof (e as TestDownloadEntry).at === 'string',
+  );
+}
+
 /** A maintenance log entry failed core `maintenanceEntrySchema`; nothing was written (T181). */
 export class InvalidMaintenanceEntry extends Error {
   override readonly name = 'InvalidMaintenanceEntry';
@@ -967,6 +997,36 @@ function machinesRepo(db: Db, companyId: string) {
         const log = addMaintenanceEntry(parseMaintenanceLog(rows[0].log), parsed.data);
         await tx.update(machinesTable).set({ maintenanceLog: log }).where(ownedMachine(machineId));
         return log;
+      });
+    },
+    /** Recorded test-program downloads (T191), newest first; null for an unknown machine. */
+    async testDownloads(machineId: string): Promise<TestDownloadEntry[] | null> {
+      const rows = await db
+        .select({ log: machinesTable.testDownloads })
+        .from(machinesTable)
+        .where(ownedMachine(machineId));
+      return rows[0] ? parseTestDownloads(rows[0].log) : null;
+    },
+    /**
+     * Records one test-program download (T191, D-088): prepended, bounded to
+     * `TEST_DOWNLOADS_MAX`. The same file twice in a row (same name and hash) is one entry with
+     * the newer time. False for an unknown or foreign machine.
+     */
+    async recordTestDownload(machineId: string, entry: TestDownloadEntry): Promise<boolean> {
+      return db.transaction(async (tx) => {
+        const rows = await tx
+          .select({ log: machinesTable.testDownloads })
+          .from(machinesTable)
+          .where(ownedMachine(machineId))
+          .for('update');
+        if (!rows[0]) return false;
+        const old = parseTestDownloads(rows[0].log);
+        const head = old[0];
+        const rest =
+          head && head.name === entry.name && head.sha256 === entry.sha256 ? old.slice(1) : old;
+        const log = [entry, ...rest].slice(0, TEST_DOWNLOADS_MAX);
+        await tx.update(machinesTable).set({ testDownloads: log }).where(ownedMachine(machineId));
+        return true;
       });
     },
     /**

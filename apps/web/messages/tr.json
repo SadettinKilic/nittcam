@@ -1583,7 +1583,9 @@
       "dizilim": "Dizilim",
       "simulasyon": "Önizleme / simülasyon",
       "export": "Dışa aktar",
-      "short": { "simulasyon": "Simülasyon" },
+      "short": {
+        "simulasyon": "Simülasyon"
+      },
       "stepOf": "Adım {n} / {total}",
       "status": {
         "done": "tamamlandı",
@@ -2086,6 +2088,126 @@
       "done": "tamamlandı",
       "current": "sıradaki adım",
       "upcoming": "bekliyor"
+    },
+    "fieldKitLink": "Saha testi kiti"
+  },
+  "fieldKit": {
+    "title": "Saha testi kiti",
+    "subtitle": "{machine} · profil v{version} · post {post}",
+    "metaTitle": "Saha testi kiti",
+    "print": "Yazdır / PDF olarak kaydet",
+    "back": "Doğrulamaya dön",
+    "loading": "Saha kiti yükleniyor",
+    "notFound": "Makine bulunamadı.",
+    "loadError": "Saha kiti yüklenemedi.",
+    "retry": "Tekrar dene",
+    "printedOn": "Tarih: ............  Operatör: ............................",
+    "intro": "Makine gününden önce yazdırın. Air cut her zaman ilk iştir: malzemesiz, takım malzemenin {gap} mm üstünde.",
+    "before": {
+      "title": "Makineye gitmeden",
+      "items": [
+        "Makinede bugün sorunsuz çalışan 2–3 NC dosyasını USB’den kopyalayın; post ayarı bunlara bakılarak düzeltilir.",
+        "Controller ekranının ve etiketinin fotoğrafını çekin: marka, model, yazılım sürümü.",
+        "Dosya uzantısını ve dosya adı sınırını (karakter) öğrenin.",
+        "Takım değişimi: otomatik mi, elle mi; takımların çapı, tipi, ağız sayısı, devir ve besleme değerleri.",
+        "Z sıfırlama yöntemi: tablaya mı, malzeme üstüne mi; takım boyu ölçer var mı.",
+        "Program sıfırı hangi köşe; tabla ölçüsü ve eksen sınırları. Makine profili bunlarla aynı mı?",
+        "Tabla tutma tipi: vakum, mengene, T-slot.",
+        "Bu sayfadaki dört dosyayı USB’ye kopyalayın: air cut, test parçası, genişletilmiş air cut, genişletilmiş test parçası."
+      ]
+    },
+    "bring": {
+      "title": "Yanınızda götürün",
+      "items": [
+        "USB bellek (dosyalar yüklü) ve bu sayfanın baskısı",
+        "Kumpas (0,02 mm) ve derinlik ölçümü için kumpasın derinlik ucu; metre",
+        "Fire plaka: en az {small} mm (test parçası) ve {large} mm (genişletilmiş parça), {thickness} mm {material}",
+        "Profildeki takım: T{tool}, Ø{diameter} mm, bir de yedeği",
+        "Telefon (fotoğraf ve video), kalem",
+        "Koruyucu gözlük, kulaklık; toz emme çalışır durumda"
+      ]
+    },
+    "air": {
+      "title": "Makine günü 1: air cut (malzemesiz)",
+      "steps": [
+        "Takımı takın: T{tool}, Ø{diameter} mm. Profildeki takımla aynı olmalı.",
+        "X/Y program sıfırını {corner} köşeye alın.",
+        "Z sıfırını profildeki yönteme göre alın: {zref}.",
+        "Air cut dosyasını yükleyin; ilk satırda “DOGRULANMADI, once air cut” yazdığını görün.",
+        "Besleme hızını %25–50’ye indirin; acil stop elinizin altında olsun.",
+        "Çalıştırın: takım malzemenin {gap} mm üstünde kalır, spindle döner, hiçbir yere değmez.",
+        "Eksen yönlerini, takım değişimini, güvenli Z’yi ve program sonunu izleyin; video çekin.",
+        "Sorun yoksa uygulamada “Air cut onaylandı” adımını işaretleyin. Sonra genişletilmiş air cut dosyasını da aynı şekilde çalıştırın."
+      ]
+    },
+    "cut": {
+      "title": "Makine günü 2: test kesimi",
+      "steps": [
+        "Fire plakayı tablaya sabitleyin; plakanın köşesi program sıfırında olsun.",
+        "Z sıfırını yeniden alın ve takımın değişmediğini kontrol edin.",
+        "Önce 200 × 200 test parçasını kesin; ölçüleri uygulamadaki ölçü formuna girin (uygulama toleransa bakar, düzeltme önerir).",
+        "Sonra genişletilmiş test parçasını kesin ({width} × {height} mm). Parçayı çıkarın, tozunu alın.",
+        "Aşağıdaki formu kumpasla doldurun; farkı 0,2 mm’yi geçen ölçüyü işaretleyin."
+      ]
+    },
+    "park": {
+      "title": "Not: takım değişimi ve park konumu",
+      "text": "Elle takım değişiminde makine malzemenin 20 mm üstünde durur; ayrı bir park konumu yok. Takımı değiştirmeden önce spindle’ın durduğunu görün, gerekirse Z’yi elle kaldırın. Bu yükseklik sizin makinenizde yeterli mi, not alın."
+    },
+    "extended": {
+      "title": "Genişletilmiş test parçası",
+      "text": "Tek parçada üretimdeki bütün işlemler: yay köşeli dış kontur, iç pencere, iki delik, kör cep ve halka kanal. Normal işlerle aynı takım yolu, post ve kontrollerden geçer.",
+      "blocked": "Test kesimi dosyası air cut onaylandıktan sonra açılır.",
+      "airCut": "Genişletilmiş air cut",
+      "testCut": "Genişletilmiş test parçası",
+      "unavailable": "Bu profil genişletilmiş parçayı üretemiyor (takım Ø{max} mm’den küçük olmalı, malzeme en az 5 mm)."
+    },
+    "form": {
+      "title": "Ölçü formu (genişletilmiş parça)",
+      "caption": "Hedef ölçüler ve kumpasla ölçülenler, mm",
+      "measure": "Ölçü",
+      "target": "Hedef",
+      "measured": "Ölçülen",
+      "diff": "Fark",
+      "rows": {
+        "width": "Dış en",
+        "height": "Dış boy",
+        "cornerRadius": "Köşe yarıçapı",
+        "innerWidth": "İç pencere eni",
+        "innerHeight": "İç pencere boyu",
+        "holeDiameter1": "Sol delik çapı",
+        "holeDiameter2": "Sağ delik çapı",
+        "holePitch": "Delik aralığı (merkezden merkeze)",
+        "pocketDiameter": "Cep çapı",
+        "pocketDepth": "Cep derinliği",
+        "grooveWidth": "Kanal genişliği",
+        "grooveDepth": "Kanal derinliği"
+      }
+    },
+    "record": {
+      "title": "Kaydedin",
+      "items": [
+        "Her dosyanın adı ve çalıştırıldığı saat (indirilen dosyalar aşağıda listelenir)",
+        "Gerçek kesim süresi; uygulamanın tahminiyle karşılaştırın",
+        "Kullanılan takım, devir ve besleme; profilden farklıysa",
+        "Ses, titreşim, yanık, parça kayması, köprülerin durumu",
+        "Controller hata mesajları ve ekran fotoğrafları",
+        "Ölçü formu ve parçanın fotoğrafı"
+      ]
+    },
+    "downloads": {
+      "title": "İndirilen test dosyaları",
+      "empty": "Henüz test dosyası indirilmedi.",
+      "file": "Dosya",
+      "kind": "Program",
+      "version": "Profil",
+      "at": "Zaman",
+      "kinds": {
+        "airCut": "Air cut",
+        "testCut": "Test parçası",
+        "extAirCut": "Genişletilmiş air cut",
+        "extTestCut": "Genişletilmiş test parçası"
+      }
     }
   },
   "devUi": {

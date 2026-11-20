@@ -134,6 +134,11 @@ export const machines = pgTable(
     /** Maintenance log entries (§9.1 "bakım kaydı"); shape is decided with the machine screens. */
     maintenanceLog: jsonb('maintenance_log').$type<unknown[]>().notNull().default([]),
     /**
+     * Test-program downloads (T191, D-088): air cut / test cut / extended files that went to the
+     * machine, newest first, bounded. Shape: `TestDownloadEntry` in tenant.ts.
+     */
+    testDownloads: jsonb('test_downloads').$type<unknown[]>().notNull().default([]),
+    /**
      * Archived (T289): hidden from the new-project picker, Makineler's active list and Ana sayfa
      * counts; kept for the projects and exports that use it, restorable. Null = active.
      */

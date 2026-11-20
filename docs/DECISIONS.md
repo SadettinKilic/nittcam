@@ -663,3 +663,12 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-082 CTO review #12 triage (2026-11-20, PO)
 - M8 is closed when B41 (#139) lands and T298 + T301 are done. Must-fix A → T298 (thin-skin bounds, safety), B → T299, gap E1 → T300: batch B47 on Dev 2 before polish P3. E2 → T301, E3 → T302, T295/T296 follow-ups → T303: batch B48 on Dev 1 after B42. 14 polish items into P2–P5.
 - Thin-skin bounds proposal: ≥ 0,2 mm and ≤ thickness − 1 mm (final numbers by dev + tester, tuned in the field test).
+
+## D-087 Field-test kit is a print-friendly page, extended test part through the normal pipeline (2026-11-21, Dev 2, T191)
+- The field-test kit is a page per machine, `/makineler/<id>/saha-kiti` (link on the Doğrulama page), not a generated PDF: it is filled from the machine's profile (tool, origin corner, Z zero, sheet sizes), always current, and "Yazdır / PDF olarak kaydet" prints only the kit (print CSS hides the app shell). No second PDF generator to keep in step.
+- Contents: before the machine day (§12.3 list), what to bring, air cut steps, test cut steps, the manual tool change / no park position note, the extended test part with downloads, a paper measurement form (target / measured / difference), what to record, and the recorded test downloads.
+- The extended test part (300 × 200, R 20 corners, 80 × 50 inner window, 2 × Ø12 through holes 100 mm apart, Ø35 blind pocket at half the thickness, Ø60 ring groove 2 mm deep) is a normal one-part project run through `exportNc` / `buildToolpath` + `postAndCheck`, so the field test proves the production path. Its air cut is the same toolpath raised by the D-031 gap with the `zFloor` check. Its test cut follows the §7.3 order (after an approved air cut). Its measurements are on paper (and `docs/machines/<makine>/saha-testi.md`); the in-app verification form stays the §7.3 200 × 200 part. No golden files for the extended program yet: they are added after the first machine day confirms the post (D-051).
+- `docs/machines/_template/` holds the §12.3 info form, the field-test record and folders for the sample NC files and photos.
+
+## D-088 Test-program downloads are recorded on the machine (2026-11-21, Dev 2, T191)
+- Every served air-cut / test-cut / extended file is kept in `machines.test_downloads` (jsonb, migration 0013): kind, name, sha256, profile version, time; newest first, at most 50, a repeat of the same file is one entry. Exports stay project-bound (`exports.project_id` is required), so test files are not export rows. Shown on the field-test kit.
