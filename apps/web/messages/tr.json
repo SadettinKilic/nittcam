@@ -892,7 +892,16 @@
       "margin": "Kenar payı ({margin} mm)",
       "conflict": "Çakışma",
       "sheetGrain": "Plaka damar yönü",
-      "partGrain": "Ok: damarı kilitli parça"
+      "partGrain": "Ok: damarı kilitli parça",
+      "hole": "Delik ve şablon",
+      "number": "1.2 = kesim listesi satırı 1, kopya 2"
+    },
+    "sheetStats": "{parts} parça · kullanım %{used} · kontur {length} m",
+    "minimap": {
+      "button": "Tüm plakalar",
+      "title": "Plakalara genel bakış",
+      "sheet": "Plaka {n}: {parts} parça, kullanım %{used}",
+      "caption": "{n} · %{used}"
     },
     "drop": {
       "locked": "Parça {label} yeni yerine kilitlendi (X {x} · Y {y} mm). Geri almak için \"Geri al\".",

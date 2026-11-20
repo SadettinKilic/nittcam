@@ -1,5 +1,6 @@
 import {
   placedInners,
+  placedHoleCentre,
   placedOutline,
   sampleSegment,
   type Part,
@@ -31,6 +32,35 @@ export function footprintOutline(part: Part, rot: number, h: number): number[] |
  */
 export function footprintInners(part: Part, rot: number, h: number): number[][] {
   return placedInners(part, { x: 0, y: 0, rot }).map((p) => flat(p, h));
+}
+
+/**
+ * Holes of a placed part (incl. template instances, which live in `part.holes`) in the same
+ * frame as `footprintOutline`: centre and radius in mm, Y down (T171, CTO #8).
+ */
+export function footprintHoles(
+  part: Part,
+  rot: number,
+  h: number,
+): { x: number; y: number; r: number }[] {
+  return part.holes.map((hole) => {
+    const c = placedHoleCentre(part, { x: 0, y: 0, rot }, hole);
+    return { x: round(c.x), y: round(h - c.y), r: hole.d / 2 };
+  });
+}
+
+/** Length of a closed flat [x, y, …] polygon, mm. */
+export function ringLength(pts: readonly number[]): number {
+  let len = 0;
+  const n = pts.length / 2;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    len += Math.hypot(
+      (pts[2 * j] ?? 0) - (pts[2 * i] ?? 0),
+      (pts[2 * j + 1] ?? 0) - (pts[2 * i + 1] ?? 0),
+    );
+  }
+  return len;
 }
 
 function flat(poly: Polyline, h: number): number[] {

@@ -161,7 +161,13 @@ test.describe('T013 layout view', () => {
     // T197: the legend is a popover on the canvas (bottom-left).
     await page.getByTestId('layout-legend-button').click();
     await expect(page.getByText(l.legend.waste)).toBeVisible();
+    await expect(page.getByText(l.legend.number)).toBeVisible();
     await page.keyboard.press('Escape');
+    // T171: per-sheet stats (parts, utilisation, contour length); one sheet → no minimap.
+    await expect(page.getByTestId('layout-sheet-stats')).toHaveText(
+      /^8 parça · kullanım %\d+(,\d)? · kontur \d+(,\d)? m$/,
+    );
+    await expect(page.getByTestId('layout-minimap-button')).toHaveCount(0);
     await pickOption(page.getByTestId('layout-select'), '1.1 · Yan dikme');
     await expect(page.getByTestId('layout-info-grain')).toHaveText(
       fill(l.info.grainYes, { angle: '0' }),
@@ -311,6 +317,17 @@ test.describe('T013 layout view', () => {
       'data-part-count',
       String(counts[2]),
     );
+    // T171: the minimap opens any sheet; the stats follow the shown sheet.
+    await page.getByTestId('layout-minimap-button').click();
+    await expect(page.getByTestId('layout-minimap').getByRole('button')).toHaveCount(3);
+    await page
+      .getByRole('button', {
+        name: new RegExp(`^${fill(l.minimap.sheet, { n: 1, parts: counts[0] ?? 0, used: '' })}`),
+      })
+      .click();
+    await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('layout-sheet-stats')).toContainText(`${counts[0]} parça`);
+    await page.keyboard.press('Escape');
     await page.getByTestId('layout-canvas').scrollIntoViewIfNeeded();
     await page.screenshot({ path: '__screenshots__/t013-plaka-sekmeleri.png', fullPage: true });
     expect(problems).toEqual([]);
