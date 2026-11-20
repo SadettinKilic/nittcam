@@ -374,6 +374,12 @@ function validProject(data: unknown): Project {
   return result.project;
 }
 
+/** A linked project (T292). */
+export interface ProjectLink {
+  id: string;
+  name: string;
+}
+
 export interface NewProject {
   /** Client-generated id (D-030); the database generates one when it is missing. */
   id?: string;
@@ -385,6 +391,8 @@ export interface NewProject {
   commands?: readonly CommandLogEntry[];
   /** User who created it (same company); stored on the command rows. */
   userId?: string;
+  /** T292: the project it was split off from (same company, checked by the caller). */
+  sourceProjectId?: string | null;
 }
 
 export interface SaveProject {
@@ -454,6 +462,36 @@ function projectsRepo(db: Db, companyId: string) {
       const row = rows[0];
       return row ? upgradeRow(row) : null;
     },
+    /**
+     * T292: the live project this one was split off from, and the live projects split off from
+     * it (oldest first). Empty for an unknown id or another company's project.
+     */
+    async links(id: string): Promise<{ source: ProjectLink | null; derived: ProjectLink[] }> {
+      const self = await db
+        .select({ source: projectsTable.sourceProjectId })
+        .from(projectsTable)
+        .where(scope(id));
+      const sourceId = self[0]?.source ?? null;
+      const live = (extra: ReturnType<typeof eq>) =>
+        and(eq(projectsTable.companyId, companyId), isNull(projectsTable.deletedAt), extra);
+      const pick = { id: projectsTable.id, name: projectsTable.name };
+      const source = sourceId
+        ? ((
+            await db
+              .select(pick)
+              .from(projectsTable)
+              .where(live(eq(projectsTable.id, sourceId)))
+          )[0] ?? null)
+        : null;
+      const derived = self[0]
+        ? await db
+            .select(pick)
+            .from(projectsTable)
+            .where(live(eq(projectsTable.sourceProjectId, id)))
+            .orderBy(asc(projectsTable.createdAt), asc(projectsTable.id))
+        : [];
+      return { source, derived };
+    },
     async create(values: NewProject): Promise<ProjectRow> {
       const data = validProject(values.data);
       return db.transaction(async (tx) => {
@@ -463,6 +501,7 @@ function projectsRepo(db: Db, companyId: string) {
             companyId,
             name: values.name,
             ...(values.status ? { status: values.status } : {}),
+            ...(values.sourceProjectId ? { sourceProjectId: values.sourceProjectId } : {}),
             data,
             revision: 1,
           })
@@ -490,6 +529,7 @@ function projectsRepo(db: Db, companyId: string) {
             companyId,
             name: values.name,
             ...(values.status ? { status: values.status } : {}),
+            ...(values.sourceProjectId ? { sourceProjectId: values.sourceProjectId } : {}),
             data,
             revision: 1,
           })

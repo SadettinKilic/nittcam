@@ -784,6 +784,16 @@
       "otherBoard": "{t} mm · ayrı plaka",
       "otherNote": "Bu parça {t} mm plakadan kesilmez; listeye kendiliğinden eklenmez.",
       "includeOther": "Yine de listeye ekle",
+      "split": {
+        "action": "Ayrı plaka parçalarını yeni projeye aktar",
+        "material": "Yeni projenin malzemesi",
+        "thickness": "Kalınlık",
+        "note": "{count} parça aynı makineyle yeni projeye gider; bu proje ona bağlantı gösterir.",
+        "projectName": "{name} · {t} mm",
+        "created": "“{name}” oluşturuldu: {count} parça.",
+        "open": "Projeyi aç",
+        "failed": "Yeni proje oluşturulamadı; ayrı plaka parçaları aktarılmadı. Tekrar deneyin."
+      },
       "doorCount": {
         "0": "Kapaksız",
         "1": "Tek kapak",
@@ -1385,6 +1395,10 @@
     "unknown": "{id} (tanınmayan malzeme)"
   },
   "wizard": {
+    "links": {
+      "source": "Kaynak proje",
+      "derived": "Ayrı plaka projeleri"
+    },
     "profileStatus": {
       "chip": "Profil doğrulanmadı",
       "verify": "Makine doğrulama: air cut ve test kesimi"

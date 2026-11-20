@@ -278,12 +278,23 @@ export const projects = pgTable(
     data: jsonb('data').$type<Project>().notNull(),
     /** Soft delete (T178): hidden from Projeler and Ana sayfa, restorable; exports kept. Null = live. */
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+    /**
+     * The project this one was split off from (T292: parts of another board thickness moved to a
+     * new project). Same company; the source lists it as "Ayrı plaka projesi". Null = none.
+     */
+    sourceProjectId: uuid('source_project_id'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique('projects_company_id_id_uq').on(t.companyId, t.id),
     index('projects_company_updated_idx').on(t.companyId, t.updatedAt),
+    index('projects_company_source_idx').on(t.companyId, t.sourceProjectId),
+    foreignKey({
+      name: 'projects_source_fk',
+      columns: [t.companyId, t.sourceProjectId],
+      foreignColumns: [t.companyId, t.id],
+    }).onDelete('restrict'),
     check('projects_revision_positive', sql`${t.revision} >= 1`),
   ],
 );

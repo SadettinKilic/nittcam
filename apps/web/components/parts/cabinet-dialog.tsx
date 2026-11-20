@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  MATERIAL_KINDS,
+  materialKindOf,
   cabinetFrontView,
   cabinetParamsSchema,
   cabinetParts,
@@ -33,6 +35,7 @@ import { useId, useMemo, useState, type FormEvent } from 'react';
 import { loadCabinetMemory, saveCabinetMemory } from '../../lib/cabinet-memory';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
+import type { SplitTarget } from '../../lib/split-project';
 
 type Text = Messages['cutList']['cabinet'];
 
@@ -45,30 +48,7 @@ export function nextCabinetName(pattern: string, groups: readonly (string | unde
   }
 }
 
-/**
- * Generated rows as `importCutList` input: a plain row each (D-041), the group only a label. A part
- * in another thickness than the stock (added on purpose, T260) carries it as a note ("8 mm").
- */
-export function cabinetRows(
-  parts: readonly CabinetPart[],
-  names: Text['roles'],
-  group: string,
-  newId: () => string,
-  stockThickness?: number,
-) {
-  return parts.map((p) => ({
-    id: newId(),
-    name: names[p.role],
-    qty: p.qty,
-    ...(group.trim() ? { group: group.trim() } : {}),
-    ...(stockThickness !== undefined && Math.abs(p.thickness - stockThickness) > 1e-6
-      ? { note: `${fmt(p.thickness)} mm` }
-      : {}),
-    grain: p.grain,
-    params: { w: p.w, h: p.h, r: 0 },
-    edgeBand: p.edgeBand,
-  }));
-}
+export { cabinetRows } from '../../lib/cabinet-rows';
 
 type NumKey =
   'width' | 'height' | 'depth' | 'thickness' | 'shelves' | 'doorGap' | 'plinth' | 'band';
@@ -85,6 +65,7 @@ export function CabinetDialog({
   hasGrain,
   defaultGroup,
   onAdd,
+  split: splitOff,
 }: {
   t: Text;
   open: boolean;
@@ -96,8 +77,25 @@ export function CabinetDialog({
   defaultGroup: string;
   /** Adds the rows; false when the command was rejected. */
   onAdd: (parts: CabinetPart[], group: string) => boolean;
+  /**
+   * T292: "Ayrı plaka parçalarını yeni projeye aktar". Present only for a saved project: the
+   * project's material (the default target) and the call that creates the new project.
+   */
+  split?:
+    | {
+        material: string;
+        materials: Messages['materials'];
+        onSplit: (parts: CabinetPart[], target: SplitTarget, group: string) => void;
+      }
+    | undefined;
 }) {
-  const ids = { group: useId(), back: useId(), other: useId() };
+  const ids = {
+    group: useId(),
+    back: useId(),
+    other: useId(),
+    split: useId(),
+    splitMaterial: useId(),
+  };
   // T260: the last used shelves, back, doors, band and gap (per browser); the box size is fresh.
   const [memory] = useState(() => loadCabinetMemory());
   const [v, setV] = useState<Record<NumKey, number | null>>({
@@ -119,6 +117,12 @@ export function CabinetDialog({
   const [group, setGroup] = useState(defaultGroup);
   // T260 (D-045): parts in another thickness are added only on purpose.
   const [includeOther, setIncludeOther] = useState(false);
+  // T292: the other-thickness parts go to a new project (never both with includeOther).
+  const [toNew, setToNew] = useState(false);
+  const [target, setTarget] = useState<{ material: string; thickness: number | null }>({
+    material: splitOff?.material ?? 'mdf',
+    thickness: null,
+  });
 
   const parsed = useMemo(
     () => cabinetParamsSchema.safeParse({ ...v, back, doors }),
@@ -135,11 +139,19 @@ export function CabinetDialog({
     ? cabinetPartsForStock(result.parts, { thickness, hasGrain }, includeOther)
     : null;
   const addCount = split ? split.rows.reduce((s, p) => s + p.qty, 0) : 0;
+  const moving = splitOff && toNew && split ? split.other : [];
+  const firstOther = split?.other[0]?.thickness ?? null;
+  const targetThickness = target.thickness ?? firstOther;
+  const moveCount = moving.reduce((s, p) => s + p.qty, 0);
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!split || !parsed.success || split.rows.length === 0) return;
+    if (moving.length > 0 && !(targetThickness !== null && targetThickness > 0)) return;
     if (onAdd(split.rows, group)) {
+      if (splitOff && moving.length > 0 && targetThickness !== null) {
+        splitOff.onSplit(moving, { material: target.material, thickness: targetThickness }, group);
+      }
       const { shelves, back: b, doors: d, band, doorGap } = parsed.data;
       saveCabinetMemory({ shelves, back: b, doors: d, band, doorGap });
       onOpenChange(false);
@@ -313,10 +325,81 @@ export function CabinetDialog({
                       id={ids.other}
                       data-testid="cabinet-include-other"
                       checked={includeOther}
-                      onCheckedChange={(c) => setIncludeOther(c === true)}
+                      onCheckedChange={(c) => {
+                        setIncludeOther(c === true);
+                        if (c === true) setToNew(false);
+                      }}
                     />
                     {t.includeOther}
                   </label>
+                  {splitOff ? (
+                    <>
+                      <label
+                        htmlFor={ids.split}
+                        className="flex items-center gap-2 text-sm text-fg"
+                      >
+                        <Checkbox
+                          id={ids.split}
+                          data-testid="cabinet-split"
+                          checked={toNew}
+                          onCheckedChange={(c) => {
+                            setToNew(c === true);
+                            if (c === true) setIncludeOther(false);
+                          }}
+                        />
+                        {t.split.action}
+                      </label>
+                      {toNew ? (
+                        <div className="grid grid-cols-2 gap-2" data-testid="cabinet-split-target">
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor={ids.splitMaterial} className="text-fg-muted">
+                              {t.split.material}
+                            </label>
+                            <Select
+                              value={target.material}
+                              onValueChange={(m) => setTarget((x) => ({ ...x, material: m }))}
+                            >
+                              <SelectTrigger
+                                id={ids.splitMaterial}
+                                size="sm"
+                                data-testid="cabinet-split-material"
+                                data-value={target.material}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(MATERIAL_KINDS.some((k) => k === splitOff.material)
+                                  ? [...MATERIAL_KINDS]
+                                  : [splitOff.material, ...MATERIAL_KINDS]
+                                ).map((m) => (
+                                  <SelectItem key={m} value={m}>
+                                    {splitOff.materials[materialKindOf(m) ?? 'unknown'].replace(
+                                      '{id}',
+                                      m,
+                                    )}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <FormField label={t.split.thickness}>
+                            <NumberInput
+                              data-testid="cabinet-split-thickness"
+                              inputSize="sm"
+                              value={targetThickness}
+                              unit="mm"
+                              min={0.1}
+                              maxDecimals={1}
+                              onValueChange={(n) => setTarget((x) => ({ ...x, thickness: n }))}
+                            />
+                          </FormField>
+                          <p className="col-span-2 text-fg-muted" data-testid="cabinet-split-note">
+                            {fill(t.split.note, { count: moveCount })}
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
                 </div>
               ) : null}
             </figure>

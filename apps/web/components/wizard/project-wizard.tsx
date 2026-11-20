@@ -21,6 +21,8 @@ import { TemplateUpdatePrompt } from '../editor/template-update';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
 import { isUntitledName, untitledName } from '../../lib/untitled-name';
 import { CutListEditor } from '../parts/cut-list-editor';
+import { splitOffProject, type SplitTarget } from '../../lib/split-project';
+import { ProjectLinksBar } from './project-links';
 import { DrawingBoard } from '../editor/drawing-board';
 import { SimulationView, type SimMachine } from '../simulation/simulation-view';
 import { ExportStep } from './export-step';
@@ -332,6 +334,8 @@ function WizardSession({
   // Parts step view (T124, §3.6): "Liste" (cut list) or "Çizim" (drawing board), same data.
   // One part selection for both views of the Parçalar step (T135): Liste ↔ Çizim keep it.
   const [partsSelection, setPartsSelection] = useState<string[]>([]);
+  // T292: bumped after a split so the "Ayrı plaka projeleri" line reloads.
+  const [linksVersion, setLinksVersion] = useState(0);
   const [partsView, setPartsViewState] = useState<PartsView>(() =>
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('gorunum') === 'cizim'
@@ -793,6 +797,49 @@ function WizardSession({
       </InnerIssuesContext.Provider>
     );
   } else if (step === 'parcalar') {
+    const sourceId = session.projectId;
+    /**
+     * T292: the cabinet's other-thickness parts become a new project on the same machine and
+     * profile version, linked to this one; the toast opens it.
+     */
+    const split = async (rows: unknown[], target: SplitTarget) => {
+      const s = messages.cutList.cabinet.split;
+      const out = sourceId
+        ? splitOffProject(project, rows, target, new Date().toISOString())
+        : null;
+      if (!sourceId || !out) {
+        notify.error(s.failed);
+        return;
+      }
+      const id = crypto.randomUUID();
+      const name = fill(s.projectName, {
+        name: session.name,
+        t: new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(target.thickness),
+      }).slice(0, 120);
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            id,
+            name,
+            project: out.project,
+            commands: out.commands,
+            sourceProjectId: sourceId,
+          }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        setLinksVersion((v) => v + 1);
+        const count = out.project.parts.reduce((sum, p) => sum + p.qty, 0);
+        notify.success(fill(s.created, { name, count }), {
+          id: 'cabinet-split',
+          duration: 10_000,
+          action: { label: s.open, onClick: () => router.push(`/projeler/${id}?adim=parcalar`) },
+        });
+      } catch {
+        notify.error(s.failed);
+      }
+    };
     const editor = (
       <CutListEditor
         t={messages.cutList}
@@ -806,12 +853,27 @@ function WizardSession({
         onSelectionChange={setPartsSelection}
         dxfText={messages.dxfImport}
         holeTool={holeToolNo}
+        splitOff={
+          sourceId
+            ? {
+                materials: messages.materials,
+                onSplit: (rows, target) => void split(rows, target),
+              }
+            : undefined
+        }
       />
     );
     // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats
     // from the issue chip, so the grid never moves or changes its columns while the user types.
     partsFullWidth = true;
-    both = editor;
+    both = sourceId ? (
+      <div className="flex min-w-0 flex-col gap-3">
+        <ProjectLinksBar t={t.links} projectId={sourceId} version={linksVersion} />
+        {editor}
+      </div>
+    ) : (
+      editor
+    );
   } else if (step === 'dizilim') {
     both = (
       <LayoutStep
