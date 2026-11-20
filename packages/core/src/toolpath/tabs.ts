@@ -67,13 +67,15 @@ export function tabCentreIntervals(
   keepBack: number,
   onArcs = false,
   minArcRadius = 0,
+  noCornerArcs = false,
 ): Interval[] {
   const total = segs.reduce((s, x) => s + segLength(x), 0);
+  const corner = noCornerArcs ? cornerArcMask(segs) : null;
   const out: Interval[] = [];
   let s0 = 0;
-  for (const s of segs) {
+  for (const [i, s] of segs.entries()) {
     const l = segLength(s);
-    if (s.bulge === 0 || (onArcs && arcRadius(s) > minArcRadius + EPS)) {
+    if (s.bulge === 0 || (onArcs && arcRadius(s) > minArcRadius + EPS && !(corner?.[i] ?? false))) {
       const lo = Math.max(s0 + half, keepFwd + half);
       const hi = Math.min(s0 + l - half, total - keepBack - half);
       // an exact fit (hi = lo) must not depend on rounding (T273)
@@ -151,6 +153,11 @@ export function placeTabs(
      * passes the tool radius, so the arc the tool rolls around a sharp corner is never used).
      */
     minArcRadius?: number;
+    /**
+     * With `onArcs`: skip corner arcs (T284, D-058): a run of co-circular arcs sweeping ≤ 90°
+     * next to a straight segment, as the rounded corners of a rectangle.
+     */
+    noCornerArcs?: boolean;
   },
 ): Tab[] {
   const total = segs.reduce((s, x) => s + segLength(x), 0);
@@ -162,6 +169,7 @@ export function placeTabs(
     o.keepBack,
     o.onArcs ?? false,
     o.minArcRadius ?? 0,
+    o.noCornerArcs ?? false,
   );
   for (let n = o.count; n >= Math.max(1, o.minCount); n--) {
     // neighbouring raised spans must not touch (n = 1 has no neighbour)
@@ -232,4 +240,73 @@ export function passMovesWithTabs(
 function arcRadius(s: PathSeg): number {
   const b = Math.abs(s.bulge);
   return (Math.hypot(s.p1.x - s.p0.x, s.p1.y - s.p0.y) * (1 + b * b)) / (4 * b);
+}
+
+/** Largest sweep of a corner arc run, rad (a quarter turn, with a rounding tolerance). */
+const CORNER_SWEEP = Math.PI / 2 + 1e-6;
+
+/** Centre of an arc segment (bulge ≠ 0). */
+function arcCentre(s: PathSeg): { x: number; y: number } {
+  const dx = s.p1.x - s.p0.x;
+  const dy = s.p1.y - s.p0.y;
+  // offset from the chord midpoint to the centre, left of travel for b > 0
+  const k = (1 - s.bulge * s.bulge) / (4 * s.bulge);
+  return { x: (s.p0.x + s.p1.x) / 2 - dy * k, y: (s.p0.y + s.p1.y) / 2 + dx * k };
+}
+
+/** Two arc segments lie on one circle and turn the same way. */
+function coCircular(a: PathSeg, b: PathSeg): boolean {
+  if (a.bulge === 0 || b.bulge === 0 || Math.sign(a.bulge) !== Math.sign(b.bulge)) return false;
+  const ra = arcRadius(a);
+  const tol = EPS * Math.max(1, ra);
+  const ca = arcCentre(a);
+  const cb = arcCentre(b);
+  return Math.abs(ra - arcRadius(b)) <= tol && Math.hypot(ca.x - cb.x, ca.y - cb.y) <= tol;
+}
+
+/**
+ * Per segment: true for an arc that is a corner (T284, D-058). Consecutive co-circular arcs form
+ * one run (the loop may start inside a run); a run sweeping ≤ 90° with a straight segment on
+ * either side is a rounded corner, as on a rounded rectangle. A full circle, a larger sweep
+ * (stadium end, half disc) and runs between other arcs only (letter "O") are not corners.
+ */
+export function cornerArcMask(segs: readonly PathSeg[]): boolean[] {
+  const n = segs.length;
+  const mask = new Array<boolean>(n).fill(false);
+  // start at a run boundary: a segment that does not continue the previous one's circle
+  let start = -1;
+  for (let i = 0; i < n; i++) {
+    const cur = segs[i] as PathSeg;
+    if (cur.bulge === 0 || !coCircular(segs[(i - 1 + n) % n] as PathSeg, cur)) {
+      start = i;
+      break;
+    }
+  }
+  if (start < 0) return mask; // one full circle
+  let k = 0;
+  while (k < n) {
+    const i = (start + k) % n;
+    const s = segs[i] as PathSeg;
+    if (s.bulge === 0) {
+      k++;
+      continue;
+    }
+    const run = [i];
+    let last = s;
+    let sweep = 4 * Math.atan(Math.abs(s.bulge));
+    while (k + run.length < n) {
+      const j = (start + k + run.length) % n;
+      const nx = segs[j] as PathSeg;
+      if (!coCircular(last, nx)) break;
+      run.push(j);
+      last = nx;
+      sweep += 4 * Math.atan(Math.abs(nx.bulge));
+    }
+    const before = segs[(i - 1 + n) % n] as PathSeg;
+    const after = segs[((run[run.length - 1] as number) + 1) % n] as PathSeg;
+    if (sweep <= CORNER_SWEEP && (before.bulge === 0 || after.bulge === 0))
+      for (const j of run) mask[j] = true;
+    k += run.length;
+  }
+  return mask;
 }

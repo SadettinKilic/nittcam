@@ -128,14 +128,20 @@ function onStraight(b: Box, x: number, y: number, tol = 1e-6): boolean {
   const qy = Math.abs(y - b.cy) - (b.hh - b.r);
   return qx <= tol || qy <= tol;
 }
-/** On the corner arc of a rounded (r > EPS) outline corner, in the same quadrant as `ref`. */
-function inCornerArc(b: Box, p: Pt, ref: Pt): boolean {
+/**
+ * On a rounded arc of the outline that is NOT a single corner (T284, D-058): a 90° corner arc
+ * between two straight sides never holds a tab. Two corner arcs only merge into one larger arc
+ * when the straight side between them has zero length (stadium end: hw = r or hh = r; disc: both),
+ * so `p` must be on the rounded part and in the same half as `ref` across every remaining side.
+ */
+function onMergedArc(b: Box, p: Pt, ref: Pt): boolean {
   const qx = Math.abs(p.x - b.cx) - (b.hw - b.r);
   const qy = Math.abs(p.y - b.cy) - (b.hh - b.r);
-  const same =
-    Math.sign(p.x - b.cx) === Math.sign(ref.x - b.cx) &&
-    Math.sign(p.y - b.cy) === Math.sign(ref.y - b.cy);
-  return b.r > 1e-3 && qx >= -1e-6 && qy >= -1e-6 && same;
+  const noTopSide = b.hw - b.r <= 1e-9; // corners left/right of the centre merge
+  const noSideSide = b.hh - b.r <= 1e-9;
+  const sameX = noTopSide || Math.sign(p.x - b.cx) === Math.sign(ref.x - b.cx);
+  const sameY = noSideSide || Math.sign(p.y - b.cy) === Math.sign(ref.y - b.cy);
+  return b.r > 1e-3 && (noTopSide || noSideSide) && qx >= -1e-6 && qy >= -1e-6 && sameX && sameY;
 }
 function sdf(b: Box, x: number, y: number): number {
   const qx = Math.abs(x - b.cx) - (b.hw - b.r);
@@ -150,6 +156,7 @@ interface Span {
   to: Pt;
   z: number;
   topPts: Pt[];
+  arcTop: boolean; // a top move is an arc (allowed only on a merged arc, T284)
 }
 interface PassInfo {
   total: number;
@@ -191,7 +198,7 @@ function walkOp(op: Operation, ctx: Ctx): { v: string[]; passes: PassInfo[] } {
           if (Math.abs(m.feed - PLUNGE) > EPS) fail(`rise feed ${m.feed} != plunge`);
           if (Math.abs(prev.z - d) > EPS) fail(`rise from z ${prev.z}, pass depth ${d}`);
           state = 'top';
-          cur = { s0: s, s1: s, from: { ...m }, to: { ...m }, z: m.z, topPts: [] };
+          cur = { s0: s, s1: s, from: { ...m }, to: { ...m }, z: m.z, topPts: [], arcTop: false };
         } else if (vertical && m.z < prev.z - EPS) {
           if (state === 'flat' && s === 0 && Math.abs(m.z - d) <= EPS) {
             // step-down plunge at the start of the pass: fine
@@ -207,7 +214,8 @@ function walkOp(op: Operation, ctx: Ctx): { v: string[]; passes: PassInfo[] } {
           }
         } else if (state === 'top') {
           if (m.z !== prev.z) fail(`top move z ${m.z} != ${prev.z}`);
-          if (m.kind !== 'linear') fail(`tab top move kind ${m.kind} (arc/corner?)`);
+          if (m.kind === 'arc' && cur) cur.arcTop = true;
+          else if (m.kind !== 'linear') fail(`tab top move kind ${m.kind}`);
           if (Math.abs(m.feed - FEED) > EPS) fail(`tab crossed at feed ${m.feed} != cut feed`);
           cur?.topPts.push({ x: m.x, y: m.y, z: m.z });
         } else if (Math.abs(m.z - d) > EPS) fail(`flat move z ${m.z} != pass depth ${d}`);
@@ -302,16 +310,18 @@ function review(c: Case, res: ToolpathResult, ramp: boolean): string[] {
       if (Math.abs(len - (c.width + c.tool)) > 1e-5) out.push(`raised length ${len}`);
       // straight, away from corners, on the tool path
       const pts = [sp.from, ...sp.topPts, sp.to];
-      // T272: a span may instead lie wholly on one rounded corner arc of the outline (radius > EPS;
-      // a sharp corner is never used), when no tab fits on the straight sides.
-      const arcSpan = pts.every((p) => inCornerArc(ctx.box, p, pts[0]!));
+      // T272 + T284: a span with arc moves must lie wholly on one rounded arc larger than a single
+      // corner (stadium end, disc); a 90° corner arc between straight sides never holds a tab.
+      const arcSpan = sp.arcTop;
+      if (arcSpan && !pts.every((p) => onMergedArc(ctx.box, p, pts[0]!)))
+        out.push('tab on a corner arc (arc top move outside a merged arc)');
       for (let i = 0; i < pts.length; i++) {
         const p = pts[i]!;
         if (!arcSpan && !onStraight(ctx.box, p.x, p.y))
           out.push(`tab point ${p.x},${p.y} in a corner zone`);
         if (Math.abs(sdf(ctx.box, p.x, p.y) - c.tool / 2) > 1e-3)
           out.push(`tab point not on the tool path (${sdf(ctx.box, p.x, p.y)})`);
-        if (i > 0) {
+        if (i > 0 && !arcSpan) {
           const a = pts[i - 1]!;
           for (let t = 0.1; t < 1; t += 0.2) {
             const mx = a.x + (p.x - a.x) * t;
@@ -518,5 +528,86 @@ describe('tab hand cases', () => {
     const a = build(600, 400, { tabs: { auto: true } }).res;
     const b = build(600, 400, { tabs: { auto: true } }).res;
     expect(b).toEqual(a);
+  });
+});
+
+describe('T284: no tab on the corner arc of a rounded rectangle (D-058)', () => {
+  const base = {
+    w: 20,
+    h: 20,
+    rFrac: 0.75,
+    tool: 3,
+    thickness: 18,
+    hFrac: 0.3,
+    spoil: 0.3,
+    pass: 6,
+    width: 2,
+  };
+  const variants = (over: Partial<Case>): Case[] =>
+    (['arc', 'line', 'none'] as const).flatMap((leadIn) =>
+      (['climb', 'conventional'] as const).flatMap((direction) =>
+        [undefined, 5].flatMap((ramp) =>
+          [1, 2, 4].flatMap((count) =>
+            [true, false].map((auto) => {
+              const x = { ...base, ...over, leadIn, direction, ramp, count, auto };
+              return {
+                ...x,
+                r: (x.rFrac * Math.min(x.w, x.h)) / 2,
+                height: x.hFrac * x.thickness,
+              } as Case;
+            }),
+          ),
+        ),
+      ),
+    );
+
+  it('counter-example seed 721042798 (20 × 20, r 7.5, tool Ø3, width 2): tabs straight or refused', () => {
+    for (const c of variants({})) {
+      const { res } = run(c);
+      expect(res.errors.map((e) => e.code).filter((x) => x !== 'SMALL_PART_UNSECURED')).toEqual([]);
+      expect(review(c, res, c.ramp !== undefined)).toEqual([]);
+    }
+  });
+
+  it('rounded rectangles of several radii: never a tab on a corner arc', () => {
+    for (const [w, h, rFrac] of [
+      [20, 20, 0.75],
+      [24, 18, 0.9],
+      [30, 22, 0.5],
+      [40, 26, 0.99],
+    ] as const)
+      for (const c of variants({ w, h, rFrac })) {
+        const { res } = run(c);
+        expect(review(c, res, c.ramp !== undefined)).toEqual([]);
+      }
+  });
+
+  it('the property with the pinned seed 721042798', () => {
+    fc.assert(
+      fc.property(caseArb, (c) => {
+        const { res } = run(c);
+        expect(review(c, res, c.ramp !== undefined)).toEqual([]);
+      }),
+      { numRuns: RUNS, seed: 721042798 },
+    );
+  }, 600_000);
+});
+
+describe('T284: pinned case that put a tab on a corner arc before the fix', () => {
+  it('24 × 18, r 8.1, tool Ø3, width 2, 1 tab, arc lead, climb: no corner-arc tab', () => {
+    const x = { w: 24, h: 18, rFrac: 0.9, tool: 3, thickness: 18, hFrac: 0.3, spoil: 0.3, pass: 6 };
+    const c = {
+      ...x,
+      width: 2,
+      count: 1,
+      auto: true,
+      leadIn: 'arc',
+      direction: 'climb',
+      ramp: undefined,
+      r: 8.1,
+      height: 5.4,
+    } as Case;
+    const { res } = run(c);
+    expect(review(c, res, false)).toEqual([]);
   });
 });
