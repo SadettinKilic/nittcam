@@ -1135,7 +1135,7 @@ Acceptance:
 - [ ] e2e: click and type; Esc keeps the old name; undo
 Tester focus: new project, renaming an existing one, undo; 1440 + 390 smoke.
 
-### T285 Assembled cabinet preview shows holes, pockets and template instances on the parts   [status: todo]
+### T285 Assembled cabinet preview shows holes, pockets and template instances on the parts   [status: done]
 Spec: §3.8 · Depends: T158, T153
 Found by the owner (2026-11-20): a generated cabinet with hinge holes drawn on the doors; the holes do not show in "Montaj görünümü" (the flat 3D preview of T153 does show cutouts/holes/pockets).
 Acceptance:
@@ -1284,6 +1284,7 @@ Tester focus: values equal the PDF report values.
 
 ### T178 Projeler page: search, filter, copy, delete   [status: todo]
 Owner (2026-11-20): looked for delete on Projeler and found none; **pull the delete part forward** (next free batch), copy/search/filter can stay in M8.
+Progress (B24 #113, 2026-11-20): soft delete + Geri al done (migration 0007 `projects.deleted_at`, tenant-scoped PATCH). Left for M8: copy, search, filter, sort, pagination, a "Silinenler" list, and blocking a deleted project's direct link.
 Spec: §3.4 · Depends: T111
 Acceptance:
 - [ ] table with name, status, machine, material, date; search (Turkish folding), filters (status, machine, material), sort, pagination; copy project (new id, revision 1, exports not copied); soft delete with undo toast
