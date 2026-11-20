@@ -34,6 +34,7 @@ export async function GET(request: Request, ctx: RouteContext<'/api/projects/[id
       revision,
       grid: settings.grid,
       offset: settings.offset,
+      start: settings.start,
     });
     const name = exportFileName(project.name, revision, 'etiket', 'pdf');
     const disposition = url.searchParams.get('download') === '1' ? 'attachment' : 'inline';

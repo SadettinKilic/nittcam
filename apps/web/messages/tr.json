@@ -1948,6 +1948,8 @@
         "offsetHint": "Deneme baskısında etiketler kayıyorsa ölçüp girin. Bu bilgisayarda saklanır.",
         "offsetX": "Sağa (mm)",
         "offsetY": "Aşağı (mm)",
+        "start": "İlk boş etiket",
+        "startHint": "Yarım kullanılmış kağıt için: soldan sağa, yukarıdan aşağı sayılır (1–{max}). Her baskıda 1'e döner.",
         "open": "Etiketleri aç (PDF)",
         "count": "{count} etiket, {pages} sayfa",
         "invalid": "Izgara A4 sayfaya sığmıyor veya bir değer aralık dışında.",

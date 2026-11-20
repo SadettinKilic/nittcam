@@ -39,12 +39,17 @@ export interface LabelsPdfInput {
   revision: number;
   grid: LabelGrid;
   offset: LabelOffset;
+  /**
+   * B51: 1-based number of the first free label on the first page (a half-used sheet), counted
+   * left to right, top to bottom. Default 1.
+   */
+  start?: number | undefined;
 }
 
 /** Labels per page and page count of a label run. */
-export function labelPageCount(project: Project, grid: LabelGrid): number {
+export function labelPageCount(project: Project, grid: LabelGrid, start = 1): number {
   const perPage = grid.cols * grid.rows;
-  const total = partLabels(project).length;
+  const total = partLabels(project).length + start - 1;
   return Math.max(1, Math.ceil(total / perPage));
 }
 
@@ -152,16 +157,20 @@ function drawLabel(
 
 export async function renderLabelsPdf(input: LabelsPdfInput): Promise<Uint8Array> {
   const { project, projectName, revision, grid, offset } = input;
+  // B51: the used labels of a half-used first sheet stay empty.
+  const skip = Math.max(0, (input.start ?? 1) - 1);
   const { doc, fonts } = await newDocument(`${projectName}: ${t.title}`, `rev ${revision}`);
   const labels = partLabels(project);
   const cells = labelCells(grid, offset);
   const pw = LABEL_PAGE.width * MM_TO_PT;
   const ph = LABEL_PAGE.height * MM_TO_PT;
-  const pages = Math.max(1, Math.ceil(labels.length / cells.length));
+  const slots: (PartLabel | null)[] = [...new Array<null>(skip).fill(null), ...labels];
+  const pages = Math.max(1, Math.ceil(slots.length / cells.length));
   for (let p = 0; p < pages; p++) {
     const page = doc.addPage([pw, ph]);
-    labels.slice(p * cells.length, (p + 1) * cells.length).forEach((label, i) => {
+    slots.slice(p * cells.length, (p + 1) * cells.length).forEach((label, i) => {
       const c = cells[i];
+      if (!label) return;
       if (!c) return;
       // Cells are measured from the page's top-left corner; PDF points from the bottom-left.
       drawLabel(

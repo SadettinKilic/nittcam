@@ -55,7 +55,7 @@ export async function buildDocument(
   scope: CompanyScope,
   project: ExportSource,
   type: DocumentType,
-  labels?: { grid: LabelGrid; offset: LabelOffset },
+  labels?: { grid: LabelGrid; offset: LabelOffset; start?: number },
 ): Promise<BuiltDocument> {
   const { name, revision, data } = project;
   if (type === 'dxf-dizilim' || type === 'dxf-parcalar') {
