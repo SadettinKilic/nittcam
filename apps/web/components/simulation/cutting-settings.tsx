@@ -116,7 +116,7 @@ export function CuttingSettings({
         <div className="flex flex-col gap-2">
           {/* B44: the three fields in one row; the unit sits in the label so a narrow
               field still shows its whole value. */}
-          <div className="grid grid-cols-3 items-end gap-2">
+          <div className="grid grid-cols-3 items-start gap-2">
             <NumberField
               label={t.count}
               value={c.tabs.count}

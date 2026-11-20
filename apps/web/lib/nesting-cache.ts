@@ -22,7 +22,14 @@ export function optionSetKey(project: Project, params: RunNestingParams): string
   const locked = project.layout.sheets.flatMap((s, sheet) =>
     s.placements.filter((p) => p.locked).map((p) => ({ sheet, ...p })),
   );
-  return JSON.stringify([{ ...project, layout: locked }, params]);
+  // B44 tester round 1: absent options key like their defaults, so a default project (no
+  // `rotation` / `partInHole` written yet) finds the same cache entry as the explicit values.
+  const nesting = {
+    ...project.nesting,
+    rotation: project.nesting.rotation ?? 'free',
+    partInHole: project.nesting.partInHole ?? false,
+  };
+  return JSON.stringify([{ ...project, nesting, layout: locked }, params]);
 }
 
 /** The same key with another mode (for the per-mode figures on the mode cards). */
