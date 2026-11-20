@@ -186,8 +186,8 @@ describe('/api/projects', () => {
     expect(del.status).toBe(200);
     expect(await del.json()).toEqual({ id: created.id, deleted: true });
     expect(await ids()).not.toContain(created.id);
-    // kept: still readable by id (exports and history stay)
-    expect((await get(new Request('http://test'), ctx(created.id))).status).toBe(200);
+    // kept on the server, but the direct link is blocked (T178 remaining part): 410
+    expect((await get(new Request('http://test'), ctx(created.id))).status).toBe(410);
     const back = await patch(json({ deleted: false }, 'PATCH'), ctx(created.id));
     expect(await back.json()).toEqual({ id: created.id, deleted: false });
     expect(await ids()).toContain(created.id);

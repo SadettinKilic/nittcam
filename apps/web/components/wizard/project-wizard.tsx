@@ -41,6 +41,8 @@ import {
   stepBlocker,
   toStep,
   wizardStepStatuses,
+  partsViewKey,
+  resumeStep,
   type SaveIndicator,
   type StepKey,
   type WizardProgress,
@@ -63,12 +65,15 @@ import {
   Pencil,
   Lock,
   Redo2,
+  RotateCcw,
+  Trash2,
   TriangleAlert,
   Undo2,
 } from 'lucide-react';
 import {
   Badge,
   Button,
+  EmptyState,
   ErrorState,
   IconButton,
   NestingIcon,
@@ -143,16 +148,82 @@ type Loaded =
   | { status: 'loading' }
   | { status: 'error' }
   | { status: 'notFound' }
+  | { status: 'deleted'; name: string }
   | {
       status: 'ready';
       machines: MachineListItem[];
       init: SessionInit;
       firstDetail: MachineDetail | null;
+      /** Where a saved project opened without `?adim=` resumes (T290); null = the URL's step. */
+      step: StepKey | null;
     };
 
-async function getJson<T>(url: string): Promise<{ status: number; body: T | null }> {
+/**
+ * A deleted project's direct link (T178): nothing opens; "Geri yükle" restores it in place,
+ * "Silinenler" goes to the list of deleted projects.
+ */
+function DeletedProject({
+  t,
+  id,
+  name,
+  backLabel,
+  onRestored,
+}: {
+  t: Messages['wizard']['deletedProject'];
+  id: string;
+  name: string;
+  backLabel: string;
+  onRestored: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function restore() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ deleted: false }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      notify.success(fill(t.restored, { name }));
+      onRestored();
+    } catch {
+      notify.error(t.restoreFailed);
+      setBusy(false);
+    }
+  }
+  return (
+    <main className="mx-auto flex w-full max-w-7xl flex-col items-start gap-4 px-4 py-8 sm:px-6">
+      <EmptyState
+        data-testid="wizard-deleted"
+        className="w-full"
+        icon={<Trash2 />}
+        title={name ? fill(t.title, { name }) : t.titleNoName}
+        description={t.text}
+        action={
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button data-testid="wizard-restore" loading={busy} onClick={() => void restore()}>
+              <RotateCcw aria-hidden />
+              {t.restore}
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/projeler?sekme=silinenler">{t.deletedList}</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/projeler">{backLabel}</Link>
+            </Button>
+          </div>
+        }
+      />
+    </main>
+  );
+}
+
+async function getJson<T>(
+  url: string,
+): Promise<{ status: number; body: T | null; error?: unknown }> {
   const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) return { status: res.status, body: null };
+  if (!res.ok) return { status: res.status, body: null, error: await res.json().catch(() => null) };
   return { status: res.status, body: (await res.json()) as T };
 }
 
@@ -167,10 +238,13 @@ export function ProjectWizard({
 }: {
   messages: Messages;
   projectId: string | null;
-  step: StepKey;
+  /** The URL's `?adim=`; null = none (a saved project then opens where work stopped, T290). */
+  step: StepKey | null;
 }) {
   const t = messages.wizard;
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
+  // The URL's step when the wizard mounts (keyed by project); later steps are the session's own.
+  const urlStepRef = useRef(step);
   const [attempt, setAttempt] = useState(0);
   // A new project gets its id from the first save; "+ Yeni proje" afterwards starts another one.
   const pathname = usePathname();
@@ -195,10 +269,18 @@ export function ProjectWizard({
         if (!machines.body) throw new Error(String(machines.status));
         let init: SessionInit;
         let firstDetail: MachineDetail | null = null;
+        // null = the URL's step (or step 1); set only when a saved project resumes (T290).
+        let open: StepKey | null = null;
         if (projectId) {
           const p = await getJson<ProjectDetail>(`/api/projects/${encodeURIComponent(projectId)}`);
           if (p.status === 404) {
             if (live) setLoaded({ status: 'notFound' });
+            return;
+          }
+          // T178: a deleted project's link opens nothing; the page offers "Geri yükle".
+          if (p.status === 410) {
+            const name = (p.error as { name?: unknown } | null)?.name;
+            if (live) setLoaded({ status: 'deleted', name: typeof name === 'string' ? name : '' });
             return;
           }
           if (!p.body) throw new Error(String(p.status));
@@ -208,6 +290,13 @@ export function ProjectWizard({
             name: p.body.name,
             project: p.body.project,
           };
+          if (urlStepRef.current === null) {
+            open = resumeStep({
+              partCount: p.body.project.parts.length,
+              sheetCount: p.body.project.layout?.sheets.length ?? 0,
+              exported: p.body.exported === true,
+            });
+          }
         } else {
           const first = machines.body[0];
           if (first) {
@@ -227,7 +316,8 @@ export function ProjectWizard({
             project: newProject(firstDetail ?? undefined, library),
           };
         }
-        if (live) setLoaded({ status: 'ready', machines: machines.body, init, firstDetail });
+        if (live)
+          setLoaded({ status: 'ready', machines: machines.body, init, firstDetail, step: open });
       } catch {
         if (live) setLoaded({ status: 'error' });
       }
@@ -244,6 +334,17 @@ export function ProjectWizard({
 
   if (loaded.status === 'loading') {
     return <PageSkeleton label={t.loading} variant="split" testId="wizard-loading" />;
+  }
+  if (loaded.status === 'deleted' && projectId) {
+    return (
+      <DeletedProject
+        t={t.deletedProject}
+        id={projectId}
+        name={loaded.name}
+        backLabel={t.backToList}
+        onRestored={reload}
+      />
+    );
   }
   if (loaded.status !== 'ready') {
     return (
@@ -268,7 +369,7 @@ export function ProjectWizard({
     <WizardSession
       key={`${projectId ?? 'new'}-${attempt}`}
       messages={messages}
-      initialStep={step}
+      initialStep={loaded.step ?? step ?? 'makine'}
       machines={loaded.machines}
       init={loaded.init}
       firstDetail={loaded.firstDetail}
@@ -330,12 +431,17 @@ function WizardSession({
   // Parts step view (T124, §3.6): "Liste" (cut list) or "Çizim" (drawing board), same data.
   // One part selection for both views of the Parçalar step (T135): Liste ↔ Çizim keep it.
   const [partsSelection, setPartsSelection] = useState<string[]>([]);
-  const [partsView, setPartsViewState] = useState<PartsView>(() =>
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('gorunum') === 'cizim'
-      ? 'drawing'
-      : 'list',
-  );
+  // T290: `?gorunum=cizim` wins; without it a saved project reopens in the view it was left in.
+  const [partsView, setPartsViewState] = useState<PartsView>(() => {
+    if (typeof window === 'undefined') return 'list';
+    if (new URLSearchParams(window.location.search).get('gorunum') === 'cizim') return 'drawing';
+    if (!init.id) return 'list';
+    try {
+      return window.localStorage.getItem(partsViewKey(init.id)) === 'drawing' ? 'drawing' : 'list';
+    } catch {
+      return 'list';
+    }
+  });
   const setPartsView = useCallback((v: PartsView) => {
     setPartsViewState(v);
     const url = new URL(window.location.href);
@@ -429,6 +535,15 @@ function WizardSession({
     machine: pinned?.profile ?? null,
     onCreated: created,
   });
+  // T290: remember the Parçalar view per saved project.
+  useEffect(() => {
+    if (!session.projectId) return;
+    try {
+      window.localStorage.setItem(partsViewKey(session.projectId), partsView);
+    } catch {
+      // Remembering the view is a convenience only.
+    }
+  }, [partsView, session.projectId]);
   const project = session.project;
   if (project.machine.profileVersion !== pinnedVersion) {
     setPinnedVersion(project.machine.profileVersion);
