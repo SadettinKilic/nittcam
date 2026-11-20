@@ -34,7 +34,12 @@ import {
 import { createNestProgressStore, type NestProgressStore } from '../../lib/nesting-progress';
 import type { ProjectSession } from '../../lib/project-session';
 import { NESTING_CANCELLED, useNestingWorker } from '../../lib/use-nesting-worker';
-import { LayoutView, RenestingContext, type LockRequest } from '../layout-view/layout-view';
+import {
+  LayoutView,
+  RenestingContext,
+  type LockRequest,
+  type PlacementRef,
+} from '../layout-view/layout-view';
 import { NestingPanel } from '../parts/nesting-panel';
 import { LayoutGrid } from 'lucide-react';
 import { Button, cn, RadioGroup, RadioGroupItem, Switch } from '@nittcam/ui';
@@ -252,6 +257,10 @@ export function LayoutStep({
   const hasParts = project.parts.length > 0;
   const compactNest = useMemo(() => <CompactNest t={nt} hasParts={hasParts} />, [nt, hasParts]);
   const onLock = useCallback((req: LockRequest) => run('lockPlacement', req), [run]);
+  const onLockMany = useCallback(
+    (refs: PlacementRef[], locked: boolean) => run('lockPlacements', { refs, locked }),
+    [run],
+  );
   const onRenest = useCallback(() => void nest(), [nest]);
   // The wizard builds a new table object on every render (autosave states); keep it by value.
   const tw = table?.width;
@@ -284,6 +293,7 @@ export function LayoutStep({
               toolDiameter={toolDiameter}
               issues={issues}
               onLock={onLock}
+              onLockMany={onLockMany}
               onRenest={onRenest}
               appearKey={nested}
               left={settings}

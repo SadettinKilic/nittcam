@@ -40,7 +40,13 @@ import {
   updatePart,
   updateParts,
 } from './part';
-import { lockPlacement, runNesting, setNestingMode, setNestingOptions } from './nesting';
+import {
+  lockPlacement,
+  lockPlacements,
+  runNesting,
+  setNestingMode,
+  setNestingOptions,
+} from './nesting';
 import {
   addTemplate,
   removeTemplateInstance,
@@ -117,6 +123,7 @@ export const COMMANDS = {
   setNestingMode,
   runNesting,
   lockPlacement,
+  lockPlacements,
   addTemplate,
   updateTemplateInstance,
   removeTemplateInstance,
