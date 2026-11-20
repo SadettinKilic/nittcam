@@ -1414,14 +1414,14 @@ M8 exit (CTO #12): closes when B41 (#139) lands and T298 + T301 are done.
 
 ### Batch B47: T298–T300 (must-fix A, B + gap E1; Dev 2, before polish P3)
 
-### T298 Thin-skin thickness bounds   [status: review]
+### T298 Thin-skin thickness bounds   [status: done]
 Must-fix A (CTO #12), safety; the other arm of T293. Spec: §6.3, §7.2 · gcode-safety review
 Acceptance: as review #12 section A: the step-1 field, the command and the validator refuse a skin below a minimum (PO proposal: ≥ 0,2 mm and ≤ thickness − 1 mm; numbers in DECISIONS, tuned in the field test); old / hand-edited projects are caught (NC blocked, finding named, link to the field); goldens unchanged for defaults.
 
-### T299 Simülasyon scrolls when checks fail; "Kesim ayarlarına git" keeps the layout   [status: review]
+### T299 Simülasyon scrolls when checks fail; "Kesim ayarlarına git" keeps the layout   [status: done]
 Must-fix B (CTO #12). Acceptance: as review #12 section B: the step content scrolls (no `overflow: hidden` trap) with 4+ findings at 1440 × 900 and 1024; the link scrolls the card into view without moving the footer over the fields.
 
-### T300 Too-small edge margin is caught at Dizilim, not as a machine error   [status: review]
+### T300 Too-small edge margin is caught at Dizilim, not as a machine error   [status: done]
 Gap E1 (CTO #12), D-045. Acceptance: as review #12 E1: Dizilim warns when margin + lead-in does not fit the tool, before Simülasyon; the Simülasyon finding points to the margin setting, not to Makineler.
 
 ### Batch B48: T301–T303 (M8 exit gap E2, gap E3, export follow-ups; Dev 1 after B42)
@@ -1470,17 +1470,20 @@ Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by
 - Right-click menu: duplicate, delete, rotate, add template [#10]
 - Hints and tour: hint texts not cut (Delik, Seç, Kaydır), shortcut sheet lists Alt, tour explains hole properties and does not cover the board/toolbar [#7, T B13]
 
-### P2 Dizilim, Simülasyon, 3D
-- ★ "Fit to job" as the default view on small jobs (2D and 3D), sheet on "Tümünü göster" [#5, #8, #9, #10]
-- ★ Inner cuts read as holes (not part fill), labels not over openings or other parts; mirrored left/right doors distinguishable, template instances drawn [#6, #8, #9]
-- ★ Feedback when an option gains nothing (true shape 45°/15°, part-in-hole: "iç boşluğa 0 parça"); mode cards show path/time and tool-change count [#8, #9, #10]
-- Dizilim Ayarlar panel: compact so "Diz" does not move; no half row at the top; "Diz" progress shows "Diziliyor… %40 · İptal" [#8, #9]
-- Simülasyon: toolbar not clipped (3D at 1440) and not over the table frame; "Köprü sayısı azaltıldı" names the part; hole operations note the tool's rpm/plunge [#6, #7, #8, #10]
-- ★ Assembly 3D: first camera fits the whole cabinet; door opacity / outline so it reads closed; hinge cups visible [T B21b, #9, #10]
-- Console: THREE.Clock deprecated warning on every 3D open (use THREE.Timer) [#10]
-- Kesim ayarları card: tab options as one segmented row, three fields in one row; a field with a refused value shows the value in use ("kullanılan: 4") [#11]
-- Özet cutting-settings line wraps to two lines at 232 px and also names the thin skin; Özet warning count equals the Uyarılar panel; Dizilim says the part gap is added to the tool diameter [#12]
-- Phone: Simülasyon 3rd sheet tab cut at 390 (scrollable) [T B43]
+### P2 Dizilim, Simülasyon, 3D   [status: partial, B44 #145]
+Done in B44 (#145) except the two items left open below.
+- ★ "Fit to job" as the default view on small jobs (2D and 3D), sheet on "Tümünü göster" [#5, #8, #9, #10] (done in B44)
+- ★ Inner cuts read as holes (not part fill), labels not over openings or other parts; mirrored left/right doors distinguishable, template instances drawn [#6, #8, #9] (done in B44)
+- ★ Feedback when an option gains nothing (true shape 45°/15°, part-in-hole: "iç boşluğa 0 parça"); mode cards show path and tool-change count [#8, #9, #10] (done in B44)
+- Mode cards: "En hızlı" card shows the time [#8, #9, #10]
+- Dizilim Ayarlar panel: compact so "Diz" does not move; no half row at the top; "Diz" progress shows "Diziliyor… %40 · İptal" [#8, #9] (done in B44)
+- Simülasyon: toolbar not clipped (3D at 1440) and not over the table frame; "Köprü sayısı azaltıldı" names the part [#6, #7, #8] (done in B44)
+- Simülasyon: hole operations note the tool's rpm/plunge [#10]
+- ★ Assembly 3D: first camera fits the whole cabinet; door opacity / outline so it reads closed; hinge cups visible [T B21b, #9, #10] (done in B44)
+- Console: THREE.Clock deprecated warning on every 3D open (use THREE.Timer) [#10] (done in B44)
+- Kesim ayarları card: tab options as one segmented row, three fields in one row; a field with a refused value shows the value in use ("kullanılan: 4") [#11] (done in B44)
+- Özet cutting-settings line wraps to two lines at 232 px and also names the thin skin; Özet warning count equals the Uyarılar panel; Dizilim says the part gap is added to the tool diameter [#12] (done in B44)
+- Phone: Simülasyon 3rd sheet tab cut at 390 (scrollable) [T B43] (done in B44)
 
 ### P3 Kesim listesi, adım 1, makine formu, DXF   [status: partial, B46 #150]
 Partly done in B46 (#150): items marked "done in B46"; the rest stays open.
