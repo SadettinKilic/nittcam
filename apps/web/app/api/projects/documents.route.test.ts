@@ -113,7 +113,10 @@ describe('export step documents and zip (T176)', () => {
     );
 
     // NC export of two sheets: two files, a zip link.
-    const nc = await doExport(post({ revision: d.revision, acceptUnverified: true }), ctx({ id }));
+    const nc = await doExport(
+      post({ revision: d.revision, acceptUnverified: true, checklistConfirmed: true }),
+      ctx({ id }),
+    );
     expect(nc.status).toBe(201);
     const ncRec = (await nc.json()) as ExportResponse;
     expect(ncRec.kind).toBe('nc');

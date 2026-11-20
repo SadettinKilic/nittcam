@@ -218,6 +218,8 @@ export function ExportStep({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           revision,
+          // D-072: `downloadBlocker` let the click through only with the checklist done.
+          checklistConfirmed: true,
           ...(preview.needsAcceptance ? { acceptUnverified: f.accepted } : {}),
         }),
       });

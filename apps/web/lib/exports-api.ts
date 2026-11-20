@@ -94,6 +94,11 @@ export interface ExportRequest {
   profileVersionId?: string;
   /** The user ticked "Bu makine doğrulanmadı; ilk çalıştırmada air cut yapacağım". */
   acceptUnverified?: boolean;
+  /**
+   * D-072 (T297): the operator ticked the pre-export checklist (origin, tool, air cut, tool
+   * changes, unverified templates). Without it the server answers 428 `checklist_required`.
+   */
+  checklistConfirmed?: boolean;
 }
 
 export interface StoredExportFile extends ExportFileInfo {
@@ -141,7 +146,7 @@ export interface ReexportRequest {
   checklistConfirmed?: boolean;
 }
 
-/** 428 of an NC re-export without the checklist: what the dialog asks (D-071). */
+/** 428 of an NC export or re-export without the checklist: what the operator confirms (D-071, D-072). */
 export interface ReexportChecklistRequired {
   error: 'checklist_required';
   checklist: ExportChecklistInfo | null;

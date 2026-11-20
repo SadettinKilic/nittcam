@@ -1404,6 +1404,10 @@ Acceptance: NC, DXF, PDF and labels share one pattern (project, revision, kind, 
 CTO #11 (T179 gap). Rides with T295.
 Acceptance: Projeler "İndir" and the history show an "eski revizyon" badge when the last file is from an older revision than the project; one click to regenerate.
 
+### T297 Main NC export needs the checklist confirmation on the server   [status: done, B41]
+PO decision D-072 (tester note on B37, model D-071). Spec: §7.2 · gcode-safety review
+Acceptance: `POST /api/projects/:id/export` without `checklistConfirmed: true` answers 428 `checklist_required` with the checklist data and stores nothing; a non-boolean is 400; the acceptance stays a separate 428; the export step sends the confirmation only after the checklist is done; tests that call the API directly send it; goldens unchanged.
+
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
 
 Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.

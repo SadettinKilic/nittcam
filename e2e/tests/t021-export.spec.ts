@@ -72,7 +72,7 @@ test('export: checklist + acceptance → stored file with the header; same input
   // Same revision again → the same stored export, the same bytes (idempotent, deterministic).
   const revision = Number(await page.getByTestId('save-status').getAttribute('data-revision'));
   const again = await page.request.post(`/api/projects/${id}/export`, {
-    data: { revision, acceptUnverified: true },
+    data: { revision, acceptUnverified: true, checklistConfirmed: true },
   });
   expect(again.status()).toBe(200);
   const record = (await again.json()) as {

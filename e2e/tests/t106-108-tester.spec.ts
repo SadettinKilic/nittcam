@@ -165,7 +165,7 @@ test('B3 KPI tiles follow the database (projects, exports this week)', async ({
   expect(id).toBeTruthy();
   const detail = (await (await request.get(`/api/projects/${id}`)).json()) as { revision: number };
   const res = await request.post(`/api/projects/${id}/export`, {
-    data: { revision: detail.revision, acceptUnverified: true },
+    data: { revision: detail.revision, acceptUnverified: true, checklistConfirmed: true },
   });
   test.info().annotations.push({ type: 'export-status', description: String(res.status()) });
   expect(res.status()).toBe(201);
