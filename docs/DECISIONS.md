@@ -628,3 +628,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-082 CTO review #12 triage (2026-11-20, PO)
 - M8 is closed when B41 (#139) lands and T298 + T301 are done. Must-fix A → T298 (thin-skin bounds, safety), B → T299, gap E1 → T300: batch B47 on Dev 2 before polish P3. E2 → T301, E3 → T302, T295/T296 follow-ups → T303: batch B48 on Dev 1 after B42. 14 polish items into P2–P5.
 - Thin-skin bounds proposal: ≥ 0,2 mm and ≤ thickness − 1 mm (final numbers by dev + tester, tuned in the field test).
+
+## D-083 Thin-skin thickness bounds (2026-11-20, Dev 2, B47 T298, CTO #12 A; numbers tuned in the field test)
+- A thin skin holds a small part only when it is **≥ 0,2 mm** and **≤ thickness − 1 mm** (`SKIN_BOUNDS`, `maxSkinThickness`, `skinThicknessOk` in `toolpath/tabs.ts`, next to `TAB_BOUNDS`). Thinner is a through cut in disguise (the part is free on the last pass); thicker leaves less than 1 mm for the part's own passes. The "Köprü: Kapalı" default (0,5 mm, at most half the stock) stays, so default goldens do not change.
+- `setThinSkin` refuses a value outside the bounds; the step-1 "Tabaka kalınlığı" field says the range ("0,2–17 mm arası olmalı.") and keeps the last valid value. Sheets thinner than 1,2 mm have no valid skin: the field says so.
+- The project schema is not tightened (old projects must still open). The toolpath checks the skin it really uses: a small part held only by a skin outside the bounds is the error `SMALL_PART_SKIN_OUT_OF_BOUNDS` (NC blocked on Simülasyon and Dışa aktar, once per part), with "Tabaka kalınlığına git" back to the step-1 field. Unused skins (no small part) are not reported.

@@ -52,6 +52,9 @@ import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from
 
 import {
   TAB_BOUNDS,
+  SKIN_BOUNDS,
+  maxSkinThickness,
+  skinThicknessOk,
   TAB_DEFAULTS,
   defaultTabHeight,
   isSmallPart,
@@ -254,7 +257,7 @@ interface Params {
    * parts stop `thickness` mm above the material bottom (`z`, `depths`) and a cleanup pass
    * at the end of the sheet cuts the skin through.
    */
-  skin: { thickness: number; z: number; depths: number[] } | null;
+  skin: { thickness: number; stock: number; z: number; depths: number[] } | null;
   /** Maximum depth per pass (material set step-down), mm. */
   stepDown: number;
 }
@@ -615,8 +618,22 @@ function buildOuterOperation(
   const id = isInner
     ? `${partId}#${ctx.placement.index}/inner${ctx.inner}`
     : `${partId}#${ctx.placement.index}`;
-  if (skinned) {
-    if (!smallWarned.has(`${partId}/skin`)) {
+  if (skinned && p.skin) {
+    // T298 (CTO #12 A, D-083): a skin outside the holding bounds does not hold the small part
+    // (too thin: it is cut free on the last pass). An error, whatever project the value came from.
+    if (!skinThicknessOk(p.skin.thickness, p.skin.stock)) {
+      if (!smallWarned.has(`${partId}/skin-bounds`)) {
+        smallWarned.add(`${partId}/skin-bounds`);
+        errors.push(
+          issue(
+            'SMALL_PART_SKIN_OUT_OF_BOUNDS',
+            'error',
+            partId,
+            `Small part: the ${p.skin.thickness} mm thin skin cannot hold it (${SKIN_BOUNDS.min}–${maxSkinThickness(p.skin.stock)} mm); it would be cut free.`,
+          ),
+        );
+      }
+    } else if (!smallWarned.has(`${partId}/skin`)) {
       smallWarned.add(`${partId}/skin`);
       warnings.push(
         issue(
@@ -951,6 +968,7 @@ export function buildToolpath(
         ? null
         : {
             thickness: skinThickness,
+            stock: thickness,
             z: 0 - (thickness - skinThickness),
             depths: passDepths(0 - (thickness - skinThickness), passDepth),
           },

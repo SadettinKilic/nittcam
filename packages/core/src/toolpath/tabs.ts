@@ -62,6 +62,27 @@ export function tabSizeProblem(
   return null;
 }
 
+/**
+ * Thinnest and thickest thin skin that still holds a small part (T298, CTO #12 A, D-083; tuned
+ * in the field test): skin ≥ 0.2 mm and ≤ thickness − 1 mm. Thinner is a through cut in disguise
+ * (the part is free on the last pass); thicker leaves too little for the part's own passes.
+ */
+export const SKIN_BOUNDS = {
+  min: 0.2,
+  /** Skin at most thickness minus this, mm. */
+  belowThickness: 1,
+} as const;
+
+/** Thickest allowed skin on `thickness` mm stock (may be below `SKIN_BOUNDS.min`: no valid skin). */
+export function maxSkinThickness(thickness: number): number {
+  return thickness - SKIN_BOUNDS.belowThickness;
+}
+
+/** Whether a skin of `skin` mm holds a small part on `thickness` mm stock (T298). */
+export function skinThicknessOk(skin: number, thickness: number): boolean {
+  const eps = 1e-9;
+  return skin >= SKIN_BOUNDS.min - eps && skin <= maxSkinThickness(thickness) + eps;
+}
 /** Built-in default height (material left in the bridge): min(3, t / 2) mm. */
 export function defaultTabHeight(thickness: number): number {
   return Math.min(TAB_DEFAULTS.materialLeft, thickness / 2);

@@ -731,6 +731,19 @@ function WizardSession({
     },
     [session.projectId],
   );
+  // T298: "Tabaka kalınlığına git" opens step 1 on the thin-skin field.
+  const openSkin = useCallback(() => {
+    go('makine');
+    let tries = 0;
+    const focus = () => {
+      const el = document.querySelector<HTMLInputElement>('[data-testid="thin-skin-thickness"]');
+      if (el) {
+        el.scrollIntoView({ block: 'center' });
+        el.focus();
+      } else if (++tries < 30) requestAnimationFrame(focus);
+    };
+    requestAnimationFrame(focus);
+  }, [go]);
   const innerIssues = useMemo(
     () => unsecuredInners(project, session.issues),
     [project, session.issues],
@@ -1096,6 +1109,7 @@ function WizardSession({
         notice={versionNotice}
         onOpenPart={openPart}
         onOpenRow={openRow}
+        onOpenSkin={openSkin}
         header={{
           projectName: session.name,
           revision: session.revision,
@@ -1133,6 +1147,7 @@ function WizardSession({
         notice={versionNotice}
         onOpenPart={openPart}
         onOpenRow={openRow}
+        onOpenSkin={openSkin}
         projectId={session.projectId}
         revision={session.revision}
         saved={!session.dirty}

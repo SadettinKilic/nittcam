@@ -37,6 +37,7 @@ import { ExportChecklist } from './export-checklist';
 import { ProjectStatusCard } from './project-status-card';
 import { ReportCard } from './report-card';
 import type { SimMachine } from '../simulation/simulation-view';
+import { SKIN_CODES } from '../simulation/violations';
 
 type Text = Messages['wizard']['export'];
 type Corners = Messages['machines']['form']['options']['corner'];
@@ -92,6 +93,7 @@ export function ExportStep({
   notice,
   onOpenPart,
   onOpenRow,
+  onOpenSkin,
   projectId,
   revision,
   saved,
@@ -109,6 +111,8 @@ export function ExportStep({
   onOpenPart?: (partId: string, hole?: number) => void;
   /** T287: opens Parçalar on a part's row (a part that is not in the layout links there). */
   onOpenRow?: (partId: string) => void;
+  /** T298: opens step 1 on the thin-skin field. */
+  onOpenSkin?: () => void;
   projectId: string | null;
   revision: number;
   /** False while changes wait for the autosave. */
@@ -337,6 +341,7 @@ export function ExportStep({
           parts={project.parts}
           onOpenPart={onOpenPart}
           onOpenRow={onOpenRow}
+          onOpenSkin={onOpenSkin}
         />
       </div>
     );
@@ -606,12 +611,14 @@ function Violations({
   parts,
   onOpenPart,
   onOpenRow,
+  onOpenSkin,
 }: {
   t: Text;
   violations: ExportViolation[];
   parts: readonly { id: string; name: string }[];
   onOpenPart?: ((partId: string, hole?: number) => void) | undefined;
   onOpenRow?: ((partId: string) => void) | undefined;
+  onOpenSkin?: (() => void) | undefined;
 }) {
   // T270 / T275: "Kapak · İç kesim 3", "Kapak · Delik 3"; T287: "Satır 2 · Tezgah".
   const place = (v: ExportViolation) => itemPlace(v, parts, t, fill);
@@ -643,6 +650,19 @@ function Violations({
                   className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   {t.openPart}
+                </button>
+              </>
+            ) : null}
+            {SKIN_CODES.has(v.code) && onOpenSkin ? (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  data-testid="export-violation-open-skin"
+                  onClick={onOpenSkin}
+                  className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {t.openSkin}
                 </button>
               </>
             ) : null}

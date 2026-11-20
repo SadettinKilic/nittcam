@@ -19,6 +19,9 @@ export { summarizeToolpath, moveLength } from './stats';
 export {
   TAB_DEFAULTS,
   TAB_BOUNDS,
+  SKIN_BOUNDS,
+  maxSkinThickness,
+  skinThicknessOk,
   maxTabHeight,
   tabSizeProblem,
   defaultTabHeight,

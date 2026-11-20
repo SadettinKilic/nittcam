@@ -156,6 +156,7 @@ export function SimulationView({
   notice,
   onOpenPart,
   onOpenRow,
+  onOpenSkin,
   view3d,
 }: {
   t: SimText;
@@ -174,6 +175,8 @@ export function SimulationView({
   onOpenPart?: (partId: string, hole?: number) => void;
   /** T287: opens Parçalar on a part's row (a part that is not in the layout links there). */
   onOpenRow?: (partId: string) => void;
+  /** T298: "Tabaka kalınlığına git" opens step 1 on the thin-skin field. */
+  onOpenSkin?: () => void;
   /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
   empty: { noLayout: React.ReactNode; noMachine: React.ReactNode };
 }) {
@@ -280,6 +283,7 @@ export function SimulationView({
         parts={project.parts}
         onOpenPart={onOpenPart}
         onOpenRow={onOpenRow}
+        onOpenSkin={onOpenSkin}
       />
     );
   } else if (sim) {
@@ -298,7 +302,7 @@ export function SimulationView({
           errorCount={errors.length}
           warnings={warnings}
           errors={errors}
-          links={{ parts: project.parts, onOpenPart, onOpenRow }}
+          links={{ parts: project.parts, onOpenPart, onOpenRow, onOpenSkin }}
         />
       </>
     );

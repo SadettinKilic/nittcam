@@ -34,7 +34,12 @@ export interface PartLinks {
   onOpenPart?: ((partId: string, hole?: number) => void) | undefined;
   /** T287: opens Parçalar on the row of a part the issue names. */
   onOpenRow?: ((partId: string) => void) | undefined;
+  /** T298: opens step 1 on the thin-skin thickness field. */
+  onOpenSkin?: (() => void) | undefined;
 }
+
+/** T298: findings fixed in the step-1 thin-skin field. */
+export const SKIN_CODES: ReadonlySet<string> = new Set(['SMALL_PART_SKIN_OUT_OF_BOUNDS']);
 
 const RULE_ORDER = [
   'TOOLPATH',
@@ -213,6 +218,16 @@ function FindingList({
                     {t.blocked.openCutting}
                   </button>
                 ) : null}
+                {SKIN_CODES.has(f.code) && links.onOpenSkin ? (
+                  <button
+                    type="button"
+                    data-testid="violation-open-skin"
+                    onClick={links.onOpenSkin}
+                    className="shrink-0 rounded-sm text-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:ml-auto"
+                  >
+                    {t.blocked.openSkin}
+                  </button>
+                ) : null}
                 {onPartRow(f) && links.onOpenRow && innerPlace(t, f, links) ? (
                   <button
                     type="button"
@@ -240,13 +255,14 @@ export function Violations({
   parts,
   onOpenPart,
   onOpenRow,
+  onOpenSkin,
 }: {
   t: SimText;
   result: SimulateResult;
   /** T287: the validation errors that stop the export (same list as Dışa aktar). */
   blocking?: readonly Finding[];
 } & PartLinks) {
-  const links: PartLinks = { ...(parts ? { parts } : {}), onOpenPart, onOpenRow };
+  const links: PartLinks = { ...(parts ? { parts } : {}), onOpenPart, onOpenRow, onOpenSkin };
   const all = withBlocking(findings(result), blocking);
   const errors = all.filter((f) => f.severity === 'error');
   const warnings = all.filter((f) => f.severity === 'warning');

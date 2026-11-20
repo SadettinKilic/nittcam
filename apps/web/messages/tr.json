@@ -1123,7 +1123,8 @@
       "rowPlace": "Satır {n} · {name}",
       "openPart": "Çizimde aç",
       "openRow": "Parçalara git",
-      "openCutting": "Kesim ayarlarına git"
+      "openCutting": "Kesim ayarlarına git",
+      "openSkin": "Tabaka kalınlığına git"
     },
     "rules": {
       "R1": "Kural 1 · Birim, mutlak koordinat, düzlem ve iş ofseti baştan yazılır",
@@ -1250,6 +1251,7 @@
       "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
       "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
       "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
+      "SMALL_PART_SKIN_OUT_OF_BOUNDS": "İnce tabaka bu küçük parçayı tutamaz (kalınlık 0,2 mm ile kalınlık − 1 mm arası olmalı); parça son pasoda serbest kalır. 1. adımda tabaka kalınlığını düzeltin.",
       "SMALL_PART_TAB_TOO_SMALL": "Köprü bu küçük parçayı tutamayacak kadar küçük (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası); parça serbest kalır. Kesim ayarlarında köprü ölçüsünü düzeltin ya da “Köprü: Kapalı” seçin.",
       "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası)."
     },
@@ -1673,7 +1675,9 @@
       "skin": {
         "label": "Son pasoda ince tabaka bırak",
         "hint": "Küçük parçalar köprü yerine altta ince bir tabakayla tutulur; tabaka plakanın sonunda temizleme pasosuyla kesilir.",
-        "thickness": "Tabaka kalınlığı"
+        "thickness": "Tabaka kalınlığı",
+        "bounds": "{min}–{max} mm arası olmalı.",
+        "none": "{t} mm plakada ince tabaka bırakılamaz (en az {min} mm tabaka, üstünde en az 1 mm kesim)."
       },
       "units": {
         "mm": "mm",
@@ -1773,6 +1777,7 @@
       "rowPlace": "Satır {n} · {name}",
       "openPart": "Çizimde aç",
       "openRow": "Parçalara git",
+      "openSkin": "Tabaka kalınlığına git",
       "machinesLink": "Makineler sayfası",
       "noLayout": "Önce Dizilim adımında parçaları yerleştirin.",
       "noMachine": "Önce bir makine seçin.",
