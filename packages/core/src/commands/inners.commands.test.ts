@@ -244,12 +244,16 @@ describe('updateInnerContour (B52, D-092)', () => {
   it('property: any accepted move undoes byte for byte', () => {
     const p = withCut();
     fc.assert(
-      fc.property(fc.integer({ min: -50, max: 400 }), fc.integer({ min: -50, max: 300 }), (x, y) => {
-        const stack = new CommandStack(p);
-        stack.execute('updateInnerContour', { id: 'a', index: 0, x, y }, ctx);
-        stack.undo();
-        return JSON.stringify(stack.project) === JSON.stringify(p);
-      }),
+      fc.property(
+        fc.integer({ min: -50, max: 400 }),
+        fc.integer({ min: -50, max: 300 }),
+        (x, y) => {
+          const stack = new CommandStack(p);
+          stack.execute('updateInnerContour', { id: 'a', index: 0, x, y }, ctx);
+          stack.undo();
+          return JSON.stringify(stack.project) === JSON.stringify(p);
+        },
+      ),
       { numRuns: 40 },
     );
   });
