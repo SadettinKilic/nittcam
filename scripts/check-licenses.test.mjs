@@ -53,7 +53,15 @@ test('direct dependencies: only the direct allow-list passes', () => {
     'BlueOak-1.0.0',
   ])
     ok('pkg', id, true);
-  for (const id of ['GPL-3.0', 'AGPL-3.0', 'LGPL-3.0', 'MPL-2.0', 'CC-BY-4.0', 'Python-2.0'])
+  for (const id of [
+    'GPL-3.0',
+    'AGPL-3.0',
+    'LGPL-3.0',
+    'MPL-2.0',
+    'CC-BY-4.0',
+    'Python-2.0',
+    'Zlib',
+  ])
     fails('pkg', id, true);
 });
 
@@ -61,6 +69,7 @@ test('transitive dependencies: extra licences are allowed, GPL/AGPL never', () =
   ok('lightningcss', 'MPL-2.0', false);
   ok('caniuse-lite', 'CC-BY-4.0', false);
   ok('argparse', 'Python-2.0', false);
+  ok('pako', '(MIT AND Zlib)', false);
   fails('some-lib', 'GPL-2.0', false);
   fails('some-lib', 'AGPL-3.0-only', false);
   fails('some-lib', 'LGPL-3.0', false);
