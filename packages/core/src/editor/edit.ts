@@ -140,6 +140,7 @@ export function withSegmentLength(
   vs: readonly Vertex[],
   index: number,
   length: number,
+  keepRight = false,
 ): OutlineEdit {
   const info = segmentInfo(vs, index);
   if (!info) return { ok: false, error: 'index' };
@@ -147,7 +148,49 @@ export function withSegmentLength(
   const a = at(vs, index);
   const b = at(vs, index + 1);
   const k = length / segmentLength(a, b, a.bulge);
-  return finish(moveEnd(vs, index, { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }));
+  const to = { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+  if (keepRight && keepsRightAngle(vs, index)) {
+    // B52 (D-092): the next (perpendicular) edge slides along, so both right angles stay and the
+    // edge after it (parallel to this one) takes up the difference.
+    const dx = to.x - b.x;
+    const dy = to.y - b.y;
+    const n = vs.length;
+    const e1 = (index + 1) % n;
+    const e2 = (index + 2) % n;
+    return finish(
+      vs.map((v, i) =>
+        i === e1 || i === e2 ? { x: tidy(v.x + dx), y: tidy(v.y + dy), bulge: v.bulge } : { ...v },
+      ),
+    );
+  }
+  return finish(moveEnd(vs, index, to));
+}
+
+const RIGHT_TOL = 1e-6;
+
+/**
+ * True when segment `index` and the two after it are straight, the next one is perpendicular to
+ * it and the one after that parallel (an orthogonal corner run, B52): only then can a length edit
+ * keep the right angles.
+ */
+export function keepsRightAngle(vs: readonly Vertex[], index: number): boolean {
+  const n = vs.length;
+  if (n < 4 || !Number.isInteger(index) || index < 0 || index >= n) return false;
+  const a = at(vs, index);
+  const b = at(vs, index + 1);
+  const c = at(vs, index + 2);
+  const d = at(vs, index + 3);
+  if (a.bulge !== 0 || b.bulge !== 0 || c.bulge !== 0) return false;
+  const u = { x: b.x - a.x, y: b.y - a.y };
+  const w = { x: c.x - b.x, y: c.y - b.y };
+  const z = { x: d.x - c.x, y: d.y - c.y };
+  const lu = Math.hypot(u.x, u.y);
+  const lw = Math.hypot(w.x, w.y);
+  const lz = Math.hypot(z.x, z.y);
+  if (lu < EPS || lw < EPS || lz < EPS) return false;
+  const dot = (u.x * w.x + u.y * w.y) / (lu * lw);
+  const cross = (u.x * z.y - u.y * z.x) / (lu * lz);
+  return Math.abs(dot) < RIGHT_TOL && Math.abs(cross) < RIGHT_TOL;
 }
 
 /** Segment `index` turned to `angle` degrees (chord direction) about its start; length kept. */

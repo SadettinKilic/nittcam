@@ -173,3 +173,84 @@ describe('validation of inner contours (T134, D-045)', () => {
     expect(issues.map((i) => i.code)).toEqual(['INNER_CONTOUR_INVALID']);
   });
 });
+
+describe('updateInnerContour (B52, D-092)', () => {
+  function withCut(): Project {
+    const p = base();
+    const ok = applyCommand(p, 'addInnerContour', {
+      id: 'a',
+      vertices: shifted(p, rect(50, 60, 100, 80)),
+    });
+    if (!ok.ok) throw new Error(ok.error.message);
+    return ok.project;
+  }
+  const boxOf = (vs: readonly Vertex[]) => [
+    Math.min(...vs.map((q) => q.x)),
+    Math.min(...vs.map((q) => q.y)),
+    Math.max(...vs.map((q) => q.x)),
+    Math.max(...vs.map((q) => q.y)),
+  ];
+
+  it('moves and resizes a cut-out in the part frame; one undo step', () => {
+    const p = withCut();
+    const stack = new CommandStack(p);
+    const res = stack.execute(
+      'updateInnerContour',
+      { id: 'a', index: 0, x: 200, y: 100, width: 120, height: 50 },
+      ctx,
+    );
+    expect(res.ok).toBe(true);
+    const inner = stack.project.parts[0]?.inners[0] ?? [];
+    expect(boxOf(inner)).toEqual([200, 100, 320, 150]);
+    expect(orientation(contour(inner))).toBe('cw');
+    stack.undo();
+    expect(JSON.stringify(stack.project)).toBe(JSON.stringify(p));
+  });
+
+  it('refuses a cut-out pushed out of the part or onto another one', () => {
+    const p = withCut();
+    expect(applyCommand(p, 'updateInnerContour', { id: 'a', index: 0, x: 350 }).ok).toBe(false);
+    expect(applyCommand(p, 'updateInnerContour', { id: 'a', index: 1, x: 10 }).ok).toBe(false);
+    const two = applyCommand(p, 'addInnerContour', {
+      id: 'a',
+      vertices: shifted(p, rect(250, 60, 100, 80)),
+    });
+    if (!two.ok) throw new Error(two.error.message);
+    expect(applyCommand(two.project, 'updateInnerContour', { id: 'a', index: 0, x: 220 }).ok).toBe(
+      false,
+    );
+  });
+
+  it('scales a cut-out with arcs uniformly; a non-uniform size is refused', () => {
+    const p = base();
+    const ok = applyCommand(p, 'addInnerContour', {
+      id: 'a',
+      vertices: shifted(p, [v(100, 150, 1), v(160, 150, 1)]),
+    });
+    if (!ok.ok) throw new Error(ok.error.message);
+    const r = applyCommand(ok.project, 'updateInnerContour', { id: 'a', index: 0, width: 90 });
+    if (!r.ok) throw new Error(r.error.message);
+    const b = boxOf(r.project.parts[0]?.inners[0] ?? []);
+    expect((b[2] ?? 0) - (b[0] ?? 0)).toBeCloseTo(90, 6);
+    const bad = applyCommand(ok.project, 'updateInnerContour', {
+      id: 'a',
+      index: 0,
+      width: 90,
+      height: 40,
+    });
+    expect(bad.ok).toBe(false);
+  });
+
+  it('property: any accepted move undoes byte for byte', () => {
+    const p = withCut();
+    fc.assert(
+      fc.property(fc.integer({ min: -50, max: 400 }), fc.integer({ min: -50, max: 300 }), (x, y) => {
+        const stack = new CommandStack(p);
+        stack.execute('updateInnerContour', { id: 'a', index: 0, x, y }, ctx);
+        stack.undo();
+        return JSON.stringify(stack.project) === JSON.stringify(p);
+      }),
+      { numRuns: 40 },
+    );
+  });
+});

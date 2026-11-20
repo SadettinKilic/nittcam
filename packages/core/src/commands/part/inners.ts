@@ -99,3 +99,84 @@ export const removeInnerContour = defineCommand({
     }
   },
 });
+
+const innerBox = z.strictObject({
+  id: rectPartSchema.shape.id,
+  index: z.number().int({ error: 'index must be an integer' }).min(0),
+  /** New lower-left corner of the contour's box, part frame (mm). Omitted = unchanged. */
+  x: z.number({ error: 'x must be a finite number (mm)' }).optional(),
+  y: z.number({ error: 'y must be a finite number (mm)' }).optional(),
+  /** New box size (mm). Omitted = unchanged; a contour with arcs scales uniformly. */
+  width: z.number({ error: 'width must be a finite number (mm)' }).positive().optional(),
+  height: z.number({ error: 'height must be a finite number (mm)' }).positive().optional(),
+  toolDiameter: z.number().nonnegative().default(0),
+});
+
+/** Inner contour `index` moved / resized to the requested box (part frame), or an error. */
+export function placedInner(
+  project: Project,
+  p: z.output<typeof innerBox>,
+): { error: string } | { vertices: Vertex[] } {
+  const part = project.parts.find((x) => x.id === p.id);
+  if (!part) return { error: `no part with id "${p.id}"` };
+  const inner = part.inners[p.index];
+  if (!inner) return { error: 'no such inner contour' };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const v of inner) {
+    minX = Math.min(minX, v.x);
+    minY = Math.min(minY, v.y);
+    maxX = Math.max(maxX, v.x);
+    maxY = Math.max(maxY, v.y);
+  }
+  const w0 = maxX - minX;
+  const h0 = maxY - minY;
+  const arcs = inner.some((v) => v.bulge !== 0);
+  let sx = p.width !== undefined && w0 > 0 ? p.width / w0 : 1;
+  let sy = p.height !== undefined && h0 > 0 ? p.height / h0 : 1;
+  if (arcs) {
+    // A bulge arc stays an arc only under a uniform scale (B52, D-092).
+    if (p.width !== undefined && p.height === undefined) sy = sx;
+    else if (p.height !== undefined && p.width === undefined) sx = sy;
+    else if (Math.abs(sx - sy) > 1e-6) {
+      return { error: 'an inner contour with arcs keeps its proportions (scale uniformly)' };
+    }
+  }
+  const x0 = p.x ?? minX;
+  const y0 = p.y ?? minY;
+  const vertices = inner.map((v) => ({
+    x: tidy(x0 + (v.x - minX) * sx),
+    y: tidy(y0 + (v.y - minY) * sy),
+    bulge: v.bulge,
+  }));
+  const others = part.inners.filter((_, i) => i !== p.index);
+  const err = checkInnerContour(deriveOutline(part), others, vertices, p.toolDiameter);
+  return err ? { error: ERRORS[err] } : { vertices };
+}
+
+/**
+ * Moves and / or resizes inner contour `index` (B52, D-092): x, y = new lower-left corner of its
+ * box in the part frame, width / height = new box size. The contour keeps its shape (arcs scale
+ * uniformly) and must still lie inside the part, clear of the other cut-outs.
+ */
+export const updateInnerContour = defineCommand({
+  name: 'updateInnerContour',
+  area: 'part',
+  description:
+    'Move or resize an inner contour (cut-out) of a part by index: x, y = lower-left corner of ' +
+    'its box in the part frame (mm), width / height = box size. It must stay inside the part.',
+  aiTool: false,
+  params: innerBox,
+  check: (project, p) => {
+    const r = placedInner(project, p);
+    return 'error' in r ? r.error : undefined;
+  },
+  apply: (draft, p) => {
+    const r = placedInner(draft as Project, p);
+    if ('error' in r) return;
+    const part = draft.parts.find((x) => x.id === p.id);
+    if (part) part.inners[p.index] = r.vertices;
+  },
+});

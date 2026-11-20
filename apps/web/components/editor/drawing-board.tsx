@@ -73,6 +73,7 @@ import {
   addHoleParams,
   holeCentre,
   holeOnCentre,
+  holeCentreSnap,
   holeRefusal,
   liveDiameter,
   typedDiameter,
@@ -622,7 +623,11 @@ export function DrawingBoard({
       tolerance: tol,
       grid: gridLevels(view.scale).fine,
       ...(from ? { from: { x: from.x, y: from.y } } : {}),
-      disabled: SNAP_TOGGLES.filter((k) => !state.snap[k]),
+      disabled: [
+        ...SNAP_TOGGLES.filter((k) => !state.snap[k]),
+        // B52 (D-092): zoomed out, a hole does not jump onto a centre it was not aimed at.
+        ...(holeOn && !holeCentreSnap(view.scale) ? (['centre'] as const) : []),
+      ],
     });
     return { point: res.kind === 'none' ? w : res.point, kind: res.kind };
   }

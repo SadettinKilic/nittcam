@@ -143,3 +143,14 @@ export function typedDiameter(text: string): number | null {
   const v = Number(text.replace(',', '.'));
   return text !== '' && Number.isFinite(v) && v > 0 ? v : null;
 }
+
+/** Below this zoom (px per mm) the hole tool does not snap onto centres (B52, D-092). */
+export const HOLE_CENTRE_SNAP_SCALE = 2;
+
+/**
+ * True when the hole tool may snap its centre onto hole / contour centres (B52, D-092): only at a
+ * usable zoom, where the snap reach (`snapPx` screen px) stays within a few millimetres.
+ */
+export function holeCentreSnap(scale: number): boolean {
+  return scale >= HOLE_CENTRE_SNAP_SCALE;
+}

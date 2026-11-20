@@ -4,6 +4,7 @@ import { boardParts } from '@nittcam/core';
 import {
   addHoleParams,
   holeCentre,
+  holeCentreSnap,
   holeDefaults,
   holeOnCentre,
   holeRefusal,
@@ -107,5 +108,14 @@ describe('T276: the hole lands where it is clicked', () => {
     expect(edge && holeRefusal(p, edge)).toBe('outside');
     const fine = addHoleParams(p, { partId: 'a', c: { x: 1200, y: 650 } }, 35, 2);
     expect(fine && holeRefusal(p, fine)).toBeNull();
+  });
+});
+
+describe('holeCentreSnap (B52, D-092)', () => {
+  it('snaps onto centres only at a usable zoom', () => {
+    expect(holeCentreSnap(0.4)).toBe(false); // whole sheet in view: 10 px = 25 mm
+    expect(holeCentreSnap(1.99)).toBe(false);
+    expect(holeCentreSnap(2)).toBe(true); // 10 px = 5 mm
+    expect(holeCentreSnap(8)).toBe(true);
   });
 });

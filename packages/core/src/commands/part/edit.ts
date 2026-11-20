@@ -90,13 +90,16 @@ export const setSegmentLength = outlineCommand({
   name: 'setSegmentLength',
   description:
     'Set the length (mm) of one outline segment: the end vertex moves along the segment and the ' +
-    'next segment follows. Rectangles become freeform parts.',
+    'next segment follows. keepRight: on an orthogonal shape the next edge slides along instead, ' +
+    'so the right angles stay. Rectangles become freeform parts.',
   params: z.strictObject({
     id: rectPartSchema.shape.id,
     index,
     length: num.positive({ error: 'length must be greater than 0' }),
+    /** B52 (D-092): keep the right angles where the corners are right angles. */
+    keepRight: z.boolean().optional(),
   }),
-  edit: (vs, p) => withSegmentLength(vs, p.index, p.length),
+  edit: (vs, p) => withSegmentLength(vs, p.index, p.length, p.keepRight ?? false),
 });
 
 /** Turns one outline segment about its start vertex to `angle` degrees (CCW from +X). */
