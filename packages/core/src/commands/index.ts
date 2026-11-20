@@ -35,6 +35,8 @@ export {
   type RunNestingParams,
   lockPlacement,
   lockPlacementParamsSchema,
+  lockPlacements,
+  lockPlacementsParamsSchema,
 } from './nesting';
 export {
   addTemplate,

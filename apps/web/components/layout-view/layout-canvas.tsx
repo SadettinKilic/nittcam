@@ -38,16 +38,28 @@ export interface LayoutCanvasProps {
   grid: boolean;
   /** Key of the selected part. */
   selected: string | null;
+  /** Further parts of a multi-selection (Shift/Ctrl+click, T170), drawn as selected. */
+  marked?: ReadonlySet<string>;
   /** Keys drawn in the conflict colour (the dragged part and what it collides with). */
   conflicts: ReadonlySet<string>;
   /** Unsaved position of the selected part (keyboard nudge or drag), mm. */
   pending: { x: number; y: number } | null;
   onViewChange: (view: ViewState) => void;
-  onSelect: (key: string | null) => void;
-  /** Live position of a dragged part (mm, snapped); the parent checks it. */
-  onDragMove: (key: string, x: number, y: number) => void;
-  /** Drop at (mm, snapped). Returns false when the drop is refused; the part then snaps back. */
-  onDrop: (key: string, x: number, y: number) => boolean;
+  /** `additive`: Shift/Ctrl/⌘ held, the part is toggled in the multi-selection (T170). */
+  onSelect: (key: string | null, additive?: boolean) => void;
+  /**
+   * Live position of a dragged part (mm, rounded); the parent checks it. It may return a snapped
+   * position (T170: neighbours at gap distance), which the part then jumps to. `free` = Alt held,
+   * no snapping.
+   */
+  onDragMove: (
+    key: string,
+    x: number,
+    y: number,
+    free?: boolean,
+  ) => { x: number; y: number } | undefined;
+  /** Drop at (mm, rounded). Returns false when the drop is refused; the part then snaps back. */
+  onDrop: (key: string, x: number, y: number, free?: boolean) => boolean;
   /**
    * Bumped after each "Diz" result (T196): the parts are remounted and fade/settle in, staggered,
    * ≤ 240 ms in total; 0 or reduced motion = no animation.
@@ -286,7 +298,7 @@ const PartShape = memo(function PartShape({
       draggable
       onMouseDown={(e) => {
         e.cancelBubble = true;
-        onSelect(part.key);
+        onSelect(part.key, e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey);
       }}
       onTouchStart={(e) => {
         e.cancelBubble = true;
@@ -299,7 +311,8 @@ const PartShape = memo(function PartShape({
       onDragMove={(e) => {
         e.cancelBubble = true;
         const p = snap(e.target);
-        onDragMove(part.key, p.x, p.y);
+        const to = onDragMove(part.key, p.x, p.y, e.evt?.altKey);
+        if (to) e.target.position({ x: to.x, y: sheetHeight - to.y - h });
       }}
       onDragEnd={(e) => {
         e.cancelBubble = true;
@@ -307,7 +320,8 @@ const PartShape = memo(function PartShape({
         const p = snap(node);
         // Refused: straight back to the stored position. The view has no animated transitions
         // at all, so prefers-reduced-motion is respected by construction.
-        if (!onDrop(part.key, p.x, p.y)) node.position({ x: part.x, y: sheetHeight - part.y - h });
+        if (!onDrop(part.key, p.x, p.y, e.evt?.altKey))
+          node.position({ x: part.x, y: sheetHeight - part.y - h });
       }}
     >
       {part.outline ? (
@@ -454,7 +468,7 @@ export default function LayoutCanvas(props: LayoutCanvasProps) {
             key={`${props.appearKey ?? 0}:${part.key}`}
             appearDelay={props.appearKey ? Math.min(i * 8, 100) : undefined}
             part={part}
-            selected={part.key === props.selected}
+            selected={part.key === props.selected || (props.marked?.has(part.key) ?? false)}
             conflict={props.conflicts.has(part.key)}
             pendingX={part.key === props.selected ? props.pending?.x : undefined}
             pendingY={part.key === props.selected ? props.pending?.y : undefined}
