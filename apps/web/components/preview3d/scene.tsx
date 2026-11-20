@@ -17,7 +17,7 @@ import { NeutralToneMapping, Plane, Vector3, type PerspectiveCamera } from 'thre
 import type { ThreeEvent } from '@react-three/fiber';
 import { buildSheetScene, pickSlot, type SheetScene } from '../../lib/preview3d/sheet-scene';
 import { SlotState } from './slots';
-import { FpsWatch } from '../../lib/preview3d/fps';
+import { FpsWatch, slowHookFps } from '../../lib/preview3d/fps';
 import { materialLook, type MaterialLook } from '../../lib/preview3d/textures';
 import { stockMaterials } from './materials';
 type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
@@ -100,11 +100,23 @@ export interface SceneProps {
   command: CameraCommand;
   /** Every camera change: the world-inverse matrix (view cube) and the pose (read-outs). */
   onCamera: (viewInverse: ArrayLike<number>, pose: CameraPose) => void;
-  /** Draw calls of the last frame (for perf checks; data attribute on the host). */
-  onStats?: (drawCalls: number) => void;
+  /** Perf read-out of the last frame (T159; data attributes on the host for perf checks). */
+  onStats?: (stats: SceneStats) => void;
   interaction: SceneInteraction;
   /** Toolpath overlay from the read program (T156) and the playback state (T157). */
   toolpath?: SceneToolpath | null;
+}
+
+/** Perf read-out of the scene (T159 budget: fps while orbiting, first frame, GPU memory). */
+export interface SceneStats {
+  drawCalls: number;
+  /** Frame rate of the current continuous run of frames; null between runs. */
+  fps: number | null;
+  /** Live GPU geometries and textures (three.js `renderer.info.memory`). */
+  geometries: number;
+  textures: number;
+  /** ms from the scene's first render (right after the chunk load) to its first drawn frame. */
+  firstFrameMs: number;
 }
 
 export interface SceneToolpath {
@@ -171,6 +183,9 @@ export default function Scene(props: SceneProps) {
   const [ox, oy] = ia.offset;
   const tb = stage.table;
   const span = Math.max(W, H, tb.w, tb.h);
+  // A stable array: drei's ContactShadows rebuilds (and leaks) its render targets on a new
+  // `scale` identity, so a fresh array per render grew GPU memory on every camera preset (T159).
+  const shadowScale = useMemo(() => [W * 1.15, H * 1.15] as [number, number], [W, H]);
 
   return (
     <Canvas
@@ -245,11 +260,12 @@ export default function Scene(props: SceneProps) {
         fadeStrength={1.5}
         followCamera={false}
       />
-      {simple ? null : (
+      {/* Hidden, not unmounted, in Basit mod: drei never frees its render targets (T159). */}
+      <group visible={!simple}>
         <ContactShadows
           key={`${W}x${H}x${T}`}
           position={[ox, 0.5, -oy]}
-          scale={[W * 1.15, H * 1.15]}
+          scale={shadowScale}
           far={Math.max(T * 4, 60)}
           blur={2.2}
           opacity={0.45}
@@ -257,7 +273,7 @@ export default function Scene(props: SceneProps) {
           frames={1}
           color={colors.shadow}
         />
-      )}
+      </group>
       <Rig {...props} box={sheetFrameBox(stage.sheet, T)} />
     </Canvas>
   );
@@ -374,6 +390,7 @@ function Rig({
   onCamera,
   onStats,
   onSlow,
+  simple,
   box,
 }: SceneProps & { box: ReturnType<typeof sheetFrameBox> }) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
@@ -382,6 +399,15 @@ function Rig({
   const gl = useThree((s) => s.gl);
   const controls = useRef<OrbitControlsImpl>(null);
   const fps = useRef(new FpsWatch());
+  // T159: first frame after the chunk load (the scene's first render) and the slow-test clock.
+  const mountedAt = useRef(0);
+  useEffect(() => {
+    mountedAt.current = performance.now();
+  }, []);
+  const firstFrame = useRef(-1);
+  const fakeClock = useRef(0);
+  // Basit mod on (by hand or by the watch): arm the watch again; a second slow run → 2D (§3.8).
+  useEffect(() => fps.current.reset(), [simple]);
   const anim = useRef<{ from: CameraPose; to: CameraPose; start: number; ms: number } | null>(null);
   const aspect = size.width / Math.max(1, size.height);
 
@@ -452,8 +478,19 @@ function Rig({
       if (k < 1) invalidate();
       else anim.current = null;
     }
-    if (fps.current.frame(performance.now())) onSlow?.();
-    onStats?.(gl.info.render.calls);
+    const now = performance.now();
+    if (firstFrame.current < 0) firstFrame.current = now - mountedAt.current;
+    const fake = slowHookFps();
+    const t = fake ? (fakeClock.current += 1000 / fake) : now;
+    if (fps.current.frame(t)) onSlow?.();
+    if (fake) invalidate(); // the test hook keeps frames coming until the watch fires
+    onStats?.({
+      drawCalls: gl.info.render.calls,
+      fps: fps.current.rate(),
+      geometries: gl.info.memory.geometries,
+      textures: gl.info.memory.textures,
+      firstFrameMs: Math.round(firstFrame.current),
+    });
   });
 
   return (

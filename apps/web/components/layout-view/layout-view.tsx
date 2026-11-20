@@ -54,7 +54,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { Preview3D } from '../preview3d/preview3d';
+import { Preview3D, type FallbackReason } from '../preview3d/preview3d';
 import type { CameraCommand } from '../preview3d/scene';
 import { PRESET_MS, type ViewPreset } from '../../lib/preview3d/camera';
 import { hasWebGL2 } from '../../lib/preview3d/capability';
@@ -193,7 +193,7 @@ export function LayoutView({
   const box = useRef<HTMLDivElement>(null);
   // T152: 2D/3D switch. Without WebGL2 (or after a failed scene) the 2D view stays, with a note.
   const [mode, setMode] = useState<'2d' | '3d'>('2d');
-  const [noWebGL, setNoWebGL] = useState(false);
+  const [noWebGL, setNoWebGL] = useState<FallbackReason | null>(null);
   const [camera, setCamera] = useState<CameraCommand>({
     preset: 'iso',
     from: 'top',
@@ -204,7 +204,7 @@ export function LayoutView({
   const pt = t.preview3d;
   function chooseMode(next: '2d' | '3d') {
     if (next === '3d' && !hasWebGL2()) {
-      setNoWebGL(true);
+      setNoWebGL('webgl');
       setMode('2d');
       return;
     }
@@ -717,7 +717,7 @@ export function LayoutView({
           className={`${floating} absolute inset-x-2 bottom-12 z-10 mx-auto flex max-w-md items-start gap-2 px-3 py-2 text-sm text-fg sm:bottom-12`}
         >
           <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-info-text" />
-          <span>{pt.fallback}</span>
+          <span>{noWebGL === 'slow' ? pt.fallbackSlow : pt.fallback}</span>
         </div>
       ) : null}
       {/* B4b: on phones the sticky panel bar may cover the canvas foot until the page scrolls. */}
@@ -823,8 +823,8 @@ export function LayoutView({
           table={preview3d.table}
           command={camera}
           onPreset={preset}
-          onFallback={() => {
-            setNoWebGL(true);
+          onFallback={(reason) => {
+            setNoWebGL(reason);
             setMode('2d');
           }}
           partCount={parts.length}

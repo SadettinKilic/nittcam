@@ -36,7 +36,16 @@ import {
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
 import { useMediaQuery } from '../../lib/use-media-query';
-import type { CameraCommand, SceneColors, SceneInteraction, SceneToolpath } from './scene';
+import type {
+  CameraCommand,
+  SceneColors,
+  SceneInteraction,
+  SceneStats,
+  SceneToolpath,
+} from './scene';
+
+/** Why the 3D view gave way to 2D: no WebGL2 / a crash, or still too slow in Basit mod (T159). */
+export type FallbackReason = 'webgl' | 'slow';
 
 type Text = Messages['layout']['preview3d'];
 
@@ -94,8 +103,9 @@ export interface Preview3DProps {
   command: CameraCommand;
   /** A view-cube click asks the owner for a preset (the owner keeps the command state). */
   onPreset: (preset: ViewPreset) => void;
-  /** The scene could not run (crash, lost context): the owner shows the 2D view. */
-  onFallback: () => void;
+  /** The scene could not run (crash, lost context) or stayed too slow in Basit mod: the owner
+   * shows the 2D view with the matching note (spec §3.8). */
+  onFallback: (reason: FallbackReason) => void;
   partCount: number;
   /** Per-slot extra lift in mm (cutting playback, T157). */
   lifts?: ArrayLike<number> | null;
@@ -188,8 +198,14 @@ export function Preview3D({
     );
     el.dataset.ready = 'true';
   };
-  const onStats = (calls: number) => {
-    if (host.current) host.current.dataset.drawCalls = String(calls);
+  const onStats = (s: SceneStats) => {
+    const d = host.current?.dataset;
+    if (!d) return;
+    d.drawCalls = String(s.drawCalls);
+    d.fps = s.fps === null ? '' : String(Math.round(s.fps));
+    d.gpuGeometries = String(s.geometries);
+    d.gpuTextures = String(s.textures);
+    d.firstFrameMs = String(s.firstFrameMs);
   };
 
   return (
@@ -211,7 +227,7 @@ export function Preview3D({
       className="@container absolute inset-0 touch-none overflow-hidden bg-linear-to-b from-surface-subtle to-canvas outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
     >
       {colors ? (
-        <SceneBoundary onError={onFallback}>
+        <SceneBoundary onError={() => onFallback('webgl')}>
           <Scene
             project={project}
             sheet={sheet}
@@ -220,7 +236,8 @@ export function Preview3D({
             reduced={reduced}
             simple={simple}
             onSlow={() => {
-              if (simple) return;
+              // Already simple and still slow: give way to 2D (§3.8 "gerekirse 2D'ye düşer").
+              if (simple) return onFallback('slow');
               setSimple(true);
               setAutoSimple(true);
             }}
