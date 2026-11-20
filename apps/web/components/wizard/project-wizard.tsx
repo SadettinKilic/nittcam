@@ -1589,7 +1589,15 @@ function CompactStepper({
             data-step={current}
             className="truncate text-base leading-tight font-semibold tracking-tight text-fg focus:outline-none"
           >
-            {t[current]}
+            {/* T255: below 640 px a long step name gets its short label (same step, spec §3.7). */}
+            {current in t.short ? (
+              <>
+                <span className="sm:hidden">{t.short[current as keyof typeof t.short]}</span>
+                <span className="max-sm:hidden">{t[current]}</span>
+              </>
+            ) : (
+              t[current]
+            )}
           </h1>
           <span
             aria-hidden="true"

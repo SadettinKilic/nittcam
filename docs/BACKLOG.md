@@ -547,7 +547,7 @@ Tester focus: e2e search + sort + group collapse; project JSON order unchanged a
 
 Source: Fable design review #3 (`docs/reviews/2026-11-19-fable-design-review-3.md`, 2026-11-19, screenshots in `docs/reviews/2026-11-19-fable-3/`). Scores: corporate image 7/10 (was 6.5), modernity 8 (7.5), usability 7.5 (7), readiness for M4–M6 7.5 (7). Rule: D-040. Each task ≤ ½ day.
 
-### T248 Phone cut list: compact cards, one-row toolbar   [status: deferred]
+### T248 Phone cut list: compact cards, one-row toolbar   [status: done]
 > **Deferred to the mobile UI pass (D-043).** Only the import-panel bullet (sticky "N satır ekle / Vazgeç" row, one-sentence intro) stays in B8a and moved to T250.
 Spec: §4.1, §3.7 · Depends: T118, T119, T120, T123 (same toolbar)
 Acceptance:
@@ -1408,9 +1408,9 @@ Acceptance: Projeler "İndir" and the history show an "eski revizyon" badge when
 
 Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.
 
-### T248 Phone cut list: compact cards, one-row toolbar (moved here; text above in B8a)   [status: deferred]
+### T248 Phone cut list: compact cards, one-row toolbar (moved here; text above in B8a)   [status: done]
 
-### T255 Phone Simülasyon transport visible, short header label   [status: todo]
+### T255 Phone Simülasyon transport visible, short header label   [status: done]
 Spec: §3.7 · Depends: T249 · Decision: D-043
 Acceptance:
 - [ ] the T249 phone bullet: below 640 px the whole transport (scrubber, time, speed chips, position line) is visible above the "Ayarlar / G-code" button bar; the wizard header shows the short label "Simülasyon" below 640 px
@@ -1509,19 +1509,19 @@ Tester focus: bundle report; Lighthouse CI numbers; long-task count during nesti
 
 ### Batch B30: T187–T189 (resilience, responsive, G-code regression)
 
-### T187 Error handling and resilience   [status: todo]
+### T187 Error handling and resilience   [status: done]
 Spec: §8.2 · Depends: T105
 Acceptance:
 - [ ] offline/save-failure banner with the unsent queue count, retry; revision conflict dialog (reload / keep mine as copy); client errors logged to a local server log
 Tester focus: kill the server mid-edit → queue → recover without loss; conflict dialog e2e.
 
-### T188 Responsive and touch pass   [status: todo]
+### T188 Responsive and touch pass   [status: done]
 Spec: §3.7 · Depends: T185
 Acceptance:
 - [ ] 390 / 768 / 1024 / 1440 layouts for every route; touch for editor pan/zoom/select and 3D orbit; tablet workshop use (large hit targets ≥ 40 px). The canvas-first rule for steps 3–4 is already done in T198; this pass covers the remaining routes and the editor
 Tester focus: screenshot matrix of all routes at 4 widths; touch emulation e2e.
 
-### T189 G-code regression set for the new operations   [status: todo]
+### T189 G-code regression set for the new operations   [status: done]
 Spec: §7.2, §11 · Depends: T143, T167 · **Human gate: golden files (`needs-human`)**
 Acceptance:
 - [ ] golden fixtures for both posts: holes + pockets + grooves, inner contours, arcs, rotated grain parts, true-shape layout, thin skin

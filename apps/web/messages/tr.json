@@ -480,6 +480,7 @@
     "empty": "Henüz parça yok.",
     "addRow": "Satır ekle",
     "pasteOpen": "İçe aktar",
+    "toolbarMore": "Diğer işlemler",
     "undo": "Geri al",
     "redo": "Yinele",
     "shortcuts": "Enter alt satıra, Tab sonraki hücreye geçer; oklarla gezinin, F2 ile düzenleyin, Esc vazgeçer. Satır numarasına Ctrl/Shift ile tıklayarak çoklu seçin; Ctrl+D çoğaltır, Delete seçili satırları siler (hücre dışında). Tablo dışında Ctrl+Z geri alır.",
@@ -1506,6 +1507,7 @@
       "dizilim": "Dizilim",
       "simulasyon": "Önizleme / simülasyon",
       "export": "Dışa aktar",
+      "short": { "simulasyon": "Simülasyon" },
       "stepOf": "Adım {n} / {total}",
       "status": {
         "done": "tamamlandı",

@@ -274,6 +274,17 @@
   --spacing-panel: 0.75rem;
 }
 
+/* T188 (D-078): on a touch screen from 640 px (workshop tablet) every control is at least 40 px,
+ * also small buttons and compact scopes. Mouse screens keep their sizes (desktop unchanged,
+ * D-043); phones keep the compact cut-list cards (T248). Table row heights are not changed. */
+@media (pointer: coarse) and (min-width: 640px) {
+  :root,
+  [data-density='compact'] {
+    --spacing-control-sm: 2.5rem;
+    --spacing-control-md: 2.5rem;
+  }
+}
+
 /* ---- Dark theme ------------------------------------------------------------------------- */
 .dark {
   --color-bg: var(--color-neutral-1000);
