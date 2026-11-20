@@ -1,14 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import {
-  fill,
-  goStep,
-  openNewProject,
-  pasteAndNest,
-  saved,
-  toastsSettled,
-} from './wizard-helpers';
+import { fill, goStep, openNewProject, pasteAndNest, saved, toastsSettled } from './wizard-helpers';
 
 // T288 (CTO review #10 E1): "Kesim ayarları" on Simülasyon: tabs (every part / small parts only /
 // off), count, width, height, lead-in and direction; every change is a command (Ctrl+Z undoes it)
@@ -20,9 +13,7 @@ async function axeClean(page: Page) {
   await toastsSettled(page);
   await expect
     .poll(() =>
-      page.evaluate(
-        () => document.getAnimations().filter((a) => a.playState === 'running').length,
-      ),
+      page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running').length),
     )
     .toBe(0);
   const res = await new AxeBuilder({ page }).analyze();
