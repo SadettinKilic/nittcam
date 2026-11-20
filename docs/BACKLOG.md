@@ -547,7 +547,7 @@ Tester focus: e2e search + sort + group collapse; project JSON order unchanged a
 
 Source: Fable design review #3 (`docs/reviews/2026-11-19-fable-design-review-3.md`, 2026-11-19, screenshots in `docs/reviews/2026-11-19-fable-3/`). Scores: corporate image 7/10 (was 6.5), modernity 8 (7.5), usability 7.5 (7), readiness for M4–M6 7.5 (7). Rule: D-040. Each task ≤ ½ day.
 
-### T248 Phone cut list: compact cards, one-row toolbar   [status: deferred]
+### T248 Phone cut list: compact cards, one-row toolbar   [status: done]
 > **Deferred to the mobile UI pass (D-043).** Only the import-panel bullet (sticky "N satır ekle / Vazgeç" row, one-sentence intro) stays in B8a and moved to T250.
 Spec: §4.1, §3.7 · Depends: T118, T119, T120, T123 (same toolbar)
 Acceptance:
@@ -1396,13 +1396,17 @@ Acceptance: as in review #11 section A: `setTabs` refuses width < 3 mm and heigh
 Gap E1 (CTO #11). Spec: §6.3
 Acceptance: as in review #11 section E1: "Kapalı → Her parçada" returns to the start state or the panel shows the thin skin the panel switched on; "Adet" says per part and the header matches the real count on small parts; the card is reachable at 1440 × 900 without scrolling the page (or a link from the summary); a one-line hint for climb / conventional.
 
-### T295 One file-name pattern for all exports   [status: todo]
+### T295 One file-name pattern for all exports   [status: done]
 CTO #11 (T176 gap). Rides with the next Dev 1 batch after B39.
 Acceptance: NC, DXF, PDF and labels share one pattern (project, revision, kind, sheet), ASCII; history and zip use it.
 
-### T296 Old-revision file is marked   [status: todo]
+### T296 Old-revision file is marked   [status: done]
 CTO #11 (T179 gap). Rides with T295.
 Acceptance: Projeler "İndir" and the history show an "eski revizyon" badge when the last file is from an older revision than the project; one click to regenerate.
+
+### T297 Main NC export needs the checklist confirmation on the server   [status: done]
+PO decision D-072 (tester note on B37, model D-071). Spec: §7.2 · gcode-safety review
+Acceptance: `POST /api/projects/:id/export` without `checklistConfirmed: true` answers 428 `checklist_required` with the checklist data and stores nothing; a non-boolean is 400; the acceptance stays a separate 428; the export step sends the confirmation only after the checklist is done; tests that call the API directly send it; goldens unchanged.
 
 ## CTO review #12 follow-ups (2026-11-20, D-047; review `docs/reviews/2026-11-20-cto-design-review-12.md`)
 
@@ -1438,9 +1442,9 @@ B42 perf budget (D-079): pasting / applying 2 000 cut-list rows blocks the main 
 
 Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.
 
-### T248 Phone cut list: compact cards, one-row toolbar (moved here; text above in B8a)   [status: deferred]
+### T248 Phone cut list: compact cards, one-row toolbar (moved here; text above in B8a)   [status: done]
 
-### T255 Phone Simülasyon transport visible, short header label   [status: todo]
+### T255 Phone Simülasyon transport visible, short header label   [status: done]
 Spec: §3.7 · Depends: T249 · Decision: D-043
 Acceptance:
 - [ ] the T249 phone bullet: below 640 px the whole transport (scrubber, time, speed chips, position line) is visible above the "Ayarlar / G-code" button bar; the wizard header shows the short label "Simülasyon" below 640 px
@@ -1529,19 +1533,19 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 
 ### Batch B29: T184–T186 (onboarding, accessibility, performance)
 
-### T184 Onboarding and sample project   [status: todo]
+### T184 Onboarding and sample project   [status: done]
 Spec: §4.2 · Depends: T180
 Acceptance:
 - [ ] first run: welcome dialog, sample project (cabinet + hinge doors), guided tour of the 5 wizard steps; can be reopened from Ayarlar
 Tester focus: first-run only; sample project exports a valid NC.
 
-### T185 Accessibility sweep   [status: todo]
+### T185 Accessibility sweep   [status: done]
 Spec: §3.7, §11 · Depends: T184
 Acceptance:
 - [ ] keyboard-only completion of the whole flow (cut list → nest → 3D/simulation → export); AA contrast in both themes; landmarks, labels; zero serious/critical axe violations on all routes
 Tester focus: keyboard-only e2e; axe report for every route; screen-reader spot check of the GrainDial and cut list.
 
-### T186 Performance sweep   [status: todo]
+### T186 Performance sweep   [status: done]
 Spec: §8.2 · Depends: T184
 Acceptance:
 - [ ] budgets: initial JS ≤ 250 kB gzip per route (3D/editor lazy), LCP ≤ 2.5 s on the local prod build, 2 000-row cut list usable, nesting 300 parts ≤ 10 s without UI freeze
@@ -1549,19 +1553,19 @@ Tester focus: bundle report; Lighthouse CI numbers; long-task count during nesti
 
 ### Batch B30: T187–T189 (resilience, responsive, G-code regression)
 
-### T187 Error handling and resilience   [status: todo]
+### T187 Error handling and resilience   [status: done]
 Spec: §8.2 · Depends: T105
 Acceptance:
 - [ ] offline/save-failure banner with the unsent queue count, retry; revision conflict dialog (reload / keep mine as copy); client errors logged to a local server log
 Tester focus: kill the server mid-edit → queue → recover without loss; conflict dialog e2e.
 
-### T188 Responsive and touch pass   [status: todo]
+### T188 Responsive and touch pass   [status: done]
 Spec: §3.7 · Depends: T185
 Acceptance:
 - [ ] 390 / 768 / 1024 / 1440 layouts for every route; touch for editor pan/zoom/select and 3D orbit; tablet workshop use (large hit targets ≥ 40 px). The canvas-first rule for steps 3–4 is already done in T198; this pass covers the remaining routes and the editor
 Tester focus: screenshot matrix of all routes at 4 widths; touch emulation e2e.
 
-### T189 G-code regression set for the new operations   [status: todo]
+### T189 G-code regression set for the new operations   [status: done]
 Spec: §7.2, §11 · Depends: T143, T167 · **Human gate: golden files (`needs-human`)**
 Acceptance:
 - [ ] golden fixtures for both posts: holes + pockets + grooves, inner contours, arcs, rotated grain parts, true-shape layout, thin skin

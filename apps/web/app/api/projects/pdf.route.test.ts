@@ -53,7 +53,7 @@ describe('GET /api/projects/:id/pdf (T172)', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('application/pdf');
     expect(res.headers.get('content-disposition')).toBe(
-      `inline; filename="Cocuk-odasi-r${d.revision}-A4.pdf"`,
+      `inline; filename="Cocuk_odasi_r${d.revision}_a4.pdf"`,
     );
     const bytes = new Uint8Array(await res.arrayBuffer());
     expect(res.headers.get('etag')).toBe(`"${sha(bytes)}"`);
@@ -64,7 +64,7 @@ describe('GET /api/projects/:id/pdf (T172)', () => {
     const again = new Uint8Array(await (await get(`revision=${d.revision}`)).arrayBuffer());
     expect(sha(again)).toBe(sha(bytes));
     const a3 = await get(`revision=${d.revision}&paper=a3&download=1`);
-    expect(a3.headers.get('content-disposition')).toMatch(/^attachment; .*-A3\.pdf"$/);
+    expect(a3.headers.get('content-disposition')).toMatch(/^attachment; .*_r\d+_a3\.pdf"$/);
   });
 
   it('refuses a stale revision, bad input and unknown projects', async () => {
@@ -106,7 +106,7 @@ describe('GET /api/projects/:id/labels (T174)', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('application/pdf');
     expect(res.headers.get('content-disposition')).toBe(
-      `inline; filename="Cocuk-odasi-r${r}-etiket.pdf"`,
+      `inline; filename="Cocuk_odasi_r${r}_etiket.pdf"`,
     );
     const bytes = new Uint8Array(await res.arrayBuffer());
     expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);

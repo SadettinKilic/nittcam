@@ -1,0 +1,53 @@
+'use client';
+
+import { Skeleton } from '@nittcam/ui';
+import dynamic from 'next/dynamic';
+
+/**
+ * The heavy wizard step bodies load on demand (T186, spec §8.2): the drawing editor, Dizilim,
+ * Simülasyon and Dışa aktar each pull a large part of the core kernel, so a project page loads
+ * only the step it opens. `preloadWizardSteps` fetches the rest once the page has loaded, so
+ * switching steps stays instant.
+ */
+function StepLoading() {
+  return (
+    <div role="status" aria-busy="true" data-testid="step-loading" className="flex flex-col gap-3">
+      <Skeleton className="h-10 w-full rounded-lg" />
+      <Skeleton className="h-96 w-full rounded-xl" />
+    </div>
+  );
+}
+
+const loadDrawingBoard = () => import('../editor/drawing-board');
+const loadLayoutStep = () => import('./layout-step');
+const loadSimulationView = () => import('../simulation/simulation-view');
+const loadExportStep = () => import('./export-step');
+
+export const DrawingBoard = dynamic(() => loadDrawingBoard().then((m) => m.DrawingBoard), {
+  loading: StepLoading,
+});
+export const LayoutStep = dynamic(() => loadLayoutStep().then((m) => m.LayoutStep), {
+  loading: StepLoading,
+});
+export const SimulationView = dynamic(() => loadSimulationView().then((m) => m.SimulationView), {
+  loading: StepLoading,
+});
+export const ExportStep = dynamic(() => loadExportStep().then((m) => m.ExportStep), {
+  loading: StepLoading,
+});
+
+let preloaded = false;
+
+/** Fetches every step chunk after the page's `load` event (once per page life). */
+export function preloadWizardSteps(): void {
+  if (preloaded || typeof window === 'undefined') return;
+  preloaded = true;
+  const run = () => {
+    for (const load of [loadLayoutStep, loadSimulationView, loadExportStep, loadDrawingBoard]) {
+      void load().catch(() => undefined);
+    }
+  };
+  const later = () => window.setTimeout(run, 500);
+  if (document.readyState === 'complete') later();
+  else window.addEventListener('load', later, { once: true });
+}

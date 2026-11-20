@@ -3,7 +3,7 @@
 import { Checkbox } from '@nittcam/ui';
 import { CircleCheck, TriangleAlert } from 'lucide-react';
 import { useId } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { ChecklistState } from '../../lib/export-gate';
 import type { ExportChecklistInfo } from '../../lib/exports-api';
 import type { Messages } from '../../lib/messages';

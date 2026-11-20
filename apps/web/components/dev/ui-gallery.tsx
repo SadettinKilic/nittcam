@@ -143,14 +143,14 @@ const numberErrors = (t: T): Record<NumberParseError, string> => ({
   max: t.number.errorMax,
 });
 
-export function UiGallery({ t }: { t: T }) {
+export function UiGallery({ t, grainText }: { t: T; grainText: Messages['grainDial'] }) {
   const [width, setWidth] = useState<number | null>(1220.5);
   const [widthError, setWidthError] = useState<NumberParseError | null>(null);
   const [thickness, setThickness] = useState<number | null>(18);
   const [grain, setGrain] = useState(true);
   const [grainAngle, setGrainAngle] = useState(30);
   const [grainLive, setGrainLive] = useState(30);
-  const grainLabels = grainDialLabels();
+  const grainLabels = grainDialLabels(grainText);
   const errors = numberErrors(t);
 
   return (

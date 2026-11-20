@@ -5,6 +5,7 @@
  */
 import { simulateProject } from '@nittcam/core';
 import { POST_CONFIGS } from '@nittcam/machines';
+import { ncNameOptions } from './file-names';
 import type { SimulationRequest, SimulationResponse } from './simulation-messages';
 
 const scope = self as unknown as {
@@ -21,10 +22,12 @@ scope.addEventListener('message', (e) => {
       scope.postMessage({ id, ok: false, error: 'unknownPost', detail: postId });
       return;
     }
-    const result = simulateProject(project, profileVersion, post, {
-      projectName: meta.projectName,
-      revision: meta.revision,
-    });
+    const result = simulateProject(
+      project,
+      profileVersion,
+      post,
+      ncNameOptions(meta.projectName, meta.revision),
+    );
     scope.postMessage({ id, ok: true, result });
   } catch (err) {
     scope.postMessage({

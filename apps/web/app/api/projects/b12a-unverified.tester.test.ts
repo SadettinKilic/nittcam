@@ -64,7 +64,7 @@ async function exportOf(p: Project) {
   expect(res.status).toBe(201);
   const d = (await res.json()) as ProjectDetail;
   const ex = await doExport(
-    req('POST', { revision: d.revision, acceptUnverified: true }),
+    req('POST', { revision: d.revision, acceptUnverified: true, checklistConfirmed: true }),
     ctx({ id: d.id }),
   );
   const scope = await companyScope();

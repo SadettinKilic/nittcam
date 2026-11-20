@@ -1,6 +1,7 @@
 import { companyScope, companyStorage } from '../../../../../lib/server/company';
 import { apiError, sha256Hex } from '../../../../../lib/server/exports';
-import { asciiStem } from '../../../../../lib/server/file-names';
+import { documentKind, exportFileName } from '../../../../../lib/file-names';
+import { isDocumentType } from '../../../../../lib/server/documents';
 import { UUID } from '../../../../../lib/server/projects';
 import { exportReadme } from '../../../../../lib/server/readme';
 import { zipStore } from '../../../../../lib/server/zip';
@@ -41,8 +42,9 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/exports/[id
       ...entries,
       { name: 'OKU.txt', bytes: new TextEncoder().encode(readme) },
     ]);
-    const suffix = row.kind === 'nc' ? 'nc' : row.postId;
-    const name = `${asciiStem(project?.name ?? '')}-r${row.projectRevision}-${suffix}.zip`;
+    const kind =
+      row.kind !== 'nc' && isDocumentType(row.postId) ? documentKind(row.postId) : row.kind;
+    const name = exportFileName(project?.name ?? '', row.projectRevision, kind, 'zip');
     return new Response(Buffer.from(zip), {
       status: 200,
       headers: {

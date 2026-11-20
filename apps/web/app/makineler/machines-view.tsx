@@ -1,6 +1,7 @@
 'use client';
 
-import { defaultMachineProfile, type MachineProfile } from '@nittcam/core';
+import dynamic from 'next/dynamic';
+import type { MachineProfile } from '@nittcam/core';
 import {
   Badge,
   Button,
@@ -10,6 +11,7 @@ import {
   Measure,
   RouterIcon,
   Skeleton,
+  Tooltip,
   notify,
 } from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
@@ -30,12 +32,16 @@ import { PageHeader, focusRing, pageContainer } from '../../components/page/page
 import { Callout } from '../../components/wizard/panels';
 import type { ParamFix } from '../../lib/machine-form';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
-import { MachineForm } from './machine-form';
-import { MaintenanceDialog } from './maintenance-dialog';
 import { MaintenanceBadge } from '../../components/machines/maintenance-badge';
 import { localDay, maintenanceView } from '../../lib/maintenance';
+
+/** The machine form (post configs, profile schema) and the maintenance log load on demand (T186). */
+const MachineForm = dynamic(() => import('./machine-form').then((m) => m.MachineForm));
+const MaintenanceDialog = dynamic(() =>
+  import('./maintenance-dialog').then((m) => m.MaintenanceDialog),
+);
 
 type Text = Messages['machines'];
 
@@ -50,18 +56,10 @@ type Mode =
       kind: 'form';
       machineId: string | null;
       version?: number;
-      initial: MachineProfile;
+      initial: MachineProfile | null;
       key: number;
       addParams?: ParamFix['set'];
     };
-
-/** A new machine starts from the generic profile, not marked as an example, with no name. */
-function newProfile(): MachineProfile {
-  const p = defaultMachineProfile();
-  p.example = false;
-  p.identity.name = '';
-  return p;
-}
 
 /** Table width × depth as a Measure (T195): Turkish digits, tabular, unit muted. */
 function TableSize({ m, className }: { m: MachineListItem; className?: string }) {
@@ -82,7 +80,7 @@ export function MachinesView({
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [mode, setMode] = useState<Mode>(() =>
-    startNew ? { kind: 'form', machineId: null, initial: newProfile(), key: 0 } : { kind: 'list' },
+    startNew ? { kind: 'form', machineId: null, initial: null, key: 0 } : { kind: 'list' },
   );
   const [formKey, setFormKey] = useState(0);
 
@@ -142,7 +140,7 @@ export function MachinesView({
 
   function openNew() {
     setFormKey((k) => k + 1);
-    setMode({ kind: 'form', machineId: null, initial: newProfile(), key: formKey + 1 });
+    setMode({ kind: 'form', machineId: null, initial: null, key: formKey + 1 });
   }
 
   function onSaved(detail: MachineDetail) {
@@ -426,7 +424,7 @@ function ActiveList({
     <div data-testid="machine-list" className="flex flex-col gap-3">
       <p className="text-sm text-fg-muted">{t.count.replace('{n}', String(items.length))}</p>
       <MachineTable t={t} items={items} onEdit={onEdit} archive={archive} />
-      <ul className="flex flex-col gap-3 lg:hidden">
+      <ul className="flex flex-col gap-3 xl:hidden">
         {items.map((m) => (
           <li key={m.id}>
             <Card className="flex flex-col gap-3 p-4">
@@ -464,13 +462,30 @@ function RowActions({
   onEdit,
   archive,
   className,
+  compact = false,
 }: {
   t: Text;
   m: MachineListItem;
   onEdit: (id: string) => void;
   archive: RowArchive;
   className?: string;
+  /** Table rows: "Arşivle" as an icon button with a tooltip, so the table fits from 1280 px. */
+  compact?: boolean;
 }) {
+  const archiveButton = (
+    <Button
+      size="sm"
+      variant="ghost"
+      data-testid="machine-archive"
+      onClick={() => archive.onArchive(m)}
+      disabled={archive.busy !== null}
+      loading={archive.busy === m.id}
+      aria-label={`${t.archive.action}: ${m.name}`}
+    >
+      <Archive aria-hidden />
+      {compact ? null : t.archive.action}
+    </Button>
+  );
   return (
     <div className={`flex items-center justify-end gap-2 ${className ?? ''}`}>
       <Button asChild size="sm" variant="outline">
@@ -492,23 +507,12 @@ function RowActions({
         <Pencil aria-hidden />
         {t.edit}
       </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        data-testid="machine-archive"
-        onClick={() => archive.onArchive(m)}
-        disabled={archive.busy !== null}
-        loading={archive.busy === m.id}
-        aria-label={`${t.archive.action}: ${m.name}`}
-      >
-        <Archive aria-hidden />
-        {t.archive.action}
-      </Button>
+      {compact ? <Tooltip content={t.archive.action}>{archiveButton}</Tooltip> : archiveButton}
     </div>
   );
 }
 
-/** Wide screens: a data table (TanStack Table v9, D-032). Phones get the card list instead. */
+/** Wide screens: a data table (TanStack Table v9, D-032). Below 1280 px (phones, tablets, 1024 with the sidebar) the card list instead. */
 function MachineTable({
   t,
   items,
@@ -573,7 +577,7 @@ function MachineTable({
           id: 'actions',
           header: () => <span className="sr-only">{c.actions}</span>,
           cell: (info) => (
-            <RowActions t={t} m={info.row.original} onEdit={onEdit} archive={archive} />
+            <RowActions t={t} m={info.row.original} onEdit={onEdit} archive={archive} compact />
           ),
         }),
       ]),
@@ -581,7 +585,7 @@ function MachineTable({
   );
   const table = useTable({ features, columns, data: items, getRowId: (m) => m.id });
   return (
-    <Card className="hidden overflow-hidden lg:block">
+    <Card className="hidden overflow-hidden xl:block">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-border bg-surface-subtle">
           {table.getHeaderGroups().map((group) => (

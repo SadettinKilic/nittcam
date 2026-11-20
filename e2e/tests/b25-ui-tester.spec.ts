@@ -42,6 +42,9 @@ for (const vp of [
     // Proposed only: the stock tab has no row until the user saves.
     await page.goto('/projeler');
     await page.getByTestId('offcuts-tab').click();
+    // Count only once the list has loaded (same as above).
+    await expect(page.getByTestId('offcuts-loading')).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.getByTestId('offcut-add')).toBeVisible();
     await expect(page.getByTestId('offcut-row')).toHaveCount(before);
     await axeClean(page);
     expect(await noHScroll(page)).toBe(true);

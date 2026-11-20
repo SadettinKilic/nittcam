@@ -4,7 +4,7 @@
  * card and the home page. Formatting is shared with the PDF so both show the same text.
  */
 import type { ProjectReport } from '@nittcam/core';
-import { fill } from './draft-project';
+import { fill } from './fill';
 import { getMessages } from './messages';
 
 const t = getMessages().pdf;

@@ -132,20 +132,8 @@ export function hasCuttingParams(project: Project, profile: MachineProfile | nul
   return set !== undefined && !set.unverified;
 }
 
-let counter = 0;
-
-/** A new part id. Ids come from the caller, never from core (D-011). */
-export function newPartId(): string {
-  const c = globalThis.crypto;
-  if (c && typeof c.randomUUID === 'function') return `p-${c.randomUUID()}`;
-  counter += 1;
-  return `p-${Date.now().toString(36)}-${counter.toString(36)}`;
-}
-
-/** Fills `{name}` placeholders in a translation string. */
-export function fill(text: string, values: Record<string, string | number>): string {
-  return text.replace(/\{(\w+)\}/g, (m, key: string) => (key in values ? String(values[key]) : m));
-}
+export { newPartId } from './part-id';
+export { fill } from './fill';
 
 /**
  * Does the stock have a grain? Wood with a sheet grain set; plastics and a sheet grain "Yok"

@@ -242,13 +242,6 @@
       "projects": "Projeler",
       "hint": "İpucu: istediğiniz sayfayı {keys} ile arayabilirsiniz."
     },
-    "error": {
-      "title": "Bir şeyler ters gitti",
-      "text": "Sayfa açılırken beklenmeyen bir hata oldu. Tekrar deneyin; sorun sürerse sayfayı yenileyin.",
-      "retry": "Tekrar dene",
-      "home": "Ana sayfaya dön",
-      "reference": "Hata kodu: {digest}"
-    },
     "canvas": {
       "title": "Önizleme gösterilemedi",
       "text": "Çizim alanında bir hata oldu. Projeniz kaydedildi; önizlemeyi yeniden deneyebilirsiniz.",
@@ -555,6 +548,7 @@
     "empty": "Henüz parça yok.",
     "addRow": "Satır ekle",
     "pasteOpen": "İçe aktar",
+    "toolbarMore": "Diğer işlemler",
     "undo": "Geri al",
     "redo": "Yinele",
     "shortcuts": "Enter alt satıra, Tab sonraki hücreye geçer; oklarla gezinin, F2 ile düzenleyin, Esc vazgeçer. Satır numarasına Ctrl/Shift ile tıklayarak çoklu seçin; Ctrl+D çoğaltır, Delete seçili satırları siler (hücre dışında). Tablo dışında Ctrl+Z geri alır.",
@@ -1332,7 +1326,7 @@
     },
     "gcode": {
       "title": "G-code",
-      "label": "G-code satırları. Bir satıra tıklayınca simülasyon o satıra gider.",
+      "label": "G-code satırları. Bir satıra tıklayınca ya da yukarı ve aşağı ok tuşlarıyla simülasyon o satıra gider; Home ve End ilk ve son satıra gider.",
       "file": "Dosya: {name}",
       "lineWord": "Satır",
       "revisionPending": "kaydedilince"
@@ -1487,6 +1481,9 @@
     "lastExport": "Rev. {revision} · {date}",
     "noExport": "Henüz yok",
     "downloadLast": "İndir: {name}",
+    "oldRevision": "eski revizyon",
+    "oldRevisionTitle": "Son dosya Rev. {old}, proje şimdi Rev. {current}",
+    "regenerate": "Güncel revizyonla üret",
     "emptyText": "Kesim listesini yapıştırın, plakaya dizin ve G-code alın. İlk projeniz birkaç dakika sürer.",
     "tabs": {
       "projects": "Projeler",
@@ -1602,6 +1599,7 @@
       "dizilim": "Dizilim",
       "simulasyon": "Önizleme / simülasyon",
       "export": "Dışa aktar",
+      "short": { "simulasyon": "Simülasyon" },
       "stepOf": "Adım {n} / {total}",
       "status": {
         "done": "tamamlandı",
@@ -1640,6 +1638,14 @@
         "error": "Kaydedilemedi",
         "new": "Taslak"
       }
+    },
+    "saveBanner": {
+      "offlineTitle": "Bağlantı yok",
+      "failedTitle": "Proje kaydedilemedi",
+      "unsent": "{count} değişiklik henüz sunucuya gitmedi.",
+      "unsentNone": "Son değişiklikler henüz sunucuya gitmedi.",
+      "kept": "Bu sekmede saklanıyor; bağlantı gelince kendiliğinden gönderilir. Sekmeyi kapatmayın.",
+      "retry": "Tekrar dene"
     },
     "conflict": {
       "title": "Proje başka bir yerde değişti",
@@ -1842,6 +1848,9 @@
         "actions": "İşlem"
       },
       "historyRevision": "Rev. {n}",
+      "historyOld": "eski revizyon",
+      "historyOldTitle": "Bu dosya Rev. {old}, proje şimdi Rev. {current}",
+      "historyCurrent": "Güncel revizyonla üret",
       "historyProfile": "Sürüm {n}",
       "historyAccepted": "air cut kabul edildi",
       "redownload": "Tekrar indir: {name}",
@@ -2925,6 +2934,52 @@
       "noSheet": "Dizilmedi",
       "size": "{w} × {h} mm",
       "cut": "Kesim {w} × {h}"
+    }
+  },
+  "onboarding": {
+    "title": "NittCAM tanıtımı",
+    "stepOf": "Adım {n} / {total}",
+    "skip": "Tanıtımı geç",
+    "back": "Geri",
+    "next": "İleri",
+    "close": "Kapat",
+    "welcome": {
+      "title": "NittCAM’e hoş geldiniz",
+      "text": "Parça listenizden CNC router için kesim dosyası hazırlarsınız: parçaları plakaya dizer, yolu gösterir, G-code üretiriz.",
+      "points": [
+        "Makineniz ve plakanız seçili başlar; ayarları sonra değiştirebilirsiniz.",
+        "Her değişiklik kendiliğinden kaydedilir.",
+        "Makine doğrulanana kadar dosyalarda “önce air cut” uyarısı kalır."
+      ]
+    },
+    "steps": {
+      "title": "Beş adımda kesim dosyası",
+      "text": "Her proje aynı beş adımdan geçer. Üstteki adım çubuğundan istediğiniz adıma dönebilirsiniz.",
+      "items": {
+        "makine": "Makineyi, malzemeyi ve plaka ölçüsünü seçin.",
+        "parcalar": "Parça listesini yazın, yapıştırın, dolap ekleyin ya da çizin.",
+        "dizilim": "Diz’e basın; parçalar plakaya en az fireyle yerleşir.",
+        "simulasyon": "Takım yolunu ve kesimi adım adım izleyin.",
+        "export": "Kontrol listesini onaylayıp G-code’u indirin."
+      }
+    },
+    "start": {
+      "title": "Nasıl başlamak istersiniz?",
+      "text": "Örnek projede menteşe çukurlu iki kapaklı bir alt dolap hazır; adımları onunla deneyebilirsiniz.",
+      "sample": "Örnek projeyi aç",
+      "sampleHint": "Örnek makinede, 800 mm genişliğinde alt dolap ve menteşeli kapaklar.",
+      "blank": "Boş proje başlat",
+      "later": "Şimdilik kapat",
+      "busy": "Örnek proje hazırlanıyor…",
+      "error": "Örnek proje oluşturulamadı. Tekrar deneyin.",
+      "noMachine": "Örnek proje için etkin bir makine yok. Önce Makineler’den bir makine ekleyin."
+    },
+    "sampleName": "Örnek: Alt dolap (menteşeli kapak)",
+    "sampleGroup": "Örnek dolap",
+    "settings": {
+      "title": "Tanıtım",
+      "hint": "İlk açılıştaki tanıtımı ve örnek projeyi yeniden gösterir.",
+      "reopen": "Tanıtımı yeniden aç"
     }
   },
   "settings": {

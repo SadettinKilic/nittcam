@@ -41,7 +41,7 @@ async function previewLines(page: Page): Promise<{ n: number; t: string }[]> {
 
 async function exported(request: APIRequestContext, id: string, revision: number) {
   const res = await request.post(`/api/projects/${id}/export`, {
-    data: { revision, acceptUnverified: true },
+    data: { revision, acceptUnverified: true, checklistConfirmed: true },
   });
   expect(res.status()).toBeLessThan(300);
   const body = (await res.json()) as { files: { downloadUrl: string }[] };

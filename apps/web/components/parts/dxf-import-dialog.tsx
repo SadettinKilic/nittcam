@@ -32,7 +32,7 @@ import {
 } from '@nittcam/ui';
 import { FileUp, TriangleAlert } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type DragEvent } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import {
   baseName,
   checkDxfFile,

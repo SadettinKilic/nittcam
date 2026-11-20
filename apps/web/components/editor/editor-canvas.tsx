@@ -20,9 +20,9 @@ import type { DraftView } from '../../lib/editor/draw-tool';
 import type { TemplateGhost } from '../../lib/editor/template-place';
 import { dimText, type SegmentLabel } from '../../lib/editor/dims';
 import type { EditorColors } from './colors';
+import { RULER_PX } from './ruler';
 
-/** Width of the rulers on the top and left edges, px. */
-export const RULER_PX = 22;
+export { RULER_PX };
 
 /** Snap glyph kinds: the engine's kinds (T126). */
 export type SnapGlyph = Exclude<SnapKind, 'none'>;

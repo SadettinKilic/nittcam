@@ -36,7 +36,7 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { OffcutStock } from './offcut-stock';
 import type { Messages } from '../../lib/messages';
 import {
@@ -58,6 +58,7 @@ import {
   type ProjectListItem,
   type ProjectStatus,
 } from '../../lib/projects-api';
+import { isOldRevision } from '../../lib/export-current';
 
 type Text = Messages['projects'];
 
@@ -634,6 +635,27 @@ function ProjectList({
                                     date: dateFormat.format(new Date(item.lastExport.createdAt)),
                                   })}
                                 </time>
+                                {isOldRevision(item.lastExport.revision, item.revision) ? (
+                                  <>
+                                    <Badge
+                                      variant="warning"
+                                      data-testid="project-export-old"
+                                      title={fill(t.oldRevisionTitle, {
+                                        old: item.lastExport.revision,
+                                        current: item.revision,
+                                      })}
+                                    >
+                                      {t.oldRevision}
+                                    </Badge>
+                                    <Link
+                                      href={`/projeler/${item.id}?adim=export`}
+                                      data-testid="project-export-regenerate"
+                                      className={`rounded-sm text-accent-text underline underline-offset-4 ${focusRing}`}
+                                    >
+                                      {t.regenerate}
+                                    </Link>
+                                  </>
+                                ) : null}
                                 {item.lastExport.files.map((file) => (
                                   <a
                                     key={file.name}

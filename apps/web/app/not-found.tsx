@@ -3,7 +3,7 @@ import { Compass } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ShortcutKeys } from '../components/shell/keys';
-import { fill } from '../lib/draft-project';
+import { fill } from '../lib/fill';
 import { getMessages } from '../lib/messages';
 
 const messages = getMessages();

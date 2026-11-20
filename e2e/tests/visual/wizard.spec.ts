@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../../apps/web/messages/tr.json' with { type: 'json' };
-import { KITCHEN, goStep, openNewProject, paste } from '../wizard-helpers';
+import { KITCHEN, goStep, openCutListAction, openNewProject, paste } from '../wizard-helpers';
 import {
   THEMES,
   VIEWPORTS,
@@ -116,7 +116,7 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
 
       test('cabinet generator dialog (T122)', async ({ page }) => {
         await openNewProject(page, 'parcalar');
-        await page.getByTestId('cabinet-open').click();
+        await openCutListAction(page, 'cabinet-open');
         await expect(page.getByTestId('cabinet-dialog')).toBeVisible();
         await expectNoA11yViolations(page);
         await snap(page, `t122-cabinet-dialog-${vp}-${theme}`, { fullPage: false });
@@ -127,7 +127,7 @@ for (const vp of Object.keys(VIEWPORTS) as ViewportName[]) {
           route.fulfill({ json: { map: {} } }),
         );
         await openNewProject(page, 'parcalar');
-        await page.getByTestId('dxf-open').click();
+        await openCutListAction(page, 'dxf-open');
         const dialog = page.getByTestId('dxf-dialog');
         await dialog
           .getByTestId('dxf-file')

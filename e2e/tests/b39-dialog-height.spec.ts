@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { fill, openNewProject } from './wizard-helpers';
+import { fill, openCutListAction, openNewProject } from './wizard-helpers';
 
 /**
  * B39 rider (tester finding): the shared `DialogContent` is never taller than the viewport and its
@@ -17,7 +17,7 @@ for (const size of [
   test(`cabinet dialog actions visible at ${size.width}×${size.height}`, async ({ page }) => {
     await page.setViewportSize(size);
     await openNewProject(page, 'parcalar');
-    await page.getByTestId('cabinet-open').click();
+    await openCutListAction(page, 'cabinet-open');
     const dialog = page.getByTestId('cabinet-dialog');
     await expect(dialog).toBeVisible();
 

@@ -275,6 +275,23 @@
   --spacing-panel: 0.75rem;
 }
 
+/* T188 (D-078): on a touch screen from 640 px (workshop tablet) every control is at least 40 px,
+ * also small buttons and compact scopes. Mouse screens keep their sizes (desktop unchanged,
+ * D-043); phones keep the compact cut-list cards (T248). Table row heights are not changed. */
+@media (pointer: coarse) and (min-width: 640px) {
+  :root,
+  [data-density='compact'] {
+    --spacing-control-sm: 2.5rem;
+    --spacing-control-md: 2.5rem;
+  }
+  /* A virtualized table with a fixed row height (cut list, 36 px) keeps its compact cells: taller
+   * cells would move the rows under the finger while light rows fill in (B43 integration). */
+  [data-fixed-rows] {
+    --spacing-control-sm: 1.75rem;
+    --spacing-control-md: 2rem;
+  }
+}
+
 /* ---- Dark theme ------------------------------------------------------------------------- */
 .dark {
   --color-bg: var(--color-neutral-1000);

@@ -37,7 +37,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { MachineStateBadge } from '../../../../components/machines/state-badge';
 import { focusRing, pageContainer, sectionLink } from '../../../../components/page/page-header';
-import { fill } from '../../../../lib/draft-project';
+import { fill } from '../../../../lib/fill';
 import { stepStatuses, type StepStatus } from '../../../../lib/machine-state';
 import type { Messages } from '../../../../lib/messages';
 import {

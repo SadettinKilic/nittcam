@@ -10,6 +10,7 @@ import {
   TAB_BOUNDS,
   TAB_DEFAULTS,
   TOOLPATH_DEFAULTS,
+  defaultMachineProfile,
   type MachineProfile,
   type MachineProfileIssue,
   type MaterialKind,
@@ -44,7 +45,7 @@ import { useRouter } from 'next/navigation';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { focusRing } from '../../components/page/page-header';
 import { CONTROLLER_LIBRARY, controllerProfile } from '../../lib/controller-library';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { ApiError, MachineDetail } from '../../lib/machines-api';
 import {
   FORM_SECTIONS,
@@ -67,7 +68,8 @@ export interface MachineFormProps {
   machineId: string | null;
   /** Latest profile version of an existing machine. */
   version?: number | undefined;
-  initial: MachineProfile;
+  /** The profile to edit; null = a new machine (T186: built here, in the lazy form chunk). */
+  initial: MachineProfile | null;
   onSaved: (detail: MachineDetail) => void;
   onCancel: () => void;
   /**
@@ -146,11 +148,19 @@ function useActiveSection(): FormSection {
   return active;
 }
 
+/** A new machine starts from the generic profile, not marked as an example, with no name. */
+function newMachineProfile(): MachineProfile {
+  const p = defaultMachineProfile();
+  p.example = false;
+  p.identity.name = '';
+  return p;
+}
+
 export function MachineForm({
   t,
   machineId,
   version,
-  initial,
+  initial: initialProp,
   onSaved,
   onCancel,
   addParams = null,
@@ -160,6 +170,7 @@ export function MachineForm({
   const o = t.form.options;
   const u = t.form.units;
   const router = useRouter();
+  const [initial] = useState(() => initialProp ?? newMachineProfile());
   const [start] = useState(() => (addParams ? withParamSet(initial, addParams) : null));
   const [profile, setProfile] = useState<MachineProfile>(start?.profile ?? initial);
   const [submitted, setSubmitted] = useState(false);
@@ -1055,11 +1066,15 @@ function RowTable(props: {
 }) {
   const { headers, addLabel, removeLabel, error, keys, testId, onAdd, onRemove, renderRow } = props;
   const pad = props.dense ? 'px-2' : 'px-3';
+  // Mobile UI pass (CTO #5, D-043): below 640 px the dense table (materials, 7 columns) turns
+  // into one card per row with the column name above each field, instead of a sideways scroll.
+  const cards = props.dense === true;
+  const m = (cls: string) => (cards ? cls : '');
   return (
     <div className="flex flex-col gap-3">
       <div className="relative max-w-full overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm" data-testid={testId}>
-          <thead className="bg-surface-subtle">
+        <table className={`w-full text-sm ${m('max-sm:block')}`} data-testid={testId}>
+          <thead className={`bg-surface-subtle ${m('max-sm:sr-only')}`}>
             <tr>
               {headers.map((h) => (
                 <th
@@ -1075,16 +1090,29 @@ function RowTable(props: {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border-subtle">
+          <tbody
+            className={`divide-y divide-border-subtle ${m('max-sm:flex max-sm:flex-col max-sm:gap-2 max-sm:divide-y-0 max-sm:p-2')}`}
+          >
             {keys.map((key, i) => (
               <Fragment key={key}>
-                <tr className={props.renderDetail ? 'border-b-0! align-top' : 'align-top'}>
+                <tr
+                  className={`${props.renderDetail ? 'border-b-0! ' : ''}align-top ${m('max-sm:grid max-sm:grid-cols-2 max-sm:gap-x-3 max-sm:gap-y-2 max-sm:rounded-lg max-sm:border max-sm:border-border-subtle max-sm:p-2')}`}
+                  data-testid={cards ? `${testId}-row` : undefined}
+                >
                   {renderRow(i).map((cell, c) => (
-                    <td key={c} className={`${pad} py-2`}>
+                    <td
+                      key={c}
+                      className={`${pad} py-2 ${m('max-sm:flex max-sm:min-w-0 max-sm:flex-col max-sm:gap-1 max-sm:p-0')}`}
+                    >
+                      {cards ? (
+                        <span aria-hidden className="text-2xs text-fg-subtle sm:hidden">
+                          {headers[c]}
+                        </span>
+                      ) : null}
                       {cell}
                     </td>
                   ))}
-                  <td className="px-2 py-2 text-right">
+                  <td className={`px-2 py-2 text-right ${m('max-sm:col-span-2 max-sm:p-0')}`}>
                     <IconButton
                       type="button"
                       size="sm"
@@ -1097,8 +1125,11 @@ function RowTable(props: {
                   </td>
                 </tr>
                 {props.renderDetail ? (
-                  <tr data-detail="">
-                    <td colSpan={headers.length + 1} className={`${pad} pt-0 pb-3`}>
+                  <tr data-detail="" className={m('max-sm:block')}>
+                    <td
+                      colSpan={headers.length + 1}
+                      className={`${pad} pt-0 pb-3 ${m('max-sm:block max-sm:p-0')}`}
+                    >
                       {props.renderDetail(i)}
                     </td>
                   </tr>
