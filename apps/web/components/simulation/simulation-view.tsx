@@ -12,11 +12,19 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  cn,
 } from '@nittcam/ui';
+import { Preview3D } from '../preview3d/preview3d';
+import type { CameraCommand } from '../preview3d/scene';
+import type { ViewPreset } from '../../lib/preview3d/camera';
+import { hasWebGL2 } from '../../lib/preview3d/capability';
+import type { TableSpec } from '../../lib/preview3d/stage';
+import type { Messages } from '../../lib/messages';
 import { PlateTabStrip } from '../wizard/plate-tab-strip';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { canvasTouchClass, isZoomedIn, useMediaQuery } from '../../lib/use-media-query';
 import {
+  Box,
   Info,
   Maximize,
   Pause,
@@ -25,13 +33,13 @@ import {
   SkipForward,
   StepBack,
   StepForward,
+  Square,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
 import { onThemeChange } from '../../lib/canvas-theme';
 import {
   clampSimTime,
-  lineAt,
   nextStepTime,
   playbackRate,
   positionAt,
@@ -50,6 +58,7 @@ import dynamic from 'next/dynamic';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -59,6 +68,7 @@ import {
 import { fill } from '../../lib/draft-project';
 import type { SimulationMeta, SimulationResponse } from '../../lib/simulation-messages';
 import { useSimulationWorker } from '../../lib/use-simulation-worker';
+import { SPEEDS, createSimPlayer, useSimPlayer } from '../../lib/sim-player';
 import { drawnParts, type ViewState } from '../layout-view/model';
 import { clampScale, zoomAt } from '../layout-view/zoom';
 import { GcodePanel } from './gcode-panel';
@@ -82,9 +92,6 @@ import { findings, Violations } from './violations';
 import { ZStrip } from './z-strip';
 
 const SimulationCanvas = dynamic(() => import('./simulation-canvas'), { ssr: false });
-
-const SPEEDS = [1, 2, 5, 10, 'max'] as const;
-type Speed = (typeof SPEEDS)[number];
 
 /** Scrubber resolution: tenths of a second. */
 const SCRUB_UNITS = 10;
@@ -137,6 +144,12 @@ export interface SimMachine {
   pv: PostProfileVersion;
 }
 
+/** 3D view of the playback (T156, T157, spec §3.8): texts and the machine table. */
+export interface Sim3D {
+  t: Messages['layout']['preview3d'];
+  table: TableSpec | null;
+}
+
 /**
  * Önizleme / simülasyon step (T020, spec §6.5, §3.6 step 4; wizard since T023). Runs the export
  * pipeline + reader for the wizard's project on its selected machine in a Web Worker and plays
@@ -151,8 +164,11 @@ export function SimulationView({
   left,
   notice,
   onOpenPart,
+  view3d,
 }: {
   t: SimText;
+  /** Offers the 3D view of the playback (T156); absent = 2D only. */
+  view3d?: Sim3D | undefined;
   project: Project;
   machine: SimMachine | null;
   header: SimHeader;
@@ -336,6 +352,7 @@ export function SimulationView({
             machine={sim.machine ?? result.machine}
             left={side}
             tabs={tabs}
+            view3d={view3d}
           />
         </TabsContent>
       </Tabs>
@@ -416,8 +433,10 @@ function Player({
   machine,
   left,
   tabs,
+  view3d,
 }: {
   t: SimText;
+  view3d?: Sim3D | undefined;
   sim: SimSheet;
   project: Project;
   machine: SimMachineFrame | null;
@@ -427,16 +446,25 @@ function Player({
   tabs: ReactNode;
 }) {
   const reduced = useReducedMotion();
-  const [time, setTimeState] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState<Speed>(5);
+  // T157: one player store per sheet; the 2D canvas and the 3D view both follow it.
+  const [player] = useState(() => createSimPlayer(sim.steps, sim.duration));
+  useLayoutEffect(() => player.load(sim.steps, sim.duration), [player, sim.steps, sim.duration]);
+  const { time, playing, speed, line } = useSimPlayer(player);
+  const { setPlaying, setSpeed } = player;
+  const timeRef = useMemo(
+    () => ({
+      get current() {
+        return player.get().time;
+      },
+    }),
+    [player],
+  );
   const [size, setSize] = useState({ w: 0, h: 0 });
   const width = size.w;
   const [view, setView] = useState<ViewState | null>(null);
   const [colors, setColors] = useState<SimColors | null>(null);
   const coarse = useMediaQuery('(pointer: coarse)', false);
   const box = useRef<HTMLDivElement>(null);
-  const timeRef = useRef(0);
   const duration = sim.duration;
   const stock = useMemo(() => sheetSizeOf(project, sim.sheet), [project, sim.sheet]);
   // T259: no grain chip or legend line when the sheet has no grain (or the material has none).
@@ -453,13 +481,34 @@ function Player({
   const height = size.h;
   const parts = useMemo(() => drawnParts(project, sim.sheet), [project, sim.sheet]);
 
+  // T156: 2D / 3D switch of the playback; both views follow the same player.
+  const [mode, setMode] = useState<'2d' | '3d'>('2d');
+  const [noWebGL, setNoWebGL] = useState(false);
+  const [camera, setCamera] = useState<CameraCommand>({
+    preset: 'iso',
+    from: 'top',
+    nonce: 0,
+    animate: true,
+  });
+  const show3d = view3d !== undefined && mode === '3d';
+  function chooseMode(next: '2d' | '3d') {
+    if (next === '3d' && !hasWebGL2()) {
+      setNoWebGL(true);
+      setMode('2d');
+      return;
+    }
+    if (next === '3d' && mode !== '3d')
+      setCamera((c) => ({ preset: 'iso', from: 'top', nonce: c.nonce + 1, animate: true }));
+    setMode(next);
+  }
+  const preset3d = (p: ViewPreset) =>
+    setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true }));
+
   const setTime = useCallback(
     (v: number) => {
-      const c = clampSimTime(duration, v);
-      timeRef.current = c;
-      setTimeState(c);
+      player.setTime(clampSimTime(duration, v));
     },
-    [duration],
+    [duration, player],
   );
 
   // T268: refit only when the fit inputs change in value. An autosave or a machine refetch gives
@@ -513,8 +562,7 @@ function Player({
       const dt = Math.min(0.25, Math.max(0, (now - last) / 1000));
       last = now;
       const next = Math.min(duration, timeRef.current + dt * rate);
-      timeRef.current = next;
-      setTimeState(next);
+      player.setTime(next);
       if (next >= duration) {
         setPlaying(false);
         return;
@@ -530,42 +578,42 @@ function Player({
       cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onHidden);
     };
-  }, [active, speed, duration]);
+  }, [active, speed, duration, player, setPlaying, timeRef]);
 
   const togglePlay = useCallback(() => {
     if (reduced) return;
     if (!playing && timeRef.current >= duration) setTime(0);
-    setPlaying((p) => !p);
-  }, [reduced, playing, duration, setTime]);
+    setPlaying(!player.get().playing);
+  }, [reduced, playing, duration, setTime, player, setPlaying, timeRef]);
   const stepNext = useCallback(() => {
     setPlaying(false);
     setTime(nextStepTime(sim.steps, timeRef.current, duration));
-  }, [sim.steps, duration, setTime]);
+  }, [sim.steps, duration, setTime, setPlaying, timeRef]);
   const stepPrev = useCallback(() => {
     setPlaying(false);
     setTime(prevStepTime(sim.steps, timeRef.current));
-  }, [sim.steps, setTime]);
+  }, [sim.steps, setTime, setPlaying, timeRef]);
   const toStart = useCallback(() => {
     setPlaying(false);
     setTime(0);
-  }, [setTime]);
+  }, [setTime, setPlaying]);
   const toEnd = useCallback(() => {
     setPlaying(false);
     setTime(duration);
-  }, [duration, setTime]);
+  }, [duration, setTime, setPlaying]);
   const seekLine = useCallback(
     (file: number, line: number) => {
       setPlaying(false);
       setTime(timeForLine(sim.steps, file, line, duration));
     },
-    [sim.steps, duration, setTime],
+    [sim.steps, duration, setTime, setPlaying],
   );
   const seekTime = useCallback(
     (v: number) => {
       setPlaying(false);
       setTime(v);
     },
-    [setTime],
+    [setTime, setPlaying],
   );
 
   // Keyboard: Space play/pause (a step under reduced motion), ←/→ step, Home/End.
@@ -588,7 +636,6 @@ function Player({
 
   const ph = simPlayheadAt(sim.steps, time);
   const pos = positionAt(sim, time);
-  const line = lineAt(sim.steps, time);
   const stepIndex = ph.active >= 0 ? ph.active : ph.done - 1;
   const step = sim.steps[stepIndex];
   const diameter = step ? toolDiameterOf(sim, step.tool) : null;
@@ -619,35 +666,76 @@ function Player({
         ) : (
           <span />
         )}
-        <div className={`${floating} flex shrink-0 items-center p-0.5`}>
-          <Tooltip content={t.controls.zoomOut}>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              aria-label={t.controls.zoomOut}
-              onClick={() => zoomButton(1 / 1.25)}
+        <div className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}>
+          {view3d ? (
+            <div
+              role="group"
+              aria-label={view3d.t.switchLabel}
+              className="flex items-center gap-px rounded-md bg-surface-subtle p-px"
+              data-testid="sim-view-switch"
             >
-              <ZoomOut aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t.controls.zoomIn}>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              aria-label={t.controls.zoomIn}
-              onClick={() => zoomButton(1.25)}
-            >
-              <ZoomIn aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t.controls.fit}>
-            <IconButton size="sm" variant="ghost" aria-label={t.controls.fit} onClick={fit}>
-              <Maximize aria-hidden />
-            </IconButton>
-          </Tooltip>
+              {(['2d', '3d'] as const).map((m) => (
+                <Tooltip key={m} content={m === '2d' ? view3d.t.view2dTip : view3d.t.view3dTip}>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label={m === '2d' ? view3d.t.view2dTip : view3d.t.view3dTip}
+                    aria-pressed={mode === m}
+                    data-testid={`sim-view-${m}`}
+                    onClick={() => chooseMode(m)}
+                    className={cn(
+                      'size-7',
+                      mode === m && 'bg-surface text-fg shadow-xs hover:bg-surface',
+                    )}
+                  >
+                    {m === '2d' ? <Square aria-hidden /> : <Box aria-hidden />}
+                  </IconButton>
+                </Tooltip>
+              ))}
+            </div>
+          ) : null}
+          {show3d ? null : (
+            <>
+              <Tooltip content={t.controls.zoomOut}>
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  aria-label={t.controls.zoomOut}
+                  onClick={() => zoomButton(1 / 1.25)}
+                >
+                  <ZoomOut aria-hidden />
+                </IconButton>
+              </Tooltip>
+              <Tooltip content={t.controls.zoomIn}>
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  aria-label={t.controls.zoomIn}
+                  onClick={() => zoomButton(1.25)}
+                >
+                  <ZoomIn aria-hidden />
+                </IconButton>
+              </Tooltip>
+              <Tooltip content={t.controls.fit}>
+                <IconButton size="sm" variant="ghost" aria-label={t.controls.fit} onClick={fit}>
+                  <Maximize aria-hidden />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
         </div>
       </div>
-      <div className="pointer-events-none absolute bottom-2 left-2 z-10">
+      {noWebGL && !show3d && view3d ? (
+        <div
+          role="status"
+          data-testid="preview3d-fallback"
+          className={`${floating} absolute inset-x-2 bottom-12 z-10 mx-auto flex max-w-md items-start gap-2 px-3 py-2 text-sm text-fg`}
+        >
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-info-text" />
+          <span>{view3d.t.fallback}</span>
+        </div>
+      ) : null}
+      <div className={cn('pointer-events-none absolute bottom-2 left-2 z-10', show3d && 'hidden')}>
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -699,7 +787,7 @@ function Player({
           className={`absolute inset-0 ${canvasTouchClass(zoomed)} overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
         >
           {/* T259: no grain chip on a sheet without grain. */}
-          {sheetGrain !== null ? (
+          {sheetGrain !== null && !show3d ? (
             <span
               data-testid="sim-grain"
               data-grain={stock.grain ?? 'none'}
@@ -722,7 +810,36 @@ function Player({
               <span className="sr-only sm:hidden">{t.legend.grain}</span>
             </span>
           ) : null}
-          {width > 0 && view && colors ? (
+          {show3d && view3d ? (
+            <Preview3D
+              t={view3d.t}
+              project={project}
+              sheet={sim.sheet}
+              table={view3d.table}
+              command={camera}
+              onPreset={preset3d}
+              onFallback={() => {
+                setNoWebGL(true);
+                setMode('2d');
+              }}
+              partCount={parts.length}
+              toolpath={{
+                sim,
+                time,
+                tool: { x: pos.x, y: pos.y, z: pos.z, diameter: diameter ?? 6 },
+              }}
+            >
+              {/* §3.8: the air-cut warning also in 3D. */}
+              <p
+                role="note"
+                data-testid="sim-banner-3d"
+                className="pointer-events-none absolute top-14 right-2 z-10 flex max-w-64 items-start gap-1.5 rounded-lg border border-info-border bg-info-subtle/95 px-2.5 py-1.5 text-xs text-info-text shadow-sm max-sm:top-24"
+              >
+                <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                <span className="font-semibold">{t.banner}</span>
+              </p>
+            </Preview3D>
+          ) : width > 0 && view && colors ? (
             <CanvasBoundary>
               <SimulationCanvas
                 width={width}
