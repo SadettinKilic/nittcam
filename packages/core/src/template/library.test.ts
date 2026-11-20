@@ -11,11 +11,20 @@ import { postConfig } from '../gcode-check/check.testing';
 import { nestProject } from '../nesting';
 import { goldenProfile, goldenProject } from '../post/golden.testing';
 import shelfSet from '../schema/__fixtures__/shelf-set.json';
-import { templateGeometrySchema, templateParamsSchema, type Project } from '../schema';
+import {
+  templateGeometrySchema,
+  templateParamsSchema,
+  type Project,
+  type TemplateEdge,
+} from '../schema';
 import { buildToolpath } from '../toolpath';
 import { defaultPlacement } from './index';
 import {
   READY_TEMPLATES,
+  defaultTemplateEdge,
+  handlesOnHingeEdge,
+  hingeEdgeHandleParts,
+  templateKind,
   isReadyTemplateId,
   readyTemplate,
   unverifiedTemplateNames,
@@ -143,5 +152,47 @@ describe('unverified ready templates in the job (T282)', () => {
     const plain = exportWith(goldenProject(shelfSet, TOOL_D));
     expect(plain.ok).toBe(true);
     for (const f of plain.files) expect(f.content).not.toContain('SABLON');
+  });
+});
+
+describe('hinge / handle edges (T286, review #9 A)', () => {
+  const ref = (instanceId: string, templateId: string, edge: TemplateEdge | null) => ({
+    instanceId,
+    templateId,
+    placement: { edge },
+  });
+  const HINGE = 'ready-hinge-35-2';
+  const HANDLE = 'ready-handle-128';
+
+  it('reads the kind from the ready library; company templates have none', () => {
+    expect(templateKind(HINGE)).toBe('hinge');
+    expect(templateKind(HANDLE)).toBe('handle');
+    expect(templateKind('ready-drawer-rail')).toBeUndefined();
+    expect(templateKind('0b8f7c1e-uuid')).toBeUndefined();
+  });
+
+  it('puts a handle on the edge opposite the hinges, mirrored door mirrored', () => {
+    expect(defaultTemplateEdge(HANDLE, [ref('a', HINGE, 'left')])).toBe('right');
+    expect(defaultTemplateEdge(HANDLE, [ref('a', HINGE, 'right')])).toBe('left');
+    expect(defaultTemplateEdge(HANDLE, [ref('a', HINGE, 'top')])).toBe('bottom');
+    expect(defaultTemplateEdge(HANDLE, [ref('a', HINGE, 'bottom')])).toBe('top');
+  });
+
+  it('keeps the left edge for non-handles, a door without hinges and company templates', () => {
+    expect(defaultTemplateEdge(HINGE, [ref('a', HINGE, 'left')])).toBe('left');
+    expect(defaultTemplateEdge(HANDLE, [])).toBe('left');
+    expect(defaultTemplateEdge(HANDLE, [ref('a', 'company-uuid', 'left')])).toBe('left');
+    expect(defaultTemplateEdge('company-uuid', [ref('a', HINGE, 'left')])).toBe('left');
+  });
+
+  it('flags a handle on a hinge edge, never one on another edge or a free one', () => {
+    const parts = [
+      { name: 'Kapak', templates: [ref('h', HINGE, 'left'), ref('k', HANDLE, 'left')] },
+      { name: 'Sağ kapak', templates: [ref('h', HINGE, 'right'), ref('k', HANDLE, 'left')] },
+      { name: 'Serbest', templates: [ref('h', HINGE, 'left'), ref('k', HANDLE, null)] },
+    ];
+    expect(handlesOnHingeEdge(parts[0]?.templates ?? [])).toEqual(['k']);
+    expect(handlesOnHingeEdge(parts[1]?.templates ?? [])).toEqual([]);
+    expect(hingeEdgeHandleParts(parts)).toEqual(['Kapak']);
   });
 });
