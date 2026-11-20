@@ -1,5 +1,6 @@
 import {
   normalizeGrain,
+  partNumber,
   partShape,
   rotatedBoxSize,
   type Placement,
@@ -7,7 +8,12 @@ import {
   toCutSizes,
 } from '@nittcam/core';
 import { readTokenColors } from '../../lib/canvas-theme';
-import { footprintInners, footprintOutline } from '../../lib/placed-outline';
+import {
+  footprintHoles,
+  footprintInners,
+  footprintOutline,
+  ringLength,
+} from '../../lib/placed-outline';
 
 /** Pixels per mm and the pan of the stage. */
 export interface ViewState {
@@ -88,6 +94,8 @@ export interface DrawnPart {
   outline: number[] | null;
   /** Inner contours (cut-outs, T134) in the same frame; they turn with the part. */
   inners: number[][];
+  /** Holes and template instances (T171): centre and radius in the same frame. */
+  holes: { x: number; y: number; r: number }[];
 }
 
 type PartRow = { part: Project['parts'][number]; row: number };
@@ -98,7 +106,7 @@ function drawPlacement(hit: PartRow, pl: Placement): DrawnPart {
     key: copyKey(pl),
     partId: pl.partId,
     index: pl.index,
-    label: `${hit.row}.${pl.index + 1}`,
+    label: partNumber(hit.row, pl.index + 1),
     name: hit.part.name,
     x: pl.x,
     y: pl.y,
@@ -110,6 +118,7 @@ function drawPlacement(hit: PartRow, pl: Placement): DrawnPart {
       hit.part.grain.mode === 'fixed' ? normalizeGrain(hit.part.grain.angle + pl.rot) : null,
     outline: footprintOutline(hit.part, pl.rot, size.h),
     inners: footprintInners(hit.part, pl.rot, size.h),
+    holes: footprintHoles(hit.part, pl.rot, size.h),
   };
 }
 
@@ -163,4 +172,20 @@ export function fitView(
 /** Canvas height for a container width: the sheet's aspect ratio, kept between 220 and 640 px. */
 export function canvasHeight(sheet: { width: number; height: number }, width: number): number {
   return Math.round(Math.min(640, Math.max(220, (width * sheet.height) / sheet.width)));
+}
+
+/** Per-sheet stats shown in the layout view (T171). */
+export interface SheetFigures {
+  parts: number;
+  /** Outer + inner contour length of the placed parts, mm (the profile cut, before tool offset). */
+  cutLength: number;
+}
+
+export function sheetFigures(parts: readonly DrawnPart[]): SheetFigures {
+  let cutLength = 0;
+  for (const p of parts) {
+    cutLength += p.outline ? ringLength(p.outline) : 2 * (p.w + p.h);
+    for (const inner of p.inners) cutLength += ringLength(inner);
+  }
+  return { parts: parts.length, cutLength };
 }
