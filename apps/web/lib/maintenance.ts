@@ -4,10 +4,22 @@ import type { Messages } from './messages';
 
 type Text = Messages['machines']['maintenance'];
 
-/** Local calendar day as `YYYY-MM-DD` (the workshop's "today"). */
-export function localDay(now: Date = new Date()): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+/**
+ * The workshop's time zone (D-086). The home page computes "today" on the server, whose clock is
+ * often UTC, and the Makineler page renders first on the server too: both use this zone, so the
+ * day matches the workshop's calendar and the server and browser renders agree.
+ */
+export const WORKSHOP_TIME_ZONE = process.env.NEXT_PUBLIC_WORKSHOP_TIME_ZONE ?? 'Europe/Istanbul';
+
+/** The workshop's calendar day as `YYYY-MM-DD` (its "today"), in `timeZone`. */
+export function localDay(now: Date = new Date(), timeZone: string = WORKSHOP_TIME_ZONE): string {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
 }
 
 const dayFormat = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeZone: 'UTC' });

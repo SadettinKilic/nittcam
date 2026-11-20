@@ -43,6 +43,12 @@ describe('POST /api/client-log (T187)', () => {
     expect((await post(big)).status).toBe(413);
   });
 
+  it('measures the body in bytes: 10 000 "ş" (20 000 bytes) is too large (P4, tester B43)', async () => {
+    const turkish = JSON.stringify({ kind: 'error', message: 'm', stack: 'ş'.repeat(10_000) });
+    expect(turkish.length).toBeLessThan(16 * 1024);
+    expect((await post(turkish)).status).toBe(413);
+  });
+
   it('rate limit: 120 lines a minute, then 429 and nothing more is written (tester, T187)', async () => {
     const before = readFileSync(clientLogPath(), 'utf8').split('\n').length;
     const statuses: number[] = [];
