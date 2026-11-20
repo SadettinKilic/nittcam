@@ -1674,6 +1674,8 @@
         "minToolChanges": "Aynı takımla işlenen parçaları aynı plakada toplar."
       },
       "modeResult": "{sheets} plaka · fire {waste}",
+      "modeResultPath": "yol ≈ {m} m",
+      "modeResultChanges": "{count} takım değişimi",
       "rotation": "Parça döndürme",
       "rotations": {
         "free": "Serbest (90° adımlarla)",
@@ -1682,8 +1684,11 @@
         "none": "Döndürme yok (çizildiği gibi)"
       },
       "rotationHint": "Damar yönü sabit parçalar her zaman damara göre yerleşir.",
+      "rotationNoGain": "{angle}° kazanç yok: 90° adımlarla aynı plaka sayısı ve fire. 90° daha hızlı dizer.",
       "partInHole": "Küçük parçaları iç boşluklara yerleştir",
       "partInHoleHint": "Büyük parçaların iç kesimlerine küçük parçalar dizilir; önce iç parça kesilir.",
+      "partInHoleNone": "İç boşluğa 0 parça: küçük parçalar iç kesimlere sığmadı.",
+      "partInHoleCount": "İç boşluğa {count} parça yerleşti.",
       "useOffcuts": "Önce artık parçaları kullan",
       "useOffcutsHint": "Aynı malzeme ve kalınlıktaki kayıtlı artık parçalar tam plakadan önce denenir.",
       "useOffcutsCount": "Stokta {count} uygun artık parça var.",

@@ -25,7 +25,7 @@ export interface LabelSpot {
 
 const GRID = 24;
 
-function inRing(px: number, py: number, ring: readonly number[]): boolean {
+export function inRing(px: number, py: number, ring: readonly number[]): boolean {
   let inside = false;
   const n = ring.length >> 1;
   for (let i = 0, j = n - 1; i < n; j = i++) {

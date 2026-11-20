@@ -5,6 +5,7 @@ import {
   type LayoutSummary,
   type NestingMode,
   type NestingRotation,
+  type ObjectiveCost,
   type OffcutSheet,
   type Project,
   type RunNestingParams,
@@ -45,12 +46,23 @@ import { LayoutGrid } from 'lucide-react';
 import { Button, cn, RadioGroup, RadioGroupItem, Switch } from '@nittcam/ui';
 import { NumberField } from './number-field';
 import { WorkspaceLayout } from './workspace-layout';
+import { drawnParts } from '../layout-view/model';
+import { copiesInHoles, rotationGainsNothing } from '../../lib/nest-gain';
 import type { TableSpec } from '../../lib/preview3d/stage';
 
 const MODES: readonly NestingMode[] = ['minWaste', 'fastest', 'minToolChanges'];
 const ROTATIONS: readonly NestingRotation[] = ['free', 'step45', 'step15', 'none'];
 
 const percent = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+const metres = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+
+/** B44: what the current option set gained (null = not nested with these options yet). */
+interface NestGain {
+  /** 45° / 15° gave the same result as 90° steps. */
+  rotationNone: boolean;
+  /** Copies placed in a cut-out with "iç boşluk" on; null when off or not nested yet. */
+  inHoles: number | null;
+}
 
 type NestMessage = { kind: 'error' | 'info'; text: string } | null;
 
@@ -120,7 +132,7 @@ function useNest(
       }
       const after = record(base, res.applied);
       if (after) {
-        cache.set(key, after.layout, after);
+        cache.set(key, after.layout, after, res.cost);
         setCacheVersion((v) => v + 1);
       }
     } finally {
@@ -232,6 +244,35 @@ export function LayoutStep({
       MODES.map((m) => [m, cache.peek(optionSetKeyForMode(project, params, m))?.summary]),
     );
   }, [cache, cacheVersion, project, params]);
+  // B44: path and tool changes of the nested option sets (mode cards).
+  const modeCosts = useMemo(() => {
+    void cacheVersion;
+    return Object.fromEntries(
+      MODES.map((m) => [m, cache.peek(optionSetKeyForMode(project, params, m))?.cost]),
+    ) as Record<string, ObjectiveCost | undefined>;
+  }, [cache, cacheVersion, project, params]);
+  // B44: feedback when an option gains nothing ("45° kazanç yok", "iç boşluğa 0 parça").
+  const gain = useMemo<NestGain>(() => {
+    void cacheVersion;
+    const current = cache.peek(optionSetKey(project, params));
+    const r = project.nesting.rotation ?? 'free';
+    let rotationNone = false;
+    if (current && (r === 'step45' || r === 'step15')) {
+      const coarse = cache.peek(
+        optionSetKey({ ...project, nesting: { ...project.nesting, rotation: 'free' } }, params),
+      );
+      rotationNone = coarse !== undefined && rotationGainsNothing(current.summary, coarse.summary);
+    }
+    let inHoles: number | null = null;
+    if (current && project.nesting.partInHole === true) {
+      const nested = { ...project, layout: current.layout };
+      inHoles = current.layout.sheets.reduce(
+        (n, _s, i) => n + copiesInHoles(drawnParts(nested, i)),
+        0,
+      );
+    }
+    return { rotationNone, inHoles };
+  }, [cache, cacheVersion, project, params]);
 
   const nestRun = useMemo<NestRun>(
     () => ({ running, progress, message, nest, cancel }),
@@ -248,11 +289,23 @@ export function LayoutStep({
         run={run}
         toolDiameter={toolDiameter}
         modeResults={modeResults}
+        modeCosts={modeCosts}
+        gain={gain}
         offcutCount={stock.offcuts.length}
         projectId={session.projectId}
       />
     ),
-    [messages, project, run, toolDiameter, modeResults, stock.offcuts.length, session.projectId],
+    [
+      messages,
+      project,
+      run,
+      toolDiameter,
+      modeResults,
+      modeCosts,
+      gain,
+      stock.offcuts.length,
+      session.projectId,
+    ],
   );
   const hasParts = project.parts.length > 0;
   const compactNest = useMemo(() => <CompactNest t={nt} hasParts={hasParts} />, [nt, hasParts]);
@@ -362,6 +415,8 @@ function NestSettings({
   run,
   toolDiameter,
   modeResults,
+  modeCosts,
+  gain,
   offcutCount,
   projectId,
 }: {
@@ -370,6 +425,8 @@ function NestSettings({
   run: ProjectSession['run'];
   toolDiameter: number;
   modeResults: Record<string, LayoutSummary | undefined>;
+  modeCosts: Record<string, ObjectiveCost | undefined>;
+  gain: NestGain;
   /** T168: usable stock offcuts (same material and thickness, matching grain). */
   offcutCount: number;
   projectId: string | null;
@@ -437,6 +494,12 @@ function NestSettings({
                           sheets: result.sheetCount,
                           waste: fill(nt.percent, { value: percent.format(result.wastePercent) }),
                         })}
+                        {m === 'fastest' && modeCosts[m]
+                          ? ` · ${fill(t.modeResultPath, { m: metres.format((modeCosts[m]?.cutLength ?? 0) / 1000) })}`
+                          : null}
+                        {m === 'minToolChanges' && modeCosts[m]
+                          ? ` · ${fill(t.modeResultChanges, { count: modeCosts[m]?.toolChanges ?? 0 })}`
+                          : null}
                       </span>
                     ) : null}
                   </span>
@@ -485,6 +548,11 @@ function NestSettings({
           <p id={rotationHintId} className="text-xs text-fg-muted">
             {t.rotationHint}
           </p>
+          {gain.rotationNone ? (
+            <p className="text-xs text-fg-muted" data-testid="layout-rotation-gain" role="status">
+              {fill(t.rotationNoGain, { angle: rotation === 'step15' ? 15 : 45 })}
+            </p>
+          ) : null}
           <label className="mt-1 flex items-center gap-2 text-sm text-fg">
             <Switch
               checked={project.nesting.partInHole === true}
@@ -498,6 +566,18 @@ function NestSettings({
           <p id={partInHoleHintId} className="text-xs text-fg-muted">
             {t.partInHoleHint}
           </p>
+          {gain.inHoles !== null ? (
+            <p
+              className="text-xs text-fg-muted"
+              data-testid="layout-part-in-hole-result"
+              data-count={gain.inHoles}
+              role="status"
+            >
+              {gain.inHoles === 0
+                ? t.partInHoleNone
+                : fill(t.partInHoleCount, { count: gain.inHoles })}
+            </p>
+          ) : null}
           <label className="mt-1 flex items-center gap-2 text-sm text-fg">
             <Switch
               checked={project.stock.useOffcuts}

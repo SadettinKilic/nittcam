@@ -4,6 +4,7 @@ import {
   type Layout,
   type LayoutSummary,
   type NestingMode,
+  type ObjectiveCost,
   type Project,
   type RunNestingParams,
 } from '@nittcam/core';
@@ -36,6 +37,8 @@ export function optionSetKeyForMode(
 export interface CachedNesting {
   layout: Layout;
   summary: LayoutSummary;
+  /** Objective terms when the placer ran (path, tool changes; B44 mode cards). */
+  cost?: ObjectiveCost;
 }
 
 /** At most this many option sets are kept (oldest dropped first). */
@@ -59,9 +62,10 @@ export class NestingCache {
     return this.entries.get(key);
   }
 
-  set(key: string, layout: Layout, project: Project): void {
+  set(key: string, layout: Layout, project: Project, cost?: ObjectiveCost): void {
     this.entries.delete(key);
-    this.entries.set(key, { layout, summary: summarizeLayout({ ...project, layout }) });
+    const summary = summarizeLayout({ ...project, layout });
+    this.entries.set(key, cost ? { layout, summary, cost } : { layout, summary });
     while (this.entries.size > NESTING_CACHE_SIZE) {
       const oldest = this.entries.keys().next().value;
       if (oldest === undefined) break;
