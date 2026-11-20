@@ -555,3 +555,4 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - E6: the export record stores the machine verification state; same revision + same state = same bytes; a changed state makes a new record, never an overwrite.
 - E3 manual add and E7 (other-thickness parts) are scope questions for the owner.
 - Batch labels: M8 batches are renumbered B32+ in practice (B32 = T172–T174 PDF) because B24/B25 were reused earlier.
+- Owner (2026-11-20, Q011): E3 manual offcut add (T291) and E7 other-thickness parts (T292) both before the field test, batch B34. Polish queue regrouped into P1–P5, one group per M9 batch.
