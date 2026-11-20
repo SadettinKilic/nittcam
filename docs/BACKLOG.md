@@ -1599,26 +1599,26 @@ Tester focus: full safety review; golden list prepared for the owner's approval.
 
 ### Batch B31: T190–T193 (final e2e and field-test readiness)
 
-### T190 Full regression e2e scenarios   [status: todo]
+### T190 Full regression e2e scenarios   [status: done]
 Spec: §11 · Depends: T189
 Acceptance:
 - [ ] 5 scenarios in CI: cabinet + hinge doors, DXF sign letters, grain-rotated panels, mixed holes/pockets, offcut reuse; each: input → nest → 3D → simulation → NC + PDF + DXF + labels; all checks pass
 Tester focus: run the suite; review every NC with the safety checklist.
 
-### T191 Field-test kit   [status: todo]
+### T191 Field-test kit   [status: done]
 Spec: §7.3, §12.3 · Depends: T190
 Acceptance:
 - [ ] extended test program (holes, pocket, groove, arcs, inner contour) + measurement form fields; printable field checklist PDF (origin, Z zero, tool, air cut first); `docs/machines/_template/` for the info collection; air-cut/test exports recorded
 Tester focus: safety review of the extended test program; air-cut floor (D-031) holds for the new operations.
 
-### T192 In-app help and "Yenilikler"   [status: todo]
+### T192 In-app help and "Yenilikler"   [status: done]
 > CTO #12: add a search in the help.
 Spec: §8.2 · Depends: T190
 Acceptance:
 - [ ] Turkish help pages (getting started, cut list, drawing, grain, 3D, export, air cut) linked from the palette; "Yenilikler" dialog per release
 Tester focus: links work; text in `tr.json`; axe.
 
-### T305 A new project never receives another project's parts (unsent queue per draft)   [status: in-progress]
+### T305 A new project never receives another project's parts (unsent queue per draft)   [status: done]
 Must-fix (data loss / wrong project), found in the T190 offcut scenario; rider in B49. Spec: §8.2 · D-094
 Cause: the unsent queue of a project not created yet lived under one shared `sessionStorage` key `nittcam.unsent.new`. Leaving a new project before its first save came back (e.g. Projeler → + Yeni proje) left that key, and the next new project replayed it: the first project's parts **and its client id**, so the repeated create returned the first project and later saves went into it.
 Acceptance:
