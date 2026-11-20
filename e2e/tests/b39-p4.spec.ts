@@ -73,7 +73,8 @@ test('palette: Şablonlar / Malzemeler pages and in-project step commands (P4)',
   await page.keyboard.press('Control+k');
   await input.fill('malzeme');
   await expect(options.filter({ hasText: tr.palette.materials })).toHaveCount(1);
-  await options.filter({ hasText: tr.palette.materials }).click();
+  await expect(options.first()).toContainText(tr.palette.materials);
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/ayarlar\/malzemeler$/);
 
   // Off the wizard there are no step commands.
@@ -81,6 +82,7 @@ test('palette: Şablonlar / Malzemeler pages and in-project step commands (P4)',
   await input.fill('adım');
   await expect(options.filter({ hasText: tr.wizard.steps.dizilim })).toHaveCount(0);
   await input.fill('şablon');
-  await options.filter({ hasText: tr.palette.templates }).click();
+  await expect(options.first()).toContainText(tr.palette.templates);
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/sablonlar$/);
 });

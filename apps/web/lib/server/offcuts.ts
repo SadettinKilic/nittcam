@@ -64,7 +64,8 @@ interface OffcutRowLike {
   createdAt: Date;
 }
 
-export function toOffcutItem(row: OffcutRowLike): OffcutItem {
+/** `names`: project id → name, for the stock list's source column (P4). */
+export function toOffcutItem(row: OffcutRowLike, names?: ReadonlyMap<string, string>): OffcutItem {
   return {
     id: row.id,
     material: row.material,
@@ -73,6 +74,11 @@ export function toOffcutItem(row: OffcutRowLike): OffcutItem {
     height: row.height,
     grain: row.grain,
     sourceProjectId: row.sourceProjectId,
+    ...(names
+      ? {
+          sourceProjectName: row.sourceProjectId ? (names.get(row.sourceProjectId) ?? null) : null,
+        }
+      : {}),
     status: row.status,
     createdAt: row.createdAt.toISOString(),
   };

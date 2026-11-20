@@ -1,7 +1,7 @@
 'use client';
 
 import { OFFCUT_MIN_SIZE, proposeOffcuts, type Project } from '@nittcam/core';
-import { Button, Checkbox } from '@nittcam/ui';
+import { Button, Checkbox, notify } from '@nittcam/ui';
 import { useMemo, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
@@ -29,7 +29,12 @@ export function OffcutsPanel({
   const proposals = useMemo(() => proposeOffcuts(project, toolDiameter), [project, toolDiameter]);
   // One decision per layout: a new layout shows its own proposals again.
   const layoutKey = useMemo(() => JSON.stringify(project.layout), [project.layout]);
-  const [skipped, setSkipped] = useState<ReadonlySet<number>>(new Set());
+  // P4 (CTO #9/#10): opt-in, nothing is pre-ticked; the ticks belong to one layout.
+  const [picked, setPicked] = useState<{ key: string; set: ReadonlySet<number> }>({
+    key: '',
+    set: new Set(),
+  });
+  const ticked = picked.key === layoutKey ? picked.set : new Set<number>();
   const [state, setState] = useState<{
     key: string;
     kind: 'saving' | 'saved' | 'failed';
@@ -37,7 +42,7 @@ export function OffcutsPanel({
   } | null>(null);
   const current = state?.key === layoutKey ? state : null;
   if (proposals.length === 0) return null;
-  const chosen = proposals.filter((_, i) => !skipped.has(i));
+  const chosen = proposals.filter((_, i) => ticked.has(i));
 
   async function save() {
     const offcuts: NewOffcut[] = chosen.map((o) => ({
@@ -56,6 +61,7 @@ export function OffcutsPanel({
         body: JSON.stringify({ offcuts }),
       });
       setState({ key: layoutKey, kind: res.ok ? 'saved' : 'failed', n: offcuts.length });
+      if (res.ok) notify.success(fill(t.saved, { count: offcuts.length }), { id: 'offcut-saved' });
     } catch {
       setState({ key: layoutKey, kind: 'failed', n: offcuts.length });
     }
@@ -82,15 +88,13 @@ export function OffcutsPanel({
               <li key={`${o.sheet}-${o.x}-${o.y}`}>
                 <label className="flex items-center gap-2 text-sm text-fg tabular-nums">
                   <Checkbox
-                    checked={!skipped.has(i)}
-                    onCheckedChange={(v) =>
-                      setSkipped((s) => {
-                        const n = new Set(s);
-                        if (v === true) n.delete(i);
-                        else n.add(i);
-                        return n;
-                      })
-                    }
+                    checked={ticked.has(i)}
+                    onCheckedChange={(v) => {
+                      const n = new Set(ticked);
+                      if (v === true) n.add(i);
+                      else n.delete(i);
+                      setPicked({ key: layoutKey, set: n });
+                    }}
                     data-testid="offcut-proposal"
                   />
                   {fill(t.item, { sheet: o.sheet + 1, w: o.width, h: o.height })}

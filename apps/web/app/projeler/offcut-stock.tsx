@@ -115,8 +115,12 @@ export function OffcutStock({ t, materials }: { t: Text; materials: Messages['ma
               <span className="min-w-0 flex-1 truncate text-fg-muted">
                 {t.columns.source}:{' '}
                 {o.sourceProjectId ? (
-                  <a className="underline" href={`/projeler/${o.sourceProjectId}`}>
-                    {t.openSource}
+                  <a
+                    className="underline"
+                    href={`/projeler/${o.sourceProjectId}`}
+                    data-testid="offcut-source"
+                  >
+                    {o.sourceProjectName ?? t.openSource}
                   </a>
                 ) : (
                   t.noSource

@@ -48,9 +48,11 @@ import {
   type TemplateItem,
 } from '../../lib/templates-api';
 import {
+  commonSpan,
   duplicateDraft,
   editedDraft,
   isChanged,
+  scaledBox,
   splitTemplates,
   templatePreview,
 } from '../../lib/templates-page';
@@ -167,6 +169,8 @@ interface Actions {
 
 function Lists({ t, items, actions }: { t: Text; items: TemplateItem[]; actions: Actions }) {
   const { company, ready } = splitTemplates(items);
+  // P4: one drawing scale for every thumbnail on the page.
+  const span = commonSpan(items.map((i) => templatePreview(i).box));
   return (
     <>
       <section aria-labelledby="tpl-company" className="flex flex-col gap-3">
@@ -178,7 +182,7 @@ function Lists({ t, items, actions }: { t: Text; items: TemplateItem[]; actions:
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="templates-company">
             {company.map((item) => (
-              <TemplateCard key={item.id} t={t} item={item} actions={actions} />
+              <TemplateCard key={item.id} t={t} item={item} actions={actions} span={span} />
             ))}
           </ul>
         )}
@@ -192,7 +196,7 @@ function Lists({ t, items, actions }: { t: Text; items: TemplateItem[]; actions:
         </Callout>
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="templates-ready">
           {ready.map((item) => (
-            <TemplateCard key={item.id} t={t} item={item} actions={actions} />
+            <TemplateCard key={item.id} t={t} item={item} actions={actions} span={span} />
           ))}
         </ul>
       </section>
@@ -200,7 +204,17 @@ function Lists({ t, items, actions }: { t: Text; items: TemplateItem[]; actions:
   );
 }
 
-function TemplateCard({ t, item, actions }: { t: Text; item: TemplateItem; actions: Actions }) {
+function TemplateCard({
+  t,
+  item,
+  actions,
+  span,
+}: {
+  t: Text;
+  item: TemplateItem;
+  actions: Actions;
+  span: { w: number; h: number };
+}) {
   const { params } = item;
   // The chosen action runs once the menu has fully closed (onCloseAutoFocus), so a dialog never
   // opens over a menu that is still animating out (Radix would leave it stuck in the page).
@@ -213,7 +227,7 @@ function TemplateCard({ t, item, actions }: { t: Text; item: TemplateItem; actio
   return (
     <li data-testid="template-card" data-id={item.id}>
       <Card className="flex h-full flex-col gap-3 p-4">
-        <Preview t={t} item={item} />
+        <Preview t={t} item={item} span={span} />
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-col gap-1">
             <h3 className="truncate font-medium text-fg" title={item.name}>
@@ -298,10 +312,18 @@ function TemplateCard({ t, item, actions }: { t: Text; item: TemplateItem; actio
 }
 
 /** Thumbnail: the holes, contours and lines of every copy, with the reference edge (dashed). */
-function Preview({ t, item }: { t: Text; item: TemplateItem }) {
+function Preview({
+  t,
+  item,
+  span,
+}: {
+  t: Text;
+  item: TemplateItem;
+  span: { w: number; h: number };
+}) {
   const p = templatePreview(item);
-  const [x, y, w, h] = p.box;
-  const stroke = Math.max(w, h) / 120;
+  const [x, y, w, h] = scaledBox(p.box, span);
+  const stroke = Math.max(w, h) / 160;
   return (
     <svg
       role="img"

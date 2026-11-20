@@ -1436,7 +1436,8 @@ Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by
 - Wizard header stays one row down to ~1095 px container width [#6]
 - DXF dialog: focus returns to "DXF içe aktar", first focus visible; duplicate `data-testid="dxf-open"`; a LINE over a closed polyline edge counts as duplicate; report shows holes separately [T B16]
 
-### P4 Kabuk, bildirimler, ana sayfa
+### P4 Kabuk, bildirimler, ana sayfa   [status: review, B39]
+B39 (#134): all items done; the Dışa aktar profile-version gap was already the T269 box (checked, no change).
 - ★ Toasts close on step change and never cover the panel / scale bar [#8, #9, #10]
 - Command palette: Şablonlar, Ayarlar / Malzemeler, Makine doğrulama and in-project step commands [#10]
 - Empty 0-part drafts do not fill "Son projeler"; home card date not truncated [#10]
