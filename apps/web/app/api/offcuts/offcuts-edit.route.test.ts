@@ -91,6 +91,24 @@ describe('/api/offcuts manual stock (T291)', () => {
     );
   });
 
+  it('a grainless offcut never keeps a grain (P3, tester B36)', async () => {
+    const res = await POST(
+      json('POST', {
+        offcuts: [{ material: 'acrylic', thickness: 5, width: 600, height: 300, grain: null }],
+      }),
+    );
+    const [o] = (await res.json()) as OffcutItem[];
+    if (!o) throw new Error('not created');
+    const g = await patch(o.id, { grain: 90 });
+    expect(g.status).toBe(200);
+    expect(((await g.json()) as OffcutItem).grain).toBeNull();
+    // Material to plywood with a grain: kept; back to PVC: the grain is dropped.
+    const ply = (await (await patch(o.id, { material: 'plywood', grain: 0 })).json()) as OffcutItem;
+    expect(ply.grain).toBe(0);
+    const pvc = (await (await patch(o.id, { material: 'pvc' })).json()) as OffcutItem;
+    expect(pvc.grain).toBeNull();
+  });
+
   it('another company offcut cannot be edited, deleted or restored', async () => {
     const handle = await (globalThis as { nittcamDb?: Promise<DbHandle> }).nittcamDb;
     if (!handle) throw new Error('no db handle');

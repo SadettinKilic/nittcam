@@ -71,7 +71,9 @@ test.describe('T011 cut list', () => {
     await expect(bad).toHaveCount(1);
     await expect(bad).toContainText('Arkalık');
     await expect(bad).toContainText(fill(p.errors.INVALID_NUMBER, { field: p.fields.w }));
-    await expect(page.getByText(fill(p.summary, { valid: 3, invalid: 1 }))).toBeVisible();
+    await expect(
+      page.getByText(fill(p.summary, { valid: 3, invalid: 1, lines: '' }).split(' (')[0] as string),
+    ).toBeVisible();
 
     // Nothing is applied before "Uygula".
     await expect(page.getByText(t.empty)).toBeVisible();

@@ -558,7 +558,7 @@
       "edgeGroup": "Kenar bandı (mm)",
       "actions": "İşlem",
       "grainHeader": "Damar",
-      "band": "Bant",
+      "band": "Bant (mm)",
       "note": "Not",
       "group": "Grup",
       "cut": "Kesim"
@@ -662,7 +662,7 @@
       "line": "Satır",
       "status": "Durum",
       "ok": "Tamam",
-      "summary": "{valid} satır eklenecek, {invalid} hatalı satır atlanacak.",
+      "summary": "{valid} satır eklenecek, {invalid} hatalı satır atlanacak (satır {lines}; nedeni Durum sütununda).",
       "summaryAllValid": "{valid} satır eklenecek.",
       "unit": {
         "question": "Ölçüler milimetre mi, santimetre mi?",
@@ -877,7 +877,7 @@
       "add": "{count} parça ekle",
       "addDisabled": "Parça ekle",
       "cancel": "Vazgeç",
-      "added": "{group}: {count} satır eklendi.",
+      "added": "{group}: {count} parça eklendi.",
       "errors": {
         "invalid": "Ölçüleri kontrol edin: hepsi sıfırdan büyük olmalı.",
         "tooNarrow": "En, iki yan kalınlığından büyük olmalı.",
@@ -1711,7 +1711,8 @@
       "libraryValue": "{name} · {thickness} mm",
       "libraryNoParams": "ayar yok",
       "genericGroup": "Kütüphane dışı",
-      "libraryThicknessHint": "Kütüphanedeki kalınlıklar: {list} mm"
+      "libraryThicknessHint": "Kütüphanedeki kalınlıklar: {list} mm",
+      "archivedNote": "Bu makine arşivlendi. Bu proje onunla açılmaya ve dışa aktarılmaya devam eder; yeni projelerde seçilemez."
     },
     "parts": {
       "summary": "Özet",

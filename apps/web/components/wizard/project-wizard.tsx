@@ -706,7 +706,19 @@ function WizardSession({
   );
   // T269: the "Son sürüme geç" box on step 1, Simülasyon and Dışa aktar.
   const gap = known ? versionGap(project.machine, detail) : null;
-  const versionNotice =
+  // P3 (CTO #12): Dışa aktar and Simülasyon say when the project's machine was archived.
+  const archivedMachine = machines.some((m) => m.id === project.machine.machineId && m.archived);
+  const archivedNotice = archivedMachine ? (
+    <p
+      role="note"
+      data-testid="machine-archived-notice"
+      className="flex items-start gap-2 rounded-lg border border-info-border bg-info-subtle px-3 py-2 text-xs text-info-text"
+    >
+      <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <span>{t.machine.archivedNote}</span>
+    </p>
+  ) : null;
+  const profileNotice =
     gap !== null ? (
       <ProfileVersionNotice
         t={t.machine}
@@ -715,6 +727,13 @@ function WizardSession({
         latest={gap}
         run={session.run}
       />
+    ) : null;
+  const versionNotice =
+    archivedNotice || profileNotice ? (
+      <>
+        {archivedNotice}
+        {profileNotice}
+      </>
     ) : null;
   const toolDiameter = toolDiameterFor(project, profile);
   // T138: a drawn hole takes the stock material set's tool (else the first tool, else T1).
@@ -984,13 +1003,14 @@ function WizardSession({
       </InnerIssuesContext.Provider>
     );
   } else if (step === 'parcalar') {
-    const sourceId = session.projectId;
     /**
      * T292: the cabinet's other-thickness parts become a new project on the same machine and
-     * profile version, linked to this one; the toast opens it.
+     * profile version, linked to this one; the toast opens it. P3 (CTO #12): an unsaved new
+     * project saves first (`settle`), so the split-off also works on a fresh project.
      */
     const split = async (rows: unknown[], target: SplitTarget) => {
       const s = messages.cutList.cabinet.split;
+      const sourceId = session.projectId ?? (await session.settle().catch(() => null));
       const out = sourceId
         ? splitOffProject(project, rows, target, new Date().toISOString())
         : null;
@@ -1040,14 +1060,10 @@ function WizardSession({
         onSelectionChange={setPartsSelection}
         dxfText={messages.dxfImport}
         holeTool={holeToolNo}
-        splitOff={
-          sourceId
-            ? {
-                materials: messages.materials,
-                onSplit: (rows, target) => void split(rows, target),
-              }
-            : undefined
-        }
+        splitOff={{
+          materials: messages.materials,
+          onSplit: (rows, target) => void split(rows, target),
+        }}
         focusPart={rowFocus}
         onFocusedPart={clearRowFocus}
       />
@@ -1059,8 +1075,8 @@ function WizardSession({
     // would remount the editor and drop its view state (sort, groups, active cell, drag).
     both = (
       <div className="flex min-w-0 flex-col gap-3">
-        {sourceId ? (
-          <ProjectLinksBar t={t.links} projectId={sourceId} version={linksVersion} />
+        {session.projectId ? (
+          <ProjectLinksBar t={t.links} projectId={session.projectId} version={linksVersion} />
         ) : null}
         {editor}
       </div>
