@@ -544,3 +544,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Amends spec §6.3 ("Tab ... yay üstüne konmaz") and D-049: outer-contour tabs stay on straight edges when any fits; only when none fits (disc, letter O) a tab may sit inside one arc whose radius is larger than the tool radius, centred on the arc, length measured along it, never on a corner or join.
 - Ready-template hole values (T150) are placeholders `verified: false`, "üretici verisiyle doğrulanacak" (§14.2); handle holes Ø6 (Ø5 is smaller than the standard 6 mm tool). No automatic hinge count by door height yet.
 - **Amendment (2026-11-20, owner confirmed; T284):** follow real shop practice: outer-contour tabs go on straight edges first. Only when no straight edge fits may a tab sit on a curve, and only on a smooth arc (disc, letter "O", a sweep larger than 90°, e.g. a stadium end), centred on one arc segment, clear of joins. A corner arc (a fillet ≤ 90° between edges, as on a rounded rectangle; co-circular pieces count as one arc) never holds a tab. A small part with no place left is refused with `SMALL_PART_UNSECURED`; thin skin (T143) is the alternative.
+
+## D-059 Models per tempo (2026-11-20, owner)
+- Default and "tempo high": PO, Dev 1, Dev 2, Tester, DevOps run on Opus; the CTO runs on Fable.
+- "tempo low": everyone runs on Opus (CTO too), except the Tester on Sonnet.
+- Replaces the model lines of D-057 (tester Sonnet) for the default case. Paralellik is "on" again from 2026-11-20 evening.
