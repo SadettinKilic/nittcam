@@ -7,8 +7,8 @@
  * Frame: x right, y up from the floor, z from the back to the front (the generator's frame).
  */
 import { Edges, OrbitControls } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
-import { useMemo } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
+import { useEffect, useMemo } from 'react';
 import { Capture, type CaptureFn } from './capture';
 import { BufferAttribute, BufferGeometry, Matrix4, NeutralToneMapping } from 'three';
 import type { AssemblyBox, Part } from '@nittcam/core';
@@ -20,10 +20,19 @@ import {
 import { cachedPartMesh } from '../../lib/preview3d/sheet-scene';
 import type { MeshData } from '../../lib/preview3d/part-mesh';
 import type { SceneColors } from './scene';
+import { fittedPosition, type Vec3 } from '../../lib/preview3d/camera';
+import { installThreeConsole } from '../../lib/preview3d/three-console';
+
+// B44 (D-080): drop fiber's THREE.Clock deprecation warning; all other three messages stay.
+installThreeConsole();
 
 /** Gap between two cabinets, mm. */
 export const CABINET_GAP = 300;
 const FOV = 35;
+/** First view: isometric from the front left (B44: distance fitted to the whole row). */
+const VIEW_DIR: Vec3 = [-0.45, 0.45, 0.77];
+/** Door: opaque enough to read closed, the shelves behind still show (B44). */
+const DOOR_OPACITY = 0.7;
 
 export interface AssemblySceneProps {
   groups: readonly CabinetGroup[];
@@ -112,15 +121,16 @@ export default function AssemblyScene({
                   roughness={simple ? 1 : 0.7}
                   // Doors see-through, so the shelves behind them stay visible.
                   transparent={b.role === 'door'}
-                  opacity={b.role === 'door' ? 0.45 : 1}
+                  opacity={b.role === 'door' ? DOOR_OPACITY : 1}
                   depthWrite={b.role !== 'door'}
                 />
-                {simple ? null : <Edges color={colors.partStroke} />}
+                {simple && b.role !== 'door' ? null : <Edges color={colors.partStroke} />}
               </mesh>
             );
           })}
         </group>
       ))}
+      <FitCamera target={target} row={row} />
       <Capture onCapture={onCapture} />
       <OrbitControls
         makeDefault
@@ -131,6 +141,41 @@ export default function AssemblyScene({
       />
     </Canvas>
   );
+}
+
+/**
+ * B44: the first camera fits the whole row of cabinets for the canvas aspect (the bottom was
+ * clipped with the fixed distance). Re-fits on a new aspect or a new row size only.
+ */
+function FitCamera({
+  target,
+  row,
+}: {
+  target: [number, number, number];
+  row: { width: number; height: number; depth: number };
+}) {
+  const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
+  const controls = useThree((s) => s.controls) as {
+    target?: { set: (...v: number[]) => void };
+    update?: () => void;
+  } | null;
+  const invalidate = useThree((s) => s.invalidate);
+  const aspect = size.width / Math.max(1, size.height);
+  const aspectKey = Math.round(aspect * 100);
+  const [tx, ty, tz] = target;
+  useEffect(() => {
+    if (size.width <= 0 || size.height <= 0) return;
+    const box = { hx: row.width / 2, hy: row.height / 2, hz: row.depth / 2 };
+    const pos = fittedPosition([tx, ty, tz], VIEW_DIR, box, FOV, aspect);
+    camera.position.set(...pos);
+    camera.lookAt(tx, ty, tz);
+    controls?.target?.set(tx, ty, tz);
+    controls?.update?.();
+    invalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fit on values, not identities
+  }, [aspectKey, row.width, row.height, row.depth, controls]);
+  return null;
 }
 
 /** Geometry of a part mesh (T153 data), shared by every box of the same shape (cache below). */
@@ -187,13 +232,15 @@ function FeaturedBoard({
           color={base}
           roughness={simple ? 1 : 0.7}
           transparent={door}
-          opacity={door ? 0.45 : 1}
+          opacity={door ? DOOR_OPACITY : 1}
           depthWrite={!door}
         />
       </mesh>
-      {simple ? null : (
-        <lineSegments geometry={geo.edges}>
-          <lineBasicMaterial color={stroke} />
+      {simple && !door ? null : (
+        // A door's lines (outline, hinge cups on the inner face) draw over the door itself, so
+        // the cups read through it (B44); renderOrder puts them after the see-through board.
+        <lineSegments geometry={geo.edges} renderOrder={door ? 1 : 0}>
+          <lineBasicMaterial color={stroke} depthTest={!door} />
         </lineSegments>
       )}
     </group>

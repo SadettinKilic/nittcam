@@ -5,6 +5,7 @@ import {
   cubeMatrix,
   easeOut,
   fitDistance,
+  fittedPosition,
   interpolatePose,
   polarDeg,
   presetDirection,
@@ -110,5 +111,22 @@ describe('3D camera presets (T152)', () => {
     // 90° about X (world → camera): y' = -z, z' = y; column-major.
     const rx = [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1];
     expect(cubeMatrix(rx)).toBe('matrix3d(1,0,0,0,0,0,-1,0,0,1,0,0,0,0,0,1)');
+  });
+});
+
+describe('fittedPosition (B44 assembly first camera)', () => {
+  it('sits on the view direction at the fit distance, farther on a narrow canvas', () => {
+    const box = { hx: 300, hy: 360, hz: 290 };
+    const dir = [-0.45, 0.45, 0.77] as const;
+    const wide = fittedPosition([300, 360, 290], dir, box, 35, 2);
+    const narrow = fittedPosition([300, 360, 290], dir, box, 35, 0.8);
+    const dist = (p: readonly [number, number, number]) =>
+      Math.hypot(p[0] - 300, p[1] - 360, p[2] - 290);
+    expect(dist(narrow)).toBeGreaterThan(dist(wide));
+    const len = Math.hypot(...dir);
+    expect(dist(wide)).toBeCloseTo(
+      fitDistance(dir.map((v) => v / len) as unknown as typeof dir, box, 35, 2, 0.12),
+      6,
+    );
   });
 });
