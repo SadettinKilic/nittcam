@@ -31,6 +31,37 @@ export const TAB_DEFAULTS = {
   smallPartMinCount: 2,
 } as const;
 
+/**
+ * Smallest tab that still holds a part (T293, CTO #11 A, D-069; tuned in the field test):
+ * bridge width ≥ 3 mm; material left in the bridge ≥ 1 mm and ≤ thickness − 1 mm (a thicker
+ * bridge has to be cut, not broken). Below that a "tab" is a cut-free part in disguise.
+ */
+export const TAB_BOUNDS = {
+  minWidth: 3,
+  minHeight: 1,
+  /** Height at most thickness minus this, mm. */
+  belowThickness: 1,
+} as const;
+
+/** Largest allowed tab height on `thickness` mm stock (may be below `minHeight`: no valid tab). */
+export function maxTabHeight(thickness: number): number {
+  return thickness - TAB_BOUNDS.belowThickness;
+}
+
+/** Why a resolved tab size cannot hold a part, or `null` when it can (T293). */
+export function tabSizeProblem(
+  width: number,
+  height: number,
+  thickness: number,
+): 'width' | 'height' | null {
+  const eps = 1e-9;
+  if (!(width >= TAB_BOUNDS.minWidth - eps)) return 'width';
+  if (!(height >= TAB_BOUNDS.minHeight - eps) || height > maxTabHeight(thickness) + eps) {
+    return 'height';
+  }
+  return null;
+}
+
 /** Built-in default height (material left in the bridge): min(3, t / 2) mm. */
 export function defaultTabHeight(thickness: number): number {
   return Math.min(TAB_DEFAULTS.materialLeft, thickness / 2);

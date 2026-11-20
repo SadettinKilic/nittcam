@@ -579,3 +579,9 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-068 CTO review #11 triage (2026-11-20, PO)
 - Must-fix A → T293 (tab lower bounds, safety), gap E1 → T294, both batch B40 on Dev 2 before the rest of B38. T176 gap → T295 (one file-name pattern), T179 gap → T296 (old-revision badge). 13 polish items into P2–P5.
 - NC re-export from history needs the same checklist + acceptance as the main download (tester note on B37; fixed in #131 before landing).
+
+## D-069 Tab size bounds (2026-11-20, Dev 2, B40 T293, CTO #11 A; numbers tuned in the field test)
+- A tab holds a part only when its bridge is **≥ 3 mm wide** and leaves **1 mm … thickness − 1 mm** of material (`TAB_BOUNDS`, `maxTabHeight`, `tabSizeProblem` in `toolpath/tabs.ts`). Built-in defaults (10 mm, min(3, t/2)) are inside the bounds from 2 mm stock up, so default output and the goldens do not change.
+- `setTabs` refuses a width below 3 mm, a height below 1 mm or above thickness − 1 mm; the Kesim ayarları fields say the range ("En az 3 mm.", "1–17 mm arası olmalı.", "1–20 arası tam sayı girin.").
+- The toolpath checks the size it really uses (project > material set > built-in): a small part or small slug held by tabs below the bounds is the error `SMALL_PART_TAB_TOO_SMALL` (NC blocked on Simülasyon and Dışa aktar); a large part only gets the warning `TABS_TOO_SMALL`. Old and hand-edited projects and small material-set values are caught the same way. Small parts on a thin skin ("Köprü: Kapalı") use no tabs and are not affected. `options.tabs` sizes (the low-level geometry hook of the property tests, no UI or command reaches it) are not checked.
+- Tab findings link to the Kesim ayarları panel; the "no room for 2 tabs" text names the panel's real choice "Köprü: Kapalı" instead of the old "Son pasoda ince tabaka bırak".

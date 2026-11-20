@@ -1042,7 +1042,8 @@
       "linePlace": "{name} · Çizgi {n}",
       "rowPlace": "Satır {n} · {name}",
       "openPart": "Çizimde aç",
-      "openRow": "Parçalara git"
+      "openRow": "Parçalara git",
+      "openCutting": "Kesim ayarlarına git"
     },
     "rules": {
       "R1": "Kural 1 · Birim, mutlak koordinat, düzlem ve iş ofseti baştan yazılır",
@@ -1078,7 +1079,7 @@
       "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
       "NO_OPERATIONS": "Kesilecek parça yok.",
       "DEPTH_EXCEEDS_FLUTE_LENGTH": "Kesim derinliği takımın kesici boyunu aşıyor.",
-      "SMALL_PART_UNSECURED": "Küçük parça sabitlenemiyor (köprü yerleşmedi). Kesim ayarlarında “Son pasoda ince tabaka bırak” seçeneğini açın.",
+      "SMALL_PART_UNSECURED": "Küçük parçaya köprü sığmıyor (köprü genişliği ya da sayısı bu parçaya fazla); kesilince serbest kalır. Kesim ayarlarında köprüyü küçültün ya da “Köprü: Kapalı” seçin (küçük parçalar ince tabakayla tutulur).",
       "INVALID_SKIN": "İnce tabaka kalınlığı 0’dan büyük ve malzeme kalınlığından az olmalı.",
       "SMALL_SLUG_UNSECURED": "İç kesimden düşecek küçük parçaya (göbek) 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin (delik içi tamamen boşaltılır, göbek kalmaz).",
       "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç kesime değiyor.",
@@ -1168,7 +1169,9 @@
       "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
       "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
       "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
-      "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin."
+      "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
+      "SMALL_PART_TAB_TOO_SMALL": "Köprü bu küçük parçayı tutamayacak kadar küçük (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası); parça serbest kalır. Kesim ayarlarında köprü ölçüsünü düzeltin ya da “Köprü: Kapalı” seçin.",
+      "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası)."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -1292,7 +1295,12 @@
         "climb": "Climb (tırmanma)",
         "conventional": "Conventional (geleneksel)"
       },
-      "note": "Her değişiklik geri alınabilir; önizleme ve dışa aktarılan dosya aynı değerleri kullanır."
+      "note": "Her değişiklik geri alınabilir; önizleme ve dışa aktarılan dosya aynı değerleri kullanır.",
+      "bounds": {
+        "count": "1–20 arası tam sayı girin.",
+        "width": "En az {min} mm.",
+        "height": "{min}–{max} mm arası olmalı."
+      }
     }
   },
   "projects": {

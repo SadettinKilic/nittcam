@@ -112,6 +112,23 @@ export function findings(result: SimulateResult): Finding[] {
   return out;
 }
 
+/** T293: findings fixed in the "Kesim ayarları" panel (tab size, tabs that do not fit). */
+const CUTTING_CODES: ReadonlySet<string> = new Set([
+  'SMALL_PART_TAB_TOO_SMALL',
+  'TABS_TOO_SMALL',
+  'SMALL_PART_UNSECURED',
+]);
+
+/** Shows the Simülasyon "Kesim ayarları" panel and focuses its tab choice. */
+function openCuttingSettings() {
+  const panel = document.querySelector<HTMLElement>('[data-testid="sim-cutting"]');
+  if (!panel) return;
+  panel.scrollIntoView({ block: 'start' });
+  panel
+    .querySelector<HTMLInputElement>('input[type="radio"]:checked')
+    ?.focus({ preventScroll: true });
+}
+
 export function knownCode(t: SimText, code: string): boolean {
   return code in (t.codes as Record<string, string>);
 }
@@ -193,6 +210,16 @@ function FindingList({
                     className="shrink-0 rounded-sm text-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:ml-auto"
                   >
                     {t.blocked.openPart}
+                  </button>
+                ) : null}
+                {CUTTING_CODES.has(f.code) ? (
+                  <button
+                    type="button"
+                    data-testid="violation-open-cutting"
+                    onClick={openCuttingSettings}
+                    className="shrink-0 rounded-sm text-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:ml-auto"
+                  >
+                    {t.blocked.openCutting}
                   </button>
                 ) : null}
                 {onPartRow(f) && links.onOpenRow && innerPlace(t, f, links) ? (

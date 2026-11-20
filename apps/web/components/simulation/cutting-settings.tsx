@@ -1,6 +1,13 @@
 'use client';
 
-import { cuttingSettingsOf, type MachineProfile, type Project, type TabMode } from '@nittcam/core';
+import {
+  TAB_BOUNDS,
+  cuttingSettingsOf,
+  maxTabHeight,
+  type MachineProfile,
+  type Project,
+  type TabMode,
+} from '@nittcam/core';
 import { useId } from 'react';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
@@ -66,6 +73,7 @@ export function CuttingSettings({
               value={c.tabs.count}
               testId="sim-cutting-count"
               errors={errors}
+              bounds={{ min: 1, max: 20, integer: true, message: t.bounds.count }}
               onCommit={(count) => run('setTabs', { count })}
             />
             <NumberField
@@ -74,6 +82,10 @@ export function CuttingSettings({
               value={c.tabs.width}
               testId="sim-cutting-width"
               errors={errors}
+              bounds={{
+                min: TAB_BOUNDS.minWidth,
+                message: fill(t.bounds.width, { min: mmFormat.format(TAB_BOUNDS.minWidth) }),
+              }}
               onCommit={(width) => run('setTabs', { width })}
             />
             <NumberField
@@ -82,6 +94,14 @@ export function CuttingSettings({
               value={c.tabs.height}
               testId="sim-cutting-height"
               errors={errors}
+              bounds={{
+                min: TAB_BOUNDS.minHeight,
+                max: maxTabHeight(project.stock.thickness),
+                message: fill(t.bounds.height, {
+                  min: mmFormat.format(TAB_BOUNDS.minHeight),
+                  max: mmFormat.format(maxTabHeight(project.stock.thickness)),
+                }),
+              }}
               onCommit={(height) => run('setTabs', { height })}
             />
           </div>
