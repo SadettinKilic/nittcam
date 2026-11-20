@@ -17,7 +17,7 @@ import {
 import { CircleAlert, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { formatMm } from '../../lib/canvas-labels';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { holeDefaults } from '../../lib/editor/hole-tool';
 import type { Messages } from '../../lib/messages';
 import { useHoleIssues } from './hole-issues';

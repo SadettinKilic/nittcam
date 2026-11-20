@@ -33,14 +33,22 @@ import {
   type NavDirection,
   type Validated,
 } from '../../lib/cut-list-grid';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { grainDialLabels } from '../../lib/grain-labels';
+import { useMessages } from '../../lib/messages-context';
 import type { Messages } from '../../lib/messages';
 
 export type Text = Messages['cutList'];
 export type Run = (name: string, params: unknown) => boolean;
-/** Moves focus from a cell; `enter` = the move came from Enter (may add a row). */
-export type Navigate = (row: number, col: string, dir: NavDirection, enter?: boolean) => void;
+/**
+ * Moves focus from a cell; `enter` = the move came from Enter (may add a row). False when there
+ * is no cell that way: Tab then leaves the grid (T185, no keyboard trap).
+ */
+export type Navigate = (row: number, col: string, dir: NavDirection, enter?: boolean) => boolean;
+
+/** Tab / Shift+Tab past the first or last cell leaves the grid instead of being swallowed. */
+const leavesGrid = (dir: NavDirection, moved: boolean) =>
+  !moved && (dir === 'next' || dir === 'prev');
 
 /** Spreadsheet-like cell input: quiet until hover or focus; 32 px inside a 36 px row (T118). */
 const inputClass =
@@ -69,8 +77,7 @@ function navKey(e: KeyboardEvent, editing: boolean): NavDirection | null {
 export function onButtonNav(e: KeyboardEvent, row: number, col: string, navigate: Navigate): void {
   const dir = navKey(e, false);
   if (!dir) return;
-  e.preventDefault();
-  navigate(row, col, dir);
+  if (!leavesGrid(dir, navigate(row, col, dir))) e.preventDefault();
 }
 
 interface TextCellProps<T> {
@@ -222,11 +229,12 @@ export function TextCell<T>({
     if (!navigate) return;
     const dir = navKey(e, editing.current);
     if (!dir) return;
-    e.preventDefault();
-    if (commit()) {
-      editing.current = false;
-      navigate(row, col, dir);
+    if (!commit()) {
+      e.preventDefault();
+      return;
     }
+    editing.current = false;
+    if (!leavesGrid(dir, navigate(row, col, dir))) e.preventDefault();
   }
 
   const errorId = `${id}-error`;
@@ -386,6 +394,7 @@ export function GrainCell({
   run: Run;
   navigate?: Navigate | undefined;
 }) {
+  const grainText = useMessages().grainDial;
   const g = t.grainCell;
   const n = row + 1;
   const fixed = part.grain.mode === 'fixed';
@@ -435,7 +444,7 @@ export function GrainCell({
                 run('setPartGrain', { id: part.id, mode: 'fixed', angle: a });
               }
             }}
-            labels={grainDialLabels()}
+            labels={grainDialLabels(grainText)}
             data-testid={`grain-dial-${n}`}
           />
           {allIds().length > 1 ? (

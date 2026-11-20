@@ -3,12 +3,12 @@
 import { reportClientError } from '../../lib/report-client-error';
 import { ErrorState } from '@nittcam/ui';
 import { ImageOff } from 'lucide-react';
-import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { getMessages } from '../../lib/messages';
+import { Component, type ContextType, type ErrorInfo, type ReactNode } from 'react';
+import { MessagesContext } from '../../lib/messages-context';
 import { ThrowProbe } from './throw-probe';
 
 export interface CanvasBoundaryProps {
-  /** Defaults to the Turkish texts of `feedback.canvas`. */
+  /** Defaults to the Turkish texts of `feedback.canvas` (from `MessagesContext`). */
   t?: { title: string; text: string; retry: string };
   children: ReactNode;
   /** Optional test id of the fallback. */
@@ -20,6 +20,8 @@ export interface CanvasBoundaryProps {
  * retry instead of taking down the whole page; the project state outside is untouched.
  */
 export class CanvasBoundary extends Component<CanvasBoundaryProps, { failed: boolean }> {
+  static override contextType = MessagesContext;
+  declare context: ContextType<typeof MessagesContext>;
   override state = { failed: false };
 
   static getDerivedStateFromError(): { failed: boolean } {
@@ -32,7 +34,7 @@ export class CanvasBoundary extends Component<CanvasBoundaryProps, { failed: boo
   }
 
   override render(): ReactNode {
-    const { t = getMessages().feedback.canvas, children, testId = 'canvas-error' } = this.props;
+    const { children, testId = 'canvas-error' } = this.props;
     if (!this.state.failed)
       return (
         <>
@@ -40,6 +42,8 @@ export class CanvasBoundary extends Component<CanvasBoundaryProps, { failed: boo
           <ThrowProbe target="canvas" />
         </>
       );
+    const t = this.props.t ?? this.context?.feedback.canvas;
+    if (!t) throw new Error('CanvasBoundary needs a `t` prop or a MessagesContext provider');
     return (
       <ErrorState
         data-testid={testId}

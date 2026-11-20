@@ -33,7 +33,7 @@ import {
 } from '@nittcam/ui';
 import { useId, useMemo, useState, type FormEvent } from 'react';
 import { loadCabinetMemory, saveCabinetMemory } from '../../lib/cabinet-memory';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import type { SplitTarget } from '../../lib/split-project';
 

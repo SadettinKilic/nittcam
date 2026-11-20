@@ -1,5 +1,6 @@
 /** Nesting commands (spec §5.1 "Dizilim", §6.2, D-019). */
-import { original, produceWithPatches, type Patch } from 'immer';
+import { original, type Patch } from 'immer';
+import { immer } from '../immer';
 import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../../geometry/grain';
@@ -170,7 +171,7 @@ export function runNestingWithProgress(
     { toolDiameter: params.toolDiameter, contourTool: params.contourTool, offcuts: params.offcuts },
     hooks,
   ).layout;
-  const [next, patches, inversePatches] = produceWithPatches(project, (draft) => {
+  const [next, patches, inversePatches] = immer.produceWithPatches(project, (draft) => {
     setLayout(draft as Project, project, layout);
   });
   return { ok: true, project: next, params, patches, inversePatches };

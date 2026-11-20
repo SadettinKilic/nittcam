@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import {
   Badge,
   Button,
@@ -13,11 +14,13 @@ import {
 } from '@nittcam/ui';
 import { Layers, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import type { NewOffcut, OffcutItem, OffcutStatus } from '../../lib/offcuts-api';
-import { OffcutDialog } from './offcut-dialog';
 import { materialLabel } from './projects-view';
+
+/** The add/edit dialog and its material schemas load when it opens (T186). */
+const OffcutDialog = dynamic(() => import('./offcut-dialog').then((m) => m.OffcutDialog));
 
 type Text = Messages['projects']['offcuts'];
 type Body = Omit<NewOffcut, 'sourceProjectId'>;

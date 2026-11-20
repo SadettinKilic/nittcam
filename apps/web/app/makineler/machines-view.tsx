@@ -1,6 +1,7 @@
 'use client';
 
-import { defaultMachineProfile, type MachineProfile } from '@nittcam/core';
+import dynamic from 'next/dynamic';
+import type { MachineProfile } from '@nittcam/core';
 import {
   Badge,
   Button,
@@ -31,12 +32,16 @@ import { PageHeader, focusRing, pageContainer } from '../../components/page/page
 import { Callout } from '../../components/wizard/panels';
 import type { ParamFix } from '../../lib/machine-form';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
-import { MachineForm } from './machine-form';
-import { MaintenanceDialog } from './maintenance-dialog';
 import { MaintenanceBadge } from '../../components/machines/maintenance-badge';
 import { localDay, maintenanceView } from '../../lib/maintenance';
+
+/** The machine form (post configs, profile schema) and the maintenance log load on demand (T186). */
+const MachineForm = dynamic(() => import('./machine-form').then((m) => m.MachineForm));
+const MaintenanceDialog = dynamic(() =>
+  import('./maintenance-dialog').then((m) => m.MaintenanceDialog),
+);
 
 type Text = Messages['machines'];
 
@@ -51,18 +56,10 @@ type Mode =
       kind: 'form';
       machineId: string | null;
       version?: number;
-      initial: MachineProfile;
+      initial: MachineProfile | null;
       key: number;
       addParams?: ParamFix['set'];
     };
-
-/** A new machine starts from the generic profile, not marked as an example, with no name. */
-function newProfile(): MachineProfile {
-  const p = defaultMachineProfile();
-  p.example = false;
-  p.identity.name = '';
-  return p;
-}
 
 /** Table width × depth as a Measure (T195): Turkish digits, tabular, unit muted. */
 function TableSize({ m, className }: { m: MachineListItem; className?: string }) {
@@ -83,7 +80,7 @@ export function MachinesView({
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [mode, setMode] = useState<Mode>(() =>
-    startNew ? { kind: 'form', machineId: null, initial: newProfile(), key: 0 } : { kind: 'list' },
+    startNew ? { kind: 'form', machineId: null, initial: null, key: 0 } : { kind: 'list' },
   );
   const [formKey, setFormKey] = useState(0);
 
@@ -143,7 +140,7 @@ export function MachinesView({
 
   function openNew() {
     setFormKey((k) => k + 1);
-    setMode({ kind: 'form', machineId: null, initial: newProfile(), key: formKey + 1 });
+    setMode({ kind: 'form', machineId: null, initial: null, key: formKey + 1 });
   }
 
   function onSaved(detail: MachineDetail) {

@@ -46,7 +46,7 @@ import {
 } from '@nittcam/ui';
 import { LayoutTemplate, Plus, RotateCcw, Save, Trash2, TriangleAlert } from 'lucide-react';
 import { memo, useId, useState } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import {
   addTemplateParams,
   placementAlong,

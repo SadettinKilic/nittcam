@@ -63,7 +63,7 @@ import { Preview3D } from '../preview3d/preview3d';
 import { useView3d } from '../../lib/preview3d/view-memory';
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { onThemeChange } from '../../lib/canvas-theme';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { clampScale, zoomAt } from './zoom';
 import { PlateTabStrip } from '../wizard/plate-tab-strip';

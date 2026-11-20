@@ -15,7 +15,7 @@ import {
 } from '@nittcam/ui';
 import { RotateCcw } from 'lucide-react';
 import { useId, useState } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { EMPTY_CHECKLIST, downloadBlocker, type ChecklistState } from '../../lib/export-gate';
 import {
   reexportUrl,

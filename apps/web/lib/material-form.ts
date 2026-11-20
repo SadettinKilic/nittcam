@@ -2,50 +2,15 @@
  * Form model of the material library dialog (T121). Pure: the draft keeps `null` for empty or
  * unparsable number fields; `toMaterial` validates and returns the entry or the field errors.
  */
-import {
-  libraryMaterialSchema,
-  materialHasGrain,
-  type LibraryMaterial,
-  type MaterialKind,
-  type MaterialTone,
-} from '@nittcam/core';
+import { libraryMaterialSchema, materialHasGrain, type LibraryMaterial } from '@nittcam/core';
 
-export interface MaterialDraft {
-  name: string;
-  kind: MaterialKind;
-  tone: MaterialTone;
-  thicknesses: (number | null)[];
-  /** `qty` null = no limit (T164). */
-  sheets: { width: number | null; height: number | null; qty: number | null }[];
-  grainOn: boolean;
-  grain: number | null;
-}
-
-export type MaterialFormErrors = Partial<Record<'name' | 'thicknesses' | 'sheets' | 'grain', true>>;
-
-export function emptyDraft(): MaterialDraft {
-  return {
-    name: '',
-    kind: 'mdf',
-    tone: 'natural',
-    thicknesses: [18],
-    sheets: [{ width: 2800, height: 2070, qty: null }],
-    grainOn: false,
-    grain: 0,
-  };
-}
-
-export function draftFrom(m: LibraryMaterial): MaterialDraft {
-  return {
-    name: m.name,
-    kind: m.kind,
-    tone: m.tone,
-    thicknesses: [...m.thicknesses],
-    sheets: m.sheetSizes.map((s) => ({ width: s.width, height: s.height, qty: s.qty ?? null })),
-    grainOn: m.grain !== null,
-    grain: m.grain ?? 0,
-  };
-}
+export {
+  draftFrom,
+  emptyDraft,
+  type MaterialDraft,
+  type MaterialFormErrors,
+} from './material-draft';
+import type { MaterialDraft, MaterialFormErrors } from './material-draft';
 
 /** The entry for the API, or the fields to fix. Empty rows are ignored; plastics have no grain. */
 export function toMaterial(
