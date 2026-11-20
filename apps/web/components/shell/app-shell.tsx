@@ -58,6 +58,11 @@ export interface AppShellProps {
 }
 
 /** Dev-only pages (the /dev/ui gallery) render without the shell. */
+/** The project wizard: `/projeler/yeni` and `/projeler/<id>` (not the list or other pages). */
+export function isWizard(pathname: string): boolean {
+  return /^\/projeler\/(yeni|[0-9a-f-]{36})\/?$/i.test(pathname);
+}
+
 function isBare(pathname: string): boolean {
   return pathname === '/dev' || pathname.startsWith('/dev/');
 }
@@ -86,6 +91,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const isMac = useIsMac();
   const bare = isBare(pathname);
+  const wizard = isWizard(pathname);
 
   const actions = useMemo<CommandActions>(
     () => ({
@@ -270,13 +276,18 @@ export function AppShell({ t, company, children }: AppShellProps) {
           t={t.shortcuts}
           onCloseAutoFocus={helpFocus.onCloseAutoFocus}
         />
-        {/* Toasts sit above the sticky wizard footer (its height is --wizard-footer-h), so they
-            never cover its right-hand action ("İndir" on the last step). Off the wizard the
-            variable is unset and sonner's usual offsets apply. */}
-        <Toaster
-          offset={{ bottom: 'calc(var(--wizard-footer-h, 0px) + 24px)' }}
-          mobileOffset={{ bottom: 'calc(var(--wizard-footer-h, 0px) + 16px)' }}
-        />
+        {/* P4 (CTO #8–#10): in the project wizard the toasts sit top-centre just under the wizard
+            header (--wizard-head-bottom), so they never cover the right panel, the canvas scale bar
+            or the footer actions; a step change closes them. Elsewhere bottom-right as usual. */}
+        {wizard ? (
+          <Toaster
+            position="top-center"
+            offset={{ top: 'calc(var(--wizard-head-bottom, 56px) + 8px)' }}
+            mobileOffset={{ top: 'calc(var(--wizard-head-bottom, 56px) + 8px)' }}
+          />
+        ) : (
+          <Toaster />
+        )}
       </TooltipProvider>
     </ShellProvider>
   );

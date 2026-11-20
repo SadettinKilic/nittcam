@@ -483,6 +483,40 @@ function WizardSession({
     };
   }, []);
 
+  // P4 (CTO #8–#10): a toast belongs to the step it was raised on; a step change closes it.
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    notify.dismiss();
+  }, [step]);
+
+  // P4: publish the bottom edge of the wizard header, so the toasts sit just under it (top-centre)
+  // and never over the right panel or the canvas scale bar (see AppShell's Toaster).
+  useEffect(() => {
+    const root = document.documentElement;
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const head = document.querySelector(
+          '[data-testid="wizard-head-row"], [data-testid="wizard-compact-header"]',
+        );
+        const bottom = head ? Math.max(0, head.getBoundingClientRect().bottom) : 0;
+        root.style.setProperty('--wizard-head-bottom', `${Math.round(bottom)}px`);
+      });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, { passive: true, capture: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, { capture: true });
+      root.style.removeProperty('--wizard-head-bottom');
+    };
+  }, [step]);
+
   // Machine profiles by id (the selected one is fetched when the selection changes).
   const [details, setDetails] = useState<Record<string, MachineDetail>>(() =>
     firstDetail ? { [firstDetail.id]: firstDetail } : {},
