@@ -1590,6 +1590,16 @@ Acceptance:
 - [ ] Turkish help pages (getting started, cut list, drawing, grain, 3D, export, air cut) linked from the palette; "Yenilikler" dialog per release
 Tester focus: links work; text in `tr.json`; axe.
 
+### T305 A new project never receives another project's parts (unsent queue per draft)   [status: in-progress]
+Must-fix (data loss / wrong project), found in the T190 offcut scenario; rider in B49. Spec: §8.2 · D-089
+Cause: the unsent queue of a project not created yet lived under one shared `sessionStorage` key `nittcam.unsent.new`. Leaving a new project before its first save came back (e.g. Projeler → + Yeni proje) left that key, and the next new project replayed it: the first project's parts **and its client id**, so the repeated create returned the first project and later saves went into it.
+Acceptance:
+- [ ] the queue key is per draft (`nittcam.unsent.new.<draft id>`); the address of a project not saved yet carries `?taslak=<draft id>`; a new project replays only the queue of its own draft (and only when this tab holds it); the old shared key is dropped, never replayed
+- [ ] "+ Yeni proje" (menu, list, home) while a draft is not saved yet opens an empty project with a new draft id
+- [ ] a reload (or the way back from the machine form) before the first save still restores the draft's own edits (§8.2, T187, T264)
+- [ ] unit tests (`autosave.test.ts`) + e2e `t305-new-project-queue.spec.ts` (leave without waiting for the save; menu Yeni proje; reload)
+Tester focus: try to get one project's parts into another (leave fast, offline, two tabs, Back/forward, machine form round trip).
+
 ### T193 Field-test readiness review   [status: todo]
 Spec: §12.1 · Depends: T191, T192 · Owner: PO + tester · **Human gate: owner sign-off**
 Acceptance:

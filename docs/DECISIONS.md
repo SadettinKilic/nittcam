@@ -672,3 +672,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 
 ## D-088 Test-program downloads are recorded on the machine (2026-11-21, Dev 2, T191)
 - Every served air-cut / test-cut / extended file is kept in `machines.test_downloads` (jsonb, migration 0013): kind, name, sha256, profile version, time; newest first, at most 50, a repeat of the same file is one entry. Exports stay project-bound (`exports.project_id` is required), so test files are not export rows. Shown on the field-test kit.
+
+## D-089 A new project's unsent queue belongs to its draft (2026-11-21, Dev 2, T305)
+- A project not created yet gets a client draft id (the D-030 create id). Its unsent queue is stored under `nittcam.unsent.new.<draft id>` and the wizard address carries `?taslak=<draft id>` until the first save turns it into `/projeler/<id>`. Boot replays a queue only when the address names a draft and this tab holds that draft's queue with the same id inside; otherwise the project starts empty with a fresh id. The old shared key `nittcam.unsent.new` is removed on sight, never replayed (it cannot say which draft it belongs to).
+- Why the address and not history state: Next.js copies extra history-state keys into the entries it pushes (see `isStepEntry`), so a draft key there would follow "+ Yeni proje" into the next project. The address is per entry, survives a reload, and the machine-form return path (T264) keeps it.
+- "+ Yeni proje" while a draft is open (same path, no draft in the address) remounts the wizard as a new project. A copied draft address in another tab is harmless: that tab has no queue for it, so it starts a new draft.
