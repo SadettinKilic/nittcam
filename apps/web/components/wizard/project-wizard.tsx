@@ -760,6 +760,16 @@ function WizardSession({
     let tries = 0;
     const focus = () => {
       const el = document.querySelector<HTMLInputElement>('[data-testid="layout-margin"]');
+      // B47 tester round 1: below lg the settings panel can start closed; open it first so the
+      // field is visible and can take focus.
+      if (el && el.getClientRects().length === 0) {
+        const toggle = document.querySelector<HTMLButtonElement>(
+          '[data-testid="workspace-left-toggle"][aria-expanded="false"]',
+        );
+        if (toggle) toggle.click();
+        if (++tries < 30) requestAnimationFrame(focus);
+        return;
+      }
       if (el) {
         el.scrollIntoView({ block: 'nearest' });
         el.focus();
