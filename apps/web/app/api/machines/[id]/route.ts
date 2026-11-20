@@ -45,3 +45,30 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/machines/[id
     return handleError(err);
   }
 }
+
+/**
+ * PATCH /api/machines/:id `{ archived: boolean }` → archives or restores the machine (T289).
+ * An archived machine leaves the new-project picker and the Ana sayfa counts; its profile
+ * versions, validations and exports are kept, so the projects that use it still open and the
+ * "Geri al" toast (or "Geri yükle" later) brings it back. Company-scoped: another company's id is 404.
+ */
+export async function PATCH(request: Request, ctx: RouteContext<'/api/machines/[id]'>) {
+  const { id } = await ctx.params;
+  if (!UUID.test(id)) return apiError({ error: 'not_found' }, 404);
+  let archived: unknown;
+  try {
+    const body: unknown = await request.json();
+    if (body && typeof body === 'object') archived = (body as Record<string, unknown>)['archived'];
+  } catch {
+    // fall through: bad request below
+  }
+  if (typeof archived !== 'boolean') return apiError({ error: 'bad_request' }, 400);
+  try {
+    const scope = await companyScope();
+    const row = await scope.machines.setArchived(id, archived);
+    if (!row) return apiError({ error: 'not_found' }, 404);
+    return NextResponse.json({ id: row.id, archived: row.archivedAt !== null });
+  } catch (err) {
+    return handleError(err);
+  }
+}

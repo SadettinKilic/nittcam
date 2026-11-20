@@ -1,6 +1,13 @@
 'use client';
 
-import { cuttingSettingsOf, type MachineProfile, type Project, type TabMode } from '@nittcam/core';
+import {
+  TAB_BOUNDS,
+  cuttingSettingsOf,
+  maxTabHeight,
+  type MachineProfile,
+  type Project,
+  type TabMode,
+} from '@nittcam/core';
 import { useId } from 'react';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
@@ -19,6 +26,33 @@ const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
  * server export reads the same project values. The values shown are the ones the toolpath uses
  * (`cuttingSettingsOf`: project > material set > built-in default).
  */
+/** T294: scrolls to the "Kesim ayarları" panel and focuses its tab choice. */
+export function focusCuttingSettings() {
+  const panel = document.querySelector<HTMLElement>('[data-testid="sim-cutting"]');
+  if (!panel) return;
+  panel.scrollIntoView({ block: 'start' });
+  panel
+    .querySelector<HTMLInputElement>('input[type="radio"]:checked')
+    ?.focus({ preventScroll: true });
+}
+
+/** T294: one line for Özet: "Köprü: her parçada 4 × 10 × 3 mm · Giriş: yay · Yön: climb". */
+export function cuttingSummary(t: Text, project: Project, machine: MachineProfile | null): string {
+  const c = cuttingSettingsOf(project, machine ?? undefined);
+  const f = (v: number) => mmFormat.format(v);
+  const tabs = fill(t.summaryTabs[c.tabMode], {
+    count: c.tabMode === 'small' ? c.tabs.smallCount : c.tabs.count,
+    width: f(c.tabs.width),
+    height: f(c.tabs.height),
+    skin: f(c.skin ?? 0),
+  });
+  return fill(t.summaryLine, {
+    tabs,
+    lead: t.leadIns[c.leadIn].toLocaleLowerCase('tr'),
+    direction: c.direction,
+  });
+}
+
 export function CuttingSettings({
   t,
   errors,
@@ -58,6 +92,24 @@ export function CuttingSettings({
       <p className="text-xs text-fg-muted" data-testid="sim-cutting-tabs-hint">
         {fill(t.tabHints[c.tabMode], { skin: mmFormat.format(c.skin ?? 0) })}
       </p>
+      {c.tabMode === 'all' && c.skin !== null ? (
+        // T294 (CTO #11 E1): the thin skin "Kapalı" switched on stays on small parts after
+        // "Her parçada"; say so and let it be switched off here.
+        <p
+          className="flex flex-wrap items-baseline gap-x-2 text-xs text-fg"
+          data-testid="sim-cutting-skin-on"
+        >
+          <span>{fill(t.skinOn, { skin: mmFormat.format(c.skin) })}</span>
+          <button
+            type="button"
+            data-testid="sim-cutting-skin-off"
+            onClick={() => run('setThinSkin', { thickness: null })}
+            className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            {t.skinOff}
+          </button>
+        </p>
+      ) : null}
       {c.tabMode !== 'off' ? (
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-2">
@@ -66,6 +118,7 @@ export function CuttingSettings({
               value={c.tabs.count}
               testId="sim-cutting-count"
               errors={errors}
+              bounds={{ min: 1, max: 20, integer: true, message: t.bounds.count }}
               onCommit={(count) => run('setTabs', { count })}
             />
             <NumberField
@@ -74,6 +127,10 @@ export function CuttingSettings({
               value={c.tabs.width}
               testId="sim-cutting-width"
               errors={errors}
+              bounds={{
+                min: TAB_BOUNDS.minWidth,
+                message: fill(t.bounds.width, { min: mmFormat.format(TAB_BOUNDS.minWidth) }),
+              }}
               onCommit={(width) => run('setTabs', { width })}
             />
             <NumberField
@@ -82,9 +139,27 @@ export function CuttingSettings({
               value={c.tabs.height}
               testId="sim-cutting-height"
               errors={errors}
+              bounds={{
+                min: TAB_BOUNDS.minHeight,
+                max: maxTabHeight(project.stock.thickness),
+                message: fill(t.bounds.height, {
+                  min: mmFormat.format(TAB_BOUNDS.minHeight),
+                  max: mmFormat.format(maxTabHeight(project.stock.thickness)),
+                }),
+              }}
               onCommit={(height) => run('setTabs', { height })}
             />
           </div>
+          {c.tabs.smallCount > c.tabs.count ? (
+            <p className="text-xs text-fg-muted" data-testid="sim-cutting-small-count">
+              {fill(t.smallCount, { n: c.tabs.smallCount })}
+            </p>
+          ) : null}
+          {c.tabs.height > project.stock.thickness / 2 ? (
+            <p className="text-xs text-warning-text" data-testid="sim-cutting-height-warn">
+              {t.heightWarn}
+            </p>
+          ) : null}
           <p className="text-xs text-fg-muted" data-testid="sim-cutting-source">
             {t.source[source]}{' '}
             {own ? (
@@ -116,6 +191,9 @@ export function CuttingSettings({
         options={(['climb', 'conventional'] as const).map((v) => [v, t.directions[v]])}
         onChange={(direction) => run('setCutDirection', { direction })}
       />
+      <p className="text-xs text-fg-muted" data-testid="sim-cutting-direction-hint">
+        {t.directionHint}
+      </p>
       <p className="text-xs text-fg-muted">{t.note}</p>
     </section>
   );

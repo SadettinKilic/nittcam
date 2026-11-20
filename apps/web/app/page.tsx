@@ -18,8 +18,10 @@ import { ThrowProbe } from '../components/feedback/throw-probe';
 import { LayoutThumbnail } from '../components/home/layout-thumb';
 import { StartStrip } from '../components/home/start-strip';
 import { StatTile } from '../components/home/stat-tile';
+import { MaintenanceBadge } from '../components/machines/maintenance-badge';
 import { WasteSummaryCard } from '../components/home/waste-summary';
 import { MachineStateBadge } from '../components/machines/state-badge';
+import { localDay, maintenanceView } from '../lib/maintenance';
 import {
   PageHeader,
   SectionHeader,
@@ -89,7 +91,8 @@ async function loadDashboard(): Promise<Dashboard> {
     ]);
     const last = new Map(latest.map((e) => [e.projectId, e]));
     const sorted = [...rows].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-    const machineItems = machines.map(machineItem);
+    // T289: archived machines count nowhere on Ana sayfa (old projects still name them).
+    const machineItems = machines.map(machineItem).filter((m) => !m.archived);
     const now = new Date();
     return {
       ok: true,
@@ -390,6 +393,8 @@ function needsVerification(state: VerificationState): boolean {
 
 function Machines({ machines, messages }: { machines: MachineListItem[]; messages: Messages }) {
   const t = messages.home;
+  // T181: maintenance reminder on the workshop's calendar day.
+  const today = localDay();
   return (
     <section aria-labelledby="home-machines" className="flex min-w-0 flex-col gap-4">
       <SectionHeader
@@ -434,6 +439,7 @@ function Machines({ machines, messages }: { machines: MachineListItem[]; message
                   <span className="flex flex-wrap items-center gap-1.5">
                     <MachineStateBadge state={m.state} label={messages.machines.state[m.state]} />
                     {m.example ? <Badge>{t.example}</Badge> : null}
+                    <HomeMaintenance m={m} today={today} t={messages.machines.maintenance} />
                   </span>
                 </div>
                 {needsVerification(m.state) ? (
@@ -453,6 +459,20 @@ function Machines({ machines, messages }: { machines: MachineListItem[]; message
       )}
     </section>
   );
+}
+
+/** T181: "Bakım gecikti" / "Bakım yaklaşıyor" badge, only when a reminder is due. */
+function HomeMaintenance({
+  m,
+  today,
+  t,
+}: {
+  m: MachineListItem;
+  today: string;
+  t: Messages['machines']['maintenance'];
+}) {
+  const view = maintenanceView(m.maintenance, today, t);
+  return view.remind ? <MaintenanceBadge view={view} data-testid="home-maintenance" /> : null;
 }
 
 function QuickActions({ t }: { t: Messages['home'] }) {

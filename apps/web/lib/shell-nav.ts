@@ -16,7 +16,8 @@ export interface NavItem {
 export const NEW_PROJECT_HREF = '/projeler/yeni';
 
 /** Ayarlar has one page so far: the material library (T121). */
-export const SETTINGS_HREF = '/ayarlar/malzemeler';
+/** Ayarlar opens on "Genel" (T182); Malzemeler, DXF katmanları and Görünüm are its sub-pages. */
+export const SETTINGS_HREF = '/ayarlar';
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { key: 'home', href: '/' },
@@ -53,13 +54,27 @@ function isUnder(pathname: string, base: string): boolean {
 
 /** Label keys of a crumb; the shell turns them into Turkish text. */
 export type CrumbKey =
-  NavKey | 'newProject' | 'project' | 'verification' | 'materials' | 'notFound';
+  | NavKey
+  | 'newProject'
+  | 'project'
+  | 'verification'
+  | 'materials'
+  | 'dxfLayers'
+  | 'appearance'
+  | 'notFound';
 
 export interface Crumb {
   key: CrumbKey;
   /** Link target; the last crumb (current page) has none. */
   href?: string;
 }
+
+/** Ayarlar sub-pages (T182, T183) → their crumb. */
+const SETTINGS_SUB_CRUMB: Record<string, CrumbKey> = {
+  malzemeler: 'materials',
+  dxf: 'dxfLayers',
+  gorunum: 'appearance',
+};
 
 /**
  * Breadcrumb trail for a path. The last crumb is the current page (the top-bar title).
@@ -82,8 +97,10 @@ export function breadcrumbs(pathname: string): Crumb[] {
     if (parts.length === 2) return [{ key: 'projects', href: '/projeler' }, { key: 'project' }];
   }
   if (first === 'sablonlar' && parts.length === 1) return [{ key: 'templates' }];
-  if (first === 'ayarlar' && second === 'malzemeler' && parts.length === 2) {
-    return [{ key: 'settings', href: SETTINGS_HREF }, { key: 'materials' }];
+  if (first === 'ayarlar') {
+    if (parts.length === 1) return [{ key: 'settings' }];
+    const sub = parts.length === 2 ? SETTINGS_SUB_CRUMB[second ?? ''] : undefined;
+    if (sub) return [{ key: 'settings', href: SETTINGS_HREF }, { key: sub }];
   }
   return [{ key: 'notFound' }];
 }

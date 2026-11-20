@@ -57,6 +57,34 @@
       "when": 1795172414509,
       "tag": "0007_t178_project_soft_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795186818917,
+      "tag": "0008_t289_machine_archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795187569315,
+      "tag": "0009_t291_offcut_soft_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795188180203,
+      "tag": "0010_t292_project_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795191126696,
+      "tag": "0012_t182_company_defaults",
+      "breakpoints": true
     }
   ]
 }

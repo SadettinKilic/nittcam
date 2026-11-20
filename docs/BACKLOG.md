@@ -1276,7 +1276,7 @@ Acceptance:
 - [x] own writer: layout (sheets side by side) and single parts; layers per operation (DIS_KESIM, IC_KESIM, CEP, DELIK, CIZGI); arcs as bulges; round-trip test with our importer (= same contours within EPS)
 Tester focus: round trip; opens in a free viewer (LibreCAD) without errors (manual screenshot).
 
-### T176 Export step: all formats, records, history   [status: review]
+### T176 Export step: all formats, records, history   [status: done]
 Spec: §6.6 · Depends: T173, T174, T175
 > Note from CTO review #4 (2026-11-19): at 1440 the left column is half empty while the right one scrolls and the history table is below the fold; when this step is rebuilt, balance the two columns so the history is visible without scrolling.
 Acceptance:
@@ -1284,7 +1284,7 @@ Acceptance:
 - [x] (CTO #10 E4) more than one file: "Tümünü indir (.zip)" in one click (same names and bytes as single downloads), `OKU.txt` maps sheet → file; single downloads stay
 Tester focus: NC gate cannot be bypassed by the new UI; hashes stable; history entries per type.
 
-### T177 Project report card   [status: review]
+### T177 Project report card   [status: done]
 Spec: §6.6 · Depends: T176
 Acceptance:
 - [x] report summary (waste %, area, sheets, estimated time, part count) on the project page and as data for the home page
@@ -1300,14 +1300,14 @@ Acceptance:
 - [x] table with name, status, machine, material, date; search (Turkish folding), filters (status, machine, material), sort, pagination; copy project (new id, revision 1, exports not copied); soft delete with undo toast
 Tester focus: e2e search/filter/copy; deleted project hidden but restorable; tenancy unchanged.
 
-### T179 Project status flow and re-export   [status: review]
+### T179 Project status flow and re-export   [status: done]
 Spec: §3.4, §6.6 · Depends: T176, T178
 Acceptance:
 - [x] taslak → üretildi (after a successful NC export) → tamamlandı (manual); re-export from history regenerates from that revision
 - [x] (CTO #10 E6, D-060) the export record stores the machine verification state; re-export with the same state gives the same bytes; if the state changed, a new record "doğrulama durumu değişti" is added instead of overwriting
 Tester focus: status transitions; re-export of an old revision gives the same hash as before.
 
-### T180 Ana sayfa with real data   [status: review]
+### T180 Ana sayfa with real data   [status: done]
 Spec: §3.4 · Depends: T177, T178 · Decision: D-070 (B39)
 Acceptance:
 - [x] recent projects, machines needing verification, waste summary chart (last 30 days, accessible colours), quick actions
@@ -1316,19 +1316,19 @@ Tester focus: numbers match seeded data; chart readable in dark mode; axe.
 
 ### Batch B28: T181–T183 (machines and settings)
 
-### T181 Machine maintenance and controller library   [status: todo]
+### T181 Machine maintenance and controller library   [status: done]
 Spec: §3.4, §7.1 · Depends: T107
 Acceptance:
 - [ ] manual maintenance log (last date, interval days, note) with reminder badge on Makineler and Ana sayfa; controller-family library pre-fills a new profile (generic, Mach3)
 Tester focus: reminder appears when overdue (fixed clock in test); pre-fill values match the post configs.
 
-### T182 Ayarlar: company, defaults, layer mapping   [status: todo]
+### T182 Ayarlar: company, defaults, layer mapping   [status: done]
 Spec: §3.4 · Depends: T121, T145
 Acceptance:
 - [ ] company name + logo upload (size/type limits), defaults (gap, margin, tabs, lead-in, edge-band mode), DXF layer mapping editor, material defaults link
 Tester focus: defaults used by a new project; upload limits; axe.
 
-### T183 Ayarlar: appearance and preferences   [status: todo]
+### T183 Ayarlar: appearance and preferences   [status: done]
 Spec: §3.7 · Depends: T182
 Acceptance:
 - [ ] theme, density (comfortable/compact; the compact tokens exist since T195, this adds the user setting), 3D simple mode, reduced motion override, shortcuts list
@@ -1358,7 +1358,7 @@ Acceptance:
 - [ ] goldens unchanged for default values; any new golden verified per D-051
 Tester focus: gcode-safety checklist on each option; undo; export equals preview.
 
-### T289 Machine archive   [status: todo]
+### T289 Machine archive   [status: done]
 Gap E2 (CTO #10). Spec: §3.4 · Depends: T107
 Acceptance:
 - [ ] archive a machine (soft delete, "Geri al" toast), also the sample machine; tenant-scoped API
@@ -1373,12 +1373,12 @@ Gap E5 (CTO #10). Spec: §3.4
 Acceptance:
 - [x] "Aç" opens the step after the last completed one (layout → Dizilim, export → Dışa aktar); `?adim=` in the URL wins; Çizim / Liste view remembered
 
-### T291 Offcut stock: manual add, edit, delete   [status: todo]
+### T291 Offcut stock: manual add, edit, delete   [status: done]
 Gap E3 (CTO #10); owner 2026-11-20: manual add in scope (Q011). Spec: §6.2
 Acceptance:
 - [ ] "Artık parça ekle" (material, thickness, width, length, grain); edit and delete a stock offcut (with "Geri al"); tab kept in the URL (`?sekme=artik`)
 
-### T292 Other-thickness parts to a new project   [status: todo]
+### T292 Other-thickness parts to a new project   [status: done]
 Gap E7 (CTO #10); owner 2026-11-20: before the field test (Q011).
 Acceptance:
 - [ ] cabinet dialog / cut list: "Ayrı plaka parçalarını yeni projeye aktar" → new project with the same machine, the chosen material/thickness, parts filled in; the source project links to it; multi-material inside one project stays out of scope
@@ -1388,11 +1388,11 @@ Tester focus: parts and sizes equal the excluded ones; both projects nest and ex
 
 ### Batch B40: T293 + T294 (must-fix A + gap E1; Dev 2, before the rest of B38)
 
-### T293 Tab size lower bounds   [status: todo]
+### T293 Tab size lower bounds   [status: done]
 Must-fix A (CTO #11), safety. Spec: §6.3, §7.2 · Depends: T288 · gcode-safety review
 Acceptance: as in review #11 section A: `setTabs` refuses width < 3 mm and height < 1 mm or > thickness − 1 mm (numbers in DECISIONS, tuned in the field test); the validator flags a small part held only by under-size tabs (old or hand-edited projects too) on Simülasyon and Dışa aktar, NC blocked; a tab that does not fit names the reason and links to Kesim ayarları; goldens unchanged for defaults. T182 company defaults use the same bounds.
 
-### T294 Cutting settings: no hidden state, clear wording   [status: todo]
+### T294 Cutting settings: no hidden state, clear wording   [status: done]
 Gap E1 (CTO #11). Spec: §6.3
 Acceptance: as in review #11 section E1: "Kapalı → Her parçada" returns to the start state or the panel shows the thin skin the panel switched on; "Adet" says per part and the header matches the real count on small parts; the card is reachable at 1440 × 900 without scrolling the page (or a link from the summary); a one-line hint for climb / conventional.
 
@@ -1463,14 +1463,13 @@ Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by
 - Step 1 "ince tabaka" switch and Simülasyon "Köprü: Kapalı" use the same word and link to each other [#11]
 - Server accepts a grain value on a grainless offcut PATCH; T292 rows get a stray thickness note when the target thickness differs [T B36]
 
-### P4 Kabuk, bildirimler, ana sayfa   [status: review, B39]
-B39 (#134): all items done; the Dışa aktar profile-version gap was already the T269 box (checked, no change).
+### P4 Kabuk, bildirimler, ana sayfa   [status: done, B39]
+Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is already the box.
 - ★ Toasts close on step change and never cover the panel / scale bar [#8, #9, #10]
 - Command palette: Şablonlar, Ayarlar / Malzemeler, Makine doğrulama and in-project step commands [#10]
 - Empty 0-part drafts do not fill "Son projeler"; home card date not truncated [#10]
 - Offcuts: proposals not pre-ticked; "Stoğa kaydet" gives a toast; the list shows the source project name [#9, #10]
 - Şablonlar thumbnails to scale [#8]
-- Dışa aktar: profile-version gap shown as the box, not a small yellow line (check after T269) [#6]
 - Projeler: search / filter / sort kept in the URL; rows ≈ 100 px high, "Son dışa aktarma" one line + icon button; small layout thumbnail or sheet count to tell same-name projects apart [#11]
 - Dışa aktar: "PDF aç" plus a download option; history rows visible at 1440 × 900 without scrolling (CTO #4 not fully met) [#11, T B37]
 

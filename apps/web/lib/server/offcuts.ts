@@ -45,11 +45,59 @@ export function readCreateBody(body: unknown): NewOffcut[] | null {
   return out;
 }
 
-/** `{ status }`; null when invalid. */
-export function readStatus(body: unknown): OffcutStatus | null {
-  if (!isObject(body) || Object.keys(body).length !== 1) return null;
-  const s = body['status'];
-  return STATUSES.find((x) => x === s) ?? null;
+/** Fields an edit may change (T291); the source project and the date stay. */
+export interface OffcutEdit {
+  material?: string;
+  thickness?: number;
+  width?: number;
+  height?: number;
+  grain?: 0 | 90 | null;
+  status?: OffcutStatus;
+}
+
+export type OffcutPatch =
+  { kind: 'deleted'; deleted: boolean } | { kind: 'edit'; edit: OffcutEdit };
+
+const EDIT_KEYS = new Set(['material', 'thickness', 'width', 'height', 'grain', 'status']);
+
+/**
+ * PATCH body of one offcut: `{ deleted: boolean }` alone (T291 delete / "Geri al"), or an edit with
+ * one or more of material, thickness, width, height, grain, status (T168 status, T291 edit), each
+ * checked like a new offcut. Null when anything is off.
+ */
+export function readOffcutPatch(body: unknown): OffcutPatch | null {
+  if (!isObject(body)) return null;
+  const keys = Object.keys(body);
+  if (keys.length === 1 && keys[0] === 'deleted') {
+    const deleted = body['deleted'];
+    return typeof deleted === 'boolean' ? { kind: 'deleted', deleted } : null;
+  }
+  if (keys.length === 0 || keys.some((k) => !EDIT_KEYS.has(k))) return null;
+  const edit: OffcutEdit = {};
+  const { material, thickness, width, height, grain, status } = body;
+  if (material !== undefined) {
+    if (typeof material !== 'string' || material.trim() === '' || material.length > 64) return null;
+    edit.material = material.trim();
+  }
+  for (const [key, v] of [
+    ['thickness', thickness],
+    ['width', width],
+    ['height', height],
+  ] as const) {
+    if (v === undefined) continue;
+    if (!isMm(v)) return null;
+    edit[key] = v;
+  }
+  if (grain !== undefined) {
+    if (grain !== 0 && grain !== 90 && grain !== null) return null;
+    edit.grain = grain;
+  }
+  if (status !== undefined) {
+    const s = STATUSES.find((x) => x === status);
+    if (!s) return null;
+    edit.status = s;
+  }
+  return { kind: 'edit', edit };
 }
 
 interface OffcutRowLike {

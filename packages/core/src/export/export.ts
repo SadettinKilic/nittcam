@@ -118,6 +118,7 @@ export function cuttingMeta(
   const cutting: PostCuttingMeta = {
     tabMode: c.tabMode,
     tabCount: c.tabs.count,
+    smallTabCount: c.tabs.smallCount,
     tabWidth: c.tabs.width,
     tabHeight: c.tabs.height,
     skin: c.skin,

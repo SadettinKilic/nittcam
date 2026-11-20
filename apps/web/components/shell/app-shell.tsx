@@ -24,6 +24,7 @@ import {
   type ReactNode,
 } from 'react';
 import { NEW_PROJECT_HREF } from '../../lib/shell-nav';
+import { useMediaQuery } from '../../lib/use-media-query';
 import {
   OPEN_SHORTCUTS_EVENT,
   SHORTCUT_GROUPS,
@@ -92,6 +93,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
   const isMac = useIsMac();
   const bare = isBare(pathname);
   const wizard = isWizard(pathname);
+  const phone = !useMediaQuery('(min-width: 768px)', true);
 
   const actions = useMemo<CommandActions>(
     () => ({
@@ -280,11 +282,17 @@ export function AppShell({ t, company, children }: AppShellProps) {
         {/* P4 (CTO #8–#10): in the project wizard the toasts sit top-centre just under the wizard
             header (--wizard-head-bottom), so they never cover the right panel, the canvas scale bar
             or the footer actions; a step change closes them. Elsewhere bottom-right as usual. */}
-        {wizard ? (
+        {wizard && !phone ? (
           <Toaster
             position="top-center"
             offset={{ top: 'calc(var(--wizard-head-bottom, 56px) + 8px)' }}
-            mobileOffset={{ top: 'calc(var(--wizard-head-bottom, 56px) + 8px)' }}
+          />
+        ) : wizard ? (
+          // Phones: top-centre would cover the canvas bar (Liste / Çizim, zoom); above the sticky
+          // footer instead, so its actions stay reachable.
+          <Toaster
+            offset={{ bottom: 'calc(var(--wizard-footer-h, 0px) + 16px)' }}
+            mobileOffset={{ bottom: 'calc(var(--wizard-footer-h, 0px) + 16px)' }}
           />
         ) : (
           <Toaster />

@@ -174,6 +174,8 @@ export function ExportLabels({
               size="sm"
               loading={busy}
               data-testid="export-labels-download"
+              // D-040: the footer has the one primary "İndir"; this one is named for its document.
+              aria-label={`${t.download}: ${t.title}`}
               onClick={() => onDownload(labelQuery(revision, settings))}
             >
               <Download aria-hidden />
