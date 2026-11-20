@@ -329,8 +329,13 @@ function SidePanel({
       <div
         id={id}
         data-density="compact"
+        // B44: once scrolled, the top edge fades, so no half-cut row sits under the header.
+        onScroll={(e) =>
+          e.currentTarget.toggleAttribute('data-scrolled', e.currentTarget.scrollTop > 0)
+        }
         className={cn(
           'flex min-w-0 flex-col gap-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain',
+          'lg:data-[scrolled]:[mask-image:linear-gradient(to_bottom,transparent,#000_20px)]',
           !open && 'lg:hidden',
         )}
       >

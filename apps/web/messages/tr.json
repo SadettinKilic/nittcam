@@ -714,6 +714,7 @@
       "title": "Dizilim",
       "run": "Diz",
       "running": "Diziliyor…",
+      "runningPercent": "Diziliyor… %{pct}",
       "cancel": "İptal",
       "progress": "Dizilim ilerlemesi",
       "progressText": "{done} / {total} deneme",
@@ -930,7 +931,8 @@
     "sheetTabWaste": "fire %{waste}",
     "zoomIn": "Yakınlaştır",
     "zoomOut": "Uzaklaştır",
-    "fit": "Ekrana sığdır",
+    "fit": "Tümünü göster",
+    "fitJob": "İşe sığdır",
     "grid": "Milimetre ızgarası (100 mm)",
     "renest": "Yeniden diz",
     "renesting": "Diziliyor…",
@@ -1026,6 +1028,7 @@
       },
       "presetTip": "{view} görünümü",
       "reset": "Görünümü sıfırla",
+      "fitSheet": "Tümünü göster",
       "cube": "Görünüm küpü",
       "bottom": "Alt",
       "simple": "Basit mod",
@@ -1250,7 +1253,9 @@
       "SMALL_PART_SKIN_OUT_OF_BOUNDS": "İnce tabaka bu küçük parçayı tutamaz (kalınlık 0,2 mm ile kalınlık − 1 mm arası olmalı); parça son pasoda serbest kalır. 1. adımda tabaka kalınlığını düzeltin.",
       "SMALL_PART_TAB_TOO_SMALL": "Köprü bu küçük parçayı tutamayacak kadar küçük (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası); parça serbest kalır. Kesim ayarlarında köprü ölçüsünü düzeltin ya da “Köprü: Kapalı” seçin.",
       "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası).",
-      "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün."
+      "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
+      "TABS_TOO_SMALL_HIGH": "Köprü çok yüksek: yükseklik en fazla kalınlık − 1 mm olabilir. Kesim ayarlarında köprü yüksekliğini düşürün.",
+      "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -1302,7 +1307,8 @@
       "shortcuts": "Kısayollar: Boşluk oynat/duraklat · ← → önceki/sonraki hareket · Home/End baş/son",
       "zoomIn": "Yakınlaştır",
       "zoomOut": "Uzaklaştır",
-      "fit": "Ekrana sığdır"
+      "fit": "Tümünü göster",
+      "fitJob": "İşe sığdır"
     },
     "canvasLabel": "Plaka {n} simülasyonu: {moves} hareket. Boşluk oynatır/duraklatır, sol ve sağ ok tuşları bir hareket geri/ileri gider.",
     "readout": {
@@ -1378,8 +1384,11 @@
       "bounds": {
         "count": "1–20 arası tam sayı girin.",
         "width": "En az {min} mm.",
-        "height": "{min}–{max} mm arası olmalı."
+        "height": "{min}–{max} mm arası olmalı.",
+        "heightHigh": "Çok yüksek: en fazla {max} mm (kalınlık − 1 mm).",
+        "heightNone": "{thickness} mm plakada köprü bırakılamaz (en az {need} mm gerekir); köprüyü kapatın."
       },
+      "inUse": "kullanılan: {value}",
       "smallCount": "Küçük parçalarda en az {n} köprü konur (güvenlik kuralı).",
       "heightWarn": "Köprü kalınlığın yarısından yüksek: parçayı plakadan kırmak zorlaşır.",
       "skinOn": "Küçük parçalarda {skin} mm ince tabaka da açık (1. adımdaki ayar).",
@@ -1733,6 +1742,8 @@
         "minToolChanges": "Aynı takımla işlenen parçaları aynı plakada toplar."
       },
       "modeResult": "{sheets} plaka · fire {waste}",
+      "modeResultPath": "yol ≈ {m} m",
+      "modeResultChanges": "{count} takım değişimi",
       "rotation": "Parça döndürme",
       "rotations": {
         "free": "Serbest (90° adımlarla)",
@@ -1741,8 +1752,11 @@
         "none": "Döndürme yok (çizildiği gibi)"
       },
       "rotationHint": "Damar yönü sabit parçalar her zaman damara göre yerleşir.",
+      "rotationNoGain": "{angle}° kazanç yok: 90° adımlarla aynı plaka sayısı ve fire. 90° daha hızlı dizer.",
       "partInHole": "Küçük parçaları iç boşluklara yerleştir",
       "partInHoleHint": "Büyük parçaların iç kesimlerine küçük parçalar dizilir; önce iç parça kesilir.",
+      "partInHoleNone": "İç boşluğa 0 parça: küçük parçalar iç kesimlere sığmadı.",
+      "partInHoleCount": "İç boşluğa {count} parça yerleşti.",
       "useOffcuts": "Önce artık parçaları kullan",
       "useOffcutsHint": "Aynı malzeme ve kalınlıktaki kayıtlı artık parçalar tam plakadan önce denenir.",
       "useOffcutsCount": "Stokta {count} uygun artık parça var.",

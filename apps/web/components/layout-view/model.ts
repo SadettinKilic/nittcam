@@ -149,25 +149,7 @@ export function turnedPart(entered: Project, part: DrawnPart, rot: number): Draw
   );
 }
 
-/** Scale and pan that show the whole sheet centred with `pad` pixels around it (room for the edge dimensions, T196). */
-export function fitView(
-  sheet: { width: number; height: number },
-  width: number,
-  height: number,
-  pad = 30,
-  /** Extra vertical room (px, top and bottom alike) for floating toolbars, T244. */
-  band = 0,
-): ViewState {
-  const scale = Math.max(
-    0.0001,
-    Math.min((width - 2 * pad) / sheet.width, (height - 2 * (pad + band)) / sheet.height),
-  );
-  return {
-    scale,
-    x: (width - sheet.width * scale) / 2,
-    y: (height - sheet.height * scale) / 2,
-  };
-}
+export { fitView, jobBox, type Box } from '../../lib/job-fit';
 
 /** Canvas height for a container width: the sheet's aspect ratio, kept between 220 and 640 px. */
 export function canvasHeight(sheet: { width: number; height: number }, width: number): number {

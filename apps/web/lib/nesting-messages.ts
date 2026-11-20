@@ -1,4 +1,10 @@
-import type { AppliedCommand, LayoutSummary, Project, RunNestingParams } from '@nittcam/core';
+import type {
+  AppliedCommand,
+  LayoutSummary,
+  ObjectiveCost,
+  Project,
+  RunNestingParams,
+} from '@nittcam/core';
 
 /** Main thread → nesting worker. */
 export interface NestingRequest {
@@ -23,6 +29,8 @@ export type NestingResponse =
       ok: true;
       applied: Pick<AppliedCommand, 'params' | 'patches' | 'inversePatches'>;
       summary: LayoutSummary;
+      /** Objective terms of the layout (B44 mode cards). */
+      cost?: ObjectiveCost;
     }
   | { id: number; ok: false; error: string };
 

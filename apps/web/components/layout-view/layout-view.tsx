@@ -48,6 +48,7 @@ import {
 } from '@nittcam/ui';
 import {
   Box,
+  Focus,
   Grid3x3,
   Info,
   Lock,
@@ -75,6 +76,7 @@ import {
   copyKey,
   drawnParts,
   fitView,
+  jobBox,
   readColors,
   sheetFigures,
   turnedPart,
@@ -243,6 +245,19 @@ function LayoutViewImpl({
   const unplacedCount = summary.unplaced.length;
   const editable = onLock !== undefined;
 
+  // B44 fit to job: a small job opens fitted to its parts; "Tümünü göster" shows the whole sheet.
+  // The box is read at refit time only, so dragging a part never moves the view.
+  const job = useMemo(() => jobBox(parts, stock), [parts, stock]);
+  const jobRef = useRef(job);
+  useEffect(() => {
+    jobRef.current = job;
+  });
+  // Refit to the job when the set of parts changes (first nesting, renest, other sheet), not on a move.
+  const jobKey = useMemo(
+    () => `${sheet}|${parts.map((p) => p.key).join(',')}|${job ? 1 : 0}`,
+    [sheet, parts, job],
+  );
+
   // Width of the drawing = width of its box (fits 390 px screens); refit when it changes.
   useEffect(() => {
     const el = box.current;
@@ -256,7 +271,7 @@ function LayoutViewImpl({
       last = { w, h };
       setColors((c) => c ?? readColors());
       setSize({ w, h });
-      setView(fitView(stock, w, h, 30, FIT_BAND));
+      setView(fitView(stock, w, h, 30, FIT_BAND, jobRef.current));
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -264,9 +279,20 @@ function LayoutViewImpl({
   // A theme switch re-reads the token colours, so the canvas follows light/dark live (T110).
   useEffect(() => onThemeChange(() => setColors((c) => (c ? readColors() : c))), []);
 
+  /** Whole sheet ("Tümünü göster"). */
   const fit = useCallback(() => {
     if (width > 0 && height > 0) setView(fitView(stock, width, height, 30, FIT_BAND));
   }, [stock, width, height]);
+  /** Default view: the job on a small job, else the sheet (B44). */
+  const fitHome = useCallback(() => {
+    if (width > 0 && height > 0)
+      setView(fitView(stock, width, height, 30, FIT_BAND, jobRef.current));
+  }, [stock, width, height]);
+  useEffect(() => {
+    fitHome();
+    // Only a new set of parts refits; width/height changes are handled by the ResizeObserver.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobKey]);
 
   function selectSheet(i: number) {
     setSheet(i);
@@ -522,7 +548,7 @@ function LayoutViewImpl({
       zoomButton(1 / 1.25);
     } else if (e.key === '0') {
       e.preventDefault();
-      fit();
+      fitHome();
     }
   }
 
@@ -570,7 +596,7 @@ function LayoutViewImpl({
   const bar = view ? scaleBar(view.scale) : null;
   const zoomed =
     view !== null && width > 0 && height > 0
-      ? isZoomedIn(view.scale, fitView(stock, width, height, 30, FIT_BAND).scale)
+      ? isZoomedIn(view.scale, fitView(stock, width, height, 30, FIT_BAND, job).scale)
       : false;
   const onPointer = (e: { clientX: number; clientY: number }) => {
     const el = box.current;
@@ -823,13 +849,27 @@ function LayoutViewImpl({
                     <ZoomIn aria-hidden />
                   </IconButton>
                 </Tooltip>
+                {job ? (
+                  <Tooltip content={t.fitJob}>
+                    <IconButton
+                      size="sm"
+                      variant="ghost"
+                      aria-label={t.fitJob}
+                      data-testid="layout-fit-job"
+                      onClick={fitHome}
+                      aria-keyshortcuts="0"
+                    >
+                      <Focus aria-hidden />
+                    </IconButton>
+                  </Tooltip>
+                ) : null}
                 <Tooltip content={t.fit}>
                   <IconButton
                     size="sm"
                     variant="ghost"
                     aria-label={t.fit}
                     onClick={fit}
-                    aria-keyshortcuts="0"
+                    aria-keyshortcuts={job ? undefined : '0'}
                   >
                     <Maximize aria-hidden />
                   </IconButton>
