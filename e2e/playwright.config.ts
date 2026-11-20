@@ -24,7 +24,14 @@ export default defineConfig({
     storageState: {
       cookies: [],
       origins: [
-        { origin: baseURL, localStorage: [{ name: 'nittcam-editor-tour', value: 'done' }] },
+        {
+          origin: baseURL,
+          localStorage: [
+            { name: 'nittcam-editor-tour', value: 'done' },
+            // T184: the first-run tour on Ana sayfa likewise (its spec starts from empty storage).
+            { name: 'nittcam-onboarding', value: 'done' },
+          ],
+        },
       ],
     },
   },
