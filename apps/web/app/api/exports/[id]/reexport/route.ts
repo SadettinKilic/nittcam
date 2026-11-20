@@ -1,5 +1,6 @@
+import { hingeEdgeHandleParts, unverifiedTemplateNames } from '@nittcam/core';
 import { NextResponse } from 'next/server';
-import type { ExportResponse } from '../../../../../lib/exports-api';
+import type { ExportResponse, ReexportChecklistRequired } from '../../../../../lib/exports-api';
 import { parseLabelQuery } from '../../../../../lib/labels-query';
 import { companyScope, companyStorage } from '../../../../../lib/server/company';
 import { buildDocument, isDocumentType, storeDocument } from '../../../../../lib/server/documents';
@@ -17,13 +18,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/exports/:id/reexport `{ acceptUnverified? }` (T179, spec §3.4 "yeniden export", §6.6):
+ * POST /api/exports/:id/reexport `{ acceptUnverified?, checklistConfirmed? }` (T179, spec §3.4 "yeniden export", §6.6):
  * regenerates an export of the history from the revision it was made from (the project snapshot
  * stored with it, D-066), with the same profile version, type and options. Same input and the same
  * machine verification state → the same bytes → the same record (200); a changed state (it is in
  * the NC header) → a new record (201) marked `stateChanged`, never an overwrite (E6, D-060).
  * NC goes through every check again: 422 with the violations when one fails, 428 when the files
- * are unverified and the acceptance is missing. 410 `snapshot_missing` for an export stored before
+ * are unverified and the acceptance is missing, and first 428 `checklist_required` (with the
+ * checklist data) until the operator confirmed the pre-export checklist (D-071; documents need none). 410 `snapshot_missing` for an export stored before
  * T179 of a revision that is no longer the current one.
  */
 export async function POST(request: Request, ctx: RouteContext<'/api/exports/[id]/reexport'>) {
@@ -31,7 +33,11 @@ export async function POST(request: Request, ctx: RouteContext<'/api/exports/[id
   if (!UUID.test(id)) return apiError({ error: 'not_found' }, 404);
   const body = (await readBody(request)) ?? {};
   const accept = body['acceptUnverified'];
-  if (accept !== undefined && typeof accept !== 'boolean') {
+  const confirmed = body['checklistConfirmed'];
+  if (
+    (accept !== undefined && typeof accept !== 'boolean') ||
+    (confirmed !== undefined && typeof confirmed !== 'boolean')
+  ) {
     return apiError({ error: 'bad_request' }, 400);
   }
   try {
@@ -66,6 +72,17 @@ export async function POST(request: Request, ctx: RouteContext<'/api/exports/[id
           },
           422,
         );
+      }
+      // D-071: an NC re-export is a machine file like the first export: the same checklist first.
+      if (confirmed !== true) {
+        const ask: ReexportChecklistRequired = {
+          error: 'checklist_required',
+          checklist: run.checklist,
+          needsAcceptance: run.needsAcceptance,
+          templates: unverifiedTemplateNames(source.data.parts),
+          hingeHandles: hingeEdgeHandleParts(source.data.parts),
+        };
+        return NextResponse.json(ask, { status: 428 });
       }
       if (run.needsAcceptance && accept !== true) {
         return apiError({ error: 'acceptance_required' }, 428);

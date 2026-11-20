@@ -1674,6 +1674,9 @@
       "reexportMissing": "Bu eski kayıt için proje anlık görüntüsü yok; yeniden üretilemez.",
       "reexportAcceptConfirm": "Kabul et ve üret",
       "reexportCancel": "Vazgeç",
+      "reexportConfirm": "Üret ve indir",
+      "reexportChecklistTitle": "Rev. {n} NC dosyasını yeniden üret",
+      "reexportChecklistBody": "Makine dosyası: ilk dışa aktarmadaki kontrol listesini yeniden onaylayın.",
       "stateChanged": "doğrulama durumu değişti"
     },
     "issues": {

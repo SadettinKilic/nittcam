@@ -133,6 +133,23 @@ export interface ExportRecord {
 export interface ReexportRequest {
   /** Needed again when the regenerated NC files are unverified (§7.2 rule 10). */
   acceptUnverified?: boolean;
+  /**
+   * NC only (D-071): the operator ticked the same pre-export checklist as the export step (origin,
+   * tool, air cut, tool changes, unverified templates). Without it the server answers 428
+   * `checklist_required` with the checklist data of the regenerated program.
+   */
+  checklistConfirmed?: boolean;
+}
+
+/** 428 of an NC re-export without the checklist: what the dialog asks (D-071). */
+export interface ReexportChecklistRequired {
+  error: 'checklist_required';
+  checklist: ExportChecklistInfo | null;
+  needsAcceptance: boolean;
+  /** Unverified ready templates of that revision (T282 line). */
+  templates: string[];
+  /** Parts with a handle on a hinge edge (T286 warning line). */
+  hingeHandles: string[];
 }
 
 /** Re-export URL of a history row (T179). */
@@ -149,6 +166,7 @@ export type ExportApiError =
   | { error: 'conflict'; currentRevision: number }
   | { error: 'export_failed'; stage: ExportStage; violations: ExportViolation[] }
   | { error: 'acceptance_required' }
+  | ReexportChecklistRequired
   | { error: 'not_found' }
   | { error: 'bad_request' }
   | { error: 'hash_mismatch' }

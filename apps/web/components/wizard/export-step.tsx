@@ -41,6 +41,7 @@ import type { SaveState } from '../../lib/autosave';
 import { getMessages, type Messages } from '../../lib/messages';
 import { ExportDocuments } from './export-documents';
 import { ReexportButton } from './reexport-button';
+import { ExportChecklist } from './export-checklist';
 import { ProjectStatusCard } from './project-status-card';
 import { ReportCard } from './report-card';
 import type { SimMachine } from '../simulation/simulation-view';
@@ -456,68 +457,15 @@ export function ExportStep({
           ) : null}
 
           {preview?.ok ? (
-            <fieldset className="flex min-w-0 flex-col gap-2" data-testid="export-checklist">
-              <legend className="mb-2 text-sm font-semibold text-fg">{t.checklistTitle}</legend>
-              <ChecklistItem
-                testId="export-check-origin"
-                checked={f.checks.origin}
-                onChange={(v) => update({ checks: { ...f.checks, origin: v } })}
-                label={fill(t.checkOrigin, {
-                  corner: preview.checklist ? corners[preview.checklist.origin.corner] : '-',
-                })}
-              />
-              <ChecklistItem
-                testId="export-check-tool"
-                checked={f.checks.tool}
-                onChange={(v) => update({ checks: { ...f.checks, tool: v } })}
-                label={
-                  preview.checklist && preview.checklist.tools.length > 0
-                    ? fill(t.checkTool, {
-                        tools: preview.checklist.tools
-                          .map((tool) => `T${tool.number} Ø${tool.diameter} mm`)
-                          .join(' → '),
-                      })
-                    : t.checkToolNone
-                }
-              />
-              {preview.checklist && preview.checklist.toolChanges > 0 ? (
-                <ChecklistItem
-                  testId="export-check-toolchange"
-                  checked={f.checks.toolChange}
-                  onChange={(v) => update({ checks: { ...f.checks, toolChange: v } })}
-                  label={fill(preview.checklist.rezeroZ ? t.checkToolChangeZ : t.checkToolChange, {
-                    count: preview.checklist.toolChanges,
-                  })}
-                />
-              ) : null}
-              {templateNames.length > 0 ? (
-                <ChecklistItem
-                  testId="export-check-templates"
-                  checked={f.checks.templates}
-                  onChange={(v) => update({ checks: { ...f.checks, templates: v } })}
-                  label={fill(t.checkTemplates, { names: templateNames.join(', ') })}
-                />
-              ) : null}
-              {hingeHandleParts.length > 0 ? (
-                <p
-                  className="flex items-start gap-1.5 text-sm text-warning-text"
-                  data-testid="export-hinge-handle"
-                >
-                  <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-                  {fill(t.hingeHandle, { names: hingeHandleParts.join(', ') })}
-                </p>
-              ) : null}
-              <ChecklistItem
-                testId="export-check-aircut"
-                checked={f.checks.airCut}
-                onChange={(v) => update({ checks: { ...f.checks, airCut: v } })}
-                label={t.checkAirCut}
-              />
-              <p className="flex items-start gap-1.5 text-xs text-warning-text">
-                <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
-                {t.airCutNote}
-              </p>
-            </fieldset>
+            <ExportChecklist
+              t={t}
+              corners={corners}
+              checklist={preview.checklist}
+              templateNames={templateNames}
+              hingeHandleParts={hingeHandleParts}
+              checks={f.checks}
+              onChange={(checks) => update({ checks })}
+            />
           ) : null}
 
           {/* T250 (D-040): one download action per screen, the footer's "İndir"; the result stays
@@ -576,6 +524,7 @@ export function ExportStep({
         />
         <History
           t={t}
+          corners={corners}
           states={states}
           rows={history?.key === historyKey ? history.rows : undefined}
           onChanged={refreshHistory}
@@ -651,37 +600,6 @@ function FileRow({
           </Tooltip>
         </span>
       </div>
-    </div>
-  );
-}
-
-function ChecklistItem({
-  testId,
-  checked,
-  onChange,
-  label,
-}: {
-  testId: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-}) {
-  const id = useId();
-  return (
-    <div
-      className={`relative flex min-h-12 items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${checked ? 'border-success-border bg-success-subtle text-fg' : 'border-border bg-surface text-fg hover:bg-surface-hover'}`}
-    >
-      <Checkbox
-        id={id}
-        data-testid={testId}
-        checked={checked}
-        onCheckedChange={(v) => onChange(v === true)}
-        className="relative z-10 mt-0.5 data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-fg"
-      />
-      <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer after:absolute after:inset-0">
-        {label}
-      </label>
-      {checked ? <CircleCheck aria-hidden className="size-4 shrink-0 text-success-text" /> : null}
     </div>
   );
 }
@@ -813,11 +731,13 @@ const historyColumn = createColumnHelper<typeof historyFeatures, ExportRecord>()
 
 function History({
   t,
+  corners,
   states,
   rows,
   onChanged,
 }: {
   t: Text;
+  corners: Corners;
   states: States;
   /** undefined = loading, null = error. */
   rows: ExportRecord[] | null | undefined;
@@ -920,6 +840,7 @@ function History({
           cell: (info) => (
             <ReexportButton
               t={t}
+              corners={corners}
               record={info.row.original}
               label={kindLabel(t, info.row.original)}
               onDone={onChanged}
@@ -927,7 +848,7 @@ function History({
           ),
         }),
       ]),
-    [c, t, states, onChanged],
+    [c, t, corners, states, onChanged],
   );
   const table = useTable({
     features: historyFeatures,

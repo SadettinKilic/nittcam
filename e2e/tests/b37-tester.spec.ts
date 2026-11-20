@@ -176,16 +176,33 @@ test('zip = single downloads + OKU.txt hashes; NC gate holds; old revision re-ex
   await page.getByRole('button', { name: w.reexportCancel }).click();
   await expect(page.getByTestId('export-reexport-accept')).toHaveCount(0);
   await rows.first().getByTestId('export-reexport').click();
-  await page.getByTestId('export-reexport-confirm').click();
+  // The ticks do not survive a cancel.
+  await expect(page.getByTestId('reexport-check-origin')).not.toBeChecked();
+  // D-071: the same checklist as the export step, then the acceptance; confirm is gated.
+  const confirm = page.getByTestId('export-reexport-confirm');
+  await expect(page.getByTestId('reexport-checklist')).toBeVisible();
+  await expect(confirm).toBeDisabled();
+  await page.getByTestId('reexport-check-origin').check();
+  await page.getByTestId('reexport-check-tool').check();
+  await expect(confirm).toBeDisabled();
+  await page.getByTestId('reexport-check-aircut').check();
+  await expect(confirm).toBeDisabled();
+  await page.getByTestId('reexport-accept').check();
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
   await expect(page.getByText(w.reexportSame)).toBeVisible();
   await expect(rows).toHaveCount(1);
   const after = await historyOf(request, id);
   expect(after.filter((r) => r.kind === 'nc')).toHaveLength(1);
   expect(after[0]).toMatchObject({ exportId: nc.exportId, hash: nc.hash, revision });
-  // Re-export through the API without acceptance is refused.
-  expect((await request.post(`/api/exports/${nc.exportId}/reexport`, { data: {} })).status()).toBe(
-    428,
-  );
+  // Re-export through the API without the checklist or the acceptance is refused (D-071).
+  const url = `/api/exports/${nc.exportId}/reexport`;
+  const noList = await request.post(url, { data: { acceptUnverified: true } });
+  expect(noList.status()).toBe(428);
+  expect(((await noList.json()) as { error: string }).error).toBe('checklist_required');
+  const noAccept = await request.post(url, { data: { checklistConfirmed: true } });
+  expect(noAccept.status()).toBe(428);
+  expect(((await noAccept.json()) as { error: string }).error).toBe('acceptance_required');
   expect(problems).toEqual([]);
 });
 
