@@ -795,6 +795,7 @@ export function nestingInputFromProject(
       rotations: allowedRotations(part, defaultSheet(project), rotationPolicyOf(project.nesting)),
       outline: contour(deriveOutline(part)),
       holeTools: part.holes.map((h) => h.tool),
+      inners: part.inners.map((c) => contour(c)),
     })),
     gap: project.nesting.gap,
     margin: project.nesting.margin,
@@ -803,6 +804,7 @@ export function nestingInputFromProject(
     locked,
     contourTool: options.contourTool,
     weights: options.weights,
+    partInHole: project.nesting.partInHole === true,
   };
 }
 

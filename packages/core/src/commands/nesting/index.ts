@@ -18,7 +18,7 @@ export const setNestingOptions = defineCommand({
   name: 'setNestingOptions',
   area: 'nesting',
   description:
-    'Set nesting options: mode ("minWaste", "fastest" or "minToolChanges"), the gap between parts in millimetres, the sheet edge margin in millimetres and the rotation policy of parts without grain ("free" = quarter turns, "none" = keep the drawn orientation, only 0°/180°). Pass only the fields to change.',
+    'Set nesting options: mode ("minWaste", "fastest" or "minToolChanges"), the gap between parts in millimetres, the sheet edge margin in millimetres and the rotation policy of parts without grain ("free" = quarter turns, "none" = keep the drawn orientation, only 0°/180°, "step45" / "step15" = every 45° / 15°) and partInHole (true = small parts may be placed inside large inner cutouts). Pass only the fields to change.',
   aiTool: true,
   params: z
     .strictObject({
@@ -26,14 +26,16 @@ export const setNestingOptions = defineCommand({
       gap: nestingSchema.shape.gap.optional(),
       margin: nestingSchema.shape.margin.optional(),
       rotation: nestingRotationSchema.optional(),
+      partInHole: nestingSchema.shape.partInHole,
     })
     .refine(
       (p) =>
         p.mode !== undefined ||
         p.gap !== undefined ||
         p.margin !== undefined ||
-        p.rotation !== undefined,
-      { error: 'pass at least one of mode, gap, margin, rotation' },
+        p.rotation !== undefined ||
+        p.partInHole !== undefined,
+      { error: 'pass at least one of mode, gap, margin, rotation, partInHole' },
     ),
   apply: (draft, params) => {
     if (params.mode !== undefined) draft.nesting.mode = params.mode;
@@ -42,6 +44,13 @@ export const setNestingOptions = defineCommand({
     // Absent and "free" mean the same; only a real change records an undo step.
     if (params.rotation !== undefined && (draft.nesting.rotation ?? 'free') !== params.rotation) {
       draft.nesting.rotation = params.rotation;
+    }
+    // Absent and false mean the same (T166).
+    if (
+      params.partInHole !== undefined &&
+      (draft.nesting.partInHole ?? false) !== params.partInHole
+    ) {
+      draft.nesting.partInHole = params.partInHole;
     }
   },
 });

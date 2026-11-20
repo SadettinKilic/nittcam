@@ -50,6 +50,11 @@ export interface OrderItem {
   area: number;
   /** Allowed start points (non-empty); the first one is the default. The item ends where it starts. */
   starts: readonly Point[];
+  /**
+   * Part-in-hole (T166): the copy key of the host whose inner cutout this copy sits in. Every item
+   * of this copy is cut before the host's inner contours (cutting them frees the slug).
+   */
+  within?: string | undefined;
 }
 
 export interface CutOrderOptions {
@@ -107,6 +112,7 @@ export function mustPrecede(a: OrderItem, b: OrderItem, mode: CutOrderMode): boo
   const ra = CUT_CLASS_RANK[a.cls];
   const rb = CUT_CLASS_RANK[b.cls];
   if (a.part === b.part && ra < rb) return true;
+  if (a.within !== undefined && a.within === b.part && b.cls === 'inner') return true;
   if (a.cls === 'outer' && b.cls === 'outer' && a.area < b.area) {
     return mode !== 'minToolChanges' || a.tool === b.tool;
   }
@@ -305,7 +311,9 @@ function runs(items: readonly OrderItem[], order: readonly number[]): [number, n
     a.tool === b.tool &&
     CUT_CLASS_RANK[a.cls] === CUT_CLASS_RANK[b.cls] &&
     (a.cls !== 'outer' || b.cls !== 'outer' || a.area === b.area) &&
-    (a.cls === 'outer') === (b.cls === 'outer');
+    (a.cls === 'outer') === (b.cls === 'outer') &&
+    // A guest and its host's inner never share a run (T166).
+    a.within === b.within;
   let s = 0;
   for (let i = 1; i <= order.length; i++) {
     if (
