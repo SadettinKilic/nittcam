@@ -187,17 +187,17 @@ export function CabinetDialog({
           </DialogHeader>
           <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_16rem]">
             <div className="flex min-w-0 flex-col gap-4">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {field('width', t.fields.width)}
                 {field('height', t.fields.height)}
                 {field('depth', t.fields.depth)}
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {field('thickness', t.fields.thickness)}
                 {field('shelves', t.fields.shelves, t.units.pieces, { int: true })}
                 {field('plinth', t.fields.plinth)}
               </div>
-              <div className="grid grid-cols-3 items-end gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 items-end gap-3">
                 <div className="flex flex-col gap-1">
                   <label htmlFor={ids.back} className="text-sm font-medium text-fg">
                     {t.fields.back}
@@ -245,8 +245,8 @@ export function CabinetDialog({
                 )}
                 {field('band', t.fields.band)}
               </div>
-              <div className="grid grid-cols-3 items-end gap-3">
-                <div className="col-span-2 flex flex-col gap-1">
+              <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-3">
+                <div className="flex sm:col-span-2 flex-col gap-1">
                   <span aria-hidden className="text-sm font-medium text-fg">
                     {t.fields.doors}
                   </span>
@@ -268,7 +268,11 @@ export function CabinetDialog({
                     ))}
                   </RadioGroup>
                 </div>
-                {doors > 0 ? field('doorGap', t.fields.doorGap) : <span />}
+                {doors > 0 ? (
+                  field('doorGap', t.fields.doorGap)
+                ) : (
+                  <span className="max-sm:hidden" />
+                )}
               </div>
               <FormField label={t.fields.group} id={ids.group} hint={t.groupHint}>
                 <Input

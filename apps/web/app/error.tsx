@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { fill } from '../lib/draft-project';
 import { getMessages } from '../lib/messages';
+import { reportClientError } from '../lib/report-client-error';
 
 const t = getMessages().feedback.error;
 
@@ -19,6 +20,7 @@ export default function PageError({
 }) {
   useEffect(() => {
     console.error(error);
+    reportClientError('boundary', error, error.digest);
   }, [error]);
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
