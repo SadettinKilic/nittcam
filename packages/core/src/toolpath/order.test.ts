@@ -334,3 +334,20 @@ describe('cut order hand cases', () => {
     expect(cutOrder([], { mode: 'fastest' })).toMatchObject({ sequence: [], rapid: 0, sheets: [] });
   });
 });
+
+describe('fewest tool changes (B51, D-091, CTO #7)', () => {
+  // Door panel: a T2 hole and T3 hinge holes on the same part, the T2 outer contour waits for both.
+  const door = (): OrderItem[] => [
+    { sheet: 0, part: 'd#0', cls: 'drill', tool: 2, area: 0, starts: [{ x: 1, y: 1 }] },
+    { sheet: 0, part: 'd#0', cls: 'drill', tool: 3, area: 0, starts: [{ x: 50, y: 50 }] },
+    { sheet: 0, part: 'd#0', cls: 'drill', tool: 3, area: 0, starts: [{ x: 50, y: 300 }] },
+    { sheet: 0, part: 'd#0', cls: 'outer', tool: 2, area: 1e5, starts: [{ x: 0, y: 0 }] },
+  ];
+  it.each(['minWaste', 'minToolChanges'] as const)('%s: T3 → T2, one change', (mode) => {
+    const items = door();
+    const res = cutOrder(items, { mode });
+    expect(res.toolChanges).toBe(1);
+    expect(res.sequence.map((s) => items[s.item]!.tool)).toEqual([3, 3, 2, 2]);
+    expect(items[res.sequence.at(-1)!.item]!.cls).toBe('outer');
+  });
+});

@@ -144,8 +144,10 @@ describe.each(['generic', 'mach3'] as const)('B15 tester: %s read-back', (post) 
   const res = exportNc(p, profile(post), postConfig(post));
   const read = readGcode(res.files[0]?.content ?? '');
   const moves = read.moves;
-  const R = (tp.toolpath.operations[0]?.toolDiameter ?? 0) / 2;
-  const plungeFeed = tp.toolpath.operations[0]?.plungeFeed;
+  // B51: the first operation may now be another tool (fewest tool changes); use the cut-out tool.
+  const outerOp = tp.toolpath.operations.find((o) => o.kind === 'outerContour');
+  const R = (outerOp?.toolDiameter ?? 0) / 2;
+  const plungeFeed = outerOp?.plungeFeed;
   const zThrough = -(T + machine.zZero.spoilboardAllowance);
 
   it('exports with no check violations, one file, no reader errors', () => {
