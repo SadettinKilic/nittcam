@@ -58,6 +58,7 @@ import {
   Plus,
   Rows3,
   Search,
+  Shapes,
   Trash2,
   TriangleAlert,
   X,
@@ -109,6 +110,7 @@ import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
 import type { Messages } from '../../lib/messages';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
+import { partMachining } from '../../lib/part-machining';
 import { mayAutoOpen, readDismissed, writeDismissed } from '../../lib/issues-dismissed';
 
 /** Width of the floating Uyarılar panel (22rem) and its gap to the grid, px (T256). */
@@ -127,6 +129,7 @@ import {
 import { BulkEditSheet } from './cut-list-bulk';
 import { PastePanel } from './paste-panel';
 import { IssuesOkChip } from '../wizard/issues-ok-chip';
+import { IssueJumpContext } from '../wizard/validation-panel';
 
 /** The DXF dialog and its parser load when the dialog opens (T186). */
 const DxfImportDialog = dynamic(() => import('./dxf-import-dialog').then((m) => m.DxfImportDialog));
@@ -174,9 +177,17 @@ function issueText(t: Text, issue: ValidationIssue): string {
   return line ? fill(t.issues.lineN, { n: Number(line[1]) + 1, text }) : text;
 }
 
+/** "2 iç kesim, 4 delik" for the row marker; empty for a plain rectangle (B53). */
+function machiningText(t: Text, part: Part): string {
+  return partMachining(part)
+    .map((m) => fill(t.machining[m.kind], { count: m.count }))
+    .join(', ');
+}
+
 function NameCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
   const { t } = ctx;
   const issues = ctx.issuesOf(row);
+  const machining = machiningText(t, part);
   return (
     <div className="flex items-center gap-1">
       <div className="min-w-0 flex-1">
@@ -192,6 +203,21 @@ function NameCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: numbe
           navigate={ctx.navigate}
         />
       </div>
+      {machining ? (
+        // B53 (CTO #6 item 5): a part with inner cuts, holes or a drawn shape is not a plain
+        // rectangle; the row says so without opening the board.
+        <Tooltip content={machining}>
+          <span
+            tabIndex={-1}
+            role="img"
+            aria-label={fill(t.rowMachining, { n: row + 1, text: machining })}
+            data-testid={`row-machining-${row + 1}`}
+            className="flex size-6 shrink-0 items-center justify-center text-fg-subtle"
+          >
+            <Shapes aria-hidden className="size-3.5" />
+          </span>
+        </Tooltip>
+      ) : null}
       {issues.length > 0 ? (
         <Tooltip content={issues.map((i) => issueText(t, i)).join(' ')}>
           <span
@@ -1433,6 +1459,13 @@ export function CutListEditor({
     });
   }
 
+  // B53 (CTO #5 / #6): a part issue in the Uyarılar panel scrolls to its row and focuses the name
+  // cell. A row hidden by the search, the issues filter or a collapsed group shows the full list first.
+  function jumpToPart(index: number) {
+    if (!view.items.some((it) => it.kind === 'part' && it.index === index)) resetView();
+    requestAnimationFrame(() => focusCell(index, 'name', 30));
+  }
+
   // T287: "Parçalara git" opens the grid on the row of the part a blocking issue names.
   const focusOnOpen = useRef(focusPart);
   useEffect(() => {
@@ -1746,7 +1779,7 @@ export function CutListEditor({
       ) : null}
 
       <Popover
-        open={issuesOpen && hasIssues}
+        open={issuesOpen && hasIssues && issuesFit}
         onOpenChange={(open) => (open ? setIssuesOpen(true) : closeIssues())}
       >
         <section
@@ -2056,8 +2089,35 @@ export function CutListEditor({
                   if (!issuesContent.current?.contains(document.activeElement)) e.preventDefault();
                 }}
               >
-                {issuesPanel}
+                <IssueJumpContext.Provider value={jumpToPart}>
+                  {issuesPanel}
+                </IssueJumpContext.Provider>
               </PopoverContent>
+              {/* B53 (CTO #5 / #6): where the floating panel would cover cells (no room right of
+                  the grid), the chip opens it in the flow above the grid instead. */}
+              {issuesOpen && hasIssues && !issuesFit ? (
+                <div
+                  ref={issuesContent}
+                  id="cut-list-issues"
+                  role="region"
+                  aria-label={t.issuesPanel.label}
+                  data-testid="cut-list-issues"
+                  data-inline=""
+                  className="max-h-72 overflow-auto border-b border-border-subtle p-3"
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Escape') return;
+                    e.stopPropagation();
+                    closeIssues();
+                    document
+                      .querySelector<HTMLElement>('[data-testid="cut-list-issue-chip"]')
+                      ?.focus();
+                  }}
+                >
+                  <IssueJumpContext.Provider value={jumpToPart}>
+                    {issuesPanel}
+                  </IssueJumpContext.Provider>
+                </div>
+              ) : null}
             </>
           ) : null}
           {dxfOpen > 0 && dxfText ? (
@@ -2096,13 +2156,9 @@ export function CutListEditor({
                       materials: splitOff.materials,
                       onSplit: (generated, target, group) =>
                         splitOff.onSplit(
-                          cabinetRows(
-                            generated,
-                            t.cabinet.roles,
-                            group,
-                            newPartId,
-                            target.thickness,
-                          ),
+                          // B53 (tester B36): no thickness note; the moved parts are the new
+                          // project's board even when the chosen thickness differs from theirs.
+                          cabinetRows(generated, t.cabinet.roles, group, newPartId),
                           target,
                           group,
                         ),

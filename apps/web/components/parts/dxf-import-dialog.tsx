@@ -126,7 +126,7 @@ export function DxfImportDialog({
   const drawing: DxfDrawing | null = loaded?.ok ? loaded.drawing : null;
   const map = useMemo(() => effectiveMap(stored, chosen), [stored, chosen]);
   const plan = useMemo(() => (drawing ? planDxfImport(drawing, map) : null), [drawing, map]);
-  const summary = drawing && plan ? summarize(drawing, plan) : null;
+  const summary = drawing && plan ? summarize(drawing, plan, holeTool) : null;
   const uncertain = asRead?.ok ? asRead.drawing.units.uncertain : undefined;
   const needsUnit = uncertain !== undefined && unit === undefined;
   const shownProblem = problem ?? (loaded && !loaded.ok ? loaded.problem : null);
@@ -187,6 +187,7 @@ export function DxfImportDialog({
     ? [
         ['parts', summary.parts, null],
         ['inners', summary.inners, null],
+        ['holes', summary.holes, null],
         ['lines', summary.lines, null],
         ['supported', summary.supported, null],
         ['converted', summary.converted, summary.converted > 0 ? 'info' : null],
@@ -243,6 +244,9 @@ export function DxfImportDialog({
               type="file"
               accept=".dxf,.dwg"
               className="sr-only"
+              // B53 (tester B16): out of the tab order, so the dialog's first focus lands on the
+              // visible "Dosya seç" button (with its ring), not on this invisible input.
+              tabIndex={-1}
               aria-label={t.fileLabel}
               data-testid="dxf-file"
               onChange={(e) => {
@@ -253,6 +257,7 @@ export function DxfImportDialog({
             <Button
               size="sm"
               variant={picked ? 'outline' : 'primary'}
+              data-testid="dxf-choose"
               onClick={() => input.current?.click()}
             >
               <FileUp aria-hidden />

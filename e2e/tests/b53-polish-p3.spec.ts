@@ -1,0 +1,191 @@
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { chooseMachine, fill, openNewProject, paste, pickOption, saved } from './wizard-helpers';
+
+// B53 (polish P3 leftovers, CTO #5 / #6 / #12, tester B16 / B36).
+
+const t = tr.machines;
+
+/** Horizontal overflow of an element (scrollWidth − clientWidth), 0 when it fits. */
+async function overflow(page: Page, testId: string): Promise<number> {
+  return page
+    .getByTestId(testId)
+    .evaluate(
+      (el) =>
+        (el.parentElement as HTMLElement).scrollWidth -
+        (el.parentElement as HTMLElement).clientWidth,
+    );
+}
+
+for (const width of [1440, 1024]) {
+  test(`machine form: the material table fits at ${width} without sideways scrolling`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/makineler');
+    await page.getByRole('button', { name: t.add }).click();
+    await expect(page.getByRole('heading', { name: t.form.createTitle })).toBeVisible();
+    const table = page.getByTestId('materials-table');
+    await table.scrollIntoViewIfNeeded();
+    expect(await overflow(page, 'materials-table')).toBeLessThanOrEqual(0);
+    // 1440: still the table (header row visible); 1024: one card per set.
+    const head = table.locator('thead');
+    if (width === 1440) await expect(head.getByText(t.form.fields.feed)).toBeVisible();
+    else await expect(table.getByTestId('materials-table-row').first()).toBeVisible();
+    expect(await pageOverflow(page)).toBeLessThanOrEqual(0);
+    // Ayarlar → Malzemeler: no sideways page scroll either.
+    await page.goto('/ayarlar/malzemeler');
+    await expect(page.locator('main')).toBeVisible();
+    expect(await pageOverflow(page)).toBeLessThanOrEqual(0);
+  });
+}
+
+async function pageOverflow(page: Page): Promise<number> {
+  return page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+}
+
+const cl = tr.cutList;
+const cell = (page: Page, n: number, column: string) =>
+  page.getByLabel(fill(cl.cellLabel, { n, column }), { exact: true });
+
+test('cut list 1024: Uyarılar opens above the grid (covers no cell); an issue focuses its row', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openNewProject(page, 'parcalar');
+  await paste(
+    page,
+    ['Ad\tEn\tBoy\tAdet', 'Yan\t560\t720\t2', 'Raf\t528\t540\t3', 'Kapak\t396\t716\t1'].join('\n'),
+    3,
+  );
+  await cell(page, 3, cl.columns.w).fill('9000');
+  await cell(page, 3, cl.columns.w).press('Tab');
+  const chip = page.getByTestId('cut-list-issue-chip');
+  await expect(chip).toHaveAttribute('data-count', '1');
+  await chip.click();
+  const panel = page.getByTestId('cut-list-issues');
+  await expect(panel).toHaveAttribute('data-inline', '');
+  // In the flow: the panel ends above the first row, so no cell is under it.
+  const panelBox = await panel.boundingBox();
+  const rowBox = await page.getByTestId('cut-list-row').first().boundingBox();
+  expect(panelBox && rowBox && panelBox.y + panelBox.height <= rowBox.y + 1).toBe(true);
+  // The issue's place is a button that focuses the row's name cell.
+  await panel.getByTestId('issue-jump').click();
+  await expect(cell(page, 3, cl.columns.name)).toBeFocused();
+  // Esc inside the panel closes it and returns to the chip.
+  await panel.getByTestId('issue-jump').focus();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+  await expect(chip).toBeFocused();
+});
+
+/** A private copy of the seeded machine (saving or editing it touches no other spec). */
+async function newMachine(request: APIRequestContext, name: string, extraThickness?: number) {
+  const list = (await (await request.get('/api/machines')).json()) as { id: string }[];
+  const first = list[0];
+  if (!first) throw new Error('no seeded machine');
+  const seeded = (await (await request.get(`/api/machines/${first.id}`)).json()) as {
+    profile: Record<string, unknown> & { identity: Record<string, unknown> };
+  };
+  const profile = structuredClone(seeded.profile);
+  profile.example = false;
+  profile.identity = { ...profile.identity, name };
+  if (extraThickness !== undefined) {
+    // A copy of the first MDF set at this thickness (pass = the sheet).
+    const sets = profile.materials as { material: string; thickness: number; stepDown: number }[];
+    const mdf = sets.find((m) => m.material === 'mdf');
+    if (!mdf) throw new Error('no MDF set');
+    sets.push({ ...mdf, thickness: extraThickness, stepDown: extraThickness });
+  }
+  const res = await request.post('/api/machines', { data: { profile } });
+  expect(res.status()).toBe(201);
+  return ((await res.json()) as { id: string }).id;
+}
+
+test('step 1 at 1440 × 900: the red "kesim ayarı yok" box keeps Plaka ölçüsü above the footer', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const name = `B53 ayar ${Date.now()}`;
+  await newMachine(request, name);
+  await openNewProject(page, 'makine');
+  await chooseMachine(page, name);
+  await pickOption(page.getByTestId('wizard-material'), tr.materials.pvc);
+  await expect(page.getByTestId('no-cutting-params')).toBeVisible();
+  const sheet = page.getByRole('group', { name: tr.wizard.machine.sheet });
+  const sheetBox = await sheet.boundingBox();
+  const footerBox = await page.getByTestId('wizard-footer').boundingBox();
+  expect(sheetBox && footerBox).toBeTruthy();
+  expect((sheetBox?.y ?? 0) + (sheetBox?.height ?? 0)).toBeLessThanOrEqual(footerBox?.y ?? 0);
+});
+
+test('wizard header stays one row down to a 1095 px container (CTO #6)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page, 'makine');
+  const row = page.getByTestId('wizard-head-row');
+  const width = await row.evaluate((el) => el.clientWidth);
+  // Narrow the window until the header container is 1095 px wide.
+  await page.setViewportSize({ width: 1440 - (width - 1095), height: 900 });
+  await expect.poll(() => row.evaluate((el) => el.clientWidth)).toBe(1095);
+  const name = await page.getByLabel(tr.wizard.nameLabel).boundingBox();
+  const steps = await page.getByTestId('wizard-steps').boundingBox();
+  expect(name && steps).toBeTruthy();
+  // One row: the name field and the step list share a line.
+  expect(
+    Math.abs(
+      (name?.y ?? 0) + (name?.height ?? 0) / 2 - ((steps?.y ?? 0) + (steps?.height ?? 0) / 2),
+    ),
+  ).toBeLessThan(24);
+  expect(await row.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+});
+
+test('T292 split to another thickness: the new project rows carry no stray thickness note', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page, 'parcalar');
+  await paste(page, ['Parça adı\tEn\tBoy\tAdet', 'Raf\t500\t300\t2'].join('\n'), 1);
+  await saved(page);
+  await page.getByTestId('cabinet-open').click();
+  await page.getByTestId('cabinet-split').click();
+  // The 8 mm back goes to a 6 mm project: its rows are that board, no "8 mm" note.
+  const thickness = page.getByTestId('cabinet-split-thickness');
+  await expect(thickness).toHaveValue('8');
+  await thickness.fill('6');
+  await page.getByTestId('cabinet-add').click();
+  const link = page.getByTestId('project-links-derived').getByRole('link').first();
+  await expect(link).toBeVisible();
+  const newId = /([0-9a-f-]{36})/.exec((await link.getAttribute('href')) ?? '')?.[1];
+  expect(newId).toBeDefined();
+  const made = (await (await request.get(`/api/projects/${newId}`)).json()) as {
+    project: { stock: { thickness: number }; parts: { note?: string }[] };
+  };
+  expect(made.project.stock.thickness).toBe(6);
+  expect(made.project.parts.length).toBeGreaterThan(0);
+  expect(made.project.parts.every((p) => p.note === undefined)).toBe(true);
+});
+
+test('1 mm sheet with a cutting set: the thin-skin switch cannot turn on and says why', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const name = `B53 1mm ${Date.now()}`;
+  await newMachine(request, name, 1);
+  await openNewProject(page, 'makine');
+  await chooseMachine(page, name);
+  const field = page.getByTestId('wizard-thickness');
+  await field.fill('1');
+  await field.press('Enter');
+  await saved(page);
+  const sw = page.getByTestId('thin-skin-switch');
+  await expect(sw).toBeDisabled();
+  const why = page.getByTestId('thin-skin-none');
+  await expect(why).toHaveText(fill(tr.wizard.machine.skin.none, { t: '1', min: '0,2' }));
+  await expect(sw).toHaveAttribute('aria-describedby', (await why.getAttribute('id')) ?? 'x');
+});

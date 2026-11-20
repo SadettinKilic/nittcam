@@ -712,3 +712,12 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Canvas hole look: through = dark disc, blind pocket = light disc, groove = ring only; the selected part numbers its holes like the panel.
 - Selection = 2 px accent outline over the wood tone (no tint). A corner node in reach wins over a bend handle.
 - "Köşe ekle" = new command `splitSegment` (UI only, not an AI tool): a vertex in the middle of the edge (arcs split on the same circle), picked at once so it can be moved.
+
+## D-093 Polish P3 leftovers conventions (2026-11-21, Dev 1, B53)
+- Dense machine-form tables (materials) switch to one card per row by container width (below 52 rem: the 1024 px desktop with the side index, and phones), not by viewport; four fields per card line from 32 rem, two below. The copied-set and starting-values notes sit in the row's full-width detail line with the tab defaults.
+- Cut list "Uyarılar": floats right of the grid only where it fits (T253/T256); elsewhere the chip opens it in the flow above the grid, so it never covers cells. A part issue's place ("Satır 3 · Kapak") is a button that scrolls to and focuses that row's name cell (clearing a search / filter / collapsed group that hides it).
+- Cut-list row marker (Shapes icon, muted) for a part that is not a plain rectangle: freeform outline, inner cuts, holes, hole templates or lines; the tooltip counts them.
+- Step 1 without a cutting set for the material: the red box is the only message (no extra "no thicknesses" line), and the thin-skin switch waits until a set exists (shown anyway when a skin is already on). From 1280 px the settings column is 32 rem so the sheet-size choices sit on one row.
+- Thin skin on a sheet too thin for any skin (D-083 bounds): the switch is disabled and the reason stands under it (aria-describedby), never a silent refusal.
+- DXF join: a single straight piece lying on a straight edge of a closed contour on the same layer is a duplicate, unless one of its ends meets another open piece (a neighbour drawn from lines that shares the edge still closes). The report lists drill-layer circles that become holes apart from inner contours.
+- Wizard header: one row from a 1088 px container (was 1112).

@@ -376,9 +376,8 @@ export function MachineFields({
               ))}
             </div>
           </>
-        ) : profile && thicknesses.length === 0 ? (
-          <p className="text-xs text-fg-muted">{t.thicknessNone}</p>
         ) : null}
+        {/* B53 (CTO #5): no "no thicknesses" line here; the red box below says it once. */}
         {profile && !set ? (
           <div
             role="alert"
@@ -424,7 +423,12 @@ export function MachineFields({
             })}
           </p>
         ) : null}
-        <ThinSkin t={t} project={project} errors={errors} run={run} />
+        {/* B53 (CTO #5, D-093): the thin skin is part of the cutting settings; with no set for this
+            material it waits (unless already on), so the red box does not push the sheet size
+            under the footer at 1440 × 900. */}
+        {set || project.cutting.skin ? (
+          <ThinSkin t={t} project={project} errors={errors} run={run} />
+        ) : null}
       </div>
 
       <fieldset className="flex flex-col gap-2">
@@ -607,12 +611,17 @@ function ThinSkin({
   const max = maxSkinThickness(project.stock.thickness);
   const fmt = (v: number) => String(v).replace('.', ',');
   const noSkin = max < SKIN_BOUNDS.min;
+  const noneId = useId();
   return (
     <div className="flex flex-col gap-2" data-testid="thin-skin">
       <div className="flex items-center gap-2">
         <Switch
           id={id}
           checked={skin !== undefined}
+          // B53 (D-083 bounds): on a sheet too thin for any skin the switch cannot turn on; the
+          // reason stands under it instead of a silent refusal.
+          disabled={noSkin && skin === undefined}
+          aria-describedby={noSkin ? noneId : undefined}
           data-testid="thin-skin-switch"
           onCheckedChange={(on) =>
             run('setThinSkin', {
@@ -620,13 +629,20 @@ function ThinSkin({
             })
           }
         />
-        <label htmlFor={id} className="text-sm text-fg">
+        <label
+          htmlFor={id}
+          className={`text-sm ${noSkin && skin === undefined ? 'text-fg-muted' : 'text-fg'}`}
+        >
           {t.skin.label}
         </label>
       </div>
       <p className="text-xs text-fg-muted">{t.skin.hint}</p>
-      {skin && noSkin ? (
-        <p className="text-xs text-danger-text" data-testid="thin-skin-none">
+      {noSkin ? (
+        <p
+          id={noneId}
+          className={`text-xs ${skin ? 'text-danger-text' : 'text-fg-muted'}`}
+          data-testid="thin-skin-none"
+        >
           {fill(t.skin.none, {
             t: fmt(project.stock.thickness),
             min: fmt(SKIN_BOUNDS.min),

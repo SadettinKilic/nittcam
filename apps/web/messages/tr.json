@@ -770,6 +770,14 @@
       "label": "Uyarılar: {state}"
     },
     "rowIssue": "Satır {n}: {text}",
+    "rowMachining": "Satır {n}: işleme var ({text})",
+    "machining": {
+      "inners": "{count} iç kesim",
+      "holes": "{count} delik",
+      "lines": "{count} çizgi",
+      "templates": "{count} delik şablonu",
+      "shape": "serbest şekil"
+    },
     "cards": {
       "label": "Parça kartları",
       "title": "Satır {n}"
@@ -1693,7 +1701,6 @@
       "material": "Malzeme",
       "thickness": "Kalınlık (mm)",
       "thicknessHint": "Bu makinede kesim ayarı olan kalınlıklar: {list} mm",
-      "thicknessNone": "Bu makinede bu malzeme için kesim ayarı yok.",
       "sheet": "Plaka ölçüsü",
       "preset": "{a} × {b} mm",
       "custom": "Özel ölçü",
@@ -2801,7 +2808,8 @@
     "report": {
       "title": "Rapor",
       "parts": "Parça",
-      "inners": "İç kontur / delik",
+      "inners": "İç kontur",
+      "holes": "Delik (delik katmanından)",
       "supported": "Okunan nesne",
       "converted": "Dönüştürülen eğri (spline, elips)",
       "ignored": "Yok sayılan (yazı, ölçü, tarama)",
