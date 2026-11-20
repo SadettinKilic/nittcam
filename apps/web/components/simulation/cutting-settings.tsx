@@ -60,7 +60,7 @@ export function CuttingSettings({
       </p>
       {c.tabMode !== 'off' ? (
         <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-2">
             <NumberField
               label={t.count}
               value={c.tabs.count}
