@@ -27,6 +27,7 @@ import { canvasTouchClass, isZoomedIn, useMediaQuery } from '../../lib/use-media
 import {
   Box,
   Info,
+  Focus,
   Maximize,
   Pause,
   Play,
@@ -73,7 +74,7 @@ import { useReducedMotion } from '../../lib/use-preferences';
 import type { SimulationMeta, SimulationResponse } from '../../lib/simulation-messages';
 import { useSimulationWorker } from '../../lib/use-simulation-worker';
 import { SPEEDS, createSimPlayer, useSimPlayer } from '../../lib/sim-player';
-import { drawnParts, type ViewState } from '../layout-view/model';
+import { drawnParts, jobBox, type ViewState } from '../layout-view/model';
 import { clampScale, zoomAt } from '../layout-view/zoom';
 import { GcodePanel } from './gcode-panel';
 import {
@@ -516,11 +517,15 @@ function Player({
   const narrow = useMediaQuery('(max-width: 639px)', false);
   // Own-row tabs on phones push the zoom toolbar to a second row (T199b).
   const insets = useMemo<FitInsets>(
-    () => ({ top: hasTabs ? (narrow ? 88 : 44) : 0, bottom: 36 }),
+    // B44: the zoom toolbar floats top right even without plate tabs, so the band stays.
+    () => ({ top: hasTabs && narrow ? 88 : 44, bottom: 36 }),
     [hasTabs, narrow],
   );
   const height = size.h;
   const parts = useMemo(() => drawnParts(project, sim.sheet), [project, sim.sheet]);
+  // B44 fit to job: a small job opens fitted to its parts; "Tümünü göster" fits sheet + table.
+  const job = useMemo(() => jobBox(parts, stock), [parts, stock]);
+  const home = job ?? bounds;
 
   // T156: 2D / 3D switch of the playback; both views follow the same player.
   const [mode, setMode] = useState<'2d' | '3d'>('2d');
@@ -542,8 +547,8 @@ function Player({
       setCamera((c) => ({ preset: 'iso', from: 'top', nonce: c.nonce + 1, animate: true }));
     setMode(next);
   }
-  const preset3d = (p: ViewPreset) =>
-    setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true }));
+  const preset3d = (p: ViewPreset, whole = false) =>
+    setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true, whole }));
 
   const setTime = useCallback(
     (v: number) => {
@@ -555,10 +560,10 @@ function Player({
   // T268: refit only when the fit inputs change in value. An autosave or a machine refetch gives
   // new `stock` / `machine` objects with the same numbers; refitting then threw away a zoom the
   // user had just made (CI flake in t020 "zoom: + four times").
-  const fitKey = JSON.stringify([bounds, stock.height, insets]);
-  const fitArgs = useRef({ bounds, sheetHeight: stock.height, insets });
+  const fitKey = JSON.stringify([home, stock.height, insets]);
+  const fitArgs = useRef({ bounds: home, sheetHeight: stock.height, insets });
   useEffect(() => {
-    fitArgs.current = { bounds, sheetHeight: stock.height, insets };
+    fitArgs.current = { bounds: home, sheetHeight: stock.height, insets };
   });
   useEffect(() => {
     const el = box.current;
@@ -584,12 +589,16 @@ function Player({
   const fit = useCallback(() => {
     if (width > 0 && height > 0) setView(fitBounds(bounds, stock.height, width, height, insets));
   }, [bounds, stock.height, width, height, insets]);
+  const fitHome = useCallback(() => {
+    if (width > 0 && height > 0 && job)
+      setView(fitBounds(job, stock.height, width, height, insets));
+  }, [job, stock.height, width, height, insets]);
   // Zoomed past the fit: one finger pans the view; at the fit it scrolls the page on touch (T198).
   const zoomed =
     view !== null &&
     width > 0 &&
     height > 0 &&
-    isZoomedIn(view.scale, fitBounds(bounds, stock.height, width, height, insets).scale);
+    isZoomedIn(view.scale, fitBounds(home, stock.height, width, height, insets).scale);
 
   // Playback: one animation frame per redraw; the time advances by real time × speed.
   const active = playing && !reduced;
@@ -757,6 +766,19 @@ function Player({
                   <ZoomIn aria-hidden />
                 </IconButton>
               </Tooltip>
+              {job ? (
+                <Tooltip content={t.controls.fitJob}>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t.controls.fitJob}
+                    data-testid="sim-fit-job"
+                    onClick={fitHome}
+                  >
+                    <Focus aria-hidden />
+                  </IconButton>
+                </Tooltip>
+              ) : null}
               <Tooltip content={t.controls.fit}>
                 <IconButton size="sm" variant="ghost" aria-label={t.controls.fit} onClick={fit}>
                   <Maximize aria-hidden />

@@ -108,13 +108,15 @@ export interface MmBox {
 export function labelBox(
   part: { x: number; y: number; w: number; h: number },
   label: PartLabel,
+  /** Label spot in the footprint frame (Y down, B44); default the footprint centre. */
+  spot?: { cx: number; cy: number },
 ): MmBox | null {
   if (label.lines.length === 0) return null;
   const longest = Math.max(...label.lines.map((l) => l.length));
   const w = longest * label.font * MONO_ADVANCE;
   const h = label.lines.length * label.font * LINE_HEIGHT;
-  const cx = part.x + part.w / 2;
-  const cy = part.y + part.h / 2;
+  const cx = part.x + (spot ? spot.cx : part.w / 2);
+  const cy = part.y + part.h - (spot ? spot.cy : part.h / 2);
   return { x0: cx - w / 2, y0: cy - h / 2, x1: cx + w / 2, y1: cy + h / 2 };
 }
 

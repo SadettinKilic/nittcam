@@ -85,6 +85,20 @@ export function fitDistance(dir: Vec3, box: FrameBox, fovDeg: number, aspect: nu
   return need;
 }
 
+/** Position on `dir` from `target` at which the whole `box` is in view (assembly first camera, B44). */
+export function fittedPosition(
+  target: Vec3,
+  dir: Vec3,
+  box: FrameBox,
+  fovDeg: number,
+  aspect: number,
+  pad = 0.12,
+): [number, number, number] {
+  const d = normalize(dir);
+  const dist = fitDistance(d, box, fovDeg, aspect, pad);
+  return [target[0] + d[0] * dist, target[1] + d[1] * dist, target[2] + d[2] * dist];
+}
+
 /** Camera pose of a preset that frames `box` around `target`. */
 export function presetPose(
   preset: ViewPreset,

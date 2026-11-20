@@ -162,7 +162,7 @@ export function SummaryCard({
             {fill(s.warnings, { count: warnings.length })}
           </summary>
           <div className="mt-2">
-            <WarningList t={t} items={warnings} />
+            <WarningList t={t} items={warnings} links={links} />
           </div>
         </details>
       ) : null}

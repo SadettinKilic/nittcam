@@ -7,6 +7,7 @@ import { fill } from '../../lib/fill';
 import { withBlocking } from '../../lib/blocking-issues';
 import { itemPlace, machineRelated, onDrawnItem, onPartRow } from '../../lib/part-items';
 import type { SimText } from './model';
+import { tabTextCode } from '../../lib/tab-text';
 
 export interface Finding {
   group: string;
@@ -26,6 +27,8 @@ export interface Finding {
   hole?: number;
   /** Its open line (0-based), for an issue about a line (T277). */
   openLine?: number;
+  /** B44: the text key when it differs from the code (a tab too high, not too small). */
+  textCode?: string;
 }
 
 /** Part names for the place of a cut-out issue, and the way to the drawing board (T270). */
@@ -74,17 +77,21 @@ export function findings(result: SimulateResult): Finding[] {
   const ex = result.export;
   const cutOuts = new Set<string>();
   for (const i of ex.toolpathIssues) {
-    // T270: one line per cut-out, not one per copy of the part.
-    if (i.inner !== undefined || i.hole !== undefined || i.openLine !== undefined) {
+    // T270: one line per cut-out, not one per copy of the part; B44: a part warning (e.g.
+    // "Köprü sayısı azaltıldı") once per part too, now that it names the part.
+    const perPart = i.severity === 'warning' && i.partId !== null;
+    if (i.inner !== undefined || i.hole !== undefined || i.openLine !== undefined || perPart) {
       const key = `${i.code}/${i.partId ?? ''}/${i.inner ?? ''}/${i.hole ?? ''}/${i.openLine ?? ''}`;
       if (cutOuts.has(key)) continue;
       cutOuts.add(key);
     }
+    const textCode = tabTextCode(i.code, i.message);
     out.push({
       group: 'TOOLPATH',
       severity: i.severity,
       code: i.code,
       message: i.message,
+      ...(textCode ? { textCode } : {}),
       ...(i.sheet !== undefined ? { sheet: i.sheet } : {}),
       ...(i.partId !== null ? { partId: i.partId } : {}),
       ...(i.inner !== undefined ? { inner: i.inner } : {}),
@@ -198,7 +205,7 @@ function FindingList({
                   </span>
                 )}
                 <span className="min-w-0">
-                  {codeText(t, f.code)}
+                  {codeText(t, f.textCode ?? f.code)}
                   {/* D-045: the engine's English sentence only for a code without Turkish text. */}
                   {knownCode(t, f.code) ? null : (
                     <span className="block text-xs break-words text-fg-muted">
@@ -341,8 +348,17 @@ export function Violations({
 }
 
 /** Warnings of a passing export (shown under the summary). */
-export function WarningList({ t, items }: { t: SimText; items: readonly Finding[] }) {
-  return <FindingList t={t} items={items} />;
+export function WarningList({
+  t,
+  items,
+  links,
+}: {
+  t: SimText;
+  items: readonly Finding[];
+  /** B44: names the part of a part warning ("Kapak: Köprü sayısı azaltıldı"). */
+  links?: PartLinks;
+}) {
+  return <FindingList t={t} items={items} {...(links ? { links } : {})} />;
 }
 
 /** T287: errors next to a finished simulation (the export is still locked), with their places. */

@@ -31,6 +31,7 @@ scope.addEventListener('message', (e) => {
         inversePatches: result.inversePatches,
       },
       summary: summarizeLayout(result.project),
+      cost: result.cost,
     });
   } catch (err) {
     scope.postMessage({ id, ok: false, error: err instanceof Error ? err.message : String(err) });

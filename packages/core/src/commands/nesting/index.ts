@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../../geometry/grain';
 import { nestProject, type NestHooks } from '../../nesting/nest';
+import type { ObjectiveCost } from '../../nesting/types';
 import { offcutSheetSchema } from '../../nesting/offcuts';
 import {
   defaultSheet,
@@ -147,6 +148,8 @@ export type RunNestingApplied =
       params: RunNestingParams;
       patches: Patch[];
       inversePatches: Patch[];
+      /** Objective terms of the chosen layout (path, tool changes; B44 mode cards). */
+      cost: ObjectiveCost;
     }
   | { ok: false; error: string };
 
@@ -166,15 +169,15 @@ export function runNestingWithProgress(
   const parsed = runNestingParamsSchema.safeParse(rawParams);
   if (!parsed.success) return { ok: false, error: 'invalid params for runNesting' };
   const params = parsed.data;
-  const layout = nestProject(
+  const { layout, cost } = nestProject(
     project,
     { toolDiameter: params.toolDiameter, contourTool: params.contourTool, offcuts: params.offcuts },
     hooks,
-  ).layout;
+  );
   const [next, patches, inversePatches] = immer.produceWithPatches(project, (draft) => {
     setLayout(draft as Project, project, layout);
   });
-  return { ok: true, project: next, params, patches, inversePatches };
+  return { ok: true, project: next, params, patches, inversePatches, cost };
 }
 
 export const lockPlacementParamsSchema = z

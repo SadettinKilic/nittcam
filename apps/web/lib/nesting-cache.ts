@@ -4,6 +4,7 @@ import {
   type Layout,
   type LayoutSummary,
   type NestingMode,
+  type ObjectiveCost,
   type Project,
   type RunNestingParams,
 } from '@nittcam/core';
@@ -21,7 +22,14 @@ export function optionSetKey(project: Project, params: RunNestingParams): string
   const locked = project.layout.sheets.flatMap((s, sheet) =>
     s.placements.filter((p) => p.locked).map((p) => ({ sheet, ...p })),
   );
-  return JSON.stringify([{ ...project, layout: locked }, params]);
+  // B44 tester round 1: absent options key like their defaults, so a default project (no
+  // `rotation` / `partInHole` written yet) finds the same cache entry as the explicit values.
+  const nesting = {
+    ...project.nesting,
+    rotation: project.nesting.rotation ?? 'free',
+    partInHole: project.nesting.partInHole ?? false,
+  };
+  return JSON.stringify([{ ...project, nesting, layout: locked }, params]);
 }
 
 /** The same key with another mode (for the per-mode figures on the mode cards). */
@@ -36,6 +44,8 @@ export function optionSetKeyForMode(
 export interface CachedNesting {
   layout: Layout;
   summary: LayoutSummary;
+  /** Objective terms when the placer ran (path, tool changes; B44 mode cards). */
+  cost?: ObjectiveCost;
 }
 
 /** At most this many option sets are kept (oldest dropped first). */
@@ -59,9 +69,10 @@ export class NestingCache {
     return this.entries.get(key);
   }
 
-  set(key: string, layout: Layout, project: Project): void {
+  set(key: string, layout: Layout, project: Project, cost?: ObjectiveCost): void {
     this.entries.delete(key);
-    this.entries.set(key, { layout, summary: summarizeLayout({ ...project, layout }) });
+    const summary = summarizeLayout({ ...project, layout });
+    this.entries.set(key, cost ? { layout, summary, cost } : { layout, summary });
     while (this.entries.size > NESTING_CACHE_SIZE) {
       const oldest = this.entries.keys().next().value;
       if (oldest === undefined) break;

@@ -9,6 +9,7 @@ import { canvasMonoFont } from '../../lib/canvas-theme';
 import { formatMm, partLabel } from '../../lib/canvas-labels';
 import { grainArrowPoints, grainLines } from '../../lib/grain-texture';
 import { prefersReducedMotion } from '../../lib/preferences';
+import { labelSpot } from '../../lib/label-spot';
 
 /** True when the operator asked for less motion (no fade-in after "Diz"; OS or Ayarlar, T183). */
 const reducedMotion = prefersReducedMotion;
@@ -272,12 +273,17 @@ const PartShape = memo(function PartShape({
   const strokeWidth = (selected || conflict ? 3 : 1) * hair;
   // A locked part is told apart by a dashed outline too, not by its colour alone (T251).
   const dash = part.locked && !selected && !conflict ? [6 * hair, 4 * hair] : [];
-  const label = partLabel({ number: part.label, name: part.name, w, h, scale });
+  // B44: the label sits in the material, not over an opening or an empty corner.
+  const spot = useMemo(() => labelSpot(part), [part]);
+  const label = partLabel({ number: part.label, name: part.name, w: spot.w, h: spot.h, scale });
   const font = label.font;
   // Grain arrow of a fixed-grain part at its sheet-frame angle (D-034: part grain + rotation).
   // Canvas Y points down, so 90° (up on the sheet) is -Y here.
   const angle = part.grainAngle ?? sheetGrain ?? 0;
-  const arrow = grainArrowPoints(angle, w, h, font, label.lines.length);
+  const [ax1, ay1, ax2, ay2] = grainArrowPoints(angle, spot.w, spot.h, font, label.lines.length);
+  const sx = spot.cx - spot.w / 2;
+  const sy = spot.cy - spot.h / 2;
+  const arrow = [ax1 + sx, ay1 + sy, ax2 + sx, ay2 + sy];
 
   const snap = (node: Konva.Node) => {
     const x = Math.round(node.x());
@@ -383,9 +389,10 @@ const PartShape = memo(function PartShape({
         <Text
           key={i}
           text={line}
-          width={w}
+          x={sx}
+          width={spot.w}
           y={
-            h / 2 -
+            spot.cy -
             (label.lines.length * font * 1.25) / 2 +
             i * font * 1.25 -
             (part.grainAngle !== null ? font * 0.6 : 0)
