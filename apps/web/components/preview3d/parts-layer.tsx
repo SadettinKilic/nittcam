@@ -6,13 +6,13 @@
  * shared shape, one merged mesh for single copies, the waste slab and one line set for edges.
  * Lives in the sheet frame (the parent group maps it to the world).
  */
-import type { Project } from '@nittcam/core';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import {
   BufferAttribute,
   BufferGeometry,
   Float32BufferAttribute,
   InstancedBufferAttribute,
+  LineBasicMaterial,
   Matrix4,
   Quaternion,
   Vector3,
@@ -20,43 +20,55 @@ import {
   type Material,
 } from 'three';
 import type { MeshData } from '../../lib/preview3d/part-mesh';
-import { BAND_ATTRIBUTE, GRAIN_ATTRIBUTE } from './materials';
-import { buildSheetScene, type InstanceRef } from '../../lib/preview3d/sheet-scene';
+import { BAND_ATTRIBUTE, GRAIN_ATTRIBUTE, patchLines } from './materials';
+import { SLOT_ATTRIBUTE, type SlotUniforms } from './slots';
+import type { InstanceRef, SheetScene } from '../../lib/preview3d/sheet-scene';
 
 export interface PartsLayerProps {
-  project: Project;
-  sheet: number;
+  /** Built by the scene from the project and sheet (`buildSheetScene`). */
+  scene: SheetScene;
   partMaterial: Material;
   wasteMaterial: Material;
   edgeColor: string;
+  slots: SlotUniforms;
+  /** "Fireyi gizle" (T155). */
+  hideWaste: boolean;
 }
 
 export function PartsLayer({
-  project,
-  sheet,
+  scene,
   partMaterial,
   wasteMaterial,
   edgeColor,
+  slots,
+  hideWaste,
 }: PartsLayerProps) {
-  const scene = useMemo(() => buildSheetScene(project, sheet), [project, sheet]);
+  // Waste edges are left out with the waste (slot -1: never lifted).
   const edges = useMemo(() => {
-    const all = new Float32Array(scene.edges.length + scene.waste.edges.length);
+    const n = scene.edges.length + (hideWaste ? 0 : scene.waste.edges.length);
+    const all = new Float32Array(n);
     all.set(scene.edges, 0);
-    all.set(scene.waste.edges, scene.edges.length);
-    return all;
-  }, [scene]);
+    const slotOf = new Float32Array(n / 3).fill(-1);
+    slotOf.set(scene.edgeSlots, 0);
+    if (!hideWaste) all.set(scene.waste.edges, scene.edges.length);
+    return { positions: all, slots: slotOf };
+  }, [scene, hideWaste]);
   return (
     <group>
-      <MeshFromData
-        data={scene.waste}
-        grain={scene.wasteGrain}
-        material={wasteMaterial}
-        name="waste"
-      />
+      {hideWaste ? null : (
+        <MeshFromData
+          data={scene.waste}
+          grain={scene.wasteGrain}
+          slots={-1}
+          material={wasteMaterial}
+          name="waste"
+        />
+      )}
       {scene.merged ? (
         <MeshFromData
           data={scene.merged}
           grain={scene.mergedGrain ?? 0}
+          slots={scene.mergedSlots ?? -1}
           material={partMaterial}
           name="parts-merged"
         />
@@ -64,7 +76,7 @@ export function PartsLayer({
       {scene.instanced.map((g) => (
         <Instanced key={g.shape} data={g.mesh} refs={g.instances} material={partMaterial} />
       ))}
-      <Lines positions={edges} color={edgeColor} />
+      <Lines positions={edges.positions} slots={edges.slots} color={edgeColor} uniforms={slots} />
     </group>
   );
 }
@@ -79,6 +91,7 @@ const RAD = Math.PI / 180;
 function useGeometry(
   data: MeshData,
   grain: Float32Array | number,
+  slots: Float32Array | number,
   instanced?: readonly InstanceRef[],
 ): BufferGeometry {
   const geometry = useMemo(() => {
@@ -89,6 +102,8 @@ function useGeometry(
     if (instanced) {
       const a = new Float32Array(instanced.map((r) => r.grain * RAD));
       g.setAttribute(GRAIN_ATTRIBUTE, new InstancedBufferAttribute(a, 1));
+      const sl = new Float32Array(instanced.map((r) => r.slot));
+      g.setAttribute(SLOT_ATTRIBUTE, new InstancedBufferAttribute(sl, 1));
     } else {
       const n = data.positions.length / 3;
       const a =
@@ -96,11 +111,13 @@ function useGeometry(
           ? new Float32Array(n).fill(grain * RAD)
           : Float32Array.from(grain, (d) => d * RAD);
       g.setAttribute(GRAIN_ATTRIBUTE, new BufferAttribute(a, 1));
+      const sl = typeof slots === 'number' ? new Float32Array(n).fill(slots) : slots;
+      g.setAttribute(SLOT_ATTRIBUTE, new BufferAttribute(sl, 1));
     }
     g.setIndex(new BufferAttribute(data.indices, 1));
     g.computeBoundingSphere();
     return g;
-  }, [data, grain, instanced]);
+  }, [data, grain, slots, instanced]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return geometry;
 }
@@ -108,15 +125,17 @@ function useGeometry(
 function MeshFromData({
   data,
   grain,
+  slots,
   material,
   name,
 }: {
   data: MeshData;
   grain: Float32Array | number;
+  slots: Float32Array | number;
   material: Material;
   name: string;
 }) {
-  const geometry = useGeometry(data, grain);
+  const geometry = useGeometry(data, grain, slots);
   return <mesh geometry={geometry} material={material} name={name} />;
 }
 
@@ -131,7 +150,7 @@ function Instanced({
   refs: InstanceRef[];
   material: Material;
 }) {
-  const geometry = useGeometry(data, 0, refs);
+  const geometry = useGeometry(data, 0, 0, refs);
   const mesh = useRef<InstancedMesh>(null);
   useLayoutEffect(() => {
     const m = mesh.current;
@@ -160,17 +179,30 @@ function Instanced({
   );
 }
 
-/** Thin edge lines (technical-drawing feel), one draw call. */
-function Lines({ positions, color }: { positions: Float32Array; color: string }) {
+/** Thin edge lines (technical-drawing feel), one draw call; they rise with their part. */
+function Lines({
+  positions,
+  slots,
+  color,
+  uniforms,
+}: {
+  positions: Float32Array;
+  slots: Float32Array;
+  color: string;
+  uniforms: SlotUniforms;
+}) {
   const geometry = useMemo(() => {
     const g = new BufferGeometry();
     g.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    g.setAttribute(SLOT_ATTRIBUTE, new BufferAttribute(slots, 1));
     return g;
-  }, [positions]);
+  }, [positions, slots]);
   useEffect(() => () => geometry.dispose(), [geometry]);
-  return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial color={color} transparent opacity={0.85} />
-    </lineSegments>
-  );
+  const material = useMemo(() => {
+    const m = new LineBasicMaterial({ color, transparent: true, opacity: 0.85 });
+    patchLines(m, uniforms);
+    return m;
+  }, [color, uniforms]);
+  useEffect(() => () => material.dispose(), [material]);
+  return <lineSegments geometry={geometry} material={material} />;
 }

@@ -231,3 +231,35 @@ describe('offset: regressions found against the CavalierContours port (T007 spik
     expect(maxDeviation(out, cw, 0.004)).toBeLessThan(EPS);
   });
 });
+
+describe('offset: near-straight arcs (T280)', () => {
+  // FC_SEED=-536624909 counter-example: a bulge of −5e-8 (r ≈ 8.7 km, sagitta 6e-8 mm) offset by
+  // −1.56. The crossing of its huge offset arc with the next round join drifted 2 mm along the join
+  // because circleCircle cancelled r² − x² on the huge circle.
+  const poly = contour([
+    v(2.0000000000000027, 1.7760267857104247e-227),
+    v(2.218170883935289, -1.068214797881094),
+    v(0.867767478235117, -1.801937735804841),
+    v(-3.6739403974420643e-16, -2.0000000000000027),
+    v(-1.246979603717469, -1.5636629649360614),
+    v(-1.5636629649360612, -1.2469796037174692),
+    v(-2.0000000000000027, 2.44929359829471e-16),
+    v(-1.9498558243636501, 0.4450418679126288),
+    v(-2.99297427059069, 2.3868173344058015),
+    v(-0.7531996746320945, 3.2999833911772933, -5.1838263551857826e-8),
+    v(0.4450418679126295, 1.94985582436365),
+    v(0.8783380906097593, 1.8238878385756567),
+    v(1.2469796037174687, 1.5636629649360616),
+    v(1.8019377358048407, 0.8677674782351174),
+  ]);
+  const d = -1.5633435463571959;
+
+  it('stays |d| ± EPS from the contour, like the same contour with a straight edge', () => {
+    const out = expectOk(offset(poly, d));
+    expect(maxDeviation(out, poly, d)).toBeLessThan(EPS);
+    const straight = contour(poly.vertices.map((p) => v(p.x, p.y)));
+    expect(
+      Math.abs(signedArea(out[0]!) - signedArea(expectOk(offset(straight, d))[0]!)),
+    ).toBeLessThan(EPS);
+  });
+});

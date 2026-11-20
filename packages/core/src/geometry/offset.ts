@@ -235,12 +235,18 @@ function circleCircle(a: ArcSeg, b: ArcSeg): Point[] {
   }
   if (dd <= NODE_TOL) return [];
   if (dd > a.r + b.r + NODE_TOL || dd < Math.abs(a.r - b.r) - NODE_TOL) return [];
-  const x = (dd * dd + a.r * a.r - b.r * b.r) / (2 * dd);
-  const h2 = a.r * a.r - x * x;
+  // Measure the chord from the smaller circle's centre, with the squares factored. On a huge circle
+  // (near-straight offset arc, r ~ 1e7) r² − x² and dd² − r² cancel catastrophically and the
+  // crossing drifts by millimetres (T280). From the small side h² = rs² − y² is well conditioned.
   const ux = dx / dd;
   const uy = dy / dd;
-  const mx = a.c.x + x * ux;
-  const my = a.c.y + x * uy;
+  const small = a.r <= b.r ? a : b;
+  const big = small === a ? b : a;
+  const y = (small.r * small.r + (dd - big.r) * (dd + big.r)) / (2 * dd);
+  const h2 = (small.r - y) * (small.r + y);
+  const s = small === a ? y : -y; // signed step from the small centre along a → b
+  const mx = small.c.x + s * ux;
+  const my = small.c.y + s * uy;
   if (h2 <= 0) return [{ x: mx, y: my }]; // tangent (or just missing it)
   const h = Math.sqrt(h2);
   return [

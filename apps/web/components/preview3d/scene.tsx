@@ -11,9 +11,12 @@
  */
 import { ContactShadows, Grid, OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { sheetSizeOf, type Project } from '@nittcam/core';
+import { sheetSizeOf, type Project, type SimSheet } from '@nittcam/core';
 import { useEffect, useMemo, useRef, type ComponentRef } from 'react';
-import { NeutralToneMapping, type PerspectiveCamera } from 'three';
+import { NeutralToneMapping, Plane, Vector3, type PerspectiveCamera } from 'three';
+import type { ThreeEvent } from '@react-three/fiber';
+import { buildSheetScene, pickSlot, type SheetScene } from '../../lib/preview3d/sheet-scene';
+import { SlotState } from './slots';
 import { FpsWatch } from '../../lib/preview3d/fps';
 import { materialLook, type MaterialLook } from '../../lib/preview3d/textures';
 import { stockMaterials } from './materials';
@@ -29,6 +32,8 @@ import {
   type ViewPreset,
 } from '../../lib/preview3d/camera';
 import { PartsLayer } from './parts-layer';
+import { ToolpathLayer } from './toolpath-layer';
+import { endsReached, liftsAt, partLiftTimes } from '../../lib/preview3d/toolpath';
 import { TABLE_THICKNESS, buildStage, type TableSpec } from '../../lib/preview3d/stage';
 
 /** Colours of the scene, read from the design tokens (never hard-coded; ui-conventions). */
@@ -48,6 +53,28 @@ export interface SceneColors {
   /** Tool and rapid colours shared with the 2D simulation (T154; used by T156/T157). */
   simTool: string;
   simRapid: string;
+  simDepthTop: string;
+  simDepthBottom: string;
+  /** Hover / selection tint of a part (T155). */
+  highlight: string;
+}
+
+/** View-only interaction state of the host (T155); never written to the project. */
+export interface SceneInteraction {
+  /** Common lift of every part, mm ("ayır/kaldır"). */
+  explode: number;
+  hideWaste: boolean;
+  /** Dragging on the sheet moves it on the table instead of orbiting. */
+  moveSheet: boolean;
+  /** Sheet offset on the table, sheet frame mm (view only). */
+  offset: readonly [number, number];
+  onOffset: (offset: [number, number]) => void;
+  /** Selected copy slot (-1 = none). */
+  selected: number;
+  onSelect: (slot: number) => void;
+  onHover?: (slot: number) => void;
+  /** Per-slot extra lift, mm (cutting playback, T157). */
+  lifts?: ArrayLike<number> | null;
 }
 
 export interface CameraCommand {
@@ -75,6 +102,18 @@ export interface SceneProps {
   onCamera: (viewInverse: ArrayLike<number>, pose: CameraPose) => void;
   /** Draw calls of the last frame (for perf checks; data attribute on the host). */
   onStats?: (drawCalls: number) => void;
+  interaction: SceneInteraction;
+  /** Toolpath overlay from the read program (T156) and the playback state (T157). */
+  toolpath?: SceneToolpath | null;
+}
+
+export interface SceneToolpath {
+  sim: SimSheet;
+  /** Playback time, s; null = the whole program, no tool model. */
+  time: number | null;
+  /** Draw the path lines (the "Takım yolu" toggle); the tool model stays. Default true. */
+  path?: boolean;
+  tool?: { x: number; y: number; z: number; diameter: number } | null;
 }
 
 const FOV = 35;
@@ -91,13 +130,45 @@ export default function Scene(props: SceneProps) {
   );
   const look = materialLook(stock.material);
   const base = colors.materials[look];
+  const sheetScene = useMemo(() => buildSheetScene(project, sheet), [project, sheet]);
+  const slots = useMemo(
+    () => new SlotState(sheetScene.parts, colors.highlight),
+    [sheetScene.parts, colors.highlight],
+  );
+  useEffect(() => () => slots.dispose(), [slots]);
   const materials = useMemo(
-    () => stockMaterials(look, base, colors.band, simple),
-    [look, base, colors.band, simple],
+    () => stockMaterials(look, base, colors.band, simple, slots.uniforms),
+    [look, base, colors.band, simple, slots],
   );
   useEffect(() => () => materials.dispose(), [materials]);
   const { width: W, height: H } = stage.sheet;
   const T = stage.thickness;
+  // T157: during playback a copy lifts slightly once its outer contour has ended.
+  const play = props.toolpath && props.toolpath.time !== null ? props.toolpath : null;
+  const playSim = play?.sim ?? null;
+  const liftTimes = useMemo(
+    () => (playSim ? partLiftTimes(playSim, sheetScene.outlines) : null),
+    [playSim, sheetScene.outlines],
+  );
+  const sortedEnds = useMemo(
+    () => (liftTimes ? Float64Array.from(liftTimes).sort() : null),
+    [liftTimes],
+  );
+  const reached = sortedEnds && play?.time != null ? endsReached(sortedEnds, play.time) : 0;
+  const liftAmount = Math.max(2, T * 0.25);
+  const playLifts = useMemo(
+    () =>
+      liftTimes && sortedEnds
+        ? liftsAt(
+            liftTimes,
+            reached > 0 ? (sortedEnds[reached - 1] ?? -Infinity) : -Infinity,
+            liftAmount,
+          )
+        : null,
+    [liftTimes, sortedEnds, reached, liftAmount],
+  );
+  const ia = playLifts ? { ...props.interaction, lifts: playLifts } : props.interaction;
+  const [ox, oy] = ia.offset;
   const tb = stage.table;
   const span = Math.max(W, H, tb.w, tb.h);
 
@@ -124,13 +195,39 @@ export default function Scene(props: SceneProps) {
             <boxGeometry args={[tb.w, tb.h, TABLE_THICKNESS]} />
             <meshStandardMaterial color={colors.table} roughness={0.95} metalness={0} />
           </mesh>
-          <PartsLayer
-            project={project}
-            sheet={sheet}
-            partMaterial={materials.part}
-            wasteMaterial={materials.waste}
-            edgeColor={colors.partStroke}
-          />
+          <group position={[ox, oy, 0]}>
+            <PartsLayer
+              scene={sheetScene}
+              partMaterial={materials.part}
+              wasteMaterial={materials.waste}
+              edgeColor={colors.partStroke}
+              slots={slots.uniforms}
+              hideWaste={ia.hideWaste}
+            />
+            <PickPlane
+              scene={sheetScene}
+              slots={slots}
+              width={W}
+              height={H}
+              top={T}
+              interaction={ia}
+            />
+            {props.toolpath ? (
+              <ToolpathLayer
+                sim={props.toolpath.sim}
+                top={T}
+                time={props.toolpath.time}
+                tool={props.toolpath.tool}
+                path={props.toolpath.path !== false}
+                colors={{
+                  depthTop: colors.simDepthTop,
+                  depthBottom: colors.simDepthBottom,
+                  rapid: colors.simRapid,
+                  tool: colors.simTool,
+                }}
+              />
+            ) : null}
+          </group>
         </group>
       </group>
 
@@ -151,7 +248,7 @@ export default function Scene(props: SceneProps) {
       {simple ? null : (
         <ContactShadows
           key={`${W}x${H}x${T}`}
-          position={[0, 0.5, 0]}
+          position={[ox, 0.5, -oy]}
           scale={[W * 1.15, H * 1.15]}
           far={Math.max(T * 4, 60)}
           blur={2.2}
@@ -163,6 +260,107 @@ export default function Scene(props: SceneProps) {
       )}
       <Rig {...props} box={sheetFrameBox(stage.sheet, T)} />
     </Canvas>
+  );
+}
+
+/** Orbit controls off while the sheet is dragged (outside the component: no hook value mutation). */
+function setEnabled(controls: { enabled: boolean } | null, on: boolean): void {
+  if (controls) controls.enabled = on;
+}
+
+/**
+ * Picking and sheet dragging (T155) on an invisible plane at the sheet top: a 2-triangle ray cast
+ * per pointer event, then a 2D point-in-outline test (`pickSlot`). Also pushes the interaction
+ * state into the slot uniforms and asks for a frame when it changes (render on demand).
+ */
+function PickPlane({
+  scene,
+  slots,
+  width,
+  height,
+  top,
+  interaction: ia,
+}: {
+  scene: SheetScene;
+  slots: SlotState;
+  width: number;
+  height: number;
+  top: number;
+  interaction: SceneInteraction;
+}) {
+  const invalidate = useThree((s) => s.invalidate);
+  const controls = useThree((s) => s.controls) as { enabled: boolean } | null;
+  const drag = useRef<{ plane: Plane; start: Vector3; offset: readonly [number, number] } | null>(
+    null,
+  );
+  const hover = useRef(-1);
+
+  useEffect(() => {
+    slots.setView(ia.explode, ia.selected);
+    slots.setLifts(ia.lifts ?? null);
+    invalidate();
+  }, [slots, ia.explode, ia.selected, ia.lifts, invalidate]);
+
+  function setHover(slot: number) {
+    if (hover.current === slot) return;
+    hover.current = slot;
+    slots.setHover(slot);
+    ia.onHover?.(slot);
+    invalidate();
+  }
+  // e.point is in world space; the plane mesh's local frame is the sheet frame (z = top).
+  function slotAt(e: ThreeEvent<PointerEvent | MouseEvent>): number {
+    const p = e.object.worldToLocal(e.point.clone());
+    return pickSlot(scene.outlines, p.x, p.y);
+  }
+  function hitOnPlane(e: ThreeEvent<PointerEvent>, plane: Plane): Vector3 | null {
+    return e.ray.intersectPlane(plane, new Vector3());
+  }
+
+  return (
+    <mesh
+      position={[width / 2, height / 2, top + ia.explode]}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (d) {
+          const hit = hitOnPlane(e, d.plane);
+          if (!hit) return;
+          // world (x, z) ↔ sheet frame (x, −y)
+          ia.onOffset([
+            Math.round(d.offset[0] + hit.x - d.start.x),
+            Math.round(d.offset[1] - (hit.z - d.start.z)),
+          ]);
+          return;
+        }
+        setHover(slotAt(e));
+      }}
+      onPointerOut={() => {
+        if (!drag.current) setHover(-1);
+      }}
+      onPointerDown={(e) => {
+        if (!ia.moveSheet || e.button !== 0) return;
+        e.stopPropagation();
+        const plane = new Plane(new Vector3(0, 1, 0), -e.point.y);
+        drag.current = { plane, start: e.point.clone(), offset: ia.offset };
+        setEnabled(controls, false);
+        (e.target as Element | null)?.setPointerCapture?.(e.pointerId);
+      }}
+      onPointerUp={(e) => {
+        if (!drag.current) return;
+        drag.current = null;
+        setEnabled(controls, true);
+        (e.target as Element | null)?.releasePointerCapture?.(e.pointerId);
+      }}
+      onClick={(e) => {
+        if (ia.moveSheet) return;
+        e.stopPropagation();
+        const s = slotAt(e);
+        ia.onSelect(s === ia.selected ? -1 : s);
+      }}
+    >
+      <planeGeometry args={[width, height]} />
+      <meshBasicMaterial visible={false} />
+    </mesh>
   );
 }
 
