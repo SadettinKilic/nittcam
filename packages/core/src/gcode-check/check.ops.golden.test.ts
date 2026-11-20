@@ -113,6 +113,14 @@ describe.each(POSTS)('new operations, broken on purpose (%s)', (post) => {
     expectCaught(g, swapped.join('\r\n'));
   });
 
+  it.each(['tab-bounds-min', 'tab-bounds-max'])(
+    '%s: tabs at the T293 bounds removed is caught',
+    (fx) => {
+      const g = golden(post, fx);
+      expect(expectCaught(g, dropTabs(g)).some((c) => c.startsWith('MODEL'))).toBe(true);
+    },
+  );
+
   it('thin-skin: the cleanup passes removed (skin left on the sheet) is caught', () => {
     const g = golden(post, 'thin-skin');
     const lines = g.text.split('\r\n');

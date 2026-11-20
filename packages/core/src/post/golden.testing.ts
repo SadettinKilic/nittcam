@@ -250,6 +250,31 @@ export const GOLDEN_OP_FIXTURES: readonly {
     ],
     cutting: { tabs: { auto: false }, skin: { thickness: 0.5 }, leadIn: 'arc', direction: 'climb' },
   },
+  {
+    id: 'tab-bounds-min',
+    name: 'Köprü alt sınır',
+    revision: 1,
+    /**
+     * T293 lower bounds exactly: tabs 3 mm wide, 1 mm of material left (the smallest tab that
+     * still holds a part on 18 mm), on a 400 × 300 panel and a small 150 × 90 strip.
+     */
+    parts: [
+      { id: 'panel', name: 'Panel', qty: 1, rect: { w: 400, h: 300, r: 0 } },
+      { id: 'strip', name: 'Çıta', qty: 1, rect: { w: 150, h: 90, r: 0 } },
+    ],
+    cutting: { tabs: { auto: true, width: 3, height: 1 }, leadIn: 'arc', direction: 'climb' },
+  },
+  {
+    id: 'tab-bounds-max',
+    name: 'Köprü üst sınır',
+    revision: 1,
+    /** T293 upper height bound: 17 mm left on 18 mm stock (thickness − 1), width 3 mm. */
+    parts: [
+      { id: 'panel', name: 'Panel', qty: 1, rect: { w: 400, h: 300, r: 0 } },
+      { id: 'strip', name: 'Çıta', qty: 1, rect: { w: 150, h: 90, r: 0 } },
+    ],
+    cutting: { tabs: { auto: true, width: 3, height: 17 }, leadIn: 'arc', direction: 'climb' },
+  },
 ];
 
 /** The nested project of an operation fixture (MDF 18, 2800 × 2070, sheet grain 0°). */
