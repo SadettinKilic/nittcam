@@ -1400,7 +1400,7 @@ Acceptance: as in review #11 section E1: "Kapalı → Her parçada" returns to t
 CTO #11 (T176 gap). Rides with the next Dev 1 batch after B39.
 Acceptance: NC, DXF, PDF and labels share one pattern (project, revision, kind, sheet), ASCII; history and zip use it.
 
-### T296 Old-revision file is marked   [status: todo]
+### T296 Old-revision file is marked   [status: done, B41]
 CTO #11 (T179 gap). Rides with T295.
 Acceptance: Projeler "İndir" and the history show an "eski revizyon" badge when the last file is from an older revision than the project; one click to regenerate.
 
