@@ -182,6 +182,14 @@ type Gesture =
   /** B52: pressing a hole or cut-out of the selected part (click picks, drag moves). */
   | { kind: 'item'; id: string; item: PartItem; start: Pt; startScreen: Pt; moved: boolean };
 
+/** Line direction per arrow key while drawing (B52, D-092), degrees CCW from +X. */
+const ARROW_ANGLES: Record<string, number> = {
+  ArrowRight: 0,
+  ArrowUp: 90,
+  ArrowLeft: 180,
+  ArrowDown: 270,
+};
+
 /** Board moves are kept to 0.01 mm (no float dust in the project). */
 function round(v: number): number {
   return Math.round(v * 100) / 100;
@@ -686,7 +694,19 @@ export function DrawingBoard({
         return;
       const k = e.key;
       const n = fields.length;
-      if (/^[0-9]$/.test(k) || k === '.' || k === ',' || k === '-') {
+      const turn = ARROW_ANGLES[k];
+      if (turn !== undefined) {
+        // B52 (D-092): an arrow key sets the direction of the next line (the typed length keeps
+        // it); without one the mouse decides. Never nudges the selection while drawing.
+        const ai = fields.indexOf('angle');
+        if (ai >= 0) {
+          setTyped((t) => {
+            const values = [...t.values];
+            values[ai] = String(turn);
+            return { ...t, values };
+          });
+        }
+      } else if (/^[0-9]$/.test(k) || k === '.' || k === ',' || k === '-') {
         if (n === 0) return;
         setTyped((t) => {
           const values = [...t.values];
