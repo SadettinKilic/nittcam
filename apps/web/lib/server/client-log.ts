@@ -30,6 +30,7 @@ export async function appendClientLog(line: string, path = clientLogPath()): Pro
     (s) => s.size,
     () => 0,
   );
-  if (size + line.length > MAX_LOG_BYTES && size > 0) await rename(path, `${path}.1`);
+  if (size + Buffer.byteLength(line, 'utf8') > MAX_LOG_BYTES && size > 0)
+    await rename(path, `${path}.1`);
   await appendFile(path, line, 'utf8');
 }

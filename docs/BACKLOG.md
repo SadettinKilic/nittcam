@@ -1482,7 +1482,7 @@ Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by
 - Özet cutting-settings line wraps to two lines at 232 px and also names the thin skin; Özet warning count equals the Uyarılar panel; Dizilim says the part gap is added to the tool diameter [#12]
 - Phone: Simülasyon 3rd sheet tab cut at 390 (scrollable) [T B43]
 
-### P3 Kesim listesi, adım 1, makine formu, DXF
+### P3 Kesim listesi, adım 1, makine formu, DXF   [status: review, B46 #150; partial, rest listed in the PR]
 - Cut list: "Uyarılar" panel does not cover cells, clicking an issue focuses its row; row marker for parts with inner cuts; edge band unit "mm"; a name-only row is not counted in the part total; cabinet toast and button use the same unit [#5, #6, #9, #10]
 - Paste: skipped rows (e.g. size 0) are named with the reason in the preview [#10]
 - Step 1: thickness row only when there is a choice; red "kesim ayarı yok" box does not push "Plaka ölçüsü" under the footer [#5]

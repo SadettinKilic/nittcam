@@ -663,3 +663,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-082 CTO review #12 triage (2026-11-20, PO)
 - M8 is closed when B41 (#139) lands and T298 + T301 are done. Must-fix A → T298 (thin-skin bounds, safety), B → T299, gap E1 → T300: batch B47 on Dev 2 before polish P3. E2 → T301, E3 → T302, T295/T296 follow-ups → T303: batch B48 on Dev 1 after B42. 14 polish items into P2–P5.
 - Thin-skin bounds proposal: ≥ 0,2 mm and ≤ thickness − 1 mm (final numbers by dev + tester, tuned in the field test).
+
+## D-086 The workshop day uses one time zone (2026-11-20, Dev 2, B46 P4, tester B38)
+- "Today" for the maintenance reminder is the calendar day in the workshop's time zone, `Europe/Istanbul` by default (`NEXT_PUBLIC_WORKSHOP_TIME_ZONE` overrides it), computed the same way on the server (home page, first render of Makineler) and in the browser. Before, the home page used the server clock (often UTC), so between 00:00 and 03:00 the reminder was a day behind.
+- Byte limits are measured in UTF-8 bytes (`Buffer.byteLength`), not string length: the client-log body (16 KB) and the log-file rotation (1 MB).

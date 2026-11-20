@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@nittcam/ui';
 import { useId, useState, type FormEvent } from 'react';
+import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import {
   OFFCUT_MAX_MM,
@@ -58,6 +59,10 @@ export function OffcutDialog({
   );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // P3 (CTO #12): a typed size outside the range is not taken; the field says the range.
+  const [rangeError, setRangeError] = useState<
+    Partial<Record<'thickness' | 'width' | 'height', boolean>>
+  >({});
   const ids = { material: useId(), grain: useId() };
   const kind = materialKindOf(v.material);
   const grainable = materialHasGrain(kind);
@@ -66,6 +71,7 @@ export function OffcutDialog({
 
   async function save(ev: FormEvent) {
     ev.preventDefault();
+    if (Object.values(rangeError).some(Boolean)) return setMessage(f.invalid);
     const body = offcutBody(v);
     if (!body) return setMessage(f.invalid);
     const send = item ? offcutChanges(item, body) : body;
@@ -77,11 +83,17 @@ export function OffcutDialog({
   }
 
   const size = (key: 'thickness' | 'width' | 'height') => (
-    <FormField label={f[key]}>
+    <FormField
+      label={f[key]}
+      error={
+        rangeError[key] ? fill(f.range, { max: OFFCUT_MAX_MM.toLocaleString('tr-TR') }) : undefined
+      }
+    >
       <NumberInput
         data-testid={`offcut-form-${key}`}
         value={v[key]}
         onValueChange={(n) => setV((x) => ({ ...x, [key]: n }))}
+        onValidityChange={(e) => setRangeError((r) => ({ ...r, [key]: e !== null }))}
         min={0.1}
         max={OFFCUT_MAX_MM}
         unit="mm"

@@ -147,6 +147,16 @@ describe('cut-list summary and bulk params (T119)', () => {
     expect(s.sheets).toBe(1);
   });
 
+  it('a name-only row (no size yet) is a row but not a piece (P3)', () => {
+    const s = cutListSummary({
+      parts: [rect('a', 560, 720, 2), rect('b', 0, 0, 3)],
+      stock: { material: 'mdf', thickness: 18, sheet, useOffcuts: false },
+      nesting: { mode: 'minWaste', gap: 8, margin: 10 },
+    } as never);
+    expect(s.rows).toBe(2);
+    expect(s.pieces).toBe(2);
+  });
+
   it('rounds the sheet estimate up and counts rounded corners', () => {
     const s = cutListSummary({
       parts: [rect('a', 1000, 1000, 6, 10)],

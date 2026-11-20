@@ -26,6 +26,7 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
 import { OnboardingSettingsCard } from '../../components/settings/onboarding-card';
 import { SettingsCard } from '../../components/settings/settings-card';
+import { fill } from '../../lib/draft-project';
 import { LOGO_ACCEPT, logoProblem, type LogoProblem } from '../../lib/logo';
 import type { Messages } from '../../lib/messages';
 import { COMPANY_NAME_MAX, type CompanySettings } from '../../lib/settings-api';
@@ -283,6 +284,9 @@ function DefaultsCard({ t, initial }: { t: DefaultsText; initial: ProjectDefault
   const [saved, setSaved] = useState<ProjectDefaults>(initial);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P3 (CTO #12): a typed value outside 0–max is not taken; the field says the range instead of
+  // leaving "Kaydet" silently disabled.
+  const [rangeError, setRangeError] = useState<Partial<Record<'gap' | 'margin', boolean>>>({});
   const dirty = JSON.stringify(v) !== JSON.stringify(saved);
 
   async function save(ev: FormEvent) {
@@ -310,11 +314,15 @@ function DefaultsCard({ t, initial }: { t: DefaultsText; initial: ProjectDefault
   }
 
   const mm = (key: 'gap' | 'margin') => (
-    <FormField label={t[key]}>
+    <FormField
+      label={t[key]}
+      error={rangeError[key] ? fill(t.range, { max: String(PROJECT_DEFAULT_MM_MAX) }) : undefined}
+    >
       <NumberInput
         data-testid={`settings-default-${key}`}
         value={v[key]}
         onValueChange={(n) => setV((x) => ({ ...x, [key]: n }))}
+        onValidityChange={(e) => setRangeError((r) => ({ ...r, [key]: e !== null }))}
         min={0}
         max={PROJECT_DEFAULT_MM_MAX}
         step={0.5}

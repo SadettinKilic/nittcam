@@ -1,3 +1,4 @@
+import { materialHasGrain, materialKindOf } from '@nittcam/core';
 import { NextResponse } from 'next/server';
 import { companyScope } from '../../../../lib/server/company';
 import { isUuid, offcutError, readOffcutPatch, toOffcutItem } from '../../../../lib/server/offcuts';
@@ -26,6 +27,17 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   if (!patch) return offcutError({ error: 'bad_request' }, 400);
   try {
     const scope = await companyScope();
+    if (patch.kind === 'edit') {
+      // P3 (tester B36): a grainless material (MDF, sunta …) never keeps a grain direction, whether
+      // the grain or the material is what changes.
+      const edit = patch.edit;
+      if (edit.grain != null || edit.material !== undefined) {
+        const material = edit.material ?? (await scope.offcuts.get(id))?.material;
+        if (material !== undefined && !materialHasGrain(materialKindOf(material))) {
+          edit.grain = null;
+        }
+      }
+    }
     const row =
       patch.kind === 'deleted'
         ? await scope.offcuts.setDeleted(id, patch.deleted)

@@ -157,7 +157,8 @@ export function cutListSummary(
   project: Pick<Project, 'parts' | 'stock' | 'nesting'>,
 ): CutListSummary {
   const { parts } = project;
-  const pieces = parts.reduce((sum, p) => sum + p.qty, 0);
+  // P3 (CTO #9): a name-only row (no size yet) is not a piece to cut, so it is not counted.
+  const pieces = parts.reduce((sum, p) => sum + (partArea(p) > 0 ? p.qty : 0), 0);
   const area = parts.reduce((sum, p) => sum + partArea(p) * p.qty, 0);
   const m = project.nesting.margin;
   const usable =
