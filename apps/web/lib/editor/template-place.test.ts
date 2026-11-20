@@ -72,4 +72,25 @@ describe('ghost and start (T148)', () => {
     ]);
     expect(addTemplateParams(p)).toMatchObject({ id: 'door', template: { version: 3 } });
   });
+
+  it('starts a ready handle on the edge opposite the hinges (T286)', () => {
+    const handle = {
+      ...item,
+      id: 'ready-handle-128',
+      params: { ...item.params, edgeDistance: 30 },
+    };
+    const hinge = (edge: 'left' | 'right') => ({
+      templateId: 'ready-hinge-35-2',
+      placement: { edge },
+    });
+    expect(startPlacement('door', handle, box, [hinge('left')]).placement).toEqual({
+      x: 370,
+      y: 350,
+      rot: 180,
+      mirror: false,
+      edge: 'right',
+    });
+    expect(startPlacement('door', handle, box, [hinge('right')]).placement.edge).toBe('left');
+    expect(startPlacement('door', handle, box).placement.edge).toBe('left');
+  });
 });

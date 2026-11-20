@@ -7,6 +7,7 @@
  * inner contours of the part → a new company template, version 1).
  */
 import {
+  handlesOnHingeEdge,
   localBox,
   readyTemplate,
   templateFromPart,
@@ -43,7 +44,7 @@ import {
   formatMeasure,
   notify,
 } from '@nittcam/ui';
-import { LayoutTemplate, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { LayoutTemplate, Plus, RotateCcw, Save, Trash2, TriangleAlert } from 'lucide-react';
 import { memo, useId, useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import {
@@ -407,6 +408,9 @@ export const TemplateProperties = memo(function TemplateProperties({
   const update = (instanceId: string, patch: Record<string, unknown>) =>
     run('updateTemplateInstance', { id: part.id, instanceId, ...patch }) ? null : t.refused;
 
+  // T286: a handle on a hinge edge is a non-blocking warning at the instance.
+  const onHingeEdge = handlesOnHingeEdge(part.templates);
+
   const canSave = part.holes.length + part.inners.length + (part.lines?.length ?? 0) > 0;
 
   return (
@@ -444,7 +448,9 @@ export const TemplateProperties = memo(function TemplateProperties({
                   <DropdownMenuItem
                     key={item.id}
                     data-testid="template-menu-item"
-                    onSelect={() => onPending(startPlacement(part.id, item, localBox(part)))}
+                    onSelect={() =>
+                      onPending(startPlacement(part.id, item, localBox(part), part.templates))
+                    }
                   >
                     <LayoutTemplate aria-hidden />
                     {item.ready ? (
@@ -531,6 +537,16 @@ export const TemplateProperties = memo(function TemplateProperties({
               <Trash2 aria-hidden />
             </IconButton>
           </div>
+          {onHingeEdge.includes(ref.instanceId) ? (
+            <p
+              role="status"
+              className="flex items-start gap-1.5 text-xs text-warning-text"
+              data-testid={`template-instance-${i}-hinge-edge`}
+            >
+              <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+              {t.hingeEdge}
+            </p>
+          ) : null}
           <TemplateFields
             t={t}
             tid={`template-instance-${i}`}

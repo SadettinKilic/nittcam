@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { unverifiedTemplateNames, type Project } from '@nittcam/core';
+import { hingeEdgeHandleParts, unverifiedTemplateNames, type Project } from '@nittcam/core';
 import { Button, Card, Checkbox, IconButton, Tooltip, notify } from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
 import {
@@ -194,6 +194,8 @@ export function ExportStep({
 
   // T282: unverified ready-template values get their own checklist line (review #8 K2).
   const templateNames = useMemo(() => unverifiedTemplateNames(project.parts), [project.parts]);
+  // T286: a handle on a hinge edge is a warning line, never a blocker (review #9 A).
+  const hingeHandleParts = useMemo(() => hingeEdgeHandleParts(project.parts), [project.parts]);
   const blocker = downloadBlocker(preview, f.checks, f.accepted, templateNames.length);
   const blockerText =
     blocker === 'checks'
@@ -484,6 +486,15 @@ export function ExportStep({
                 onChange={(v) => update({ checks: { ...f.checks, templates: v } })}
                 label={fill(t.checkTemplates, { names: templateNames.join(', ') })}
               />
+            ) : null}
+            {hingeHandleParts.length > 0 ? (
+              <p
+                className="flex items-start gap-1.5 text-sm text-warning-text"
+                data-testid="export-hinge-handle"
+              >
+                <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+                {fill(t.hingeHandle, { names: hingeHandleParts.join(', ') })}
+              </p>
             ) : null}
             <ChecklistItem
               testId="export-check-aircut"
