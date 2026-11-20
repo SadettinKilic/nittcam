@@ -4,6 +4,7 @@ import { CanvasBoundary } from '../feedback/canvas-boundary';
 import {
   checkPlacement,
   nestingEngineOf,
+  partNumber,
   placementIsValid,
   summarizeLayout,
   type PlacementCheck,
@@ -74,6 +75,7 @@ import {
   drawnParts,
   fitView,
   readColors,
+  sheetFigures,
   turnedPart,
   type CanvasColors,
   type DrawnPart,
@@ -131,6 +133,10 @@ export interface LayoutViewProps {
 
 const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 const pctFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+const lengthFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+
+/** From this many sheets the layout view offers the all-sheets minimap (T171). */
+const MINIMAP_FROM = 3;
 
 /** Vertical room kept at fit for the one-row plate tabs + tools (top) and the legend (bottom), T244. */
 const FIT_BAND = 24;
@@ -215,6 +221,7 @@ function LayoutViewImpl({
   const stock = useMemo(() => sheetSizeOf(project, sheet), [project, sheet]);
   const height = size.h;
   const parts = useMemo(() => drawnParts(project, sheet), [project, sheet]);
+  const figures = useMemo(() => sheetFigures(parts), [parts]);
   const stored = useMemo(() => new Map(parts.map((p) => [p.key, p])), [parts]);
   // T170: the selected part drawn at its pending angle; only that one object changes, so the other
   // (memoised) shapes do not redraw.
@@ -554,7 +561,7 @@ function LayoutViewImpl({
     ];
     const row = project.parts.findIndex((p) => p.id === partId);
     const name = project.parts[row]?.name;
-    return fill(t.option, { label: `${row + 1}.${index + 1}`, name: name || t.unnamed });
+    return fill(t.option, { label: partNumber(row + 1, index + 1), name: name || t.unnamed });
   };
   const pendingInvalid = dragCheck !== null && !placementIsValid(dragCheck.check);
 
@@ -849,6 +856,41 @@ function LayoutViewImpl({
             <Legend t={t} margin={project.nesting.margin} grain={stock.grain} />
           </PopoverContent>
         </Popover>
+        {project.layout.sheets.length >= MINIMAP_FROM ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="pointer-events-auto ml-2 bg-surface/95 shadow-sm"
+                data-testid="layout-minimap-button"
+              >
+                {t.minimap.button}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" side="top" className="w-auto max-w-[min(30rem,90vw)]">
+              <SheetMinimap
+                t={t}
+                project={project}
+                active={sheet}
+                used={summary.sheets.map((s) => 100 - s.wastePercent)}
+                onSelect={selectSheet}
+              />
+            </PopoverContent>
+          </Popover>
+        ) : null}
+        {figures.parts > 0 ? (
+          <p
+            className={`${floating} mt-2 px-2.5 py-1 text-xs text-fg-muted tabular-nums`}
+            data-testid="layout-sheet-stats"
+          >
+            {fill(t.sheetStats, {
+              parts: figures.parts,
+              used: pctFormat.format(100 - (summary.sheets[sheet]?.wastePercent ?? 100)),
+              length: lengthFormat.format(figures.cutLength / 1000),
+            })}
+          </p>
+        ) : null}
       </div>
       <div
         className={`${floating} pointer-events-none absolute right-2 bottom-2 z-10 hidden items-center gap-3 px-2.5 py-1.5 font-mono text-2xs text-fg-muted tabular-nums ${show3d ? '' : 'sm:flex'}`}
@@ -1192,6 +1234,82 @@ function Legend({ t, margin, grain }: { t: Text; margin: number; grain: number |
         {l.sheetGrain}
       </li>
       <li>{l.partGrain}</li>
+      <li className="flex items-center gap-1.5">
+        <span
+          className={`${swatch} rounded-full border-part-stroke bg-sheet-waste`}
+          aria-hidden="true"
+        />
+        {l.hole}
+      </li>
+      <li className="font-mono tabular-nums">{l.number}</li>
+    </ul>
+  );
+}
+
+/**
+ * All sheets at a glance (T171): one small thumbnail per sheet with its parts and utilisation;
+ * a click opens that sheet. Shown from MINIMAP_FROM sheets on.
+ */
+function SheetMinimap({
+  t,
+  project,
+  active,
+  used,
+  onSelect,
+}: {
+  t: Text;
+  project: Project;
+  active: number;
+  used: number[];
+  onSelect: (i: number) => void;
+}) {
+  return (
+    <ul
+      aria-label={t.minimap.title}
+      className="grid grid-cols-3 gap-2 sm:grid-cols-4"
+      data-testid="layout-minimap"
+    >
+      {project.layout.sheets.map((_, i) => {
+        const size = sheetSizeOf(project, i);
+        const ps = drawnParts(project, i);
+        const pct = pctFormat.format(used[i] ?? 0);
+        return (
+          <li key={i}>
+            <button
+              type="button"
+              onClick={() => onSelect(i)}
+              aria-current={i === active ? 'true' : undefined}
+              aria-label={fill(t.minimap.sheet, { n: i + 1, parts: ps.length, used: pct })}
+              className={`flex w-24 flex-col items-center gap-1 rounded-md border p-1 text-2xs text-fg-muted tabular-nums hover:bg-surface-hover ${i === active ? 'border-accent' : 'border-border'}`}
+            >
+              <svg
+                viewBox={`0 0 ${size.width} ${size.height}`}
+                className="w-full"
+                preserveAspectRatio="xMidYMid meet"
+                aria-hidden="true"
+              >
+                <rect
+                  width={size.width}
+                  height={size.height}
+                  className="fill-sheet-waste stroke-sheet-edge"
+                  strokeWidth={size.width / 100}
+                />
+                {ps.map((p) => (
+                  <rect
+                    key={p.key}
+                    x={p.x}
+                    y={size.height - p.y - p.h}
+                    width={p.w}
+                    height={p.h}
+                    className={p.locked ? 'fill-part-locked' : 'fill-part'}
+                  />
+                ))}
+              </svg>
+              {fill(t.minimap.caption, { n: i + 1, used: pct })}
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }

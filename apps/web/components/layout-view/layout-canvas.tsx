@@ -2,7 +2,7 @@
 
 import type Konva from 'konva';
 import { memo, useEffect, useMemo, useRef } from 'react';
-import { Arrow, Group, Layer, Line, Rect, Stage, Text } from 'react-konva';
+import { Arrow, Circle, Group, Layer, Line, Rect, Stage, Text } from 'react-konva';
 import type { CanvasColors, DrawnPart, ViewState } from './model';
 import { zoomAt } from './zoom';
 import { canvasMonoFont } from '../../lib/canvas-theme';
@@ -362,6 +362,21 @@ const PartShape = memo(function PartShape({
           closed
           stroke={stroke}
           strokeWidth={strokeWidth}
+          fill={colors.waste}
+          perfectDrawEnabled={false}
+          shadowForStrokeEnabled={false}
+          listening={false}
+        />
+      ))}
+      {/* Holes and template instances (T171, CTO #8): left and right doors read apart. */}
+      {part.holes.map((c, i) => (
+        <Circle
+          key={`hole-${i}`}
+          x={c.x}
+          y={c.y}
+          radius={c.r}
+          stroke={stroke}
+          strokeWidth={hair}
           fill={colors.waste}
           perfectDrawEnabled={false}
           shadowForStrokeEnabled={false}
