@@ -11,7 +11,6 @@ import {
   Download,
   FileCode,
   ShieldAlert,
-  TriangleAlert,
 } from 'lucide-react';
 import { focusRing } from '../page/page-header';
 import { Callout } from './panels';
