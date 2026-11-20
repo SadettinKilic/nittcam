@@ -684,3 +684,24 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - **Label spot:** a part label stays centred unless the centre is less than 35 % of the short side from an edge or not in the material (openings, holes, concave shapes); then it goes to the sampled point with the largest clearance d, sized 1.6d × d.
 - **THREE.Clock:** three r183 deprecated `Clock`, but @react-three/fiber 9.8.2 (latest) still builds one in its store. The 3D chunks install three's console hook (`setConsoleFunction`) that drops only that warning; every other three message reaches the console. Remove when fiber moves to `THREE.Timer`.
 - **Mode cards:** `runNestingWithProgress` also returns the objective terms of the chosen layout (`cost`; layout and output unchanged); the cache keeps them, the "En hızlı" card shows the estimated path, "En az takım değişimi" the tool-change count.
+
+## D-084 Company name and logo on screen and documents (T301, 2026-11-20, Dev 1)
+- Sidebar: the static layout keeps "Atölyem" only as the fallback; the shell reads `/api/settings` once per page load and Ayarlar publishes a saved name / logo to the same client store, so the sidebar updates without a reload.
+- PDF header: logo top-left (box ≤ 84 × 30 pt, aspect kept), project name beside it, company name first on the second line ("Şirket · Revizyon n · MDF, 18 mm"). Header height unchanged (44 pt), so the drawing area stays the same.
+- Labels: no logo (no room); the foot line reads "Proje · Şirket", the project keeps up to 60 % of the width.
+- Only PNG and JPEG logos are embedded (pdf-lib); a WebP logo stays on screen and the PDF carries the name. The Ayarlar logo hint says so.
+- Name and logo are part of the document input: same name and logo → same bytes; generator versions `pdf-2`, `labels-2`.
+
+## D-088 Tab defaults in the machine's material sets (T302, 2026-11-20, Dev 1)
+- Each material set row in the machine form has a line below it: switch "Bu set için köprü ölçüsü gir". Off = no `tabs` in the set (older profiles unchanged) and the built-in 4 × 10 × min(3, t/2) applies, which the line says; on = count / width / height fields.
+- The T293 bounds (width ≥ 3 mm, height 1 … thickness − 1 mm) are checked when a profile is **saved** (`parseMachineProfileForSave`, form and `machines.create/update`), not when one is read: a stored set below the bounds stays readable and NC stays blocked for it by the toolpath check. Messages carry the bound ("En az 3 olmalı.", "En fazla 17 olmalı.").
+- Kesim ayarları: the source line names the inherited sizes ("Değerler malzeme ayarından: 6 × 12 × 2 mm."), "Malzeme ayarına dön" names them too, and "Malzeme ayarında değiştir" opens the machine form at that set's tab switch (`alan=kopru`) and comes back to Simülasyon on the new profile version (`profil=son`). Ayarlar links to Makineler.
+
+## D-089 "Changed after üretildi" (T303, 2026-11-20, Dev 1)
+- NC file-name limit: already met by T295 (D-073): `buildFileName` shortens only the project part to the machine's "Dosya adı en fazla" and keeps `_r<rev>_S<n>` whole; T303 adds a regression test (24-character limit, revision 12).
+- A produced / completed project whose saved revision is newer than its newest NC file keeps its status, plus: Projeler shows a warning badge "değişti" next to the status (title and screen-reader text "Üretildikten sonra değişti (Rev. 2; son NC Rev. 1)"); the export step's "Proje durumu" card says the same with "Güncel revizyonla NC üret", which focuses the pre-export checklist (D-071/D-072). The status itself is not changed automatically. `GET /api/projects/:id` returns `lastNcRevision`.
+
+## D-087 2 000-row paste: measured cause and fix (T304, 2026-11-21, Dev 1)
+- The "~9 s" freeze of D-079 was mostly the test driver: Playwright `fill` sends the 2 000 lines through the browser's typing path (6–10 s even in a bare `<textarea>`); a real Ctrl+V of the same text takes ~0,1 s. The perf spec now puts the text in with one input event (as a paste does).
+- App fixes: the paste preview renders only the visible rows above 150 rows (TanStack virtualizer, spacer rows keep the scroll height); applying runs the command at once and the wizard re-render as a React transition, so it is split into short tasks.
+- Measured locally (2 000 rows, paste + preview + apply): ~0,5 s, longest main-thread task ~130 ms. The perf spec guards < 2 s and ≤ 200 ms (was < 20 s).

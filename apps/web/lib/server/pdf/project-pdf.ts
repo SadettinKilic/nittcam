@@ -12,7 +12,14 @@ import {
 import { PAPER_SIZES } from '@nittcam/core';
 import { fill } from '../../fill';
 import { getMessages } from '../../messages';
-import { centred, MUTED, newDocument, saveDocument } from './document';
+import {
+  centred,
+  embedCompany,
+  MUTED,
+  newDocument,
+  saveDocument,
+  type CompanyMark,
+} from './document';
 import { addReportPages, reportPageCount } from './report-pages';
 import { addLayoutPages, contentBox, drawFrame, mm, type PageHeader } from './layout-pages';
 
@@ -26,6 +33,8 @@ export interface ProjectPdfInput {
   paper: PaperSize;
   /** Estimated machining time, s (T173); null = not available. */
   cutSeconds: number | null;
+  /** Company name and logo for the page header (T301); none = no company mark. */
+  company?: CompanyMark | null;
 }
 
 /** Turkish material label and thickness for the page header. */
@@ -41,8 +50,13 @@ export function materialLabel(project: Project): string {
 
 export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Array> {
   const { project, projectName, revision, paper, cutSeconds } = input;
-  const head: PageHeader = { projectName, revision, material: materialLabel(project) };
   const { doc, fonts } = await newDocument(projectName, fill(t.revision, { revision }));
+  const head: PageHeader = {
+    projectName,
+    revision,
+    material: materialLabel(project),
+    company: await embedCompany(doc, input.company),
+  };
   const sheets = layoutDrawing(project);
   const report = projectReport(project, cutSeconds);
   const layoutPages = Math.max(1, sheets.length);

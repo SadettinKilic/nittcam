@@ -25,7 +25,13 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/projects/[i
     // A deleted project's direct link opens nothing (T178): 410 with the name for "Geri yükle".
     if (row.deletedAt !== null) return apiError({ error: 'deleted', name: row.name }, 410);
     const exports = await scope.exports.listForProject(id);
-    return NextResponse.json({ ...toDetail(row), exported: exports.length > 0 });
+    // T303: the newest NC file's revision, so the status card can say the project changed since.
+    const nc = exports.filter((e) => e.kind === 'nc').map((e) => e.projectRevision);
+    return NextResponse.json({
+      ...toDetail(row),
+      exported: exports.length > 0,
+      lastNcRevision: nc.length > 0 ? Math.max(...nc) : null,
+    });
   } catch (err) {
     return handleError(err);
   }

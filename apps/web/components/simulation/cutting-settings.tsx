@@ -3,14 +3,18 @@
 import {
   TAB_BOUNDS,
   cuttingSettingsOf,
+  inheritedTabs,
+  materialKindOf,
   maxTabHeight,
   type MachineProfile,
   type Project,
   type TabMode,
 } from '@nittcam/core';
+import Link from 'next/link';
 import { useId } from 'react';
 import { cn } from '@nittcam/ui';
 import { fill } from '../../lib/fill';
+import { paramFixHref } from '../../lib/machine-form';
 import type { Messages } from '../../lib/messages';
 import { NumberField } from '../wizard/number-field';
 
@@ -66,6 +70,7 @@ export function CuttingSettings({
   project,
   machine,
   run,
+  returnTo,
 }: {
   t: Text;
   errors: { number: string; positive: string; rejected: string };
@@ -74,10 +79,29 @@ export function CuttingSettings({
   project: Project;
   machine: MachineProfile | null;
   run: Run;
+  /** Path the machine form links back to after a save (T302). */
+  returnTo?: string | null;
 }) {
   const c = cuttingSettingsOf(project, machine ?? undefined);
   const own = Object.values(c.tabs.source).includes('project');
-  const source = own ? 'project' : c.tabs.source.count === 'material' ? 'material' : 'default';
+  // T302 (CTO #12 E3): the inherited sizes (material set or built-in) are named in the source line
+  // and on "Malzeme ayarına dön"; the link opens the machine form at the set's tab fields.
+  const base = inheritedTabs(project, machine ?? undefined);
+  const sizes = {
+    count: base.count,
+    width: mmFormat.format(base.width),
+    height: mmFormat.format(base.height),
+  };
+  const sourceText = own ? t.source.project : fill(t.source[base.source], sizes);
+  const kind = materialKindOf(project.stock.material);
+  const editHref = machine
+    ? paramFixHref({
+        machineId: project.machine.machineId,
+        set: kind ? { material: kind, thickness: project.stock.thickness } : null,
+        returnTo: returnTo ?? null,
+        field: 'tabs',
+      })
+    : null;
   return (
     <section
       aria-labelledby="sim-cutting-title"
@@ -167,7 +191,7 @@ export function CuttingSettings({
             </p>
           ) : null}
           <p className="text-xs text-fg-muted" data-testid="sim-cutting-source">
-            {t.source[source]}{' '}
+            {sourceText}{' '}
             {own ? (
               <button
                 type="button"
@@ -175,8 +199,16 @@ export function CuttingSettings({
                 onClick={() => run('setTabs', { count: null, width: null, height: null })}
                 className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
-                {t.reset}
+                {fill(t.reset, sizes)}
               </button>
+            ) : editHref ? (
+              <Link
+                href={editHref}
+                data-testid="sim-cutting-edit-material"
+                className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                {t.editMaterial}
+              </Link>
             ) : null}
           </p>
         </div>

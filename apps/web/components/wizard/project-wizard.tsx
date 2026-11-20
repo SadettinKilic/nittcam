@@ -1172,6 +1172,7 @@ function WizardSession({
             project={project}
             machine={profile}
             run={session.run}
+            returnTo={`${stepUrl(session.projectId, 'simulasyon')}&${LATEST_PARAM}=${LATEST_VALUE}`}
           />
         }
         t={messages.simulation}

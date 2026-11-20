@@ -14,6 +14,7 @@ import {
   libraryMaterialSchema,
   type LibraryMaterial,
   parseMachineProfile,
+  parseMachineProfileForSave,
   parseProject,
   type CommandLogEntry,
   type MachineProfile,
@@ -636,7 +637,8 @@ export interface MachineWithProfile {
 }
 
 function validMachineProfile(json: unknown): MachineProfile {
-  const result = parseMachineProfile(json);
+  // T302: a saved profile also meets the save-only rules (tab sizes of the material sets).
+  const result = parseMachineProfileForSave(json);
   if (!result.ok) throw new InvalidMachineProfile(result.issues);
   return result.profile;
 }

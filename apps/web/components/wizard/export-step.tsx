@@ -512,6 +512,7 @@ export function ExportStep({
           names={getMessages().projects.status}
           projectId={projectId}
           tick={historyTick}
+          onRegenerate={() => focusCurrentControl({ kind: 'nc', post: { id: 'nc' } })}
         />
       </aside>
       {/* T176 (CTO #4): two balanced columns; the other files and the history sit on the right,
@@ -764,7 +765,7 @@ const historyFeatures = tableFeatures({});
 const historyColumn = createColumnHelper<typeof historyFeatures, ExportRecord>();
 
 /** T296: scrolls to the current-revision control of a history row and focuses it. */
-function focusCurrentControl(r: ExportRecord) {
+function focusCurrentControl(r: Pick<ExportRecord, 'kind'> & { post: { id: string } }) {
   const testId = currentControlOf(r);
   // NC without a checklist on screen (still checking, or a failed check): the step's status.
   const box =

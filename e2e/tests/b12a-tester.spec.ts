@@ -54,7 +54,7 @@ test('B12a tester: unverified row from the fix flow, 1440/1024/390, light/dark',
   await expect(page.getByTestId('no-cutting-params')).toBeVisible();
   await page.getByTestId('add-cutting-params').click();
   await expect(page.getByTestId('machine-form')).toBeVisible({ timeout: 30_000 });
-  const row = page.getByTestId('materials-table').locator('tbody tr').last();
+  const row = page.getByTestId('materials-table').locator('tbody tr:not([data-detail])').last();
   await expect(row.getByTestId('material-unverified-note')).toBeVisible();
   const n = async (sel: string) =>
     Number((await row.locator(sel).inputValue()).replace(/\./g, '').replace(',', '.'));

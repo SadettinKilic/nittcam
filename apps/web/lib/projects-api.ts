@@ -40,6 +40,8 @@ export interface ProjectDetail {
   project: Project;
   /** True when the project has at least one export (GET /api/projects/:id only; T290). */
   exported?: boolean;
+  /** Revision of the newest NC export, null without one (GET /api/projects/:id only; T303). */
+  lastNcRevision?: number | null;
 }
 
 /**

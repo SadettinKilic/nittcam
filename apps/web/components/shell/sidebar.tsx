@@ -22,6 +22,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useId, type ComponentType, type ReactNode } from 'react';
+import { useCompanyBrand } from '../../lib/company-brand';
 import type { Messages } from '../../lib/messages';
 import { NAV_ITEMS, NEW_PROJECT_HREF, isNavActive, type NavKey } from '../../lib/shell-nav';
 
@@ -82,22 +83,40 @@ function WorkspaceRow({
   company: string;
   collapsed: boolean;
 }) {
+  // T301: the saved company name and logo; `company` is the fallback until they are read.
+  const brand = useCompanyBrand(company);
   return (
     <div className="px-3 pb-3 rail-collapsed:px-0">
-      <RailTip label={`${company} · ${t.shell.operator}`} show={collapsed}>
+      <RailTip label={`${brand.name} · ${t.shell.operator}`} show={collapsed}>
         <div
           data-testid="shell-workspace"
           className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface px-2.5 py-2 rail-collapsed:justify-center rail-collapsed:border-transparent rail-collapsed:bg-transparent rail-collapsed:px-0"
         >
-          <span
-            aria-hidden="true"
-            className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-active text-xs font-semibold text-fg-muted"
-          >
-            {company.slice(0, 1).toLocaleUpperCase('tr-TR')}
-          </span>
+          {brand.logoUrl ? (
+            <span
+              aria-hidden="true"
+              className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-active"
+              data-testid="shell-company-logo"
+            >
+              {/* A user-uploaded image of unknown size: next/image would need a loader config. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={brand.logoUrl} alt="" className="max-h-full max-w-full object-contain" />
+            </span>
+          ) : (
+            <span
+              aria-hidden="true"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-active text-xs font-semibold text-fg-muted"
+            >
+              {brand.name.slice(0, 1).toLocaleUpperCase('tr-TR')}
+            </span>
+          )}
           <div className="min-w-0 rail-collapsed:sr-only">
-            <p className="truncate text-sm font-medium text-fg" data-testid="shell-company">
-              {company}
+            <p
+              className="truncate text-sm font-medium text-fg"
+              data-testid="shell-company"
+              title={brand.name}
+            >
+              {brand.name}
             </p>
             <p className="truncate text-xs text-fg-muted" data-testid="shell-operator">
               {t.shell.operator}
