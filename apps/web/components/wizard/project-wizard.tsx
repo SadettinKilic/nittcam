@@ -866,13 +866,15 @@ function WizardSession({
     // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats
     // from the issue chip, so the grid never moves or changes its columns while the user types.
     partsFullWidth = true;
-    both = sourceId ? (
+    // One wrapper whether or not the project is saved yet: switching the tree on the first save
+    // would remount the editor and drop its view state (sort, groups, active cell, drag).
+    both = (
       <div className="flex min-w-0 flex-col gap-3">
-        <ProjectLinksBar t={t.links} projectId={sourceId} version={linksVersion} />
+        {sourceId ? (
+          <ProjectLinksBar t={t.links} projectId={sourceId} version={linksVersion} />
+        ) : null}
         {editor}
       </div>
-    ) : (
-      editor
     );
   } else if (step === 'dizilim') {
     both = (
