@@ -1650,6 +1650,14 @@
         "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın."
       },
       "other": "Kontrol {code}"
+    },
+    "documents": {
+      "title": "Belgeler (PDF)",
+      "hint": "Kaydedilmiş revizyondan sunucuda üretilir: plaka dizilimi, parça listesi ve fire raporu.",
+      "a4": "PDF aç (A4)",
+      "a3": "PDF aç (A3)",
+      "waitSave": "Önce değişiklikler kaydedilsin.",
+      "noLayout": "PDF için önce dizilim gerekir."
     }
   },
   "verification": {
@@ -2547,5 +2555,18 @@
       "restored": "\"{name}\" arşivden çıkarıldı.",
       "failed": "İşlem yapılamadı. Tekrar deneyin."
     }
+  },
+  "pdf": {
+    "sheetTitle": "Plaka {n} / {total}",
+    "sheetSize": "{w} × {h} mm",
+    "material": "{material}, {thickness} mm",
+    "grain": "Damar {angle}°",
+    "noGrain": "Damarsız plaka",
+    "offcut": "Artık parçadan",
+    "revision": "Revizyon {revision}",
+    "page": "Sayfa {n} / {total}",
+    "parts": "{count} parça",
+    "legend": "Parça no: satır.kopya · Ok: damar yönü · Ölçüler mm (kesim ölçüsü)",
+    "empty": "Dizilim yok. Önce Dizilim adımında yerleştirme yapın."
   }
 }

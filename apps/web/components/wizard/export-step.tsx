@@ -38,7 +38,8 @@ import {
   type ExportViolation,
 } from '../../lib/exports-api';
 import type { SaveState } from '../../lib/autosave';
-import type { Messages } from '../../lib/messages';
+import { getMessages, type Messages } from '../../lib/messages';
+import { ExportDocuments } from './export-documents';
 import type { SimMachine } from '../simulation/simulation-view';
 
 type Text = Messages['wizard']['export'];
@@ -387,6 +388,13 @@ export function ExportStep({
             </ul>
           </section>
         ) : null}
+        <ExportDocuments
+          t={getMessages().wizard.documents}
+          projectId={projectId}
+          revision={revision}
+          hasLayout={hasLayout}
+          saved={!busySaving}
+        />
       </aside>
       <section
         aria-labelledby="export-title"
