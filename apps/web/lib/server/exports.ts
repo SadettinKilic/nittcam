@@ -8,8 +8,7 @@ import {
   canDownload,
   exportNc,
   findMaterialParams,
-  EXPORT_BLOCKING_CODES,
-  validateProject,
+  exportBlockingIssues,
   needsUnverifiedAcceptance,
   parsePostConfig,
   unverifiedReasons,
@@ -32,6 +31,7 @@ import {
   type ExportStage,
   type ExportViolation,
 } from '../exports-api';
+import { blockingItems } from '../blocking-issues';
 import { fill } from '../draft-project';
 import { getMessages } from '../messages';
 
@@ -115,32 +115,6 @@ export function violationsOf(r: ExportNcResult): ExportViolation[] {
   return out;
 }
 
-/**
- * Part id and cut-out (T270) or hole (T275) index of a `parts[i].inners[k]` / `parts[i].holes[h]`
- * validation path.
- */
-function cutOutOf(
-  data: { parts: readonly { id: string }[] },
-  path: string,
-):
-  | { partId: string; inner: number }
-  | { partId: string; hole: number }
-  | { partId: string; openLine: number }
-  | undefined {
-  const m = /^parts\[(\d+)\]\.(inners|holes|lines)\[(\d+)\]/.exec(path);
-  const part = m ? data.parts[Number(m[1])] : undefined;
-  if (!m || !part) return undefined;
-  const k = Number(m[3]);
-  if (m[2] === 'inners') return { partId: part.id, inner: k };
-  return m[2] === 'holes' ? { partId: part.id, hole: k } : { partId: part.id, openLine: k };
-}
-
-/** Sheet index of a `layout.sheets[s]...` validation path. */
-function sheetOf(path: string): number | undefined {
-  const m = /^layout\.sheets\[(\d+)\]/.exec(path);
-  return m ? Number(m[1]) : undefined;
-}
-
 function profileProblem(code: string): ExportViolation {
   return { stage: 'profile', rule: 'INPUT', code, severity: 'error', message: turkish(code) };
 }
@@ -219,9 +193,8 @@ export async function runExport(
   // yetkilidir"): the server never relies on the client's validation panel. A copy its grain no
   // longer allows (D-034 amendment) is never cut: the toolpath itself accepts any rotation (D-034
   // stage 1), so that gate is only here; invalid cut-outs are refused by the toolpath as well.
-  const blocking = validateProject(data, { machine: machine.profile }).filter(
-    (i) => i.severity === 'error',
-  );
+  // T287 / K2: the same list the Simülasyon badge counts (`exportBlockingIssues`).
+  const blocking = exportBlockingIssues(data, { machine: machine.profile });
   if (blocking.length > 0) {
     return {
       kind: 'run',
@@ -229,19 +202,11 @@ export async function runExport(
         ...base,
         post,
         stage: 'toolpath',
-        violations: blocking.map((i): ExportViolation => {
-          const sheet = sheetOf(i.path);
-          const cutOut = cutOutOf(data, i.path);
-          return {
-            stage: 'toolpath',
-            rule: EXPORT_BLOCKING_CODES.has(i.code) ? 'LAYOUT' : 'TOOLPATH',
-            code: i.code,
-            severity: 'error',
-            message: turkish(i.code),
-            ...(sheet !== undefined ? { sheet } : {}),
-            ...(cutOut ?? {}),
-          };
-        }),
+        violations: blockingItems(data.parts, blocking).map((item): ExportViolation => ({
+          ...item,
+          stage: 'toolpath',
+          message: turkish(item.code),
+        })),
       },
     };
   }

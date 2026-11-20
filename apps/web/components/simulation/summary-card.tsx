@@ -6,7 +6,7 @@ import { Measure } from '@nittcam/ui';
 import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { formatDuration, formatInt, type SimText } from './model';
-import { WarningList, type Finding } from './violations';
+import { ErrorList, WarningList, type Finding, type PartLinks } from './violations';
 
 /** Summary card (§6.5): estimated time, lengths, tool changes, passes, tabs, check status. */
 export function SummaryCard({
@@ -15,6 +15,8 @@ export function SummaryCard({
   checksOk,
   errorCount,
   warnings,
+  errors = [],
+  links = {},
   program = null,
   templateNames = [],
 }: {
@@ -27,6 +29,9 @@ export function SummaryCard({
   checksOk: boolean;
   errorCount: number;
   warnings: readonly Finding[];
+  /** T287: errors that lock the export although the program ran (shown open, with places). */
+  errors?: readonly Finding[];
+  links?: PartLinks;
 }) {
   const s = t.summary;
   // Measure (T195): Turkish digits, tabular figures, the unit quieter than the number.
@@ -65,6 +70,12 @@ export function SummaryCard({
           {checksOk ? s.checksOk : fill(s.checksFail, { count: errorCount })}
         </p>
       </div>
+      {errors.length > 0 ? (
+        <div data-testid="sim-errors" className="flex flex-col gap-2">
+          <p className="text-sm text-danger-text">{s.errorsNote}</p>
+          <ErrorList t={t} items={errors} links={links} />
+        </div>
+      ) : null}
       {/* T245: one compact definition list (label | value), not six tiles. Each row sizes on its own
           so a long label next to a short value stays whole; labels wrap, never truncate (r1). */}
       <dl className="flex flex-col gap-y-0.5 text-sm" data-testid="sim-summary-list">

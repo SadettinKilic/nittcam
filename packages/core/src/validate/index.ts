@@ -44,7 +44,8 @@ export type ValidationCode =
   | 'INNER_CONTOUR_INVALID'
   | 'INNER_CONTOUR_TOO_SMALL'
   | 'INNER_SLUG_UNSECURED'
-  | 'LINE_OUTSIDE_PART';
+  | 'LINE_OUTSIDE_PART'
+  | 'PART_NOT_IN_LAYOUT';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -118,6 +119,43 @@ export const partLargerThanSheet: ValidationRule = (project) => {
       severity: 'error',
       path: formatPath(['parts', i, part.kind === 'rect' ? 'params' : 'outline']),
       message: `part "${part.id}" (${mm(size.w)} × ${mm(size.h)} mm) does not fit on ${room} (${how})`,
+    });
+  });
+  return issues;
+};
+
+/**
+ * (a2) T287 (CTO #10 A, K2): once a layout exists, every copy of every part must be on a sheet.
+ * A copy that is not (added after nesting, the stock ran out, ...) would be missing from the
+ * G-code without a word, so it is an error that blocks the NC export, and the Simülasyon badge
+ * reads the same list (`exportBlockingIssues`). A part already reported by
+ * `PART_LARGER_THAN_SHEET` is not reported twice. One issue per part, on `parts[i]`.
+ */
+export const partNotInLayout: ValidationRule = (project, context) => {
+  if (!project.layout.sheets.some((s) => s.placements.length > 0)) return [];
+  const tooLarge = new Set(
+    partLargerThanSheet(project, context).map((i) => /^parts\[(\d+)\]/.exec(i.path)?.[1]),
+  );
+  const placed = new Map<string, Set<number>>();
+  for (const sheet of project.layout.sheets) {
+    for (const pl of sheet.placements) {
+      const set = placed.get(pl.partId) ?? new Set<number>();
+      set.add(pl.index);
+      placed.set(pl.partId, set);
+    }
+  }
+  const issues: ValidationIssue[] = [];
+  project.parts.forEach((part, i) => {
+    if (tooLarge.has(String(i))) return;
+    const have = placed.get(part.id);
+    let missing = 0;
+    for (let k = 0; k < part.qty; k++) if (!have?.has(k)) missing++;
+    if (missing === 0) return;
+    issues.push({
+      code: 'PART_NOT_IN_LAYOUT',
+      severity: 'error',
+      path: formatPath(['parts', i]),
+      message: `${missing} of ${part.qty} copies of part "${part.id}" are not in the layout; nest again`,
     });
   });
   return issues;
@@ -490,6 +528,7 @@ export const lineInsidePart: ValidationRule = (project, context) => {
 /** Rules run after every command, in this order. */
 export const VALIDATION_RULES: readonly ValidationRule[] = [
   partLargerThanSheet,
+  partNotInLayout,
   holeDepthBelowThickness,
   holeVsTool,
   lockedPlacementInvalid,
@@ -511,4 +550,16 @@ export function validateProject(
   // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
   const project = toCutSizes(entered);
   return VALIDATION_RULES.flatMap((rule) => rule(project, context));
+}
+
+/**
+ * The errors that stop the NC export (web `runExport`: every validation error, spec §8.2), with the
+ * same context the server uses. T287 / K2: the Simülasyon check badge counts this same list, so
+ * the two steps never disagree.
+ */
+export function exportBlockingIssues(
+  project: Project,
+  context: ValidationContext = {},
+): ValidationIssue[] {
+  return validateProject(project, context).filter((i) => i.severity === 'error');
 }

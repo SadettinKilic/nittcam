@@ -62,6 +62,9 @@ import {
   setStockSheets,
   setThickness,
   setThinSkin,
+  setTabs,
+  setLeadIn,
+  setCutDirection,
   setDimensionMode,
 } from './plate';
 import {
@@ -83,6 +86,9 @@ export const COMMANDS = {
   applyLibraryMaterial,
   setThickness,
   setThinSkin,
+  setTabs,
+  setLeadIn,
+  setCutDirection,
   setSheetSize,
   setStockSheets,
   setGrain,

@@ -35,6 +35,7 @@ import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
 import { HoleIssuesContext, holeErrors } from '../editor/hole-issues';
 import { ValidationPanel } from './validation-panel';
+import { CuttingSettings } from '../simulation/cutting-settings';
 import {
   STEPS,
   saveIndicator,
@@ -579,6 +580,8 @@ function WizardSession({
   const profileTools = profile?.tools;
   // T275: "Çizimde aç" on a hole error also brings that hole's rows into view.
   const [holeFocus, setHoleFocus] = useState<{ partId: string; hole: number } | null>(null);
+  // T287: the part row "Parçalara git" focuses when the cut list opens.
+  const [rowFocus, setRowFocus] = useState<string | null>(null);
   const holeIssues = useMemo(
     () => ({
       byPart: holeErrors(project, session.issues),
@@ -602,6 +605,25 @@ function WizardSession({
         { [STEP_STATE]: 'parcalar' },
         '',
         `${stepUrl(session.projectId, 'parcalar')}&gorunum=cizim`,
+      );
+      stepRef.current = 'parcalar';
+    },
+    [session.projectId],
+  );
+
+  // Only the opening it was asked for: the grid reports it once it has focused the row.
+  const clearRowFocus = useCallback(() => setRowFocus(null), []);
+  // T287: "Parçalara git" on a blocking part issue opens Parçalar → Liste on that part's row.
+  const openRow = useCallback(
+    (partId: string) => {
+      setPartsSelection([partId]);
+      setRowFocus(partId);
+      setPartsViewState('list');
+      setStep('parcalar');
+      window.history.pushState(
+        { [STEP_STATE]: 'parcalar' },
+        '',
+        stepUrl(session.projectId, 'parcalar'),
       );
       stepRef.current = 'parcalar';
     },
@@ -804,6 +826,8 @@ function WizardSession({
         onSelectionChange={setPartsSelection}
         dxfText={messages.dxfImport}
         holeTool={holeToolNo}
+        focusPart={rowFocus}
+        onFocusedPart={clearRowFocus}
       />
     );
     // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats
@@ -825,12 +849,23 @@ function WizardSession({
     both = (
       <SimulationView
         left={validation}
+        settings={
+          <CuttingSettings
+            t={messages.simulation.cutting}
+            errors={t.machine.errors}
+            mm={t.machine.units.mm}
+            project={project}
+            machine={profile}
+            run={session.run}
+          />
+        }
         t={messages.simulation}
         project={project}
         machine={simMachine}
         view3d={{ t: messages.layout.preview3d, table: tableSpecOf(profile) }}
         notice={versionNotice}
         onOpenPart={openPart}
+        onOpenRow={openRow}
         header={{
           projectName: session.name,
           revision: session.revision,
@@ -867,6 +902,7 @@ function WizardSession({
         machine={simMachine}
         notice={versionNotice}
         onOpenPart={openPart}
+        onOpenRow={openRow}
         projectId={session.projectId}
         revision={session.revision}
         saved={!session.dirty}
