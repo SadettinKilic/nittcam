@@ -16,12 +16,16 @@ import { versionNumbers } from '../../../lib/server/exports';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** GET /api/projects → the company's projects, most recently changed first. */
-export async function GET() {
+/**
+ * GET /api/projects → the company's projects, most recently changed first. `?silinen=1` → the
+ * soft-deleted ones ("Silinenler", T178), newest deletion first.
+ */
+export async function GET(request?: Request) {
+  const deleted = request ? new URL(request.url).searchParams.get('silinen') === '1' : false;
   try {
     const scope = await companyScope();
     const [rows, names, latest, versions] = await Promise.all([
-      scope.projects.list(),
+      deleted ? scope.projects.listDeleted() : scope.projects.list(),
       machineNames(scope),
       scope.exports.latestPerProject(),
       versionNumbers(scope),

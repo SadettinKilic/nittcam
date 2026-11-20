@@ -466,12 +466,19 @@ test.describe('B9 tester: plate tabs (T199b)', () => {
       // T249 (D-040): from 1024 px the tools share the tab row, whatever the canvas width.
       const overlap = await strip.evaluate((el) => {
         const r = el.getBoundingClientRect();
-        const parent = el.parentElement;
-        if (!parent) return -1;
-        return [...parent.children]
-          .filter((c) => c !== el)
-          .map((c) => c.getBoundingClientRect())
-          .filter((b) => b.width > 0 && b.top < r.bottom - 1 && b.bottom > r.top + 1).length;
+        // The strip may sit in a wrapper (T287 unplaced chip); look up to 3 levels for the tools row.
+        let node: Element = el;
+        for (let i = 0; i < 3 && node.parentElement; i++) {
+          const parent: Element = node.parentElement;
+          const self = node;
+          const n = [...parent.children]
+            .filter((c) => c !== self)
+            .map((c) => c.getBoundingClientRect())
+            .filter((b) => b.width > 0 && b.top < r.bottom - 1 && b.bottom > r.top + 1).length;
+          if (n > 0) return n;
+          node = parent;
+        }
+        return 0;
       });
       expect(overlap).toBeGreaterThan(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(

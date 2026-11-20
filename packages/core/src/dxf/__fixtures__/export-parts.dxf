@@ -1,0 +1,452 @@
+  0
+SECTION
+  2
+HEADER
+  9
+$ACADVER
+  1
+AC1009
+  9
+$INSUNITS
+ 70
+4
+  9
+$MEASUREMENT
+ 70
+1
+  0
+ENDSEC
+  0
+SECTION
+  2
+TABLES
+  0
+TABLE
+  2
+LTYPE
+ 70
+1
+  0
+LTYPE
+  2
+CONTINUOUS
+ 70
+0
+  3
+Solid line
+ 72
+65
+ 73
+0
+ 40
+0
+  0
+ENDTAB
+  0
+TABLE
+  2
+LAYER
+ 70
+7
+  0
+LAYER
+  2
+0
+ 70
+0
+ 62
+7
+  6
+CONTINUOUS
+  0
+LAYER
+  2
+DIS_KESIM
+ 70
+0
+ 62
+7
+  6
+CONTINUOUS
+  0
+LAYER
+  2
+IC_KESIM
+ 70
+0
+ 62
+5
+  6
+CONTINUOUS
+  0
+LAYER
+  2
+CEP
+ 70
+0
+ 62
+3
+  6
+CONTINUOUS
+  0
+LAYER
+  2
+DELIK
+ 70
+0
+ 62
+1
+  6
+CONTINUOUS
+  0
+LAYER
+  2
+CIZGI
+ 70
+0
+ 62
+6
+  6
+CONTINUOUS
+  0
+LAYER
+  2
+PLAKA
+ 70
+0
+ 62
+8
+  6
+CONTINUOUS
+  0
+ENDTAB
+  0
+ENDSEC
+  0
+SECTION
+  2
+BLOCKS
+  0
+ENDSEC
+  0
+SECTION
+  2
+ENTITIES
+  0
+POLYLINE
+  8
+DIS_KESIM
+ 66
+1
+ 10
+0
+ 20
+0
+ 30
+0
+ 70
+1
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+20
+ 20
+0
+ 30
+0
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+580
+ 20
+0
+ 30
+0
+ 42
+0.414214
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+600
+ 20
+20
+ 30
+0
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+600
+ 20
+380
+ 30
+0
+ 42
+0.414214
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+580
+ 20
+400
+ 30
+0
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+20
+ 20
+400
+ 30
+0
+ 42
+0.414214
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+0
+ 20
+380
+ 30
+0
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+0
+ 20
+20
+ 30
+0
+ 42
+0.414214
+  0
+SEQEND
+  8
+DIS_KESIM
+  0
+POLYLINE
+  8
+IC_KESIM
+ 66
+1
+ 10
+0
+ 20
+0
+ 30
+0
+ 70
+1
+  0
+VERTEX
+  8
+IC_KESIM
+ 10
+200
+ 20
+180
+ 30
+0
+  0
+VERTEX
+  8
+IC_KESIM
+ 10
+200
+ 20
+220
+ 30
+0
+ 42
+-1
+  0
+VERTEX
+  8
+IC_KESIM
+ 10
+400
+ 20
+220
+ 30
+0
+  0
+VERTEX
+  8
+IC_KESIM
+ 10
+400
+ 20
+180
+ 30
+0
+ 42
+-1
+  0
+SEQEND
+  8
+IC_KESIM
+  0
+CIRCLE
+  8
+DELIK
+ 10
+50
+ 20
+50
+ 30
+0
+ 40
+4
+  0
+CIRCLE
+  8
+CEP
+ 10
+100
+ 20
+300
+ 30
+0
+ 40
+17.5
+  0
+CIRCLE
+  8
+CEP
+ 10
+500
+ 20
+300
+ 30
+0
+ 40
+30
+  0
+POLYLINE
+  8
+CIZGI
+ 66
+1
+ 10
+0
+ 20
+0
+ 30
+0
+ 70
+0
+  0
+VERTEX
+  8
+CIZGI
+ 10
+50
+ 20
+100
+ 30
+0
+ 42
+0.4
+  0
+VERTEX
+  8
+CIZGI
+ 10
+150
+ 20
+100
+ 30
+0
+  0
+VERTEX
+  8
+CIZGI
+ 10
+150
+ 20
+150
+ 30
+0
+  0
+SEQEND
+  8
+CIZGI
+  0
+POLYLINE
+  8
+DIS_KESIM
+ 66
+1
+ 10
+0
+ 20
+0
+ 30
+0
+ 70
+1
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+700
+ 20
+0
+ 30
+0
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+1000
+ 20
+0
+ 30
+0
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+1000
+ 20
+150
+ 30
+0
+ 42
+1
+  0
+VERTEX
+  8
+DIS_KESIM
+ 10
+700
+ 20
+150
+ 30
+0
+  0
+SEQEND
+  8
+DIS_KESIM
+  0
+ENDSEC
+  0
+EOF

@@ -1239,6 +1239,8 @@ export function CutListEditor({
   dxfText,
   holeTool,
   splitOff,
+  focusPart = null,
+  onFocusedPart,
 }: {
   t: Text;
   project: Project;
@@ -1271,6 +1273,10 @@ export function CutListEditor({
         onSplit: (rows: ReturnType<typeof cabinetRows>, target: SplitTarget, group: string) => void;
       }
     | undefined;
+  /** T287: "Parçalara git" from a blocking issue: the part whose name cell gets focus on open. */
+  focusPart?: string | null;
+  /** Called once the grid has taken `focusPart` (the wizard forgets the request). */
+  onFocusedPart?: () => void;
 }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [dxfOpen, setDxfOpen] = useState(0);
@@ -1396,6 +1402,22 @@ export function CutListEditor({
       if (pendingFocus.current === target) focusCell(row, col, tries - 1);
     });
   }
+
+  // T287: "Parçalara git" opens the grid on the row of the part a blocking issue names.
+  const focusOnOpen = useRef(focusPart);
+  useEffect(() => {
+    // Wait for the measured width: the grid picks its column layout from it and remounts the
+    // cells once, which would drop an earlier focus.
+    if (width === 0) return;
+    const id = focusOnOpen.current;
+    if (!id) return;
+    focusOnOpen.current = null;
+    const row = project.parts.findIndex((p) => p.id === id);
+    // The virtual rows mount after the grid measured itself: allow a few frames.
+    if (row >= 0) requestAnimationFrame(() => focusCell(row, 'name', 30));
+    onFocusedPart?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the grid has its width
+  }, [width]);
 
   useEffect(() => {
     if (focusNext.current) {

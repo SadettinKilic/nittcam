@@ -22,7 +22,10 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/projects/[i
     const scope = await companyScope();
     const row = await scope.projects.get(id);
     if (!row) return apiError({ error: 'not_found' }, 404);
-    return NextResponse.json(toDetail(row));
+    // A deleted project's direct link opens nothing (T178): 410 with the name for "Geri yükle".
+    if (row.deletedAt !== null) return apiError({ error: 'deleted', name: row.name }, 410);
+    const exports = await scope.exports.listForProject(id);
+    return NextResponse.json({ ...toDetail(row), exported: exports.length > 0 });
   } catch (err) {
     return handleError(err);
   }
@@ -48,6 +51,8 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/projects/[id
   if (!commands.ok) return commands.response;
   try {
     const scope = await companyScope();
+    const current = await scope.projects.get(id);
+    if (current?.deletedAt) return apiError({ error: 'deleted', name: current.name }, 410);
     const row = await scope.projects.save(id, {
       revision: base as number,
       data: body['project'],

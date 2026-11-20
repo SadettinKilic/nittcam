@@ -12,6 +12,7 @@ import cabinetDoors from '../schema/__fixtures__/cabinet-doors.json';
 import mixed from '../schema/__fixtures__/mixed.json';
 import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import { buildToolpath } from '../toolpath';
+import { cuttingMeta } from '../export/export';
 import { generateGcode } from './generate';
 import type { PostProfileVersion, PostResult } from './types';
 
@@ -194,6 +195,8 @@ export function goldenCases(): GoldenCase[] {
         projectName: fx.name,
         revision: fx.revision,
         fileStem: fx.id,
+        // T288: the same KESİM header line as exportNc (absent for default cutting settings).
+        ...cuttingMeta(project, profile),
         stock: {
           material: project.stock.material,
           thickness: project.stock.thickness,

@@ -50,6 +50,7 @@ export function toListItem(
     sheet: { width: defaultSheet(p).width, height: defaultSheet(p).height },
     pieces: p.parts.reduce((sum, part) => sum + part.qty, 0),
     lastExport: last ? toRecord(last, versions.get(last.machineProfileVersionId) ?? null) : null,
+    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
   };
 }
 
