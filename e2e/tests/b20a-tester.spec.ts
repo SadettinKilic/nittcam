@@ -56,7 +56,7 @@ for (const vp of [
     const download = page.getByTestId('export-download');
     await expect(download).toBeEnabled();
     const [d] = await Promise.all([page.waitForEvent('download'), download.click()]);
-    expect(d.suggestedFilename()).toBe('Mutfak_alt_dolap_60_S1.tap');
+    expect(d.suggestedFilename()).toMatch(/^Mutfak_alt_dolap_60_r\d+_S1\.tap$/); // T295
     const content = (await readFile(await d.path())).toString('utf8');
     expect(content).not.toContain('SABLON');
     const noScroll = await page.evaluate(

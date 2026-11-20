@@ -17,7 +17,7 @@ import {
   storedStage,
   type ExportSource,
 } from './exports';
-import { documentFileName } from './file-names';
+import { documentKind, exportFileName } from '../file-names';
 import { estimateCutSeconds } from './pdf/cut-time';
 import { renderLabelsPdf } from './pdf/labels-pdf';
 import { renderProjectPdf } from './pdf/project-pdf';
@@ -62,7 +62,7 @@ export async function buildDocument(
     const kind = type === 'dxf-dizilim' ? 'layout' : 'parts';
     return {
       kind: 'dxf',
-      name: documentFileName(name, revision, type.slice(4), 'dxf'),
+      name: exportFileName(name, revision, documentKind(type), 'dxf'),
       bytes: new TextEncoder().encode(writeProjectDxf(data, kind)),
     };
   }
@@ -70,14 +70,14 @@ export async function buildDocument(
     if (!labels) throw new Error('label settings missing');
     return {
       kind: 'pdf',
-      name: documentFileName(name, revision, 'etiket', 'pdf'),
+      name: exportFileName(name, revision, documentKind(type), 'pdf'),
       bytes: await renderLabelsPdf({ project: data, projectName: name, revision, ...labels }),
     };
   }
   const paper = type === 'pdf-a3' ? 'A3' : 'A4';
   return {
     kind: 'pdf',
-    name: documentFileName(name, revision, paper.toLowerCase(), 'pdf'),
+    name: exportFileName(name, revision, documentKind(type), 'pdf'),
     bytes: await renderProjectPdf({
       project: data,
       projectName: name,

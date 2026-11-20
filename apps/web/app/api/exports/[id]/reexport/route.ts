@@ -1,17 +1,13 @@
-import { hingeEdgeHandleParts, unverifiedTemplateNames } from '@nittcam/core';
 import { NextResponse } from 'next/server';
 import type { CompanyScope, ExportRow } from '@nittcam/db';
-import type {
-  ExportApiError,
-  ExportResponse,
-  ReexportChecklistRequired,
-} from '../../../../../lib/exports-api';
+import type { ExportApiError, ExportResponse } from '../../../../../lib/exports-api';
 import { parseLabelQuery } from '../../../../../lib/labels-query';
 import { companyScope, companyStorage } from '../../../../../lib/server/company';
 import { buildDocument, isDocumentType, storeDocument } from '../../../../../lib/server/documents';
 import { readSnapshot } from '../../../../../lib/server/export-snapshot';
 import {
   apiError,
+  checklistAsk,
   runExportOf,
   toRecord,
   type ExportSource,
@@ -66,7 +62,7 @@ export async function POST(request: Request, ctx: RouteContext<'/api/exports/[id
         );
       }
       // D-071: an NC re-export is a machine file like the first export: the same checklist first.
-      if (confirmed !== true) return NextResponse.json(askOf(run, source), { status: 428 });
+      if (confirmed !== true) return NextResponse.json(checklistAsk(run, source), { status: 428 });
       if (run.needsAcceptance && accept !== true) {
         return apiError({ error: 'acceptance_required' }, 428);
       }
@@ -121,20 +117,6 @@ async function sourceOf(
   return apiError({ error: 'snapshot_missing' }, 410);
 }
 
-/** What the NC dialog asks before a re-export (D-071). */
-function askOf(
-  run: Awaited<ReturnType<typeof runExportOf>>,
-  source: ExportSource,
-): ReexportChecklistRequired {
-  return {
-    error: 'checklist_required',
-    checklist: run.checklist,
-    needsAcceptance: run.needsAcceptance,
-    templates: unverifiedTemplateNames(source.data.parts),
-    hingeHandles: hingeEdgeHandleParts(source.data.parts),
-  };
-}
-
 /**
  * GET /api/exports/:id/reexport (D-071): the checklist of an NC re-export, without storing
  * anything (the dialog asks it before the POST). 200 with the `checklist_required` body; 422 when
@@ -160,7 +142,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/exports/[id
         422,
       );
     }
-    return NextResponse.json(askOf(run, source));
+    return NextResponse.json(checklistAsk(run, source));
   } catch (err) {
     console.error(err);
     return apiError({ error: 'server_error' }, 500);

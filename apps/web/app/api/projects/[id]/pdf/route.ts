@@ -2,7 +2,7 @@ import type { PaperSize } from '@nittcam/core';
 import { companyScope } from '../../../../../lib/server/company';
 import { apiError, sha256Hex } from '../../../../../lib/server/exports';
 import { estimateCutSeconds } from '../../../../../lib/server/pdf/cut-time';
-import { asciiStem } from '../../../../../lib/server/file-names';
+import { exportFileName } from '../../../../../lib/file-names';
 import { renderProjectPdf } from '../../../../../lib/server/pdf/project-pdf';
 import { UUID } from '../../../../../lib/server/projects';
 
@@ -38,7 +38,7 @@ export async function GET(request: Request, ctx: RouteContext<'/api/projects/[id
       paper,
       cutSeconds: await estimateCutSeconds(scope, project),
     });
-    const name = `${asciiStem(project.name, 'proje')}-r${revision}-${paper}.pdf`;
+    const name = exportFileName(project.name, revision, paper.toLowerCase(), 'pdf');
     const disposition = url.searchParams.get('download') === '1' ? 'attachment' : 'inline';
     return new Response(Buffer.from(bytes), {
       headers: {

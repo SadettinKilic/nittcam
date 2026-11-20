@@ -29,9 +29,10 @@ test('documents are stored and listed by type; history in view at 1440', async (
     await box.getByTestId(`export-doc-${type}`).click();
     downloads.push((await wait).suggestedFilename());
   }
-  expect(downloads[0]).toMatch(/-r\d+-dizilim\.dxf$/);
-  expect(downloads[1]).toMatch(/-r\d+-parcalar\.dxf$/);
-  expect(downloads[2]).toMatch(/-r\d+-a4\.pdf$/);
+  // T295: one pattern `<project>_r<revision>_<kind>.<ext>`.
+  expect(downloads[0]).toMatch(/_r\d+_dizilim\.dxf$/);
+  expect(downloads[1]).toMatch(/_r\d+_parcalar\.dxf$/);
+  expect(downloads[2]).toMatch(/_r\d+_a4\.pdf$/);
   await expect(rows).toHaveCount(3);
   await expect(page.getByTestId('export-history-kind')).toHaveText([
     e.kinds['pdf-a4'],

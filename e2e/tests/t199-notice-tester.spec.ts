@@ -86,15 +86,16 @@ test.describe('T199 tester: notice hierarchy', () => {
     const api = `/api/projects/${m?.[1]}/export`;
     const revision = Number(await page.getByTestId('save-status').getAttribute('data-revision'));
     expect(revision).toBeGreaterThan(0);
-    const refused = await page.request.post(api, { data: { revision } });
+    // T297 (D-072): the checklist is confirmed; the acceptance alone is refused here.
+    const refused = await page.request.post(api, { data: { revision, checklistConfirmed: true } });
     expect(refused.status()).toBe(428);
     const refusedFalse = await page.request.post(api, {
-      data: { revision, acceptUnverified: false },
+      data: { revision, acceptUnverified: false, checklistConfirmed: true },
     });
     expect(refusedFalse.status()).toBe(428);
     // A truthy non-boolean is a bad request, never an acceptance.
     const refusedString = await page.request.post(api, {
-      data: { revision, acceptUnverified: 'true' },
+      data: { revision, acceptUnverified: 'true', checklistConfirmed: true },
     });
     expect(refusedString.status()).toBe(400);
   });

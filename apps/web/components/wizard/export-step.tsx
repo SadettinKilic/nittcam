@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { hingeEdgeHandleParts, unverifiedTemplateNames, type Project } from '@nittcam/core';
-import { Button, Card, Checkbox, IconButton, Tooltip, notify } from '@nittcam/ui';
+import { Badge, Button, Card, Checkbox, IconButton, Tooltip, notify } from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
 import { CircleAlert, CircleCheck, Copy, Download, FileCode, ShieldAlert } from 'lucide-react';
 import { focusRing } from '../page/page-header';
@@ -31,6 +31,7 @@ import {
 } from '../../lib/exports-api';
 import type { SaveState } from '../../lib/autosave';
 import { getMessages, type Messages } from '../../lib/messages';
+import { currentControlOf, isOldRevision } from '../../lib/export-current';
 import { ExportDocuments } from './export-documents';
 import { ReexportButton } from './reexport-button';
 import { ExportChecklist } from './export-checklist';
@@ -217,6 +218,8 @@ export function ExportStep({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           revision,
+          // D-072: `downloadBlocker` let the click through only with the checklist done.
+          checklistConfirmed: true,
           ...(preview.needsAcceptance ? { acceptUnverified: f.accepted } : {}),
         }),
       });
@@ -523,6 +526,7 @@ export function ExportStep({
           corners={corners}
           states={states}
           rows={history?.key === historyKey ? history.rows : undefined}
+          currentRevision={revision}
           onChanged={refreshHistory}
         />
       </div>
@@ -739,11 +743,29 @@ export function kindLabel(t: Text, r: Pick<ExportRecord, 'kind' | 'post'>): stri
 const historyFeatures = tableFeatures({});
 const historyColumn = createColumnHelper<typeof historyFeatures, ExportRecord>();
 
+/** T296: scrolls to the current-revision control of a history row and focuses it. */
+function focusCurrentControl(r: ExportRecord) {
+  const testId = currentControlOf(r);
+  // NC without a checklist on screen (still checking, or a failed check): the step's status.
+  const box =
+    document.querySelector<HTMLElement>(`[data-testid="${testId}"]`) ??
+    (r.kind === 'nc' ? document.querySelector<HTMLElement>('[data-testid="export-status"]') : null);
+  if (!box) return;
+  const target =
+    box.matches('button, a, input') || box.tabIndex >= 0
+      ? box
+      : (box.querySelector<HTMLElement>('input:not(:checked):not(:disabled), button, a') ??
+        box.querySelector<HTMLElement>('input'));
+  box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  target?.focus({ preventScroll: true });
+}
+
 function History({
   t,
   corners,
   states,
   rows,
+  currentRevision,
   onChanged,
 }: {
   t: Text;
@@ -751,6 +773,8 @@ function History({
   states: States;
   /** undefined = loading, null = error. */
   rows: ExportRecord[] | null | undefined;
+  /** T296: the project's saved revision; older rows get the "eski revizyon" badge. */
+  currentRevision: number;
   /** T179: a re-export stored or found a record; the history reloads. */
   onChanged: () => void;
 }) {
@@ -766,7 +790,23 @@ function History({
         }),
         historyColumn.accessor('revision', {
           header: c.revision,
-          cell: (info) => fill(t.historyRevision, { n: info.getValue() }),
+          cell: (info) => {
+            const n = info.getValue();
+            return (
+              <span className="flex flex-col items-start gap-1">
+                <span className="whitespace-nowrap">{fill(t.historyRevision, { n })}</span>
+                {isOldRevision(n, currentRevision) ? (
+                  <Badge
+                    variant="warning"
+                    data-testid="export-history-old"
+                    title={fill(t.historyOldTitle, { old: n, current: currentRevision })}
+                  >
+                    {t.historyOld}
+                  </Badge>
+                ) : null}
+              </span>
+            );
+          },
         }),
         historyColumn.display({
           id: 'kind',
@@ -848,17 +888,30 @@ function History({
           id: 'actions',
           header: c.actions,
           cell: (info) => (
-            <ReexportButton
-              t={t}
-              corners={corners}
-              record={info.row.original}
-              label={kindLabel(t, info.row.original)}
-              onDone={onChanged}
-            />
+            <span className="flex flex-col items-start gap-1">
+              <ReexportButton
+                t={t}
+                corners={corners}
+                record={info.row.original}
+                label={kindLabel(t, info.row.original)}
+                onDone={onChanged}
+              />
+              {isOldRevision(info.row.original.revision, currentRevision) ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="export-history-current"
+                  aria-label={`${t.historyCurrent}: ${kindLabel(t, info.row.original)}`}
+                  onClick={() => focusCurrentControl(info.row.original)}
+                >
+                  {t.historyCurrent}
+                </Button>
+              ) : null}
+            </span>
           ),
         }),
       ]),
-    [c, t, corners, states, onChanged],
+    [c, t, corners, states, currentRevision, onChanged],
   );
   const table = useTable({
     features: historyFeatures,

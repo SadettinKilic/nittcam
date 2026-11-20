@@ -1471,6 +1471,9 @@
     "lastExport": "Rev. {revision} · {date}",
     "noExport": "Henüz yok",
     "downloadLast": "İndir: {name}",
+    "oldRevision": "eski revizyon",
+    "oldRevisionTitle": "Son dosya Rev. {old}, proje şimdi Rev. {current}",
+    "regenerate": "Güncel revizyonla üret",
     "emptyText": "Kesim listesini yapıştırın, plakaya dizin ve G-code alın. İlk projeniz birkaç dakika sürer.",
     "tabs": {
       "projects": "Projeler",
@@ -1826,6 +1829,9 @@
         "actions": "İşlem"
       },
       "historyRevision": "Rev. {n}",
+      "historyOld": "eski revizyon",
+      "historyOldTitle": "Bu dosya Rev. {old}, proje şimdi Rev. {current}",
+      "historyCurrent": "Güncel revizyonla üret",
       "historyProfile": "Sürüm {n}",
       "historyAccepted": "air cut kabul edildi",
       "redownload": "Tekrar indir: {name}",

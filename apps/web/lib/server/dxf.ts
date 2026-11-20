@@ -1,7 +1,7 @@
 import type { DxfExportKind } from '@nittcam/core';
-import { documentFileName } from './file-names';
+import { exportFileName } from '../file-names';
 
-/** `<name>-r<rev>-dizilim.dxf` or `<name>-r<rev>-parcalar.dxf` (T175). */
+/** `<name>_r<rev>_dizilim.dxf` or `<name>_r<rev>_parcalar.dxf` (T175, T295). */
 export function dxfFileName(name: string, revision: number, kind: DxfExportKind): string {
-  return documentFileName(name, revision, kind === 'layout' ? 'dizilim' : 'parcalar', 'dxf');
+  return exportFileName(name, revision, kind === 'layout' ? 'dizilim' : 'parcalar', 'dxf');
 }

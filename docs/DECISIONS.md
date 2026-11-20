@@ -625,6 +625,20 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - The toolpath checks the size it really uses (project > material set > built-in): a small part or small slug held by tabs below the bounds is the error `SMALL_PART_TAB_TOO_SMALL` (NC blocked on Simülasyon and Dışa aktar); a large part only gets the warning `TABS_TOO_SMALL`. Old and hand-edited projects and small material-set values are caught the same way. Small parts on a thin skin ("Köprü: Kapalı") use no tabs and are not affected. `options.tabs` sizes (the low-level geometry hook of the property tests, no UI or command reaches it) are not checked.
 - Tab findings link to the Kesim ayarları panel; the "no room for 2 tabs" text names the panel's real choice "Köprü: Kapalı" instead of the old "Son pasoda ince tabaka bırak".
 
+## D-072 Main NC export asks the checklist on the server too (2026-11-20, PO decision, Dev 1, T297)
+- `POST /api/projects/:id/export` stores NC files only with `checklistConfirmed: true` (the operator ticked the export step's pre-export checklist: origin, tools, air cut, tool changes, unverified templates). Without it: 428 `checklist_required` with the checklist data (`checklist`, `needsAcceptance`, `templates`, `hingeHandles`; the same body as the re-export, D-071), nothing stored; a non-boolean is 400.
+- Order: 409 stale revision → 422 failed checks → 428 `checklist_required` → 428 `acceptance_required` (§7.2 rule 10; the checklist is never the acceptance). The browser still blocks the button until the checklist is done (`downloadBlocker`); the server check is the guard for any other client. NC gate not relaxed, goldens unchanged.
+
+## D-073 One file-name pattern for every export (2026-11-20, Dev 1, T295)
+- `<project>_r<revision>_<kind>.<ext>`, ASCII, `_` between fields (`lib/file-names.ts`, used by the server and the simulation worker). Project part: Turkish letters transliterated, anything else becomes `_`, at most 60 characters, fallback `proje`.
+- NC: `<project>_r<revision>_S<sheet>[_T<tool>][_P<part>].<ext>`; the post adds the markers with `revisionInFileName` (core option, default off so goldens and their names stay as they are). Only the project part is shortened when a controller limits the length; the revision and sheet markers stay whole. The G-code header keeps the real project name.
+- Documents: kind `dizilim`, `parcalar`, `a4`, `a3`, `etiket`. Zip bundle: `<project>_r<revision>_nc.zip` or the document kind.
+- Records stored before T295 keep their old names. Re-exporting such an NC record gives new names, so a new record (not an overwrite), the same as a changed verification state (D-066).
+
+## D-074 Old-revision files are marked, regenerate goes to the current control (2026-11-20, Dev 1, T296)
+- A file is "eski revizyon" when its revision is lower than the project's saved revision (`lib/export-current.ts`). Projeler "Son dışa aktarma" shows the warning badge (title: file and project revision) next to the still working download, plus "Güncel revizyonla üret" → the project's Dışa aktar step (`?adim=export`).
+- Export history: the badge under "Rev. n" and a "Güncel revizyonla üret" button under "Yeniden üret". It does not store anything by itself: it scrolls to and focuses the control that makes the file for the current revision (NC → the pre-export checklist, D-071/D-072; documents → their "İndir"; labels → the label card's "İndir", which keeps the label settings). "Yeniden üret" stays the byte-identical copy of the old revision (D-066).
+
 ## D-082 CTO review #12 triage (2026-11-20, PO)
 - M8 is closed when B41 (#139) lands and T298 + T301 are done. Must-fix A → T298 (thin-skin bounds, safety), B → T299, gap E1 → T300: batch B47 on Dev 2 before polish P3. E2 → T301, E3 → T302, T295/T296 follow-ups → T303: batch B48 on Dev 1 after B42. 14 polish items into P2–P5.
 - Thin-skin bounds proposal: ≥ 0,2 mm and ≤ thickness − 1 mm (final numbers by dev + tester, tuned in the field test).

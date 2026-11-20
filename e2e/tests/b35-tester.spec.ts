@@ -56,7 +56,7 @@ test('B35 tester: DXF download names, exported project opens on Dışa aktar', a
 
   // An exported project opens on Dışa aktar (T290).
   const exp = await request.post(`/api/projects/${id}/export`, {
-    data: { revision: cur.revision, acceptUnverified: true },
+    data: { revision: cur.revision, acceptUnverified: true, checklistConfirmed: true },
   });
   expect(exp.status()).toBeLessThan(300);
   await page.goto(`/projeler/${id}`);
