@@ -489,7 +489,8 @@
       "grainHeader": "Damar",
       "band": "Bant",
       "note": "Not",
-      "group": "Grup"
+      "group": "Grup",
+      "cut": "Kesim"
     },
     "edge": {
       "top": "Üst",
@@ -821,6 +822,11 @@
     },
     "issuesPanel": {
       "label": "Uyarılar"
+    },
+    "cutSizeHint": "Kesim ölçüsü: bitmiş ölçüden bantlı her kenarın bant kalınlığı düşüldü.",
+    "dimensionMode": {
+      "label": "Bitmiş ölçü",
+      "hint": "Açıkken girilen en ve boy bitmiş ölçüdür: bant kalınlığı kesim ölçüsünden düşülür. Dizilim ve takım yolu kesim ölçüsünü kullanır."
     }
   },
   "layout": {
@@ -1731,7 +1737,10 @@
     "density": {
       "comfortable": "Rahat (varsayılan, 40 px)",
       "compact": "Kompakt (data-density=\"compact\", 32 / 36 px)",
-      "rows": ["Yan panel", "Raf"]
+      "rows": [
+        "Yan panel",
+        "Raf"
+      ]
     },
     "colorGroups": {
       "surfaces": "Zemin ve yüzey",
@@ -1899,7 +1908,12 @@
       "placeholder": "Komut ara…",
       "empty": "Sonuç yok.",
       "group": "Sayfalar",
-      "items": ["Ana sayfa", "Projeler", "Makineler", "Şablonlar"]
+      "items": [
+        "Ana sayfa",
+        "Projeler",
+        "Makineler",
+        "Şablonlar"
+      ]
     }
   },
   "editor": {

@@ -15,6 +15,7 @@ import {
   shapeOption,
 } from './shape';
 import type { Rect } from './types';
+import { toCutSizes } from '../schema/cut-size';
 
 /** A part copy on a sheet. */
 export interface CopyRef {
@@ -60,7 +61,9 @@ export function rectClearance(a: Rect, b: Rect): number {
 }
 
 /** Part shapes by id: bounding-box size at rotation 0 plus the outline for any other angle. */
-export function partSizes(project: Project): Map<string, PartShape> {
+export function partSizes(entered: Project): Map<string, PartShape> {
+  // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
+  const project = toCutSizes(entered);
   return new Map(project.parts.map((p) => [p.id, partShape(p)]));
 }
 

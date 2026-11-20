@@ -56,6 +56,7 @@ import {
   setStockSheets,
   setThickness,
   setThinSkin,
+  setDimensionMode,
 } from './plate';
 import {
   commandContextSchema,
@@ -79,6 +80,7 @@ export const COMMANDS = {
   setSheetSize,
   setStockSheets,
   setGrain,
+  setDimensionMode,
   addPart,
   drawPart,
   setSegmentBulge,

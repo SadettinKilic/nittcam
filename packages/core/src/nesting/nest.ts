@@ -52,6 +52,7 @@ import {
   type SheetStats,
   type UnplacedPart,
 } from './types';
+import { toCutSizes } from '../schema/cut-size';
 
 /** Orderings tried, in this order (earlier wins ties). */
 export const PART_ORDERINGS: readonly PartOrdering[] = [
@@ -778,9 +779,11 @@ export interface NestProjectOptions {
  * sheet, trailing sheets without a locked placement dropped.
  */
 export function nestingInputFromProject(
-  project: Project,
+  entered: Project,
   options: NestProjectOptions,
 ): NestingInput {
+  // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
+  const project = toCutSizes(entered);
   const locked = project.layout.sheets.map((sheet) => sheet.placements.filter((p) => p.locked));
   while (locked.length > 0 && locked[locked.length - 1]?.length === 0) locked.pop();
   // T164: several stock sizes only when the project lists them (absent = the single-size path).
@@ -881,7 +884,9 @@ export interface SizeSummary {
 }
 
 /** Sheet count, waste % and unplaced copies of a project's current layout. Pure. */
-export function summarizeLayout(project: Project): LayoutSummary {
+export function summarizeLayout(entered: Project): LayoutSummary {
+  // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
+  const project = toCutSizes(entered);
   const sizes = new Map(project.parts.map((p) => [p.id, partShape(p)]));
   const sheets = project.layout.sheets.map((sh, i) =>
     sheetStats(i, sh.placements, sheetSizeOf(project, i), sizes),

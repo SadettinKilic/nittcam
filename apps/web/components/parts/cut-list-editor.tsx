@@ -2,7 +2,10 @@
 
 import {
   cutListToCsv,
+  cutSize,
+  hasBandDeduction,
   partBoxSize,
+  toCutSizes,
   type CutListPartInput,
   type Part,
   type Project,
@@ -266,6 +269,24 @@ function SizeCell({
   );
 }
 
+/** Read-only cut size of a part in "finished" mode (T169): finished − band thickness per edge. */
+function CutSizeCell({ ctx, part }: { ctx: GridContext; part: Part }) {
+  const deducted = hasBandDeduction(part, 'finished');
+  const { w, h } =
+    part.kind === 'rect' ? cutSize(part.params, part.edgeBand, 'finished') : partBoxSize(part);
+  return (
+    <span
+      className={`flex h-9 items-center justify-end px-2 font-mono text-sm tabular-nums ${deducted ? 'text-fg' : 'text-fg-muted'}`}
+      title={deducted ? ctx.t.cutSizeHint : undefined}
+      data-testid="cell-cut"
+      data-w={w}
+      data-h={h}
+    >
+      {formatInput(w)} × {formatInput(h)}
+    </span>
+  );
+}
+
 function QtyCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
   const { t } = ctx;
   return (
@@ -461,7 +482,13 @@ function IndexCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: numb
  * 768 px screen without a sideways scroll: short W / H headers, no grain checkbox, a glyph-only
  * band cell.
  */
-function buildColumns(t: Text, wideBands: boolean, narrow: boolean, ctx: { current: GridContext }) {
+function buildColumns(
+  t: Text,
+  wideBands: boolean,
+  narrow: boolean,
+  ctx: { current: GridContext },
+  finished = false,
+) {
   const c = () => ctx.current;
   const size = (normal: number, small: number) => (narrow ? small : normal);
   return column.columns([
@@ -497,6 +524,18 @@ function buildColumns(t: Text, wideBands: boolean, narrow: boolean, ctx: { curre
         <SizeCell ctx={c()} part={info.row.original} row={info.row.index} field="h" />
       ),
     }),
+    // T169: in "finished" mode the cut size (finished − band per edge) is shown next to W × H.
+    ...(finished
+      ? [
+          column.display({
+            id: 'cut',
+            header: t.columns.cut,
+            size: size(96, 72),
+            minSize: size(80, 64),
+            cell: (info) => <CutSizeCell ctx={c()} part={info.row.original} />,
+          }),
+        ]
+      : []),
     column.display({
       id: 'qty',
       header: t.columns.qty,
@@ -585,7 +624,7 @@ const PRESSED =
   'border-accent-border bg-accent-subtle text-accent-text hover:bg-accent-subtle hover:text-accent-text';
 
 /** Numeric columns: header and content right-aligned. */
-const NUMERIC = new Set(['index', 'w', 'h', 'qty']);
+const NUMERIC = new Set(['index', 'w', 'h', 'cut', 'qty']);
 
 /** Width of an element, live (ResizeObserver). */
 function useWidth(ref: { current: HTMLElement | null }): number {
@@ -823,6 +862,7 @@ function Grid({
   items,
   ctx,
   wideBands,
+  finished = false,
   narrow,
   scrollRef,
   scrollToRow,
@@ -839,6 +879,8 @@ function Grid({
   ctx: { current: GridContext };
   wideBands: boolean;
   narrow: boolean;
+  /** T169: entered sizes are finished sizes; adds the read-only cut size column. */
+  finished?: boolean;
   scrollRef: { current: HTMLDivElement | null };
   /** Scrolls a part (project index) into view. */
   scrollToRow: { current: ((row: number) => void) | null };
@@ -851,8 +893,8 @@ function Grid({
   onTotalSize?: (px: number) => void;
 }) {
   const columns = useMemo(
-    () => buildColumns(t, wideBands, narrow, ctx),
-    [t, wideBands, narrow, ctx],
+    () => buildColumns(t, wideBands, narrow, ctx, finished),
+    [t, wideBands, narrow, ctx, finished],
   );
   const table = useTable({
     features,
@@ -1276,7 +1318,8 @@ export function CutListEditor({
   }
 
   const parts = project.parts;
-  const summary = cutListSummary(project);
+  const summary = cutListSummary(toCutSizes(project));
+  const finished = project.settings.dimensionMode === 'finished';
   const cols = useMemo(() => navColumns(wideBands, !narrow), [wideBands, narrow]);
 
   // T123: the view (search, sort, filter, groups). It never changes the project order.
@@ -1960,6 +2003,7 @@ export function CutListEditor({
                 items={view.items}
                 ctx={ctx}
                 wideBands={wideBands}
+                finished={finished}
                 narrow={narrow}
                 scrollRef={scrollRef}
                 scrollToRow={scrollToRow}
@@ -1993,6 +2037,18 @@ export function CutListEditor({
               </span>
             </Tooltip>
             <span className="flex-1" />
+            <Tooltip content={t.dimensionMode.hint}>
+              <label className="inline-flex cursor-pointer items-center gap-1.5 text-fg">
+                <Checkbox
+                  checked={finished}
+                  onCheckedChange={(v) =>
+                    run('setDimensionMode', { mode: v === true ? 'finished' : 'cut' })
+                  }
+                  data-testid="dimension-mode"
+                />
+                {t.dimensionMode.label}
+              </label>
+            </Tooltip>
             <Tooltip content={t.shortcuts}>
               <IconButton
                 size="sm"
