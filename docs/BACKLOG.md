@@ -1276,18 +1276,18 @@ Acceptance:
 - [x] own writer: layout (sheets side by side) and single parts; layers per operation (DIS_KESIM, IC_KESIM, CEP, DELIK, CIZGI); arcs as bulges; round-trip test with our importer (= same contours within EPS)
 Tester focus: round trip; opens in a free viewer (LibreCAD) without errors (manual screenshot).
 
-### T176 Export step: all formats, records, history   [status: todo]
+### T176 Export step: all formats, records, history   [status: review]
 Spec: §6.6 · Depends: T173, T174, T175
 > Note from CTO review #4 (2026-11-19): at 1440 the left column is half empty while the right one scrolls and the history table is below the fold; when this step is rebuilt, balance the two columns so the history is visible without scrolling.
 Acceptance:
-- [ ] export step offers NC, DXF, PDF, labels; each regenerated on the server and stored in `exports` with type, hash, revision; history shows all types; NC rules unchanged (checks, acceptance)
-- [ ] (CTO #10 E4) more than one file: "Tümünü indir (.zip)" in one click (same names and bytes as single downloads), `OKU.txt` maps sheet → file; single downloads stay
+- [x] export step offers NC, DXF, PDF, labels; each regenerated on the server and stored in `exports` with type, hash, revision; history shows all types; NC rules unchanged (checks, acceptance)
+- [x] (CTO #10 E4) more than one file: "Tümünü indir (.zip)" in one click (same names and bytes as single downloads), `OKU.txt` maps sheet → file; single downloads stay
 Tester focus: NC gate cannot be bypassed by the new UI; hashes stable; history entries per type.
 
-### T177 Project report card   [status: todo]
+### T177 Project report card   [status: review]
 Spec: §6.6 · Depends: T176
 Acceptance:
-- [ ] report summary (waste %, area, sheets, estimated time, part count) on the project page and as data for the home page
+- [x] report summary (waste %, area, sheets, estimated time, part count) on the project page and as data for the home page
 Tester focus: values equal the PDF report values.
 
 ### Batch B27: T178–T180 (projects and home)
@@ -1300,11 +1300,11 @@ Acceptance:
 - [x] table with name, status, machine, material, date; search (Turkish folding), filters (status, machine, material), sort, pagination; copy project (new id, revision 1, exports not copied); soft delete with undo toast
 Tester focus: e2e search/filter/copy; deleted project hidden but restorable; tenancy unchanged.
 
-### T179 Project status flow and re-export   [status: todo]
+### T179 Project status flow and re-export   [status: review]
 Spec: §3.4, §6.6 · Depends: T176, T178
 Acceptance:
-- [ ] taslak → üretildi (after a successful NC export) → tamamlandı (manual); re-export from history regenerates from that revision
-- [ ] (CTO #10 E6, D-060) the export record stores the machine verification state; re-export with the same state gives the same bytes; if the state changed, a new record "doğrulama durumu değişti" is added instead of overwriting
+- [x] taslak → üretildi (after a successful NC export) → tamamlandı (manual); re-export from history regenerates from that revision
+- [x] (CTO #10 E6, D-060) the export record stores the machine verification state; re-export with the same state gives the same bytes; if the state changed, a new record "doğrulama durumu değişti" is added instead of overwriting
 Tester focus: status transitions; re-export of an old revision gives the same hash as before.
 
 ### T180 Ana sayfa with real data   [status: todo]

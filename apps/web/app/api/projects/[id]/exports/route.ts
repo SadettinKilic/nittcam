@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { companyScope } from '../../../../../lib/server/company';
-import { apiError, toRecord, versionNumbers } from '../../../../../lib/server/exports';
+import {
+  apiError,
+  stateChangedIds,
+  toRecord,
+  versionNumbers,
+} from '../../../../../lib/server/exports';
 import { UUID } from '../../../../../lib/server/projects';
 import type { ExportRecord } from '../../../../../lib/exports-api';
 
@@ -18,9 +23,11 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/projects/[i
       scope.exports.listForProject(id),
       versionNumbers(scope),
     ]);
-    const body: ExportRecord[] = rows.map((r) =>
-      toRecord(r, versions.get(r.machineProfileVersionId) ?? null),
-    );
+    const changed = stateChangedIds(rows);
+    const body: ExportRecord[] = rows.map((r) => ({
+      ...toRecord(r, versions.get(r.machineProfileVersionId) ?? null),
+      stateChanged: changed.has(r.id),
+    }));
     return NextResponse.json(body);
   } catch (err) {
     console.error(err);

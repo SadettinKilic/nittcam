@@ -401,7 +401,7 @@ const GRID: Record<StepKey, string> = {
   parcalar: 'xl:grid-cols-[17rem_minmax(0,1fr)]',
   dizilim: 'xl:grid-cols-[19rem_minmax(0,1fr)]',
   simulasyon: '2xl:grid-cols-[17rem_minmax(0,1fr)]',
-  export: 'lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]',
+  export: 'lg:grid-cols-2',
 };
 
 /** On narrow screens the main work area comes first; warnings follow it. */

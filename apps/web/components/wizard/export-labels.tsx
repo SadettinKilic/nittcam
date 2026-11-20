@@ -2,6 +2,7 @@
 
 import { labelGridSchema, labelOffsetSchema, type LabelGrid } from '@nittcam/core';
 import {
+  Button,
   buttonVariants,
   FormField,
   NumberInput,
@@ -11,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@nittcam/ui';
-import { Tags } from 'lucide-react';
+import { Download, Tags } from 'lucide-react';
 import { useState } from 'react';
 import { fill } from '../../lib/draft-project';
 import {
@@ -54,6 +55,8 @@ export function ExportLabels({
   revision,
   pieces,
   ready,
+  onDownload,
+  busy = false,
 }: {
   t: Text;
   projectId: string | null;
@@ -61,6 +64,9 @@ export function ExportLabels({
   /** Total pieces = labels. */
   pieces: number;
   ready: boolean;
+  /** T176: stores the label sheet as an export record and downloads it (query of the settings). */
+  onDownload?: (labels: string) => void;
+  busy?: boolean;
 }) {
   // The export step renders on the client only (after the project loaded), so storage is readable.
   const [settings, setSettings] = useState<LabelSettings>(loadLabelSettings);
@@ -162,6 +168,20 @@ export function ExportLabels({
             <Tags aria-hidden />
             {t.open}
           </a>
+          {onDownload ? (
+            <Button
+              variant="outline"
+              size="sm"
+              loading={busy}
+              data-testid="export-labels-download"
+              // D-040: the footer has the one primary "İndir"; this one is named for its document.
+              aria-label={`${t.download}: ${t.title}`}
+              onClick={() => onDownload(labelQuery(revision, settings))}
+            >
+              <Download aria-hidden />
+              {t.download}
+            </Button>
+          ) : null}
           <span className="text-xs text-fg-muted" data-testid="labels-count">
             {fill(t.count, { count: pieces, pages })}
           </span>
