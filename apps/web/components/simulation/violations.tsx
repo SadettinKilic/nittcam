@@ -60,8 +60,10 @@ export function findings(result: SimulateResult): Finding[] {
   const ex = result.export;
   const cutOuts = new Set<string>();
   for (const i of ex.toolpathIssues) {
-    // T270: one line per cut-out, not one per copy of the part.
-    if (i.inner !== undefined || i.hole !== undefined || i.openLine !== undefined) {
+    // T270: one line per cut-out, not one per copy of the part; B44: a part warning (e.g.
+    // "Köprü sayısı azaltıldı") once per part too, now that it names the part.
+    const perPart = i.severity === 'warning' && i.partId !== null;
+    if (i.inner !== undefined || i.hole !== undefined || i.openLine !== undefined || perPart) {
       const key = `${i.code}/${i.partId ?? ''}/${i.inner ?? ''}/${i.hole ?? ''}/${i.openLine ?? ''}`;
       if (cutOuts.has(key)) continue;
       cutOuts.add(key);
@@ -281,8 +283,17 @@ export function Violations({
 }
 
 /** Warnings of a passing export (shown under the summary). */
-export function WarningList({ t, items }: { t: SimText; items: readonly Finding[] }) {
-  return <FindingList t={t} items={items} />;
+export function WarningList({
+  t,
+  items,
+  links,
+}: {
+  t: SimText;
+  items: readonly Finding[];
+  /** B44: names the part of a part warning ("Kapak: Köprü sayısı azaltıldı"). */
+  links?: PartLinks;
+}) {
+  return <FindingList t={t} items={items} {...(links ? { links } : {})} />;
 }
 
 /** T287: errors next to a finished simulation (the export is still locked), with their places. */

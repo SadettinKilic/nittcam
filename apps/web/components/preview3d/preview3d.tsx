@@ -428,14 +428,14 @@ export function Preview3D({
             </Button>
           </Tooltip>
         ) : null}
-        {/* T161: the tools wrap before the preset group (bottom right, ~13 rem) so they never
+        {/* T161: the tools wrap before the preset group (bottom right, ~15 rem with "Tümünü göster", B44) so they never
             cover it; the simulation adds Takım yolu and reached it at 1440. */}
         <div
           role="group"
           aria-label={t.toolsLabel}
           data-testid="preview3d-tools"
           hidden={showAssembly}
-          className="pointer-events-auto flex max-w-[calc(100cqw-13.5rem)] flex-wrap items-center gap-1 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm"
+          className="pointer-events-auto flex max-w-[calc(100cqw_-_15.5rem)] flex-wrap items-center gap-1 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm"
         >
           <Tooltip content={t.moveSheetTip}>
             <Button

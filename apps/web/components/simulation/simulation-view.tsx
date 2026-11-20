@@ -499,7 +499,8 @@ function Player({
   const narrow = useMediaQuery('(max-width: 639px)', false);
   // Own-row tabs on phones push the zoom toolbar to a second row (T199b).
   const insets = useMemo<FitInsets>(
-    () => ({ top: hasTabs ? (narrow ? 88 : 44) : 0, bottom: 36 }),
+    // B44: the zoom toolbar floats top right even without plate tabs, so the band stays.
+    () => ({ top: hasTabs && narrow ? 88 : 44, bottom: 36 }),
     [hasTabs, narrow],
   );
   const height = size.h;
