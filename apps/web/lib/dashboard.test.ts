@@ -1,6 +1,15 @@
 import { summarizeLayout, type Part, type Project, type VerificationState } from '@nittcam/core';
 import { describe, expect, it } from 'vitest';
-import { THUMB_MAX_PARTS, dashboardStats, layoutThumb, machinesByUrgency } from './dashboard';
+import {
+  THUMB_MAX_PARTS,
+  WASTE_MAX_BARS,
+  dashboardStats,
+  isRecentWorthy,
+  layoutThumb,
+  machinesByUrgency,
+  wasteSummary,
+  type WasteInput,
+} from './dashboard';
 import { newProject } from './draft-project';
 import { STATE_TONE, stepStatuses } from './machine-state';
 
@@ -123,6 +132,7 @@ describe('layoutThumb', () => {
     const thumb = layoutThumb(withLayout());
     expect(thumb).toEqual({
       sheet: { width: 2800, height: 2070 },
+      material: withLayout().stock.material,
       sheets: 2,
       parts: [
         { x: 10, y: 10, w: 600, h: 400, outline: null },
@@ -177,5 +187,59 @@ describe('machine state helpers', () => {
       const current = stepStatuses(s).filter((x) => x === 'current').length;
       expect(current).toBe(s === 'verified' ? 0 : 1);
     }
+  });
+});
+
+describe('wasteSummary (T180)', () => {
+  const row = (
+    id: string,
+    days: number,
+    sheetCount: number,
+    wasteAreaM2: number,
+    sheetAreaM2: number,
+  ): WasteInput => ({
+    id,
+    name: id,
+    updatedAt: new Date(daysAgo(days)),
+    summary: {
+      sheetCount,
+      wasteAreaM2,
+      sheetAreaM2,
+      wastePercent: sheetAreaM2 > 0 ? (100 * wasteAreaM2) / sheetAreaM2 : 0,
+    },
+  });
+
+  it('is null without a layout in the last 30 days', () => {
+    expect(wasteSummary([], NOW)).toBeNull();
+    expect(wasteSummary([row('old', 31, 1, 1, 5), row('empty', 1, 0, 0, 0)], NOW)).toBeNull();
+  });
+
+  it('sums the window, area-weighted, newest first', () => {
+    const s = wasteSummary(
+      [row('a', 10, 1, 1, 5.796), row('b', 2, 3, 6, 17.388), row('old', 40, 9, 9, 9)],
+      NOW,
+    );
+    expect(s?.projects).toBe(2);
+    expect(s?.sheets).toBe(4);
+    expect(s?.wasteAreaM2).toBeCloseTo(7);
+    expect(s?.sheetAreaM2).toBeCloseTo(23.184);
+    expect(s?.wastePercent).toBeCloseTo((100 * 7) / 23.184);
+    expect(s?.bars.map((b) => b.id)).toEqual(['b', 'a']);
+  });
+
+  it('caps the bars but keeps every project in the totals', () => {
+    const rows = Array.from({ length: WASTE_MAX_BARS + 3 }, (_, i) => row(`p${i}`, i + 1, 1, 1, 4));
+    const s = wasteSummary(rows, NOW);
+    expect(s?.bars).toHaveLength(WASTE_MAX_BARS);
+    expect(s?.projects).toBe(WASTE_MAX_BARS + 3);
+    expect(s?.wastePercent).toBeCloseTo(25);
+  });
+});
+
+describe('isRecentWorthy (P4)', () => {
+  it('skips untouched empty drafts only', () => {
+    expect(isRecentWorthy({ status: 'draft', data: { parts: [] } })).toBe(false);
+    expect(isRecentWorthy({ status: 'draft', data: { parts: [1] } })).toBe(true);
+    expect(isRecentWorthy({ status: 'produced', data: { parts: [] } })).toBe(true);
   });
 });

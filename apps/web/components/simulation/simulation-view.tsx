@@ -1,5 +1,6 @@
 'use client';
 
+import { cuttingSummary } from './cutting-settings';
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 import {
   Button,
@@ -290,6 +291,10 @@ export function SimulationView({
           summary={result.summary}
           program={result.export.tools}
           templateNames={unverifiedTemplateNames(project.parts)}
+          cutting={{
+            line: cuttingSummary(t.cutting, project, machine?.pv.profile ?? null),
+            edit: t.cutting.summaryEdit,
+          }}
           checksOk={errors.length === 0}
           errorCount={errors.length}
           warnings={warnings}

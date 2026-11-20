@@ -92,6 +92,10 @@ async function mockExport(page: Page): Promise<void> {
             ...file,
             downloadUrl: `/api/exports/e1/files/${file.name}`,
           })),
+          // T176, T179 (B37): document type, zip link, verification-state change.
+          kind: 'nc',
+          zipUrl: '/api/exports/e1/zip',
+          stateChanged: false,
         },
       ],
     }),

@@ -1,6 +1,6 @@
 import { companyScope } from '../../../../../lib/server/company';
 import { apiError, sha256Hex } from '../../../../../lib/server/exports';
-import { asciiStem } from '../../../../../lib/server/pdf/document';
+import { asciiStem } from '../../../../../lib/server/file-names';
 import { renderLabelsPdf } from '../../../../../lib/server/pdf/labels-pdf';
 import { UUID } from '../../../../../lib/server/projects';
 import { parseLabelQuery } from '../../../../../lib/labels-query';

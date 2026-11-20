@@ -87,5 +87,7 @@ export type ProjectApiError =
   | { error: 'not_found' }
   | { error: 'deleted'; name: string }
   | { error: 'id_taken' }
+  /** T179: a status change the flow does not allow (taslak changes only through an NC export). */
+  | { error: 'bad_status' }
   | { error: 'bad_request' }
   | { error: 'server_error' };

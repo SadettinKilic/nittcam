@@ -9,7 +9,7 @@ import { POST_CONFIGS } from '@nittcam/machines';
 
 export async function estimateCutSeconds(
   scope: CompanyScope,
-  project: ProjectRow,
+  project: Pick<ProjectRow, 'data' | 'name' | 'revision'>,
 ): Promise<number | null> {
   const data = project.data;
   if (data.layout.sheets.length === 0) return null;

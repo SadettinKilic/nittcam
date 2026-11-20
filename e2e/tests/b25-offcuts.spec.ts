@@ -16,9 +16,13 @@ test('offcut proposals → stock → used first by the next nesting', async ({ p
   await expect(page.getByTestId('nesting-sheets')).toBeVisible({ timeout: 20_000 });
   const panel = page.getByTestId('offcut-proposals');
   await expect(panel).toBeVisible();
-  await expect(page.getByTestId('offcut-proposal').first()).toBeChecked();
+  // P4: nothing is pre-ticked; saving needs a tick, then a toast confirms it.
+  await expect(page.getByTestId('offcut-proposal').first()).not.toBeChecked();
+  await expect(page.getByTestId('offcut-save')).toBeDisabled();
+  for (const box of await page.getByTestId('offcut-proposal').all()) await box.check();
   await page.getByTestId('offcut-save').click();
   await expect(page.getByTestId('offcut-saved')).toBeVisible();
+  await expect(page.locator('[data-sonner-toast]').first()).toBeVisible();
 
   await page.goto('/projeler');
   await page.getByTestId('offcuts-tab').click();

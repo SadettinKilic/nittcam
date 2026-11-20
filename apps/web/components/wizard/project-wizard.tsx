@@ -17,6 +17,7 @@ import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
+import { STEP_REQUEST_EVENT } from '../../lib/step-request';
 import { TemplateUpdatePrompt } from '../editor/template-update';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
 import { isUntitledName, untitledName } from '../../lib/untitled-name';
@@ -401,7 +402,7 @@ const GRID: Record<StepKey, string> = {
   parcalar: 'xl:grid-cols-[17rem_minmax(0,1fr)]',
   dizilim: 'xl:grid-cols-[19rem_minmax(0,1fr)]',
   simulasyon: '2xl:grid-cols-[17rem_minmax(0,1fr)]',
-  export: 'lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]',
+  export: 'lg:grid-cols-2',
 };
 
 /** On narrow screens the main work area comes first; warnings follow it. */
@@ -490,6 +491,40 @@ function WizardSession({
       root.style.removeProperty('--wizard-footer-h');
     };
   }, []);
+
+  // P4 (CTO #8–#10): a toast belongs to the step it was raised on; a step change closes it.
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    notify.dismiss();
+  }, [step]);
+
+  // P4: publish the bottom edge of the wizard header, so the toasts sit just under it (top-centre)
+  // and never over the right panel or the canvas scale bar (see AppShell's Toaster).
+  useEffect(() => {
+    const root = document.documentElement;
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const head = document.querySelector(
+          '[data-testid="wizard-head-row"], [data-testid="wizard-compact-header"]',
+        );
+        const bottom = head ? Math.max(0, head.getBoundingClientRect().bottom) : 0;
+        root.style.setProperty('--wizard-head-bottom', `${Math.round(bottom)}px`);
+      });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, { passive: true, capture: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, { capture: true });
+      root.style.removeProperty('--wizard-head-bottom');
+    };
+  }, [step]);
 
   // Machine profiles by id (the selected one is fetched when the selection changes).
   const [details, setDetails] = useState<Record<string, MachineDetail>>(() =>
@@ -771,6 +806,18 @@ function WizardSession({
     const id = await settle();
     return `${stepUrl(id, 'makine')}&${LATEST_PARAM}=${LATEST_VALUE}`;
   }, [settle]);
+
+  // P4: "Adım n" commands of the palette (the shell's command menu) open a step here.
+  useEffect(() => {
+    function onRequest(e: Event) {
+      const next = (e as CustomEvent<unknown>).detail;
+      if (typeof next === 'string' && (STEPS as readonly string[]).includes(next)) {
+        go(next as StepKey);
+      }
+    }
+    window.addEventListener(STEP_REQUEST_EVENT, onRequest);
+    return () => window.removeEventListener(STEP_REQUEST_EVENT, onRequest);
+  }, [go]);
 
   // Browser Back/forward between steps: follow the URL's `?adim=` (no new entry).
   const projectIdRef = useRef(session.projectId);

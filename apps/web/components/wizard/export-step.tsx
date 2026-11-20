@@ -4,18 +4,10 @@ import Link from 'next/link';
 import { hingeEdgeHandleParts, unverifiedTemplateNames, type Project } from '@nittcam/core';
 import { Button, Card, Checkbox, IconButton, Tooltip, notify } from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
-import {
-  CircleAlert,
-  CircleCheck,
-  Copy,
-  Download,
-  FileCode,
-  ShieldAlert,
-  TriangleAlert,
-} from 'lucide-react';
+import { CircleAlert, CircleCheck, Copy, Download, FileCode, ShieldAlert } from 'lucide-react';
 import { focusRing } from '../page/page-header';
 import { Callout } from './panels';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fill } from '../../lib/draft-project';
 import { itemPlace, machineRelated, onDrawnItem, onPartRow } from '../../lib/part-items';
@@ -40,6 +32,10 @@ import {
 import type { SaveState } from '../../lib/autosave';
 import { getMessages, type Messages } from '../../lib/messages';
 import { ExportDocuments } from './export-documents';
+import { ReexportButton } from './reexport-button';
+import { ExportChecklist } from './export-checklist';
+import { ProjectStatusCard } from './project-status-card';
+import { ReportCard } from './report-card';
 import type { SimMachine } from '../simulation/simulation-view';
 
 type Text = Messages['wizard']['export'];
@@ -172,6 +168,7 @@ export function ExportStep({
 
   // Export history of the project (refetched after each stored export).
   const [historyTick, setHistoryTick] = useState(0);
+  const refreshHistory = useCallback(() => setHistoryTick((n) => n + 1), []);
   const [history, setHistory] = useState<{
     key: string;
     rows: ExportRecord[] | null;
@@ -372,6 +369,13 @@ export function ExportStep({
             </div>
           ) : null}
         </section>
+        <ReportCard
+          t={getMessages().wizard.report}
+          projectId={projectId}
+          revision={revision}
+          hasLayout={hasLayout}
+          saved={!busySaving}
+        />
         {preview && preview.files.length > 0 ? (
           <section
             aria-labelledby="export-files-title"
@@ -392,6 +396,119 @@ export function ExportStep({
             </ul>
           </section>
         ) : null}
+        <section
+          aria-labelledby="export-title"
+          className="flex min-w-0 flex-col gap-5 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6"
+        >
+          <div className="flex flex-col gap-1">
+            <h2 id="export-title" className="text-base font-semibold tracking-tight text-fg">
+              {t.title}
+            </h2>
+            <p className="text-sm text-fg-muted" data-testid="export-revision">
+              {fill(t.revision, { n: revision })}
+            </p>
+            {saved ? null : <p className="text-xs text-warning-text">{t.unsaved}</p>}
+            <p className="text-xs text-fg-subtle">{t.serverNote}</p>
+          </div>
+
+          {preview?.ok && preview.needsAcceptance ? (
+            <Callout
+              tone="warning"
+              role="alert"
+              data-testid="export-unverified"
+              icon={<ShieldAlert aria-hidden />}
+              className="gap-3 p-4"
+            >
+              <p className="font-semibold">{t.unverifiedTitle}</p>
+              <p>{t.unverifiedBody}</p>
+              {(preview.unverifiedReasons ?? []).length > 0 ? (
+                <ul className="list-disc pl-5" data-testid="export-unverified-reasons">
+                  {(preview.unverifiedReasons ?? []).map((r) => (
+                    <li key={r}>{t.reasons[r]}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {preview.profile ? (
+                <Link
+                  href={`/makineler/${preview.profile.machineId}/dogrulama`}
+                  data-testid="export-verify-link"
+                  className={`self-start font-medium underline underline-offset-4 ${focusRing}`}
+                >
+                  {t.unverifiedLink}
+                </Link>
+              ) : null}
+              <div className="mt-1 flex items-start gap-2.5 rounded-lg border border-warning-border bg-surface px-3 py-2.5 font-medium text-fg">
+                <Checkbox
+                  id={acceptId}
+                  data-testid="export-accept"
+                  checked={f.accepted}
+                  onCheckedChange={(v) => update({ accepted: v === true })}
+                  className="mt-0.5 data-[state=checked]:border-warning data-[state=checked]:bg-warning data-[state=checked]:text-warning-fg"
+                />
+                <label htmlFor={acceptId} className="cursor-pointer">
+                  {t.accept}
+                </label>
+              </div>
+            </Callout>
+          ) : null}
+
+          {preview?.ok ? (
+            <ExportChecklist
+              t={t}
+              corners={corners}
+              checklist={preview.checklist}
+              templateNames={templateNames}
+              hingeHandleParts={hingeHandleParts}
+              checks={f.checks}
+              onChange={(checks) => update({ checks })}
+            />
+          ) : null}
+
+          {/* T250 (D-040): one download action per screen, the footer's "İndir"; the result stays
+            here. Below 640 px the footer has no room for the reason, so it is repeated here. */}
+          {blockerText ? <p className="text-sm text-fg-muted sm:hidden">{blockerText}</p> : null}
+          {f.download.status === 'failed' || f.download.status === 'done' ? (
+            <div className="flex flex-col items-start gap-2 border-t border-border-subtle pt-5">
+              <DownloadResult t={t} state={f.download} />
+            </div>
+          ) : null}
+          {footerSlot
+            ? createPortal(
+                <>
+                  <p
+                    id="export-hint"
+                    data-testid="export-hint"
+                    className="hidden min-w-0 truncate text-sm text-fg-muted sm:block"
+                    {...(blockerText ? { title: blockerText } : {})}
+                  >
+                    {blockerText}
+                  </p>
+                  <Button
+                    disabled={blocker !== null || f.download.status === 'busy'}
+                    aria-describedby="export-hint"
+                    aria-busy={f.download.status === 'busy'}
+                    data-testid="export-download"
+                    className="shrink-0"
+                    onClick={() => void doExport()}
+                  >
+                    <Download aria-hidden />
+                    {f.download.status === 'busy' ? t.downloading : t.download}
+                  </Button>
+                </>,
+                footerSlot,
+              )
+            : null}
+        </section>
+        <ProjectStatusCard
+          t={getMessages().wizard.projectStatus}
+          names={getMessages().projects.status}
+          projectId={projectId}
+          tick={historyTick}
+        />
+      </aside>
+      {/* T176 (CTO #4): two balanced columns; the other files and the history sit on the right,
+          so the history is in view without scrolling past the NC checklist. */}
+      <div className="flex min-w-0 flex-col gap-4">
         <ExportDocuments
           t={getMessages().wizard.documents}
           projectId={projectId}
@@ -399,170 +516,16 @@ export function ExportStep({
           hasLayout={hasLayout}
           saved={!busySaving}
           pieces={project.parts.reduce((n, p) => n + p.qty, 0)}
+          onStored={() => setHistoryTick((n) => n + 1)}
         />
-      </aside>
-      <section
-        aria-labelledby="export-title"
-        className="flex min-w-0 flex-col gap-5 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6"
-      >
-        <div className="flex flex-col gap-1">
-          <h2 id="export-title" className="text-base font-semibold tracking-tight text-fg">
-            {t.title}
-          </h2>
-          <p className="text-sm text-fg-muted" data-testid="export-revision">
-            {fill(t.revision, { n: revision })}
-          </p>
-          {saved ? null : <p className="text-xs text-warning-text">{t.unsaved}</p>}
-          <p className="text-xs text-fg-subtle">{t.serverNote}</p>
-        </div>
-
-        {preview?.ok && preview.needsAcceptance ? (
-          <Callout
-            tone="warning"
-            role="alert"
-            data-testid="export-unverified"
-            icon={<ShieldAlert aria-hidden />}
-            className="gap-3 p-4"
-          >
-            <p className="font-semibold">{t.unverifiedTitle}</p>
-            <p>{t.unverifiedBody}</p>
-            {(preview.unverifiedReasons ?? []).length > 0 ? (
-              <ul className="list-disc pl-5" data-testid="export-unverified-reasons">
-                {(preview.unverifiedReasons ?? []).map((r) => (
-                  <li key={r}>{t.reasons[r]}</li>
-                ))}
-              </ul>
-            ) : null}
-            {preview.profile ? (
-              <Link
-                href={`/makineler/${preview.profile.machineId}/dogrulama`}
-                data-testid="export-verify-link"
-                className={`self-start font-medium underline underline-offset-4 ${focusRing}`}
-              >
-                {t.unverifiedLink}
-              </Link>
-            ) : null}
-            <div className="mt-1 flex items-start gap-2.5 rounded-lg border border-warning-border bg-surface px-3 py-2.5 font-medium text-fg">
-              <Checkbox
-                id={acceptId}
-                data-testid="export-accept"
-                checked={f.accepted}
-                onCheckedChange={(v) => update({ accepted: v === true })}
-                className="mt-0.5 data-[state=checked]:border-warning data-[state=checked]:bg-warning data-[state=checked]:text-warning-fg"
-              />
-              <label htmlFor={acceptId} className="cursor-pointer">
-                {t.accept}
-              </label>
-            </div>
-          </Callout>
-        ) : null}
-
-        {preview?.ok ? (
-          <fieldset className="flex min-w-0 flex-col gap-2" data-testid="export-checklist">
-            <legend className="mb-2 text-sm font-semibold text-fg">{t.checklistTitle}</legend>
-            <ChecklistItem
-              testId="export-check-origin"
-              checked={f.checks.origin}
-              onChange={(v) => update({ checks: { ...f.checks, origin: v } })}
-              label={fill(t.checkOrigin, {
-                corner: preview.checklist ? corners[preview.checklist.origin.corner] : '-',
-              })}
-            />
-            <ChecklistItem
-              testId="export-check-tool"
-              checked={f.checks.tool}
-              onChange={(v) => update({ checks: { ...f.checks, tool: v } })}
-              label={
-                preview.checklist && preview.checklist.tools.length > 0
-                  ? fill(t.checkTool, {
-                      tools: preview.checklist.tools
-                        .map((tool) => `T${tool.number} Ø${tool.diameter} mm`)
-                        .join(' → '),
-                    })
-                  : t.checkToolNone
-              }
-            />
-            {preview.checklist && preview.checklist.toolChanges > 0 ? (
-              <ChecklistItem
-                testId="export-check-toolchange"
-                checked={f.checks.toolChange}
-                onChange={(v) => update({ checks: { ...f.checks, toolChange: v } })}
-                label={fill(preview.checklist.rezeroZ ? t.checkToolChangeZ : t.checkToolChange, {
-                  count: preview.checklist.toolChanges,
-                })}
-              />
-            ) : null}
-            {templateNames.length > 0 ? (
-              <ChecklistItem
-                testId="export-check-templates"
-                checked={f.checks.templates}
-                onChange={(v) => update({ checks: { ...f.checks, templates: v } })}
-                label={fill(t.checkTemplates, { names: templateNames.join(', ') })}
-              />
-            ) : null}
-            {hingeHandleParts.length > 0 ? (
-              <p
-                className="flex items-start gap-1.5 text-sm text-warning-text"
-                data-testid="export-hinge-handle"
-              >
-                <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-                {fill(t.hingeHandle, { names: hingeHandleParts.join(', ') })}
-              </p>
-            ) : null}
-            <ChecklistItem
-              testId="export-check-aircut"
-              checked={f.checks.airCut}
-              onChange={(v) => update({ checks: { ...f.checks, airCut: v } })}
-              label={t.checkAirCut}
-            />
-            <p className="flex items-start gap-1.5 text-xs text-warning-text">
-              <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
-              {t.airCutNote}
-            </p>
-          </fieldset>
-        ) : null}
-
-        {/* T250 (D-040): one download action per screen, the footer's "İndir"; the result stays
-            here. Below 640 px the footer has no room for the reason, so it is repeated here. */}
-        {blockerText ? <p className="text-sm text-fg-muted sm:hidden">{blockerText}</p> : null}
-        {f.download.status === 'failed' || f.download.status === 'done' ? (
-          <div className="flex flex-col items-start gap-2 border-t border-border-subtle pt-5">
-            <DownloadResult t={t} state={f.download} />
-          </div>
-        ) : null}
-        {footerSlot
-          ? createPortal(
-              <>
-                <p
-                  id="export-hint"
-                  data-testid="export-hint"
-                  className="hidden min-w-0 truncate text-sm text-fg-muted sm:block"
-                  {...(blockerText ? { title: blockerText } : {})}
-                >
-                  {blockerText}
-                </p>
-                <Button
-                  disabled={blocker !== null || f.download.status === 'busy'}
-                  aria-describedby="export-hint"
-                  aria-busy={f.download.status === 'busy'}
-                  data-testid="export-download"
-                  className="shrink-0"
-                  onClick={() => void doExport()}
-                >
-                  <Download aria-hidden />
-                  {f.download.status === 'busy' ? t.downloading : t.download}
-                </Button>
-              </>,
-              footerSlot,
-            )
-          : null}
-
         <History
           t={t}
+          corners={corners}
           states={states}
           rows={history?.key === historyKey ? history.rows : undefined}
+          onChanged={refreshHistory}
         />
-      </section>
+      </div>
     </>
   );
 }
@@ -633,37 +596,6 @@ function FileRow({
           </Tooltip>
         </span>
       </div>
-    </div>
-  );
-}
-
-function ChecklistItem({
-  testId,
-  checked,
-  onChange,
-  label,
-}: {
-  testId: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-}) {
-  const id = useId();
-  return (
-    <div
-      className={`relative flex min-h-12 items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${checked ? 'border-success-border bg-success-subtle text-fg' : 'border-border bg-surface text-fg hover:bg-surface-hover'}`}
-    >
-      <Checkbox
-        id={id}
-        data-testid={testId}
-        checked={checked}
-        onCheckedChange={(v) => onChange(v === true)}
-        className="relative z-10 mt-0.5 data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-fg"
-      />
-      <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer after:absolute after:inset-0">
-        {label}
-      </label>
-      {checked ? <CircleCheck aria-hidden className="size-4 shrink-0 text-success-text" /> : null}
     </div>
   );
 }
@@ -781,9 +713,27 @@ function DownloadResult({ t, state }: { t: Text; state: DownloadState }) {
             </a>
           </li>
         ))}
+        {state.record.zipUrl ? (
+          <li>
+            <a
+              href={state.record.zipUrl}
+              download
+              data-testid="export-zip"
+              className={`rounded-sm font-medium text-accent-text underline underline-offset-4 ${focusRing}`}
+            >
+              {t.zip}
+            </a>
+          </li>
+        ) : null}
       </ul>
     </div>
   );
+}
+
+/** The type of a history row (T176): NC, or the document type of a DXF / PDF record. */
+export function kindLabel(t: Text, r: Pick<ExportRecord, 'kind' | 'post'>): string {
+  if (r.kind === 'nc') return t.kinds.nc;
+  return (t.kinds as Record<string, string>)[r.post.id] ?? r.kind.toUpperCase();
 }
 
 const historyFeatures = tableFeatures({});
@@ -791,13 +741,18 @@ const historyColumn = createColumnHelper<typeof historyFeatures, ExportRecord>()
 
 function History({
   t,
+  corners,
   states,
   rows,
+  onChanged,
 }: {
   t: Text;
+  corners: Corners;
   states: States;
   /** undefined = loading, null = error. */
   rows: ExportRecord[] | null | undefined;
+  /** T179: a re-export stored or found a record; the history reloads. */
+  onChanged: () => void;
 }) {
   const c = t.historyColumns;
   const columns = useMemo(
@@ -812,6 +767,15 @@ function History({
         historyColumn.accessor('revision', {
           header: c.revision,
           cell: (info) => fill(t.historyRevision, { n: info.getValue() }),
+        }),
+        historyColumn.display({
+          id: 'kind',
+          header: c.kind,
+          cell: (info) => (
+            <span className="whitespace-nowrap" data-testid="export-history-kind">
+              {kindLabel(t, info.row.original)}
+            </span>
+          ),
         }),
         historyColumn.display({
           id: 'post',
@@ -838,6 +802,14 @@ function History({
               <>
                 {(states as Record<string, string>)[r.verification] ?? r.verification}
                 {r.acceptedUnverifiedAt ? ` · ${t.historyAccepted}` : ''}
+                {r.stateChanged ? (
+                  <span
+                    data-testid="export-state-changed"
+                    className="mt-1 block text-xs font-medium text-warning-text"
+                  >
+                    {t.stateChanged}
+                  </span>
+                ) : null}
               </>
             );
           },
@@ -857,11 +829,36 @@ function History({
                   />
                 </li>
               ))}
+              {info.row.original.zipUrl ? (
+                <li>
+                  <a
+                    href={info.row.original.zipUrl}
+                    download
+                    data-testid="export-history-zip"
+                    className={`rounded-sm text-sm text-accent-text underline underline-offset-4 ${focusRing}`}
+                  >
+                    {t.zip}
+                  </a>
+                </li>
+              ) : null}
             </ul>
           ),
         }),
+        historyColumn.display({
+          id: 'actions',
+          header: c.actions,
+          cell: (info) => (
+            <ReexportButton
+              t={t}
+              corners={corners}
+              record={info.row.original}
+              label={kindLabel(t, info.row.original)}
+              onDone={onChanged}
+            />
+          ),
+        }),
       ]),
-    [c, t, states],
+    [c, t, corners, states, onChanged],
   );
   const table = useTable({
     features: historyFeatures,
@@ -871,7 +868,7 @@ function History({
   });
   return (
     <div
-      className="flex min-w-0 flex-col gap-3 border-t border-border-subtle pt-5"
+      className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-5"
       data-testid="export-history"
     >
       <h3 className="text-sm font-semibold tracking-tight text-fg">{t.historyTitle}</h3>
@@ -910,6 +907,7 @@ function History({
                   <tr
                     key={row.id}
                     data-testid="export-history-row"
+                    data-hash={row.original.hash}
                     className="align-top transition-colors duration-(--duration-fast) hover:bg-surface-hover"
                   >
                     {row.getAllCells().map((cell) => (

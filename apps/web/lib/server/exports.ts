@@ -22,6 +22,7 @@ import { POST_CONFIGS } from '@nittcam/machines';
 import { NextResponse } from 'next/server';
 import {
   downloadUrl,
+  zipUrl,
   type ExportApiError,
   type ExportChecklistInfo,
   type ExportFileInfo,
@@ -119,8 +120,14 @@ function profileProblem(code: string): ExportViolation {
   return { stage: 'profile', rule: 'INPUT', code, severity: 'error', message: turkish(code) };
 }
 
+/**
+ * What an export is generated from: the saved project at one revision, either the stored project
+ * (current revision) or the snapshot kept with an earlier export (T179, D-066).
+ */
+export type ExportSource = Pick<ProjectRow, 'id' | 'name' | 'revision' | 'data'>;
+
 export interface ExportRun {
-  project: ProjectRow;
+  project: ExportSource;
   /** The profile version the export uses, or null when it could not be loaded. */
   machine: MachineWithProfile | null;
   latestVersion: number;
@@ -156,6 +163,19 @@ export async function runExport(
   if (project.revision !== revision) {
     return { kind: 'conflict', currentRevision: project.revision };
   }
+  return { kind: 'run', run: await runExportOf(scope, project, profileVersionId) };
+}
+
+/**
+ * The NC pipeline for one export source (T179: also a snapshot of an earlier revision): the
+ * profile version (`profileVersionId`, else the one the project stores), every blocking validation
+ * error, `exportNc` and its checks. Files only when everything passed (rule 9).
+ */
+export async function runExportOf(
+  scope: CompanyScope,
+  project: ExportSource,
+  profileVersionId?: string,
+): Promise<ExportRun> {
   const data = project.data;
   const machineId = data.machine.machineId;
   const machine = await scope.machines.getProfileVersion(
@@ -175,18 +195,12 @@ export async function runExport(
   };
   if (!machine) {
     const code = latest ? 'PROFILE_VERSION_NOT_FOUND' : 'MACHINE_NOT_FOUND';
-    return {
-      kind: 'run',
-      run: { ...base, post: null, stage: 'profile', violations: [profileProblem(code)] },
-    };
+    return { ...base, post: null, stage: 'profile', violations: [profileProblem(code)] };
   }
   const raw = POST_CONFIGS[machine.profile.post.id];
   const cfg = raw === undefined ? null : parsePostConfig(raw);
   if (!cfg?.ok) {
-    return {
-      kind: 'run',
-      run: { ...base, post: null, stage: 'profile', violations: [profileProblem('UNKNOWN_POST')] },
-    };
+    return { ...base, post: null, stage: 'profile', violations: [profileProblem('UNKNOWN_POST')] };
   }
   const post = { id: cfg.config.id, version: cfg.config.version, name: cfg.config.name };
   // Every blocking validation error stops the export (defense in depth, spec §8.2 "sunucu
@@ -197,17 +211,14 @@ export async function runExport(
   const blocking = exportBlockingIssues(data, { machine: machine.profile });
   if (blocking.length > 0) {
     return {
-      kind: 'run',
-      run: {
-        ...base,
-        post,
+      ...base,
+      post,
+      stage: 'toolpath',
+      violations: blockingItems(data.parts, blocking).map((item): ExportViolation => ({
+        ...item,
         stage: 'toolpath',
-        violations: blockingItems(data.parts, blocking).map((item): ExportViolation => ({
-          ...item,
-          stage: 'toolpath',
-          message: turkish(item.code),
-        })),
-      },
+        message: turkish(item.code),
+      })),
     };
   }
   const pv = {
@@ -218,18 +229,15 @@ export async function runExport(
   const r = exportNc(data, pv, raw, { projectName: project.name, revision: project.revision });
   const ok = r.ok && r.check !== null && canDownload(r.check) && r.files.length > 0;
   return {
-    kind: 'run',
-    run: {
-      ...base,
-      post,
-      files: ok ? r.files : [],
-      ok,
-      stage: r.stage,
-      violations: violationsOf(r),
-      needsAcceptance: needsUnverifiedAcceptance(pv, cfg.config),
-      unverifiedReasons: unverifiedReasons(pv, cfg.config),
-      checklist: checklistOf(machine, data, r.tools),
-    },
+    ...base,
+    post,
+    files: ok ? r.files : [],
+    ok,
+    stage: r.stage,
+    violations: violationsOf(r),
+    needsAcceptance: needsUnverifiedAcceptance(pv, cfg.config),
+    unverifiedReasons: unverifiedReasons(pv, cfg.config),
+    checklist: checklistOf(machine, data, r.tools),
   };
 }
 
@@ -295,6 +303,7 @@ export function fileInfos(files: readonly PostFile[]): ExportFileInfo[] {
 export function toRecord(row: ExportRow, profileVersion: number | null): ExportRecord {
   return {
     exportId: row.id,
+    kind: row.kind,
     projectId: row.projectId,
     revision: row.projectRevision,
     createdAt: row.createdAt.toISOString(),
@@ -312,7 +321,28 @@ export function toRecord(row: ExportRow, profileVersion: number | null): ExportR
       sheet: f.sheet,
       downloadUrl: downloadUrl(row.id, f.name),
     })),
+    zipUrl: row.files.length > 1 ? zipUrl(row.id) : null,
+    stateChanged: false,
   };
+}
+
+/**
+ * Ids of the exports whose verification state differs from an earlier export of the same revision
+ * and type (E6, D-060): those are the "doğrulama durumu değişti" records.
+ */
+export function stateChangedIds(rows: readonly ExportRow[]): Set<string> {
+  const out = new Set<string>();
+  const byAge = [...rows].sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+  );
+  const seen = new Map<string, Set<string>>();
+  for (const r of byAge) {
+    const key = `${r.projectRevision}/${r.kind}/${r.postId}`;
+    const states = seen.get(key);
+    if (states && !states.has(r.verificationState)) out.add(r.id);
+    seen.set(key, new Set([...(states ?? []), r.verificationState]));
+  }
+  return out;
 }
 
 /** Profile version id → version number, for the history rows. */

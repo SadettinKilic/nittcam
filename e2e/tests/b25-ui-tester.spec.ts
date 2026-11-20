@@ -25,6 +25,9 @@ for (const vp of [
     // Other specs share the CI database and may have saved offcuts: compare before/after.
     await page.goto('/projeler');
     await page.getByTestId('offcuts-tab').click();
+    // Count only once the list has loaded (a count during loading read 0, then 2 rows came).
+    await expect(page.getByTestId('offcuts-loading')).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.getByTestId('offcut-add')).toBeVisible();
     const before = await page.getByTestId('offcut-row').count();
     await openNewProject(page, 'parcalar');
     await paste(page, 'Ad\tEn\tBoy\tAdet\nYan\t600\t500\t2', 1);

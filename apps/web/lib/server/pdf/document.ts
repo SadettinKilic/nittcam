@@ -6,7 +6,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import fontkit from '@pdf-lib/fontkit';
-import { transliterateTurkish } from '@nittcam/core';
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 
 /**
@@ -160,13 +159,4 @@ export function grainArrow(
       });
     }
   }
-}
-
-/** ASCII file stem of a project name (Turkish letters transliterated, others dropped). */
-export function asciiStem(name: string, fallback: string): string {
-  const s = transliterateTurkish(name)
-    .replace(/[^A-Za-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
-  return s || fallback;
 }
