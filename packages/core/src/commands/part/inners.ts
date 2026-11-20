@@ -13,6 +13,7 @@ import {
   type Project,
   type Vertex,
 } from '../../schema';
+import { bbox, contour } from '../../geometry/polyline';
 import { defineCommand } from '../types';
 import { freezeBoard } from './board';
 
@@ -121,16 +122,8 @@ export function placedInner(
   if (!part) return { error: `no part with id "${p.id}"` };
   const inner = part.inners[p.index];
   if (!inner) return { error: 'no such inner contour' };
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const v of inner) {
-    minX = Math.min(minX, v.x);
-    minY = Math.min(minY, v.y);
-    maxX = Math.max(maxX, v.x);
-    maxY = Math.max(maxY, v.y);
-  }
+  // The true box (arcs included), the one the panel shows.
+  const { minX, minY, maxX, maxY } = bbox(contour(inner));
   const w0 = maxX - minX;
   const h0 = maxY - minY;
   const arcs = inner.some((v) => v.bulge !== 0);

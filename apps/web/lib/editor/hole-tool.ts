@@ -8,6 +8,7 @@ import {
   checkHolePlacement,
   contourDistance,
   deriveOutline,
+  holeSchema,
   insideContour,
   type BoardPart,
   type Hole,
@@ -42,28 +43,43 @@ const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
 /**
  * `addHole` params for a hole drawn on the board: a through hole (the simplest valid type; the
- * properties panel turns it into a pocket or a groove) in the part frame.
+ * properties panel turns it into a pocket or a groove) in the part frame. B52 (D-092, "aynı
+ * değerlerle devam"): with `like` (the last hole added), the new hole copies its type, depth,
+ * groove width and tool; a copy that does not fit the new diameter falls back to a through hole.
  */
 export function addHoleParams(
   project: Project,
   draft: HoleDraft,
   d: number,
   tool: number,
+  like?: Hole,
 ): { id: string; hole: Hole } | null {
   const part = project.parts.find((p) => p.id === draft.partId);
   const at = boardPositions(project).get(draft.partId);
   if (!part || !at || !(d > 0)) return null;
-  return {
-    id: part.id,
-    hole: {
-      id: nextHoleId(part),
-      type: 'through',
-      d: r3(d),
-      cx: r3(draft.c.x - at.x),
-      cy: r3(draft.c.y - at.y),
-      tool,
-    },
+  const base = {
+    id: nextHoleId(part),
+    d: r3(d),
+    cx: r3(draft.c.x - at.x),
+    cy: r3(draft.c.y - at.y),
   };
+  if (like) {
+    const copy = holeSchema.safeParse({ ...like, ...base });
+    if (copy.success) return { id: part.id, hole: copy.data };
+  }
+  return { id: part.id, hole: { ...base, type: 'through', tool } };
+}
+
+/** The last hole added in this session, as it is now (edited since), or the remembered copy. */
+export function lastHoleNow(
+  project: Project,
+  last: { partId: string; hole: Hole } | null,
+): Hole | undefined {
+  if (!last) return undefined;
+  const now = project.parts
+    .find((p) => p.id === last.partId)
+    ?.holes.find((h) => h.id === last.hole.id);
+  return now ?? last.hole;
 }
 
 /**

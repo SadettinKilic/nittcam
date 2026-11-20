@@ -8,6 +8,7 @@ import {
   holeDefaults,
   holeOnCentre,
   holeRefusal,
+  lastHoleNow,
   liveDiameter,
   nextHoleId,
   typedDiameter,
@@ -117,5 +118,26 @@ describe('holeCentreSnap (B52, D-092)', () => {
     expect(holeCentreSnap(1.99)).toBe(false);
     expect(holeCentreSnap(2)).toBe(true); // 10 px = 5 mm
     expect(holeCentreSnap(8)).toBe(true);
+  });
+});
+
+describe('aynı değerlerle devam (B52, D-092)', () => {
+  const pocket: Hole = { id: 'h1', type: 'pocket', d: 35, cx: 22.5, cy: 100, depth: 13, tool: 3 };
+  it('a new hole copies the last hole type, depth and tool; a misfit copy falls back', () => {
+    const r = addHoleParams(project(), { partId: 'a', c: { x: 1100, y: 600 } }, 35, 1, pocket);
+    expect(r?.hole).toMatchObject({ type: 'pocket', depth: 13, tool: 3, d: 35 });
+    expect(r?.hole.id).not.toBe('h1');
+    const groove: Hole = { ...pocket, type: 'groove', grooveWidth: 6 };
+    // a 4 mm hole cannot hold a 6 mm groove: plain through hole with the board tool
+    const small = addHoleParams(project(), { partId: 'a', c: { x: 1100, y: 600 } }, 4, 1, groove);
+    expect(small?.hole).toMatchObject({ type: 'through', d: 4, tool: 1 });
+  });
+  it('reads the last hole as it is now, else the remembered copy', () => {
+    const p = project();
+    expect(lastHoleNow(p, null)).toBeUndefined();
+    expect(lastHoleNow(p, { partId: 'gone', hole: pocket })).toBe(pocket);
+    const part = p.parts.find((x) => x.id === 'a');
+    if (part) part.holes = [{ ...pocket, depth: 10 }];
+    expect(lastHoleNow(p, { partId: 'a', hole: pocket })).toMatchObject({ depth: 10 });
   });
 });

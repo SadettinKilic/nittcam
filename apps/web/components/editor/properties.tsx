@@ -41,9 +41,9 @@ import {
   Switch,
   Tooltip,
 } from '@nittcam/ui';
-import { CircleAlert, Plus, X } from 'lucide-react';
+import { CircleAlert, Move, Plus, X } from 'lucide-react';
 import { useInnerIssues } from './inner-issues';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { formatMm, sizeText } from '../../lib/canvas-labels';
 import { fill } from '../../lib/fill';
 import { grainDialLabels } from '../../lib/grain-labels';
@@ -55,7 +55,8 @@ type T = Messages['editor']['inspector'];
 export type Run = (command: string, params: unknown) => boolean;
 
 /** A segment or vertex of the selected part's outline (UI state, T130). */
-export type SubSelection = { kind: 'segment' | 'vertex'; index: number } | null;
+/** B52 (D-092): or a hole / cut-out picked on the canvas. */
+export type SubSelection = { kind: 'segment' | 'vertex' | 'hole' | 'inner'; index: number } | null;
 
 /** Error text of a refused value, or null when the edit ran. */
 type Commit = (value: number | null) => string | null;
@@ -571,34 +572,76 @@ export function PartProperties({
             {part.inners.map((inner, i) => {
               const b = bbox(contour(inner));
               const bad = innerIssues.has(i);
+              const picked = sub?.kind === 'inner' && sub.index === i;
+              // B52 (D-092): the picked cut-out's box (part frame), one `updateInnerContour` each.
+              const place = (patch: Record<string, number>) =>
+                run('updateInnerContour', {
+                  id: part.id,
+                  index: i,
+                  toolDiameter: toolRadius * 2,
+                  ...patch,
+                })
+                  ? null
+                  : t.innerRefused;
+              const field = (key: 'x' | 'y' | 'width' | 'height', label: string, v: number) => (
+                <NumberRow
+                  label={label}
+                  value={v}
+                  testId={`prop-inner-${key}`}
+                  onCommit={(n) =>
+                    n === null || ((key === 'width' || key === 'height') && n <= 0)
+                      ? t.errors.length
+                      : place({ [key]: n })
+                  }
+                />
+              );
               return (
-                <Row
-                  key={i}
-                  label={fill(t.innerN, { n: i + 1 })}
-                  valueProps={{ className: 'flex items-center justify-end gap-1' }}
-                  data-testid="prop-inner"
-                  data-error={bad ? 'slug' : undefined}
-                >
-                  {bad ? (
-                    <CircleAlert
-                      role="img"
-                      aria-label={fill(t.innerSlugUnsecured, { n: i + 1 })}
-                      className="size-4 shrink-0 text-danger-text"
-                    />
-                  ) : null}
-                  <span className={bad ? 'text-danger-text' : undefined}>
-                    {sizeText(b.maxX - b.minX, b.maxY - b.minY)}
-                  </span>
-                  <IconButton
-                    size="sm"
-                    variant="ghost"
-                    aria-label={fill(t.innerRemove, { n: i + 1 })}
-                    data-testid="prop-inner-remove"
-                    onClick={() => run('removeInnerContour', { id: part.id, index: i })}
+                <Fragment key={i}>
+                  <Row
+                    label={fill(t.innerN, { n: i + 1 })}
+                    valueProps={{ className: 'flex items-center justify-end gap-1' }}
+                    data-testid="prop-inner"
+                    data-error={bad ? 'slug' : undefined}
                   >
-                    <X aria-hidden />
-                  </IconButton>
-                </Row>
+                    {bad ? (
+                      <CircleAlert
+                        role="img"
+                        aria-label={fill(t.innerSlugUnsecured, { n: i + 1 })}
+                        className="size-4 shrink-0 text-danger-text"
+                      />
+                    ) : null}
+                    <span className={bad ? 'text-danger-text' : undefined}>
+                      {sizeText(b.maxX - b.minX, b.maxY - b.minY)}
+                    </span>
+                    <IconButton
+                      size="sm"
+                      variant="ghost"
+                      aria-label={fill(t.innerEdit, { n: i + 1 })}
+                      aria-pressed={picked}
+                      data-testid="prop-inner-edit"
+                      onClick={() => onSub(picked ? null : { kind: 'inner', index: i })}
+                    >
+                      <Move aria-hidden />
+                    </IconButton>
+                    <IconButton
+                      size="sm"
+                      variant="ghost"
+                      aria-label={fill(t.innerRemove, { n: i + 1 })}
+                      data-testid="prop-inner-remove"
+                      onClick={() => run('removeInnerContour', { id: part.id, index: i })}
+                    >
+                      <X aria-hidden />
+                    </IconButton>
+                  </Row>
+                  {picked ? (
+                    <>
+                      {field('x', t.innerX, b.minX)}
+                      {field('y', t.innerY, b.minY)}
+                      {field('width', t.innerW, b.maxX - b.minX)}
+                      {field('height', t.innerH, b.maxY - b.minY)}
+                    </>
+                  ) : null}
+                </Fragment>
               );
             })}
           </InspectorRows>

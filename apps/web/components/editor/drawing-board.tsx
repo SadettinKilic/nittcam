@@ -12,6 +12,7 @@ import {
   segmentMidpoint,
   snap,
   tidy,
+  type Hole,
   type Part,
   type Project,
   type SnapKind,
@@ -75,13 +76,14 @@ import {
   holeOnCentre,
   holeCentreSnap,
   holeRefusal,
+  lastHoleNow,
   liveDiameter,
   typedDiameter,
   type HoleDraft,
 } from '../../lib/editor/hole-tool';
 import { dimOwner, segmentLabels } from '../../lib/editor/dims';
 import { innerHost, shapeVertices } from '../../lib/editor/inner-host';
-import { InnerPrompt } from './inner-prompt';
+import { InnerPrompt, rememberedInnerChoice } from './inner-prompt';
 import { miniBarRailClear } from '../../lib/editor/mini-bar';
 import {
   SNAP_TOGGLES,
@@ -117,6 +119,7 @@ import {
 } from '../../lib/editor/template-place';
 import { BoardPartList } from './part-list';
 import { BoardMenu } from './board-menu';
+import { itemMove, pickItem, withItemMoved, type PartItem } from '../../lib/editor/item-pick';
 import { DxfImportDialog } from '../parts/dxf-import-dialog';
 import { StatusBar } from './status-bar';
 
@@ -175,7 +178,9 @@ type Gesture =
   /** Drawing-tool press; `before` is the draft to restore if a pinch takes over. */
   | { kind: 'draw'; startScreen: Pt; placed: boolean; before: DrawDraft | null }
   /** Dragging a segment's bend handle (T129). */
-  | { kind: 'bend'; id: string; index: number; p0: Pt; p1: Pt; bulge: number };
+  | { kind: 'bend'; id: string; index: number; p0: Pt; p1: Pt; bulge: number }
+  /** B52: pressing a hole or cut-out of the selected part (click picks, drag moves). */
+  | { kind: 'item'; id: string; item: PartItem; start: Pt; startScreen: Pt; moved: boolean };
 
 /** Board moves are kept to 0.01 mm (no float dust in the project). */
 function round(v: number): number {
@@ -316,8 +321,15 @@ export function DrawingBoard({
   const [holeTyped, setHoleTyped] = useState('');
   const holeToolDia = holeTool?.diameter ?? toolDiameter ?? 0;
   const holeTypedD = holeDraft ? typedDiameter(holeTyped) : null;
+  // B52 (D-092) "aynı değerlerle devam": the last hole added this session (type, depth, groove,
+  // tool are copied; its diameter is prefilled until the cursor moves away from the centre).
+  const [lastHole, setLastHole] = useState<{ partId: string; hole: Hole } | null>(null);
+  const [holeLive, setHoleLive] = useState(false);
+  const holePrefill = holeDraft && !holeLive ? lastHoleNow(project, lastHole)?.d : undefined;
   const holeD =
-    holeTypedD ?? (holeDraft && drawAt ? liveDiameter(holeDraft.c, drawAt, holeToolDia) : null);
+    holeTypedD ??
+    holePrefill ??
+    (holeDraft && drawAt ? liveDiameter(holeDraft.c, drawAt, holeToolDia) : null);
   const holeView: DraftView | null =
     holeDraft && holeD !== null
       ? {
@@ -418,7 +430,24 @@ export function DrawingBoard({
     setSubOwner(singleId);
     setSub(null);
   }
-  const subShown = sub && single && sub.index < single.outline.length ? sub : null;
+  const subShown =
+    sub &&
+    single &&
+    sub.index <
+      (sub.kind === 'hole'
+        ? single.holes.length
+        : sub.kind === 'inner'
+          ? single.inners.length
+          : single.outline.length)
+      ? sub
+      : null;
+  // B52 (D-092): a hole or cut-out of the selected part dragged on the canvas (live preview).
+  const [itemDrag, setItemDrag] = useState<{ id: string; item: PartItem; d: Pt } | null>(null);
+  const shownParts = useMemo(
+    () => (itemDrag ? withItemMoved(parts, itemDrag.id, itemDrag.item, itemDrag.d) : parts),
+    [parts, itemDrag],
+  );
+  const shownSingle = single && shownParts.find((p) => p.id === single.id);
   /** Corner nodes of the selected part (square handles; a click picks the vertex). */
   const vertexHandles = useMemo(
     () =>
@@ -428,14 +457,22 @@ export function DrawingBoard({
     [state.tool, single, drag],
   );
   const focusMark = useMemo((): EditorFocus | null => {
-    if (!subShown || !single) return null;
-    const vs = single.outline;
+    if (!subShown || !shownSingle) return null;
+    if (subShown.kind === 'hole') {
+      const h = shownSingle.holes[subShown.index];
+      return h ? { kind: 'hole', at: { x: h.x, y: h.y }, r: h.d / 2 } : null;
+    }
+    if (subShown.kind === 'inner') {
+      const c = shownSingle.inners[subShown.index];
+      return c ? { kind: 'inner', vertices: c } : null;
+    }
+    const vs = shownSingle.outline;
     const a = vs[subShown.index];
     if (!a) return null;
     if (subShown.kind === 'vertex') return { kind: 'vertex', at: { x: a.x, y: a.y } };
     const b = vs[(subShown.index + 1) % vs.length] ?? a;
     return { kind: 'segment', p0: { x: a.x, y: a.y }, p1: { x: b.x, y: b.y }, bulge: a.bulge };
-  }, [subShown, single]);
+  }, [subShown, shownSingle]);
 
   // Selected ids that disappear (removed, undone) leave the selection.
   const ids = useMemo(() => project.parts.map((p) => p.id), [project.parts]);
@@ -558,7 +595,9 @@ export function DrawingBoard({
   /** Finished shape: inside a part → ask (cut-out or part); elsewhere → a new part (T127). */
   function commitShape(shape: DrawnShape) {
     const host = innerHost(parts, shapeVertices(shape));
-    if (host) setInnerAsk({ shape, host });
+    const reuse = host ? rememberedInnerChoice() : null; // B52 (D-092): "Hep böyle yap"
+    if (host && reuse === 'inner') addShapeInner(shape, host);
+    else if (host && reuse === null) setInnerAsk({ shape, host });
     else addShapePart(shape);
   }
 
@@ -712,7 +751,7 @@ export function DrawingBoard({
         if (holeTyped === '') return;
         setHoleTyped((v) => v.slice(0, -1));
       } else if (holeDraft && k === 'Enter') {
-        const d = typedDiameter(holeTyped);
+        const d = typedDiameter(holeTyped) ?? holePrefill ?? null;
         if (d === null) return;
         finishHole(holeDraft, d);
       } else if (k === 'Escape') {
@@ -831,12 +870,13 @@ export function DrawingBoard({
           return;
         }
         setHoleTyped('');
+        setHoleLive(false);
         setHoleDraft(at);
         return;
       }
       // Sizing: the cursor is free (no snap to the centre or the grid), T276.
       setDrawAt(w);
-      finishHole(holeDraft, holeTypedD ?? liveDiameter(holeDraft.c, w, holeToolDia));
+      finishHole(holeDraft, holeTypedD ?? holePrefill ?? liveDiameter(holeDraft.c, w, holeToolDia));
       return;
     }
     if (dimTool) {
@@ -868,6 +908,19 @@ export function DrawingBoard({
       setBend({ id: handle.id, index: handle.index, bulge: handle.bulge, at: w });
       return;
     }
+    // B52 (D-092): a hole or cut-out of the selected part: a click picks it, a drag moves it.
+    const item = corner < 0 && single && !e.shiftKey ? pickItem(single, w, 4 / view.scale) : null;
+    if (item && single) {
+      gesture.current = {
+        kind: 'item',
+        id: single.id,
+        item,
+        start: w,
+        startScreen: s,
+        moved: false,
+      };
+      return;
+    }
     const hit = hitPart(parts, w, 4 / view.scale);
     if (hit && (corner < 0 || hit !== single?.id || e.shiftKey)) {
       gesture.current = { kind: 'press', id: hit, start: w, startScreen: s, additive: e.shiftKey };
@@ -892,6 +945,43 @@ export function DrawingBoard({
   }
 
   /**
+   * Moves a hole or cut-out of part `id` by d mm (B52, D-092; one undo step). A refused move says
+   * why, like drawing one (edge / cut-out for a hole, the inner-contour reasons for a cut-out).
+   */
+  function moveItem(id: string, item: PartItem, d: Pt): boolean {
+    const cmd = itemMove(project, id, item, d);
+    if (!cmd) return false;
+    if (cmd.name === 'updateHole') {
+      if (run(cmd.name, cmd.params)) return true;
+      const part = project.parts.find((p) => p.id === id);
+      const h = part?.holes[item.index];
+      const why =
+        part && h
+          ? holeRefusal(project, {
+              id,
+              hole: { ...h, cx: cmd.params.patch.cx, cy: cmd.params.patch.cy },
+            })
+          : null;
+      notify.error(why === 'cutout' ? t.holeCutout : t.holeEdge, HOLE_TOAST);
+      return false;
+    }
+    if (run(cmd.name, { ...cmd.params, toolDiameter: toolDiameter ?? 0 })) return true;
+    const moved = withItemMoved(parts, id, item, d).find((p) => p.id === id);
+    const cut = moved?.inners[item.index];
+    const err =
+      moved && cut
+        ? checkInnerContour(
+            moved.outline,
+            moved.inners.filter((_, i) => i !== item.index),
+            cut,
+            toolDiameter ?? 0,
+          )
+        : undefined;
+    notify.error(fill(t.inner.errors[err ?? 'outside'], { d: formatMm(toolDiameter ?? 0) }));
+    return false;
+  }
+
+  /**
    * Right-click in Seç (B52, D-092): the part under the cursor joins / becomes the selection and
    * the board menu opens there. Empty canvas or another tool: the browser menu stays off, nothing
    * opens.
@@ -908,13 +998,18 @@ export function DrawingBoard({
 
   /** Adds the hole in progress with diameter `d`; a refusal names its reason (T276). */
   function finishHole(at: HoleDraft, d: number) {
-    const params = addHoleParams(project, at, d, holeTool?.number ?? 1);
+    const like = lastHoleNow(project, lastHole);
+    const params = addHoleParams(project, at, d, holeTool?.number ?? 1, like);
     if (!params || !run('addHole', params)) {
       const why = params ? holeRefusal(project, params) : 'outside';
       notify.error(why === 'cutout' ? t.holeCutout : t.holeEdge, HOLE_TOAST);
-    } else notify.dismiss(HOLE_TOAST.id);
+    } else {
+      notify.dismiss(HOLE_TOAST.id);
+      setLastHole({ partId: params.id, hole: params.hole });
+    }
     setHoleDraft(null);
     setHoleTyped('');
+    setHoleLive(false);
   }
 
   /**
@@ -1016,6 +1111,8 @@ export function DrawingBoard({
     if (((drawTool || dimTool) && (!g || g.kind === 'draw')) || (holeOn && !g)) {
       // T276: while a hole is sized the cursor is free (the diameter is to 0.1 mm or typed).
       const r = holeOn && holeDraft ? { point: w, kind: 'none' as const } : drawPoint(w, e.altKey);
+      if (holeOn && holeDraft && !holeLive && dist(w, holeDraft.c) * view.scale > 2 * DRAG_PX)
+        setHoleLive(true);
       setDrawAt(r.point);
       setLock(e.shiftKey);
       setSnapMark(
@@ -1033,6 +1130,13 @@ export function DrawingBoard({
       touched.current = true;
       dispatch({ type: 'pan', dx: s.x - g.last.x, dy: s.y - g.last.y });
       g.last = s;
+    } else if (g.kind === 'item') {
+      if (!g.moved && dist(s, g.startScreen) < DRAG_PX) return;
+      g.moved = true;
+      // Whole millimetres (Alt = 0.01 mm), like a typed position.
+      const r = e.altKey ? round : Math.round;
+      setSub({ kind: g.item.kind, index: g.item.index });
+      setItemDrag({ id: g.id, item: g.item, d: { x: r(w.x - g.start.x), y: r(w.y - g.start.y) } });
     } else if (g.kind === 'pinch') {
       const pts = [...pointers.current.values()];
       if (pts.length < 2 || !pts[0] || !pts[1]) return;
@@ -1096,6 +1200,13 @@ export function DrawingBoard({
       }
       return;
     }
+    if (g.kind === 'item') {
+      const d = itemDrag?.d;
+      setItemDrag(null);
+      setSub({ kind: g.item.kind, index: g.item.index });
+      if (g.moved && d && (d.x !== 0 || d.y !== 0)) moveItem(g.id, g.item, d);
+      return;
+    }
     if (g.kind === 'press' && g.corner !== undefined) {
       setSub({ kind: 'vertex', index: g.corner });
     } else if (g.kind === 'press') {
@@ -1117,6 +1228,38 @@ export function DrawingBoard({
       setMarquee(null);
     }
   }
+
+  // B52 (D-092): with a hole or cut-out picked, Delete removes it and the arrows nudge it (not
+  // the whole part). Read through a ref so the key listener stays put.
+  const itemKeys = useRef<(k: string, step: number) => boolean>(() => false);
+  useEffect(() => {
+    itemKeys.current = (k, step) => {
+      if (!single || (subShown?.kind !== 'hole' && subShown?.kind !== 'inner')) return false;
+      const item: PartItem = { kind: subShown.kind, index: subShown.index };
+      if (k === 'delete' || k === 'backspace') {
+        const part = project.parts.find((p) => p.id === single.id);
+        const ok =
+          item.kind === 'hole'
+            ? run('removeHole', { id: single.id, holeId: part?.holes[item.index]?.id ?? '' })
+            : run('removeInnerContour', { id: single.id, index: item.index });
+        if (ok) setSub(null);
+        return true;
+      }
+      const d =
+        k === 'arrowleft'
+          ? { x: -step, y: 0 }
+          : k === 'arrowright'
+            ? { x: step, y: 0 }
+            : k === 'arrowup'
+              ? { x: 0, y: step }
+              : k === 'arrowdown'
+                ? { x: 0, y: -step }
+                : null;
+      if (!d) return false;
+      moveItem(single.id, item, d);
+      return true;
+    };
+  });
 
   // Edit actions (T125): every change is a command with undo (Ctrl+Z / Ctrl+Y in the wizard).
   const actions = useMemo(() => {
@@ -1192,6 +1335,7 @@ export function DrawingBoard({
       else if (mod && !e.altKey && k === 'd') done = actions.duplicate();
       else if (mod && !e.altKey && k === 'a') actions.selectAll();
       else if (mod || e.altKey) done = false;
+      else if (itemKeys.current(k, step)) done = true;
       else if (k === 'delete' || k === 'backspace')
         done = actions.has && actions.remove() !== false;
       else if (k === 'arrowleft') done = actions.has && actions.move(-step, 0) !== false;
@@ -1555,7 +1699,7 @@ export function DrawingBoard({
             width={size.w}
             height={size.h}
             view={view}
-            parts={parts}
+            parts={shownParts}
             names={names}
             selection={selection}
             hover={state.hover}

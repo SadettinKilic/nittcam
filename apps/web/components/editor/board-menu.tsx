@@ -20,6 +20,8 @@ import { fetchTemplates, type TemplateItem } from '../../lib/templates-api';
 
 type T = Messages['editor']['menu'];
 
+const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+
 export interface BoardMenuProps {
   t: T;
   /** Template entry name ("{name} v{v}"). */
@@ -66,6 +68,15 @@ export function BoardMenu({
         sideOffset={2}
         aria-label={t.label}
         data-testid="board-menu"
+        // The menu is portaled but React events still bubble to the canvas it sits in: a press
+        // on an entry must not start a canvas gesture (pointer capture would eat the click).
+        onPointerDown={stop}
+        onPointerMove={stop}
+        onPointerUp={stop}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
       >
         {items === null ? (
           <>
