@@ -43,9 +43,9 @@ test('Dizilim: chips, one summary, tab row, centred sheet (1440 × 900, 1024 × 
     expect(box?.height ?? 0).toBeLessThan(20);
   }
 
-  // The right inspector: no summary card; nothing selected → a 2-line hint.
+  // The right inspector: no summary card; nothing selected → the hint (T170 added the keys line).
   await expect(page.getByTestId('layout-summary')).toHaveCount(0);
-  await expect(page.getByTestId('layout-hint')).toHaveText(l.hint1 + l.hint2);
+  await expect(page.getByTestId('layout-hint')).toHaveText(l.hint1 + l.hint2 + l.hint3);
 
   // T249 (D-040, replaces T244 r1): from 1024 px tabs (left) and tools (right) share one row.
   const tabs = await page.getByTestId('sheet-tabs-scroll').boundingBox();
