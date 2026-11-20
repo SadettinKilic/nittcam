@@ -35,6 +35,7 @@ import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
 import { HoleIssuesContext, holeErrors } from '../editor/hole-issues';
 import { ValidationPanel } from './validation-panel';
+import { CuttingSettings } from '../simulation/cutting-settings';
 import {
   STEPS,
   saveIndicator,
@@ -848,6 +849,16 @@ function WizardSession({
     both = (
       <SimulationView
         left={validation}
+        settings={
+          <CuttingSettings
+            t={messages.simulation.cutting}
+            errors={t.machine.errors}
+            mm={t.machine.units.mm}
+            project={project}
+            machine={profile}
+            run={session.run}
+          />
+        }
         t={messages.simulation}
         project={project}
         machine={simMachine}

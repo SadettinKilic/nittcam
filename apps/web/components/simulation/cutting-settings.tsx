@@ -1,0 +1,169 @@
+'use client';
+
+import { cuttingSettingsOf, type MachineProfile, type Project, type TabMode } from '@nittcam/core';
+import { useId } from 'react';
+import { fill } from '../../lib/draft-project';
+import type { Messages } from '../../lib/messages';
+import { NumberField } from '../wizard/number-field';
+
+type Text = Messages['simulation']['cutting'];
+type Run = (name: string, params: unknown) => boolean;
+
+const TAB_MODES: readonly TabMode[] = ['all', 'small', 'off'];
+const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
+
+/**
+ * T288 (CTO #10 E1, K3): "Kesim ayarları" in the Simülasyon left panel: tabs (every part / small
+ * parts only / off), their count, width and height, lead-in (arc / line) and cut direction. Every
+ * change is one command (undoable); the simulation re-runs on the new project at once, and the
+ * server export reads the same project values. The values shown are the ones the toolpath uses
+ * (`cuttingSettingsOf`: project > material set > built-in default).
+ */
+export function CuttingSettings({
+  t,
+  errors,
+  mm,
+  project,
+  machine,
+  run,
+}: {
+  t: Text;
+  errors: { number: string; positive: string; rejected: string };
+  /** Unit label for millimetres. */
+  mm: string;
+  project: Project;
+  machine: MachineProfile | null;
+  run: Run;
+}) {
+  const c = cuttingSettingsOf(project, machine ?? undefined);
+  const own = Object.values(c.tabs.source).includes('project');
+  const source = own ? 'project' : c.tabs.source.count === 'material' ? 'material' : 'default';
+  return (
+    <section
+      aria-labelledby="sim-cutting-title"
+      data-testid="sim-cutting"
+      className="flex flex-col gap-3 rounded-xl border border-border bg-surface px-panel py-3 shadow-xs"
+    >
+      <h2 id="sim-cutting-title" className="text-sm font-semibold text-fg">
+        {t.title}
+      </h2>
+      <Choice
+        legend={t.tabs}
+        name="tab-mode"
+        testId="sim-cutting-tabs"
+        value={c.tabMode}
+        options={TAB_MODES.map((m) => [m, t.tabModes[m]])}
+        onChange={(mode) => run('setTabs', { mode })}
+      />
+      <p className="text-xs text-fg-muted" data-testid="sim-cutting-tabs-hint">
+        {fill(t.tabHints[c.tabMode], { skin: mmFormat.format(c.skin ?? 0) })}
+      </p>
+      {c.tabMode !== 'off' ? (
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-3 gap-2">
+            <NumberField
+              label={t.count}
+              value={c.tabs.count}
+              testId="sim-cutting-count"
+              errors={errors}
+              onCommit={(count) => run('setTabs', { count })}
+            />
+            <NumberField
+              label={t.width}
+              unit={mm}
+              value={c.tabs.width}
+              testId="sim-cutting-width"
+              errors={errors}
+              onCommit={(width) => run('setTabs', { width })}
+            />
+            <NumberField
+              label={t.height}
+              unit={mm}
+              value={c.tabs.height}
+              testId="sim-cutting-height"
+              errors={errors}
+              onCommit={(height) => run('setTabs', { height })}
+            />
+          </div>
+          <p className="text-xs text-fg-muted" data-testid="sim-cutting-source">
+            {t.source[source]}{' '}
+            {own ? (
+              <button
+                type="button"
+                data-testid="sim-cutting-reset"
+                onClick={() => run('setTabs', { count: null, width: null, height: null })}
+                className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                {t.reset}
+              </button>
+            ) : null}
+          </p>
+        </div>
+      ) : null}
+      <Choice
+        legend={t.leadIn}
+        name="lead-in"
+        testId="sim-cutting-lead"
+        value={c.leadIn}
+        options={(['arc', 'line'] as const).map((v) => [v, t.leadIns[v]])}
+        onChange={(leadIn) => run('setLeadIn', { leadIn })}
+      />
+      <Choice
+        legend={t.direction}
+        name="direction"
+        testId="sim-cutting-direction"
+        value={c.direction}
+        options={(['climb', 'conventional'] as const).map((v) => [v, t.directions[v]])}
+        onChange={(direction) => run('setCutDirection', { direction })}
+      />
+      <p className="text-xs text-fg-muted">{t.note}</p>
+    </section>
+  );
+}
+
+/** A small radio row (the same pattern as the sheet size choice on step 1). */
+function Choice<V extends string>({
+  legend,
+  name,
+  testId,
+  value,
+  options,
+  onChange,
+}: {
+  legend: string;
+  name: string;
+  testId: string;
+  value: V;
+  options: readonly (readonly [V, string])[];
+  onChange: (v: V) => void;
+}) {
+  const id = useId();
+  return (
+    <fieldset className="flex flex-col gap-1.5" data-testid={testId} data-value={value}>
+      <legend className="mb-1 text-xs font-medium text-fg">{legend}</legend>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(([v, label]) => {
+          const on = v === value;
+          return (
+            <label
+              key={v}
+              className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${on ? 'border-accent-border bg-accent-subtle font-medium text-fg' : 'border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg'}`}
+            >
+              <input
+                type="radio"
+                name={`${id}-${name}`}
+                value={v}
+                className="size-4 accent-(--color-accent)"
+                checked={on}
+                onChange={() => {
+                  if (!on) onChange(v);
+                }}
+              />
+              {label}
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}

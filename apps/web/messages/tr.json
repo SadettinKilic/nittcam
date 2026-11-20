@@ -1259,6 +1259,40 @@
       "depthTop": "0 mm (malzeme üstü)",
       "depthBottom": "{z} mm (son derinlik)",
       "tabMarker": "Köprü (tab): sarı bant ve nokta"
+    },
+    "cutting": {
+      "title": "Kesim ayarları",
+      "tabs": "Köprü",
+      "tabModes": {
+        "all": "Her parçada",
+        "small": "Yalnız küçük parçada",
+        "off": "Kapalı"
+      },
+      "tabHints": {
+        "all": "Her parça köprüyle tutulur; plakadan kesip alırsınız.",
+        "small": "Köprü yalnız küçük parçalara konur; vakum onları tutamaz.",
+        "off": "Köprü yok. Küçük parçalar yine de güvende: altta {skin} mm ince tabaka kalır, plakanın sonunda temizleme pasosuyla kesilir."
+      },
+      "count": "Adet",
+      "width": "Genişlik",
+      "height": "Yükseklik",
+      "source": {
+        "material": "Değerler malzeme ayarından.",
+        "default": "Değerler hazır varsayılan.",
+        "project": "Bu projeye özel değer var."
+      },
+      "reset": "Malzeme ayarına dön",
+      "leadIn": "Giriş",
+      "leadIns": {
+        "arc": "Yay",
+        "line": "Düz"
+      },
+      "direction": "Kesim yönü",
+      "directions": {
+        "climb": "Climb (tırmanma)",
+        "conventional": "Conventional (geleneksel)"
+      },
+      "note": "Her değişiklik geri alınabilir; önizleme ve dışa aktarılan dosya aynı değerleri kullanır."
     }
   },
   "projects": {

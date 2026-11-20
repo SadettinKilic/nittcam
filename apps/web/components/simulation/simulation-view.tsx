@@ -165,6 +165,7 @@ export function SimulationView({
   header,
   empty,
   left,
+  settings,
   notice,
   onOpenPart,
   onOpenRow,
@@ -178,6 +179,8 @@ export function SimulationView({
   header: SimHeader;
   /** Extra content for the settings panel (the wizard's warnings), T197. */
   left?: ReactNode;
+  /** T288: the "Kesim ayarları" panel, above the warnings. */
+  settings?: ReactNode;
   /** T269: the "Son sürüme geç" box when the machine has a newer profile version. */
   notice?: ReactNode;
   /** T270: opens a part on the drawing board (a blocked cut-out links there). */
@@ -344,6 +347,7 @@ export function SimulationView({
       ) : null}
 
       {player}
+      {settings}
       {left}
     </div>
   );
