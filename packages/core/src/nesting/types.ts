@@ -89,7 +89,15 @@ export interface NestingInput {
    * Stock sheet sizes in order (T164, D-056); absent or one size without `qty` = `[sheet]` (the
    * single-size path, byte-identical to before). `qty` absent = no limit.
    */
-  sheets?: readonly { width: number; height: number; qty?: number | undefined }[] | undefined;
+  sheets?:
+    | readonly {
+        width: number;
+        height: number;
+        qty?: number | undefined;
+        /** T168: an offcut from the stock (qty 1); offcuts are tried before every other size. */
+        offcutId?: string | undefined;
+      }[]
+    | undefined;
   /** Size index (into `sheets`) of each locked sheet; absent = 0. */
   lockedSizes?: readonly number[] | undefined;
   parts: readonly NestPart[];

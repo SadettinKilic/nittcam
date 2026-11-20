@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../../geometry/grain';
 import { nestProject, type NestHooks } from '../../nesting/nest';
+import { offcutSheetSchema } from '../../nesting/offcuts';
 import {
   defaultSheet,
   nestingRotationSchema,
@@ -18,7 +19,7 @@ export const setNestingOptions = defineCommand({
   name: 'setNestingOptions',
   area: 'nesting',
   description:
-    'Set nesting options: mode ("minWaste", "fastest" or "minToolChanges"), the gap between parts in millimetres, the sheet edge margin in millimetres and the rotation policy of parts without grain ("free" = quarter turns, "none" = keep the drawn orientation, only 0°/180°, "step45" / "step15" = every 45° / 15°) and partInHole (true = small parts may be placed inside large inner cutouts). Pass only the fields to change.',
+    'Set nesting options: mode ("minWaste", "fastest" or "minToolChanges"), the gap between parts in millimetres, the sheet edge margin in millimetres and the rotation policy of parts without grain ("free" = quarter turns, "none" = keep the drawn orientation, only 0°/180°, "step45" / "step15" = every 45° / 15°), partInHole (true = small parts may be placed inside large inner cutouts) and useOffcuts (true = try the stock offcuts of the same material and thickness first). Pass only the fields to change.',
   aiTool: true,
   params: z
     .strictObject({
@@ -27,6 +28,8 @@ export const setNestingOptions = defineCommand({
       margin: nestingSchema.shape.margin.optional(),
       rotation: nestingRotationSchema.optional(),
       partInHole: nestingSchema.shape.partInHole,
+      /** T168: try the stock offcuts of the same material and thickness first. */
+      useOffcuts: z.boolean({ error: 'must be true or false' }).optional(),
     })
     .refine(
       (p) =>
@@ -34,10 +37,14 @@ export const setNestingOptions = defineCommand({
         p.gap !== undefined ||
         p.margin !== undefined ||
         p.rotation !== undefined ||
-        p.partInHole !== undefined,
-      { error: 'pass at least one of mode, gap, margin, rotation, partInHole' },
+        p.partInHole !== undefined ||
+        p.useOffcuts !== undefined,
+      { error: 'pass at least one of mode, gap, margin, rotation, partInHole, useOffcuts' },
     ),
   apply: (draft, params) => {
+    if (params.useOffcuts !== undefined && draft.stock.useOffcuts !== params.useOffcuts) {
+      draft.stock.useOffcuts = params.useOffcuts;
+    }
     if (params.mode !== undefined) draft.nesting.mode = params.mode;
     if (params.gap !== undefined) draft.nesting.gap = params.gap;
     if (params.margin !== undefined) draft.nesting.margin = params.margin;
@@ -89,6 +96,11 @@ export const runNestingParamsSchema = z.strictObject({
     .int({ error: 'must be an integer' })
     .positive({ error: 'must be a tool number >= 1' })
     .optional(),
+  /**
+   * Stock offcuts of the project material and thickness (T168); the caller loads them. Recorded in
+   * the log, so a replay gives the same layout. Used only with `stock.useOffcuts`.
+   */
+  offcuts: z.array(offcutSheetSchema).max(200, { error: 'at most 200 offcuts' }).optional(),
 });
 
 /**
@@ -104,12 +116,15 @@ export const runNesting = defineCommand({
     'Run nesting: place all part copies on sheets with the current nesting options. Locked placements are kept. toolDiameter is the cutting tool diameter in millimetres from the machine profile; contourTool (optional) is its tool number.',
   aiTool: true,
   params: runNestingParamsSchema,
+  // The AI never supplies offcuts (stock rows the app loads, T168).
+  aiParams: runNestingParamsSchema.omit({ offcuts: true }),
   apply: (draft, params) => {
     // Nothing is changed on the draft before this point, so the original is the current project.
     const project = original(draft) as Project;
     const layout = nestProject(project, {
       toolDiameter: params.toolDiameter,
       contourTool: params.contourTool,
+      offcuts: params.offcuts,
     }).layout;
     setLayout(draft, project, layout);
   },
@@ -152,7 +167,7 @@ export function runNestingWithProgress(
   const params = parsed.data;
   const layout = nestProject(
     project,
-    { toolDiameter: params.toolDiameter, contourTool: params.contourTool },
+    { toolDiameter: params.toolDiameter, contourTool: params.contourTool, offcuts: params.offcuts },
     hooks,
   ).layout;
   const [next, patches, inversePatches] = produceWithPatches(project, (draft) => {

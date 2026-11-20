@@ -95,6 +95,6 @@
     "direction": "conventional"
   },
   "settings": {
-    "dimensionMode": "finished"
+    "dimensionMode": "cut"
   }
 }

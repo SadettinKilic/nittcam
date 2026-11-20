@@ -10,6 +10,7 @@ import {
   type Project,
   type VerificationState,
   defaultSheet,
+  toCutSizes,
 } from '@nittcam/core';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -82,7 +83,9 @@ export const THUMB_MAX_PARTS = 200;
  * The thumbnail of a project's first sheet, or null when the project has no layout yet. Placements
  * of unknown parts are skipped; at most `THUMB_MAX_PARTS` parts are kept.
  */
-export function layoutThumb(project: Project): LayoutThumb | null {
+export function layoutThumb(entered: Project): LayoutThumb | null {
+  // T169: parts are drawn at their cut size (edge-band deduction).
+  const project = toCutSizes(entered);
   const first = project.layout.sheets[0];
   if (!first || first.placements.length === 0) return null;
   const parts = new Map(project.parts.map((p) => [p.id, p]));

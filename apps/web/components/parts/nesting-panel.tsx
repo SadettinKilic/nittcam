@@ -1,6 +1,6 @@
 'use client';
 
-import { summarizeLayout, type Project } from '@nittcam/core';
+import { summarizeLayout, usedOffcutIds, type Project } from '@nittcam/core';
 import { useMemo } from 'react';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
@@ -163,6 +163,16 @@ export function NestingPanel({
                   </li>
                 ))}
               </ul>
+            ) : null}
+            {usedOffcutIds(project).length > 0 ? (
+              // T168: sheets cut from the offcut stock (the export marks them used).
+              <p
+                className="text-xs text-fg-muted"
+                data-testid="nesting-offcuts"
+                data-count={usedOffcutIds(project).length}
+              >
+                {fill(t.fromOffcuts, { count: String(usedOffcutIds(project).length) })}
+              </p>
             ) : null}
             {/* T249: no per-plate lines; the plate tabs carry "fire %" once. */}
           </>

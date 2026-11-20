@@ -4,6 +4,7 @@ import {
   rotatedBoxSize,
   type Placement,
   type Project,
+  toCutSizes,
 } from '@nittcam/core';
 import { readTokenColors } from '../../lib/canvas-theme';
 import { footprintInners, footprintOutline } from '../../lib/placed-outline';
@@ -90,7 +91,9 @@ export interface DrawnPart {
 }
 
 /** The placements of one sheet, ready to draw. Placements of unknown parts are skipped. */
-export function drawnParts(project: Project, sheet: number): DrawnPart[] {
+export function drawnParts(entered: Project, sheet: number): DrawnPart[] {
+  // T169: parts are drawn at their cut size (edge-band deduction).
+  const project = toCutSizes(entered);
   const rows = new Map(project.parts.map((p, i) => [p.id, { part: p, row: i + 1 }]));
   const out: DrawnPart[] = [];
   for (const pl of project.layout.sheets[sheet]?.placements ?? []) {

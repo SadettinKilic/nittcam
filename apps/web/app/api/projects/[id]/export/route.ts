@@ -14,6 +14,7 @@ import {
 } from '../../../../../lib/server/exports';
 import { readBody, UUID } from '../../../../../lib/server/projects';
 import type { ExportPreview, ExportResponse } from '../../../../../lib/exports-api';
+import { markOffcutsUsed } from '../../../../../lib/server/offcuts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -108,6 +109,8 @@ export async function POST(request: Request, ctx: RouteContext<'/api/projects/[i
     if (run.needsAcceptance && accept !== true) {
       return apiError({ error: 'acceptance_required' }, 428);
     }
+    // T168: the offcuts this layout cuts from are consumed by the export.
+    await markOffcutsUsed(scope, run.project.data);
     const machine = run.machine;
     const infos = fileInfos(run.files);
     const key = {

@@ -56,6 +56,7 @@ import {
   setStockSheets,
   setThickness,
   setThinSkin,
+  setDimensionMode,
 } from './plate';
 import {
   commandContextSchema,
@@ -79,6 +80,7 @@ export const COMMANDS = {
   setSheetSize,
   setStockSheets,
   setGrain,
+  setDimensionMode,
   addPart,
   drawPart,
   setSegmentBulge,
@@ -288,6 +290,20 @@ export class CommandStack {
         },
       };
     }
+    const aiParams = (COMMANDS as Record<string, CommandDefinition>)[name]?.aiParams;
+    if (ctx.data.actor === 'ai' && aiParams) {
+      const narrow = aiParams.safeParse(params);
+      if (!narrow.success) {
+        return {
+          ok: false,
+          error: {
+            code: 'INVALID_PARAMS',
+            message: `invalid params for ${name}`,
+            issues: zodIssues(narrow.error, ['params']),
+          },
+        };
+      }
+    }
     const result = applyCommand(this.current, name, params);
     if (!result.ok) return result;
     const entry: CommandLogEntry = {
@@ -436,6 +452,9 @@ export function commandToolDefinitions(): CommandToolDefinition[] {
     .map((def) => ({
       name: def.name,
       description: def.description,
-      inputSchema: z.toJSONSchema(def.params, { io: 'input' }) as Record<string, unknown>,
+      inputSchema: z.toJSONSchema(def.aiParams ?? def.params, { io: 'input' }) as Record<
+        string,
+        unknown
+      >,
     }));
 }

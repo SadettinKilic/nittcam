@@ -188,7 +188,7 @@ describe('invalid projects are rejected with readable paths', () => {
     });
     const emptySettings = parseProject(variant((j) => (j.settings = {})));
     expect(emptySettings.ok && emptySettings.project.settings).toEqual({ dimensionMode: 'cut' });
-    const finished = parseProject(shelfSet);
+    const finished = parseProject(variant((j) => (j.settings.dimensionMode = 'finished')));
     expect(finished.ok && finished.project.settings.dimensionMode).toBe('finished');
     expectIssue(
       variant((j) => (j.settings.dimensionMode = 'net')),

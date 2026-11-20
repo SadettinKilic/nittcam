@@ -9,6 +9,7 @@ export {
   setSheetSize,
   setStockSheets,
   setGrain,
+  setDimensionMode,
 } from './plate';
 export * from './log';
 export {
