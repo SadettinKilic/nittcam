@@ -1237,6 +1237,15 @@ Progress (B20a #103, 2026-11-20): canvas onDrop identity fixed, 0 long tasks at 
 Acceptance:
 - [ ] profile run/cancel at 1500 copies (CPU-throttled), split or defer the main-thread work; restore the 50 ms bar in the spec
 Tester focus: none beyond CI.
+
+### T286 Handle template is not placed on the hinge edge (must-fix: wrong output; CTO review #9 A)   [status: todo]
+Spec: §4.7 · Depends: T148, T150 · Review: `docs/reviews/2026-11-20-cto-design-review-9.md` §"Şimdi düzelt" A
+Found: "Yerleştir" from the panel puts both a hinge and a handle template on the left edge; the handle holes land on the hinge side (X 30), every check passes, the door is scrap.
+Acceptance:
+- [ ] by default a handle template goes to the edge opposite the door's hinge edge (left hinges → right handle; mirrored door mirrored)
+- [ ] placing a handle on the hinge edge by hand shows a non-blocking warning at the instance ("Kulp menteşe kenarında") and a line in the Dışa aktar checklist; no silent pass
+- [ ] unit test for the default edge; e2e: hinge + handle via the panel → handle on the opposite edge; G-code goldens byte-identical
+Tester focus: left/right doors, mirrored placement, manual move onto the hinge edge.
 ## M8: Export, etiket, proje yönetimi (exit: NC, DXF, PDF and labels from the server; projects, home and settings complete)
 
 ### Batch B25: T172–T174 (PDF)
@@ -1421,6 +1430,15 @@ From CTO review #8 (2026-11-20, `docs/reviews/2026-11-20-cto-design-review-8.md`
 - Şablonlar page thumbnails not to scale (Ø35 cup smaller than Ø6 hole)
 - G-code: float residue (`Y117.9999`); clean before rounding to 4 decimals (check golden impact)
 - Dizilim "Diz" progress bar has no text; add "Diziliyor… %40 · İptal"
+
+From CTO review #9 (2026-11-20, `docs/reviews/2026-11-20-cto-design-review-9.md`):
+- Toast "1 satır eklendi" / "dosya.dxf: 3 parça eklendi" stays across steps and covers the panel and scale bar (repeat of #8)
+- Assembly 3D: first camera does not fit the assembly (bottom cut off); hinge cups too faint on the see-through door
+- Dizilim: no feedback when true-shape (45°/15°) or part-in-hole change nothing ("iç boşluğa 0 parça", "45° kazanç yok"); merge with the mode-card item
+- Dizilim / Simülasyon: no "fit to job" on small jobs; letter labels overlap the parts (repeat of #8)
+- Dizilim Ayarlar panel grew long: "Diz" moves down when options open; half a row cut at the top when scrolled
+- Cut list: edge band cells have no unit ("1"); show "1 mm" or "(mm)" in the header
+- Offcut proposals are pre-ticked and go to stock in one click; reconsider the default
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
