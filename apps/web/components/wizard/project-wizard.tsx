@@ -17,6 +17,7 @@ import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
+import { STEP_REQUEST_EVENT } from '../../lib/step-request';
 import { TemplateUpdatePrompt } from '../editor/template-update';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
 import { isUntitledName, untitledName } from '../../lib/untitled-name';
@@ -797,6 +798,18 @@ function WizardSession({
     const id = await settle();
     return `${stepUrl(id, 'makine')}&${LATEST_PARAM}=${LATEST_VALUE}`;
   }, [settle]);
+
+  // P4: "Adım n" commands of the palette (the shell's command menu) open a step here.
+  useEffect(() => {
+    function onRequest(e: Event) {
+      const next = (e as CustomEvent<unknown>).detail;
+      if (typeof next === 'string' && (STEPS as readonly string[]).includes(next)) {
+        go(next as StepKey);
+      }
+    }
+    window.addEventListener(STEP_REQUEST_EVENT, onRequest);
+    return () => window.removeEventListener(STEP_REQUEST_EVENT, onRequest);
+  }, [go]);
 
   // Browser Back/forward between steps: follow the URL's `?adim=` (no new entry).
   const projectIdRef = useRef(session.projectId);

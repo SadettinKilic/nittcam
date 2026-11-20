@@ -14,6 +14,7 @@ const shellText = {
   shell: messages.shell,
   palette: messages.palette,
   shortcuts: messages.shortcuts,
+  steps: messages.wizard.steps,
 };
 
 // Inter (OFL-1.1, D-032), downloaded and self-hosted at build time by next/font.

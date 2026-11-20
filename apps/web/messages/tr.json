@@ -150,8 +150,14 @@
       "pages": "Sayfalar",
       "actions": "Eylemler",
       "recent": "Son projeler",
-      "theme": "Tema"
+      "theme": "Tema",
+      "project": "Bu proje"
     },
+    "templates": "Şablonlar",
+    "settings": "Ayarlar",
+    "materials": "Ayarlar / Malzemeler",
+    "verify": "Makine doğrulama",
+    "step": "Adım {n}: {name}",
     "recentLoading": "Son projeler yükleniyor…",
     "recentError": "Son projeler yüklenemedi.",
     "themeLight": "Açık temaya geç",
@@ -167,7 +173,12 @@
       "newProject": "oluştur yeni proje sihirbaz",
       "theme": "tema karanlık aydınlık koyu açık görünüm",
       "sidebar": "menü kenar çubuğu daralt genişlet",
-      "help": "kısayol klavye yardım"
+      "help": "kısayol klavye yardım",
+      "templates": "şablon hazır parça kapak menteşe",
+      "settings": "ayar tercih şirket",
+      "materials": "malzeme plaka mdf sunta kalınlık stok",
+      "verify": "doğrula air cut test kesimi makine onay",
+      "step": "adım sihirbaz git"
     }
   },
   "shortcuts": {

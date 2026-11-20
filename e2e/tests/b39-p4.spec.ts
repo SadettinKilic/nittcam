@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { KITCHEN, openNewProject, paste } from './wizard-helpers';
+import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { KITCHEN, fill, openNewProject, paste } from './wizard-helpers';
 
 /** B39 / P4 (CTO #8–#10): toasts in the wizard stay off the panels and close on a step change. */
 
@@ -49,3 +50,37 @@ for (const [w, h] of [
     await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
   });
 }
+
+test('palette: Şablonlar / Malzemeler pages and in-project step commands (P4)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page, 'parcalar');
+  await paste(page, KITCHEN, 5);
+  const input = page.getByPlaceholder(tr.palette.placeholder);
+  const options = page.getByRole('dialog').getByRole('option');
+
+  // Inside a project: "Adım 3: Dizilim" opens that step.
+  await page.keyboard.press('Control+k');
+  await input.fill('dizilim');
+  await expect(options.first()).toContainText(
+    fill(tr.palette.step, { n: 3, name: tr.wizard.steps.dizilim }),
+  );
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/adim=dizilim/);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(tr.wizard.steps.dizilim);
+
+  await page.keyboard.press('Control+k');
+  await input.fill('malzeme');
+  await expect(options.filter({ hasText: tr.palette.materials })).toHaveCount(1);
+  await options.filter({ hasText: tr.palette.materials }).click();
+  await expect(page).toHaveURL(/\/ayarlar\/malzemeler$/);
+
+  // Off the wizard there are no step commands.
+  await page.keyboard.press('Control+k');
+  await input.fill('adım');
+  await expect(options.filter({ hasText: tr.wizard.steps.dizilim })).toHaveCount(0);
+  await input.fill('şablon');
+  await options.filter({ hasText: tr.palette.templates }).click();
+  await expect(page).toHaveURL(/\/sablonlar$/);
+});

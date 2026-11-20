@@ -267,6 +267,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
           t={{ palette: t.palette, nav: t.nav, shortcuts: t.shortcuts }}
           actions={actions}
           onCloseAutoFocus={paletteFocus.onCloseAutoFocus}
+          steps={wizard ? t.steps : null}
         />
         <ShortcutsDialog
           open={helpOpen}
