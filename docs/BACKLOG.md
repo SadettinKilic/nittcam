@@ -1192,26 +1192,26 @@ Tester focus: time budget; utilisation numbers; deterministic re-run.
 
 ### Batch B24: T168–T171 (offcuts, edge band, layout editing)
 
-### T168 Offcut stock   [status: todo]
+### T168 Offcut stock   [status: done]
 Spec: §2.4, §3.4, §6.2, §9.1 · Depends: T164
 Acceptance:
 - [ ] after nesting, rectangular leftovers ≥ 300×300 (setting) proposed; user confirms → `offcuts` row (material, thickness, size, grain, source project); next nesting of the same material/thickness tries offcuts first; "Artık parçalar" tab under Projeler
 Tester focus: offcut used first in the next project; status changes to used; tenancy test.
 
-### T169 Edge band deduction   [status: todo]
+### T169 Edge band deduction   [status: done]
 Spec: §4.8 · Depends: T119
 Acceptance:
 - [ ] project setting "girilen ölçü bitmiş ölçü": cut size = finish − band thickness per edge; shown in the grid (finish and cut size) and used by nesting/toolpath
 Tester focus: dimensions hand-checked for all edge combinations; toggle is undoable.
 
-### T170 Layout editing upgrades   [status: todo]
+### T170 Layout editing upgrades   [status: done]
 Spec: §6.2 · Depends: T166
 Acceptance:
 - [ ] rotate a dragged part through its allowed angles (R key), snap to neighbours at gap distance, multi-select lock/unlock, "kilitsizleri yeniden diz"
 - [ ] invalid drops still never committed (`LOCKED_PLACEMENT_INVALID`)
 Tester focus: a fixed-grain part cannot be rotated off-grain by the UI; drag e2e.
 
-### T171 Layout view polish: numbers, stats, legend   [status: todo]
+### T171 Layout view polish: numbers, stats, legend   [status: done]
 Spec: §2.4, §6.5 · Depends: T170
 Acceptance:
 - [ ] part numbers consistent with PDF/labels, per-sheet stats (parts, utilisation, cut length), legend, minimap for many sheets (labels, dimensions and the utilisation bar already come from T196; this task adds the rest)
