@@ -1134,6 +1134,15 @@ Acceptance:
 - [ ] walkthrough 1 path (Yeni proje → click name → "Mutfak alt dolap 60") gives `Mutfak_alt_dolap_60_S1.tap` with no extra click
 - [ ] e2e: click and type; Esc keeps the old name; undo
 Tester focus: new project, renaming an existing one, undo; 1440 + 390 smoke.
+
+### T285 Assembled cabinet preview shows holes, pockets and template instances on the parts   [status: todo]
+Spec: §3.8 · Depends: T158, T153
+Found by the owner (2026-11-20): a generated cabinet with hinge holes drawn on the doors; the holes do not show in "Montaj görünümü" (the flat 3D preview of T153 does show cutouts/holes/pockets).
+Acceptance:
+- [ ] assembly boxes use the same part geometry as T153 (outline extrusion with inner cutouts, through holes, blind holes and pockets at depth, template instances), placed on the correct face after the assembly transform (door inside face for hinge cups, mirrored doors correct)
+- [ ] the see-through door (B21) stays readable: holes visible through the door outline (see the B21b polish note on door opacity)
+- [ ] perf: 300-part budget of T159 still met; unit test on the transform of a hole onto the assembled face
+Tester focus: hinge door with a ready template (left and right door), shelf with drilled rows; 1440 light/dark.
 ## M7: Dizilim yükseltmeleri (exit: 3 modes, true-shape nesting with rotation, offcuts, edge-band deduction)
 
 ### Batch B22: T162–T164 (modes and options)
@@ -1274,6 +1283,7 @@ Tester focus: values equal the PDF report values.
 ### Batch B27: T178–T180 (projects and home)
 
 ### T178 Projeler page: search, filter, copy, delete   [status: todo]
+Owner (2026-11-20): looked for delete on Projeler and found none; **pull the delete part forward** (next free batch), copy/search/filter can stay in M8.
 Spec: §3.4 · Depends: T111
 Acceptance:
 - [ ] table with name, status, machine, material, date; search (Turkish folding), filters (status, machine, material), sort, pagination; copy project (new id, revision 1, exports not copied); soft delete with undo toast
