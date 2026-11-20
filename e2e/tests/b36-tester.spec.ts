@@ -76,7 +76,7 @@ async function newMachine(request: APIRequestContext, name: string, mdf8 = false
 async function exportOk(request: APIRequestContext, id: string) {
   const { revision } = await detail(request, id);
   const res = await request.post(`/api/projects/${id}/export`, {
-    data: { revision, acceptUnverified: true },
+    data: { revision, acceptUnverified: true, checklistConfirmed: true },
   });
   expect(res.status(), await res.text()).toBeLessThan(300);
   const body = (await res.json()) as { files: { downloadUrl: string }[] };
