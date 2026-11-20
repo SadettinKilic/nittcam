@@ -154,3 +154,45 @@ test('T156: simulation 3D view draws the read toolpath; Takım yolu toggles it',
   await expect(page.getByTestId('sim-canvas')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('T157: one player for 2D and 3D: the scrubbed time carries over; air-cut banner in 3D; play to the end', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page, 'parcalar');
+  await pasteAndNest(page);
+  await goStep(page, 'simulasyon');
+  const canvas = page.getByTestId('sim-canvas');
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  const duration = Number(await canvas.getAttribute('data-duration'));
+
+  // Scrub in 2D, then open 3D: same time, same clock.
+  const scrubber = page.getByTestId('sim-scrubber');
+  const max = Number(await scrubber.getAttribute('max'));
+  await scrubber.fill(String(Math.round(max / 2)));
+  const time2d = await canvas.getAttribute('data-time');
+  const clock = await page.getByTestId('sim-clock').textContent();
+  await page.getByTestId('sim-view-3d').click();
+  const host = page.getByTestId('preview3d');
+  await expect(host).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
+  await expect(canvas).toHaveAttribute('data-time', time2d ?? '');
+  await expect(page.getByTestId('sim-clock')).toHaveText(clock ?? '');
+  await expect(page.getByTestId('sim-banner-3d')).toContainText(tr.simulation.banner);
+
+  // End in 3D, back to 2D: still at the end.
+  await host.click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('End');
+  await expect.poll(async () => Number(await canvas.getAttribute('data-time'))).toBe(duration);
+  await page.getByTestId('sim-view-2d').click();
+  await expect(canvas).toHaveAttribute('data-time', String(duration));
+
+  // Play in 3D from the start: time advances.
+  await page.getByTestId('sim-view-3d').click();
+  await expect(host).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
+  await page.keyboard.press('Home');
+  await page.getByTestId('sim-play').click();
+  await expect.poll(async () => Number(await canvas.getAttribute('data-time'))).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});

@@ -170,6 +170,18 @@ export function partLiftTimes(
   });
 }
 
+/** How many of the ascending `sorted` end times are reached at time t. */
+export function endsReached(sorted: Float64Array, t: number): number {
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if ((sorted[mid] ?? Infinity) <= t + 1e-9) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
 /** Per-slot lift at time t: `amount` once the copy's outer contour has ended, else 0. */
 export function liftsAt(times: Float64Array, t: number, amount: number): Float32Array {
   return Float32Array.from(times, (end) => (t + 1e-9 >= end ? amount : 0));

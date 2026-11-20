@@ -40,7 +40,6 @@ import {
 import { onThemeChange } from '../../lib/canvas-theme';
 import {
   clampSimTime,
-  lineAt,
   nextStepTime,
   playbackRate,
   positionAt,
@@ -59,6 +58,7 @@ import dynamic from 'next/dynamic';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -68,6 +68,7 @@ import {
 import { fill } from '../../lib/draft-project';
 import type { SimulationMeta, SimulationResponse } from '../../lib/simulation-messages';
 import { useSimulationWorker } from '../../lib/use-simulation-worker';
+import { SPEEDS, createSimPlayer, useSimPlayer } from '../../lib/sim-player';
 import { drawnParts, type ViewState } from '../layout-view/model';
 import { clampScale, zoomAt } from '../layout-view/zoom';
 import { GcodePanel } from './gcode-panel';
@@ -91,9 +92,6 @@ import { findings, Violations } from './violations';
 import { ZStrip } from './z-strip';
 
 const SimulationCanvas = dynamic(() => import('./simulation-canvas'), { ssr: false });
-
-const SPEEDS = [1, 2, 5, 10, 'max'] as const;
-type Speed = (typeof SPEEDS)[number];
 
 /** Scrubber resolution: tenths of a second. */
 const SCRUB_UNITS = 10;
@@ -448,16 +446,25 @@ function Player({
   tabs: ReactNode;
 }) {
   const reduced = useReducedMotion();
-  const [time, setTimeState] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState<Speed>(5);
+  // T157: one player store per sheet; the 2D canvas and the 3D view both follow it.
+  const [player] = useState(() => createSimPlayer(sim.steps, sim.duration));
+  useLayoutEffect(() => player.load(sim.steps, sim.duration), [player, sim.steps, sim.duration]);
+  const { time, playing, speed, line } = useSimPlayer(player);
+  const { setPlaying, setSpeed } = player;
+  const timeRef = useMemo(
+    () => ({
+      get current() {
+        return player.get().time;
+      },
+    }),
+    [player],
+  );
   const [size, setSize] = useState({ w: 0, h: 0 });
   const width = size.w;
   const [view, setView] = useState<ViewState | null>(null);
   const [colors, setColors] = useState<SimColors | null>(null);
   const coarse = useMediaQuery('(pointer: coarse)', false);
   const box = useRef<HTMLDivElement>(null);
-  const timeRef = useRef(0);
   const duration = sim.duration;
   const stock = useMemo(() => sheetSizeOf(project, sim.sheet), [project, sim.sheet]);
   // T259: no grain chip or legend line when the sheet has no grain (or the material has none).
@@ -499,11 +506,9 @@ function Player({
 
   const setTime = useCallback(
     (v: number) => {
-      const c = clampSimTime(duration, v);
-      timeRef.current = c;
-      setTimeState(c);
+      player.setTime(clampSimTime(duration, v));
     },
-    [duration],
+    [duration, player],
   );
 
   // T268: refit only when the fit inputs change in value. An autosave or a machine refetch gives
@@ -557,8 +562,7 @@ function Player({
       const dt = Math.min(0.25, Math.max(0, (now - last) / 1000));
       last = now;
       const next = Math.min(duration, timeRef.current + dt * rate);
-      timeRef.current = next;
-      setTimeState(next);
+      player.setTime(next);
       if (next >= duration) {
         setPlaying(false);
         return;
@@ -574,42 +578,42 @@ function Player({
       cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onHidden);
     };
-  }, [active, speed, duration]);
+  }, [active, speed, duration, player, setPlaying, timeRef]);
 
   const togglePlay = useCallback(() => {
     if (reduced) return;
     if (!playing && timeRef.current >= duration) setTime(0);
-    setPlaying((p) => !p);
-  }, [reduced, playing, duration, setTime]);
+    setPlaying(!player.get().playing);
+  }, [reduced, playing, duration, setTime, player, setPlaying, timeRef]);
   const stepNext = useCallback(() => {
     setPlaying(false);
     setTime(nextStepTime(sim.steps, timeRef.current, duration));
-  }, [sim.steps, duration, setTime]);
+  }, [sim.steps, duration, setTime, setPlaying, timeRef]);
   const stepPrev = useCallback(() => {
     setPlaying(false);
     setTime(prevStepTime(sim.steps, timeRef.current));
-  }, [sim.steps, setTime]);
+  }, [sim.steps, setTime, setPlaying, timeRef]);
   const toStart = useCallback(() => {
     setPlaying(false);
     setTime(0);
-  }, [setTime]);
+  }, [setTime, setPlaying]);
   const toEnd = useCallback(() => {
     setPlaying(false);
     setTime(duration);
-  }, [duration, setTime]);
+  }, [duration, setTime, setPlaying]);
   const seekLine = useCallback(
     (file: number, line: number) => {
       setPlaying(false);
       setTime(timeForLine(sim.steps, file, line, duration));
     },
-    [sim.steps, duration, setTime],
+    [sim.steps, duration, setTime, setPlaying],
   );
   const seekTime = useCallback(
     (v: number) => {
       setPlaying(false);
       setTime(v);
     },
-    [setTime],
+    [setTime, setPlaying],
   );
 
   // Keyboard: Space play/pause (a step under reduced motion), ←/→ step, Home/End.
@@ -632,7 +636,6 @@ function Player({
 
   const ph = simPlayheadAt(sim.steps, time);
   const pos = positionAt(sim, time);
-  const line = lineAt(sim.steps, time);
   const stepIndex = ph.active >= 0 ? ph.active : ph.done - 1;
   const step = sim.steps[stepIndex];
   const diameter = step ? toolDiameterOf(sim, step.tool) : null;
@@ -820,8 +823,22 @@ function Player({
                 setMode('2d');
               }}
               partCount={parts.length}
-              toolpath={{ sim, time: null }}
-            />
+              toolpath={{
+                sim,
+                time,
+                tool: { x: pos.x, y: pos.y, z: pos.z, diameter: diameter ?? 6 },
+              }}
+            >
+              {/* §3.8: the air-cut warning also in 3D. */}
+              <p
+                role="note"
+                data-testid="sim-banner-3d"
+                className="pointer-events-none absolute top-14 right-2 z-10 flex max-w-64 items-start gap-1.5 rounded-lg border border-info-border bg-info-subtle/95 px-2.5 py-1.5 text-xs text-info-text shadow-sm max-sm:top-24"
+              >
+                <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                <span className="font-semibold">{t.banner}</span>
+              </p>
+            </Preview3D>
           ) : width > 0 && view && colors ? (
             <CanvasBoundary>
               <SimulationCanvas

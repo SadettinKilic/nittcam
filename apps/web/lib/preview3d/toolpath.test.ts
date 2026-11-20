@@ -1,6 +1,13 @@
 import type { SimSheet, SimStep } from '@nittcam/core';
 import { describe, expect, it } from 'vitest';
-import { buildToolpath3d, depthColors, drawCounts, liftsAt, partLiftTimes } from './toolpath';
+import {
+  buildToolpath3d,
+  depthColors,
+  drawCounts,
+  endsReached,
+  liftsAt,
+  partLiftTimes,
+} from './toolpath';
 
 const TOP = [1, 1, 1] as const;
 const BOTTOM = [0, 0, 0] as const;
@@ -103,6 +110,12 @@ describe('drawCounts (T157)', () => {
 });
 
 describe('partLiftTimes (T157)', () => {
+  it('counts the reached end times', () => {
+    const sorted = Float64Array.from([2, 5, Infinity]);
+    expect(endsReached(sorted, 0)).toBe(0);
+    expect(endsReached(sorted, 5)).toBe(2);
+    expect(endsReached(sorted, 1e9)).toBe(2);
+  });
   it('lifts a copy when its outer through-cut contour ends', () => {
     const times = partLiftTimes(square(), [
       { minX: 15, minY: 15, maxX: 105, maxY: 105 },

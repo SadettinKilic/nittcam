@@ -33,6 +33,7 @@ import {
 } from '../../lib/preview3d/camera';
 import { PartsLayer } from './parts-layer';
 import { ToolpathLayer } from './toolpath-layer';
+import { endsReached, liftsAt, partLiftTimes } from '../../lib/preview3d/toolpath';
 import { TABLE_THICKNESS, buildStage, type TableSpec } from '../../lib/preview3d/stage';
 
 /** Colours of the scene, read from the design tokens (never hard-coded; ui-conventions). */
@@ -140,10 +141,34 @@ export default function Scene(props: SceneProps) {
     [look, base, colors.band, simple, slots],
   );
   useEffect(() => () => materials.dispose(), [materials]);
-  const ia = props.interaction;
-  const [ox, oy] = ia.offset;
   const { width: W, height: H } = stage.sheet;
   const T = stage.thickness;
+  // T157: during playback a copy lifts slightly once its outer contour has ended.
+  const play = props.toolpath && props.toolpath.time !== null ? props.toolpath : null;
+  const playSim = play?.sim ?? null;
+  const liftTimes = useMemo(
+    () => (playSim ? partLiftTimes(playSim, sheetScene.outlines) : null),
+    [playSim, sheetScene.outlines],
+  );
+  const sortedEnds = useMemo(
+    () => (liftTimes ? Float64Array.from(liftTimes).sort() : null),
+    [liftTimes],
+  );
+  const reached = sortedEnds && play?.time != null ? endsReached(sortedEnds, play.time) : 0;
+  const liftAmount = Math.max(2, T * 0.25);
+  const playLifts = useMemo(
+    () =>
+      liftTimes && sortedEnds
+        ? liftsAt(
+            liftTimes,
+            reached > 0 ? (sortedEnds[reached - 1] ?? -Infinity) : -Infinity,
+            liftAmount,
+          )
+        : null,
+    [liftTimes, sortedEnds, reached, liftAmount],
+  );
+  const ia = playLifts ? { ...props.interaction, lifts: playLifts } : props.interaction;
+  const [ox, oy] = ia.offset;
   const tb = stage.table;
   const span = Math.max(W, H, tb.w, tb.h);
 
