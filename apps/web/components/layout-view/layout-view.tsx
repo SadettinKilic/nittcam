@@ -13,6 +13,8 @@ import {
 import dynamic from 'next/dynamic';
 import {
   memo,
+  createContext,
+  useContext,
   useCallback,
   useEffect,
   useId,
@@ -101,7 +103,6 @@ export interface LayoutViewProps {
   onLock?: (request: LockRequest) => boolean;
   /** "Yeniden diz": re-nests keeping the locked parts. Hidden when missing. */
   onRenest?: () => void;
-  renesting?: boolean;
   /** Bumped after each new "Diz" result; the parts fade/settle in (T196). */
   appearKey?: number;
   /** Settings panel shown left of the canvas in the workspace (T197). */
@@ -159,14 +160,13 @@ type PlacementIssueCode = keyof typeof PLACEMENT_ISSUE_TEXT;
  * one is refused and the part stays where it was. Without `onLock` the view only displays a
  * layout (reused by the simulation, T020).
  */
-export function LayoutView({
+function LayoutViewImpl({
   t,
   project,
   toolDiameter,
   issues = [],
   onLock,
   onRenest,
-  renesting = false,
   appearKey = 0,
   left,
   compactAction,
@@ -456,16 +456,7 @@ export function LayoutView({
         >
           {fill(t[PLACEMENT_ISSUE_TEXT[li.code]], { label: labelOf(li.key) })}
           {li.code === 'PLACEMENT_GRAIN' && onRenest ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRenest}
-              disabled={renesting}
-              className="mt-2 flex"
-            >
-              <RefreshCw aria-hidden />
-              {t.renestStale}
-            </Button>
+            <RenestStaleButton label={t.renestStale} onRenest={onRenest} />
           ) : null}
         </p>
       ))}
@@ -476,45 +467,19 @@ export function LayoutView({
       >
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold tracking-tight text-fg">{t.title}</h3>
-          {onRenest ? (
-            <Tooltip content={t.renest}>
-              <IconButton
-                size="sm"
-                variant="ghost"
-                aria-label={renesting ? t.renesting : t.renest}
-                onClick={onRenest}
-                disabled={renesting}
-                aria-busy={renesting}
-              >
-                <RefreshCw aria-hidden className={renesting ? 'animate-spin' : undefined} />
-              </IconButton>
-            </Tooltip>
-          ) : null}
+          {onRenest ? <RenestIconButton t={t} onRenest={onRenest} /> : null}
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor={selectId} className="font-medium text-fg">
             {t.select}
           </label>
-          <Select
-            value={current?.key ?? NONE}
-            onValueChange={(v) => onSelect(v === NONE ? null : v)}
-          >
-            <SelectTrigger
-              id={selectId}
-              data-testid="layout-select"
-              data-value={current?.key ?? ''}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>{t.selectNone}</SelectItem>
-              {parts.map((p) => (
-                <SelectItem key={p.key} value={p.key}>
-                  {fill(t.option, { label: p.label, name: p.name || t.unnamed })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <PartSelect
+            t={t}
+            id={selectId}
+            parts={parts}
+            value={current?.key ?? null}
+            onSelect={onSelect}
+          />
         </div>
         {current ? (
           <PartInfo
@@ -822,6 +787,89 @@ export function LayoutView({
     </section>
   );
 }
+
+/**
+ * Memoised (T281): the wizard re-renders on every autosave state and the step on every run start
+ * and stop; with 1500 copies a full render of this view was most of a 50 ms main-thread task. The
+ * caller keeps the props stable; the run state reaches the renest buttons through context.
+ */
+export const LayoutView = memo(LayoutViewImpl);
+
+/**
+ * T281: whether a "Diz" run is in progress. Read through context by the two renest buttons only,
+ * so a run starting or stopping does not re-render the (memoised) layout view.
+ */
+export const RenestingContext = createContext(false);
+
+function RenestIconButton({ t, onRenest }: { t: Text; onRenest: () => void }) {
+  const renesting = useContext(RenestingContext);
+  return (
+    <Tooltip content={t.renest}>
+      <IconButton
+        size="sm"
+        variant="ghost"
+        aria-label={renesting ? t.renesting : t.renest}
+        onClick={onRenest}
+        disabled={renesting}
+        aria-busy={renesting}
+      >
+        <RefreshCw aria-hidden className={renesting ? 'animate-spin' : undefined} />
+      </IconButton>
+    </Tooltip>
+  );
+}
+
+function RenestStaleButton({ label, onRenest }: { label: string; onRenest: () => void }) {
+  const renesting = useContext(RenestingContext);
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={onRenest}
+      disabled={renesting}
+      className="mt-2 flex"
+    >
+      <RefreshCw aria-hidden />
+      {label}
+    </Button>
+  );
+}
+
+/**
+ * The part picker of the inspector (T281): one option per part of the sheet, rendered even while
+ * closed. Memoised so a re-render of the view (a run starts or stops, an autosave state changes)
+ * does not rebuild hundreds of options; with 1500 copies that alone was ~25 ms per render at 3×
+ * CPU throttle.
+ */
+const PartSelect = memo(function PartSelect({
+  t,
+  id,
+  parts,
+  value,
+  onSelect,
+}: {
+  t: Text;
+  id: string;
+  parts: readonly DrawnPart[];
+  value: string | null;
+  onSelect: (key: string | null) => void;
+}) {
+  return (
+    <Select value={value ?? NONE} onValueChange={(v) => onSelect(v === NONE ? null : v)}>
+      <SelectTrigger id={id} data-testid="layout-select" data-value={value ?? ''}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NONE}>{t.selectNone}</SelectItem>
+        {parts.map((p) => (
+          <SelectItem key={p.key} value={p.key}>
+            {fill(t.option, { label: p.label, name: p.name || t.unnamed })}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+});
 
 function noopMove() {}
 function noopDrop() {
