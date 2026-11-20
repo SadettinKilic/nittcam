@@ -4,8 +4,11 @@ import {
   dimensionModeSchema,
   machineRefSchema,
   projectSheetSizeSchema,
+  SPINDLE_RPM_BOUNDS,
   stockSchema,
 } from '../../schema';
+import { findTool } from '../../machine/profile';
+import { rpmInRange } from '../../toolpath/spindle';
 import { SKIN_BOUNDS, TAB_BOUNDS, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
 
@@ -287,5 +290,54 @@ export const setCutDirection = defineCommand({
   }),
   apply: (draft, p) => {
     draft.cutting.direction = p.direction;
+  },
+});
+
+/**
+ * T307 (D-095): spindle speed (devir) for one tool of this project, rpm; `null` = back to the
+ * recommended value (the material set's). With the selected machine the value must lie inside its
+ * spindle range and the tool must be in its tool table; the validation, the toolpath and the post
+ * check the range again. A machine setting the user chooses: not an AI tool.
+ */
+export const setSpindleRpm = defineCommand({
+  name: 'setSpindleRpm',
+  area: 'plate',
+  description:
+    'Set the spindle speed (rpm) of one tool for this project, inside the machine spindle range; null = the recommended value of the material set.',
+  aiTool: false,
+  params: z.strictObject({
+    tool: z
+      .number({ error: 'tool must be a number' })
+      .int({ error: 'tool must be a whole number' })
+      .min(1, { error: 'tool must be 1–99' })
+      .max(99, { error: 'tool must be 1–99' }),
+    rpm: z
+      .number({ error: 'rpm must be a number' })
+      .int({ error: 'rpm must be a whole number' })
+      .min(SPINDLE_RPM_BOUNDS.min, { error: `rpm must be at least ${SPINDLE_RPM_BOUNDS.min}` })
+      .max(SPINDLE_RPM_BOUNDS.max, { error: `rpm must be at most ${SPINDLE_RPM_BOUNDS.max}` })
+      .nullable(),
+  }),
+  check: (_project, p, env) => {
+    const machine = env.machine;
+    if (!machine) return undefined;
+    if (!findTool(machine, p.tool)) return `tool T${p.tool} is not in the machine profile`;
+    if (p.rpm !== null && !rpmInRange(machine, p.rpm)) {
+      return `spindle speed ${p.rpm} rpm is outside the machine's range ${machine.spindle.minRpm}–${machine.spindle.maxRpm}`;
+    }
+    return undefined;
+  },
+  apply: (draft, p) => {
+    const key = String(p.tool);
+    if (p.rpm === null) {
+      const own = draft.cutting.spindleRpm;
+      if (!own || !(key in own)) return;
+      const rest = Object.fromEntries(Object.entries(own).filter(([k]) => k !== key));
+      if (Object.keys(rest).length === 0) delete draft.cutting.spindleRpm;
+      else draft.cutting.spindleRpm = rest;
+      return;
+    }
+    draft.cutting.spindleRpm ??= {};
+    draft.cutting.spindleRpm[key] = p.rpm;
   },
 });

@@ -74,6 +74,8 @@ import {
   Progress,
   Skeleton,
   Spinner,
+  Slider,
+  formatNumberTr,
   Switch,
   Tabs,
   TabsContent,
@@ -150,6 +152,7 @@ export function UiGallery({ t, grainText }: { t: T; grainText: Messages['grainDi
   const [grain, setGrain] = useState(true);
   const [grainAngle, setGrainAngle] = useState(30);
   const [grainLive, setGrainLive] = useState(30);
+  const [rpm, setRpm] = useState(23000);
   const grainLabels = grainDialLabels(grainText);
   const errors = numberErrors(t);
 
@@ -526,6 +529,23 @@ export function UiGallery({ t, grainText }: { t: T; grainText: Messages['grainDi
                 <Switch id="g-sim3" disabled />
                 <Label htmlFor="g-sim3">{t.toggles.disabled}</Label>
               </div>
+              <Separator />
+              {/* T307: slider with a marked value and a band; warning tone outside the band. */}
+              <Slider
+                value={rpm}
+                min={6000}
+                max={24000}
+                step={500}
+                pageStep={1000}
+                onValueChange={setRpm}
+                onValueCommit={setRpm}
+                label={t.toggles.slider}
+                valueText={formatNumberTr(rpm)}
+                mark={{ value: 18000, label: t.toggles.sliderMark }}
+                band={[14400, 21600]}
+                tone={rpm > 21600 || rpm < 14400 ? 'warning' : 'default'}
+                data-testid="g-slider"
+              />
             </div>
             <fieldset className="flex flex-col gap-3">
               <legend className="mb-3 text-sm font-medium text-fg">{t.toggles.mode}</legend>

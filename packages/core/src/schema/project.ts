@@ -468,6 +468,9 @@ export const layoutSchema = z.strictObject({
   ),
 });
 
+/** Profile-wide spindle bounds (= `PROFILE_BOUNDS.rpm`, kept equal by a test; no machine import here). */
+export const SPINDLE_RPM_BOUNDS = { min: 1_000, max: 60_000 } as const;
+
 export const cuttingSchema = z.strictObject({
   /**
    * Tabs (§6.3, D-022). `auto: true` = tabs on every part, placed automatically; `false` = tabs only
@@ -499,6 +502,23 @@ export const cuttingSchema = z.strictObject({
   direction: z.enum(['climb', 'conventional'], {
     error: 'direction must be "climb" or "conventional"',
   }),
+  /**
+   * T307 (D-095): spindle speed chosen for this project, per tool number ("2" → 20000 rpm).
+   * Absent tool = the recommended value (the material parameter set's rpm). The machine's own
+   * min/max is checked by `setSpindleRpm`, the validation (`SPINDLE_RPM_OUT_OF_RANGE`), the
+   * toolpath and the post; the schema only holds the profile-wide bounds. Optional; older projects
+   * stay valid.
+   */
+  spindleRpm: z
+    .record(
+      z.string().regex(/^[1-9]\d?$/, { error: 'tool number key must be 1–99' }),
+      z
+        .number({ error: 'rpm must be a number' })
+        .int({ error: 'rpm must be a whole number' })
+        .min(SPINDLE_RPM_BOUNDS.min, { error: `rpm must be at least ${SPINDLE_RPM_BOUNDS.min}` })
+        .max(SPINDLE_RPM_BOUNDS.max, { error: `rpm must be at most ${SPINDLE_RPM_BOUNDS.max}` }),
+    )
+    .optional(),
 });
 
 /**

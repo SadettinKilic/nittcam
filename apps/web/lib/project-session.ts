@@ -217,6 +217,11 @@ export function useProjectSession({
     [queue],
   );
 
+  // T307: machine-dependent command checks (spindle range) read the selected machine.
+  useEffect(() => {
+    stack.setValidationContext(machine ? { machine } : {});
+  }, [stack, machine]);
+
   const project = stack.project;
   const issues: readonly ValidationIssue[] = useMemo(
     () =>

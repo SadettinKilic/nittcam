@@ -23,6 +23,7 @@ import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../edito
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { lineLeavesPart } from '../editor/lines';
 import { unsecuredSlugs } from '../toolpath/slug-check';
+import { spindleSettingsOf } from '../toolpath/spindle';
 import { toCutSizes } from '../schema/cut-size';
 
 export type ValidationSeverity = 'error' | 'warning';
@@ -39,6 +40,7 @@ export type ValidationCode =
   | 'PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
   | 'CUTTING_PARAMS_UNVERIFIED'
+  | 'SPINDLE_RPM_OUT_OF_RANGE'
   | 'SHEET_LARGER_THAN_TABLE'
   | 'HOLE_OUTSIDE_PART'
   | 'INNER_CONTOUR_INVALID'
@@ -382,6 +384,25 @@ export const unverifiedCuttingParams: ValidationRule = (project, context) => {
 };
 
 /**
+ * (e2) T307 (D-095): a project spindle speed outside the selected machine's spindle range (an old
+ * project on another machine, or a hand-edited file). An error: the toolpath and the post refuse it
+ * too; "Önerilene dön" clears it. Only the job's tools count (a stale value of an unused tool is
+ * never cut). Skipped without a profile.
+ */
+export const spindleRpmOutOfRange: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || !project.cutting.spindleRpm) return [];
+  return spindleSettingsOf(project, machine)
+    .filter((s) => s.outOfRange)
+    .map(({ tool, rpm }) => ({
+      code: 'SPINDLE_RPM_OUT_OF_RANGE' as const,
+      severity: 'error' as const,
+      path: `cutting.spindleRpm.${tool}`,
+      message: `spindle speed ${rpm} rpm for T${tool} is outside the machine's range ${machine.spindle.minRpm}–${machine.spindle.maxRpm}`,
+    }));
+};
+
+/**
  * T300 (CTO #12 E1, D-085): the smallest sheet margin that keeps the cutter on the sheet. An
  * outside profile runs the tool centre one radius outside the part, so a part on a margin below
  * the radius sends the tool past the sheet edge (and past the work envelope when the sheet sits
@@ -564,6 +585,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   placementGrain,
   noCuttingParams,
   unverifiedCuttingParams,
+  spindleRpmOutOfRange,
   marginBelowToolRadius,
   sheetLargerThanTable,
   holeInsidePart,

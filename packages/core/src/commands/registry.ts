@@ -67,12 +67,14 @@ import {
   setTabs,
   setLeadIn,
   setCutDirection,
+  setSpindleRpm,
   setDimensionMode,
 } from './plate';
 import {
   commandContextSchema,
   type CommandContext,
   type CommandDefinition,
+  type CommandEnv,
   type CommandError,
   type CommandLogEntry,
 } from './types';
@@ -87,6 +89,7 @@ export const COMMANDS = {
   setTabs,
   setLeadIn,
   setCutDirection,
+  setSpindleRpm,
   setSheetSize,
   setStockSheets,
   setGrain,
@@ -166,7 +169,12 @@ function zodIssues(error: z.ZodError, prefix: PropertyKey[]): CommandError['issu
  * with forward and inverse patches. The input project is never mutated. A command whose result
  * would not pass the project schema is rejected, so commands cannot produce an invalid project.
  */
-export function applyCommand(project: Project, name: string, rawParams: unknown): ApplyResult {
+export function applyCommand(
+  project: Project,
+  name: string,
+  rawParams: unknown,
+  env: CommandEnv = {},
+): ApplyResult {
   if (!isCommandName(name)) {
     return {
       ok: false,
@@ -186,7 +194,7 @@ export function applyCommand(project: Project, name: string, rawParams: unknown)
     };
   }
   const params = parsed.data;
-  const problem = def.check?.(project, params);
+  const problem = def.check?.(project, params, env);
   if (problem !== undefined) {
     return {
       ok: false,
@@ -316,7 +324,7 @@ export class CommandStack {
         };
       }
     }
-    const result = applyCommand(this.current, name, params);
+    const result = applyCommand(this.current, name, params, { machine: this.validation.machine });
     if (!result.ok) return result;
     const entry: CommandLogEntry = {
       command: name,

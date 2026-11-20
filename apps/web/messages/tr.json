@@ -1272,7 +1272,8 @@
       "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası).",
       "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
       "TABS_TOO_SMALL_HIGH": "Köprü çok yüksek: yükseklik en fazla kalınlık − 1 mm olabilir. Kesim ayarlarında köprü yüksekliğini düşürün.",
-      "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin."
+      "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin.",
+      "SPINDLE_RPM_OUT_OF_RANGE": "Bir takımın devri makinenin devir aralığının dışında. Kesim ayarlarında “Önerilene dön” deyin ya da aralık içinde bir değer seçin."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -1411,6 +1412,25 @@
       "skinOn": "Küçük parçalarda {skin} mm ince tabaka da açık (1. adımdaki ayar).",
       "skinOff": "Kapat",
       "directionHint": "Climb çoğu router'da daha temiz kenar verir; boşluklu ya da hafif makinede veya kenar yırtılırsa conventional seçin.",
+      "spindle": {
+        "title": "Devir (iş mili hızı)",
+        "tool": "T{tool} · Ø{diameter} mm",
+        "label": "T{tool} devri",
+        "unit": "devir/dk",
+        "valueText": "{value} devir/dk",
+        "recommended": "Önerilen {value}",
+        "band": "Uygun aralık {min}–{max}",
+        "high": "Önerilenden %{percent} yüksek: takım ısınabilir, yanma izi kalabilir.",
+        "low": "Önerilenden %{percent} düşük: talaş kalınlaşır, takım kırılma riski artar.",
+        "outOfRange": "Bu makinenin devir aralığı {min}–{max}; bu değer kesilmez.",
+        "chipLoad": "Talaş yükü {value} mm/diş ({flutes} ağızlı, ilerleme {feed} mm/dk)",
+        "source": {
+          "recommended": "Malzeme ayarındaki devir kullanılıyor.",
+          "project": "Bu projeye özel devir."
+        },
+        "reset": "Önerilene dön",
+        "none": "Bu iş için malzeme ayarı yok; devir malzeme ayarı eklenince gelir."
+      },
       "summaryLine": "Köprü: {tabs} · Giriş: {lead} · Yön: {direction}",
       "summaryTabs": {
         "all": "her parçada {count} × {width} × {height} mm",
@@ -1954,7 +1974,8 @@
         "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
         "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
         "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
-        "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün."
+        "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
+        "SPINDLE_RPM_OUT_OF_RANGE": "Takım devri makinenin devir aralığının dışında; Simülasyon → Kesim ayarlarında düzeltin."
       },
       "other": "Kontrol {code}"
     },
@@ -2267,7 +2288,9 @@
         "fast": "Hızlı",
         "balanced": "Dengeli",
         "tight": "Sıkı"
-      }
+      },
+      "slider": "Devir",
+      "sliderMark": "Önerilen 18.000"
     },
     "overlays": {
       "tooltipTrigger": "İpucu",

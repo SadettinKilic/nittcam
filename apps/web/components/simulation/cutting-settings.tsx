@@ -17,6 +17,7 @@ import { fill } from '../../lib/fill';
 import { paramFixHref } from '../../lib/machine-form';
 import type { Messages } from '../../lib/messages';
 import { NumberField } from '../wizard/number-field';
+import { SpindleSettings } from './spindle-settings';
 
 type Text = Messages['simulation']['cutting'];
 type Run = (name: string, params: unknown) => boolean;
@@ -232,6 +233,7 @@ export function CuttingSettings({
       <p className="text-xs text-fg-muted" data-testid="sim-cutting-direction-hint">
         {t.directionHint}
       </p>
+      <SpindleSettings t={t.spindle} project={project} machine={machine} run={run} />
       <p className="text-xs text-fg-muted">{t.note}</p>
     </section>
   );

@@ -9,6 +9,7 @@ import { bbox, contour, normalize, reverse, signedArea } from '../geometry/polyl
 import { rotate, translate } from '../geometry/transform';
 import type { BBox, Point, Polyline } from '../geometry/types';
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
+import { jobToolNumbers, rpmInRange, spindleOverride } from './spindle';
 import {
   innerOperation,
   outlineOperation,
@@ -955,12 +956,30 @@ export function buildToolpath(
     return fail(clearanceZ);
   }
 
+  // T307 (D-095): the project's spindle speed per tool, else the material set's (or the option).
+  // A value outside the machine's spindle range never reaches a program.
+  const rpmOf = (toolNumber: number): number => spindleOverride(project, toolNumber) ?? rpm;
+  for (const n of jobToolNumbers(project, machine)) {
+    const own = spindleOverride(project, n);
+    if (own !== undefined && !rpmInRange(machine, own)) {
+      errors.push(
+        issue(
+          'SPINDLE_RPM_OUT_OF_RANGE',
+          'error',
+          null,
+          `Spindle speed ${own} rpm for T${n} is outside the machine's range ${machine.spindle.minRpm}–${machine.spindle.maxRpm}.`,
+        ),
+      );
+    }
+  }
+  if (errors.length > 0) return fail(clearanceZ);
+
   const params: Params = {
     tool: tool.number,
     toolDiameter: tool.diameter,
     feed,
     plungeFeed,
-    rpm,
+    rpm: rpmOf(tool.number),
     passDepths: passDepths(target, passDepth),
     stepDown: passDepth,
     skin:
@@ -1247,7 +1266,7 @@ export function buildToolpath(
           toolDiameter: ht.diameter,
           feed: params.feed,
           plungeFeed: params.plungeFeed,
-          rpm: params.rpm,
+          rpm: rpmOf(ht.tool),
           passDepths: ht.depths,
           safeZ,
           clearanceZ,

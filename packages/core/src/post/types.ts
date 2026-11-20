@@ -58,6 +58,11 @@ export interface PostCuttingMeta {
   skin: number | null;
   leadIn: 'arc' | 'line';
   direction: 'climb' | 'conventional';
+  /**
+   * T307 (D-095): the project's own spindle speeds (tool, rpm, the recommended rpm). Absent or
+   * empty = every tool at its recommended value, and the line is unchanged.
+   */
+  spindle?: { tool: number; rpm: number; recommended: number }[];
 }
 
 export type PostCode =
