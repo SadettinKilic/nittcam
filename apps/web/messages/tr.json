@@ -1549,7 +1549,9 @@
         "restored": "Artık parça geri alındı: {size}.",
         "failed": "İşlem yapılamadı. Tekrar deneyin."
       }
-    }
+    },
+    "changed": "değişti",
+    "changedTitle": "Üretildikten sonra değişti (Rev. {current}; son NC Rev. {nc})"
   },
   "materials": {
     "mdf": "MDF",
@@ -1599,7 +1601,9 @@
       "dizilim": "Dizilim",
       "simulasyon": "Önizleme / simülasyon",
       "export": "Dışa aktar",
-      "short": { "simulasyon": "Simülasyon" },
+      "short": {
+        "simulasyon": "Simülasyon"
+      },
       "stepOf": "Adım {n} / {total}",
       "status": {
         "done": "tamamlandı",
@@ -1980,7 +1984,9 @@
       "hintCompleted": "Proje tamamlandı.",
       "markCompleted": "Tamamlandı olarak işaretle",
       "markProduced": "Üretildi durumuna geri al",
-      "error": "Durum değiştirilemedi."
+      "error": "Durum değiştirilemedi.",
+      "changed": "Üretildikten sonra değişti (Rev. {current}; son NC Rev. {nc}).",
+      "regenerate": "Güncel revizyonla NC üret"
     }
   },
   "verification": {
