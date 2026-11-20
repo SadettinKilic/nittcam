@@ -297,10 +297,17 @@ export function LayoutView({
   );
 
   /** Commits a move (drop or Enter). Returns false when refused. */
+  // T281: the latest onLock through a ref, so a parent re-render (a new inline onLock) does not
+  // hand the memoised canvas a new onDrop and redraw every shape (long tasks with 1500 copies).
+  const lockRef = useRef(onLock);
+  useEffect(() => {
+    lockRef.current = onLock;
+  }, [onLock]);
   const commit = useCallback(
     (part: DrawnPart, x: number, y: number): boolean => {
       setPending(null);
       setDragCheck(null);
+      const onLock = lockRef.current;
       if (!onLock) return false;
       if (x === part.x && y === part.y) {
         setMessage({ kind: 'ok', text: t.drop.unchanged });
@@ -325,7 +332,7 @@ export function LayoutView({
       });
       return true;
     },
-    [onLock, check, reason, t],
+    [check, reason, t],
   );
 
   const onViewChange = useCallback(
