@@ -1106,7 +1106,7 @@ Acceptance:
 - [ ] wizard right panel: 2D / 3D toggle in sheet, parts and layout steps (live update after commands); "Görüntü kaydet" PNG
 Tester focus: switching steps keeps camera; live update after an edit; visual both themes.
 
-### T161 3D test suite   [status: todo]
+### T161 3D test suite   [status: done]
 Spec: §11 · Depends: T159, T160
 Acceptance:
 - [ ] Playwright with SwiftShader: 3D screenshots of fixtures (top + iso), fallback path, playback to end; axe on the 3D controls
@@ -1221,7 +1221,7 @@ Acceptance:
 - [ ] Ø60 disc and `sign-letters.dxf` still export with tabs (T272 unchanged for all-arc parts); goldens byte-identical
 - [ ] the property passes 20 runs with random seeds
 Tester focus: gcode-safety review of the rule; rounded rectangles of several radii.
-### T281 Nesting run/cancel with 1500 copies stays under 50 ms per main-thread task   [status: todo]
+### T281 Nesting run/cancel with 1500 copies stays under 50 ms per main-thread task   [status: done]
 Spec: §11 · Depends: T163
 Found in integration/3 (2026-11-20): CI saw long tasks of 50–68 ms on run/cancel with 1500 copies (T163's own bar is < 50 ms with 500 parts, met). The spec `b22-nesting-options.spec.ts` allows 100 ms for now.
 Progress (B20a #103, 2026-11-20): canvas onDrop identity fixed, 0 long tasks at 2× CPU throttle; at 3× the whole wizard tree re-renders (setRunning, autosave after a mode click) → 52–104 ms. Remaining: memo boundaries on the wizard/step subtrees, then restore the 50 ms bar.
@@ -1397,6 +1397,8 @@ From the B14a tester (2026-11-19):
 - Hinge cup at zoom %100 snaps to the 5 mm grid, so 22,5 mm must be typed; offer a finer snap near hinge positions
 - DXF import "Çizgi üzerinden" layer mapping has no browser test (unit tests only)
 - Flaky: `geometry/offset.property.test.ts` failed once on PR #108 CI after T280 (seed not recorded); `e2e/tests/t249-panels.spec.ts:55` Dizilim inspector row label "3.1 · Kapak" vs "8.1 · Kapak" flaky twice. Turn into a task if seen again.
+- 3D Montaj görünümü: the door is drawn see-through (opacity 0.45, no depth write) and reads as an open cabinet; stronger opacity or an outline (B21b tester)
+- Nesting mode card click is one main-thread task of 225–375 ms while the layout view runs (outside the T281 window); split or defer (B21b dev)
 
 From CTO review #8 (2026-11-20, `docs/reviews/2026-11-20-cto-design-review-8.md`):
 - Dizilim: holes and template instances not drawn on parts; mirrored left/right doors indistinguishable (raise priority)
