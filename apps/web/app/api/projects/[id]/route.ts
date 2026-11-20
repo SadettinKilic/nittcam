@@ -64,3 +64,23 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/projects/[id
     return handleError(err);
   }
 }
+
+/**
+ * PATCH /api/projects/:id `{ deleted: boolean }` → soft deletes or restores the project (T178).
+ * A deleted project leaves Projeler and Ana sayfa; its data, history and exports are kept, so the
+ * "Geri al" toast (or a later restore) brings it back. Company-scoped: another company's id is 404.
+ */
+export async function PATCH(request: Request, ctx: RouteContext<'/api/projects/[id]'>) {
+  const { id } = await ctx.params;
+  if (!UUID.test(id)) return apiError({ error: 'not_found' }, 404);
+  const deleted = (await readBody(request))?.['deleted'];
+  if (typeof deleted !== 'boolean') return apiError({ error: 'bad_request' }, 400);
+  try {
+    const scope = await companyScope();
+    const row = await scope.projects.setDeleted(id, deleted);
+    if (!row) return apiError({ error: 'not_found' }, 404);
+    return NextResponse.json({ id: row.id, deleted: row.deletedAt !== null });
+  } catch (err) {
+    return handleError(err);
+  }
+}

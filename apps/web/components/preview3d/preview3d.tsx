@@ -26,7 +26,7 @@ import { clampOffset, explodeMax } from '../../lib/preview3d/interaction';
 import { onThemeChange, readTokenColors } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
 import { getMessages, type Messages } from '../../lib/messages';
-import { cabinetGroups } from '../../lib/preview3d/assembly';
+import { cabinetGroups, hasFaceFeatures } from '../../lib/preview3d/assembly';
 import {
   TOOLBAR_PRESETS,
   azimuthDeg,
@@ -254,6 +254,19 @@ export function Preview3D({
           ? groups
               .map((g) => `${g.group}:${g.assembly.width}x${g.assembly.height}x${g.assembly.depth}`)
               .join(';')
+          : undefined
+      }
+      data-assembly-features={
+        showAssembly
+          ? groups.reduce(
+              (n, g) =>
+                n +
+                g.assembly.boxes.filter((b) => {
+                  const part = g.parts.get(b.id);
+                  return part ? hasFaceFeatures(part) : false;
+                }).length,
+              0,
+            )
           : undefined
       }
       role="application"

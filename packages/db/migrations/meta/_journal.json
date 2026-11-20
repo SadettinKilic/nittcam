@@ -50,6 +50,13 @@
       "when": 1795124914822,
       "tag": "0006_t151_template_archive",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795172414509,
+      "tag": "0007_t178_project_soft_delete",
+      "breakpoints": true
     }
   ]
 }
