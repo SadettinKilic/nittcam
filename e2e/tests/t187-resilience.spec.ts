@@ -67,6 +67,8 @@ test('server down mid-edit: banner counts the queue, Tekrar dene and recovery ke
   await page.goto(`/projeler/${id}?adim=makine`);
   await wizardReady(page, 'makine');
   await expect(page.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' }))).toBeChecked();
+  // (tester) the first queued edit survived too: sheet grain 90°.
+  await expect(page.getByTestId('sheet-grain-dial')).toHaveAttribute('aria-valuenow', '90');
 });
 
 test('client errors are written to the server log', async ({ page, request }) => {
