@@ -937,6 +937,8 @@
       "explodeTip": "Parçaları plakadan yukarı kaldırır",
       "hideWaste": "Fireyi gizle",
       "assembly": "Montaj görünümü",
+      "savePng": "Görüntü kaydet",
+      "savePngTip": "Görünen 3D görüntüyü PNG dosyası olarak indir",
       "assemblyTip": "\"Dolap ekle\" ile üretilen parçalar kutu hâlinde (birleştirme detayı yok). Diğer parçalar gösterilmez.",
       "assemblyLabel": "Montaj görünümü: {count} dolap. Sürükleyerek döndürün, tekerlekle yakınlaştırın, sağ tuşla kaydırın.",
       "toolpath": "Takım yolu",

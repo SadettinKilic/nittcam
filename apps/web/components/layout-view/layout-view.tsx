@@ -54,11 +54,8 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { Preview3D, type FallbackReason } from '../preview3d/preview3d';
-import type { CameraCommand } from '../preview3d/scene';
-import { PRESET_MS, type ViewPreset } from '../../lib/preview3d/camera';
-import { hasWebGL2 } from '../../lib/preview3d/capability';
-import { registerLeaveTransition } from '../../lib/preview3d/leave';
+import { Preview3D } from '../preview3d/preview3d';
+import { useView3d } from '../../lib/preview3d/view-memory';
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { onThemeChange } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
@@ -192,40 +189,11 @@ export function LayoutView({
   const [colors, setColors] = useState<CanvasColors | null>(null);
   const box = useRef<HTMLDivElement>(null);
   // T152: 2D/3D switch. Without WebGL2 (or after a failed scene) the 2D view stays, with a note.
-  const [mode, setMode] = useState<'2d' | '3d'>('2d');
-  const [noWebGL, setNoWebGL] = useState<FallbackReason | null>(null);
-  const [camera, setCamera] = useState<CameraCommand>({
-    preset: 'iso',
-    from: 'top',
-    nonce: 0,
-    animate: true,
-  });
-  const show3d = preview3d !== undefined && mode === '3d';
+  // T160: the mode and the 3D camera are shared with the other wizard panels (view-memory).
+  const { mode, show3d, noWebGL, camera, chooseMode, preset, fallback } = useView3d(
+    preview3d !== undefined,
+  );
   const pt = t.preview3d;
-  function chooseMode(next: '2d' | '3d') {
-    if (next === '3d' && !hasWebGL2()) {
-      setNoWebGL('webgl');
-      setMode('2d');
-      return;
-    }
-    // Every opening eases from top to isometric (a jump with reduced motion, in the rig).
-    if (next === '3d' && mode !== '3d')
-      setCamera((c) => ({ preset: 'iso', from: 'top', nonce: c.nonce + 1, animate: true }));
-    setMode(next);
-  }
-  function preset(p: ViewPreset) {
-    setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true }));
-  }
-
-  // T155 (§3.6): wizard "İleri" with 3D open → ease to the top view first; none with reduced motion.
-  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)', false);
-  useEffect(() => {
-    if (!show3d || reducedMotion) return;
-    return registerLeaveTransition(() => {
-      setCamera((c) => ({ preset: 'top', nonce: c.nonce + 1, animate: true }));
-      return PRESET_MS + 60;
-    });
-  }, [show3d, reducedMotion]);
 
   const stock = useMemo(() => sheetSizeOf(project, sheet), [project, sheet]);
   const height = size.h;
@@ -823,10 +791,7 @@ export function LayoutView({
           table={preview3d.table}
           command={camera}
           onPreset={preset}
-          onFallback={(reason) => {
-            setNoWebGL(reason);
-            setMode('2d');
-          }}
+          onFallback={fallback}
           partCount={parts.length}
         />
       ) : null}

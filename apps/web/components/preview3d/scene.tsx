@@ -32,6 +32,7 @@ import {
   type ViewPreset,
 } from '../../lib/preview3d/camera';
 import { PartsLayer } from './parts-layer';
+import { Capture, type CaptureFn } from './capture';
 import { ToolpathLayer } from './toolpath-layer';
 import { endsReached, liftsAt, partLiftTimes } from '../../lib/preview3d/toolpath';
 import { TABLE_THICKNESS, buildStage, type TableSpec } from '../../lib/preview3d/stage';
@@ -85,6 +86,8 @@ export interface CameraCommand {
   animate: boolean;
   /** First open: start from this preset and ease to `preset` (T152: top → isometric). */
   from?: ViewPreset;
+  /** Restore this pose (no ease) instead of the preset's, e.g. after a wizard step change (T160). */
+  pose?: CameraPose;
 }
 
 export interface SceneProps {
@@ -105,6 +108,8 @@ export interface SceneProps {
   interaction: SceneInteraction;
   /** Toolpath overlay from the read program (T156) and the playback state (T157). */
   toolpath?: SceneToolpath | null;
+  /** "Görüntü kaydet" (T160): filled with a frame grabber while the scene lives. */
+  onCapture?: (fn: CaptureFn | null) => void;
 }
 
 /** Perf read-out of the scene (T159 budget: fps while orbiting, first frame, GPU memory). */
@@ -275,6 +280,7 @@ export default function Scene(props: SceneProps) {
         />
       </group>
       <Rig {...props} box={sheetFrameBox(stage.sheet, T)} />
+      <Capture onCapture={props.onCapture} />
     </Canvas>
   );
 }
@@ -444,7 +450,7 @@ function Rig({
     if (!fresh && touched.current) return;
     handled.current = command.nonce;
     touched.current = false;
-    const to = presetPose(command.preset, box, FOV, aspect);
+    const to = command.pose ?? presetPose(command.preset, box, FOV, aspect);
     const running = anim.current;
     if (!fresh) {
       if (running) running.to = to;

@@ -7,13 +7,14 @@
  * the 2D view (via `onFallback`) when the scene crashes or WebGL is lost.
  */
 import { Button, IconButton, Skeleton, Tooltip, cn } from '@nittcam/ui';
-import { Boxes, EyeOff, Gauge, Move, RotateCcw, Route, Undo2, X } from 'lucide-react';
+import { Boxes, EyeOff, ImageDown, Gauge, Move, RotateCcw, Route, Undo2, X } from 'lucide-react';
 import { sheetSizeOf, type Project } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import {
   Component,
   useEffect,
   useMemo,
+  useCallback,
   useRef,
   useState,
   type ErrorInfo,
@@ -37,6 +38,8 @@ import {
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
 import { useMediaQuery } from '../../lib/use-media-query';
+import type { CaptureFn } from './capture';
+import { exportPng } from '../../lib/preview3d/png';
 import type {
   CameraCommand,
   SceneColors,
@@ -45,8 +48,9 @@ import type {
   SceneToolpath,
 } from './scene';
 
+import { rememberPose, type FallbackReason } from '../../lib/preview3d/view-memory';
 /** Why the 3D view gave way to 2D: no WebGL2 / a crash, or still too slow in Basit mod (T159). */
-export type FallbackReason = 'webgl' | 'slow';
+export type { FallbackReason };
 
 type Text = Messages['layout']['preview3d'];
 
@@ -150,6 +154,17 @@ export function Preview3D({
     [project],
   );
   const [assembly, setAssembly] = useState(false);
+  // T160 "Görüntü kaydet": the live scene fills this with a frame grabber.
+  const capture = useRef<CaptureFn | null>(null);
+  const setCapture = useCallback((fn: CaptureFn | null) => {
+    capture.current = fn;
+  }, []);
+  function savePng() {
+    const url = capture.current?.();
+    if (!url) return;
+    const name = showAssembly ? 'nittcam-montaj-3d.png' : `nittcam-plaka-${sheet + 1}-3d.png`;
+    void exportPng(url, name);
+  }
   const showAssembly = assembly && groups.length > 0;
   function toggleSimple() {
     setSimple(!simple);
@@ -194,6 +209,7 @@ export function Preview3D({
 
   // Camera reports go straight to the DOM (no React render per frame).
   const onCamera = (viewInverse: ArrayLike<number>, pose: CameraPose) => {
+    rememberPose(pose);
     if (cube.current) cube.current.style.transform = cubeMatrix(viewInverse);
     const el = host.current;
     if (!el) return;
@@ -256,6 +272,7 @@ export function Preview3D({
             colors={colors}
             base={colors.materials[materialLook(project.stock.material)]}
             simple={simple}
+            onCapture={setCapture}
           />
         </SceneBoundary>
       ) : colors ? (
@@ -278,6 +295,7 @@ export function Preview3D({
             onStats={onStats}
             interaction={interaction}
             toolpath={toolpath ? { ...toolpath, path: showPath } : null}
+            onCapture={setCapture}
           />
         </SceneBoundary>
       ) : (
@@ -352,6 +370,18 @@ export function Preview3D({
           >
             <Gauge aria-hidden />
             <span className="hidden @md:inline">{t.simple}</span>
+          </Button>
+        </Tooltip>
+        <Tooltip content={t.savePngTip}>
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="preview3d-save-png"
+            onClick={savePng}
+            className="pointer-events-auto bg-surface/95 shadow-sm"
+          >
+            <ImageDown aria-hidden />
+            {t.savePng}
           </Button>
         </Tooltip>
         {groups.length > 0 ? (

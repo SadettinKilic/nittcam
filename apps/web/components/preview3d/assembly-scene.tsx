@@ -9,6 +9,7 @@
 import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useMemo } from 'react';
+import { Capture, type CaptureFn } from './capture';
 import { NeutralToneMapping } from 'three';
 import type { CabinetGroup } from '../../lib/preview3d/assembly';
 import type { SceneColors } from './scene';
@@ -22,6 +23,7 @@ export interface AssemblySceneProps {
   colors: SceneColors;
   base: string;
   simple: boolean;
+  onCapture?: (fn: CaptureFn | null) => void;
 }
 
 /** x offset of each cabinet and the overall size (cabinets in a row, bottoms on the floor). */
@@ -39,7 +41,13 @@ export function rowLayout(groups: readonly CabinetGroup[]) {
   return { offsets, width: Math.max(0, x - CABINET_GAP), height: h, depth: d };
 }
 
-export default function AssemblyScene({ groups, colors, base, simple }: AssemblySceneProps) {
+export default function AssemblyScene({
+  groups,
+  colors,
+  base,
+  simple,
+  onCapture,
+}: AssemblySceneProps) {
   const row = useMemo(() => rowLayout(groups), [groups]);
   const span = Math.max(row.width, row.height, row.depth, 1);
   const target: [number, number, number] = [row.width / 2, row.height / 2, row.depth / 2];
@@ -91,6 +99,7 @@ export default function AssemblyScene({ groups, colors, base, simple }: Assembly
           ))}
         </group>
       ))}
+      <Capture onCapture={onCapture} />
       <OrbitControls
         makeDefault
         target={target}
