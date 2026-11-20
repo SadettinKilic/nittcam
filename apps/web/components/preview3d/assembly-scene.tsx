@@ -10,8 +10,15 @@ import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useMemo } from 'react';
 import { Capture, type CaptureFn } from './capture';
-import { NeutralToneMapping } from 'three';
-import type { CabinetGroup } from '../../lib/preview3d/assembly';
+import { BufferAttribute, BufferGeometry, Matrix4, NeutralToneMapping } from 'three';
+import type { AssemblyBox, Part } from '@nittcam/core';
+import {
+  assemblyFaceMatrix,
+  hasFaceFeatures,
+  type CabinetGroup,
+} from '../../lib/preview3d/assembly';
+import { cachedPartMesh } from '../../lib/preview3d/sheet-scene';
+import type { MeshData } from '../../lib/preview3d/part-mesh';
 import type { SceneColors } from './scene';
 
 /** Gap between two cabinets, mm. */
@@ -79,24 +86,39 @@ export default function AssemblyScene({
       </mesh>
       {groups.map((g, i) => (
         <group key={g.group} position={[row.offsets[i] ?? 0, 0, 0]} name={g.group}>
-          {g.assembly.boxes.map((b, k) => (
-            <mesh
-              key={`${b.id}-${k}`}
-              position={[b.x + b.sx / 2, b.y + b.sy / 2, b.z + b.sz / 2]}
-              name={b.role}
-            >
-              <boxGeometry args={[b.sx, b.sy, b.sz]} />
-              <meshStandardMaterial
-                color={base}
-                roughness={simple ? 1 : 0.7}
-                // Doors see-through, so the shelves behind them stay visible.
-                transparent={b.role === 'door'}
-                opacity={b.role === 'door' ? 0.45 : 1}
-                depthWrite={b.role !== 'door'}
-              />
-              {simple ? null : <Edges color={colors.partStroke} />}
-            </mesh>
-          ))}
+          {g.assembly.boxes.map((b, k) => {
+            const part = g.parts.get(b.id);
+            if (part && hasFaceFeatures(part))
+              return (
+                <FeaturedBoard
+                  key={`${b.id}-${k}`}
+                  box={b}
+                  part={part}
+                  width={g.assembly.width}
+                  base={base}
+                  stroke={colors.partStroke}
+                  simple={simple}
+                />
+              );
+            return (
+              <mesh
+                key={`${b.id}-${k}`}
+                position={[b.x + b.sx / 2, b.y + b.sy / 2, b.z + b.sz / 2]}
+                name={b.role}
+              >
+                <boxGeometry args={[b.sx, b.sy, b.sz]} />
+                <meshStandardMaterial
+                  color={base}
+                  roughness={simple ? 1 : 0.7}
+                  // Doors see-through, so the shelves behind them stay visible.
+                  transparent={b.role === 'door'}
+                  opacity={b.role === 'door' ? 0.45 : 1}
+                  depthWrite={b.role !== 'door'}
+                />
+                {simple ? null : <Edges color={colors.partStroke} />}
+              </mesh>
+            );
+          })}
         </group>
       ))}
       <Capture onCapture={onCapture} />
@@ -109,4 +131,78 @@ export default function AssemblyScene({
       />
     </Canvas>
   );
+}
+
+/** Geometry of a part mesh (T153 data), shared by every box of the same shape (cache below). */
+const geometries = new WeakMap<MeshData, { mesh: BufferGeometry; edges: BufferGeometry }>();
+
+function geometryOf(data: MeshData) {
+  const hit = geometries.get(data);
+  if (hit) return hit;
+  const mesh = new BufferGeometry();
+  mesh.setAttribute('position', new BufferAttribute(data.positions, 3));
+  mesh.setAttribute('normal', new BufferAttribute(data.normals, 3));
+  mesh.setIndex(new BufferAttribute(data.indices, 1));
+  mesh.computeBoundingSphere();
+  const edges = new BufferGeometry();
+  edges.setAttribute('position', new BufferAttribute(data.edges, 3));
+  const out = { mesh, edges };
+  geometries.set(data, out);
+  return out;
+}
+
+/**
+ * A board with openings, holes, pockets or template instances (T285): the T153 part mesh (cached
+ * per part shape, so 300 parts stay within the T159 budget) turned onto its assembled box with the
+ * machined face where the work is done (`assemblyFaceMatrix`). Doors stay see-through; the
+ * contour lines (holes included) are drawn opaque so the hinge cups read through the door.
+ */
+function FeaturedBoard({
+  box,
+  part,
+  width,
+  base,
+  stroke,
+  simple,
+}: {
+  box: AssemblyBox;
+  part: Part;
+  width: number;
+  base: string;
+  stroke: string;
+  simple: boolean;
+}) {
+  const thickness = boardThickness(box);
+  const data = useMemo(() => cachedPartMesh(part, thickness), [part, thickness]);
+  const geo = useMemo(() => geometryOf(data), [data]);
+  const matrix = useMemo(
+    () => new Matrix4().fromArray(assemblyFaceMatrix(box, width)),
+    [box, width],
+  );
+  const door = box.role === 'door';
+  return (
+    <group matrixAutoUpdate={false} matrix={matrix} name={box.role}>
+      <mesh geometry={geo.mesh} userData={{ t285: true }}>
+        <meshStandardMaterial
+          color={base}
+          roughness={simple ? 1 : 0.7}
+          transparent={door}
+          opacity={door ? 0.45 : 1}
+          depthWrite={!door}
+        />
+      </mesh>
+      {simple ? null : (
+        <lineSegments geometry={geo.edges}>
+          <lineBasicMaterial color={stroke} />
+        </lineSegments>
+      )}
+    </group>
+  );
+}
+
+/** The board thickness of a box: its size across the board (sides along x, decks along y). */
+export function boardThickness(box: AssemblyBox): number {
+  if (box.role === 'side') return box.sx;
+  if (box.role === 'top' || box.role === 'bottom' || box.role === 'shelf') return box.sy;
+  return box.sz;
 }
