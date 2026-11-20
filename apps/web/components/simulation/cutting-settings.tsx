@@ -258,7 +258,7 @@ function Choice<V extends string>({
               className={cn(
                 'flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus',
                 segmented &&
-                  'min-w-0 flex-1 justify-center rounded-md px-1.5 text-center text-xs leading-tight',
+                  'relative min-w-0 flex-1 justify-center rounded-md px-1.5 text-center text-xs leading-tight',
                 on
                   ? 'border-accent-border bg-accent-subtle font-medium text-fg'
                   : segmented
@@ -270,7 +270,12 @@ function Choice<V extends string>({
                 type="radio"
                 name={`${id}-${name}`}
                 value={v}
-                className={segmented ? 'sr-only' : 'size-4 accent-(--color-accent)'}
+                // Segmented: the radio covers its label (invisible), so a click or tap lands on it.
+                className={
+                  segmented
+                    ? 'absolute inset-0 m-0 size-full cursor-pointer appearance-none opacity-0'
+                    : 'size-4 accent-(--color-accent)'
+                }
                 checked={on}
                 onChange={() => {
                   if (!on) onChange(v);
