@@ -54,7 +54,8 @@ function setUp(band: Band, post: 'generic' | 'mach3'): { project: Project; pv: n
 }
 
 describe.each(['generic', 'mach3'] as const)('T169 edge band G-code read-back (%s)', (post) => {
-  it.each(BANDS)('bands %j: cut size and hole position', (...[band]) => {
+  it.each(BANDS)('bands %j: cut size and hole position', (...[maybe]) => {
+    const band = maybe as Band;
     const { project, pv } = setUp(band, post);
     const r = exportNc(project, pv, postConfig(post));
     expect(r.postErrors).toEqual([]);
