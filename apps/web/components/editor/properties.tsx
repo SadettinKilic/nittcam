@@ -41,9 +41,9 @@ import {
   Switch,
   Tooltip,
 } from '@nittcam/ui';
-import { CircleAlert, X } from 'lucide-react';
+import { CircleAlert, Plus, X } from 'lucide-react';
 import { useInnerIssues } from './inner-issues';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { formatMm, sizeText } from '../../lib/canvas-labels';
 import { fill } from '../../lib/fill';
 import { grainDialLabels } from '../../lib/grain-labels';
@@ -347,6 +347,7 @@ export function PartProperties({
   onSub,
   toolRadius = 0,
   thickness = 18,
+  afterPart,
 }: {
   t: T;
   part: Part;
@@ -359,6 +360,8 @@ export function PartProperties({
   toolRadius?: number;
   /** Stock thickness, mm (default on-line depth, T277). */
   thickness?: number;
+  /** Groups right under "Parça" (B50: holes and templates, collapsed rows). */
+  afterPart?: ReactNode;
 }) {
   const grainText = useMessages().grainDial;
   const outline = deriveOutline(part);
@@ -474,6 +477,7 @@ export function PartProperties({
           </Tooltip>
         ) : null}
       </InspectorGroup>
+      {afterPart}
 
       <InspectorGroup title={t.groups.grain} data-testid="prop-group-grain">
         <InspectorRows>
@@ -706,6 +710,23 @@ export function PartProperties({
             <p className="py-1 text-xs text-fg-subtle">{t.pickHint}</p>
           )}
         </InspectorRows>
+        {seg !== null ? (
+          // B50 (CTO #5): a corner in the middle of the edge, picked at once so it can be moved
+          // (an L or a notch without redrawing).
+          <Button
+            size="sm"
+            variant="secondary"
+            className="self-start"
+            data-testid="prop-seg-split"
+            onClick={() => {
+              if (run('splitSegment', { id: part.id, index: seg }))
+                onSub({ kind: 'vertex', index: seg + 1 });
+            }}
+          >
+            <Plus aria-hidden />
+            {t.splitSegment}
+          </Button>
+        ) : null}
       </InspectorGroup>
 
       <InspectorGroup title={t.groups.vertex} data-testid="prop-group-vertex">

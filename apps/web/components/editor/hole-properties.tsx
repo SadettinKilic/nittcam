@@ -15,13 +15,15 @@ import {
   Switch,
 } from '@nittcam/ui';
 import { CircleAlert, Trash2 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatMm } from '../../lib/canvas-labels';
 import { fill } from '../../lib/fill';
+import { holeSummary, rowOpen } from '../../lib/editor/collapse';
 import { holeDefaults } from '../../lib/editor/hole-tool';
 import type { Messages } from '../../lib/messages';
 import { useHoleIssues } from './hole-issues';
 import { NumberRow, type Run } from './properties';
+import { SummaryRow } from './summary-row';
 
 type T = Messages['editor']['inspector']['hole'];
 
@@ -69,6 +71,8 @@ export function HoleProperties({
 }) {
   const issues = useHoleIssues(part.id);
   const group = useRef<HTMLDivElement>(null);
+  // B50: the person's own open / closed choice per hole id (default: newest and failing open).
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   // T275: "Çizimde aç" on a hole error brings that hole's rows into view.
   useEffect(() => {
     if (issues.focus === null) return;
@@ -97,21 +101,25 @@ export function HoleProperties({
           const defaults = holeDefaults(h, thickness, toolDiameter);
           const tid = `prop-hole-${i}`;
           return (
-            <div
+            <SummaryRow
               key={h.id}
-              className="flex flex-col"
-              data-testid={tid}
-              data-error={errors.length > 0 ? errors.map((e) => e.code).join(' ') : undefined}
-            >
-              <div className="flex items-center justify-between pt-1">
-                <h3
-                  className={`flex items-center gap-1 text-xs font-medium ${errors.length > 0 ? 'text-danger-text' : 'text-fg-muted'}`}
-                >
-                  {errors.length > 0 ? (
-                    <CircleAlert aria-hidden className="size-3.5 shrink-0" />
-                  ) : null}
-                  {fill(t.holeN, { n: i + 1 })} · {t.type[h.type]}
-                </h3>
+              testId={tid}
+              dataError={errors.length > 0 ? errors.map((e) => e.code).join(' ') : undefined}
+              title={fill(t.holeN, { n: i + 1 })}
+              summary={[
+                t.type[h.type],
+                ...holeSummary(h),
+                ...(toolMissing ? [t.missing] : []),
+              ].join(' · ')}
+              error={errors.length > 0}
+              open={rowOpen(open[h.id], i, part.holes.length, errors.length > 0)}
+              onToggle={() =>
+                setOpen((o) => ({
+                  ...o,
+                  [h.id]: !rowOpen(o[h.id], i, part.holes.length, errors.length > 0),
+                }))
+              }
+              action={
                 <IconButton
                   size="sm"
                   variant="ghost"
@@ -121,7 +129,20 @@ export function HoleProperties({
                 >
                   <Trash2 aria-hidden />
                 </IconButton>
-              </div>
+              }
+              notes={errors.map((e) => (
+                <p
+                  key={e.code}
+                  role="alert"
+                  data-testid={`${tid}-error`}
+                  data-code={e.code}
+                  className="mb-1 flex items-start gap-1.5 text-xs text-danger-text"
+                >
+                  <CircleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                  {holeErrorText(t, i + 1, h, e, issues.tools, thickness)}
+                </p>
+              ))}
+            >
               <InspectorRows>
                 <Row
                   label={<label htmlFor={`${tid}-filled`}>{t.filled}</label>}
@@ -216,19 +237,7 @@ export function HoleProperties({
                   }
                 />
               </InspectorRows>
-              {errors.map((e) => (
-                <p
-                  key={e.code}
-                  role="alert"
-                  data-testid={`${tid}-error`}
-                  data-code={e.code}
-                  className="mt-1 flex items-start gap-1.5 text-xs text-danger-text"
-                >
-                  <CircleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                  {holeErrorText(t, i + 1, h, e, issues.tools, thickness)}
-                </p>
-              ))}
-            </div>
+            </SummaryRow>
           );
         })}
       </div>

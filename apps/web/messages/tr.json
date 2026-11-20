@@ -212,6 +212,7 @@
       "boardLine": "Çizgi aracı",
       "boardArc": "Yay aracı",
       "boardFit": "Tümünü göster",
+      "boardFitSelection": "Seçili parçalara yakınlaş",
       "boardCopy": "Seçili parçaları kopyala",
       "boardPaste": "Yapıştır",
       "boardDuplicate": "Çoğalt",
@@ -221,6 +222,7 @@
       "boardRotate": "90° döndür",
       "boardHole": "Delik aracı",
       "boardDim": "Ölçü aracı",
+      "boardSnapHold": "Basılı tutun: yapışmayı geçici kapat",
       "boardTypeLength": "Çizerken: yazılan uzunluğu uygula",
       "boardCancel": "Çizimi bırak / seçimi temizle",
       "boardPanHold": "Basılı tut: kaydır",
@@ -2469,6 +2471,7 @@
       "segmentPick": "Kenar seç",
       "vertexPick": "Köşe seç",
       "segmentN": "Kenar {n}",
+      "splitSegment": "Ortasına köşe ekle",
       "dimN": "Ölçü {n}",
       "innerN": "İç kesim {n}",
       "innerSlugUnsecured": "İç kesim {n}: göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün ya da delik aracıyla çizin.",
@@ -2547,6 +2550,7 @@
         "tool": "Takım no",
         "toolDiameter": "· Ø{d}",
         "toolMissing": "· yok",
+        "missing": "takım yok",
         "errors": {
           "HOLE_SMALLER_THAN_TOOL": "Delik {n}: Ø{d}, T{tool} takımından (Ø{td}) küçük. Daha ince bir takım seçin ya da çapı büyütün.",
           "TOOL_NOT_IN_PROFILE": "Delik {n}: T{tool} bu makinede yok.",
@@ -2670,7 +2674,7 @@
         },
         "edit": {
           "title": "Sonra düzenleyin",
-          "body": "Bir parçayı ya da çizgisini seçin: uzunluk, açı, köşe yuvarlama ve yay yarıçapı sağdaki panelde açılır ve oradan değişir."
+          "body": "Bir parçayı ya da çizgisini seçin: uzunluk, açı, köşe yuvarlama ve yay yarıçapı sağdaki panelde açılır ve oradan değişir. Bir deliğin çapı, kör ya da geçme oluşu ve takım no da panelde, Delikler grubunda."
         },
         "status": {
           "title": "Sıradaki adım altta",

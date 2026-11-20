@@ -60,10 +60,12 @@ export function partLabel(input: {
   w: number;
   h: number;
   scale: number;
+  /** Free room around the label spot, mm, when smaller than the part box (B50: L parts). */
+  room?: { w: number; h: number };
 }): PartLabel {
-  const { number, name, w, h, scale } = input;
-  const wPx = w * scale;
-  const hPx = h * scale;
+  const { number, name, w, h, scale, room } = input;
+  const wPx = (room?.w ?? w) * scale;
+  const hPx = (room?.h ?? h) * scale;
   const fontPx = Math.max(FONT_MIN_PX, Math.min(FONT_MAX_PX, Math.min(wPx, hPx) * 0.16));
   const size = sizeText(w, h);
   const title = name.trim() ? truncate(`${number} ${name.trim()}`, fontPx, wPx) : number;
