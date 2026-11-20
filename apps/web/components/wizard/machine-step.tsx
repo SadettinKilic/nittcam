@@ -11,7 +11,9 @@ import {
   type MaterialKind,
   type Project,
   type ValidationIssue,
+  SKIN_BOUNDS,
   defaultSheet,
+  maxSkinThickness,
   stockSheetSizes,
 } from '@nittcam/core';
 import { Archive, Plus, TriangleAlert } from 'lucide-react';
@@ -601,6 +603,10 @@ function ThinSkin({
 }) {
   const id = useId();
   const skin = project.cutting.skin;
+  // T298 (CTO #12 A, D-083): the skin that still holds a part, said in the field.
+  const max = maxSkinThickness(project.stock.thickness);
+  const fmt = (v: number) => String(v).replace('.', ',');
+  const noSkin = max < SKIN_BOUNDS.min;
   return (
     <div className="flex flex-col gap-2" data-testid="thin-skin">
       <div className="flex items-center gap-2">
@@ -619,6 +625,14 @@ function ThinSkin({
         </label>
       </div>
       <p className="text-xs text-fg-muted">{t.skin.hint}</p>
+      {skin && noSkin ? (
+        <p className="text-xs text-danger-text" data-testid="thin-skin-none">
+          {fill(t.skin.none, {
+            t: fmt(project.stock.thickness),
+            min: fmt(SKIN_BOUNDS.min),
+          })}
+        </p>
+      ) : null}
       {skin ? (
         <NumberField
           label={t.skin.thickness}
@@ -626,6 +640,11 @@ function ThinSkin({
           value={skin.thickness}
           testId="thin-skin-thickness"
           errors={errors}
+          bounds={{
+            min: SKIN_BOUNDS.min,
+            max,
+            message: fill(t.skin.bounds, { min: fmt(SKIN_BOUNDS.min), max: fmt(max) }),
+          }}
           onCommit={(thickness) => run('setThinSkin', { thickness })}
         />
       ) : null}

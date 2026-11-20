@@ -664,6 +664,17 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - M8 is closed when B41 (#139) lands and T298 + T301 are done. Must-fix A → T298 (thin-skin bounds, safety), B → T299, gap E1 → T300: batch B47 on Dev 2 before polish P3. E2 → T301, E3 → T302, T295/T296 follow-ups → T303: batch B48 on Dev 1 after B42. 14 polish items into P2–P5.
 - Thin-skin bounds proposal: ≥ 0,2 mm and ≤ thickness − 1 mm (final numbers by dev + tester, tuned in the field test).
 
+## D-083 Thin-skin thickness bounds (2026-11-20, Dev 2, B47 T298, CTO #12 A; numbers tuned in the field test)
+- A thin skin holds a small part only when it is **≥ 0,2 mm** and **≤ thickness − 1 mm** (`SKIN_BOUNDS`, `maxSkinThickness`, `skinThicknessOk` in `toolpath/tabs.ts`, next to `TAB_BOUNDS`). Thinner is a through cut in disguise (the part is free on the last pass); thicker leaves less than 1 mm for the part's own passes. The "Köprü: Kapalı" default (0,5 mm, at most half the stock) stays, so default goldens do not change.
+- `setThinSkin` refuses a value outside the bounds; the step-1 "Tabaka kalınlığı" field says the range ("0,2–17 mm arası olmalı.") and keeps the last valid value. Sheets thinner than 1,2 mm have no valid skin: the field says so.
+- The project schema is not tightened (old projects must still open). The toolpath checks the skin it really uses: a small part held only by a skin outside the bounds is the error `SMALL_PART_SKIN_OUT_OF_BOUNDS` (NC blocked on Simülasyon and Dışa aktar, once per part), with "Tabaka kalınlığına git" back to the step-1 field. Unused skins (no small part) are not reported.
+
+## D-085 Smallest sheet margin = tool radius (2026-11-20, Dev 2, B47 T300, CTO #12 E1, D-045)
+- An outside profile runs the tool centre one radius outside the part, so the sheet margin must be **≥ the tool radius** (`minSheetMargin` in `validate/index.ts`). Leads need nothing extra: the toolpath already clips (or drops) a lead that would leave the sheet.
+- Below it the validator gives the warning `MARGIN_BELOW_TOOL_RADIUS` (path `nesting.margin`): Dizilim shows it under the "Kenar payı" field ("Kenar payı Ø8 takım için en az 4 mm olmalı; …") and the step indicator keeps a mark. A warning, not an error: on a sheet placed away from the machine origin the tool only passes the sheet edge, which the G-code check allows.
+- When the G-code check then stops the export with `OUT_OF_ENVELOPE` or `CUT_OUTSIDE_SHEET`, Simülasyon names the margin ("Sebep büyük olasılıkla kenar payı …") with "Kenar payına git" back to the Dizilim field, instead of the Makineler hint.
+- Ayarlar → "Plaka kenar payı" default says the rule as a note (the tool is not known there).
+
 ## D-086 The workshop day uses one time zone (2026-11-20, Dev 2, B46 P4, tester B38)
 - "Today" for the maintenance reminder is the calendar day in the workshop's time zone, `Europe/Istanbul` by default (`NEXT_PUBLIC_WORKSHOP_TIME_ZONE` overrides it), computed the same way on the server (home page, first render of Makineler) and in the browser. Before, the home page used the server clock (often UTC), so between 00:00 and 03:00 the reminder was a day behind.
 - Byte limits are measured in UTF-8 bytes (`Buffer.byteLength`), not string length: the client-log body (16 KB) and the log-file rotation (1 MB).

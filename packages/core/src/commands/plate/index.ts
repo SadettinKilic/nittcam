@@ -6,7 +6,7 @@ import {
   projectSheetSizeSchema,
   stockSchema,
 } from '../../schema';
-import { TAB_BOUNDS, maxTabHeight } from '../../toolpath/tabs';
+import { SKIN_BOUNDS, TAB_BOUNDS, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
 
 /** Selects the machine profile the project uses. Selecting is allowed for AI; editing a profile is not. */
@@ -153,18 +153,18 @@ export const setGrain = defineCommand({
 export const setThinSkin = defineCommand({
   name: 'setThinSkin',
   area: 'plate',
-  description:
-    'Hold small parts with a thin skin (thickness in mm, less than the stock thickness) instead of tabs; null = tabs.',
+  description: `Hold small parts with a thin skin instead of tabs (thickness in mm, at least ${SKIN_BOUNDS.min} mm and at most the stock thickness minus ${SKIN_BOUNDS.belowThickness} mm); null = tabs.`,
   aiTool: false,
   params: z.strictObject({
     thickness: z
       .number({ error: 'thickness must be a finite number (mm)' })
-      .positive({ error: 'thickness must be greater than 0' })
+      // T298 (CTO #12 A, D-083): a thinner skin does not hold the part.
+      .min(SKIN_BOUNDS.min, { error: `thickness must be at least ${SKIN_BOUNDS.min} mm` })
       .nullable(),
   }),
   check: (project, p) =>
-    p.thickness !== null && !(p.thickness < project.stock.thickness)
-      ? `skin thickness ${p.thickness} mm must be less than the stock thickness (${project.stock.thickness} mm)`
+    p.thickness !== null && p.thickness > maxSkinThickness(project.stock.thickness) + 1e-9
+      ? `skin thickness ${p.thickness} mm must be at most ${maxSkinThickness(project.stock.thickness)} mm (stock thickness ${project.stock.thickness} mm minus ${SKIN_BOUNDS.belowThickness} mm)`
       : undefined,
   apply: (draft, p) => {
     if (p.thickness === null) delete draft.cutting.skin;

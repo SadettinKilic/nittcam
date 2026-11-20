@@ -1414,14 +1414,14 @@ M8 exit (CTO #12): closes when B41 (#139) lands and T298 + T301 are done.
 
 ### Batch B47: T298–T300 (must-fix A, B + gap E1; Dev 2, before polish P3)
 
-### T298 Thin-skin thickness bounds   [status: todo]
+### T298 Thin-skin thickness bounds   [status: review]
 Must-fix A (CTO #12), safety; the other arm of T293. Spec: §6.3, §7.2 · gcode-safety review
 Acceptance: as review #12 section A: the step-1 field, the command and the validator refuse a skin below a minimum (PO proposal: ≥ 0,2 mm and ≤ thickness − 1 mm; numbers in DECISIONS, tuned in the field test); old / hand-edited projects are caught (NC blocked, finding named, link to the field); goldens unchanged for defaults.
 
-### T299 Simülasyon scrolls when checks fail; "Kesim ayarlarına git" keeps the layout   [status: todo]
+### T299 Simülasyon scrolls when checks fail; "Kesim ayarlarına git" keeps the layout   [status: review]
 Must-fix B (CTO #12). Acceptance: as review #12 section B: the step content scrolls (no `overflow: hidden` trap) with 4+ findings at 1440 × 900 and 1024; the link scrolls the card into view without moving the footer over the fields.
 
-### T300 Too-small edge margin is caught at Dizilim, not as a machine error   [status: todo]
+### T300 Too-small edge margin is caught at Dizilim, not as a machine error   [status: review]
 Gap E1 (CTO #12), D-045. Acceptance: as review #12 E1: Dizilim warns when margin + lead-in does not fit the tool, before Simülasyon; the Simülasyon finding points to the margin setting, not to Makineler.
 
 ### Batch B48: T301–T303 (M8 exit gap E2, gap E3, export follow-ups; Dev 1 after B42)

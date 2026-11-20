@@ -178,6 +178,7 @@ export type ToolpathCode =
   | 'SMALL_PART_UNSECURED'
   | 'SMALL_SLUG_UNSECURED'
   | 'SMALL_PART_TAB_TOO_SMALL'
+  | 'SMALL_PART_SKIN_OUT_OF_BOUNDS'
   // warnings
   | 'ARC_COLLAPSED'
   | 'LEAD_SHORTENED'
