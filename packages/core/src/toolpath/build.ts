@@ -47,6 +47,7 @@ import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../edito
 import { lineLeavesPart } from '../editor/lines';
 import { summarizeToolpath } from './stats';
 import { buildOnlineOperation, onlineStart } from './online';
+import { partInHoleHosts } from './enclose';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
 
 import { TAB_DEFAULTS, defaultTabHeight, isSmallPart, passMovesWithTabs, placeTabs } from './tabs';
@@ -1276,6 +1277,30 @@ export function buildToolpath(
 
   // 2. Cut order (T016, D-023): holes → inner → outer per part, small parts first, tools grouped,
   //    nearest-neighbour rapids + 2-opt, start edge per contour.
+  // Part-in-hole (T166): a copy inside another copy's inner cutout is cut before that inner.
+  if (project.parts.some((p) => p.inners.length > 0)) {
+    project.layout.sheets.forEach((sheet, sheetIndex) => {
+      const copies = sheet.placements.flatMap((pl) => {
+        const part = partsById.get(pl.partId);
+        return part
+          ? [
+              {
+                key: `${part.id}#${pl.index}`,
+                outline: placedOutline(part, pl),
+                inners: placedInners(part, pl),
+              },
+            ]
+          : [];
+      });
+      const hosts = partInHoleHosts(copies);
+      if (hosts.size === 0) return;
+      for (const it of items) {
+        if (it.sheet !== sheetIndex) continue;
+        const host = hosts.get(it.part);
+        if (host !== undefined) it.within = host;
+      }
+    });
+  }
   const order = cutOrder(items, {
     mode: orderMode,
     ...(maxEvaluations === undefined ? {} : { maxEvaluations }),

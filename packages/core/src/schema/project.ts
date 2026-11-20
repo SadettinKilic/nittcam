@@ -416,17 +416,22 @@ export const nestingModeSchema = z.enum(['minWaste', 'fastest', 'minToolChanges'
 
 /**
  * Rotation policy of parts without a grain rule (T163, D-055): `free` = quarter turns (the
- * default), `none` = only 0°/180° (the drawn orientation). The grain rule always wins. T166 may
- * add step values (e.g. `step45`) to this enum.
+ * default), `none` = only 0°/180° (the drawn orientation), `step45` / `step15` = every 45° / 15°
+ * (T166; non-axis angles are placed by the true-shape engine). The grain rule always wins.
  */
-export const nestingRotationSchema = z.enum(['free', 'none'], {
-  error: 'rotation must be "free" or "none"',
+export const nestingRotationSchema = z.enum(['free', 'none', 'step45', 'step15'], {
+  error: 'rotation must be "free", "none", "step45" or "step15"',
 });
 
 export const nestingSchema = z.strictObject({
   mode: nestingModeSchema,
   /** Absent = `free` (projects before T163 need no migration). */
   rotation: nestingRotationSchema.optional(),
+  /**
+   * Small parts may go into large inner cutouts (T166, true-shape engine only). Absent = off
+   * (projects before T166 need no migration).
+   */
+  partInHole: z.boolean({ error: 'partInHole must be true or false' }).optional(),
   /** Gap between parts, mm. */
   gap: nonNegativeMm,
   /** Sheet edge margin, mm. */

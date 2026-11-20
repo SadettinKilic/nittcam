@@ -317,3 +317,18 @@ describe('lockPlacement command', () => {
     expect(stack.issues).toEqual([]);
   });
 });
+
+describe('checkPlacement with true-shape footprints (T165)', () => {
+  it('re-checks bbox conflicts on the real footprints only for true-shape layouts', () => {
+    // Diagonal neighbours: 8 mm apart on each axis (Chebyshev 8 < 10), 11.3 mm apart in fact.
+    const p = base([pl('a', 0, 10, 10), pl('b', 0, 118, 68)]);
+    const cand = p.layout.sheets[0]!.placements[1]!;
+    expect(checkPlacement(p, 0, cand, { toolDiameter: 6 }).conflicts).toHaveLength(1);
+    expect(checkPlacement(p, 0, cand, { toolDiameter: 6, trueShape: true }).conflicts).toEqual([]);
+    const close = base([pl('a', 0, 10, 10), pl('b', 0, 115, 65)]); // 5·√2 ≈ 7.1 < 10
+    const c2 = close.layout.sheets[0]!.placements[1]!;
+    expect(
+      checkPlacement(close, 0, c2, { toolDiameter: 6, trueShape: true }).conflicts,
+    ).toHaveLength(1);
+  });
+});

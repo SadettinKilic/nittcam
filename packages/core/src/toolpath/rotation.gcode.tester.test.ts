@@ -262,7 +262,7 @@ describe('grain-30° nested layout → G-code: no neighbour is cut (tester)', ()
       stock: { ...g.project.stock, sheet: { ...g.project.stock.sheet, grain: 0 } },
       parts: g.project.parts.map((p) => ({ ...p, grain: { mode: 'fixed' as const, angle: 30 } })),
     };
-    const nested = nestProject(base, { toolDiameter: 8 });
+    const nested = nestProject(base, { toolDiameter: 8, engine: 'maxrects' });
     const project: Project = { ...base, layout: nested.layout };
     // Grain rule in the layout.
     for (const s of project.layout.sheets)

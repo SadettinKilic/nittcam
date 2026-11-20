@@ -89,7 +89,7 @@ function polyDist(a: Point[], b: Point[]): number {
 describe('grain-aware placer (T114)', () => {
   it('a fixed 30° part is placed only at 30°/210° and reports GRAIN_ROTATED_BBOX', () => {
     const project = grained([{ w: 600, h: 300, qty: 3, mode: 'fixed', angle: 0 }], 30);
-    const res = nestProject(project, { toolDiameter: 8 });
+    const res = nestProject(project, { toolDiameter: 8, engine: 'maxrects' });
     const pls = res.layout.sheets.flatMap((s) => s.placements);
     expect(pls).toHaveLength(3);
     for (const pl of pls) expect([30, 210]).toContain(pl.rot);
@@ -187,9 +187,12 @@ describe('grain-aware placer properties (fast-check)', () => {
     fc.assert(
       fc.property(caseArb, (c) => {
         const unplaced = grained(c.parts, c.sheetGrain);
-        const res = nestProject(unplaced, { toolDiameter: c.toolDiameter });
+        const res = nestProject(unplaced, { toolDiameter: c.toolDiameter, engine: 'maxrects' });
         const project: Project = { ...unplaced, layout: res.layout };
-        const input = nestingInputFromProject(unplaced, { toolDiameter: c.toolDiameter });
+        const input = nestingInputFromProject(unplaced, {
+          toolDiameter: c.toolDiameter,
+          engine: 'maxrects',
+        });
         expect(invariantViolations(input, res)).toEqual([]);
         const spacing = c.toolDiameter + unplaced.nesting.gap;
         const { width, height } = unplaced.stock.sheet;

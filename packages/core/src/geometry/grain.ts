@@ -37,7 +37,7 @@ export interface GrainOfPart {
   grain: { mode: 'free' | 'fixed'; angle: number };
 }
 
-/** Rotation policy for parts without a grain rule (true-shape steps come later, T166). */
+/** Rotation policy for parts without a grain rule (step policies T166). */
 export interface RotationPolicy {
   /** Rotations (degrees) a free part may take; default 0/90/180/270. */
   freeRotations?: readonly number[];
@@ -51,9 +51,23 @@ const QUARTER_TURNS: readonly number[] = [0, 90, 180, 270];
  * sheet with grain are unaffected (the grain rule wins).
  */
 export function rotationPolicyOf(nesting: {
-  rotation?: 'free' | 'none' | undefined;
+  rotation?: 'free' | 'none' | 'step45' | 'step15' | undefined;
 }): RotationPolicy {
-  return nesting.rotation === 'none' ? { freeRotations: [0, 180] } : {};
+  switch (nesting.rotation) {
+    case 'none':
+      return { freeRotations: [0, 180] };
+    case 'step45':
+      return { freeRotations: stepRotations(45) };
+    case 'step15':
+      return { freeRotations: stepRotations(15) };
+    default:
+      return {};
+  }
+}
+
+/** 0, step, 2·step, … below 360 (T166 free-part step policy). */
+function stepRotations(step: number): number[] {
+  return Array.from({ length: 360 / step }, (_, i) => i * step);
 }
 
 /**
