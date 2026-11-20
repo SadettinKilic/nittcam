@@ -1530,19 +1530,19 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 
 ### Batch B29: T184–T186 (onboarding, accessibility, performance)
 
-### T184 Onboarding and sample project   [status: todo]
+### T184 Onboarding and sample project   [status: done]
 Spec: §4.2 · Depends: T180
 Acceptance:
 - [ ] first run: welcome dialog, sample project (cabinet + hinge doors), guided tour of the 5 wizard steps; can be reopened from Ayarlar
 Tester focus: first-run only; sample project exports a valid NC.
 
-### T185 Accessibility sweep   [status: todo]
+### T185 Accessibility sweep   [status: done]
 Spec: §3.7, §11 · Depends: T184
 Acceptance:
 - [ ] keyboard-only completion of the whole flow (cut list → nest → 3D/simulation → export); AA contrast in both themes; landmarks, labels; zero serious/critical axe violations on all routes
 Tester focus: keyboard-only e2e; axe report for every route; screen-reader spot check of the GrainDial and cut list.
 
-### T186 Performance sweep   [status: todo]
+### T186 Performance sweep   [status: done]
 Spec: §8.2 · Depends: T184
 Acceptance:
 - [ ] budgets: initial JS ≤ 250 kB gzip per route (3D/editor lazy), LCP ≤ 2.5 s on the local prod build, 2 000-row cut list usable, nesting 300 parts ≤ 10 s without UI freeze
