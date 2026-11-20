@@ -465,6 +465,25 @@ export function DrawingBoard({
       });
     }
   }, [bounds, sheetBox, state.sheet, size.w, size.h, viewSwitch]);
+  // B50 (CTO #5): Shift+F brings the selected parts to fill the view.
+  const fitSelection = useCallback(() => {
+    if (selected.length === 0 || size.w <= 0 || size.h <= 0) return;
+    touched.current = true;
+    const box = selected.reduce(
+      (a, p) => ({
+        minX: Math.min(a.minX, p.box.minX),
+        minY: Math.min(a.minY, p.box.minY),
+        maxX: Math.max(a.maxX, p.box.maxX),
+        maxY: Math.max(a.maxY, p.box.maxY),
+      }),
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+    );
+    const top = FIT_INSETS.top + (viewSwitch ? BAND_PX : 0);
+    dispatch({
+      type: 'view',
+      view: fitBox(box, size.w, size.h, { ...FIT_INSETS, top }, FIT_PADDING),
+    });
+  }, [selected, size.w, size.h, viewSwitch]);
   const fitRef = useRef(fit);
   useEffect(() => {
     fitRef.current = fit;
@@ -611,6 +630,12 @@ export function DrawingBoard({
     const tool = drawTool;
     function onKey(e: KeyboardEvent) {
       if (typing(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+      // B50 tester round 1: keys typed inside an open dialog (e.g. "İç kesim olarak ekle?")
+      // belong to that dialog, never to the drawing tool behind it.
+      if (e.target instanceof Element && e.target.closest('[role="dialog"], [role="alertdialog"]'))
+        return;
+      if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"]'))
+        return;
       const k = e.key;
       const n = fields.length;
       if (/^[0-9]$/.test(k) || k === '.' || k === ',' || k === '-') {
@@ -710,6 +735,7 @@ export function DrawingBoard({
       else if (k === 'a' && !e.shiftKey) setTool('arc');
       else if (k === 'o' && !e.shiftKey) setTool('hole');
       else if (k === 'd' && !e.shiftKey) setTool('dim');
+      else if (k === 'f' && e.shiftKey) fitSelection();
       else if (k === 'f') fit();
       else if (k === '+' || k === '=') zoomBy(1.25);
       else if (k === '-') zoomBy(1 / 1.25);
@@ -735,7 +761,7 @@ export function DrawingBoard({
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onUp);
     };
-  }, [fit, zoomBy, setTool]);
+  }, [fit, fitSelection, zoomBy, setTool]);
 
   function local(e: { clientX: number; clientY: number }): Pt {
     const r = box.current?.getBoundingClientRect();
@@ -825,7 +851,9 @@ export function DrawingBoard({
     const reach = e.pointerType === 'touch' ? 22 : 12;
     // A corner node picks that vertex for the properties panel (T130).
     const corner = vertexHandles.findIndex((h) => dist(toScreen(view, h), s) <= reach);
-    const handle = bendHandles.find((h) => dist(toScreen(view, h.at), s) <= reach);
+    // B50 (CTO #7): on a small part a corner node in reach wins over a segment's bend handle.
+    const handle =
+      corner < 0 ? bendHandles.find((h) => dist(toScreen(view, h.at), s) <= reach) : undefined;
     if (handle) {
       gesture.current = { kind: 'bend', ...handle };
       setBend({ id: handle.id, index: handle.index, bulge: handle.bulge, at: w });

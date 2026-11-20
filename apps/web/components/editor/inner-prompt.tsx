@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@nittcam/ui';
+import { useRef } from 'react';
 import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 
@@ -32,19 +33,28 @@ export function InnerPrompt({
   onPart: () => void;
   onCancel: () => void;
 }) {
+  const inner = useRef<HTMLButtonElement>(null);
   return (
     <AlertDialog open={partName !== null} onOpenChange={(open) => (open ? undefined : onCancel())}>
-      <AlertDialogContent data-testid="inner-prompt">
+      {/* B50 (CTO #6): wide enough for the three buttons; Enter = "İç kesim olarak ekle". */}
+      <AlertDialogContent
+        data-testid="inner-prompt"
+        className="max-w-lg"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          inner.current?.focus();
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{t.title}</AlertDialogTitle>
           <AlertDialogDescription>{fill(t.body, { name: partName ?? '' })}</AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
+        <AlertDialogFooter className="sm:flex-wrap">
           <AlertDialogCancel data-testid="inner-prompt-cancel">{t.cancel}</AlertDialogCancel>
           <AlertDialogAction variant="outline" data-testid="inner-prompt-part" onClick={onPart}>
             {t.asPart}
           </AlertDialogAction>
-          <AlertDialogAction data-testid="inner-prompt-inner" onClick={onInner}>
+          <AlertDialogAction ref={inner} data-testid="inner-prompt-inner" onClick={onInner}>
             {t.asInner}
           </AlertDialogAction>
         </AlertDialogFooter>

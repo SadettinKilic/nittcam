@@ -9,7 +9,7 @@
  */
 import { EPS } from '../geometry/constants';
 import { contour, forEachSegment, orientation } from '../geometry/polyline';
-import { arcOf, sampleSegment, segmentLength } from '../geometry/segment';
+import { arcOf, sampleSegment, segmentLength, segmentMidpoint } from '../geometry/segment';
 import type { Point, Vertex } from '../geometry/types';
 import { angleOf, tidy } from './draw';
 
@@ -170,6 +170,26 @@ export function withVertexAt(vs: readonly Vertex[], index: number, to: Point): O
     return { ok: false, error: 'index' };
   if (!Number.isFinite(to.x) || !Number.isFinite(to.y)) return { ok: false, error: 'length' };
   return finish(moveEnd(vs, (index - 1 + vs.length) % vs.length, to));
+}
+
+/**
+ * Splits outline segment `index` at its middle (B50, CTO #5 "köşe ekle"): a new vertex on the
+ * segment, so a corner can then be moved to make an L or a notch without redrawing. An arc is cut
+ * into two arcs of the same circle (each half bulge = tan(atan(b) / 2)). The new vertex is
+ * `index + 1`; the shape itself does not change.
+ */
+export function withSegmentSplit(vs: readonly Vertex[], index: number): OutlineEdit {
+  if (!Number.isInteger(index) || index < 0 || index >= vs.length)
+    return { ok: false, error: 'index' };
+  const p0 = at(vs, index);
+  const p1 = at(vs, index + 1);
+  if (!(segmentLength(p0, p1, p0.bulge) > EPS)) return { ok: false, error: 'degenerate' };
+  const half = p0.bulge === 0 ? 0 : Math.tan(Math.atan(p0.bulge) / 2);
+  const mid = segmentMidpoint(p0, p1, p0.bulge);
+  const out = vs.map((v) => ({ ...v }));
+  out[index] = { ...p0, bulge: half };
+  out.splice(index + 1, 0, { x: tidy(mid.x), y: tidy(mid.y), bulge: half });
+  return finish(out);
 }
 
 /**

@@ -46,6 +46,7 @@ import {
 } from '@nittcam/ui';
 import { LayoutTemplate, Plus, RotateCcw, Save, Trash2, TriangleAlert } from 'lucide-react';
 import { memo, useId, useState } from 'react';
+import { rowOpen } from '../../lib/editor/collapse';
 import { fill } from '../../lib/fill';
 import {
   addTemplateParams,
@@ -56,6 +57,7 @@ import {
 import type { Messages } from '../../lib/messages';
 import { createTemplate, fetchTemplates, type TemplateItem } from '../../lib/templates-api';
 import { NumberRow, type Run } from './properties';
+import { SummaryRow } from './summary-row';
 
 type T = Messages['editor']['inspector']['template'];
 type Edge = TemplateEdge | 'free';
@@ -385,6 +387,8 @@ export const TemplateProperties = memo(function TemplateProperties({
   const [saving, setSaving] = useState(false);
   const [menuMounted, setMenuMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // B50: open / closed per instance id (default: the newest and a warned one open).
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   const addButton = (props: { onClick?: () => void }) => (
     <Button size="sm" variant="secondary" data-testid="template-add" {...props}>
       <Plus aria-hidden />
@@ -513,49 +517,61 @@ export const TemplateProperties = memo(function TemplateProperties({
         </div>
       ) : null}
 
-      {part.templates.map((ref, i) => (
-        <div key={ref.instanceId} className="flex flex-col" data-testid={`template-instance-${i}`}>
-          <div className="flex items-center justify-between pt-1">
-            <h3 className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-medium text-fg-muted">
-              {fill(t.instance, { name: ref.name, v: ref.version })}
-              {/* T282: an unverified ready template says so on the part too (Şablonlar page badge). */}
-              {readyTemplate(ref.templateId)?.verified === false ? (
+      {part.templates.map((ref, i) => {
+        const hinge = onHingeEdge.includes(ref.instanceId);
+        const isOpen = rowOpen(open[ref.instanceId], i, part.templates.length, hinge);
+        return (
+          <SummaryRow
+            key={ref.instanceId}
+            testId={`template-instance-${i}`}
+            title={fill(t.instance, { name: ref.name, v: ref.version })}
+            summary={t.edges[ref.placement.edge ?? 'free']}
+            open={isOpen}
+            onToggle={() => setOpen((o) => ({ ...o, [ref.instanceId]: !isOpen }))}
+            badge={
+              /* T282: an unverified ready template says so on the part too (Şablonlar page badge). */
+              readyTemplate(ref.templateId)?.verified === false ? (
                 <Badge variant="warning" data-testid={`template-instance-${i}-unverified`}>
                   {t.instanceUnverified}
                 </Badge>
-              ) : null}
-            </h3>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              aria-label={fill(t.remove, { name: ref.name })}
-              data-testid={`template-instance-${i}-remove`}
-              onClick={() =>
-                run('removeTemplateInstance', { id: part.id, instanceId: ref.instanceId })
-              }
-            >
-              <Trash2 aria-hidden />
-            </IconButton>
-          </div>
-          {onHingeEdge.includes(ref.instanceId) ? (
-            <p
-              role="status"
-              className="flex items-start gap-1.5 text-xs text-warning-text"
-              data-testid={`template-instance-${i}-hinge-edge`}
-            >
-              <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
-              {t.hingeEdge}
-            </p>
-          ) : null}
-          <TemplateFields
-            t={t}
-            tid={`template-instance-${i}`}
-            value={ref}
-            onParams={(patch) => update(ref.instanceId, { params: patch })}
-            onPlacement={(patch) => update(ref.instanceId, { placement: patch })}
-          />
-        </div>
-      ))}
+              ) : null
+            }
+            action={
+              <IconButton
+                size="sm"
+                variant="ghost"
+                aria-label={fill(t.remove, { name: ref.name })}
+                data-testid={`template-instance-${i}-remove`}
+                onClick={() =>
+                  run('removeTemplateInstance', { id: part.id, instanceId: ref.instanceId })
+                }
+              >
+                <Trash2 aria-hidden />
+              </IconButton>
+            }
+            notes={
+              hinge ? (
+                <p
+                  role="status"
+                  className="mb-1 flex items-start gap-1.5 text-xs text-warning-text"
+                  data-testid={`template-instance-${i}-hinge-edge`}
+                >
+                  <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+                  {t.hingeEdge}
+                </p>
+              ) : null
+            }
+          >
+            <TemplateFields
+              t={t}
+              tid={`template-instance-${i}`}
+              value={ref}
+              onParams={(patch) => update(ref.instanceId, { params: patch })}
+              onPlacement={(patch) => update(ref.instanceId, { placement: patch })}
+            />
+          </SummaryRow>
+        );
+      })}
 
       {saving ? (
         <SaveDialog
