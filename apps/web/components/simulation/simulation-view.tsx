@@ -65,10 +65,10 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import { fill } from '../../lib/draft-project';
+import { useReducedMotion } from '../../lib/preferences';
 import type { SimulationMeta, SimulationResponse } from '../../lib/simulation-messages';
 import { useSimulationWorker } from '../../lib/use-simulation-worker';
 import { SPEEDS, createSimPlayer, useSimPlayer } from '../../lib/sim-player';
@@ -98,20 +98,6 @@ const SimulationCanvas = dynamic(() => import('./simulation-canvas'), { ssr: fal
 
 /** Scrubber resolution: tenths of a second. */
 const SCRUB_UNITS = 10;
-
-/** `prefers-reduced-motion: reduce` as React state (false on the server). */
-function subscribeMotion(cb: () => void): () => void {
-  const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-  mq.addEventListener('change', cb);
-  return () => mq.removeEventListener('change', cb);
-}
-function useReducedMotion(): boolean {
-  return useSyncExternalStore(
-    subscribeMotion,
-    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    () => false,
-  );
-}
 
 /** Is the key event aimed at a control that handles it itself? */
 function ownsKey(target: EventTarget | null, key: string): boolean {

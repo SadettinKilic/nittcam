@@ -37,7 +37,7 @@ import {
 } from '../../lib/preview3d/camera';
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
-import { useMediaQuery } from '../../lib/use-media-query';
+import { readSimple3d, setSimple3d, useReducedMotion } from '../../lib/preferences';
 import type { CaptureFn } from './capture';
 import { exportPng } from '../../lib/preview3d/png';
 import type {
@@ -86,24 +86,6 @@ function readColors(): SceneColors {
   return { ...readTokenColors(TOKENS, style), materials: readTokenColors(MATERIAL_TOKEN, style) };
 }
 
-const SIMPLE_KEY = 'nittcam-3d-simple';
-
-function readSimple(): boolean {
-  try {
-    return window.localStorage.getItem(SIMPLE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function writeSimple(on: boolean): void {
-  try {
-    window.localStorage.setItem(SIMPLE_KEY, on ? '1' : '0');
-  } catch {
-    // storage blocked: the choice lasts for this view only
-  }
-}
-
 export interface Preview3DProps {
   t: Text;
   project: Project;
@@ -138,7 +120,7 @@ export function Preview3D({
   toolpath,
 }: Preview3DProps) {
   const [showPath, setShowPath] = useState(true);
-  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)', false);
+  const reduced = useReducedMotion();
   // Opened by a click (never server-rendered), so the tokens can be read on the first render.
   const [colors, setColors] = useState<SceneColors | null>(() =>
     typeof document === 'undefined' ? null : readColors(),
@@ -146,7 +128,7 @@ export function Preview3D({
   const host = useRef<HTMLDivElement>(null);
   const cube = useRef<HTMLDivElement>(null);
   // "Basit mod" (T154, spec §3.8): remembered per browser; turned on by itself when slow.
-  const [simple, setSimple] = useState(() => typeof window !== 'undefined' && readSimple());
+  const [simple, setSimple] = useState(() => typeof window !== 'undefined' && readSimple3d());
   const [autoSimple, setAutoSimple] = useState(false);
   // T158 "Montaj görünümü": cabinet groups of the cut list as assembled boxes (view only).
   const groups = useMemo(
@@ -169,7 +151,7 @@ export function Preview3D({
   function toggleSimple() {
     setSimple(!simple);
     setAutoSimple(false);
-    writeSimple(!simple);
+    setSimple3d(!simple);
   }
 
   useEffect(() => onThemeChange(() => setColors(readColors())), []);

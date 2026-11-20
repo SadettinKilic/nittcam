@@ -8,7 +8,6 @@ import {
 } from '@nittcam/core';
 import {
   Button,
-  Card,
   ErrorState,
   FormField,
   Input,
@@ -23,16 +22,9 @@ import {
 } from '@nittcam/ui';
 import { ArrowRight, ImageOff, Trash2, Upload } from 'lucide-react';
 import Link from 'next/link';
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
+import { SettingsCard } from '../../components/settings/settings-card';
 import { LOGO_ACCEPT, logoProblem, type LogoProblem } from '../../lib/logo';
 import type { Messages } from '../../lib/messages';
 import { COMPANY_NAME_MAX, type CompanySettings } from '../../lib/settings-api';
@@ -93,35 +85,6 @@ export function GeneralView({ t }: { t: Text }) {
         </div>
       )}
     </main>
-  );
-}
-
-function SettingsCard({
-  title,
-  hint,
-  className,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  className?: string;
-  children: ReactNode;
-}) {
-  const id = useId();
-  return (
-    <Card
-      role="group"
-      aria-labelledby={id}
-      className={`flex min-w-0 flex-col gap-4 p-5 sm:p-6 ${className ?? ''}`}
-    >
-      <div className="flex flex-col gap-1">
-        <h2 id={id} className="text-base font-semibold tracking-tight text-fg">
-          {title}
-        </h2>
-        {hint ? <p className="text-sm text-fg-muted">{hint}</p> : null}
-      </div>
-      {children}
-    </Card>
   );
 }
 

@@ -13,6 +13,7 @@ export const SETTINGS_SECTIONS = [
   { key: 'general', href: '/ayarlar' },
   { key: 'materials', href: '/ayarlar/malzemeler' },
   { key: 'dxf', href: '/ayarlar/dxf' },
+  { key: 'appearance', href: '/ayarlar/gorunum' },
 ] as const;
 
 /** The Ayarlar sub-navigation: a row of links, the current one marked (`aria-current="page"`). */

@@ -8,14 +8,10 @@ import { zoomAt } from './zoom';
 import { canvasMonoFont } from '../../lib/canvas-theme';
 import { formatMm, partLabel } from '../../lib/canvas-labels';
 import { grainArrowPoints, grainLines } from '../../lib/grain-texture';
+import { prefersReducedMotion } from '../../lib/preferences';
 
-/** True when the operator asked for less motion (no fade-in after "Diz"). */
-function reducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  );
-}
+/** True when the operator asked for less motion (no fade-in after "Diz"; OS or Ayarlar, T183). */
+const reducedMotion = prefersReducedMotion;
 
 /**
  * The Konva drawing of one sheet (T013, spec §3.6, §6.5). Loaded only in the browser (react-konva

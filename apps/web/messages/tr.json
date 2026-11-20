@@ -2908,6 +2908,27 @@
       "hasErrors": "Kaydetmeden önce işaretli satırları düzeltin.",
       "pocketSoon": "Cep henüz içe aktarılmıyor; bu katmandaki şekiller raporda gösterilir.",
       "count": "{n} katman"
+    },
+    "appearance": {
+      "title": "Görünüm",
+      "subtitle": "Tema, yoğunluk ve hareket. Seçimler bu tarayıcıda saklanır ve sayfa yenilense de kalır.",
+      "themeTitle": "Tema",
+      "themeHint": "Sistem, bilgisayarınızın açık/koyu ayarını izler. Kısayol: Shift+T.",
+      "densityTitle": "Yoğunluk",
+      "densityHint": "Sıkı görünümde düğmeler ve tablo satırları daha alçak, ekrana daha çok satır sığar. Dokunmatik ekranda Rahat önerilir.",
+      "comfortable": "Rahat",
+      "comfortableHint": "40 px düğmeler ve tablo satırları",
+      "compact": "Sıkı",
+      "compactHint": "32 px düğmeler, 36 px satırlar",
+      "previewTitle": "3D önizleme",
+      "simple3d": "Basit mod",
+      "simple3dHint": "Doku ve gölge olmadan çizer; zayıf bilgisayarlarda akıcı kalır. Önizlemedeki Basit mod düğmesiyle aynı ayardır.",
+      "motionTitle": "Hareket",
+      "reduceMotion": "Hareketi azalt",
+      "reduceMotionHint": "Geçiş ve kamera animasyonlarını kapatır. Kapalıyken işletim sisteminin ayarı geçerlidir.",
+      "reduceMotionSystem": "İşletim sisteminiz şu an hareketi azaltıyor; bu ayar kapalı olsa da animasyonlar kapalı kalır.",
+      "shortcutsTitle": "Klavye kısayolları",
+      "shortcutsHint": "Her yerde ? tuşu bu listeyi açar. Metin kutusuna yazarken kısayollar çalışmaz (komut paleti hariç)."
     }
   }
 }
