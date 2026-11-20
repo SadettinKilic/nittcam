@@ -1021,7 +1021,7 @@ Tester focus: none beyond CI.
 
 ---
 
-### T280 Offset kernel precision at near-straight arcs   [status: todo]
+### T280 Offset kernel precision at near-straight arcs   [status: done]
 Spec: §6.1 · Depends: T013
 Found 2026-11-19: `packages/core/src/geometry/offset.property.test.ts` fails with `FC_SEED=-536624909`: a near-straight arc (bulge −5e-8) gives a deviation of 0.00208 > EPS.
 Acceptance:
@@ -1063,7 +1063,7 @@ Tester focus: screenshots at grain 0/30/90°; edge band visible; simple mode vis
 
 ### Batch B20: T155–T157 (interaction and playback)
 
-### T155 Interaction: move sheet, select, explode, camera transition   [status: todo]
+### T155 Interaction: move sheet, select, explode, camera transition   [status: done]
 Spec: §3.6, §3.8 · Depends: T154
 Acceptance:
 - [ ] drag the sheet on the table plane (view-only; never changes the layout or machine offset), snap back button
@@ -1071,13 +1071,13 @@ Acceptance:
 - [ ] wizard "İleri" → smooth camera transition to top view (§3.6), skipped with reduced motion
 Tester focus: moving the sheet does not change project JSON (assert); selection matches 2D numbering; reduced motion.
 
-### T156 Toolpath overlay in 3D   [status: todo]
+### T156 Toolpath overlay in 3D   [status: done]
 Spec: §6.5, §3.8 · Depends: T153
 Acceptance:
 - [ ] overlay from the **read G-code** (same data as 2D simulation): rapids dashed above the sheet, cuts coloured by depth; toggle; 50k-segment program renders within budget
 Tester focus: overlay comes from the reader (not the toolpath model) — code review; visual match with 2D simulation.
 
-### T157 Cutting playback synced with simulation   [status: todo]
+### T157 Cutting playback synced with simulation   [status: done]
 Spec: §6.5, §3.8 · Depends: T156
 Acceptance:
 - [ ] shared player store (time, speed, line) drives both 2D simulation and 3D: tool + spindle model moves along the read path, cut kerf revealed progressively, parts lift slightly when their outer contour ends
