@@ -7,6 +7,7 @@ import { fill } from '../../lib/draft-project';
 import { withBlocking } from '../../lib/blocking-issues';
 import { itemPlace, machineRelated, onDrawnItem, onPartRow } from '../../lib/part-items';
 import type { SimText } from './model';
+import { tabTextCode } from '../../lib/tab-text';
 
 export interface Finding {
   group: string;
@@ -26,6 +27,8 @@ export interface Finding {
   hole?: number;
   /** Its open line (0-based), for an issue about a line (T277). */
   openLine?: number;
+  /** B44: the text key when it differs from the code (a tab too high, not too small). */
+  textCode?: string;
 }
 
 /** Part names for the place of a cut-out issue, and the way to the drawing board (T270). */
@@ -69,11 +72,13 @@ export function findings(result: SimulateResult): Finding[] {
       if (cutOuts.has(key)) continue;
       cutOuts.add(key);
     }
+    const textCode = tabTextCode(i.code, i.message);
     out.push({
       group: 'TOOLPATH',
       severity: i.severity,
       code: i.code,
       message: i.message,
+      ...(textCode ? { textCode } : {}),
       ...(i.sheet !== undefined ? { sheet: i.sheet } : {}),
       ...(i.partId !== null ? { partId: i.partId } : {}),
       ...(i.inner !== undefined ? { inner: i.inner } : {}),
@@ -187,7 +192,7 @@ function FindingList({
                   </span>
                 )}
                 <span className="min-w-0">
-                  {codeText(t, f.code)}
+                  {codeText(t, f.textCode ?? f.code)}
                   {/* D-045: the engine's English sentence only for a code without Turkish text. */}
                   {knownCode(t, f.code) ? null : (
                     <span className="block text-xs break-words text-fg-muted">

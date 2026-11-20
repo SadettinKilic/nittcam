@@ -26,6 +26,7 @@ export function NumberField({
   list,
   unit = null,
   bounds,
+  inUse,
 }: {
   label: string;
   value: number;
@@ -42,7 +43,18 @@ export function NumberField({
    * T293: the accepted range, said in the error ("En az 3 mm", "1–17 mm arası"): a value outside
    * it (or not whole when `integer`) is refused before the command runs.
    */
-  bounds?: { min: number; max?: number; integer?: boolean; message: string } | undefined;
+  bounds?:
+    | {
+        min: number;
+        max?: number;
+        integer?: boolean;
+        message: string;
+        /** B44: said instead of `message` for a value above `max` ("çok yüksek"). */
+        highMessage?: string;
+      }
+    | undefined;
+  /** B44: shown with a refused value, so the value still in use is visible ("kullanılan: 4"). */
+  inUse?: string | undefined;
 }) {
   const id = useId();
   const [text, setTextState] = useState<string | null>(null);
@@ -72,7 +84,8 @@ export function NumberField({
         (bounds.max !== undefined && n > bounds.max + 1e-9) ||
         (bounds.integer && !Number.isInteger(n)))
     ) {
-      setError(bounds.message);
+      const high = bounds.max !== undefined && n > bounds.max + 1e-9;
+      setError(high && bounds.highMessage ? bounds.highMessage : bounds.message);
       return false;
     }
     if (n === value || onCommit(n)) {
@@ -130,6 +143,11 @@ export function NumberField({
       {error ? (
         <p id={`${id}-error`} className="text-xs font-medium text-danger-text">
           {error}
+          {inUse ? (
+            <span className="block font-normal text-fg-muted" data-testid="field-in-use">
+              {inUse}
+            </span>
+          ) : null}
         </p>
       ) : null}
     </div>

@@ -1254,7 +1254,9 @@
       "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
       "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
       "SMALL_PART_TAB_TOO_SMALL": "Köprü bu küçük parçayı tutamayacak kadar küçük (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası); parça serbest kalır. Kesim ayarlarında köprü ölçüsünü düzeltin ya da “Köprü: Kapalı” seçin.",
-      "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası)."
+      "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası).",
+      "TABS_TOO_SMALL_HIGH": "Köprü çok yüksek: yükseklik en fazla kalınlık − 1 mm olabilir. Kesim ayarlarında köprü yüksekliğini düşürün.",
+      "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -1383,8 +1385,11 @@
       "bounds": {
         "count": "1–20 arası tam sayı girin.",
         "width": "En az {min} mm.",
-        "height": "{min}–{max} mm arası olmalı."
+        "height": "{min}–{max} mm arası olmalı.",
+        "heightHigh": "Çok yüksek: en fazla {max} mm (kalınlık − 1 mm).",
+        "heightNone": "{thickness} mm plakada köprü bırakılamaz (en az {need} mm gerekir); köprüyü kapatın."
       },
+      "inUse": "kullanılan: {value}",
       "smallCount": "Küçük parçalarda en az {n} köprü konur (güvenlik kuralı).",
       "heightWarn": "Köprü kalınlığın yarısından yüksek: parçayı plakadan kırmak zorlaşır.",
       "skinOn": "Küçük parçalarda {skin} mm ince tabaka da açık (1. adımdaki ayar).",
