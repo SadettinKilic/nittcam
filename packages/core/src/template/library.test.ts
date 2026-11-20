@@ -14,7 +14,13 @@ import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import { templateGeometrySchema, templateParamsSchema, type Project } from '../schema';
 import { buildToolpath } from '../toolpath';
 import { defaultPlacement } from './index';
-import { READY_TEMPLATES, isReadyTemplateId, readyTemplate, type ReadyTemplate } from './library';
+import {
+  READY_TEMPLATES,
+  isReadyTemplateId,
+  readyTemplate,
+  unverifiedTemplateNames,
+  type ReadyTemplate,
+} from './library';
 
 const TOOL_D = 6;
 
@@ -95,4 +101,47 @@ describe('ready template library (T150)', () => {
       }
     },
   );
+});
+
+describe('unverified ready templates in the job (T282)', () => {
+  const found = readyTemplate('ready-hinge-35-2');
+  if (!found) throw new Error('no hinge template');
+  const hinge = found;
+  const exportWith = (p: Project) =>
+    exportNc(
+      p,
+      { profile: goldenProfile('mach3'), version: 1, verification: 'draft' },
+      postConfig('mach3'),
+    );
+
+  it('names each unverified ready template once, in first-use order', () => {
+    const p = placed(hinge);
+    expect(unverifiedTemplateNames(p.parts)).toEqual(['Menteşe çukuru Ø35 (2 menteşe)']);
+    const twice = { ...p, parts: [...p.parts, ...p.parts] };
+    expect(unverifiedTemplateNames(twice.parts)).toEqual(['Menteşe çukuru Ø35 (2 menteşe)']);
+  });
+
+  it('a company template (uuid id, e.g. a ready one copied and edited) adds nothing', () => {
+    const p = placed(hinge);
+    const parts = p.parts.map((part) => ({
+      ...part,
+      templates: part.templates.map((t) => ({
+        ...t,
+        templateId: '4f1c2a9e-0000-4000-8000-000000000001',
+      })),
+    }));
+    expect(unverifiedTemplateNames(parts)).toEqual([]);
+  });
+
+  it('the G-code header gets one ASCII line only when such an instance exists', () => {
+    const r = exportWith(placed(hinge));
+    expect(r.ok).toBe(true);
+    for (const f of r.files) {
+      const lines = f.content.split(/\r?\n/).filter((l) => l.includes('SABLON DOGRULANMADI'));
+      expect(lines).toEqual(['(SABLON DOGRULANMADI: Mentese cukuru D35 2 mentese)']);
+    }
+    const plain = exportWith(goldenProject(shelfSet, TOOL_D));
+    expect(plain.ok).toBe(true);
+    for (const f of plain.files) expect(f.content).not.toContain('SABLON');
+  });
 });

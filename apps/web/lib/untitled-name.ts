@@ -14,3 +14,17 @@ export function untitledName(base: string, existing: readonly string[]): string 
     if (!taken.has(key(name))) return name;
   }
 }
+
+/**
+ * True when `name` is a default name `untitledName` hands out ("<base>" or "<base> <n>", n ≥ 2),
+ * i.e. the user has not named the project yet (T283: typing then replaces the whole name).
+ */
+export function isUntitledName(base: string, name: string): boolean {
+  const key = (s: string) => s.trim().toLocaleLowerCase('tr-TR');
+  const k = key(name);
+  const b = key(base);
+  if (k === b) return true;
+  if (!k.startsWith(`${b} `)) return false;
+  const n = k.slice(b.length + 1);
+  return /^[1-9]\d*$/.test(n) && Number(n) >= 2;
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { Project } from '@nittcam/core';
+import { unverifiedTemplateNames, type Project } from '@nittcam/core';
 import { Button, Card, Checkbox, IconButton, Tooltip, notify } from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
 import {
@@ -192,7 +192,9 @@ export function ExportStep({
     };
   }, [projectId, historyKey]);
 
-  const blocker = downloadBlocker(preview, f.checks, f.accepted);
+  // T282: unverified ready-template values get their own checklist line (review #8 K2).
+  const templateNames = useMemo(() => unverifiedTemplateNames(project.parts), [project.parts]);
+  const blocker = downloadBlocker(preview, f.checks, f.accepted, templateNames.length);
   const blockerText =
     blocker === 'checks'
       ? t.needPass
@@ -473,6 +475,14 @@ export function ExportStep({
                 label={fill(preview.checklist.rezeroZ ? t.checkToolChangeZ : t.checkToolChange, {
                   count: preview.checklist.toolChanges,
                 })}
+              />
+            ) : null}
+            {templateNames.length > 0 ? (
+              <ChecklistItem
+                testId="export-check-templates"
+                checked={f.checks.templates}
+                onChange={(v) => update({ checks: { ...f.checks, templates: v } })}
+                label={fill(t.checkTemplates, { names: templateNames.join(', ') })}
               />
             ) : null}
             <ChecklistItem

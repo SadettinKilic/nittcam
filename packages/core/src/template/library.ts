@@ -105,3 +105,21 @@ export function isReadyTemplateId(id: string): boolean {
 export function readyTemplate(id: string): ReadyTemplate | undefined {
   return READY_TEMPLATES.find((t) => t.id === id);
 }
+
+/**
+ * Names of the unverified ready templates the parts use (T282, review #8 K2, spec §14.2): one entry
+ * per ready template (its library name), in first-use order. Company templates, including ready
+ * ones copied to the company and edited (they get a uuid id), never count.
+ */
+export function unverifiedTemplateNames(
+  parts: readonly { templates: readonly { templateId: string }[] }[],
+): string[] {
+  const out: string[] = [];
+  for (const part of parts) {
+    for (const ref of part.templates) {
+      const t = readyTemplate(ref.templateId);
+      if (t && !t.verified && !out.includes(t.name)) out.push(t.name);
+    }
+  }
+  return out;
+}
