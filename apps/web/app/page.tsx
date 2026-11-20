@@ -7,6 +7,7 @@ import {
   FolderOpen,
   LayoutGrid,
   Plus,
+  Percent,
   ShieldCheck,
 } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -18,6 +19,7 @@ import { LayoutThumbnail } from '../components/home/layout-thumb';
 import { StartStrip } from '../components/home/start-strip';
 import { StatTile } from '../components/home/stat-tile';
 import { MaintenanceBadge } from '../components/machines/maintenance-badge';
+import { WasteSummaryCard } from '../components/home/waste-summary';
 import { MachineStateBadge } from '../components/machines/state-badge';
 import { localDay, maintenanceView } from '../lib/maintenance';
 import {
@@ -29,11 +31,15 @@ import {
 } from '../components/page/page-header';
 import {
   dashboardStats,
+  isRecentWorthy,
   layoutThumb,
   machinesByUrgency,
+  wasteSummary,
   type DashboardStats,
   type LayoutThumb,
+  type WasteSummary,
 } from '../lib/dashboard';
+import { formatPercent } from '../lib/report-summary';
 import { fill } from '../lib/draft-project';
 import { getMessages, type Messages } from '../lib/messages';
 import type { MachineListItem } from '../lib/machines-api';
@@ -41,6 +47,7 @@ import { PROJECT_STATUS_TONE, type ProjectListItem } from '../lib/projects-api';
 import { companyScope } from '../lib/server/company';
 import { versionNumbers } from '../lib/server/exports';
 import { toListItem as machineItem } from '../lib/server/machines';
+import { layoutSummary } from '../lib/server/report';
 import { machineNames, toListItem } from '../lib/server/projects';
 
 export const dynamic = 'force-dynamic';
@@ -62,7 +69,13 @@ interface RecentProject {
 }
 
 type Dashboard =
-  | { ok: true; stats: DashboardStats; recent: RecentProject[]; machines: MachineListItem[] }
+  | {
+      ok: true;
+      stats: DashboardStats;
+      recent: RecentProject[];
+      machines: MachineListItem[];
+      waste: WasteSummary | null;
+    }
   | { ok: false };
 
 async function loadDashboard(): Promise<Dashboard> {
@@ -80,19 +93,36 @@ async function loadDashboard(): Promise<Dashboard> {
     const sorted = [...rows].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
     // T289: archived machines count nowhere on Ana sayfa (old projects still name them).
     const machineItems = machines.map(machineItem).filter((m) => !m.archived);
+    const now = new Date();
     return {
       ok: true,
       stats: dashboardStats({
         projects: rows,
         machines: machineItems,
         exports,
-        now: new Date(),
+        now,
       }),
-      recent: sorted.slice(0, RECENT).map((r) => ({
-        item: toListItem(r, names, last, versions),
-        thumb: layoutThumb(r.data),
-      })),
+      // P4 (CTO #10): untouched empty drafts do not take a card.
+      recent: sorted
+        .filter(isRecentWorthy)
+        .slice(0, RECENT)
+        .map((r) => ({
+          item: toListItem(r, names, last, versions),
+          thumb: layoutThumb(r.data),
+        })),
       machines: machinesByUrgency(machineItems),
+      // T180 / D-070: the report numbers of every project with a layout (no cut-time simulation).
+      waste: wasteSummary(
+        rows
+          .filter((r) => r.data.layout.sheets.length > 0)
+          .map((r) => ({
+            id: r.id,
+            name: r.name,
+            updatedAt: r.updatedAt,
+            summary: layoutSummary(r),
+          })),
+        now,
+      ),
     };
   } catch (err) {
     console.error(err);
@@ -154,10 +184,13 @@ async function Dashboard() {
               ]}
             />
           ) : (
-            <Stats stats={data.stats} t={t} />
+            <Stats stats={data.stats} waste={data.waste} t={t} />
           )}
           <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] lg:gap-6">
-            <RecentProjects recent={data.recent} messages={messages} />
+            <div className="flex min-w-0 flex-col gap-8">
+              <RecentProjects recent={data.recent} messages={messages} />
+              <WasteSummaryCard waste={data.waste} t={t.waste} />
+            </div>
             <div className="flex min-w-0 flex-col gap-6">
               <Machines machines={data.machines} messages={messages} />
               <QuickActions t={t} />
@@ -169,12 +202,25 @@ async function Dashboard() {
   );
 }
 
-function Stats({ stats, t }: { stats: DashboardStats; t: Messages['home'] }) {
+function Stats({
+  stats,
+  waste,
+  t,
+}: {
+  stats: DashboardStats;
+  waste: WasteSummary | null;
+  t: Messages['home'];
+}) {
   const s = t.stats;
+  // 3 KPI cards until there is waste data, then 4 (T194 / T180).
   return (
     <section
       aria-label={s.label}
-      className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4 [&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1"
+      className={
+        waste
+          ? 'grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4'
+          : 'grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4 [&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1'
+      }
     >
       <StatTile
         testId="stat-projects"
@@ -204,6 +250,15 @@ function Stats({ stats, t }: { stats: DashboardStats; t: Messages['home'] }) {
         }
         icon={<ShieldCheck />}
       />
+      {waste ? (
+        <StatTile
+          testId="stat-waste"
+          label={s.waste}
+          value={formatPercent(waste.wastePercent)}
+          hint={fill(s.wasteHint, { n: countFormat.format(waste.projects) })}
+          icon={<Percent />}
+        />
+      ) : null}
     </section>
   );
 }
@@ -269,7 +324,7 @@ function ProjectCard({ project, messages }: { project: RecentProject; messages: 
   });
   return (
     <Card interactive className="group relative flex h-full flex-col overflow-hidden">
-      <div className="relative flex h-32 items-center justify-center border-b border-border-subtle bg-canvas p-3">
+      <div className="relative flex aspect-[16/10] items-center justify-center border-b border-border-subtle bg-canvas p-3">
         {thumb ? (
           <>
             <LayoutThumbnail thumb={thumb} label={fill(t.thumb, { name: item.name })} />
@@ -312,10 +367,10 @@ function ProjectCard({ project, messages }: { project: RecentProject; messages: 
             </>
           ) : null}
         </p>
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border-subtle pt-3 text-xs text-fg-muted">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border-subtle pt-3 text-xs text-fg-muted">
           <span className="flex min-w-0 items-center gap-1.5">
             <FileOutput aria-hidden className="size-3.5 shrink-0" />
-            <span className="truncate">
+            <span data-testid="home-card-export">
               {item.lastExport
                 ? fill(t.lastExport, {
                     date: dateFormat.format(new Date(item.lastExport.createdAt)),

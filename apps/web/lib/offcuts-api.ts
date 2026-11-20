@@ -10,6 +10,8 @@ export interface OffcutItem {
   /** 0 | 90 like the sheet grain; null = no grain. */
   grain: number | null;
   sourceProjectId: string | null;
+  /** Name of the source project in the list (P4); null when unknown or deleted. */
+  sourceProjectName?: string | null;
   status: OffcutStatus;
   createdAt: string;
 }

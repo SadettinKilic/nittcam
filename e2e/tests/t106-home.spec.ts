@@ -81,7 +81,9 @@ test.describe('T106 home dashboard', () => {
     // Our newest project shows its layout thumbnail (other tests may add projects in parallel).
     const first = projects.getByRole('listitem').filter({ hasText: drawn });
     await expect(first.getByRole('img', { name: drawn })).toBeVisible();
-    await expect(first.locator('svg rect')).toHaveCount(5); // sheet + 4 parts
+    // T180: sheet well + material tint + 4 parts (one sheet, so no stack behind it).
+    await expect(first.locator('svg rect')).toHaveCount(6);
+    await expect(first.locator('svg[data-stack]')).toHaveAttribute('data-stack', '0');
     await expect(first).toContainText(t.card.noExport);
     await expect(projects.getByRole('listitem').filter({ hasText: bare })).toContainText(
       t.card.noLayout,
@@ -92,8 +94,8 @@ test.describe('T106 home dashboard', () => {
       Number(await page.getByTestId('stat-projects').locator('p').first().innerText()),
     ).toBeGreaterThanOrEqual(2);
     await expect(page.getByTestId('stat-machines')).toContainText(/\d+ \/ \d+/);
-    // T194a: the placeholder waste KPI is hidden until it has data.
-    await expect(page.getByTestId('stat-waste')).toHaveCount(0);
+    // T180: with a layout in the last 30 days the waste KPI is the fourth tile.
+    await expect(page.getByTestId('stat-waste')).toContainText('%');
     await expect(page.getByTestId('home-start')).toHaveCount(0);
 
     // Section header links stay on the heading's line (no wrap under the title).
@@ -109,6 +111,44 @@ test.describe('T106 home dashboard', () => {
     // The card opens the project.
     await first.getByRole('link', { name: drawn }).click();
     await expect(page).toHaveURL(new RegExp(`/projeler/${created.id}`));
+  });
+
+  test('T180 waste summary: the project bar shows the report value', async ({ page }) => {
+    const name = `T180 fire ${Date.now()}`;
+    const { id } = await createProject(page.request, name, true);
+    const project = (await (await page.request.get(`/api/projects/${id}`)).json()) as {
+      revision: number;
+      project: { parts: unknown[]; layout: { sheets: unknown[] } };
+    };
+    const report = (await (
+      await page.request.get(`/api/projects/${id}/report?revision=${project.revision}`)
+    ).json()) as { wastePercent: number };
+    const pct = new Intl.NumberFormat('tr-TR', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(report.wastePercent);
+    await page.goto('/');
+    const card = page.getByTestId('home-waste');
+    await expect(card).toBeVisible();
+    const bar = card.getByTestId('home-waste-bar').filter({ hasText: name });
+    await expect(bar).toContainText(`%${pct}`);
+    await expect(page.getByTestId('home-waste-avg')).toContainText('%');
+    // An untouched empty draft does not take a "Son projeler" card (P4).
+    const empty = await page.request.post('/api/projects', {
+      data: {
+        name: `T180 boş ${Date.now()}`,
+        project: { ...project.project, parts: [], layout: { sheets: [] } },
+      },
+    });
+    expect(empty.ok()).toBeTruthy();
+    const emptyId = ((await empty.json()) as { id: string }).id;
+    await page.reload();
+    await expect(
+      page
+        .getByTestId('home-projects')
+        .filter({ visible: true })
+        .locator(`a[href="/projeler/${emptyId}"]`),
+    ).toHaveCount(0);
   });
 
   test('quick actions and machine CTA go to the right pages', async ({ page }) => {

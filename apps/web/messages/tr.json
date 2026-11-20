@@ -42,8 +42,21 @@
       "machinesPending": "{n} makine doğrulama bekliyor",
       "machinesAllVerified": "Bütün makineler doğrulanmış",
       "waste": "Ortalama fire",
-      "wasteHint": "Kesimden sonra raporlanacak",
-      "soon": "Yakında"
+      "wasteHint": "Son 30 gün, {n} proje"
+    },
+    "waste": {
+      "title": "Fire özeti",
+      "description": "Son 30 günde dizilimi değişen projeler",
+      "average": "Ortalama fire",
+      "wasteArea": "Fire alanı",
+      "sheets": "Plaka",
+      "chartLabel": "Proje başına fire yüzdesi, en yeni üstte",
+      "bar": "{name}: fire {value}, {sheets} plaka",
+      "more": "+{n} proje daha (toplama dahil)",
+      "emptyTitle": "Son 30 günde dizilim yok",
+      "empty": "Bir projeyi dizdiğinizde fire oranı burada görünür.",
+      "scaleStart": "%0",
+      "scaleEnd": "%100"
     },
     "recent": "Son projeler",
     "recentDescription": "En son değiştirdiğiniz projeler",
@@ -139,8 +152,14 @@
       "pages": "Sayfalar",
       "actions": "Eylemler",
       "recent": "Son projeler",
-      "theme": "Tema"
+      "theme": "Tema",
+      "project": "Bu proje"
     },
+    "templates": "Şablonlar",
+    "settings": "Ayarlar",
+    "materials": "Ayarlar / Malzemeler",
+    "verify": "Makine doğrulama",
+    "step": "Adım {n}: {name}",
     "recentLoading": "Son projeler yükleniyor…",
     "recentError": "Son projeler yüklenemedi.",
     "themeLight": "Açık temaya geç",
@@ -156,7 +175,12 @@
       "newProject": "oluştur yeni proje sihirbaz",
       "theme": "tema karanlık aydınlık koyu açık görünüm",
       "sidebar": "menü kenar çubuğu daralt genişlet",
-      "help": "kısayol klavye yardım"
+      "help": "kısayol klavye yardım",
+      "templates": "şablon hazır parça kapak menteşe",
+      "settings": "ayar tercih şirket",
+      "materials": "malzeme plaka mdf sunta kalınlık stok",
+      "verify": "doğrula air cut test kesimi makine onay",
+      "step": "adım sihirbaz git"
     }
   },
   "shortcuts": {

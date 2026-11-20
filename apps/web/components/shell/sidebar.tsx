@@ -30,6 +30,8 @@ export type ShellText = {
   shell: Messages['shell'];
   palette: Messages['palette'];
   shortcuts: Messages['shortcuts'];
+  /** Wizard step names, for the palette's in-project commands (P4). */
+  steps: Messages['wizard']['steps'];
 };
 
 const ICONS: Record<NavKey, ComponentType<{ className?: string; 'aria-hidden'?: boolean }>> = {
