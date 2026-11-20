@@ -556,3 +556,9 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - E3 manual add and E7 (other-thickness parts) are scope questions for the owner.
 - Batch labels: M8 batches are renumbered B32+ in practice (B32 = T172–T174 PDF) because B24/B25 were reused earlier.
 - Owner (2026-11-20, Q011): E3 manual offcut add (T291) and E7 other-thickness parts (T292) both before the field test, batch B34. Polish queue regrouped into P1–P5, one group per M9 batch.
+
+## D-062 DXF export format (2026-11-20, Dev 1, T175)
+- R12 (AC1009) ASCII DXF in mm (`$INSUNITS` 4): POLYLINE/VERTEX with bulge (group 42) for every contour, CIRCLE for holes. No ARC/LWPOLYLINE, no handles: R12 opens in every viewer (LibreCAD) and our importer reads it back exactly.
+- Layers: DIS_KESIM (outline, outside), IC_KESIM (inner, inside), CEP (pocket and ring groove holes), DELIK (through holes), CIZGI (on-line contours and open lines), plus PLAKA for the sheet frames in the layout file. A contour with operation `none` is not written.
+- Layout file: sheets left to right with 100 mm between them. Parts file: each part once, unrotated, rows up to 3000 mm wide.
+- `DXF_EXPORT_LAYER_MAP` is the import mapping that reads our export back (PLAKA ignored). Download: `GET /api/projects/:id/dxf?revision=n&tur=dizilim|parcalar` (not stored; storing comes with T176).
