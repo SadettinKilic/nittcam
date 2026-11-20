@@ -757,6 +757,7 @@ function WizardSession({
         project={project}
         profile={profile}
         grainPreview={sheetGrainPreview}
+        view3d={{ t: messages.layout.preview3d, table: tableSpecOf(profile) }}
         footer={
           <SheetGrain
             t={t.machine}

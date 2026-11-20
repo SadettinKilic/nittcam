@@ -7,13 +7,14 @@
  * the 2D view (via `onFallback`) when the scene crashes or WebGL is lost.
  */
 import { Button, IconButton, Skeleton, Tooltip, cn } from '@nittcam/ui';
-import { EyeOff, Gauge, Move, RotateCcw, Route, Undo2, X } from 'lucide-react';
+import { Boxes, EyeOff, ImageDown, Gauge, Move, RotateCcw, Route, Undo2, X } from 'lucide-react';
 import { sheetSizeOf, type Project } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import {
   Component,
   useEffect,
   useMemo,
+  useCallback,
   useRef,
   useState,
   type ErrorInfo,
@@ -24,7 +25,8 @@ import { drawnParts, type DrawnPart } from '../layout-view/model';
 import { clampOffset, explodeMax } from '../../lib/preview3d/interaction';
 import { onThemeChange, readTokenColors } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
-import type { Messages } from '../../lib/messages';
+import { getMessages, type Messages } from '../../lib/messages';
+import { cabinetGroups } from '../../lib/preview3d/assembly';
 import {
   TOOLBAR_PRESETS,
   azimuthDeg,
@@ -36,11 +38,27 @@ import {
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
 import { useMediaQuery } from '../../lib/use-media-query';
-import type { CameraCommand, SceneColors, SceneInteraction, SceneToolpath } from './scene';
+import type { CaptureFn } from './capture';
+import { exportPng } from '../../lib/preview3d/png';
+import type {
+  CameraCommand,
+  SceneColors,
+  SceneInteraction,
+  SceneStats,
+  SceneToolpath,
+} from './scene';
+
+import { rememberPose, type FallbackReason } from '../../lib/preview3d/view-memory';
+/** Why the 3D view gave way to 2D: no WebGL2 / a crash, or still too slow in Basit mod (T159). */
+export type { FallbackReason };
 
 type Text = Messages['layout']['preview3d'];
 
 const Scene = dynamic(() => import('./scene'), { ssr: false, loading: () => <Loading /> });
+const AssemblyScene = dynamic(() => import('./assembly-scene'), {
+  ssr: false,
+  loading: () => <Loading />,
+});
 
 type FlatColors = Omit<SceneColors, 'materials'>;
 
@@ -94,8 +112,9 @@ export interface Preview3DProps {
   command: CameraCommand;
   /** A view-cube click asks the owner for a preset (the owner keeps the command state). */
   onPreset: (preset: ViewPreset) => void;
-  /** The scene could not run (crash, lost context): the owner shows the 2D view. */
-  onFallback: () => void;
+  /** The scene could not run (crash, lost context) or stayed too slow in Basit mod: the owner
+   * shows the 2D view with the matching note (spec §3.8). */
+  onFallback: (reason: FallbackReason) => void;
   partCount: number;
   /** Per-slot extra lift in mm (cutting playback, T157). */
   lifts?: ArrayLike<number> | null;
@@ -129,6 +148,24 @@ export function Preview3D({
   // "Basit mod" (T154, spec §3.8): remembered per browser; turned on by itself when slow.
   const [simple, setSimple] = useState(() => typeof window !== 'undefined' && readSimple());
   const [autoSimple, setAutoSimple] = useState(false);
+  // T158 "Montaj görünümü": cabinet groups of the cut list as assembled boxes (view only).
+  const groups = useMemo(
+    () => cabinetGroups(project, getMessages().cutList.cabinet.roles),
+    [project],
+  );
+  const [assembly, setAssembly] = useState(false);
+  // T160 "Görüntü kaydet": the live scene fills this with a frame grabber.
+  const capture = useRef<CaptureFn | null>(null);
+  const setCapture = useCallback((fn: CaptureFn | null) => {
+    capture.current = fn;
+  }, []);
+  function savePng() {
+    const url = capture.current?.();
+    if (!url) return;
+    const name = showAssembly ? 'nittcam-montaj-3d.png' : `nittcam-plaka-${sheet + 1}-3d.png`;
+    void exportPng(url, name);
+  }
+  const showAssembly = assembly && groups.length > 0;
   function toggleSimple() {
     setSimple(!simple);
     setAutoSimple(false);
@@ -172,6 +209,7 @@ export function Preview3D({
 
   // Camera reports go straight to the DOM (no React render per frame).
   const onCamera = (viewInverse: ArrayLike<number>, pose: CameraPose) => {
+    rememberPose(pose);
     if (cube.current) cube.current.style.transform = cubeMatrix(viewInverse);
     const el = host.current;
     if (!el) return;
@@ -188,8 +226,14 @@ export function Preview3D({
     );
     el.dataset.ready = 'true';
   };
-  const onStats = (calls: number) => {
-    if (host.current) host.current.dataset.drawCalls = String(calls);
+  const onStats = (s: SceneStats) => {
+    const d = host.current?.dataset;
+    if (!d) return;
+    d.drawCalls = String(s.drawCalls);
+    d.fps = s.fps === null ? '' : String(Math.round(s.fps));
+    d.gpuGeometries = String(s.geometries);
+    d.gpuTextures = String(s.textures);
+    d.firstFrameMs = String(s.firstFrameMs);
   };
 
   return (
@@ -205,13 +249,34 @@ export function Preview3D({
       data-explode={Math.round(lift)}
       data-hide-waste={hideWaste ? 'true' : 'false'}
       data-toolpath={toolpath ? (showPath ? 'on' : 'off') : undefined}
+      data-assembly={
+        showAssembly
+          ? groups
+              .map((g) => `${g.group}:${g.assembly.width}x${g.assembly.height}x${g.assembly.depth}`)
+              .join(';')
+          : undefined
+      }
       role="application"
-      aria-label={fill(t.canvasLabel, { n: sheet + 1, count: partCount })}
+      aria-label={
+        showAssembly
+          ? fill(t.assemblyLabel, { count: groups.length })
+          : fill(t.canvasLabel, { n: sheet + 1, count: partCount })
+      }
       tabIndex={0}
       className="@container absolute inset-0 touch-none overflow-hidden bg-linear-to-b from-surface-subtle to-canvas outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
     >
-      {colors ? (
-        <SceneBoundary onError={onFallback}>
+      {colors && showAssembly ? (
+        <SceneBoundary onError={() => onFallback('webgl')}>
+          <AssemblyScene
+            groups={groups}
+            colors={colors}
+            base={colors.materials[materialLook(project.stock.material)]}
+            simple={simple}
+            onCapture={setCapture}
+          />
+        </SceneBoundary>
+      ) : colors ? (
+        <SceneBoundary onError={() => onFallback('webgl')}>
           <Scene
             project={project}
             sheet={sheet}
@@ -220,7 +285,8 @@ export function Preview3D({
             reduced={reduced}
             simple={simple}
             onSlow={() => {
-              if (simple) return;
+              // Already simple and still slow: give way to 2D (§3.8 "gerekirse 2D'ye düşer").
+              if (simple) return onFallback('slow');
               setSimple(true);
               setAutoSimple(true);
             }}
@@ -229,13 +295,16 @@ export function Preview3D({
             onStats={onStats}
             interaction={interaction}
             toolpath={toolpath ? { ...toolpath, path: showPath } : null}
+            onCapture={setCapture}
           />
         </SceneBoundary>
       ) : (
         <Loading />
       )}
-      <ViewCube t={t} cubeRef={cube} onPreset={onPreset} />
-      {picked ? <InfoCard t={t} part={picked} onClose={() => setSelected(-1)} /> : null}
+      {showAssembly ? null : <ViewCube t={t} cubeRef={cube} onPreset={onPreset} />}
+      {picked && !showAssembly ? (
+        <InfoCard t={t} part={picked} onClose={() => setSelected(-1)} />
+      ) : null}
       {children}
       {/* Presets inside the 3D view (bottom right, where the 2D read-out sits), so the shared
           tab row of the canvas keeps its room (T249). */}
@@ -243,6 +312,7 @@ export function Preview3D({
         role="group"
         aria-label={t.presetsLabel}
         data-testid="preview3d-presets"
+        hidden={showAssembly}
         className="absolute right-2 bottom-2 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm max-sm:bottom-8"
       >
         {TOOLBAR_PRESETS.map((p) => (
@@ -302,10 +372,41 @@ export function Preview3D({
             <span className="hidden @md:inline">{t.simple}</span>
           </Button>
         </Tooltip>
+        <Tooltip content={t.savePngTip}>
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="preview3d-save-png"
+            onClick={savePng}
+            className="pointer-events-auto bg-surface/95 shadow-sm"
+          >
+            <ImageDown aria-hidden />
+            {t.savePng}
+          </Button>
+        </Tooltip>
+        {groups.length > 0 ? (
+          <Tooltip content={t.assemblyTip}>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-pressed={showAssembly}
+              data-testid="preview3d-assembly"
+              onClick={() => setAssembly(!assembly)}
+              className={cn(
+                'pointer-events-auto bg-surface/95 shadow-sm',
+                showAssembly && 'border-accent-border bg-accent-subtle text-accent-text',
+              )}
+            >
+              <Boxes aria-hidden />
+              {t.assembly}
+            </Button>
+          </Tooltip>
+        ) : null}
         <div
           role="group"
           aria-label={t.toolsLabel}
           data-testid="preview3d-tools"
+          hidden={showAssembly}
           className="pointer-events-auto flex max-w-[calc(100cqw-1rem)] flex-wrap items-center gap-1 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm"
         >
           <Tooltip content={t.moveSheetTip}>

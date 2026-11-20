@@ -4,6 +4,13 @@ import { goStep, openNewProject, pasteAndNest } from './wizard-helpers';
 
 /** B20 tester (T156/T157): sync with the G-code panel, axe and a 390 px smoke on the 3D simulation. */
 test.use({ launchOptions: { args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] } });
+// T159: the real frame watch never downgrades the view on the CPU-rendered runner (fps.ts); the
+// slow chain is driven by the __nittcam3dSlow hook where a test needs it.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __nittcam3dNoAuto: boolean }).__nittcam3dNoAuto = true;
+  });
+});
 
 async function open3d(page: import('@playwright/test').Page) {
   await openNewProject(page, 'parcalar');

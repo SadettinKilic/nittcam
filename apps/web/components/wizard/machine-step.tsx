@@ -17,7 +17,11 @@ import {
 import { Plus, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
+import { Preview3D } from '../preview3d/preview3d';
+import { ViewSwitch } from '../preview3d/view-switch';
+import type { TableSpec } from '../../lib/preview3d/stage';
+import { useView3d } from '../../lib/preview3d/view-memory';
 import { fill } from '../../lib/draft-project';
 import { fillRich } from '../../lib/fill-rich';
 import { grainDialLabels } from '../../lib/grain-labels';
@@ -675,6 +679,7 @@ export function SheetPreview({
   profile,
   grainPreview = null,
   footer,
+  view3d,
 }: {
   t: Text;
   project: Project;
@@ -682,7 +687,12 @@ export function SheetPreview({
   grainPreview?: number | null;
   /** Shown under the legend (T252: the sheet grain dial). */
   footer?: ReactNode;
+  /** T160: 2D / 3D switch; the 3D view shows the empty sheet on the table (§3.6). */
+  view3d?: { t: Messages['layout']['preview3d']; table: TableSpec | null };
 }) {
+  const { mode, show3d, noWebGL, camera, chooseMode, preset, fallback } = useView3d(
+    view3d !== undefined,
+  );
   const { sheet } = project.stock;
   // While the grain dial is dragged the preview follows the live angle (T116).
   const grain = grainPreview ?? sheet.grain;
@@ -708,113 +718,148 @@ export function SheetPreview({
   const cy = sy(off.y, sheet.height) + sheet.height / 2;
   // T259: no hatch on a sheet without grain (the dial block says so).
   const showGrain = materialHasGrain(materialKindOf(project.stock.material)) && grain !== null;
+  // The 3D sheet step shows the stock alone (a layout may be stale here) with the live grain.
+  const sheetOnly = useMemo<Project>(
+    () => ({
+      ...project,
+      stock: { ...project.stock, sheet: { ...sheet, grain } },
+      layout: { ...project.layout, sheets: [] },
+    }),
+    [project, sheet, grain],
+  );
   return (
     <figure
       className={`${canvasWellClass} flex flex-col gap-3 p-4 sm:p-5`}
       data-testid="sheet-preview"
       data-fits={fits}
     >
-      <figcaption className="text-sm font-semibold text-fg">{t.preview}</figcaption>
-      <svg
-        role="img"
-        aria-label={label}
-        viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad}`}
-        className={`h-auto w-full rounded-lg bg-canvas ${footer ? 'max-h-[62vh] lg:max-h-[calc(100dvh-31rem)] lg:min-h-48' : 'max-h-[62vh]'}`}
-      >
-        {profile ? (
-          <rect
-            x={0}
-            y={sy(0, table.depth)}
-            width={table.width}
-            height={table.depth}
-            className="fill-surface stroke-sim-table"
-            strokeWidth={W / 300}
-            strokeDasharray={`${W / 60} ${W / 120}`}
+      <figcaption className="flex items-center justify-between gap-2 text-sm font-semibold text-fg">
+        {t.preview}
+        {view3d ? <ViewSwitch t={view3d.t} mode={mode} onChoose={chooseMode} /> : null}
+      </figcaption>
+      {show3d && view3d ? (
+        <div
+          className="relative aspect-4/3 max-h-[62vh] w-full overflow-hidden rounded-lg"
+          data-testid="sheet-preview-3d"
+        >
+          <Preview3D
+            t={view3d.t}
+            project={sheetOnly}
+            sheet={0}
+            table={view3d.table}
+            command={camera}
+            onPreset={preset}
+            onFallback={fallback}
+            partCount={0}
           />
-        ) : null}
-        <rect
-          x={off.x}
-          y={sy(off.y, sheet.height)}
-          width={sheet.width}
-          height={sheet.height}
-          className={fits ? 'fill-sheet stroke-sheet-edge' : 'fill-danger-subtle stroke-danger'}
-          strokeWidth={W / 250}
-        />
-        {showGrain ? (
-          <>
-            {/* Grain as a fine line texture along the grain direction (T196). */}
-            <defs>
-              <pattern
-                id={patternId}
-                width={W / 70}
-                height={W / 70}
-                patternUnits="userSpaceOnUse"
-                patternTransform={`rotate(${-(grain ?? 0)} ${cx} ${cy})`}
-              >
-                <line
-                  x1={0}
-                  y1={W / 140}
-                  x2={W / 70}
-                  y2={W / 140}
-                  className="stroke-grain"
-                  strokeWidth={W / 900}
-                />
-              </pattern>
-            </defs>
+        </div>
+      ) : (
+        <svg
+          role="img"
+          aria-label={label}
+          viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad}`}
+          className={`h-auto w-full rounded-lg bg-canvas ${footer ? 'max-h-[62vh] lg:max-h-[calc(100dvh-31rem)] lg:min-h-48' : 'max-h-[62vh]'}`}
+        >
+          {profile ? (
             <rect
-              data-testid="sheet-preview-grain"
-              data-angle={grain ?? undefined}
-              x={off.x}
-              y={sy(off.y, sheet.height)}
-              width={sheet.width}
-              height={sheet.height}
-              fill={`url(#${patternId})`}
+              x={0}
+              y={sy(0, table.depth)}
+              width={table.width}
+              height={table.depth}
+              className="fill-surface stroke-sim-table"
+              strokeWidth={W / 300}
+              strokeDasharray={`${W / 60} ${W / 120}`}
             />
-          </>
-        ) : null}
-        {margin > 0 && sheet.width > 2 * margin && sheet.height > 2 * margin ? (
+          ) : null}
           <rect
-            data-testid="sheet-preview-margin"
-            x={off.x + margin}
-            y={sy(off.y, sheet.height) + margin}
-            width={sheet.width - 2 * margin}
-            height={sheet.height - 2 * margin}
-            fill="none"
-            className="stroke-fg-subtle"
-            strokeWidth={W / 700}
-            strokeDasharray={`${W / 150} ${W / 200}`}
+            x={off.x}
+            y={sy(off.y, sheet.height)}
+            width={sheet.width}
+            height={sheet.height}
+            className={fits ? 'fill-sheet stroke-sheet-edge' : 'fill-danger-subtle stroke-danger'}
+            strokeWidth={W / 250}
           />
-        ) : null}
-        {/* Real size on the top and left edges, mono (T196). */}
-        <g className="fill-fg-muted font-mono" fontSize={fs} data-testid="sheet-preview-dims">
-          <text x={cx} y={sy(off.y, sheet.height) - fs * 0.6} textAnchor="middle">
-            {mm(sheet.width)}
-          </text>
-          <text
-            x={off.x - fs * 0.6}
-            y={cy}
-            textAnchor="middle"
-            transform={`rotate(-90 ${off.x - fs * 0.6} ${cy})`}
-          >
-            {mm(sheet.height)}
-          </text>
-        </g>
-        {profile ? (
-          <text
-            x={fs * 0.4}
-            y={sy(0, table.depth) + fs * 1.2}
-            fontSize={fs * 0.9}
-            className="fill-fg-subtle"
-          >
-            {t.legendTable}
-          </text>
-        ) : null}
-        {/* Origin marker: machine zero, X right and Y up. */}
-        <g className="stroke-accent-text" strokeWidth={W / 400} fill="none">
-          <path d={`M 0 ${H} H ${fs * 2.2} M 0 ${H} V ${H - fs * 2.2}`} />
-          <circle cx={0} cy={H} r={fs * 0.3} className="fill-accent-text" />
-        </g>
-      </svg>
+          {showGrain ? (
+            <>
+              {/* Grain as a fine line texture along the grain direction (T196). */}
+              <defs>
+                <pattern
+                  id={patternId}
+                  width={W / 70}
+                  height={W / 70}
+                  patternUnits="userSpaceOnUse"
+                  patternTransform={`rotate(${-(grain ?? 0)} ${cx} ${cy})`}
+                >
+                  <line
+                    x1={0}
+                    y1={W / 140}
+                    x2={W / 70}
+                    y2={W / 140}
+                    className="stroke-grain"
+                    strokeWidth={W / 900}
+                  />
+                </pattern>
+              </defs>
+              <rect
+                data-testid="sheet-preview-grain"
+                data-angle={grain ?? undefined}
+                x={off.x}
+                y={sy(off.y, sheet.height)}
+                width={sheet.width}
+                height={sheet.height}
+                fill={`url(#${patternId})`}
+              />
+            </>
+          ) : null}
+          {margin > 0 && sheet.width > 2 * margin && sheet.height > 2 * margin ? (
+            <rect
+              data-testid="sheet-preview-margin"
+              x={off.x + margin}
+              y={sy(off.y, sheet.height) + margin}
+              width={sheet.width - 2 * margin}
+              height={sheet.height - 2 * margin}
+              fill="none"
+              className="stroke-fg-subtle"
+              strokeWidth={W / 700}
+              strokeDasharray={`${W / 150} ${W / 200}`}
+            />
+          ) : null}
+          {/* Real size on the top and left edges, mono (T196). */}
+          <g className="fill-fg-muted font-mono" fontSize={fs} data-testid="sheet-preview-dims">
+            <text x={cx} y={sy(off.y, sheet.height) - fs * 0.6} textAnchor="middle">
+              {mm(sheet.width)}
+            </text>
+            <text
+              x={off.x - fs * 0.6}
+              y={cy}
+              textAnchor="middle"
+              transform={`rotate(-90 ${off.x - fs * 0.6} ${cy})`}
+            >
+              {mm(sheet.height)}
+            </text>
+          </g>
+          {profile ? (
+            <text
+              x={fs * 0.4}
+              y={sy(0, table.depth) + fs * 1.2}
+              fontSize={fs * 0.9}
+              className="fill-fg-subtle"
+            >
+              {t.legendTable}
+            </text>
+          ) : null}
+          {/* Origin marker: machine zero, X right and Y up. */}
+          <g className="stroke-accent-text" strokeWidth={W / 400} fill="none">
+            <path d={`M 0 ${H} H ${fs * 2.2} M 0 ${H} V ${H - fs * 2.2}`} />
+            <circle cx={0} cy={H} r={fs * 0.3} className="fill-accent-text" />
+          </g>
+        </svg>
+      )}
+      {noWebGL && !show3d && view3d ? (
+        <p role="status" data-testid="preview3d-fallback" className="text-sm text-fg-muted">
+          {noWebGL === 'slow' ? view3d.t.fallbackSlow : view3d.t.fallback}
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-4 text-xs text-fg-muted">
         {profile ? (
           <span className="flex items-center gap-1.5">
