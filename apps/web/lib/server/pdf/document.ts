@@ -110,11 +110,17 @@ export const WHITE = rgb(1, 1, 1);
 export function fitText(text: string, font: PDFFont, size: number, maxWidth: number): string {
   if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
   const chars = [...text];
-  for (let n = chars.length - 1; n > 0; n--) {
-    const t = `${chars.slice(0, n).join('').trimEnd()}…`;
-    if (font.widthOfTextAtSize(t, size) <= maxWidth) return t;
+  const cut = (n: number) => `${chars.slice(0, n).join('').trimEnd()}…`;
+  const fits = (n: number) => font.widthOfTextAtSize(cut(n), size) <= maxWidth;
+  // Binary search for the longest prefix that fits (a linear scan was O(n²) on long names).
+  let lo = 0;
+  let hi = chars.length - 1;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (fits(mid)) lo = mid;
+    else hi = mid - 1;
   }
-  return '';
+  return lo > 0 ? cut(lo) : '';
 }
 
 /** Draws text left-aligned at (x, y) baseline. */
