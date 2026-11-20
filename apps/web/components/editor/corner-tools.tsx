@@ -31,7 +31,7 @@ import {
 } from '@nittcam/ui';
 import { TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { Callout } from '../wizard/panels';
 import type { Run } from './properties';

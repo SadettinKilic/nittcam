@@ -1,16 +1,13 @@
 'use client';
 
 import type { SimFile } from '@nittcam/core';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { fill } from '../../lib/draft-project';
+import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { fill } from '../../lib/fill';
+import { lineTarget, type Row } from '../../lib/gcode-lines';
 import type { SimText } from './model';
 
 const ROW = 22;
 const OVERSCAN = 12;
-
-type Row =
-  | { kind: 'file'; file: number; name: string }
-  | { kind: 'line'; file: number; line: number; text: string };
 
 /**
  * Scrolling G-code panel (T020): the program as written, the line of the playhead highlighted
@@ -56,6 +53,15 @@ export const GcodePanel = memo(function GcodePanel({
     }
   }, [currentRow]);
 
+  // T185: the list is one tab stop (thousands of lines must not each take a Tab); the arrow keys,
+  // Home and End move the simulation line by line, as a click on a line does.
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    const target = lineTarget(rows, currentRow, e.key);
+    if (target === undefined) return;
+    e.preventDefault();
+    if (target) onSeek(target.file, target.line);
+  }
+
   const first = Math.max(0, Math.floor(scrollTop / ROW) - OVERSCAN);
   const last = Math.min(rows.length, Math.ceil((scrollTop + height) / ROW) + OVERSCAN);
   const digits = String(Math.max(...files.map((f) => f.lines.length), 1)).length;
@@ -77,6 +83,7 @@ export const GcodePanel = memo(function GcodePanel({
         data-current-line={current?.line ?? ''}
         data-current-file={current?.file ?? ''}
         tabIndex={0}
+        onKeyDown={onKeyDown}
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
         className="relative overflow-auto rounded-lg border border-border-subtle bg-surface-subtle font-mono text-xs outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         style={{ height }}
@@ -108,6 +115,7 @@ export const GcodePanel = memo(function GcodePanel({
                 data-file={row.file}
                 data-text={row.text}
                 aria-current={active ? 'true' : undefined}
+                tabIndex={-1}
                 onClick={() => onSeek(row.file, row.line)}
                 className={`absolute inset-x-0 flex items-center gap-2 px-2 text-left whitespace-pre outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${active ? 'bg-accent-subtle text-fg shadow-[inset_2px_0_0_var(--color-accent)]' : 'text-fg hover:bg-surface-hover'} ${!active && row.text.trimStart().startsWith('(') ? 'text-fg-muted' : ''}`}
               >

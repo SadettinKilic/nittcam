@@ -6,6 +6,7 @@
  * and, for cross-field rules, by `params.key` (see `MachineProfileIssue`).
  */
 import { z } from 'zod';
+import { MATERIAL_KIND_IDS, type MaterialKind } from './material-kinds';
 
 /** The machine profile schema version this build writes and reads. */
 export const MACHINE_PROFILE_SCHEMA_VERSION = 1;
@@ -196,10 +197,7 @@ export const toolSchema = z.strictObject({
 });
 
 /** Materials of the Oluştur sihirbazı (§3.6). Stone is "yakında" and not listed. */
-export const materialKindSchema = z.enum(
-  ['mdf', 'plywood', 'melamine', 'solidWood', 'acrylic', 'pvc'],
-  { error: 'unknown material' },
-);
+export const materialKindSchema = z.enum(MATERIAL_KIND_IDS, { error: 'unknown material' });
 
 /**
  * Tab defaults of a material parameter set (§3.6 "tab ayarı varsayılanları", §6.3, D-022). Optional:
@@ -368,7 +366,7 @@ export type Tool = z.infer<typeof toolSchema>;
 export type ToolType = z.infer<typeof toolTypeSchema>;
 export type MaterialParams = z.infer<typeof materialParamsSchema>;
 export type TabParams = z.infer<typeof tabParamsSchema>;
-export type MaterialKind = z.infer<typeof materialKindSchema>;
+export type { MaterialKind };
 export type OriginCorner = z.infer<typeof originCornerSchema>;
 
 /** A profile validation problem, enough for the UI to build a translated message. */

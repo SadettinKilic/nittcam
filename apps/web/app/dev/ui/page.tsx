@@ -12,5 +12,5 @@ export const metadata = { robots: { index: false, follow: false } };
 
 export default function DevUiPage() {
   if (!isGalleryEnabled()) notFound();
-  return <UiGallery t={getMessages().devUi} />;
+  return <UiGallery t={getMessages().devUi} grainText={getMessages().grainDial} />;
 }

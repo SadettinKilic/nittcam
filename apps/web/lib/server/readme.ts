@@ -4,7 +4,7 @@
  * record, never in a file), so the same export gives the same text. CRLF for Windows Notepad.
  */
 import type { ExportRow } from '@nittcam/db';
-import { fill } from '../draft-project';
+import { fill } from '../fill';
 import { getMessages } from '../messages';
 
 const t = getMessages().exportReadme;

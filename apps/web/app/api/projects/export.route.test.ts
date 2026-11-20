@@ -15,7 +15,9 @@ import type {
   ExportPreview,
   ExportRecord,
   ExportResponse,
+  ReexportChecklistRequired,
 } from '../../../lib/exports-api';
+import { ncNameOptions } from '../../../lib/file-names';
 import type { ProjectDetail, ProjectListItem } from '../../../lib/projects-api';
 import { GET as list, POST as create } from './route';
 import { PUT as save } from './[id]/route';
@@ -107,15 +109,40 @@ describe('POST /api/projects/:id/export', () => {
     expect(pv.checklist?.origin.corner).toBeTruthy();
     expect(pv.checklist?.tools.length).toBeGreaterThan(0);
 
+    // T297 (D-072): no checklist confirmation → 428 checklist_required with the checklist data,
+    // even with the acceptance; a non-boolean is a bad request; nothing stored.
+    for (const extra of [{}, { checklistConfirmed: false }]) {
+      const noList = await doExport(
+        post({ revision: detail.revision, acceptUnverified: true, ...extra }),
+        ctx({ id: detail.id }),
+      );
+      expect(noList.status).toBe(428);
+      const ask = (await noList.json()) as ReexportChecklistRequired;
+      expect(ask.error).toBe('checklist_required');
+      expect(ask.checklist).toEqual(pv.checklist);
+      expect(ask.needsAcceptance).toBe(true);
+    }
+    expect(
+      (
+        await doExport(
+          post({ revision: detail.revision, acceptUnverified: true, checklistConfirmed: 'true' }),
+          ctx({ id: detail.id }),
+        )
+      ).status,
+    ).toBe(400);
+
     // Unverified (example) profile: no acceptance → 428, nothing stored.
-    const noAccept = await doExport(post({ revision: detail.revision }), ctx({ id: detail.id }));
+    const noAccept = await doExport(
+      post({ revision: detail.revision, checklistConfirmed: true }),
+      ctx({ id: detail.id }),
+    );
     expect(noAccept.status).toBe(428);
     expect(((await noAccept.json()) as ExportApiError).error).toBe('acceptance_required');
     const scope = await companyScope();
     expect(await scope.exports.listForProject(detail.id)).toEqual([]);
 
     const res = await doExport(
-      post({ revision: detail.revision, acceptUnverified: true }),
+      post({ revision: detail.revision, acceptUnverified: true, checklistConfirmed: true }),
       ctx({ id: detail.id }),
     );
     expect(res.status).toBe(201);
@@ -130,9 +157,13 @@ describe('POST /api/projects/:id/export', () => {
       project,
       { profile: m.profile, version: m.version.version, verification: m.state },
       POST_CONFIGS[m.profile.post.id],
-      { projectName: 'Mutfak dolabı', revision: detail.revision },
+      ncNameOptions('Mutfak dolabı', detail.revision),
     );
     expect(expected.ok).toBe(true);
+    // T295: one pattern, `<project>_r<revision>_S<sheet>.tap`.
+    expect(out.files[0]?.name).toBe(
+      `Mutfak_dolabi_r${detail.revision}_S1.${expected.files[0]?.name.split('.').pop()}`,
+    );
     expect(out.files.map((f) => f.name)).toEqual(expected.files.map((f) => f.name));
     const storage = companyStorage(scope.companyId);
     for (const [i, f] of out.files.entries()) {
@@ -180,7 +211,7 @@ describe('POST /api/projects/:id/export', () => {
 
     // Idempotent: the same request returns the same export; nothing new is stored.
     const again = await doExport(
-      post({ revision: detail.revision, acceptUnverified: true }),
+      post({ revision: detail.revision, acceptUnverified: true, checklistConfirmed: true }),
       ctx({ id: detail.id }),
     );
     expect(again.status).toBe(200);
@@ -231,7 +262,7 @@ describe('POST /api/projects/:id/export', () => {
     );
     expect(saved.status).toBe(200);
     const res = await doExport(
-      post({ revision: 1, acceptUnverified: true }),
+      post({ revision: 1, acceptUnverified: true, checklistConfirmed: true }),
       ctx({ id: detail.id }),
     );
     expect(res.status).toBe(409);
@@ -251,7 +282,10 @@ describe('POST /api/projects/:id/export', () => {
       stock: { ...p.stock, material: 'akrilik', thickness: 3 },
     }));
     const d1 = await createProject('Akrilik', noParams);
-    const r1 = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d1.id }));
+    const r1 = await doExport(
+      post({ revision: 1, acceptUnverified: true, checklistConfirmed: true }),
+      ctx({ id: d1.id }),
+    );
     expect(r1.status).toBe(422);
     const e1 = (await r1.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
     expect(e1.error).toBe('export_failed');
@@ -269,7 +303,10 @@ describe('POST /api/projects/:id/export', () => {
       stock: { ...p.stock, sheet: { width: 9000, height: 9000, grain: 0 } },
     }));
     const d2 = await createProject('Dev plaka', huge);
-    const r2 = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d2.id }));
+    const r2 = await doExport(
+      post({ revision: 1, acceptUnverified: true, checklistConfirmed: true }),
+      ctx({ id: d2.id }),
+    );
     expect(r2.status).toBe(422);
     const e2 = (await r2.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
     expect(['post', 'check']).toContain(e2.stage);
@@ -310,7 +347,10 @@ describe('POST /api/projects/:id/export', () => {
     const pv = (await pre.json()) as ExportPreview;
     expect(pv.ok).toBe(false);
     expect(pv.files).toEqual([]);
-    const r = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d.id }));
+    const r = await doExport(
+      post({ revision: 1, acceptUnverified: true, checklistConfirmed: true }),
+      ctx({ id: d.id }),
+    );
     expect(r.status).toBe(422);
     const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
     expect(e.stage).toBe('toolpath');
@@ -350,7 +390,10 @@ describe('POST /api/projects/:id/export', () => {
     const pv = (await pre.json()) as ExportPreview;
     expect(pv.ok).toBe(false);
     expect(pv.files).toEqual([]);
-    const r = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d.id }));
+    const r = await doExport(
+      post({ revision: 1, acceptUnverified: true, checklistConfirmed: true }),
+      ctx({ id: d.id }),
+    );
     expect(r.status).toBe(422);
     const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
     expect(e.stage).toBe('toolpath');
@@ -378,7 +421,10 @@ describe('POST /api/projects/:id/export', () => {
       ),
     };
     const d = await createProject('Taşan iç kesim', bad);
-    const r = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d.id }));
+    const r = await doExport(
+      post({ revision: 1, acceptUnverified: true, checklistConfirmed: true }),
+      ctx({ id: d.id }),
+    );
     expect(r.status).toBe(422);
     const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
     expect(e.stage).toBe('toolpath');
@@ -418,7 +464,10 @@ describe('POST /api/projects/:id/export', () => {
     const pv = (await pre.json()) as ExportPreview;
     expect(pv.ok).toBe(false);
     expect(pv.files).toEqual([]);
-    const r = await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d.id }));
+    const r = await doExport(
+      post({ revision: 1, acceptUnverified: true, checklistConfirmed: true }),
+      ctx({ id: d.id }),
+    );
     expect(r.status).toBe(422);
     const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
     expect(e.stage).toBe('toolpath');
@@ -447,7 +496,12 @@ describe('POST /api/projects/:id/export', () => {
     expect((await preview(new Request('http://test/x'), ctx({ id: d.id }))).status).toBe(400);
     // A profile version id that is not one of the project's machine → profile stage error.
     const r = await doExport(
-      post({ revision: 1, profileVersionId: randomUUID(), acceptUnverified: true }),
+      post({
+        revision: 1,
+        profileVersionId: randomUUID(),
+        acceptUnverified: true,
+        checklistConfirmed: true,
+      }),
       ctx({ id: d.id }),
     );
     expect(r.status).toBe(422);
@@ -482,7 +536,10 @@ describe('GET /api/exports/:id/files/:name', () => {
     const project = await nestedProject();
     const d = await createProject('Kurcalanmış', project);
     const out = (await (
-      await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: d.id }))
+      await doExport(
+        post({ revision: 1, acceptUnverified: true, checklistConfirmed: true }),
+        ctx({ id: d.id }),
+      )
     ).json()) as ExportResponse;
     const f = out.files[0];
     if (!f) throw new Error('no file');
@@ -558,8 +615,12 @@ describe('GET /api/exports/:id/files/:name', () => {
       404,
     );
     expect(
-      (await doExport(post({ revision: 1, acceptUnverified: true }), ctx({ id: theirs.id })))
-        .status,
+      (
+        await doExport(
+          post({ revision: 1, acceptUnverified: true, checklistConfirmed: true }),
+          ctx({ id: theirs.id }),
+        )
+      ).status,
     ).toBe(404);
     expect(
       (await preview(new Request('http://test/x?revision=1'), ctx({ id: theirs.id }))).status,

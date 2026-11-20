@@ -86,7 +86,7 @@ test('stale rotation after a sheet grain change: export refused (422, Turkish); 
 
   const revision = Number(await page.getByTestId('save-status').getAttribute('data-revision'));
   const refused = await page.request.post(`/api/projects/${id}/export`, {
-    data: { revision, acceptUnverified: true },
+    data: { revision, acceptUnverified: true, checklistConfirmed: true },
   });
   expect(refused.status()).toBe(422);
   const body = (await refused.json()) as { violations: { code: string; message: string }[] };
@@ -114,7 +114,7 @@ test('stale rotation after a sheet grain change: export refused (422, Turkish); 
   await saved(page);
   const fixed = Number(await page.getByTestId('save-status').getAttribute('data-revision'));
   const ok = await page.request.post(`/api/projects/${id}/export`, {
-    data: { revision: fixed, acceptUnverified: true },
+    data: { revision: fixed, acceptUnverified: true, checklistConfirmed: true },
   });
   expect(ok.status()).toBe(201);
 });

@@ -9,7 +9,7 @@ import {
   type TabMode,
 } from '@nittcam/core';
 import { useId } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { NumberField } from '../wizard/number-field';
 

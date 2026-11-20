@@ -3,7 +3,7 @@
 import { OFFCUT_MIN_SIZE, proposeOffcuts, type Project } from '@nittcam/core';
 import { Button, Checkbox, notify } from '@nittcam/ui';
 import { useMemo, useState } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import type { NewOffcut } from '../../lib/offcuts-api';
 

@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { libraryParamLinks, type LibraryMaterial, type MachineProfile } from '@nittcam/core';
 import {
   AlertDialog,
@@ -25,12 +26,14 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { MaterialSwatch } from '../../../components/materials/swatch';
 import { PageHeader, pageContainer } from '../../../components/page/page-header';
-import { fill } from '../../../lib/draft-project';
-import { draftFrom, emptyDraft, type MaterialDraft } from '../../../lib/material-form';
+import { fill } from '../../../lib/fill';
+import { draftFrom, emptyDraft, type MaterialDraft } from '../../../lib/material-draft';
 import type { MachineDetail, MachineListItem } from '../../../lib/machines-api';
 import { fetchMaterials, type MaterialItem } from '../../../lib/materials-api';
 import type { Messages } from '../../../lib/messages';
-import { MaterialDialog } from './material-dialog';
+
+/** The material dialog and its schemas load when it opens (T186). */
+const MaterialDialog = dynamic(() => import('./material-dialog').then((m) => m.MaterialDialog));
 
 type Text = Messages['materialLibrary'];
 type KindText = Messages['materials'];

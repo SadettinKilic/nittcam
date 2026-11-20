@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { companyScope } from '../../../../../lib/server/company';
 import {
   apiError,
+  checklistAsk,
   fileInfos,
   profileInfo,
   runExport,
@@ -62,10 +63,12 @@ export async function GET(request: Request, ctx: RouteContext<'/api/projects/[id
 }
 
 /**
- * POST /api/projects/:id/export `{ revision, profileVersionId?, acceptUnverified? }` (spec §6.6,
+ * POST /api/projects/:id/export `{ revision, profileVersionId?, acceptUnverified?, checklistConfirmed? }` (spec §6.6,
  * §7.2 rules 9–10, §8.2): regenerates the NC files from the saved revision, stores them and the
  * export record. 409 for a stale revision; 422 with the violations when a stage or check failed
- * (nothing stored); 428 when the profile is unverified and the acceptance is missing. The same
+ * (nothing stored); first 428 `checklist_required` (with the checklist data) until the operator
+ * confirmed the pre-export checklist (D-072, like the re-export D-071), then 428 when the profile is
+ * unverified and the acceptance is missing. The same
  * (project, revision, profile version, post, hash) returns the existing export (200, `created:
  * false`); a new one is 201.
  */
@@ -76,11 +79,13 @@ export async function POST(request: Request, ctx: RouteContext<'/api/projects/[i
   const revision = readRevision(body?.['revision']);
   const pvId = body?.['profileVersionId'];
   const accept = body?.['acceptUnverified'];
+  const confirmed = body?.['checklistConfirmed'];
   if (
     !body ||
     revision === undefined ||
     (pvId !== undefined && (typeof pvId !== 'string' || !UUID.test(pvId))) ||
-    (accept !== undefined && typeof accept !== 'boolean')
+    (accept !== undefined && typeof accept !== 'boolean') ||
+    (confirmed !== undefined && typeof confirmed !== 'boolean')
   ) {
     return apiError({ error: 'bad_request' }, 400);
   }
@@ -102,6 +107,9 @@ export async function POST(request: Request, ctx: RouteContext<'/api/projects/[i
         422,
       );
     }
+    // D-072: the main NC export is confirmed on the server too, never only in the browser.
+    if (confirmed !== true)
+      return NextResponse.json(checklistAsk(run, run.project), { status: 428 });
     if (run.needsAcceptance && accept !== true) {
       return apiError({ error: 'acceptance_required' }, 428);
     }

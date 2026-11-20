@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import {
   cutListToCsv,
   cutSize,
@@ -104,7 +105,6 @@ import {
 import { fill, newPartId, stockHasGrain } from '../../lib/draft-project';
 import type { SplitTarget } from '../../lib/split-project';
 import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
-import { DxfImportDialog } from './dxf-import-dialog';
 import type { Messages } from '../../lib/messages';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
@@ -127,12 +127,15 @@ import { BulkEditSheet } from './cut-list-bulk';
 import { PastePanel } from './paste-panel';
 import { IssuesOkChip } from '../wizard/issues-ok-chip';
 
+/** The DXF dialog and its parser load when the dialog opens (T186). */
+const DxfImportDialog = dynamic(() => import('./dxf-import-dialog').then((m) => m.DxfImportDialog));
+
 export type { Run } from './cut-list-cells';
 
 /** Row height of the compact grid (T118, T195 compact density). */
 const ROW_HEIGHT = 36;
 /** Card height estimate below 640 px (measured after render). */
-const CARD_HEIGHT = 196;
+const CARD_HEIGHT = 92;
 
 const features = tableFeatures({ columnSizingFeature, columnResizingFeature });
 const column = createColumnHelper<typeof features, Part>();
@@ -1003,6 +1006,7 @@ function Grid({
       aria-labelledby="cut-list-title"
       aria-rowcount={items.length + 1}
       data-testid="cut-list-grid"
+      data-fixed-rows
     >
       <colgroup>
         {headers.map((h) => (
@@ -1157,7 +1161,14 @@ function Cards({
             style={{ transform: `translateY(${v.start}px)` }}
             data-testid="cut-list-row"
           >
-            <div className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-surface p-2">
+            {/* T248 (mobile UI pass, D-043): two lines, ≤ 88 px without an issue. Line 1 =
+                select, number, name, menu; line 2 = W × H (mono), ×qty, grain, band only when
+                set. Every value still edits in place; the note line shows only when there is a
+                note (new notes and bands: "Toplu düzenle"). */}
+            <div
+              className="flex flex-col rounded-lg border border-border-subtle bg-surface px-1.5 py-1"
+              data-testid="cut-list-card"
+            >
               <div className="flex items-center gap-1">
                 <div className="w-14 shrink-0">
                   <IndexCell ctx={c} part={part} row={row} />
@@ -1167,19 +1178,37 @@ function Cards({
                 </div>
                 <ActionsCell ctx={c} part={part} row={row} />
               </div>
-              <div className="grid grid-cols-3 gap-1">
-                {field(t.columns.w, <SizeCell ctx={c} part={part} row={row} field="w" />)}
-                {field(t.columns.h, <SizeCell ctx={c} part={part} row={row} field="h" />)}
-                {field(t.columns.qty, <QtyCell ctx={c} part={part} row={row} />)}
+              <div className="flex min-w-0 items-center gap-0.5 font-mono">
+                <div className="w-[4.5rem] shrink-0">
+                  <SizeCell ctx={c} part={part} row={row} field="w" />
+                </div>
+                <span aria-hidden className="text-xs text-fg-subtle">
+                  ×
+                </span>
+                <div className="w-[4.5rem] shrink-0">
+                  <SizeCell ctx={c} part={part} row={row} field="h" />
+                </div>
+                <span aria-hidden className="ml-1 text-xs text-fg-subtle">
+                  ×
+                </span>
+                <div className="w-12 shrink-0">
+                  <QtyCell ctx={c} part={part} row={row} />
+                </div>
+                <div className="ml-auto flex min-w-0 shrink items-center gap-0.5 font-sans">
+                  <GrainColumnCell ctx={c} part={part} row={row} narrow />
+                  {bandedEdges(part).length > 0 ? (
+                    <BandCell
+                      t={t}
+                      part={part}
+                      row={row}
+                      run={c.run}
+                      navigate={c.navigate}
+                      glyphOnly
+                    />
+                  ) : null}
+                </div>
               </div>
-              <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-end gap-1">
-                {field(t.columns.grainHeader, <GrainColumnCell ctx={c} part={part} row={row} />)}
-                {field(
-                  t.columns.band,
-                  <BandCell t={t} part={part} row={row} run={c.run} navigate={c.navigate} />,
-                )}
-                {field(t.columns.note, <NoteCell ctx={c} part={part} row={row} />)}
-              </div>
+              {part.note ? field(t.columns.note, <NoteCell ctx={c} part={part} row={row} />) : null}
             </div>
           </li>
         );
@@ -1482,11 +1511,12 @@ export function CutListEditor({
     const from = pendingFocus.current ?? { row, col };
     // Rows move in view order (T123); cell ids keep the project index.
     const position = order.indexOf(from.row);
-    if (position < 0) return;
+    if (position < 0) return false;
     const target = navTarget(position, from.col, dir, order.length, cols, enter);
-    if (!target) return;
+    if (!target) return false;
     if ('append' in target) addRow(target.col === 'actions' ? 'name' : target.col, true);
     else focusCell(order[target.row] ?? 0, target.col);
+    return true;
   };
 
   const issuesOf = (index: number) =>
@@ -1716,10 +1746,10 @@ export function CutListEditor({
           onKeyDown={onGridKey}
           className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-xs"
         >
-          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-2.5">
+          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-2.5 max-sm:flex-nowrap max-sm:gap-2 max-sm:px-3">
             {selected.length > 0 ? (
               <div
-                className="flex min-w-0 flex-wrap items-center gap-2"
+                className="flex min-w-0 flex-wrap items-center gap-2 max-sm:flex-nowrap"
                 data-testid="selection-bar"
               >
                 <span className="text-sm font-medium text-fg tabular-nums" role="status">
@@ -1729,20 +1759,46 @@ export function CutListEditor({
                   <Pencil aria-hidden />
                   {s.bulkEdit}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => act('duplicate', selected)}>
-                  <Copy aria-hidden />
-                  {t.rowMenu.duplicate}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hover:bg-danger-subtle hover:text-danger-text"
-                  onClick={() => act('remove', selected)}
-                  data-testid="selection-remove"
-                >
-                  <Trash2 aria-hidden />
-                  {t.rowMenu.remove}
-                </Button>
+                {phone ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton size="sm" aria-label={t.toolbarMore} data-testid="selection-more">
+                        <MoreHorizontal aria-hidden />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => act('duplicate', selected)}>
+                        <Copy aria-hidden />
+                        {t.rowMenu.duplicate}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        destructive
+                        onSelect={() => act('remove', selected)}
+                        data-testid="selection-remove"
+                      >
+                        <Trash2 aria-hidden />
+                        {t.rowMenu.remove}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => act('duplicate', selected)}>
+                      <Copy aria-hidden />
+                      {t.rowMenu.duplicate}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="hover:bg-danger-subtle hover:text-danger-text"
+                      onClick={() => act('remove', selected)}
+                      data-testid="selection-remove"
+                    >
+                      <Trash2 aria-hidden />
+                      {t.rowMenu.remove}
+                    </Button>
+                  </>
+                )}
                 <Tooltip content={s.clear}>
                   <IconButton
                     size="sm"
@@ -1755,7 +1811,10 @@ export function CutListEditor({
               </div>
             ) : (
               <div className="flex min-w-0 items-center gap-3">
-                <h2 id="cut-list-title" className="text-base font-semibold tracking-tight text-fg">
+                <h2
+                  id="cut-list-title"
+                  className="text-base font-semibold tracking-tight text-fg max-sm:sr-only"
+                >
                   {t.tableLabel}
                 </h2>
                 {problemCount === 0 ? (
@@ -1786,49 +1845,59 @@ export function CutListEditor({
                 )}
               </div>
             )}
-            <div className="flex flex-wrap items-center gap-2">
+            {/* T248: one row on phones: "Satır ekle" + "İçe aktar" (primary) + one "⋯" menu. With a
+                selection the selection bar takes the phone row alone (both do not fit 390 px). */}
+            <div
+              className={`flex flex-wrap items-center gap-2 max-sm:flex-nowrap ${
+                selected.length > 0 ? 'max-sm:hidden' : ''
+              }`}
+            >
               <Button variant="outline" size="sm" onClick={() => addRow()}>
                 <Plus aria-hidden />
                 {t.addRow}
               </Button>
-              <Tooltip content={t.cabinet.openHint}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCabinetOpen((n) => n + 1)}
-                  data-testid="cabinet-open"
-                  aria-label={phone ? t.cabinet.open : undefined}
-                >
-                  <Archive aria-hidden />
-                  <span className="max-sm:sr-only">{t.cabinet.open}</span>
-                </Button>
-              </Tooltip>
-              {dxfText ? (
-                <Tooltip content={dxfText.openHint}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDxfOpen((n) => n + 1)}
-                    data-testid="dxf-open"
-                    aria-label={phone ? dxfText.open : undefined}
-                  >
-                    <FileUp aria-hidden />
-                    <span className="max-sm:sr-only">{dxfText.open}</span>
-                  </Button>
-                </Tooltip>
-              ) : null}
-              <Tooltip content={t.exportCsvHint}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={exportCsv}
-                  disabled={parts.length === 0}
-                  data-testid="cut-list-export"
-                >
-                  <Download aria-hidden />
-                  {t.exportCsv}
-                </Button>
-              </Tooltip>
+              {phone ? null : (
+                <>
+                  <Tooltip content={t.cabinet.openHint}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCabinetOpen((n) => n + 1)}
+                      data-testid="cabinet-open"
+                      aria-label={phone ? t.cabinet.open : undefined}
+                    >
+                      <Archive aria-hidden />
+                      <span className="max-sm:sr-only">{t.cabinet.open}</span>
+                    </Button>
+                  </Tooltip>
+                  {dxfText ? (
+                    <Tooltip content={dxfText.openHint}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDxfOpen((n) => n + 1)}
+                        data-testid="dxf-open"
+                        aria-label={phone ? dxfText.open : undefined}
+                      >
+                        <FileUp aria-hidden />
+                        <span className="max-sm:sr-only">{dxfText.open}</span>
+                      </Button>
+                    </Tooltip>
+                  ) : null}
+                  <Tooltip content={t.exportCsvHint}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportCsv}
+                      disabled={parts.length === 0}
+                      data-testid="cut-list-export"
+                    >
+                      <Download aria-hidden />
+                      {t.exportCsv}
+                    </Button>
+                  </Tooltip>
+                </>
+              )}
               <Button
                 ref={pasteButton}
                 size="sm"
@@ -1839,14 +1908,49 @@ export function CutListEditor({
                 <ClipboardPaste aria-hidden />
                 {t.pasteOpen}
               </Button>
+              {phone ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton size="sm" aria-label={t.toolbarMore} data-testid="cut-list-more">
+                      <MoreHorizontal aria-hidden />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={() => setCabinetOpen((n) => n + 1)}
+                      data-testid="cabinet-open"
+                    >
+                      <Archive aria-hidden />
+                      {t.cabinet.open}
+                    </DropdownMenuItem>
+                    {dxfText ? (
+                      <DropdownMenuItem
+                        onSelect={() => setDxfOpen((n) => n + 1)}
+                        data-testid="dxf-open"
+                      >
+                        <FileUp aria-hidden />
+                        {dxfText.open}
+                      </DropdownMenuItem>
+                    ) : null}
+                    <DropdownMenuItem
+                      onSelect={exportCsv}
+                      disabled={parts.length === 0}
+                      data-testid="cut-list-export"
+                    >
+                      <Download aria-hidden />
+                      {t.exportCsv}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
             </div>
           </div>
           {parts.length > 0 ? (
             <div
-              className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-4 py-2"
+              className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-4 py-2 max-sm:flex-nowrap max-sm:px-3"
               data-testid="cut-list-view"
             >
-              <div className="relative w-full sm:w-56 xl:w-72">
+              <div className="relative w-full max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 sm:w-56 xl:w-72">
                 <Search
                   aria-hidden
                   className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-fg-subtle"
@@ -1878,7 +1982,7 @@ export function CutListEditor({
                   data-testid="cut-list-group-by"
                 >
                   <Layers aria-hidden />
-                  {v.group}
+                  <span className="max-sm:sr-only">{v.group}</span>
                 </Button>
               </Tooltip>
               <Tooltip content={v.issuesOnlyHint}>
@@ -1891,13 +1995,13 @@ export function CutListEditor({
                   data-testid="cut-list-issues-only"
                 >
                   <TriangleAlert aria-hidden />
-                  {v.issuesOnly}
+                  <span className="max-sm:sr-only">{v.issuesOnly}</span>
                   {issueSet.size > 0 ? (
                     <span className="text-xs text-fg-muted tabular-nums">{issueSet.size}</span>
                   ) : null}
                 </Button>
               </Tooltip>
-              <span className="flex-1" />
+              <span className="flex-1 max-sm:hidden" />
               {filtering || sort ? (
                 <>
                   <span

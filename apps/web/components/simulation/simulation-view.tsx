@@ -68,7 +68,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { useReducedMotion } from '../../lib/use-preferences';
 import type { SimulationMeta, SimulationResponse } from '../../lib/simulation-messages';
 import { useSimulationWorker } from '../../lib/use-simulation-worker';
@@ -911,9 +911,13 @@ function Player({
           <div
             role="group"
             aria-label={t.controls.label}
-            className="flex flex-col gap-2 px-2 py-2 sm:px-3"
+            className="flex flex-col gap-2 px-2 py-2 max-sm:gap-1 max-sm:py-1 sm:px-3"
+            data-testid="sim-transport"
           >
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            {/* T255 (mobile UI pass): below 640 px the transport packs tighter (scrubber + clock on
+                their own row, speed chips without the label, one read-out line without the G-code
+                line number), so all of it sits above the "Ayarlar / G-code" bar. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 max-sm:gap-x-1 max-sm:gap-y-1">
               <div className="flex items-center gap-1">
                 <Tooltip content={t.controls.start}>
                   <IconButton
@@ -942,7 +946,7 @@ function Player({
                   onClick={reduced ? stepNext : togglePlay}
                   aria-keyshortcuts="Space"
                   data-testid="sim-play"
-                  className="min-w-28"
+                  className="min-w-28 max-sm:min-w-0 max-sm:px-3"
                 >
                   {active ? <Pause aria-hidden /> : <Play aria-hidden />}
                   {active ? t.controls.pause : t.controls.play}
@@ -968,7 +972,7 @@ function Player({
                   </IconButton>
                 </Tooltip>
               </div>
-              <div className="flex min-w-48 flex-1 items-center gap-3">
+              <div className="flex min-w-48 flex-1 items-center gap-3 max-sm:order-last max-sm:basis-full">
                 <input
                   type="range"
                   min={0}
@@ -988,8 +992,12 @@ function Player({
                   {clock}
                 </span>
               </div>
-              <div role="group" aria-label={t.controls.speed} className="flex items-center gap-2">
-                <span className="text-xs text-fg-muted">{t.controls.speed}</span>
+              <div
+                role="group"
+                aria-label={t.controls.speed}
+                className="flex items-center gap-2 max-sm:ml-auto"
+              >
+                <span className="text-xs text-fg-muted max-sm:sr-only">{t.controls.speed}</span>
                 <div className="flex items-center gap-0.5 rounded-lg bg-surface-hover p-0.5">
                   {SPEEDS.map((s) => (
                     <button
@@ -1025,13 +1033,15 @@ function Player({
               </div>
             </div>
             <div
-              className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border-subtle pt-3 font-mono text-xs text-fg-muted"
+              className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border-subtle pt-3 font-mono text-xs text-fg-muted max-sm:flex-nowrap max-sm:gap-x-3 max-sm:overflow-hidden max-sm:pt-1 max-sm:whitespace-nowrap"
               aria-live="off"
             >
               <span data-testid="sim-step">
                 {fill(t.controls.step, { n: ph.done, total: sim.steps.length })}
               </span>
-              {line ? <span>{fill(t.readout.line, { line: line.line })}</span> : null}
+              {line ? (
+                <span className="max-sm:hidden">{fill(t.readout.line, { line: line.line })}</span>
+              ) : null}
               <span className="tabular-nums" data-testid="sim-position">
                 {step
                   ? fill(t.readout.position, {

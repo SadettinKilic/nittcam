@@ -90,7 +90,7 @@ describe('status flow and re-export (T179)', () => {
     await documents(json('POST', { revision: d.revision, type: 'pdf-a4' }), ctx({ id }));
     expect((await scope.projects.get(id))?.status).toBe('draft');
     const ncRes = await doExport(
-      json('POST', { revision: d.revision, acceptUnverified: true }),
+      json('POST', { revision: d.revision, acceptUnverified: true, checklistConfirmed: true }),
       ctx({ id }),
     );
     expect(ncRes.status).toBe(201);
@@ -105,7 +105,10 @@ describe('status flow and re-export (T179)', () => {
     expect(await done.json()).toEqual({ id, status: 'completed' });
     expect((await scope.projects.get(id))?.revision).toBe(d.revision);
     // A later NC export keeps "tamamlandı".
-    await doExport(json('POST', { revision: d.revision, acceptUnverified: true }), ctx({ id }));
+    await doExport(
+      json('POST', { revision: d.revision, acceptUnverified: true, checklistConfirmed: true }),
+      ctx({ id }),
+    );
     expect((await scope.projects.get(id))?.status).toBe('completed');
     expect((await patch(json('PATCH', { status: 'produced' }), ctx({ id }))).status).toBe(200);
 

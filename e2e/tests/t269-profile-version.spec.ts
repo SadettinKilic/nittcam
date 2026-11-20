@@ -85,7 +85,7 @@ async function headLines(page: Page): Promise<string[]> {
 /** The first file the server export stores for the saved revision, as lines. */
 async function exportedLines(request: APIRequestContext, id: string, revision: number) {
   const res = await request.post(`/api/projects/${id}/export`, {
-    data: { revision, acceptUnverified: true },
+    data: { revision, acceptUnverified: true, checklistConfirmed: true },
   });
   expect(res.status()).toBeLessThan(300);
   const body = (await res.json()) as { profileVersion: number; files: { downloadUrl: string }[] };

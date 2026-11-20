@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 
 /** Ayarlar → Genel (T182, spec §3.4): company name and logo, new-project defaults. */
 export default function SettingsPage() {
-  return <GeneralView t={messages.settings} />;
+  return <GeneralView t={messages.settings} onboarding={messages.onboarding.settings} />;
 }

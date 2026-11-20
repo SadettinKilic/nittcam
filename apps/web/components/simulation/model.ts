@@ -1,6 +1,6 @@
 import type { SimFile, SimMachineFrame, SimSheet } from '@nittcam/core';
 import { readTokenColors } from '../../lib/canvas-theme';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 
 export type SimText = Messages['simulation'];

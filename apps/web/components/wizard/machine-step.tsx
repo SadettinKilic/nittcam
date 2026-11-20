@@ -24,9 +24,10 @@ import { Preview3D } from '../preview3d/preview3d';
 import { ViewSwitch } from '../preview3d/view-switch';
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { useView3d } from '../../lib/preview3d/view-memory';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { fillRich } from '../../lib/fill-rich';
 import { grainDialLabels } from '../../lib/grain-labels';
+import { useMessages } from '../../lib/messages-context';
 import { paramFixHref } from '../../lib/machine-form';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { MaterialItem } from '../../lib/materials-api';
@@ -649,6 +650,7 @@ export function SheetGrain({
   run: Run;
   onGrainPreview?: (angle: number | null) => void;
 }) {
+  const grainText = useMessages().grainDial;
   const { stock } = project;
   const sheet = defaultSheet(project);
   if (!materialHasGrain(materialKindOf(stock.material))) {
@@ -684,7 +686,7 @@ export function SheetGrain({
           onGrainPreview?.(null);
           if (a !== sheet.grain) run('setGrain', { grain: a });
         }}
-        labels={grainDialLabels()}
+        labels={grainDialLabels(grainText)}
         data-testid="sheet-grain-dial"
       />
     </fieldset>

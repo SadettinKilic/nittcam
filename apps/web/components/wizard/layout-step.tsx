@@ -24,7 +24,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import {
   appliedFromCache,

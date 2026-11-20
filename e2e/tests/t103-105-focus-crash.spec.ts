@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import trError from '../../apps/web/messages/tr-error.json' with { type: 'json' };
 import { goStep, nest, openNewProject, paste, KITCHEN } from './wizard-helpers';
 
 // B2 fix round 1: focus goes back to the opener of every state-opened overlay (T103), and the
@@ -51,7 +52,7 @@ test.describe('error boundaries via the test crash hook (T105)', () => {
     await ready(page, '/?__throw=page');
     const error = page.getByTestId('page-error');
     await expect(error).toBeVisible();
-    await expect(error).toContainText(tr.feedback.error.title);
+    await expect(error).toContainText(trError.title);
     await expect(page.getByTestId('shell-topbar')).toBeVisible();
   });
 

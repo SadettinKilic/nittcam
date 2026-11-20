@@ -28,7 +28,7 @@ import {
 import { Plus, X } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
 import { MaterialSwatch } from '../../../components/materials/swatch';
-import { fill } from '../../../lib/draft-project';
+import { fill } from '../../../lib/fill';
 import {
   toMaterial,
   type MaterialDraft,

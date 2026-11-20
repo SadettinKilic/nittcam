@@ -10,7 +10,7 @@ import {
   type Project,
 } from '@nittcam/core';
 import { PAPER_SIZES } from '@nittcam/core';
-import { fill } from '../../draft-project';
+import { fill } from '../../fill';
 import { getMessages } from '../../messages';
 import { centred, MUTED, newDocument, saveDocument } from './document';
 import { addReportPages, reportPageCount } from './report-pages';

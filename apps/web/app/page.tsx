@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { PageSkeleton } from '../components/feedback/page-skeleton';
 import { ThrowProbe } from '../components/feedback/throw-probe';
+import { OnboardingDialog } from '../components/home/onboarding-dialog';
 import { LayoutThumbnail } from '../components/home/layout-thumb';
 import { StartStrip } from '../components/home/start-strip';
 import { StatTile } from '../components/home/stat-tile';
@@ -40,8 +41,9 @@ import {
   type WasteSummary,
 } from '../lib/dashboard';
 import { formatPercent } from '../lib/report-summary';
-import { fill } from '../lib/draft-project';
+import { fill } from '../lib/fill';
 import { getMessages, type Messages } from '../lib/messages';
+import { onboardingMessages } from '../lib/onboarding';
 import type { MachineListItem } from '../lib/machines-api';
 import { PROJECT_STATUS_TONE, type ProjectListItem } from '../lib/projects-api';
 import { companyScope } from '../lib/server/company';
@@ -134,11 +136,15 @@ async function loadDashboard(): Promise<Dashboard> {
 export default function HomePage() {
   // Streams the skeleton first while the dashboard reads the database (T105).
   return (
-    <Suspense fallback={<PageSkeleton label={getMessages().feedback.loading} />}>
-      <Dashboard />
-      {/* Test-only crash for the app error page e2e (inert in production). */}
-      <ThrowProbe target="page" />
-    </Suspense>
+    <>
+      <Suspense fallback={<PageSkeleton label={getMessages().feedback.loading} />}>
+        <Dashboard />
+        {/* Test-only crash for the app error page e2e (inert in production). */}
+        <ThrowProbe target="page" />
+      </Suspense>
+      {/* T184: first-run tour, outside the Suspense so it does not wait for the dashboard. */}
+      <OnboardingDialog messages={onboardingMessages(getMessages())} />
+    </>
   );
 }
 

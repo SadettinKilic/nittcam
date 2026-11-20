@@ -4,7 +4,7 @@
  */
 import { PAPER_SIZES, type PaperSize, type ProjectReport, type ReportPartRow } from '@nittcam/core';
 import type { PDFDocument, PDFPage } from 'pdf-lib';
-import { fill } from '../../draft-project';
+import { fill } from '../../fill';
 import { formatPercentNumber, summaryTiles } from '../../report-summary';
 import { getMessages } from '../../messages';
 import { ACCENT, fitText, INK, LINE, MUTED, right, text, type PdfFonts } from './document';

@@ -2,7 +2,7 @@
 
 import type { ProgramTools, SimSummary } from '@nittcam/core';
 import { focusCuttingSettings } from './cutting-settings';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { Measure } from '@nittcam/ui';
 import { SlidersHorizontal, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';

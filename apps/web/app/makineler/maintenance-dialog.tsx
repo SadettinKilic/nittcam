@@ -23,7 +23,7 @@ import {
 } from '@nittcam/ui';
 import { useEffect, useState, type FormEvent } from 'react';
 import { MaintenanceBadge } from '../../components/machines/maintenance-badge';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { MachineListItem } from '../../lib/machines-api';
 import { formatDay, localDay, maintenanceView } from '../../lib/maintenance';
 import type { Messages } from '../../lib/messages';
