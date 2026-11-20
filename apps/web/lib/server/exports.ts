@@ -23,6 +23,7 @@ import { POST_CONFIGS } from '@nittcam/machines';
 import { NextResponse } from 'next/server';
 import {
   downloadUrl,
+  zipUrl,
   type ExportApiError,
   type ExportChecklistInfo,
   type ExportFileInfo,
@@ -330,6 +331,7 @@ export function fileInfos(files: readonly PostFile[]): ExportFileInfo[] {
 export function toRecord(row: ExportRow, profileVersion: number | null): ExportRecord {
   return {
     exportId: row.id,
+    kind: row.kind,
     projectId: row.projectId,
     revision: row.projectRevision,
     createdAt: row.createdAt.toISOString(),
@@ -347,6 +349,7 @@ export function toRecord(row: ExportRow, profileVersion: number | null): ExportR
       sheet: f.sheet,
       downloadUrl: downloadUrl(row.id, f.name),
     })),
+    zipUrl: row.files.length > 1 ? zipUrl(row.id) : null,
   };
 }
 

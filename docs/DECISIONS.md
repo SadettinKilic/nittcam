@@ -575,3 +575,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Search folds Turkish letters (ç→c, ğ→g, ı/İ→i, ö→o, ş→s, ü→u) and needs every word; filters status / machine / material come from the loaded rows; sort by date or Turkish name order; 20 rows per page. All client side (the list is one company's projects).
 - A saved project opened without `?adim=` resumes: exported (with a layout) → Dışa aktar, layout → Dizilim, otherwise Parçalar. Parts without a layout stay on Parçalar (the parts step is not "done" before a nesting). `?adim=` always wins.
 - The Parçalar view (Liste / Çizim) is remembered per project in the browser (localStorage); `?gorunum=cizim` wins.
+
+## D-064 Export records for documents, zip bundle (2026-11-20, Dev 1, T176)
+- DXF, PDF and label downloads are `exports` rows like NC, without a migration: `kind` dxf | pdf (labels are a PDF), `post_id` = the document type (`dxf-dizilim`, `dxf-parcalar`, `pdf-a4`, `pdf-a3`, `etiket`), `post_version` = the generator version (`dxf-r12-1`, `pdf-1`, `labels-1`; bumped when the bytes change on purpose), the project's pinned machine profile version, `unverified` false (not machine files, no acceptance). Same revision + options = same bytes = the same record.
+- "Tümünü indir (.zip)" (`GET /api/exports/:id/zip`) for an export with more than one file: our own stored-only zip writer (no dependency, fixed 1980-01-01 timestamp, same export = same zip bytes), each file checked against its stored hash like the single download, plus `OKU.txt` (sheet → file with sha256, no date, CRLF).
+- Projeler "Son dışa aktarma" shows the newest NC export only. File-name stems of documents live in `lib/server/file-names.ts` (one `asciiStem`, '-' separated).

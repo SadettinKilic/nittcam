@@ -1058,12 +1058,12 @@ function exportsRepo(db: Db, companyId: string) {
         .where(and(eq(exportsTable.companyId, companyId), eq(exportsTable.projectId, projectId)))
         .orderBy(desc(exportsTable.createdAt), desc(exportsTable.id));
     },
-    /** The newest export of every project of the company (Projeler list). */
+    /** The newest NC export of every project of the company (Projeler list; T176: not DXF/PDF). */
     async latestPerProject(): Promise<ExportRow[]> {
       return db
         .selectDistinctOn([exportsTable.projectId])
         .from(exportsTable)
-        .where(eq(exportsTable.companyId, companyId))
+        .where(and(eq(exportsTable.companyId, companyId), eq(exportsTable.kind, 'nc')))
         .orderBy(exportsTable.projectId, desc(exportsTable.createdAt), desc(exportsTable.id));
     },
   };

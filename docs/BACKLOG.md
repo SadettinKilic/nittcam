@@ -1276,12 +1276,12 @@ Acceptance:
 - [x] own writer: layout (sheets side by side) and single parts; layers per operation (DIS_KESIM, IC_KESIM, CEP, DELIK, CIZGI); arcs as bulges; round-trip test with our importer (= same contours within EPS)
 Tester focus: round trip; opens in a free viewer (LibreCAD) without errors (manual screenshot).
 
-### T176 Export step: all formats, records, history   [status: todo]
+### T176 Export step: all formats, records, history   [status: review]
 Spec: §6.6 · Depends: T173, T174, T175
 > Note from CTO review #4 (2026-11-19): at 1440 the left column is half empty while the right one scrolls and the history table is below the fold; when this step is rebuilt, balance the two columns so the history is visible without scrolling.
 Acceptance:
-- [ ] export step offers NC, DXF, PDF, labels; each regenerated on the server and stored in `exports` with type, hash, revision; history shows all types; NC rules unchanged (checks, acceptance)
-- [ ] (CTO #10 E4) more than one file: "Tümünü indir (.zip)" in one click (same names and bytes as single downloads), `OKU.txt` maps sheet → file; single downloads stay
+- [x] export step offers NC, DXF, PDF, labels; each regenerated on the server and stored in `exports` with type, hash, revision; history shows all types; NC rules unchanged (checks, acceptance)
+- [x] (CTO #10 E4) more than one file: "Tümünü indir (.zip)" in one click (same names and bytes as single downloads), `OKU.txt` maps sheet → file; single downloads stay
 Tester focus: NC gate cannot be bypassed by the new UI; hashes stable; history entries per type.
 
 ### T177 Project report card   [status: todo]

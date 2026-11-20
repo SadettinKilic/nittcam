@@ -101,8 +101,12 @@ export interface StoredExportFile extends ExportFileInfo {
 }
 
 /** A stored export (POST result, history row). */
+export type ExportKind = 'nc' | 'dxf' | 'pdf' | 'report';
+
 export interface ExportRecord {
   exportId: string;
+  /** NC program, DXF or PDF (T176); `post.id` names the document type of a DXF/PDF. */
+  kind: ExportKind;
   projectId: string;
   revision: number;
   /** ISO 8601 (UTC); the date lives here, never in the file (D-025). */
@@ -116,6 +120,8 @@ export interface ExportRecord {
   /** sha256 of the manifest (`<sha256>  <name>` per file). */
   hash: string;
   files: StoredExportFile[];
+  /** "Tümünü indir (.zip)" (T176, CTO #10 E4): set when the export has more than one file. */
+  zipUrl: string | null;
 }
 
 /** POST result: the record, and whether this request created it (false = idempotent repeat). */
@@ -173,4 +179,9 @@ export function ruleLabel(labels: Readonly<Record<string, string>>, rule: string
   const n = /^R([0-9]+)$/.exec(rule);
   if (n) return (labels.rule ?? '{n}').replace('{n}', n[1] ?? '');
   return labels[rule] ?? labels.unknown ?? '';
+}
+
+/** "Tümünü indir (.zip)" link of an export (T176): every file plus `OKU.txt`. */
+export function zipUrl(exportId: string): string {
+  return `/api/exports/${encodeURIComponent(exportId)}/zip`;
 }
