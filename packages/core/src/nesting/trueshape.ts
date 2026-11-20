@@ -28,6 +28,7 @@ export interface ShapeSheetSize {
   width: number;
   height: number;
   qty?: number | undefined;
+  offcutId?: string | undefined;
 }
 
 export interface ShapePackInput {
@@ -277,8 +278,15 @@ export function packTrueShape(input: ShapePackInput, items: readonly ShapeItem[]
     // the remaining parts (least uncovered share); ties by list order.
     let pick = -1;
     let pickWaste = Infinity;
+    // T168: an offcut that takes the item is used before any full sheet.
+    const left = (k: number): boolean => {
+      const d = dims[k];
+      return d !== undefined && (d.qty === undefined || (used[k] ?? 0) < d.qty);
+    };
+    const offcutFirst = dims.some((d, k) => d.offcutId && left(k) && fitsEmpty(k, item));
     dims.forEach((d, k) => {
-      if (d.qty !== undefined && (used[k] ?? 0) >= d.qty) return;
+      if (!left(k)) return;
+      if (offcutFirst && !d.offcutId) return;
       if (!fitsEmpty(k, item)) return;
       const usable = Math.max(0, d.width - 2 * margin) * Math.max(0, d.height - 2 * margin);
       const waste = 1 - Math.min(suffixArea[at] as number, usable) / (d.width * d.height);

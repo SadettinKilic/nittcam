@@ -53,6 +53,7 @@ import {
   type UnplacedPart,
 } from './types';
 import { toCutSizes } from '../schema/cut-size';
+import type { OffcutSheet } from './offcuts';
 
 /** Orderings tried, in this order (earlier wins ties). */
 export const PART_ORDERINGS: readonly PartOrdering[] = [
@@ -192,6 +193,7 @@ interface SheetDim {
   width: number;
   height: number;
   qty?: number | undefined;
+  offcutId?: string | undefined;
 }
 
 function inflate(r: Rect, s: number): Rect {
@@ -262,10 +264,14 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
         open.push(k);
       }
     });
-    if (open.length <= 1) return open[0] ?? null;
+    // T168: an offcut that takes the item is used before any full sheet.
+    const pool = open.some((k) => ctx.dims[k]?.offcutId)
+      ? open.filter((k) => ctx.dims[k]?.offcutId)
+      : open;
+    if (pool.length <= 1) return pool[0] ?? null;
     let best: number | null = null;
     let bestWaste = Infinity;
-    for (const k of open) {
+    for (const k of pool) {
       const d = ctx.dims[k] as SheetDim;
       const trial = makeBin(heuristic, ctx.areas[k] ?? ctx.area);
       let partArea = 0;
@@ -647,9 +653,9 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
     layout: {
       sheets: win.layout.map((placements, i) => {
         const d = win.dims[i];
-        return dims.length > 1 && d
-          ? { size: { width: d.width, height: d.height }, placements }
-          : { placements };
+        if (!(dims.length > 1 && d)) return { placements };
+        const size = { width: d.width, height: d.height };
+        return d.offcutId ? { size, offcutId: d.offcutId, placements } : { size, placements };
       }),
     },
     sheetCount: win.layout.length,
@@ -771,6 +777,11 @@ export interface NestProjectOptions {
   weights?: Partial<ObjectiveWeights> | undefined;
   /** Forces a placer engine; absent = `nestingEngineOf(project)` (T167). */
   engine?: NestingEngine | undefined;
+  /**
+   * Offcuts of the stock material and thickness (T168), already matched to the sheet grain
+   * (`usableOffcuts`). Used only when `stock.useOffcuts`; tried before the stock sheets.
+   */
+  offcuts?: readonly OffcutSheet[] | undefined;
 }
 
 /**
@@ -787,13 +798,28 @@ export function nestingInputFromProject(
   const locked = project.layout.sheets.map((sheet) => sheet.placements.filter((p) => p.locked));
   while (locked.length > 0 && locked[locked.length - 1]?.length === 0) locked.pop();
   // T164: several stock sizes only when the project lists them (absent = the single-size path).
-  const stockSizes = project.stock.sheets ? stockSheetSizes(project) : null;
+  // T168: offcuts (qty 1 each) come first; without offcuts the paths above stay byte-identical.
+  const offcuts = project.stock.useOffcuts ? (options.offcuts ?? []) : [];
+  const stockSizes: SheetDim[] | null =
+    project.stock.sheets || offcuts.length > 0
+      ? [
+          ...offcuts.map((o) => ({ width: o.width, height: o.height, qty: 1, offcutId: o.id })),
+          ...stockSheetSizes(project),
+        ]
+      : null;
   const multi = stockSizes
     ? {
         sheets: stockSizes,
         lockedSizes: locked.map((_, i) => {
           const own = sheetSizeOf(project, i);
-          const k = stockSizes.findIndex((d) => d.width === own.width && d.height === own.height);
+          const id = project.layout.sheets[i]?.offcutId;
+          const byId = id ? stockSizes.findIndex((d) => d.offcutId === id) : -1;
+          const k =
+            byId >= 0
+              ? byId
+              : stockSizes.findIndex(
+                  (d) => !d.offcutId && d.width === own.width && d.height === own.height,
+                );
           return Math.max(0, k);
         }),
       }

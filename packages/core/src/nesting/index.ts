@@ -5,3 +5,4 @@ export { MaxRectsBin, GuillotineBin, compareScore, type Bin, type Fit, type FitR
 export * from './nest';
 export * from './tool';
 export * from './placement';
+export * from './offcuts';
