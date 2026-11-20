@@ -55,3 +55,22 @@ export function slowHookFps(): number | null {
   const v = (window as unknown as { __nittcam3dSlow?: unknown }).__nittcam3dSlow;
   return typeof v === 'number' && v > 0 ? v : null;
 }
+
+/**
+ * Feeds the watch synthetic frames at `fps` from `clock` (test hook, T159) until it fires or
+ * `max` frames are fed, so one real frame covers the whole 3 s window: the slow chain does not
+ * depend on how fast a CPU-rendered (CI) canvas draws real frames. Returns the new clock.
+ */
+export function feedSlowHook(
+  watch: FpsWatch,
+  clock: number,
+  fps: number,
+  max = 256,
+): { clock: number; slow: boolean } {
+  let t = clock;
+  for (let i = 0; i < max; i++) {
+    t += 1000 / fps;
+    if (watch.frame(t)) return { clock: t, slow: true };
+  }
+  return { clock: t, slow: false };
+}

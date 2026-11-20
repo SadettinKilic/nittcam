@@ -17,7 +17,7 @@ import { NeutralToneMapping, Plane, Vector3, type PerspectiveCamera } from 'thre
 import type { ThreeEvent } from '@react-three/fiber';
 import { buildSheetScene, pickSlot, type SheetScene } from '../../lib/preview3d/sheet-scene';
 import { SlotState } from './slots';
-import { FpsWatch, slowHookFps } from '../../lib/preview3d/fps';
+import { FpsWatch, feedSlowHook, slowHookFps } from '../../lib/preview3d/fps';
 import { materialLook, type MaterialLook } from '../../lib/preview3d/textures';
 import { stockMaterials } from './materials';
 type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
@@ -487,8 +487,15 @@ function Rig({
     const now = performance.now();
     if (firstFrame.current < 0) firstFrame.current = now - mountedAt.current;
     const fake = slowHookFps();
-    const t = fake ? (fakeClock.current += 1000 / fake) : now;
-    if (fps.current.frame(t)) onSlow?.();
+    // The test hook feeds a whole 3 s window per real frame, so the slow chain (Basit mod, then
+    // 2D) needs only two real frames, however slowly a CPU-rendered CI canvas draws them.
+    let slow: boolean;
+    if (fake) {
+      const fed = feedSlowHook(fps.current, fakeClock.current, fake);
+      fakeClock.current = fed.clock;
+      slow = fed.slow;
+    } else slow = fps.current.frame(now);
+    if (slow) onSlow?.();
     if (fake) invalidate(); // the test hook keeps frames coming until the watch fires
     onStats?.({
       drawCalls: gl.info.render.calls,

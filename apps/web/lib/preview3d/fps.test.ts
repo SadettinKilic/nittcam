@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { FpsWatch, slowHookFps } from './fps';
+import { FpsWatch, feedSlowHook, slowHookFps } from './fps';
 
 /** Feeds `n` frames at `fps` from `start` ms; returns the fire count and the next time. */
 function feed(w: FpsWatch, fps: number, n: number, start = 0): { fired: number; t: number } {
@@ -46,5 +46,19 @@ describe('slowHookFps', () => {
     expect(slowHookFps()).toBeNull();
     g.window.__nittcam3dSlow = 10;
     expect(slowHookFps()).toBe(10);
+  });
+});
+
+describe('feedSlowHook (T159 CI determinism)', () => {
+  it('one call at 10 fps fires the watch; after reset the next call fires again', () => {
+    const w = new FpsWatch();
+    const a = feedSlowHook(w, 0, 10);
+    expect(a.slow).toBe(true);
+    expect(feedSlowHook(w, a.clock, 10).slow).toBe(false); // fired once until re-armed
+    w.reset();
+    expect(feedSlowHook(w, a.clock + 5000, 10).slow).toBe(true);
+  });
+  it('a fast hook rate never fires', () => {
+    expect(feedSlowHook(new FpsWatch(), 0, 60).slow).toBe(false);
   });
 });

@@ -99,11 +99,13 @@ test('slow frames: Basit mod turns on by itself, still slow → 2D with a note',
   await nest300(page);
   const host = await open3d(page);
   await expect(host).toHaveAttribute('data-simple', 'false');
-  // Test hook: the frame watch sees a 10 fps clock.
+  // Test hook: the frame watch sees a 10 fps clock (a whole 3 s window per real frame), and a
+  // preset click asks for frames. Both in one step: the chain may finish within two frames, so
+  // the preset button can be gone before a separate Playwright click lands.
   await page.evaluate(() => {
     (window as unknown as { __nittcam3dSlow?: number }).__nittcam3dSlow = 10;
+    document.querySelector<HTMLButtonElement>('[data-testid="preview3d-preset-top"]')?.click();
   });
-  await page.getByTestId('preview3d-preset-top').click();
   // Basit mod comes first; on a CPU-rendered CI runner it is slow too and drops to 2D within the
   // same frame window, so its note may already be gone: assert either step, then the end state.
   await expect(
