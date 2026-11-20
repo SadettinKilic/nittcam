@@ -19,7 +19,7 @@ import type { Messages } from '../../lib/messages';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
 import { TemplateUpdatePrompt } from '../editor/template-update';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
-import { untitledName } from '../../lib/untitled-name';
+import { isUntitledName, untitledName } from '../../lib/untitled-name';
 import { CutListEditor } from '../parts/cut-list-editor';
 import { DrawingBoard } from '../editor/drawing-board';
 import { SimulationView, type SimMachine } from '../simulation/simulation-view';
@@ -989,6 +989,7 @@ function WizardSession({
               label={t.nameLabel}
               value={session.name}
               onCommit={session.rename}
+              defaultBase={t.defaultName}
               autoSelect={session.projectId === null}
             />
           ) : null}
@@ -1003,6 +1004,7 @@ function WizardSession({
                 label={t.nameLabel}
                 value={session.name}
                 onCommit={session.rename}
+                defaultBase={t.defaultName}
                 autoSelect={session.projectId === null && step === 'makine'}
               />
               <div className="order-2 flex items-center gap-1 @min-[1112px]:order-3 @min-[1112px]:shrink-0">
@@ -1455,9 +1457,12 @@ function NameField({
   value,
   onCommit,
   autoSelect = false,
+  defaultBase,
 }: {
   label: string;
   value: string;
+  /** The "Adsız proje" base: while the name is still a default one, typing replaces it (T283). */
+  defaultBase: string;
   onCommit: (name: string) => void;
   /** New project on step 1: focus and select the suggested name once (T194a). */
   autoSelect?: boolean;
@@ -1471,6 +1476,9 @@ function NameField({
     input.current?.focus();
     input.current?.select();
   }, []);
+  // T283: an untouched default name is selected whole on focus and on every click, so the first
+  // typed character replaces it. A user-set name keeps the normal caret behaviour.
+  const isDefault = text === null && isUntitledName(defaultBase, value);
   function commit() {
     if (text === null) return;
     const name = text.trim();
@@ -1491,6 +1499,14 @@ function NameField({
           value={text ?? value}
           maxLength={120}
           onChange={(e) => setText(e.target.value)}
+          onFocus={(e) => {
+            if (isDefault) e.currentTarget.select();
+          }}
+          onMouseUp={(e) => {
+            if (!isDefault) return;
+            e.preventDefault();
+            e.currentTarget.select();
+          }}
           onBlur={commit}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

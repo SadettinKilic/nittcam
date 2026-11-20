@@ -1140,7 +1140,8 @@
       "noDownloadHere": "İndirme, kontrol listesiyle birlikte Dışa aktar adımında yapılır.",
       "toolOrder": "Takımlar: {tools}",
       "manualChange": "Program içinde {count} kez durup takım ister.",
-      "manualChangeZ": "Program içinde {count} kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayın."
+      "manualChangeZ": "Program içinde {count} kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayın.",
+      "unverifiedTemplates": "Hazır şablon ölçüleri doğrulanmadı: {names}. Ölçüleri kendi menteşe / kulp verinizle karşılaştırın."
     },
     "time": {
       "hours": "{h} sa {m} dk",
@@ -1480,6 +1481,7 @@
       "checkToolChange": "Program içinde {count} kez durup takım ister.",
       "checkToolChangeZ": "Program içinde {count} kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayacağım.",
       "checkAirCut": "Air cut yapılacak mı?",
+      "checkTemplates": "Hazır şablon ölçüleri doğrulanmadı: {names}. Ölçüleri kendi menteşe / kulp verinizle karşılaştırdım.",
       "airCutNote": "Simülasyon air cut'ın yerine geçmez: ilk çalıştırmada takımı malzemenin üstünde boşta çalıştırın.",
       "unverifiedTitle": "Bu makine profili doğrulanmadı",
       "unverifiedBody": "Dosyanın ilk satırı \"DOĞRULANMADI, önce air cut\" uyarısıdır. Önce malzemesiz (air cut) çalıştırın.",
@@ -2105,6 +2107,7 @@
         "loadError": "Şablonlar yüklenemedi.",
         "instance": "{name} · sürüm {v}",
         "readyUnverified": "Hazır şablon · ölçüler üretici verisiyle doğrulanacak",
+        "instanceUnverified": "Doğrulanacak",
         "count": "Adet",
         "spacing": "Aralık",
         "edgeDistance": "Kenardan mesafe",

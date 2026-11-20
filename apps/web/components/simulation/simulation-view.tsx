@@ -53,6 +53,7 @@ import {
   type SimMachineFrame,
   type SimSheet,
   sheetSizeOf,
+  unverifiedTemplateNames,
 } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import {
@@ -269,6 +270,7 @@ export function SimulationView({
           t={t}
           summary={result.summary}
           program={result.export.tools}
+          templateNames={unverifiedTemplateNames(project.parts)}
           checksOk={errorCount === 0}
           errorCount={errorCount}
           warnings={warnings}
