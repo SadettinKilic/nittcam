@@ -5,6 +5,10 @@ import { goStep, openNewProject, paste } from './wizard-helpers';
 /** Tester (B25): offcuts only after "Stoğa kaydet"; axe on the changed screens; 390 px smoke. */
 
 async function axeClean(page: Page) {
+  // Tab panels fade in (animate-fade-in): measure contrast after the animation, not mid-fade.
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.playState !== 'running'),
+  );
   const res = await new AxeBuilder({ page }).analyze();
   const bad = res.violations.filter((v) => ['serious', 'critical'].includes(v.impact ?? ''));
   expect(bad.map((v) => `${v.id}: ${v.nodes[0]?.target}`)).toEqual([]);
@@ -18,6 +22,10 @@ for (const vp of [
 ]) {
   test(`offcuts: nothing stored before save; axe + layout at ${vp.name}`, async ({ page }) => {
     await page.setViewportSize({ width: vp.width, height: vp.height });
+    // Other specs share the CI database and may have saved offcuts: compare before/after.
+    await page.goto('/projeler');
+    await page.getByTestId('offcuts-tab').click();
+    const before = await page.getByTestId('offcut-row').count();
     await openNewProject(page, 'parcalar');
     await paste(page, 'Ad\tEn\tBoy\tAdet\nYan\t600\t500\t2', 1);
     await goStep(page, 'dizilim');
@@ -31,7 +39,7 @@ for (const vp of [
     // Proposed only: the stock tab has no row until the user saves.
     await page.goto('/projeler');
     await page.getByTestId('offcuts-tab').click();
-    await expect(page.getByTestId('offcut-row')).toHaveCount(0);
+    await expect(page.getByTestId('offcut-row')).toHaveCount(before);
     await axeClean(page);
     expect(await noHScroll(page)).toBe(true);
   });
