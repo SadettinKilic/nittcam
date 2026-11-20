@@ -36,7 +36,7 @@ export const DIRECT_ALLOWED = new Set([
 /** Extra licences for direct dependencies used only as devDependencies (D-032). */
 export const DEV_ONLY_DIRECT_EXTRA = new Set(['MPL-2.0']);
 
-export const TRANSITIVE_EXTRA = new Set(['MPL-2.0', 'CC-BY-4.0', 'Python-2.0']);
+export const TRANSITIVE_EXTRA = new Set(['MPL-2.0', 'CC-BY-4.0', 'Python-2.0', 'Zlib']);
 
 const SHARP_LGPL = /^LGPL-3\.0(-only|-or-later|\+)?$/;
 const SHARP_PACKAGE = /^@img\/sharp-/;

@@ -28,7 +28,7 @@ Versions are pinned exactly and are stable releases at least two weeks old. **Ty
 ## D-009 Licence policy (2026-11-16, T002)
 Enforced by `scripts/check-licenses.mjs` (zero dependencies, reads `pnpm licenses list --json`), run in CI and via `pnpm licenses:check`; unit tests in `scripts/check-licenses.test.mjs`.
 - **Direct dependencies** (`dependencies`/`devDependencies` of any workspace `package.json`) must be MIT, ISC, BSD-2-Clause, BSD-3-Clause, Apache-2.0, BSL-1.0, 0BSD, CC0-1.0, Unlicense or BlueOak-1.0.0. GPL, AGPL and LGPL in a direct dependency fail the build.
-- **Transitive dependencies** may also be MPL-2.0 (unmodified), CC-BY-4.0 (data, e.g. `caniuse-lite`), Python-2.0, and the LGPL-3.0 part of `@img/sharp-*` (dynamically linked, optional).
+- **Transitive dependencies** may also be MPL-2.0 (unmodified), CC-BY-4.0 (data, e.g. `caniuse-lite`), Python-2.0, Zlib (permissive; `pako` under `pdf-lib`, D-061), and the LGPL-3.0 part of `@img/sharp-*` (dynamically linked, optional).
 - **GPL or AGPL anywhere fails the build.** Unknown or unparseable licences fail too.
 - SPDX expressions: `OR` means we may choose any allowed branch (a `MIT OR GPL-3.0` package passes, used under MIT); `AND` means every part must be allowed; `WITH <exception>` is judged by its base licence.
 New exceptions need a new decision entry.
@@ -556,6 +556,13 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - E3 manual add and E7 (other-thickness parts) are scope questions for the owner.
 - Batch labels: M8 batches are renumbered B32+ in practice (B32 = T172–T174 PDF) because B24/B25 were reused earlier.
 - Owner (2026-11-20, Q011): E3 manual offcut add (T291) and E7 other-thickness parts (T292) both before the field test, batch B34. Polish queue regrouped into P1–P5, one group per M9 batch.
+
+## D-061 PDF engine (2026-11-20, dev B32 T172; PO to confirm)
+- **Library:** `pdf-lib` 1.17.1 + `@pdf-lib/fontkit` 1.1.1 (both MIT), server only (`apps/web/lib/server/pdf`). Their `pako` 1.0.11 is `(MIT AND Zlib)`; Zlib is a permissive licence, so D-009 now allows it for transitive dependencies.
+- **Font:** Inter 4.1 Regular and Bold, static TTF (OFL-1.1), committed with its licence in `apps/web/lib/server/pdf/fonts/`, embedded as a subset with fixed names (`Inter-Regular`, `Inter-Bold`; pdf-lib otherwise adds a random subset tag).
+- **Determinism:** creation and modification dates fixed to 2000-01-01T00:00:00Z, producer/creator "NittCAM", no object streams; same project, revision and paper → same bytes (`ETag` = sha256).
+- **Split:** the drawing and report numbers are pure functions in `packages/core/src/report` (no pages, fonts or I/O); only the rendering lives in the web app.
+- **Paper:** A4 or A3 landscape, one page per layout sheet; a project without a layout gets one page that says so.
 
 ## D-062 DXF export format (2026-11-20, Dev 1, T175)
 - R12 (AC1009) ASCII DXF in mm (`$INSUNITS` 4): POLYLINE/VERTEX with bulge (group 42) for every contour, CIRCLE for holes. No ARC/LWPOLYLINE, no handles: R12 opens in every viewer (LibreCAD) and our importer reads it back exactly.

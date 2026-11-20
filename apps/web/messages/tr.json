@@ -1690,6 +1690,38 @@
         "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın."
       },
       "other": "Kontrol {code}"
+    },
+    "documents": {
+      "title": "Belgeler (PDF) ve etiketler",
+      "hint": "Kaydedilmiş revizyondan sunucuda üretilir: plaka dizilimi, parça listesi ve fire raporu.",
+      "a4": "PDF aç (A4)",
+      "a3": "PDF aç (A3)",
+      "waitSave": "Önce değişiklikler kaydedilsin.",
+      "noLayout": "PDF için önce dizilim gerekir.",
+      "labels": {
+        "title": "Etiketler",
+        "preset": "Etiket kağıdı",
+        "presets": {
+          "a4-3x8": "A4, 3 × 8 (70 × 37 mm)",
+          "a4-2x7": "A4, 2 × 7 (99,1 × 38,1 mm)",
+          "custom": "Özel ızgara (mm)"
+        },
+        "cols": "Sütun",
+        "rows": "Satır",
+        "width": "Etiket eni",
+        "height": "Etiket boyu",
+        "left": "Sol boşluk",
+        "top": "Üst boşluk",
+        "gapX": "Yatay ara",
+        "gapY": "Dikey ara",
+        "offsetTitle": "Yazıcı kaydırma ayarı",
+        "offsetHint": "Deneme baskısında etiketler kayıyorsa ölçüp girin. Bu bilgisayarda saklanır.",
+        "offsetX": "Sağa (mm)",
+        "offsetY": "Aşağı (mm)",
+        "open": "Etiketleri aç (PDF)",
+        "count": "{count} etiket, {pages} sayfa",
+        "invalid": "Izgara A4 sayfaya sığmıyor veya bir değer aralık dışında."
+      }
     }
   },
   "verification": {
@@ -2586,6 +2618,63 @@
       "archived": "\"{name}\" arşivlendi.",
       "restored": "\"{name}\" arşivden çıkarıldı.",
       "failed": "İşlem yapılamadı. Tekrar deneyin."
+    }
+  },
+  "pdf": {
+    "sheetTitle": "Plaka {n} / {total}",
+    "sheetSize": "{w} × {h} mm",
+    "material": "{material}, {thickness} mm",
+    "grain": "Damar {angle}°",
+    "noGrain": "Damarsız plaka",
+    "offcut": "Artık parçadan",
+    "revision": "Revizyon {revision}",
+    "page": "Sayfa {n} / {total}",
+    "parts": "{count} parça",
+    "legend": "Parça no: satır.kopya · Ok: damar yönü · Ölçüler mm (kesim ölçüsü)",
+    "empty": "Dizilim yok. Önce Dizilim adımında yerleştirme yapın.",
+    "listTitle": "Parça listesi",
+    "listDetails": "{rows} satır · {pieces} parça",
+    "colNo": "No",
+    "colName": "Parça",
+    "colFinished": "Bitmiş ölçü",
+    "colCut": "Kesim ölçüsü",
+    "colQty": "Adet",
+    "colGrain": "Damar",
+    "colBand": "Kenar bandı",
+    "grainFree": "Serbest",
+    "grainFixed": "{angle}°",
+    "bandNone": "—",
+    "bandEdges": {
+      "top": "Üst",
+      "right": "Sağ",
+      "bottom": "Alt",
+      "left": "Sol"
+    },
+    "bandItem": "{edge} {mm}",
+    "unplacedRow": "{placed}/{qty} dizildi",
+    "reportTitle": "Fire raporu",
+    "sheets": "Plaka sayısı",
+    "waste": "Fire",
+    "wasteArea": "Fire alanı",
+    "partArea": "Parça alanı",
+    "pieces": "Toplam parça",
+    "cutTime": "Tahmini kesim süresi",
+    "cutTimeNone": "—",
+    "area": "{value} m²",
+    "percent": "%{value}",
+    "minutes": "{h} sa {m} dk",
+    "minutesOnly": "{m} dk",
+    "bySize": "{w} × {h} mm: {sheets} plaka, fire %{waste}",
+    "unplaced": "{count} parça dizilmedi",
+    "listLegend": "Bitmiş ölçü = kesim ölçüsü + kenar bandı · Kalın kenar = bantlı kenar",
+    "cutTimeHint": "Tahmini süre, G-code kontrolleri geçince hesaplanır.",
+    "listLegendFinished": "Kesim ölçüsü = bitmiş ölçü − kenar bandı · Kalın kenar = bantlı kenar",
+    "labels": {
+      "title": "Parça etiketleri",
+      "sheet": "Plaka {n}",
+      "noSheet": "Dizilmedi",
+      "size": "{w} × {h} mm",
+      "cut": "Kesim {w} × {h}"
     }
   }
 }
