@@ -25,6 +25,7 @@ export function NumberField({
   min = 0,
   list,
   unit = null,
+  bounds,
 }: {
   label: string;
   value: number;
@@ -37,6 +38,11 @@ export function NumberField({
   list?: string | undefined;
   /** Unit suffix inside the field; null for none. */
   unit?: string | null;
+  /**
+   * T293: the accepted range, said in the error ("En az 3 mm", "1–17 mm arası"): a value outside
+   * it (or not whole when `integer`) is refused before the command runs.
+   */
+  bounds?: { min: number; max?: number; integer?: boolean; message: string } | undefined;
 }) {
   const id = useId();
   const [text, setTextState] = useState<string | null>(null);
@@ -60,12 +66,21 @@ export function NumberField({
       setError(errors.positive);
       return false;
     }
+    if (
+      bounds &&
+      (n < bounds.min - 1e-9 ||
+        (bounds.max !== undefined && n > bounds.max + 1e-9) ||
+        (bounds.integer && !Number.isInteger(n)))
+    ) {
+      setError(bounds.message);
+      return false;
+    }
     if (n === value || onCommit(n)) {
       setText(null);
       setError(null);
       return true;
     }
-    setError(errors.rejected);
+    setError(bounds?.message ?? errors.rejected);
     return false;
   }
 

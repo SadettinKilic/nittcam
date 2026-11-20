@@ -1,9 +1,10 @@
 'use client';
 
 import type { ProgramTools, SimSummary } from '@nittcam/core';
+import { focusCuttingSettings } from './cutting-settings';
 import { fill } from '../../lib/draft-project';
 import { Measure } from '@nittcam/ui';
-import { TriangleAlert } from 'lucide-react';
+import { SlidersHorizontal, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { formatDuration, formatInt, type SimText } from './model';
 import { ErrorList, WarningList, type Finding, type PartLinks } from './violations';
@@ -19,6 +20,7 @@ export function SummaryCard({
   links = {},
   program = null,
   templateNames = [],
+  cutting = null,
 }: {
   t: SimText;
   summary: SimSummary;
@@ -32,6 +34,8 @@ export function SummaryCard({
   /** T287: errors that lock the export although the program ran (shown open, with places). */
   errors?: readonly Finding[];
   links?: PartLinks;
+  /** T294: one line with the cutting settings and a way to the panel ("Kesim ayarları"). */
+  cutting?: { line: string; edit: string } | null;
 }) {
   const s = t.summary;
   // Measure (T195): Turkish digits, tabular figures, the unit quieter than the number.
@@ -91,6 +95,26 @@ export function SummaryCard({
           </div>
         ))}
       </dl>
+      {cutting ? (
+        // T294 (CTO #11 E1): one line; the full text is the tooltip when it does not fit.
+        <p
+          className="flex min-w-0 items-center gap-1.5 text-sm text-fg"
+          data-testid="sim-summary-cutting"
+          title={cutting.line}
+        >
+          <span className="min-w-0 truncate">{cutting.line}</span>
+          <button
+            type="button"
+            data-testid="sim-summary-cutting-edit"
+            aria-label={cutting.edit}
+            title={cutting.edit}
+            onClick={focusCuttingSettings}
+            className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-accent-text outline-none hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            <SlidersHorizontal aria-hidden className="size-3.5" />
+          </button>
+        </p>
+      ) : null}
       {program && program.sheets.some((sh) => sh.tools.length > 1) ? (
         <p className="text-sm text-fg" data-testid="sim-tool-order">
           {fill(s.toolOrder, {
