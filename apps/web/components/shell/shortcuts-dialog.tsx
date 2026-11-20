@@ -16,6 +16,44 @@ import { SHORTCUTS, SHORTCUT_GROUPS, type ShortcutGroup } from '../../lib/shortc
 import { ShortcutKeys } from './keys';
 
 /**
+ * The registered shortcuts, one titled list per group: the "?" dialog and Ayarlar → Görünüm
+ * (T183). `prefix` keeps heading ids and test ids apart when both are on screen.
+ */
+export function ShortcutGroups({
+  t,
+  groups = SHORTCUT_GROUPS,
+  prefix = 'shortcut',
+}: {
+  t: Messages['shortcuts'];
+  groups?: readonly ShortcutGroup[];
+  prefix?: string;
+}) {
+  return (
+    <>
+      {groups.map((group) => (
+        <section key={group} aria-labelledby={`${prefix}s-${group}`}>
+          <h3 id={`${prefix}s-${group}`} className="mb-1.5 text-xs font-medium text-fg-muted">
+            {t.groups[group]}
+          </h3>
+          <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle">
+            {SHORTCUTS.filter((s) => s.group === group).map((s) => (
+              <li
+                key={s.id}
+                data-testid={`${prefix}-${s.id}`}
+                className="flex min-h-10 items-center justify-between gap-4 px-3 text-sm"
+              >
+                <span>{t.items[s.id]}</span>
+                <ShortcutKeys id={s.id} then={t.then} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </>
+  );
+}
+
+/**
  * "?" help: every registered shortcut, grouped (T104). With `group` = 'board' it is the
  * editor's shortcut sheet (T136): the board group only, a link to the full list and the tour.
  */
@@ -65,25 +103,7 @@ export function ShortcutsDialog({
           data-testid="shortcuts-list"
           className="-mx-1 flex max-h-[60vh] flex-col gap-5 overflow-y-auto rounded-md px-1 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
-          {groups.map((group) => (
-            <section key={group} aria-labelledby={`shortcuts-${group}`}>
-              <h3 id={`shortcuts-${group}`} className="mb-1.5 text-xs font-medium text-fg-muted">
-                {t.groups[group]}
-              </h3>
-              <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle">
-                {SHORTCUTS.filter((s) => s.group === group).map((s) => (
-                  <li
-                    key={s.id}
-                    data-testid={`shortcut-${s.id}`}
-                    className="flex min-h-10 items-center justify-between gap-4 px-3 text-sm"
-                  >
-                    <span>{t.items[s.id]}</span>
-                    <ShortcutKeys id={s.id} then={t.then} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+          <ShortcutGroups t={t} groups={groups} />
         </div>
         {group ? (
           <DialogFooter className="gap-2 sm:justify-between">

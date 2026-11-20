@@ -33,6 +33,12 @@ test.describe('T121 material library', () => {
       .getByRole('navigation', { name: tr.nav.label })
       .getByRole('link', { name: tr.nav.settings })
       .click();
+    // T182: Ayarlar opens on "Genel"; Malzemeler is one of its sections.
+    await expect(page).toHaveURL(/\/ayarlar$/);
+    await page
+      .getByTestId('settings-nav')
+      .getByRole('link', { name: tr.settings.nav.materials })
+      .click();
     await expect(page).toHaveURL(/\/ayarlar\/malzemeler$/);
     await expect(page.getByRole('heading', { level: 1, name: m.title })).toBeVisible();
     for (const name of ['Akrilik', 'Kontrplak', 'MDF', 'Melamin']) {

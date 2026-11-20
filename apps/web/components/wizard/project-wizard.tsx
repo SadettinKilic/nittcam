@@ -32,6 +32,7 @@ import { tableSpecOf } from '../../lib/preview3d/stage';
 import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
 import { IssuesOkChip } from './issues-ok-chip';
 import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
+import { fetchProjectDefaults } from '../../lib/settings-api';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
@@ -312,11 +313,13 @@ export function ProjectWizard({
           );
           // T259: a new project starts on the library's first entry the machine can cut.
           const library = firstDetail ? ((await fetchMaterials()) ?? []) : [];
+          // T182: the company's project defaults (Ayarlar); built-ins when they cannot be read.
+          const defaults = await fetchProjectDefaults();
           init = {
             id: null,
             revision: 0,
             name: untitledName(t.defaultName, names),
-            project: newProject(firstDetail ?? undefined, library),
+            project: newProject(firstDetail ?? undefined, library, defaults),
           };
         }
         // T289: archived machines cannot be picked; a project bound to one still shows it.
@@ -989,8 +992,6 @@ function WizardSession({
         onSelectionChange={setPartsSelection}
         dxfText={messages.dxfImport}
         holeTool={holeToolNo}
-        focusPart={rowFocus}
-        onFocusedPart={clearRowFocus}
         splitOff={
           sourceId
             ? {
@@ -999,6 +1000,8 @@ function WizardSession({
               }
             : undefined
         }
+        focusPart={rowFocus}
+        onFocusedPart={clearRowFocus}
       />
     );
     // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats
