@@ -259,7 +259,7 @@ function Kit({
       </Section>
       {ext ? (
         <Section title={t.form.title} testId="field-kit-form">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t.form.title}>
             <table className="w-full min-w-[28rem] text-left text-sm text-fg">
               <caption className="sr-only">{t.form.caption}</caption>
               <thead className="text-xs text-fg-muted">
@@ -311,7 +311,12 @@ function Kit({
         {data.downloads.length === 0 ? (
           <p className="text-sm text-fg-muted">{t.downloads.empty}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div
+            className="overflow-x-auto"
+            tabIndex={0}
+            role="region"
+            aria-label={t.downloads.title}
+          >
             <table className="w-full min-w-[28rem] text-left text-sm text-fg">
               <thead className="text-xs text-fg-muted">
                 <tr>
