@@ -15,6 +15,7 @@ import {
   parsePostConfig,
   type PostFile,
   type PostIssue,
+  type PostCuttingMeta,
   type PostMeta,
   type PostProfileVersion,
 } from '../post';
@@ -28,6 +29,7 @@ import {
 } from '../toolpath';
 import { programTools, type ProgramTools } from './program-tools';
 import { unverifiedTemplateNames } from '../template';
+import { cuttingSettingsOf } from '../toolpath/cutting-settings';
 
 export interface ExportNcOptions {
   /** Header and file name; default "NittCam". */
@@ -83,6 +85,7 @@ export function exportNc(
     revision: options.revision ?? 0,
     ...(options.fileStem ? { fileStem: options.fileStem } : {}),
     ...unverifiedTemplatesMeta(project),
+    ...cuttingMeta(project, profile),
     stock: {
       material: project.stock.material,
       thickness: project.stock.thickness,
@@ -93,6 +96,32 @@ export function exportNc(
     // one cutting tool per project (D-021): the cut-out loops are offset by its radius
     layout: expectedLayouts(project, tp.toolpath.operations[0]?.toolDiameter ?? 0),
   });
+}
+
+/**
+ * T288 (K3): the tabs, lead-in and direction the toolpath used, for the "KESİM" header line, when
+ * any of them differs from the defaults (tabs on every part with the material set's values, as a
+ * new project starts: no skin, arc lead-in, climb): a default project keeps its byte-identical output (golden files).
+ */
+export function cuttingMeta(
+  project: Project,
+  profile: PostProfileVersion['profile'],
+): { cutting?: PostCuttingMeta } {
+  const c = cuttingSettingsOf(project, profile);
+  const own = Object.values(c.tabs.source).includes('project');
+  const isDefault =
+    c.tabMode === 'all' && !own && c.skin === null && c.leadIn === 'arc' && c.direction === 'climb';
+  if (isDefault) return {};
+  const cutting: PostCuttingMeta = {
+    tabMode: c.tabMode,
+    tabCount: c.tabs.count,
+    tabWidth: c.tabs.width,
+    tabHeight: c.tabs.height,
+    skin: c.skin,
+    leadIn: c.leadIn,
+    direction: c.direction,
+  };
+  return { cutting };
 }
 
 /** The unverified ready templates of the project (T282); nothing when none, so output is unchanged. */

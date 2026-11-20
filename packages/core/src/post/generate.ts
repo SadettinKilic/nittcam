@@ -36,6 +36,7 @@ import type {
   PostCode,
   PostFile,
   PostIssue,
+  PostCuttingMeta,
   PostMeta,
   PostProfileVersion,
   PostResult,
@@ -43,6 +44,24 @@ import type {
 
 /** Header line of an unverified profile or post (§7.2 rule 10). Transliterated when ASCII-only. */
 export const UNVERIFIED_HEADER = 'DOĞRULANMADI, önce air cut';
+
+/**
+ * T288 (K3): "KESİM: köprü her parçada 4 adet 10 x 3 mm, giriş yay, yön climb". No parentheses
+ * (a Mach3 comment ends at the first one).
+ */
+export function cuttingHeader(c: PostCuttingMeta): string {
+  const f3 = (v: number) => formatFixed(v, 3);
+  const size = `${c.tabCount} adet ${f3(c.tabWidth)} x ${f3(c.tabHeight)} mm`;
+  const skin = c.skin !== null ? [`küçük parça ince tabaka ${f3(c.skin)} mm`] : [];
+  const tabs =
+    c.tabMode === 'all'
+      ? [`köprü her parçada ${size}`, ...skin]
+      : c.tabMode === 'off'
+        ? ['köprü kapalı', ...skin]
+        : [`köprü yalnız küçük parçada ${size}`];
+  const lead = `giriş ${c.leadIn === 'arc' ? 'yay' : 'düz'}`;
+  return `KESİM: ${[...tabs, lead, `yön ${c.direction}`].join(', ')}`;
+}
 
 /**
  * Header line naming the unverified ready templates of the job (T282, review #8 K2), always ASCII
@@ -621,6 +640,7 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
     `ORİJİN: ${CORNER_LABEL[profile.origin.corner] ?? profile.origin.corner}, X+ ${profile.origin.xPositive === 'right' ? 'sağ' : 'sol'}, Y+ ${profile.origin.yPositive === 'back' ? 'arka' : 'ön'}, plaka ofseti ${f3(profile.origin.sheetOffset.x)} / ${f3(profile.origin.sheetOffset.y)}`,
   );
   lines.push(`Z SIFIR: ${profile.zZero.reference === 'table' ? 'tabla yüzeyi' : 'malzeme üstü'}`);
+  if (meta.cutting) lines.push(cuttingHeader(meta.cutting));
   const tools = [...new Set(plan.ops.map((o) => o.tool))];
   lines.push(
     `TAKIMLAR: ${tools

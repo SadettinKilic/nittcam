@@ -52,3 +52,5 @@ export {
   pocketRings,
 } from './holes';
 export { buildOnlineOperation, openSegments, type OnlineInput } from './online';
+export { cuttingSettingsOf, tabModeOf } from './cutting-settings';
+export type { CuttingSettings, TabMode, TabSource } from './cutting-settings';

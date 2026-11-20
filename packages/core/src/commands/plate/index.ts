@@ -187,3 +187,99 @@ export const setDimensionMode = defineCommand({
     if (draft.settings.dimensionMode !== p.mode) draft.settings.dimensionMode = p.mode;
   },
 });
+
+/** T288: how parts are held while cut (§6.3, D-022), as the Simülasyon "Kesim ayarları" offers it. */
+export const tabModeSchema = z.enum(['all', 'small', 'off'], {
+  error: 'mode must be "all", "small" or "off"',
+});
+
+/** Thin skin the "off" choice starts with, mm (at most half the stock thickness). */
+export const OFF_SKIN_DEFAULT = 0.5;
+
+const tabOverride = <T extends z.ZodNumber>(n: T) => n.nullable().optional();
+
+/**
+ * Tabs (T288, §6.3 "Tab: adet, genişlik ve yükseklik ayarlanır"). `mode`:
+ * - `all`: tabs on every part (`tabs.auto`; a thin skin chosen on step 1 stays on small parts);
+ * - `small`: tabs only where the small-part safety rule needs them (§6.3, always on);
+ * - `off`: no tabs at all; small parts are held by a thin skin instead (§6.3 "ikinci seçenek"),
+ *   so the safety rule still holds every small part (§7.2).
+ * `count` / `width` / `height` override the material set's tab values; `null` = back to the
+ * material set (or the built-in default). A safety setting the user chooses: not an AI tool.
+ */
+export const setTabs = defineCommand({
+  name: 'setTabs',
+  area: 'plate',
+  description:
+    'Set the tabs: mode "all" (every part), "small" (only small parts, the safety rule) or "off" (no tabs; small parts get a thin skin); count, width and height in mm override the material set (null = material set).',
+  aiTool: false,
+  params: z.strictObject({
+    mode: tabModeSchema.optional(),
+    count: tabOverride(
+      z
+        .number({ error: 'count must be a number' })
+        .int({ error: 'count must be a whole number' })
+        .min(1, { error: 'count must be at least 1' })
+        .max(20, { error: 'count must be at most 20' }),
+    ),
+    width: tabOverride(
+      z.number({ error: 'width must be a number' }).positive({ error: 'width must be > 0' }),
+    ),
+    height: tabOverride(
+      z.number({ error: 'height must be a number' }).positive({ error: 'height must be > 0' }),
+    ),
+  }),
+  check: (project, p) =>
+    p.height !== undefined && p.height !== null && !(p.height < project.stock.thickness)
+      ? `tab height ${p.height} mm must be less than the stock thickness (${project.stock.thickness} mm)`
+      : undefined,
+  apply: (draft, p) => {
+    const tabs = draft.cutting.tabs;
+    if (p.mode !== undefined) {
+      tabs.auto = p.mode === 'all';
+      // `all` keeps a skin chosen on step 1 (small parts: skin, others: tabs).
+      if (p.mode === 'small') delete draft.cutting.skin;
+      else if (p.mode === 'off' && !draft.cutting.skin) {
+        draft.cutting.skin = {
+          thickness: Math.min(OFF_SKIN_DEFAULT, draft.stock.thickness / 2),
+        };
+      }
+    }
+    if (p.count === null) delete tabs.count;
+    else if (p.count !== undefined) tabs.count = p.count;
+    if (p.width === null) delete tabs.width;
+    else if (p.width !== undefined) tabs.width = p.width;
+    if (p.height === null) delete tabs.height;
+    else if (p.height !== undefined) tabs.height = p.height;
+  },
+});
+
+/** Lead-in / lead-out shape (T288, §6.3 "lead-in ve lead-out (yay veya düz)"). */
+export const setLeadIn = defineCommand({
+  name: 'setLeadIn',
+  area: 'plate',
+  description: 'Set the lead-in and lead-out shape: "arc" or "line".',
+  aiTool: false,
+  params: z.strictObject({
+    leadIn: z.enum(['arc', 'line'], { error: 'leadIn must be "arc" or "line"' }),
+  }),
+  apply: (draft, p) => {
+    draft.cutting.leadIn = p.leadIn;
+  },
+});
+
+/** Cut direction (T288, §6.3 "climb / conventional seçimi"). */
+export const setCutDirection = defineCommand({
+  name: 'setCutDirection',
+  area: 'plate',
+  description: 'Set the cut direction: "climb" or "conventional".',
+  aiTool: false,
+  params: z.strictObject({
+    direction: z.enum(['climb', 'conventional'], {
+      error: 'direction must be "climb" or "conventional"',
+    }),
+  }),
+  apply: (draft, p) => {
+    draft.cutting.direction = p.direction;
+  },
+});

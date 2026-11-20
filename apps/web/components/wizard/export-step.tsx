@@ -18,7 +18,7 @@ import { Callout } from './panels';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fill } from '../../lib/draft-project';
-import { itemPlace, machineRelated } from '../../lib/part-items';
+import { itemPlace, machineRelated, onDrawnItem, onPartRow } from '../../lib/part-items';
 import {
   downloadBlocker,
   EMPTY_CHECKLIST,
@@ -99,6 +99,7 @@ export function ExportStep({
   machine,
   notice,
   onOpenPart,
+  onOpenRow,
   projectId,
   revision,
   saved,
@@ -114,6 +115,8 @@ export function ExportStep({
   notice?: React.ReactNode;
   /** T270: opens a part on the drawing board (a blocked cut-out links there). */
   onOpenPart?: (partId: string, hole?: number) => void;
+  /** T287: opens Parçalar on a part's row (a part that is not in the layout links there). */
+  onOpenRow?: (partId: string) => void;
   projectId: string | null;
   revision: number;
   /** False while changes wait for the autosave. */
@@ -341,6 +344,7 @@ export function ExportStep({
           violations={current.preview.violations}
           parts={project.parts}
           onOpenPart={onOpenPart}
+          onOpenRow={onOpenRow}
         />
       </div>
     );
@@ -609,14 +613,15 @@ function Violations({
   violations,
   parts,
   onOpenPart,
+  onOpenRow,
 }: {
   t: Text;
   violations: ExportViolation[];
   parts: readonly { id: string; name: string }[];
   onOpenPart?: ((partId: string, hole?: number) => void) | undefined;
+  onOpenRow?: ((partId: string) => void) | undefined;
 }) {
-  // T270: "Kapak · İç kesim 3" for a cut-out of a known part.
-  // T270 / T275: "Kapak · İç kesim 3", "Kapak · Delik 3".
+  // T270 / T275: "Kapak · İç kesim 3", "Kapak · Delik 3"; T287: "Satır 2 · Tezgah".
   const place = (v: ExportViolation) => itemPlace(v, parts, t, fill);
   const errors = violations.filter((v) => v.severity === 'error');
   if (errors.length === 0) return null;
@@ -636,7 +641,7 @@ function Violations({
               </span>
             ) : null}
             {v.message}
-            {place(v) && v.partId !== undefined && onOpenPart ? (
+            {place(v) && onDrawnItem(v) && onOpenPart ? (
               <>
                 {' '}
                 <button
@@ -646,6 +651,19 @@ function Violations({
                   className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   {t.openPart}
+                </button>
+              </>
+            ) : null}
+            {place(v) && onPartRow(v) && onOpenRow ? (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  data-testid="export-violation-open-row"
+                  onClick={() => onOpenRow(v.partId as string)}
+                  className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {t.openRow}
                 </button>
               </>
             ) : null}
