@@ -29,6 +29,8 @@ function crumbText(t: ShellText, crumb: Crumb): string {
     case 'materials':
     case 'dxfLayers':
     case 'appearance':
+    case 'fieldKit':
+    case 'help':
     case 'notFound':
       return t.shell.crumbs[crumb.key];
     default:

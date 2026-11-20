@@ -46,6 +46,8 @@ import { CommandMenu, type CommandActions } from './command-menu';
 import { ShortcutKeys, useIsMac } from './keys';
 import { ShellProvider } from './shell-context';
 import { ShortcutsDialog } from './shortcuts-dialog';
+import { WhatsNewDialog } from './whats-new-dialog';
+import { OPEN_WHATS_NEW_EVENT, rememberReleaseSeen } from '../../lib/help';
 import { useReturnFocus } from './use-return-focus';
 import { SearchButton } from './search-button';
 import { Sidebar, SidebarContent, type ShellText } from './sidebar';
@@ -80,12 +82,15 @@ export function AppShell({ t, company, children }: AppShellProps) {
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   // T136: a page's own sheet (the board's) instead of the full list; null = every group.
   const [helpGroup, setHelpGroup] = useState<ShortcutGroup | null>(null);
   // Overlays open from state (no Radix Trigger): give focus back to whoever opened them.
   const drawerFocus = useReturnFocus();
   const paletteFocus = useReturnFocus();
   const helpFocus = useReturnFocus();
+  const whatsNewFocus = useReturnFocus();
+  const rememberWhatsNew = whatsNewFocus.remember;
   const rememberPalette = paletteFocus.remember;
   const rememberHelp = helpFocus.remember;
   const router = useRouter();
@@ -108,9 +113,33 @@ export function AppShell({ t, company, children }: AppShellProps) {
           setHelpGroup(null);
           setHelpOpen(true);
         }, 0),
+      openWhatsNew: () =>
+        window.setTimeout(() => {
+          rememberWhatsNew();
+          setWhatsNewOpen(true);
+        }, 0),
     }),
-    [router, setTheme, resolvedTheme, toggleSidebar, rememberHelp],
+    [router, setTheme, resolvedTheme, toggleSidebar, rememberHelp, rememberWhatsNew],
   );
+
+  // T192: the help page opens "Yenilikler" too; opening it marks the newest release as seen.
+  useEffect(() => {
+    const open = () => {
+      rememberWhatsNew();
+      setWhatsNewOpen(true);
+    };
+    window.addEventListener(OPEN_WHATS_NEW_EVENT, open);
+    return () => window.removeEventListener(OPEN_WHATS_NEW_EVENT, open);
+  }, [rememberWhatsNew]);
+  const latestRelease = t.whatsNew.releases[0]?.version ?? '';
+  useEffect(() => {
+    if (!whatsNewOpen) return;
+    try {
+      rememberReleaseSeen(window.localStorage, latestRelease);
+    } catch {
+      // A convenience only.
+    }
+  }, [whatsNewOpen, latestRelease]);
 
   // Pages open the help too (the board status bar "?", T242).
   useEffect(() => {
@@ -266,10 +295,21 @@ export function AppShell({ t, company, children }: AppShellProps) {
         <CommandMenu
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
-          t={{ palette: t.palette, nav: t.nav, shortcuts: t.shortcuts }}
+          t={{
+            palette: t.palette,
+            nav: t.nav,
+            shortcuts: t.shortcuts,
+            helpTopics: t.helpTopics,
+          }}
           actions={actions}
           onCloseAutoFocus={paletteFocus.onCloseAutoFocus}
           steps={wizard ? t.steps : null}
+        />
+        <WhatsNewDialog
+          open={whatsNewOpen}
+          onOpenChange={setWhatsNewOpen}
+          t={t.whatsNew}
+          onCloseAutoFocus={whatsNewFocus.onCloseAutoFocus}
         />
         <ShortcutsDialog
           open={helpOpen}

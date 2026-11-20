@@ -74,6 +74,11 @@ describe('breadcrumbs', () => {
   it('ignores a trailing slash and reports unknown paths as not found', () => {
     expect(breadcrumbs('/projeler/')).toEqual([{ key: 'projects' }]);
     expect(breadcrumbs('/yok/burada')).toEqual([{ key: 'notFound' }]);
+    expect(breadcrumbs('/yardim')).toEqual([{ key: 'help' }]);
+    expect(breadcrumbs('/makineler/m1/saha-kiti')).toEqual([
+      { key: 'machines', href: '/makineler' },
+      { key: 'fieldKit' },
+    ]);
     expect(breadcrumbs('/makineler/m1')).toEqual([{ key: 'notFound' }]);
   });
 });

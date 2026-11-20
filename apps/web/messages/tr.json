@@ -131,7 +131,9 @@
       "notFound": "Sayfa bulunamadı",
       "materials": "Malzemeler",
       "dxfLayers": "DXF katmanları",
-      "appearance": "Görünüm"
+      "appearance": "Görünüm",
+      "fieldKit": "Saha testi kiti",
+      "help": "Yardım"
     },
     "theme": {
       "label": "Tema",
@@ -153,7 +155,8 @@
       "actions": "Eylemler",
       "recent": "Son projeler",
       "theme": "Tema",
-      "project": "Bu proje"
+      "project": "Bu proje",
+      "help": "Yardım"
     },
     "templates": "Şablonlar",
     "settings": "Ayarlar",
@@ -180,8 +183,13 @@
       "settings": "ayar tercih şirket",
       "materials": "malzeme plaka mdf sunta kalınlık stok",
       "verify": "doğrula air cut test kesimi makine onay",
-      "step": "adım sihirbaz git"
-    }
+      "step": "adım sihirbaz git",
+      "helpCenter": "yardım kılavuz rehber nasıl soru destek",
+      "whatsNew": "yenilikler yeni sürüm değişiklik güncelleme"
+    },
+    "helpCenter": "Yardım sayfası",
+    "helpTopic": "Yardım: {title}",
+    "whatsNew": "Yenilikler"
   },
   "shortcuts": {
     "title": "Klavye kısayolları",
@@ -3214,5 +3222,147 @@
     "sheetLine": "Plaka {n}: {name}  (sha256 {hash})",
     "fileLine": "{name}  (sha256 {hash})",
     "note": "Dosyalar NittCAM dışa aktarma geçmişindeki dosyaların aynısıdır; sha256 değerleri geçmişteki özetlerle karşılaştırılabilir."
+  },
+  "help": {
+    "metaTitle": "Yardım",
+    "title": "Yardım",
+    "description": "NittCam ile bir işi baştan sona nasıl çıkaracağınız, kısa konular hâlinde.",
+    "searchLabel": "Yardımda ara",
+    "searchPlaceholder": "Örneğin: air cut, köprü, damar…",
+    "results": "{count} konu",
+    "empty": "“{query}” için konu bulunamadı. Başka bir kelime deneyin ya da aramayı temizleyin.",
+    "clear": "Aramayı temizle",
+    "topicsLabel": "Konular",
+    "whatsNew": "Yenilikler",
+    "whatsNewUnseen": "yeni",
+    "palette": "Komut paletinde (Ctrl+K) “yardım” yazarak da konulara ulaşabilirsiniz.",
+    "topics": {
+      "baslangic": {
+        "title": "Başlangıç: ilk projeniz",
+        "keywords": "başlangıç ilk proje nasıl başlarım sihirbaz adım kılavuz rehber",
+        "summary": "Bir proje beş adımda G-code olur: Makine ve plaka, Parçalar, Dizilim, Önizleme / simülasyon, Dışa aktar.",
+        "body": [
+          "Sol menüde ya da Projeler sayfasında “Yeni proje”ye basın. Proje ilk değişiklikte kendiliğinden kaydedilir; ayrıca kaydetmeniz gerekmez.",
+          "Makine ve plaka: makineyi, malzemeyi ve plaka ölçüsünü seçin. Makine yoksa önce Makineler sayfasında ekleyin ve doğrulayın (bkz. Air cut).",
+          "Parçalar: kesim listesini yazın, Excel’den yapıştırın ya da çizim tahtasında çizin.",
+          "Dizilim: “Diz” parçaları plakalara yerleştirir. Önizleme adımında 3D görünümü ve kesim simülasyonunu izleyin; kontroller geçmeden dışa aktarım açılmaz.",
+          "Dışa aktar: kontrol listesini onaylayın; NC dosyalarını, DXF, PDF ve etiketleri indirin. Çıktılar proje geçmişinde kalır."
+        ]
+      },
+      "kesim-listesi": {
+        "title": "Kesim listesi",
+        "keywords": "kesim listesi parça liste excel yapıştır tablo adet en boy kenar bandı satır",
+        "summary": "Parçaları tablo olarak girin: ad, en, boy, adet ve damar.",
+        "body": [
+          "Parçalar adımında “Yapıştır” ile Excel ya da Google E-Tablolar’dan kopyaladığınız satırları ekleyin. İlk satır başlıksa sütunlar adından tanınır (Parça adı, En, Boy, Adet, Damar).",
+          "Ölçüler milimetredir. Hücreleri tabloda doğrudan düzeltebilirsiniz.",
+          "Her değişiklik bir adımdır: Ctrl+Z geri alır, Ctrl+Y yineler.",
+          "Kenar bandı kalınlığı girilen kenarlar dizilimde parça ölçüsünden düşülür."
+        ]
+      },
+      "cizim": {
+        "title": "Çizim tahtası",
+        "keywords": "çizim tahta editör çiz çizgi yay köşe yuvarlatma delik cep kanal dxf içe aktar şablon serbest parça",
+        "summary": "Serbest biçimli parçaları çizin; delik, cep ve kanal ekleyin, DXF içe aktarın.",
+        "body": [
+          "Parçalar adımında görünümü “Çizim”e alın. Çizgi, yay ve köşe yuvarlatma ile parçayı çizin; ölçüleri paneldeki alanlardan girin.",
+          "Delik, cep ve kanal ekleyin. Takımdan küçük bir delik ya da kanal kabul edilmez; uyarı neyin düzeltileceğini söyler.",
+          "DXF dosyası içe aktarabilirsiniz (tabela harfleri, hazır çizimler); kapalı konturlar parça olur.",
+          "Sık kullandığınız parçaları şablon olarak saklayın; menteşe ve kulp şablonları Şablonlar sayfasındadır."
+        ]
+      },
+      "damar": {
+        "title": "Damar yönü",
+        "keywords": "damar yön desen ahşap kaplama açı döndürme kadran",
+        "summary": "Damarlı plakada parçanın damarı plakanın damarıyla aynı yönde kesilir.",
+        "body": [
+          "Plakanın damar açısını Makine ve plaka adımında, parçanınkini Parçalar adımında damar kadranıyla verin.",
+          "Damarın yönü yoktur: 30° ile 210° aynı damardır.",
+          "Dizilim, damarı olan parçaları yalnızca damara uyan açılarla yerleştirir; damarsız parçaları serbestçe döndürebilir.",
+          "Varsayılan MDF 18’in damarı yoktur; kaplamalı ya da desenli plakada damarı siz verin."
+        ]
+      },
+      "3d": {
+        "title": "3D önizleme ve simülasyon",
+        "keywords": "3d önizleme simülasyon görünüm döndür kesim izle oynat kontrol",
+        "summary": "Kesimi makineye göndermeden önce 3D olarak izleyin ve kontrolleri görün.",
+        "body": [
+          "Önizleme / simülasyon adımı plakayı 3D gösterir: fareyle döndürün, tekerlekle yakınlaştırın.",
+          "Oynat ile takımın yolunu baştan sona izleyin; kesimler sırayla oluşur.",
+          "Otomatik kontroller (plaka sınırı, derinlik, köprüler) geçmeden dışa aktarım açılmaz. Her bulgu ilgili ayara götürür.",
+          "Zayıf cihazlarda 2D görünüm kullanılır."
+        ]
+      },
+      "disa-aktar": {
+        "title": "Dışa aktar: NC, DXF, PDF, etiket",
+        "keywords": "dışa aktar nc gcode g-code dosya indir dxf pdf etiket zip geçmiş kontrol listesi",
+        "summary": "Her plaka için bir NC dosyası; DXF, A4 PDF ve etiketler aynı yerden.",
+        "body": [
+          "Dışa aktar adımında önce kontrol listesini onaylayın (sıfır noktası, takım, plaka); onaysız NC dosyası üretilmez.",
+          "Her plaka için bir NC dosyası üretilir; hepsini tek zip olarak da indirebilirsiniz.",
+          "DXF (yerleşim ve parçalar), A4 PDF kesim raporu ve parça etiketleri de buradadır.",
+          "Proje sonradan değişirse dosyaları yeniden üretin; eski dosyalar geçmişte kalır.",
+          "Makine doğrulanmadıysa dosyalar “DOĞRULANMADI, önce air cut” uyarısı taşır."
+        ]
+      },
+      "kopru": {
+        "title": "Köprü ve ince tabaka",
+        "keywords": "köprü tab tutucu ince tabaka parça düşmesin sabitleme göbek iç kesim",
+        "summary": "Kesilen parça yerinden oynamasın diye konturda küçük köprüler bırakılır.",
+        "body": [
+          "Köprüler parçayı kesim bitene kadar plakaya bağlı tutar; parça sonra elle ayrılır.",
+          "Köprü sayısı, genişliği ve yüksekliği malzemenin kesim ayarlarındadır.",
+          "Küçük parçalarda “Köprü: Kapalı” seçilip ince tabaka kullanılabilir: son pasoda altta ince bir katman kalır. İnce tabakanın en az ve en çok kalınlığı vardır.",
+          "Bir iç kesimin göbeğine 2 köprü sığmazsa G-code üretilmez; açıklığı büyütün ya da delik aracıyla çizin."
+        ]
+      },
+      "air-cut": {
+        "title": "Air cut ve makine doğrulama",
+        "keywords": "air cut havada kesim doğrulama test kesimi makine onay ilk kesim saha testi güvenlik",
+        "summary": "Yeni ya da değişmiş bir makine profili, gerçek kesimden önce malzemesiz denenir.",
+        "body": [
+          "Makineler sayfasında makineyi açın, Doğrulama’ya geçin.",
+          "Adım 1 · Air cut: plakasız çalıştırın. Takımın en derin noktası malzeme üstünden 20 mm yukarıda kalır; hareketleri, sıfır noktasını ve hızları güvenle izlersiniz.",
+          "Adım 2 · Test kesimi: test parçasını fire bir plakada kesin, ölçün ve ölçüleri girin.",
+          "Doğrulanmamış makinenin dosyaları “DOĞRULANMADI, önce air cut” uyarısı taşır. Profil, takım seti ya da post değişirse doğrulama air cut’tan yeniden başlar.",
+          "Doğrulama sayfasındaki Saha testi kiti, yazdırılabilir kontrol listesini ve genişletilmiş test programını verir."
+        ]
+      }
+    }
+  },
+  "whatsNew": {
+    "title": "Yenilikler",
+    "description": "Son sürümlerde gelenler.",
+    "close": "Kapat",
+    "version": "Sürüm {version}",
+    "releases": [
+      {
+        "version": "0.9",
+        "date": "Kasım 2026",
+        "items": [
+          "Yardım sayfaları: başlangıç, kesim listesi, çizim, damar, 3D, dışa aktar, köprü ve air cut; komut paletinden ve sayfadaki aramadan bulunur.",
+          "Saha testi kiti: makine başına yazdırılabilir kontrol listesi ve genişletilmiş test programı.",
+          "Kaydedilmeden bırakılan yeni bir proje artık sonraki yeni projeye karışmaz."
+        ]
+      },
+      {
+        "version": "0.8",
+        "date": "Kasım 2026",
+        "items": [
+          "NC, DXF, PDF ve etiketler sunucuda üretilir; zip ve dışa aktarım geçmişi.",
+          "Proje durumu, ana sayfa, şirket ayarları ve malzeme kütüphanesi.",
+          "Köprü ve ince tabaka sınırları; makine arşivi ve bakım kaydı."
+        ]
+      },
+      {
+        "version": "0.7",
+        "date": "Kasım 2026",
+        "items": [
+          "Dizilim: üç mod, gerçek biçimli dizilim ve döndürme.",
+          "Artık plakalar (fire) saklanır ve sonraki işlerde önce kullanılır; kenar bandı düşümü.",
+          "3D önizleme ve kesim simülasyonu."
+        ]
+      }
+    ]
   }
 }
