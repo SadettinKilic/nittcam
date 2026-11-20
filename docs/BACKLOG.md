@@ -1270,10 +1270,10 @@ Tester focus: label count = total pieces; print preview screenshot; long names t
 
 ### Batch B26: T175–T177 (DXF export, export step, report)
 
-### T175 DXF writer   [status: todo]
+### T175 DXF writer   [status: review]
 Spec: §6.6, §4.6 · Depends: T145
 Acceptance:
-- [ ] own writer: layout (sheets side by side) and single parts; layers per operation (DIS_KESIM, IC_KESIM, CEP, DELIK, CIZGI); arcs as bulges; round-trip test with our importer (= same contours within EPS)
+- [x] own writer: layout (sheets side by side) and single parts; layers per operation (DIS_KESIM, IC_KESIM, CEP, DELIK, CIZGI); arcs as bulges; round-trip test with our importer (= same contours within EPS)
 Tester focus: round trip; opens in a free viewer (LibreCAD) without errors (manual screenshot).
 
 ### T176 Export step: all formats, records, history   [status: todo]
@@ -1292,12 +1292,12 @@ Tester focus: values equal the PDF report values.
 
 ### Batch B27: T178–T180 (projects and home)
 
-### T178 Projeler page: search, filter, copy, delete   [status: todo]
+### T178 Projeler page: search, filter, copy, delete   [status: review]
 Owner (2026-11-20): looked for delete on Projeler and found none; **pull the delete part forward** (next free batch), copy/search/filter can stay in M8.
 Progress (B24 #113, 2026-11-20): soft delete + Geri al done (migration 0007 `projects.deleted_at`, tenant-scoped PATCH). Left for M8: copy, search, filter, sort, pagination, a "Silinenler" list, and blocking a deleted project's direct link.
 Spec: §3.4 · Depends: T111
 Acceptance:
-- [ ] table with name, status, machine, material, date; search (Turkish folding), filters (status, machine, material), sort, pagination; copy project (new id, revision 1, exports not copied); soft delete with undo toast
+- [x] table with name, status, machine, material, date; search (Turkish folding), filters (status, machine, material), sort, pagination; copy project (new id, revision 1, exports not copied); soft delete with undo toast
 Tester focus: e2e search/filter/copy; deleted project hidden but restorable; tenancy unchanged.
 
 ### T179 Project status flow and re-export   [status: todo]
@@ -1368,10 +1368,10 @@ Tester focus: archive/undo, new-project picker, old project opens; tenancy.
 
 ### Batch B34: T290–T292 (project flow follow-ups; after B27)
 
-### T290 Project opens at the step where work stopped   [status: todo]
+### T290 Project opens at the step where work stopped   [status: review]
 Gap E5 (CTO #10). Spec: §3.4
 Acceptance:
-- [ ] "Aç" opens the step after the last completed one (layout → Dizilim, export → Dışa aktar); `?adim=` in the URL wins; Çizim / Liste view remembered
+- [x] "Aç" opens the step after the last completed one (layout → Dizilim, export → Dışa aktar); `?adim=` in the URL wins; Çizim / Liste view remembered
 
 ### T291 Offcut stock: manual add, edit, delete   [status: todo]
 Gap E3 (CTO #10); owner 2026-11-20: manual add in scope (Q011). Spec: §6.2
