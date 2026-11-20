@@ -1117,7 +1117,7 @@ Tester focus: run suite twice → stable screenshots; review all images.
 ### Batch B20a: T282, T283 + rider T281 (CTO review #8 must-fixes, D-047)
 Review: `docs/reviews/2026-11-20-cto-design-review-8.md` §"Şimdi düzelt" A and B (full acceptance text there; the lines below are the contract).
 
-### T282 Unverified ready-template values reach the checklist, summary, panel and G-code (must-fix: wrong output risk)   [status: todo]
+### T282 Unverified ready-template values reach the checklist, summary, panel and G-code (must-fix: wrong output risk)   [status: done]
 Spec: §4.7, §7.2, §14.2 · Depends: T150, T151 · Decision: K2 in review #8
 Acceptance:
 - [ ] a project with an instance of an unverified ready template gets its own Dışa aktar checklist line ("Hazır şablon ölçüleri doğrulanmadı: … Ölçüleri kendi menteşe / kulp verinizle karşılaştırdım."); İndir stays closed until it is ticked. Company templates (or ready ones copied and edited) add no line
@@ -1126,7 +1126,7 @@ Acceptance:
 - [ ] if over half a day: checklist + summary now, badge + comment as a follow-up task
 Tester focus: ready-template door (line, İndir closed), company-template door (no line), cabinet without templates (unchanged); comment in the downloaded file; 1440 light/dark; axe.
 
-### T283 Project name: typing replaces the default name, never appends (must-fix: wrong file name on every job)   [status: todo]
+### T283 Project name: typing replaces the default name, never appends (must-fix: wrong file name on every job)   [status: done]
 Spec: §3.6, §6.4 · Depends: none
 Acceptance:
 - [ ] while the name is the default ("Adsız proje"), click / focus / pencil selects the whole text; the first typed character replaces it. A user-set name keeps today's caret behaviour
@@ -1213,6 +1213,7 @@ Tester focus: numbering consistent across layout, simulation, 3D; visual.
 ### T281 Nesting run/cancel with 1500 copies stays under 50 ms per main-thread task   [status: todo]
 Spec: §11 · Depends: T163
 Found in integration/3 (2026-11-20): CI saw long tasks of 50–68 ms on run/cancel with 1500 copies (T163's own bar is < 50 ms with 500 parts, met). The spec `b22-nesting-options.spec.ts` allows 100 ms for now.
+Progress (B20a #103, 2026-11-20): canvas onDrop identity fixed, 0 long tasks at 2× CPU throttle; at 3× the whole wizard tree re-renders (setRunning, autosave after a mode click) → 52–104 ms. Remaining: memo boundaries on the wizard/step subtrees, then restore the 50 ms bar.
 Acceptance:
 - [ ] profile run/cancel at 1500 copies (CPU-throttled), split or defer the main-thread work; restore the 50 ms bar in the spec
 Tester focus: none beyond CI.
