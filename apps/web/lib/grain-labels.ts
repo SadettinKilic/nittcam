@@ -1,11 +1,11 @@
 import type { GrainDialLabels } from '@nittcam/ui';
 import { formatNumberTr } from '@nittcam/ui';
 import { fill } from './fill';
-import { getMessages, type Messages } from './messages';
+import type { Messages } from './messages';
 
-/** GrainDial labels from the translation file (T115). */
+/** GrainDial labels from the translation file (T115); client code passes `useMessages().grainDial`. */
 export function grainDialLabels(
-  m: Messages['grainDial'] = getMessages().grainDial,
+  m: Messages['grainDial'],
   opts: { note?: boolean } = {},
 ): GrainDialLabels {
   return {

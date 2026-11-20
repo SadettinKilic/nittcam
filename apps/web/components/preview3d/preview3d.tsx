@@ -25,7 +25,8 @@ import { drawnParts, type DrawnPart } from '../layout-view/model';
 import { clampOffset, explodeMax } from '../../lib/preview3d/interaction';
 import { onThemeChange, readTokenColors } from '../../lib/canvas-theme';
 import { fill } from '../../lib/fill';
-import { getMessages, type Messages } from '../../lib/messages';
+import type { Messages } from '../../lib/messages';
+import { useMessages } from '../../lib/messages-context';
 import { cabinetGroups, hasFaceFeatures } from '../../lib/preview3d/assembly';
 import {
   TOOLBAR_PRESETS,
@@ -132,10 +133,8 @@ export function Preview3D({
   const [simple, setSimple] = useState(() => typeof window !== 'undefined' && readSimple3d());
   const [autoSimple, setAutoSimple] = useState(false);
   // T158 "Montaj görünümü": cabinet groups of the cut list as assembled boxes (view only).
-  const groups = useMemo(
-    () => cabinetGroups(project, getMessages().cutList.cabinet.roles),
-    [project],
-  );
+  const roles = useMessages().cutList.cabinet.roles;
+  const groups = useMemo(() => cabinetGroups(project, roles), [project, roles]);
   const [assembly, setAssembly] = useState(false);
   // T160 "Görüntü kaydet": the live scene fills this with a frame grabber.
   const capture = useRef<CaptureFn | null>(null);

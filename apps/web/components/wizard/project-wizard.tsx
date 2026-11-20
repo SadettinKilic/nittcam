@@ -16,6 +16,7 @@ import { findMaterialParams, findTool } from '@nittcam/core';
 import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
+import { MessagesContext } from '../../lib/messages-context';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
 import { STEP_REQUEST_EVENT } from '../../lib/step-request';
 import { TemplateUpdatePrompt } from '../editor/template-update';
@@ -240,16 +241,23 @@ async function getJson<T>(
  * The Oluştur wizard (T023, spec §3.6): loads the company's machines and the project (or starts a
  * new one that the first autosave creates), then runs the five steps on one project session.
  */
-export function ProjectWizard({
-  messages,
-  projectId,
-  step,
-}: {
+interface ProjectWizardProps {
   messages: Messages;
   projectId: string | null;
   /** The URL's `?adim=`; null = none (a saved project then opens where work stopped, T290). */
   step: StepKey | null;
-}) {
+}
+
+export function ProjectWizard(props: ProjectWizardProps) {
+  // T186: deep components read texts from here instead of importing tr.json.
+  return (
+    <MessagesContext.Provider value={props.messages}>
+      <WizardBody {...props} />
+    </MessagesContext.Provider>
+  );
+}
+
+function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
   const t = messages.wizard;
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   // The URL's step when the wizard mounts (keyed by project); later steps are the session's own.

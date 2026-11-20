@@ -47,6 +47,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { formatMm, sizeText } from '../../lib/canvas-labels';
 import { fill } from '../../lib/fill';
 import { grainDialLabels } from '../../lib/grain-labels';
+import { useMessages } from '../../lib/messages-context';
 import type { Messages } from '../../lib/messages';
 import { CornerTools, TightCornerNotice } from './corner-tools';
 
@@ -359,6 +360,7 @@ export function PartProperties({
   /** Stock thickness, mm (default on-line depth, T277). */
   thickness?: number;
 }) {
+  const grainText = useMessages().grainDial;
   const outline = deriveOutline(part);
   const n = outline.length;
   const seg = sub?.kind === 'segment' && sub.index < n ? sub.index : null;
@@ -504,7 +506,7 @@ export function PartProperties({
               if (a !== part.grain.angle)
                 run('setPartGrain', { id: part.id, mode: 'fixed', angle: a });
             }}
-            labels={grainDialLabels(undefined, { note: false })}
+            labels={grainDialLabels(grainText, { note: false })}
             className="self-center"
             data-testid="prop-grain-dial"
           />
