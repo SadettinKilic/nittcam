@@ -4,14 +4,7 @@ import Link from 'next/link';
 import { hingeEdgeHandleParts, unverifiedTemplateNames, type Project } from '@nittcam/core';
 import { Button, Card, Checkbox, IconButton, Tooltip, notify } from '@nittcam/ui';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
-import {
-  CircleAlert,
-  CircleCheck,
-  Copy,
-  Download,
-  FileCode,
-  ShieldAlert,
-} from 'lucide-react';
+import { CircleAlert, CircleCheck, Copy, Download, FileCode, ShieldAlert } from 'lucide-react';
 import { focusRing } from '../page/page-header';
 import { Callout } from './panels';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
