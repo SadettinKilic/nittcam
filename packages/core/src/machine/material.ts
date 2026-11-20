@@ -7,15 +7,12 @@
  * resolve for every spelling we know. Pure.
  */
 import { EPS } from '../geometry/constants';
-import {
-  materialKindSchema,
-  type MachineProfile,
-  type MaterialKind,
-  type MaterialParams,
-} from './profile';
+import { MATERIAL_KIND_IDS, type MaterialKind } from './material-kinds';
+import type { MachineProfile, MaterialParams } from './profile';
+import type { LibraryMaterial } from './library';
 
 /** Every material kind of the wizard, in menu order (§3.6). */
-export const MATERIAL_KINDS: readonly MaterialKind[] = materialKindSchema.options;
+export const MATERIAL_KINDS: readonly MaterialKind[] = MATERIAL_KIND_IDS;
 
 /**
  * Known spellings per kind, compared after `normalizeMaterialId` (lower case, Turkish letters
@@ -102,4 +99,27 @@ export function profileThicknesses(
   return [
     ...new Set(profile.materials.filter((m) => m.material === kind).map((m) => m.thickness)),
   ].sort((a, b) => a - b);
+}
+
+/** One thickness of an entry with the machine's parameter set for it (or none). */
+export interface LibraryParamLink {
+  thickness: number;
+  params: MaterialParams | undefined;
+}
+
+/**
+ * The parameter set a machine profile has for each thickness of a library entry (the "linked
+ * parameter set per machine" of T121). A missing set is `undefined`: the wizard then shows the
+ * "no cutting parameters" error, as for any stock.
+ */
+export function libraryParamLinks(
+  material: Pick<LibraryMaterial, 'kind' | 'thicknesses'>,
+  profile: Pick<MachineProfile, 'materials'>,
+): LibraryParamLink[] {
+  return material.thicknesses.map((thickness) => ({
+    thickness,
+    params: profile.materials.find(
+      (m) => m.material === material.kind && Math.abs(m.thickness - thickness) <= EPS,
+    ),
+  }));
 }

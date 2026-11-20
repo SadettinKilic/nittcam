@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { defaultMachineProfile, type MachineProfile } from '@nittcam/core';
+import type { MachineProfile } from '@nittcam/core';
 import {
   Badge,
   Button,
@@ -55,18 +55,10 @@ type Mode =
       kind: 'form';
       machineId: string | null;
       version?: number;
-      initial: MachineProfile;
+      initial: MachineProfile | null;
       key: number;
       addParams?: ParamFix['set'];
     };
-
-/** A new machine starts from the generic profile, not marked as an example, with no name. */
-function newProfile(): MachineProfile {
-  const p = defaultMachineProfile();
-  p.example = false;
-  p.identity.name = '';
-  return p;
-}
 
 /** Table width × depth as a Measure (T195): Turkish digits, tabular, unit muted. */
 function TableSize({ m, className }: { m: MachineListItem; className?: string }) {
@@ -87,7 +79,7 @@ export function MachinesView({
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [mode, setMode] = useState<Mode>(() =>
-    startNew ? { kind: 'form', machineId: null, initial: newProfile(), key: 0 } : { kind: 'list' },
+    startNew ? { kind: 'form', machineId: null, initial: null, key: 0 } : { kind: 'list' },
   );
   const [formKey, setFormKey] = useState(0);
 
@@ -147,7 +139,7 @@ export function MachinesView({
 
   function openNew() {
     setFormKey((k) => k + 1);
-    setMode({ kind: 'form', machineId: null, initial: newProfile(), key: formKey + 1 });
+    setMode({ kind: 'form', machineId: null, initial: null, key: formKey + 1 });
   }
 
   function onSaved(detail: MachineDetail) {
