@@ -1210,6 +1210,16 @@ Tester focus: numbering consistent across layout, simulation, 3D; visual.
 ---
 
 
+
+### T284 Tabs on the corner arcs of a rounded rectangle: decide and align product + safety oracle (must-fix: G-code safety, flaky on main)   [status: todo]
+Spec: §6.3 · Depends: T272 · Decision: D-058
+Found 2026-11-20 in integration/7 CI (main code from B18): `packages/core/src/toolpath/toolpath.tabs.safety.test.ts:377` fails with `seed: 721042798`, counter-example 20 × 20 part, corner radius 7.5 (rFrac 0.75), tool Ø3, tab width 2, 1 tab: the tab sits on a corner arc ("tab top move kind arc", "tab chord crosses a corner zone").
+D-058 says a tab may sit on one arc only when no straight edge fits and "never on a corner". A corner arc of a rounded rectangle is ambiguous: decide (PO; owner if unclear) whether it counts as a corner. Conservative default: no tab on a corner arc whose sweep is ≤ 90° between two straight edges; such a small part then gets `SMALL_PART_UNSECURED` (thin skin T143 stays the alternative), as before T272.
+Acceptance:
+- [ ] the counter-example pinned as a regression test; product and the independent safety oracle agree on the rule (no weakened oracle)
+- [ ] Ø60 disc and `sign-letters.dxf` still export with tabs (T272 unchanged for all-arc parts); goldens byte-identical
+- [ ] the property passes 20 runs with random seeds
+Tester focus: gcode-safety review of the rule; rounded rectangles of several radii.
 ### T281 Nesting run/cancel with 1500 copies stays under 50 ms per main-thread task   [status: todo]
 Spec: §11 · Depends: T163
 Found in integration/3 (2026-11-20): CI saw long tasks of 50–68 ms on run/cancel with 1500 copies (T163's own bar is < 50 ms with 500 parts, met). The spec `b22-nesting-options.spec.ts` allows 100 ms for now.
