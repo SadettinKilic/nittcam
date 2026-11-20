@@ -45,6 +45,8 @@ export interface PostMeta {
 export interface PostCuttingMeta {
   tabMode: 'all' | 'small' | 'off';
   tabCount: number;
+  /** T294: tabs a small part really gets (the safety rule's minimum may raise `tabCount`). */
+  smallTabCount?: number;
   tabWidth: number;
   tabHeight: number;
   /** Thin skin under small parts, mm; null = none. */

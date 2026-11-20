@@ -1,6 +1,7 @@
 'use client';
 
 import type { ProgramTools, SimSummary } from '@nittcam/core';
+import { focusCuttingSettings } from './cutting-settings';
 import { fill } from '../../lib/draft-project';
 import { Measure } from '@nittcam/ui';
 import { TriangleAlert } from 'lucide-react';
@@ -19,6 +20,7 @@ export function SummaryCard({
   links = {},
   program = null,
   templateNames = [],
+  cutting = null,
 }: {
   t: SimText;
   summary: SimSummary;
@@ -32,6 +34,8 @@ export function SummaryCard({
   /** T287: errors that lock the export although the program ran (shown open, with places). */
   errors?: readonly Finding[];
   links?: PartLinks;
+  /** T294: one line with the cutting settings and a way to the panel ("Kesim ayarları"). */
+  cutting?: { line: string; edit: string } | null;
 }) {
   const s = t.summary;
   // Measure (T195): Turkish digits, tabular figures, the unit quieter than the number.
@@ -91,6 +95,22 @@ export function SummaryCard({
           </div>
         ))}
       </dl>
+      {cutting ? (
+        <p
+          className="flex flex-wrap items-baseline gap-x-2 text-sm text-fg"
+          data-testid="sim-summary-cutting"
+        >
+          <span>{cutting.line}</span>
+          <button
+            type="button"
+            data-testid="sim-summary-cutting-edit"
+            onClick={focusCuttingSettings}
+            className="rounded-sm text-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            {cutting.edit}
+          </button>
+        </p>
+      ) : null}
       {program && program.sheets.some((sh) => sh.tools.length > 1) ? (
         <p className="text-sm text-fg" data-testid="sim-tool-order">
           {fill(s.toolOrder, {

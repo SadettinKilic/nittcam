@@ -51,14 +51,18 @@ export const UNVERIFIED_HEADER = 'DOĞRULANMADI, önce air cut';
  */
 export function cuttingHeader(c: PostCuttingMeta): string {
   const f3 = (v: number) => formatFixed(v, 3);
-  const size = `${c.tabCount} adet ${f3(c.tabWidth)} x ${f3(c.tabHeight)} mm`;
+  // T294: the count really used; small parts get at least the safety rule's minimum.
+  const small = Math.max(c.smallTabCount ?? c.tabCount, c.tabCount);
+  const dims = `${f3(c.tabWidth)} x ${f3(c.tabHeight)} mm`;
+  const size = `${c.tabCount} adet ${dims}`;
   const skin = c.skin !== null ? [`küçük parça ince tabaka ${f3(c.skin)} mm`] : [];
+  const smallMore = small > c.tabCount && c.skin === null ? [`küçük parçada ${small} adet`] : [];
   const tabs =
     c.tabMode === 'all'
-      ? [`köprü her parçada ${size}`, ...skin]
+      ? [`köprü her parçada ${size}`, ...smallMore, ...skin]
       : c.tabMode === 'off'
         ? ['köprü kapalı', ...skin]
-        : [`köprü yalnız küçük parçada ${size}`];
+        : [`köprü yalnız küçük parçada ${small} adet ${dims}`];
   const lead = `giriş ${c.leadIn === 'arc' ? 'yay' : 'düz'}`;
   return `KESİM: ${[...tabs, lead, `yön ${c.direction}`].join(', ')}`;
 }
