@@ -1,6 +1,6 @@
 import type { GrainDialLabels } from '@nittcam/ui';
 import { formatNumberTr } from '@nittcam/ui';
-import { fill } from './draft-project';
+import { fill } from './fill';
 import { getMessages, type Messages } from './messages';
 
 /** GrainDial labels from the translation file (T115). */

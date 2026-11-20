@@ -2,7 +2,7 @@
 
 import { summarizeLayout, usedOffcutIds, type Project } from '@nittcam/core';
 import { useMemo } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { useNestProgress, type NestProgressStore } from '../../lib/nesting-progress';
 import { Button, IconButton, Popover, PopoverContent, PopoverTrigger, Progress } from '@nittcam/ui';

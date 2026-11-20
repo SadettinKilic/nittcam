@@ -13,7 +13,7 @@ import {
 } from '@nittcam/ui';
 import { Layers, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import type { NewOffcut, OffcutItem, OffcutStatus } from '../../lib/offcuts-api';
 import { OffcutDialog } from './offcut-dialog';

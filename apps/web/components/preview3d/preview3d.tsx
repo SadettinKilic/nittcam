@@ -24,7 +24,7 @@ import { sizeText } from '../../lib/canvas-labels';
 import { drawnParts, type DrawnPart } from '../layout-view/model';
 import { clampOffset, explodeMax } from '../../lib/preview3d/interaction';
 import { onThemeChange, readTokenColors } from '../../lib/canvas-theme';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { getMessages, type Messages } from '../../lib/messages';
 import { cabinetGroups, hasFaceFeatures } from '../../lib/preview3d/assembly';
 import {

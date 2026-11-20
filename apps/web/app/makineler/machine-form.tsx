@@ -39,7 +39,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { focusRing } from '../../components/page/page-header';
 import { CONTROLLER_LIBRARY, controllerProfile } from '../../lib/controller-library';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { ApiError, MachineDetail } from '../../lib/machines-api';
 import {
   FORM_SECTIONS,

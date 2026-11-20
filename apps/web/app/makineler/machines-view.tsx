@@ -30,7 +30,7 @@ import { PageHeader, focusRing, pageContainer } from '../../components/page/page
 import { Callout } from '../../components/wizard/panels';
 import type { ParamFix } from '../../lib/machine-form';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { MachineForm } from './machine-form';
 import { MaintenanceDialog } from './maintenance-dialog';

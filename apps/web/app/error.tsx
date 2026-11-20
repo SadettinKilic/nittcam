@@ -4,7 +4,7 @@ import { Button, ErrorState } from '@nittcam/ui';
 import { ServerCrash } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { fill } from '../lib/draft-project';
+import { fill } from '../lib/fill';
 import { getMessages } from '../lib/messages';
 
 const t = getMessages().feedback.error;

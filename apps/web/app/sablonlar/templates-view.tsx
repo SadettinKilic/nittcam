@@ -37,7 +37,7 @@ import {
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { PageHeader, pageContainer } from '../../components/page/page-header';
 import { Callout } from '../../components/wizard/panels';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import {
   addTemplateVersion,

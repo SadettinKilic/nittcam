@@ -24,10 +24,14 @@ import { isUntitledName, untitledName } from '../../lib/untitled-name';
 import { CutListEditor } from '../parts/cut-list-editor';
 import { splitOffProject, type SplitTarget } from '../../lib/split-project';
 import { ProjectLinksBar } from './project-links';
-import { DrawingBoard } from '../editor/drawing-board';
-import { SimulationView, type SimMachine } from '../simulation/simulation-view';
-import { ExportStep } from './export-step';
-import { LayoutStep } from './layout-step';
+import type { SimMachine } from '../simulation/simulation-view';
+import {
+  DrawingBoard,
+  ExportStep,
+  LayoutStep,
+  SimulationView,
+  preloadWizardSteps,
+} from './lazy-steps';
 import { runLeaveTransition } from '../../lib/preview3d/leave';
 import { tableSpecOf } from '../../lib/preview3d/stage';
 import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
@@ -265,6 +269,9 @@ export function ProjectWizard({
       setAttempt((a) => a + 1);
     }
   }
+
+  // T186: the other steps' chunks come after the page has loaded.
+  useEffect(() => preloadWizardSteps(), []);
 
   useEffect(() => {
     let live = true;

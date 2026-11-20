@@ -45,7 +45,7 @@ import { CircleAlert, X } from 'lucide-react';
 import { useInnerIssues } from './inner-issues';
 import { useEffect, useId, useRef, useState } from 'react';
 import { formatMm, sizeText } from '../../lib/canvas-labels';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { grainDialLabels } from '../../lib/grain-labels';
 import type { Messages } from '../../lib/messages';
 import { CornerTools, TightCornerNotice } from './corner-tools';

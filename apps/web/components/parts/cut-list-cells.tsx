@@ -33,7 +33,7 @@ import {
   type NavDirection,
   type Validated,
 } from '../../lib/cut-list-grid';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { grainDialLabels } from '../../lib/grain-labels';
 import type { Messages } from '../../lib/messages';
 

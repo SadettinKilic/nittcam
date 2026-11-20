@@ -2,7 +2,7 @@
 
 import type { SimFile } from '@nittcam/core';
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { lineTarget, type Row } from '../../lib/gcode-lines';
 import type { SimText } from './model';
 

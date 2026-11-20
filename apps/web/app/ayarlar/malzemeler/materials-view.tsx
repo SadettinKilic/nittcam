@@ -25,7 +25,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { MaterialSwatch } from '../../../components/materials/swatch';
 import { PageHeader, pageContainer } from '../../../components/page/page-header';
-import { fill } from '../../../lib/draft-project';
+import { fill } from '../../../lib/fill';
 import { draftFrom, emptyDraft, type MaterialDraft } from '../../../lib/material-form';
 import type { MachineDetail, MachineListItem } from '../../../lib/machines-api';
 import { fetchMaterials, type MaterialItem } from '../../../lib/materials-api';

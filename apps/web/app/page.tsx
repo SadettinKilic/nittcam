@@ -41,7 +41,7 @@ import {
   type WasteSummary,
 } from '../lib/dashboard';
 import { formatPercent } from '../lib/report-summary';
-import { fill } from '../lib/draft-project';
+import { fill } from '../lib/fill';
 import { getMessages, type Messages } from '../lib/messages';
 import { onboardingMessages } from '../lib/onboarding';
 import type { MachineListItem } from '../lib/machines-api';

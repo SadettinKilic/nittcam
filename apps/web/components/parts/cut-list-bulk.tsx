@@ -21,7 +21,7 @@ import {
 } from '@nittcam/ui';
 import { useState } from 'react';
 import { EDGES, bulkParams, type EdgeKey, type GrainChoice } from '../../lib/cut-list-grid';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { grainDialLabels } from '../../lib/grain-labels';
 import type { Text } from './cut-list-cells';
 

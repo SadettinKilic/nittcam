@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import {
   cutListToCsv,
   cutSize,
@@ -104,7 +105,6 @@ import {
 import { fill, newPartId, stockHasGrain } from '../../lib/draft-project';
 import type { SplitTarget } from '../../lib/split-project';
 import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
-import { DxfImportDialog } from './dxf-import-dialog';
 import type { Messages } from '../../lib/messages';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
@@ -126,6 +126,9 @@ import {
 import { BulkEditSheet } from './cut-list-bulk';
 import { PastePanel } from './paste-panel';
 import { IssuesOkChip } from '../wizard/issues-ok-chip';
+
+/** The DXF dialog and its parser load when the dialog opens (T186). */
+const DxfImportDialog = dynamic(() => import('./dxf-import-dialog').then((m) => m.DxfImportDialog));
 
 export type { Run } from './cut-list-cells';
 

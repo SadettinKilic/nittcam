@@ -1,5 +1,5 @@
 import { maintenanceStatus, type MaintenanceEntry, type MaintenanceStatus } from '@nittcam/core';
-import { fill } from './draft-project';
+import { fill } from './fill';
 import type { Messages } from './messages';
 
 type Text = Messages['machines']['maintenance'];

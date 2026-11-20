@@ -68,7 +68,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { useReducedMotion } from '../../lib/use-preferences';
 import type { SimulationMeta, SimulationResponse } from '../../lib/simulation-messages';
 import { useSimulationWorker } from '../../lib/use-simulation-worker';

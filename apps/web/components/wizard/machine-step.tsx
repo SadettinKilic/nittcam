@@ -22,7 +22,7 @@ import { Preview3D } from '../preview3d/preview3d';
 import { ViewSwitch } from '../preview3d/view-switch';
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { useView3d } from '../../lib/preview3d/view-memory';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { fillRich } from '../../lib/fill-rich';
 import { grainDialLabels } from '../../lib/grain-labels';
 import { paramFixHref } from '../../lib/machine-form';

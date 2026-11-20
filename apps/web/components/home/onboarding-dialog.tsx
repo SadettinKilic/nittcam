@@ -15,7 +15,8 @@ import { ArrowLeft, ArrowRight, Box, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { fill, newPartId } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
+import { newPartId } from '../../lib/part-id';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import { fetchMaterials } from '../../lib/materials-api';
 import {

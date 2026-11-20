@@ -32,7 +32,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { useEffect, useState, type ComponentType } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { requestStep } from '../../lib/step-request';
 import { STEPS } from '../../lib/wizard-steps';

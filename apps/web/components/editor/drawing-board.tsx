@@ -47,7 +47,8 @@ import {
 } from 'react';
 import type { Messages } from '../../lib/messages';
 import { onThemeChange } from '../../lib/canvas-theme';
-import { fill, newPartId } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
+import { newPartId } from '../../lib/part-id';
 import {
   backspace,
   clickAt,
@@ -101,7 +102,8 @@ import { CanvasBoundary } from '../feedback/canvas-boundary';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { readEditorColors, type EditorColors } from './colors';
 import { DynamicInput } from './dynamic-input';
-import { RULER_PX, type EditorFocus, type SnapGlyph } from './editor-canvas';
+import type { EditorFocus, SnapGlyph } from './editor-canvas';
+import { RULER_PX } from './ruler';
 import { BoardActionBar, EditorInspector } from './inspector';
 import type { SubSelection } from './properties';
 import { boardSummary } from '../../lib/editor/summary';
