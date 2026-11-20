@@ -108,8 +108,11 @@ test('B52: "Hep böyle yap" asks "İç kesim olarak ekle?" once', async ({ page,
   const rect = async (x: number, y: number) => {
     const a = await screenOf(canvas, { x: at.x + x, y: at.y + y });
     const b = await screenOf(canvas, { x: at.x + x + 100, y: at.y + y + 100 });
-    await page.mouse.click(a.x, a.y, { modifiers: ['Alt'] });
-    await page.mouse.click(b.x, b.y, { modifiers: ['Alt'] });
+    // Alt = free placement (no snap).
+    await page.keyboard.down('Alt');
+    await page.mouse.click(a.x, a.y);
+    await page.mouse.click(b.x, b.y);
+    await page.keyboard.up('Alt');
   };
   await canvas.focus();
   await page.keyboard.press('r');
@@ -163,7 +166,9 @@ test('B52: line tool takes the direction from an arrow key when only a length is
   // Start far right of the part (empty board), then 100 up via ↑, 100 left via ←, 100 down.
   const sx = box.x + box.width - 120;
   const sy = box.y + box.height - 120;
-  await page.mouse.click(sx, sy, { modifiers: ['Alt'] });
+  await page.keyboard.down('Alt');
+  await page.mouse.click(sx, sy);
+  await page.keyboard.up('Alt');
   for (const k of ['ArrowUp', 'ArrowLeft', 'ArrowDown']) {
     await page.mouse.move(sx + 5, sy + 5);
     await page.keyboard.type('100');
