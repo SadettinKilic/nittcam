@@ -45,7 +45,8 @@ export type ValidationCode =
   | 'INNER_CONTOUR_TOO_SMALL'
   | 'INNER_SLUG_UNSECURED'
   | 'LINE_OUTSIDE_PART'
-  | 'PART_NOT_IN_LAYOUT';
+  | 'PART_NOT_IN_LAYOUT'
+  | 'MARGIN_BELOW_TOOL_RADIUS';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -381,6 +382,34 @@ export const unverifiedCuttingParams: ValidationRule = (project, context) => {
 };
 
 /**
+ * T300 (CTO #12 E1, D-085): the smallest sheet margin that keeps the cutter on the sheet. An
+ * outside profile runs the tool centre one radius outside the part, so a part on a margin below
+ * the radius sends the tool past the sheet edge (and past the work envelope when the sheet sits
+ * at the machine origin). Leads are clipped to the sheet by the toolpath, so the radius is enough.
+ */
+export function minSheetMargin(toolDiameter: number): number {
+  return toolDiameter > 0 ? toolDiameter / 2 : 0;
+}
+
+/**
+ * (e2) T300 (D-045, D-085): the sheet margin is below the tool radius. A warning on the Dizilim
+ * step, before the G-code check stops the export with a machine error. Skipped without a tool.
+ */
+export const marginBelowToolRadius: ValidationRule = (project, context) => {
+  const tool = validationToolDiameter(project, context);
+  const min = minSheetMargin(tool);
+  if (min <= 0 || project.nesting.margin >= min - EPS) return [];
+  return [
+    {
+      code: 'MARGIN_BELOW_TOOL_RADIUS',
+      severity: 'warning',
+      path: 'nesting.margin',
+      message: `the ${mm(project.nesting.margin)} mm sheet margin is below the ${mm(min)} mm radius of the Ø${mm(tool)} mm tool; the tool leaves the sheet`,
+    },
+  ];
+};
+
+/**
  * (f) The sheet does not fit the machine table at its place (`origin.sheetOffset`), spec §3.6
  * "Plaka tablaya sığmıyorsa uyarı". A warning here; the automatic G-code check blocks the export
  * (`SHEET_OUTSIDE_TABLE`, D-027). EPS slack. Skipped without a profile.
@@ -535,6 +564,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   placementGrain,
   noCuttingParams,
   unverifiedCuttingParams,
+  marginBelowToolRadius,
   sheetLargerThanTable,
   holeInsidePart,
   innerContourRules,

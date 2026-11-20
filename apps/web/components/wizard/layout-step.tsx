@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  minSheetMargin,
   usableOffcuts,
   type LayoutSummary,
   type NestingMode,
@@ -51,6 +52,7 @@ const MODES: readonly NestingMode[] = ['minWaste', 'fastest', 'minToolChanges'];
 const ROTATIONS: readonly NestingRotation[] = ['free', 'step45', 'step15', 'none'];
 
 const percent = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+const mmText = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
 
 type NestMessage = { kind: 'error' | 'info'; text: string } | null;
 
@@ -445,13 +447,22 @@ function NestSettings({
             })}
           </RadioGroup>
         </div>
-        <div className="grid grid-cols-2 items-end gap-3">
+        <div className="grid grid-cols-2 items-start gap-3">
           <NumberField
             label={t.gap}
             value={project.nesting.gap}
             min={-1}
             errors={errors}
             onCommit={(gap) => run('setNestingOptions', { gap })}
+            note={
+              toolDiameter > 0
+                ? {
+                    text: fill(t.gapNote, { tool: mmText.format(toolDiameter) }),
+                    tone: 'muted',
+                    testId: 'layout-gap-note',
+                  }
+                : undefined
+            }
           />
           <NumberField
             label={t.margin}
@@ -459,6 +470,20 @@ function NestSettings({
             min={-1}
             errors={errors}
             onCommit={(margin) => run('setNestingOptions', { margin })}
+            note={
+              // T300 (CTO #12 E1, D-085): below the tool radius the cutter leaves the sheet.
+              project.nesting.margin < minSheetMargin(toolDiameter) - 1e-3
+                ? {
+                    text: fill(t.marginWarning, {
+                      tool: mmText.format(toolDiameter),
+                      min: mmText.format(minSheetMargin(toolDiameter)),
+                    }),
+                    tone: 'warning',
+                    testId: 'layout-margin-warning',
+                  }
+                : undefined
+            }
+            testId="layout-margin"
           />
         </div>
         <div className="flex flex-col gap-1.5">
