@@ -16,6 +16,7 @@ import type {
   ExportRecord,
   ExportResponse,
 } from '../../../lib/exports-api';
+import { ncNameOptions } from '../../../lib/file-names';
 import type { ProjectDetail, ProjectListItem } from '../../../lib/projects-api';
 import { GET as list, POST as create } from './route';
 import { PUT as save } from './[id]/route';
@@ -130,9 +131,13 @@ describe('POST /api/projects/:id/export', () => {
       project,
       { profile: m.profile, version: m.version.version, verification: m.state },
       POST_CONFIGS[m.profile.post.id],
-      { projectName: 'Mutfak dolabı', revision: detail.revision },
+      ncNameOptions('Mutfak dolabı', detail.revision),
     );
     expect(expected.ok).toBe(true);
+    // T295: one pattern, `<project>_r<revision>_S<sheet>.tap`.
+    expect(out.files[0]?.name).toBe(
+      `Mutfak_dolabi_r${detail.revision}_S1.${expected.files[0]?.name.split('.').pop()}`,
+    );
     expect(out.files.map((f) => f.name)).toEqual(expected.files.map((f) => f.name));
     const storage = companyStorage(scope.companyId);
     for (const [i, f] of out.files.entries()) {

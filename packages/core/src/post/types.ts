@@ -30,6 +30,11 @@ export interface PostMeta {
   /** File-name stem; default `projectName`. */
   fileStem?: string;
   /**
+   * T295 (D-073): put `_r<revision>` after the stem (`<stem>_r3_S1.tap`). The revision marker is
+   * kept whole like the sheet/tool markers; only the stem is shortened. Default off (goldens).
+   */
+  revisionInFileName?: boolean;
+  /**
    * Names of the unverified ready templates in the job (T282); absent or empty = no header line,
    * so programs without such a template stay byte-identical.
    */

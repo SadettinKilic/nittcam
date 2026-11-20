@@ -1396,7 +1396,7 @@ Acceptance: as in review #11 section A: `setTabs` refuses width < 3 mm and heigh
 Gap E1 (CTO #11). Spec: §6.3
 Acceptance: as in review #11 section E1: "Kapalı → Her parçada" returns to the start state or the panel shows the thin skin the panel switched on; "Adet" says per part and the header matches the real count on small parts; the card is reachable at 1440 × 900 without scrolling the page (or a link from the summary); a one-line hint for climb / conventional.
 
-### T295 One file-name pattern for all exports   [status: todo]
+### T295 One file-name pattern for all exports   [status: done, B41]
 CTO #11 (T176 gap). Rides with the next Dev 1 batch after B39.
 Acceptance: NC, DXF, PDF and labels share one pattern (project, revision, kind, sheet), ASCII; history and zip use it.
 

@@ -600,3 +600,9 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-071 NC re-export asks the full checklist (2026-11-20, PO decision, Dev 1, B37 fix)
 - "Yeniden üret" of an NC history row is a machine file like the first download: the dialog shows the export step's checklist (same `ExportChecklist` component: origin, tools, tool changes, unverified templates, air cut, hinge-handle warning) plus the acceptance for unverified files; "Üret" stays disabled until the same gate as the step passes (`downloadBlocker`).
 - API: `POST /api/exports/:id/reexport` for NC answers 428 `checklist_required` (with the regenerated run's checklist data, `needsAcceptance`, templates, hinge-handle parts) until the body has `checklistConfirmed: true`; then 428 `acceptance_required` as before for unverified files. DXF/PDF/labels need neither. The dialog reads the checklist with `GET /api/exports/:id/reexport` (nothing stored; 422 when the revision no longer passes).
+
+## D-073 One file-name pattern for every export (2026-11-20, Dev 1, T295)
+- `<project>_r<revision>_<kind>.<ext>`, ASCII, `_` between fields (`lib/file-names.ts`, used by the server and the simulation worker). Project part: Turkish letters transliterated, anything else becomes `_`, at most 60 characters, fallback `proje`.
+- NC: `<project>_r<revision>_S<sheet>[_T<tool>][_P<part>].<ext>`; the post adds the markers with `revisionInFileName` (core option, default off so goldens and their names stay as they are). Only the project part is shortened when a controller limits the length; the revision and sheet markers stay whole. The G-code header keeps the real project name.
+- Documents: kind `dizilim`, `parcalar`, `a4`, `a3`, `etiket`. Zip bundle: `<project>_r<revision>_nc.zip` or the document kind.
+- Records stored before T295 keep their old names. Re-exporting such an NC record gives new names, so a new record (not an overwrite), the same as a changed verification state (D-066).

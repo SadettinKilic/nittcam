@@ -33,6 +33,7 @@ import {
   type ExportViolation,
 } from '../exports-api';
 import { blockingItems } from '../blocking-issues';
+import { ncNameOptions } from '../file-names';
 import { fill } from '../draft-project';
 import { getMessages } from '../messages';
 
@@ -226,7 +227,7 @@ export async function runExportOf(
     version: machine.version.version,
     verification: machine.state,
   };
-  const r = exportNc(data, pv, raw, { projectName: project.name, revision: project.revision });
+  const r = exportNc(data, pv, raw, ncNameOptions(project.name, project.revision));
   const ok = r.ok && r.check !== null && canDownload(r.check) && r.files.length > 0;
   return {
     ...base,

@@ -89,7 +89,7 @@ describe('export step documents and zip (T176)', () => {
       );
       const bytes = new Uint8Array(await dl.arrayBuffer());
       if (type.startsWith('dxf')) {
-        expect(file.name).toBe(`Dolap-yanlari-r${d.revision}-${type.slice(4)}.dxf`);
+        expect(file.name).toBe(`Dolap_yanlari_r${d.revision}_${type.slice(4)}.dxf`);
         expect(new TextDecoder().decode(bytes)).toBe(
           writeProjectDxf(project, type === 'dxf-dizilim' ? 'layout' : 'parts'),
         );
@@ -123,7 +123,7 @@ describe('export step documents and zip (T176)', () => {
     const z = await zip(new Request('http://test'), ctx({ id: ncRec.exportId }));
     expect(z.status).toBe(200);
     expect(z.headers.get('content-disposition')).toBe(
-      `attachment; filename="Dolap-yanlari-r${d.revision}-nc.zip"`,
+      `attachment; filename="Dolap_yanlari_r${d.revision}_nc.zip"`,
     );
     const zipBytes = new Uint8Array(await z.arrayBuffer());
     const entries = unzipStore(zipBytes);

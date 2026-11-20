@@ -1,6 +1,6 @@
 import { companyScope } from '../../../../../lib/server/company';
 import { apiError, sha256Hex } from '../../../../../lib/server/exports';
-import { asciiStem } from '../../../../../lib/server/file-names';
+import { exportFileName } from '../../../../../lib/file-names';
 import { renderLabelsPdf } from '../../../../../lib/server/pdf/labels-pdf';
 import { UUID } from '../../../../../lib/server/projects';
 import { parseLabelQuery } from '../../../../../lib/labels-query';
@@ -35,7 +35,7 @@ export async function GET(request: Request, ctx: RouteContext<'/api/projects/[id
       grid: settings.grid,
       offset: settings.offset,
     });
-    const name = `${asciiStem(project.name, 'proje')}-r${revision}-etiket.pdf`;
+    const name = exportFileName(project.name, revision, 'etiket', 'pdf');
     const disposition = url.searchParams.get('download') === '1' ? 'attachment' : 'inline';
     return new Response(Buffer.from(bytes), {
       headers: {
