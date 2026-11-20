@@ -89,3 +89,27 @@ describe('stockHasGrain (T260)', () => {
     expect(stockHasGrain({ ...p.stock, material: 'acrylic' })).toBe(false);
   });
 });
+
+describe('newProject with company defaults (T182)', () => {
+  it('starts with the company gap, margin, tabs, lead-in, direction and edge-band mode', () => {
+    const p = newProject(undefined, [], {
+      gap: 3,
+      margin: 12,
+      tabMode: 'off',
+      leadIn: 'line',
+      direction: 'conventional',
+      dimensionMode: 'finished',
+    });
+    expect(p.nesting).toMatchObject({ gap: 3, margin: 12 });
+    expect(p.cutting.tabs.auto).toBe(false);
+    expect(p.cutting.skin?.thickness).toBeGreaterThan(0);
+    expect(p.cutting).toMatchObject({ leadIn: 'line', direction: 'conventional' });
+    expect(p.settings.dimensionMode).toBe('finished');
+  });
+
+  it('without defaults it is the built-in start', () => {
+    const p = newProject();
+    expect(p.nesting).toMatchObject({ gap: 8, margin: 10 });
+    expect(p.cutting).toEqual({ tabs: { auto: true }, leadIn: 'arc', direction: 'climb' });
+  });
+});

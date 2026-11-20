@@ -1,5 +1,10 @@
 /** Shapes of the `/api/machines` route handlers, shared by server and client (D-016). */
-import type { MachineProfile, MachineProfileIssue, VerificationState } from '@nittcam/core';
+import type {
+  MachineProfile,
+  MachineProfileIssue,
+  MaintenanceEntry,
+  VerificationState,
+} from '@nittcam/core';
 
 export interface MachineListItem {
   id: string;
@@ -13,6 +18,8 @@ export interface MachineListItem {
   table: { width: number; depth: number };
   /** Archived (T289): hidden from new projects and Ana sayfa counts; old projects still use it. */
   archived: boolean;
+  /** Newest manual maintenance entry (T181); null = none recorded. */
+  maintenance: MaintenanceEntry | null;
 }
 
 export interface MachineDetail {

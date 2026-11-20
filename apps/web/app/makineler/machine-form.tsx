@@ -23,14 +23,23 @@ import {
   Badge,
   Button,
   Card,
+  FormField,
   IconButton,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   cn,
+  notify,
   type NumberParseError,
 } from '@nittcam/ui';
 import { CircleAlert, Info, Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { focusRing } from '../../components/page/page-header';
+import { CONTROLLER_LIBRARY, controllerProfile } from '../../lib/controller-library';
+import { fill } from '../../lib/draft-project';
 import type { ApiError, MachineDetail } from '../../lib/machines-api';
 import {
   FORM_SECTIONS,
@@ -149,6 +158,8 @@ export function MachineForm({
   const [serverIssues, setServerIssues] = useState<MachineProfileIssue[]>([]);
   const [parseErrors, setParseErrors] = useState<Record<string, NumberParseError>>({});
   const [saving, setSaving] = useState(false);
+  // T181: controller family picked from the library (new machines only; '' = none yet).
+  const [libraryId, setLibraryId] = useState('');
   const [saveError, setSaveError] = useState(false);
   // Where to go when the user confirms leaving with unsaved changes: an href, the list (null), or
   // browser history ('back': the user pressed Back/Forward).
@@ -425,6 +436,39 @@ export function MachineForm({
 
         <div className="flex min-w-0 flex-col gap-5">
           <Section id="identity" title={s.identity} hint={h.identity}>
+            {machineId === null ? (
+              <FormField
+                id="machine-library"
+                label={t.library.label}
+                hint={t.library.hint}
+                className="sm:col-span-2"
+              >
+                <Select
+                  value={libraryId}
+                  onValueChange={(id) => {
+                    const next = controllerProfile(id, profile);
+                    if (!next) return;
+                    setLibraryId(id);
+                    setServerIssues([]);
+                    setSaveError(false);
+                    setProfile(next);
+                    const name = CONTROLLER_LIBRARY.find((c) => c.id === id)?.name ?? id;
+                    notify.success(fill(t.library.applied, { name }));
+                  }}
+                >
+                  <SelectTrigger id="machine-library" data-testid="machine-library">
+                    <SelectValue placeholder={t.library.placeholder} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CONTROLLER_LIBRARY.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            ) : null}
             <TextField
               path="identity.name"
               label={f.name}

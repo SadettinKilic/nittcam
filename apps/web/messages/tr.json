@@ -116,7 +116,9 @@
       "project": "Proje",
       "verification": "Doğrulama",
       "notFound": "Sayfa bulunamadı",
-      "materials": "Malzemeler"
+      "materials": "Malzemeler",
+      "dxfLayers": "DXF katmanları",
+      "appearance": "Görünüm"
     },
     "theme": {
       "label": "Tema",
@@ -471,7 +473,41 @@
     },
     "verify": "Doğrula",
     "emptyTitle": "Henüz makine yok",
-    "count": "{n} makine"
+    "count": "{n} makine",
+    "maintenance": {
+      "column": "Bakım",
+      "none": "Kayıt yok",
+      "ok": "Sonraki: {date}",
+      "soon": "Bakım yaklaşıyor",
+      "overdue": "Bakım gecikti",
+      "soonDetail": "{days} gün kaldı ({date})",
+      "todayDetail": "Bugün ({date})",
+      "overdueDetail": "{days} gün gecikti ({date})",
+      "action": "Bakım",
+      "actionLabel": "Bakım kaydı: {name}",
+      "title": "Bakım kaydı: {name}",
+      "description": "Makine internete bağlı olmadığı için bakım elle kaydedilir. En son kayıt ve aralığı hatırlatmayı belirler.",
+      "date": "Bakım tarihi",
+      "interval": "Sonraki bakım",
+      "intervalUnit": "gün sonra",
+      "note": "Not",
+      "notePlaceholder": "ör. ray yağlama, kayış kontrolü",
+      "save": "Bakımı kaydet",
+      "cancel": "Kapat",
+      "history": "Geçmiş",
+      "historyEmpty": "Henüz bakım kaydı yok.",
+      "entry": "{interval} gün aralık",
+      "saved": "Bakım kaydedildi.",
+      "failed": "Kaydedilemedi. Tekrar deneyin.",
+      "invalid": "Geçerli bir tarih ve 1–3650 gün arası bir aralık girin.",
+      "loadError": "Bakım kaydı yüklenemedi."
+    },
+    "library": {
+      "label": "Kontrolcü kütüphanesi",
+      "placeholder": "Kontrolcü ailesi seçin",
+      "hint": "Seçilen ailenin post ayarına göre program biçimi, takım değiştirme ve kısıtlar dolar. Ad, marka ve model korunur; makineye özgü değerleri kontrol edin.",
+      "applied": "“{name}” değerleri dolduruldu."
+    }
   },
   "cutList": {
     "title": "Parçalar",
@@ -2777,6 +2813,122 @@
       "noSheet": "Dizilmedi",
       "size": "{w} × {h} mm",
       "cut": "Kesim {w} × {h}"
+    }
+  },
+  "settings": {
+    "nav": {
+      "label": "Ayarlar bölümleri",
+      "general": "Genel",
+      "materials": "Malzemeler",
+      "dxf": "DXF katmanları",
+      "appearance": "Görünüm"
+    },
+    "loadError": "Ayarlar yüklenemedi.",
+    "retry": "Tekrar dene",
+    "general": {
+      "title": "Ayarlar",
+      "subtitle": "Şirket bilgileri ve yeni projelerin başlangıç değerleri.",
+      "company": {
+        "title": "Şirket",
+        "name": "Şirket adı",
+        "nameHint": "Ekranda ve çıktılarda görünür.",
+        "save": "Kaydet",
+        "saved": "Şirket adı kaydedildi.",
+        "invalid": "Şirket adı 1–120 karakter olmalı.",
+        "failed": "Kaydedilemedi. Tekrar deneyin."
+      },
+      "logo": {
+        "title": "Logo",
+        "hint": "PNG, JPEG veya WebP, en fazla 512 KB.",
+        "choose": "Logo yükle",
+        "replace": "Logoyu değiştir",
+        "remove": "Logoyu kaldır",
+        "none": "Logo yok",
+        "alt": "Şirket logosu",
+        "uploaded": "Logo yüklendi.",
+        "removed": "Logo kaldırıldı.",
+        "problems": {
+          "empty": "Dosya boş.",
+          "size": "Dosya çok büyük (en fazla 512 KB).",
+          "type": "Yalnızca PNG, JPEG veya WebP yüklenebilir.",
+          "failed": "Yüklenemedi. Tekrar deneyin."
+        }
+      },
+      "defaults": {
+        "title": "Yeni proje varsayılanları",
+        "hint": "Yeni açılan projeler bu değerlerle başlar; mevcut projeler değişmez. Tab adedi, genişliği ve yüksekliği malzeme ayarından gelir.",
+        "gap": "Parça arası boşluk",
+        "margin": "Plaka kenar payı",
+        "tabs": "Tutucu (tab)",
+        "tabModes": {
+          "all": "Her parçada",
+          "small": "Yalnız küçük parçalarda",
+          "off": "Yok, ince taban bırak"
+        },
+        "leadIn": "Giriş / çıkış",
+        "leadIns": {
+          "arc": "Yay",
+          "line": "Düz"
+        },
+        "direction": "Kesim yönü",
+        "directions": {
+          "climb": "Tırmanma (climb)",
+          "conventional": "Geleneksel (conventional)"
+        },
+        "dimensionMode": "Kenar bandı",
+        "dimensionModes": {
+          "cut": "Ölçüler kesim ölçüsü",
+          "finished": "Ölçüler bitmiş ölçü (bant düşülür)"
+        },
+        "save": "Varsayılanları kaydet",
+        "saved": "Varsayılanlar kaydedildi; yeni projelerde geçerli.",
+        "reset": "Yerleşik değerlere dön",
+        "invalid": "Boşluk ve kenar payı 0–100 mm olmalı.",
+        "failed": "Kaydedilemedi. Tekrar deneyin.",
+        "materialsTitle": "Malzeme varsayılanları",
+        "materialsHint": "Malzeme, kalınlık, plaka ölçüsü ve damar malzeme kütüphanesinde; kesim değerleri ve tab ölçüleri makinenin malzeme ayarında.",
+        "materialsLink": "Malzeme kütüphanesine git"
+      }
+    },
+    "dxf": {
+      "title": "DXF katmanları",
+      "subtitle": "DXF içe aktarırken her katmanın ne olacağı. İçe aktarmada yaptığınız seçimler de buraya kaydedilir.",
+      "hint": "Katman adlarında büyük/küçük harf fark etmez. Listede olmayan katmanlar otomatik okunur (dış = parça, iç = iç kontur).",
+      "layer": "Katman adı",
+      "op": "İşlem",
+      "add": "Katman ekle",
+      "remove": "Kaldır: {name}",
+      "removeUnnamed": "Boş satırı kaldır",
+      "empty": "Kayıtlı eşleme yok; tüm katmanlar otomatik okunur.",
+      "save": "Eşlemeyi kaydet",
+      "saved": "Katman eşlemesi kaydedildi.",
+      "failed": "Kaydedilemedi. Tekrar deneyin.",
+      "duplicate": "Bu katman listede birden fazla var.",
+      "emptyName": "Katman adı boş olamaz.",
+      "hasErrors": "Kaydetmeden önce işaretli satırları düzeltin.",
+      "pocketSoon": "Cep henüz içe aktarılmıyor; bu katmandaki şekiller raporda gösterilir.",
+      "count": "{n} katman"
+    },
+    "appearance": {
+      "title": "Görünüm",
+      "subtitle": "Tema, yoğunluk ve hareket. Seçimler bu tarayıcıda saklanır ve sayfa yenilense de kalır.",
+      "themeTitle": "Tema",
+      "themeHint": "Sistem, bilgisayarınızın açık/koyu ayarını izler. Kısayol: Shift+T.",
+      "densityTitle": "Yoğunluk",
+      "densityHint": "Sıkı görünümde düğmeler ve tablo satırları daha alçak, ekrana daha çok satır sığar. Dokunmatik ekranda Rahat önerilir.",
+      "comfortable": "Rahat",
+      "comfortableHint": "40 px düğmeler ve tablo satırları",
+      "compact": "Sıkı",
+      "compactHint": "32 px düğmeler, 36 px satırlar",
+      "previewTitle": "3D önizleme",
+      "simple3d": "Basit mod",
+      "simple3dHint": "Doku ve gölge olmadan çizer; zayıf bilgisayarlarda akıcı kalır. Önizlemedeki Basit mod düğmesiyle aynı ayardır.",
+      "motionTitle": "Hareket",
+      "reduceMotion": "Hareketi azalt",
+      "reduceMotionHint": "Geçiş ve kamera animasyonlarını kapatır. Kapalıyken işletim sisteminin ayarı geçerlidir.",
+      "reduceMotionSystem": "İşletim sisteminiz şu an hareketi azaltıyor; bu ayar kapalı olsa da animasyonlar kapalı kalır.",
+      "shortcutsTitle": "Klavye kısayolları",
+      "shortcutsHint": "Her yerde ? tuşu bu listeyi açar. Metin kutusuna yazarken kısayollar çalışmaz (komut paleti hariç)."
     }
   }
 }

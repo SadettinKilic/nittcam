@@ -96,6 +96,11 @@ export const companies = pgTable('companies', {
    * upper-cased layer name → operation, validated by `dxfLayerMapSchema` in core.
    */
   dxfLayerMap: jsonb('dxf_layer_map').$type<Record<string, string>>().notNull().default({}),
+  /**
+   * What a new project starts with (T182, Ayarlar → Genel): gap, margin, tab mode, lead-in, cut
+   * direction, edge-band mode. Read through core `resolveProjectDefaults` ({} = built-ins).
+   */
+  projectDefaults: jsonb('project_defaults').$type<Record<string, unknown>>().notNull().default({}),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

@@ -21,6 +21,7 @@ import {
   Pencil,
   Plus,
   ShieldCheck,
+  Wrench,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,6 +33,9 @@ import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import { MachineForm } from './machine-form';
+import { MaintenanceDialog } from './maintenance-dialog';
+import { MaintenanceBadge } from '../../components/machines/maintenance-badge';
+import { localDay, maintenanceView } from '../../lib/maintenance';
 
 type Text = Messages['machines'];
 
@@ -148,6 +152,9 @@ export function MachinesView({
     void loadList();
   }
 
+  // T181: the machine whose maintenance dialog is open.
+  const [maintenanceFor, setMaintenanceFor] = useState<MachineListItem | null>(null);
+
   // T289: which machine's archive request is running (buttons disabled meanwhile).
   const [archiving, setArchiving] = useState<string | null>(null);
 
@@ -261,8 +268,29 @@ export function MachinesView({
           busy={archiving}
           onArchive={(m) => void archive(m)}
           onRestore={(m) => void restore(m)}
+          onMaintenance={(m) => setMaintenanceFor(m)}
         />
       )}
+      {maintenanceFor ? (
+        <MaintenanceDialog
+          t={t.maintenance}
+          machine={maintenanceFor}
+          onClose={() => setMaintenanceFor(null)}
+          onSaved={(latest) => {
+            notify.success(t.maintenance.saved);
+            setList((l) =>
+              l.status === 'ready'
+                ? {
+                    ...l,
+                    items: l.items.map((i) =>
+                      i.id === maintenanceFor.id ? { ...i, maintenance: latest } : i,
+                    ),
+                  }
+                : l,
+            );
+          }}
+        />
+      ) : null}
     </main>
   );
 }
@@ -277,7 +305,12 @@ interface ArchiveActions {
   onRestore: (m: MachineListItem) => void;
 }
 
-type RowArchive = Pick<ArchiveActions, 'busy' | 'onArchive'>;
+/** Row context: archive (T289) plus the maintenance reminder and dialog (T181). */
+type RowArchive = Pick<ArchiveActions, 'busy' | 'onArchive'> & {
+  onMaintenance: (m: MachineListItem) => void;
+  /** Local "today", `YYYY-MM-DD`. */
+  today: string;
+};
 
 function MachineList({
   t,
@@ -287,12 +320,15 @@ function MachineList({
   busy,
   onArchive,
   onRestore,
+  onMaintenance,
 }: {
   t: Text;
   list: ListState;
   onRetry: () => void;
   onEdit: (id: string) => void;
+  onMaintenance: (m: MachineListItem) => void;
 } & ArchiveActions) {
+  const [today] = useState(localDay);
   if (list.status === 'loading') {
     return (
       <div role="status" className="flex flex-col gap-2" data-testid="machine-list-loading">
@@ -308,7 +344,7 @@ function MachineList({
   }
   const active = list.items.filter((m) => !m.archived);
   const archived = list.items.filter((m) => m.archived);
-  const rowArchive: RowArchive = { busy, onArchive };
+  const rowArchive: RowArchive = { busy, onArchive, onMaintenance, today };
   return (
     <div className="flex flex-col gap-6">
       {active.length === 0 ? (
@@ -403,6 +439,7 @@ function ActiveList({
               <div className="flex flex-wrap items-center gap-1.5">
                 <MachineStateBadge state={m.state} label={t.state[m.state]} />
                 {m.example ? <Badge>{t.example}</Badge> : null}
+                <MaintenanceCell t={t} m={m} archive={archive} />
                 <TableSize m={m} className="ml-auto text-xs text-fg" />
               </div>
               <RowActions
@@ -527,6 +564,10 @@ function MachineTable({
             />
           ),
         }),
+        column.accessor('maintenance', {
+          header: t.maintenance.column,
+          cell: (info) => <MaintenanceCell t={t} m={info.row.original} archive={archive} />,
+        }),
         column.display({
           id: 'actions',
           header: () => <span className="sr-only">{c.actions}</span>,
@@ -572,5 +613,32 @@ function MachineTable({
         </tbody>
       </table>
     </Card>
+  );
+}
+
+/**
+ * T181: maintenance state of a machine as a button that opens its "Bakım" dialog. Overdue / soon
+ * show the reminder badge; otherwise the next due date or "Kayıt yok".
+ */
+function MaintenanceCell({ t, m, archive }: { t: Text; m: MachineListItem; archive: RowArchive }) {
+  const view = maintenanceView(m.maintenance, archive.today, t.maintenance);
+  return (
+    <button
+      type="button"
+      data-testid="machine-maintenance"
+      onClick={() => archive.onMaintenance(m)}
+      aria-label={`${fill(t.maintenance.actionLabel, { name: m.name })}: ${view.label}${view.detail ? `, ${view.detail}` : ''}`}
+      title={view.detail || undefined}
+      className={`rounded-sm ${focusRing}`}
+    >
+      {view.remind ? (
+        <MaintenanceBadge view={view} />
+      ) : (
+        <span className="inline-flex items-center gap-1 text-xs text-fg-muted underline-offset-2 hover:text-fg hover:underline">
+          <Wrench aria-hidden className="size-3" />
+          {view.label}
+        </span>
+      )}
+    </button>
   );
 }
