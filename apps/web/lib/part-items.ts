@@ -20,6 +20,11 @@ export interface ItemRef {
   openLine?: number | undefined;
 }
 
+/** T287: the issue names a part but none of its drawn items ("Parçalara git" applies). */
+export function onPartRow(f: ItemRef): boolean {
+  return f.partId !== undefined && !onDrawnItem(f);
+}
+
 /** The issue names a drawn cut-out or hole of a part ("Çizimde aç" applies). */
 export function onDrawnItem(f: ItemRef): boolean {
   return (
@@ -38,20 +43,24 @@ export function machineRelated(f: ItemRef): boolean {
   return true;
 }
 
-/** "Kapak · İç kesim 3" / "Kapak · Delik 3" for an issue about a drawn item of a known part. */
+/**
+ * "Kapak · İç kesim 3" / "Kapak · Delik 3" for an issue about a drawn item of a known part; with
+ * `rowPlace`, "Satır 2 · Tezgah" for an issue about the part itself (T287).
+ */
 export function itemPlace(
   f: ItemRef,
   parts: readonly { id: string; name: string }[] | undefined,
-  text: { innerPlace: string; holePlace: string; linePlace: string },
+  text: { innerPlace: string; holePlace: string; linePlace: string; rowPlace?: string },
   fill: (template: string, values: Record<string, string | number>) => string,
 ): string | null {
   if (f.partId === undefined) return null;
-  const name = parts?.find((p) => p.id === f.partId)?.name;
+  const row = parts?.findIndex((p) => p.id === f.partId) ?? -1;
+  const name = row >= 0 ? parts?.[row]?.name : undefined;
   if (!name) return null;
   if (f.inner !== undefined) return fill(text.innerPlace, { name, n: f.inner + 1 });
   if (f.hole !== undefined) return fill(text.holePlace, { name, n: f.hole + 1 });
   if (f.openLine !== undefined) return fill(text.linePlace, { name, n: f.openLine + 1 });
-  return null;
+  return text.rowPlace !== undefined ? fill(text.rowPlace, { name, n: row + 1 }) : null;
 }
 
 /**

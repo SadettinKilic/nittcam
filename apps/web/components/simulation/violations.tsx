@@ -3,7 +3,8 @@
 import type { SimulateResult } from '@nittcam/core';
 import Link from 'next/link';
 import { fill } from '../../lib/draft-project';
-import { itemPlace, machineRelated, onDrawnItem } from '../../lib/part-items';
+import { withBlocking } from '../../lib/blocking-issues';
+import { itemPlace, machineRelated, onDrawnItem, onPartRow } from '../../lib/part-items';
 import type { SimText } from './model';
 
 export interface Finding {
@@ -30,6 +31,8 @@ export interface Finding {
 export interface PartLinks {
   parts?: readonly { id: string; name: string }[];
   onOpenPart?: ((partId: string, hole?: number) => void) | undefined;
+  /** T287: opens Parçalar on the row of a part the issue names. */
+  onOpenRow?: ((partId: string) => void) | undefined;
 }
 
 const RULE_ORDER = [
@@ -121,7 +124,7 @@ function groupTitle(t: SimText, group: string): string {
   return (t.rules as Record<string, string>)[group] ?? group;
 }
 
-/** "Kapak · İç kesim 3" (T270) / "Kapak · Delik 3" (T275) for an issue about a drawn item. */
+/** "Kapak · İç kesim 3" (T270) / "Kapak · Delik 3" (T275) / "Satır 2 · Tezgah" (T287). */
 function innerPlace(t: SimText, f: Finding, links: PartLinks): string | null {
   return itemPlace(f, links.parts, t.blocked, fill);
 }
@@ -192,6 +195,16 @@ function FindingList({
                     {t.blocked.openPart}
                   </button>
                 ) : null}
+                {onPartRow(f) && links.onOpenRow && innerPlace(t, f, links) ? (
+                  <button
+                    type="button"
+                    data-testid="violation-open-row"
+                    onClick={() => links.onOpenRow?.(f.partId as string)}
+                    className="shrink-0 rounded-sm text-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:ml-auto"
+                  >
+                    {t.blocked.openRow}
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -205,11 +218,18 @@ function FindingList({
 export function Violations({
   t,
   result,
+  blocking = [],
   parts,
   onOpenPart,
-}: { t: SimText; result: SimulateResult } & PartLinks) {
-  const links: PartLinks = { ...(parts ? { parts } : {}), onOpenPart };
-  const all = findings(result);
+  onOpenRow,
+}: {
+  t: SimText;
+  result: SimulateResult;
+  /** T287: the validation errors that stop the export (same list as Dışa aktar). */
+  blocking?: readonly Finding[];
+} & PartLinks) {
+  const links: PartLinks = { ...(parts ? { parts } : {}), onOpenPart, onOpenRow };
+  const all = withBlocking(findings(result), blocking);
   const errors = all.filter((f) => f.severity === 'error');
   const warnings = all.filter((f) => f.severity === 'warning');
   const stage = result.export.stage;
@@ -263,4 +283,17 @@ export function Violations({
 /** Warnings of a passing export (shown under the summary). */
 export function WarningList({ t, items }: { t: SimText; items: readonly Finding[] }) {
   return <FindingList t={t} items={items} />;
+}
+
+/** T287: errors next to a finished simulation (the export is still locked), with their places. */
+export function ErrorList({
+  t,
+  items,
+  links,
+}: {
+  t: SimText;
+  items: readonly Finding[];
+  links: PartLinks;
+}) {
+  return <FindingList t={t} items={items} links={links} />;
 }

@@ -38,11 +38,13 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { onThemeChange } from '../../lib/canvas-theme';
+import { blockingItems, withBlocking } from '../../lib/blocking-issues';
 import {
   clampSimTime,
   nextStepTime,
   playbackRate,
   positionAt,
+  exportBlockingIssues,
   materialHasGrain,
   materialKindOf,
   prevStepTime,
@@ -89,7 +91,7 @@ import {
   type SimText,
 } from './model';
 import { SummaryCard } from './summary-card';
-import { findings, Violations } from './violations';
+import { findings, Violations, type Finding } from './violations';
 import { ZStrip } from './z-strip';
 
 const SimulationCanvas = dynamic(() => import('./simulation-canvas'), { ssr: false });
@@ -165,6 +167,7 @@ export function SimulationView({
   left,
   notice,
   onOpenPart,
+  onOpenRow,
   view3d,
 }: {
   t: SimText;
@@ -179,6 +182,8 @@ export function SimulationView({
   notice?: ReactNode;
   /** T270: opens a part on the drawing board (a blocked cut-out links there). */
   onOpenPart?: (partId: string, hole?: number) => void;
+  /** T287: opens Parçalar on a part's row (a part that is not in the layout links there). */
+  onOpenRow?: (partId: string) => void;
   /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
   empty: { noLayout: React.ReactNode; noMachine: React.ReactNode };
 }) {
@@ -224,9 +229,26 @@ export function SimulationView({
     [generated, pending, runRevision, t.gcode.revisionPending],
   );
 
-  const all = useMemo(() => (result ? findings(result) : []), [result]);
-  const errorCount = all.filter((f) => f.severity === 'error').length;
+  // T287 / K2: the validation errors that lock Dışa aktar count here too (same list, same
+  // machine profile version as the server), so this badge never says "Tüm kontroller geçti" while
+  // the export refuses the project.
+  const profileForChecks = machine?.pv.profile;
+  const blocking = useMemo(
+    () =>
+      profileForChecks
+        ? blockingItems(
+            project.parts,
+            exportBlockingIssues(project, { machine: profileForChecks }),
+          ).map((b): Finding => ({ ...b, group: b.rule }))
+        : [],
+    [project, profileForChecks],
+  );
+  const all = useMemo(
+    () => (result ? withBlocking(findings(result), blocking) : []),
+    [result, blocking],
+  );
   const warnings = useMemo(() => all.filter((f) => f.severity === 'warning'), [all]);
+  const errors = useMemo(() => all.filter((f) => f.severity === 'error'), [all]);
 
   let body: React.ReactNode;
   let player: React.ReactNode = null;
@@ -261,7 +283,14 @@ export function SimulationView({
     );
   } else if (!response.result.ok || !result?.summary) {
     body = (
-      <Violations t={t} result={response.result} parts={project.parts} onOpenPart={onOpenPart} />
+      <Violations
+        t={t}
+        result={response.result}
+        blocking={blocking}
+        parts={project.parts}
+        onOpenPart={onOpenPart}
+        onOpenRow={onOpenRow}
+      />
     );
   } else if (sim) {
     player = (
@@ -271,9 +300,11 @@ export function SimulationView({
           summary={result.summary}
           program={result.export.tools}
           templateNames={unverifiedTemplateNames(project.parts)}
-          checksOk={errorCount === 0}
-          errorCount={errorCount}
+          checksOk={errors.length === 0}
+          errorCount={errors.length}
           warnings={warnings}
+          errors={errors}
+          links={{ parts: project.parts, onOpenPart, onOpenRow }}
         />
       </>
     );

@@ -851,6 +851,7 @@
     "hint3": "R: döndür · Shift+tık ya da Boşluk: çoklu seçim · Alt: yapışmadan sürükle",
     "canvasLabel": "Plaka {n} dizilimi: {count} parça. Seçili parçayı ok tuşlarıyla 1 mm (Shift ile 10 mm) kaydırın, R ile döndürün, Enter ile uygulayın, Esc ile vazgeçin.",
     "sheetTabs": "Plakalar",
+    "unplacedChip": "{count} parça dizilimde yok",
     "sheetTab": "Plaka {n}",
     "sheetTabWaste": "fire %{waste}",
     "zoomIn": "Yakınlaştır",
@@ -1039,7 +1040,9 @@
       "innerPlace": "{name} · İç kesim {n}",
       "holePlace": "{name} · Delik {n}",
       "linePlace": "{name} · Çizgi {n}",
-      "openPart": "Çizimde aç"
+      "rowPlace": "Satır {n} · {name}",
+      "openPart": "Çizimde aç",
+      "openRow": "Parçalara git"
     },
     "rules": {
       "R1": "Kural 1 · Birim, mutlak koordinat, düzlem ve iş ofseti baştan yazılır",
@@ -1158,7 +1161,14 @@
       "TEST_TOOL_MISSING": "Malzeme parametresindeki takım bu makinede yok.",
       "TEST_TOOL_TOO_LARGE": "Takım test parçası için çok büyük: çapı en fazla 20 mm olmalı (cebin yarısı).",
       "TEST_STOCK_TOO_THIN": "Malzeme test parçası için çok ince: ölçülebilir bir cep açılamıyor.",
-      "SAFETY_VIOLATION": "Takım yolu güvenlik kontrolünden geçmedi."
+      "SAFETY_VIOLATION": "Takım yolu güvenlik kontrolünden geçmedi.",
+      "PART_LARGER_THAN_SHEET": "Parça plakaya sığmıyor (kenar payı dahil).",
+      "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Delik derinliği plaka kalınlığından az olmalı.",
+      "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde (plaka dışında, kenar payında ya da başka parçaya çok yakın).",
+      "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
+      "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
+      "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
+      "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -1178,7 +1188,8 @@
       "toolOrder": "Takımlar: {tools}",
       "manualChange": "Program içinde {count} kez durup takım ister.",
       "manualChangeZ": "Program içinde {count} kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayın.",
-      "unverifiedTemplates": "Hazır şablon ölçüleri doğrulanmadı: {names}. Ölçüleri kendi menteşe / kulp verinizle karşılaştırın."
+      "unverifiedTemplates": "Hazır şablon ölçüleri doğrulanmadı: {names}. Ölçüleri kendi menteşe / kulp verinizle karşılaştırın.",
+      "errorsNote": "Bunlar düzeltilmeden Dışa aktar dosya vermez."
     },
     "time": {
       "hours": "{h} sa {m} dk",
@@ -1551,7 +1562,9 @@
       "innerPlace": "{name} · İç kesim {n}",
       "holePlace": "{name} · Delik {n}",
       "linePlace": "{name} · Çizgi {n}",
+      "rowPlace": "Satır {n} · {name}",
       "openPart": "Çizimde aç",
+      "openRow": "Parçalara git",
       "machinesLink": "Makineler sayfası",
       "noLayout": "Önce Dizilim adımında parçaları yerleştirin.",
       "noMachine": "Önce bir makine seçin.",
@@ -1647,7 +1660,8 @@
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
         "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
         "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
-        "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın."
+        "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
+        "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin."
       },
       "other": "Kontrol {code}"
     }
