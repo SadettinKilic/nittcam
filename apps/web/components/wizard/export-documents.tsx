@@ -3,6 +3,7 @@
 import { buttonVariants } from '@nittcam/ui';
 import { FileText } from 'lucide-react';
 import type { Messages } from '../../lib/messages';
+import { ExportLabels } from './export-labels';
 
 type Text = Messages['wizard']['documents'];
 
@@ -13,7 +14,7 @@ export function projectPdfUrl(projectId: string, revision: number, paper: 'a4' |
 
 /**
  * The PDF documents of the export step (T172, spec §6.6): opened in a new tab, generated on the
- * server from the saved revision. Kept small: the export step is rebuilt with every format in T176.
+ * server from the saved revision, and the label sheet (T174). Kept small: the export step is rebuilt with every format in T176.
  */
 export function ExportDocuments({
   t,
@@ -21,12 +22,15 @@ export function ExportDocuments({
   revision,
   hasLayout,
   saved,
+  pieces,
 }: {
   t: Text;
   projectId: string | null;
   revision: number;
   hasLayout: boolean;
   saved: boolean;
+  /** Total pieces of the project (one label each). */
+  pieces: number;
 }) {
   const ready = projectId !== null && hasLayout && saved;
   const link = buttonVariants({ variant: 'outline', size: 'sm' });
@@ -59,6 +63,13 @@ export function ExportDocuments({
           ))}
         </div>
       ) : null}
+      <ExportLabels
+        t={t.labels}
+        projectId={projectId}
+        revision={revision}
+        pieces={pieces}
+        ready={ready}
+      />
     </section>
   );
 }

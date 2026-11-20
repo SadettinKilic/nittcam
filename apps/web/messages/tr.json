@@ -1652,12 +1652,36 @@
       "other": "Kontrol {code}"
     },
     "documents": {
-      "title": "Belgeler (PDF)",
+      "title": "Belgeler (PDF) ve etiketler",
       "hint": "Kaydedilmiş revizyondan sunucuda üretilir: plaka dizilimi, parça listesi ve fire raporu.",
       "a4": "PDF aç (A4)",
       "a3": "PDF aç (A3)",
       "waitSave": "Önce değişiklikler kaydedilsin.",
-      "noLayout": "PDF için önce dizilim gerekir."
+      "noLayout": "PDF için önce dizilim gerekir.",
+      "labels": {
+        "title": "Etiketler",
+        "preset": "Etiket kağıdı",
+        "presets": {
+          "a4-3x8": "A4, 3 × 8 (70 × 37 mm)",
+          "a4-2x7": "A4, 2 × 7 (99,1 × 38,1 mm)",
+          "custom": "Özel ızgara (mm)"
+        },
+        "cols": "Sütun",
+        "rows": "Satır",
+        "width": "Etiket eni",
+        "height": "Etiket boyu",
+        "left": "Sol boşluk",
+        "top": "Üst boşluk",
+        "gapX": "Yatay ara",
+        "gapY": "Dikey ara",
+        "offsetTitle": "Yazıcı kaydırma ayarı",
+        "offsetHint": "Deneme baskısında etiketler kayıyorsa ölçüp girin. Bu bilgisayarda saklanır.",
+        "offsetX": "Sağa (mm)",
+        "offsetY": "Aşağı (mm)",
+        "open": "Etiketleri aç (PDF)",
+        "count": "{count} etiket, {pages} sayfa",
+        "invalid": "Izgara A4 sayfaya sığmıyor veya bir değer aralık dışında."
+      }
     }
   },
   "verification": {
@@ -2604,6 +2628,13 @@
     "unplaced": "{count} parça dizilmedi",
     "listLegend": "Bitmiş ölçü = kesim ölçüsü + kenar bandı · Kalın kenar = bantlı kenar",
     "cutTimeHint": "Tahmini süre, G-code kontrolleri geçince hesaplanır.",
-    "listLegendFinished": "Kesim ölçüsü = bitmiş ölçü − kenar bandı · Kalın kenar = bantlı kenar"
+    "listLegendFinished": "Kesim ölçüsü = bitmiş ölçü − kenar bandı · Kalın kenar = bantlı kenar",
+    "labels": {
+      "title": "Parça etiketleri",
+      "sheet": "Plaka {n}",
+      "noSheet": "Dizilmedi",
+      "size": "{w} × {h} mm",
+      "cut": "Kesim {w} × {h}"
+    }
   }
 }

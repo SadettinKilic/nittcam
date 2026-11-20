@@ -394,6 +394,7 @@ export function ExportStep({
           revision={revision}
           hasLayout={hasLayout}
           saved={!busySaving}
+          pieces={project.parts.reduce((n, p) => n + p.qty, 0)}
         />
       </aside>
       <section

@@ -12,6 +12,7 @@ import { companyScope } from '../../../lib/server/company';
 import { estimateCutSeconds } from '../../../lib/server/pdf/cut-time';
 import { POST as create } from './route';
 import { GET as pdf } from './[id]/pdf/route';
+import { GET as labels } from './[id]/labels/route';
 
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 const ctx = <T extends Record<string, string>>(params: T) => ({ params: Promise.resolve(params) });
@@ -92,5 +93,37 @@ describe('GET /api/projects/:id/pdf (T172)', () => {
     expect(await estimateCutSeconds(scope, noMachine)).toBeNull();
     const noLayout = { ...row, data: { ...row.data, layout: { sheets: [] } } };
     expect(await estimateCutSeconds(scope, noLayout)).toBeNull();
+  });
+});
+
+describe('GET /api/projects/:id/labels (T174)', () => {
+  it('returns one label per piece on A4 pages, stable bytes, validated settings', async () => {
+    const d = await created(); // 3 + 4 = 7 pieces
+    const get = (q: string, id = d.id) =>
+      labels(new Request(`http://test/x?revision=${q}`), ctx({ id }));
+    const r = d.revision;
+    const res = await get(`${r}&preset=a4-3x8`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('application/pdf');
+    expect(res.headers.get('content-disposition')).toBe(
+      `inline; filename="Cocuk-odasi-r${r}-etiket.pdf"`,
+    );
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
+    const again = new Uint8Array(await (await get(`${r}&preset=a4-3x8`)).arrayBuffer());
+    expect(sha(again)).toBe(sha(bytes));
+
+    // A 2 × 2 custom grid: 7 labels → 2 pages.
+    const grid = 'cols=2&rows=2&width=80&height=50&left=10&top=10&gapX=2&gapY=2';
+    const small = await get(`${r}&preset=custom&${grid}&dx=1.5&dy=-1`);
+    expect(small.status).toBe(200);
+    const smallDoc = await PDFDocument.load(new Uint8Array(await small.arrayBuffer()));
+    expect(smallDoc.getPageCount()).toBe(2);
+
+    const wide = 'cols=4&rows=8&width=70&height=37&left=0&top=0&gapX=0&gapY=0';
+    expect((await get(`${r}&preset=custom&${wide}`)).status).toBe(400);
+    expect((await get(`${r}&dx=30`)).status).toBe(400);
+    expect((await get(`${r + 1}`)).status).toBe(409);
+    expect((await get('1', randomUUID())).status).toBe(404);
   });
 });
