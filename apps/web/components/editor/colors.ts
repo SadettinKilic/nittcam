@@ -8,7 +8,6 @@ export interface EditorColors {
   part: string;
   partStroke: string;
   selection: string;
-  selectionFill: string;
   selectionText: string;
   /** Snap guides and glyphs (canvas language: `info`). */
   snap: string;
@@ -31,7 +30,6 @@ const TOKENS: Record<keyof EditorColors, string> = {
   part: '--color-part',
   partStroke: '--color-part-stroke',
   selection: '--color-selection',
-  selectionFill: '--color-accent-subtle',
   selectionText: '--color-accent-fg',
   snap: '--color-info',
   accent: '--color-accent',

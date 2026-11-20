@@ -9,6 +9,7 @@ import { z } from 'zod';
 import {
   withSegmentAngle,
   withSegmentLength,
+  withSegmentSplit,
   withVertexAt,
   type OutlineEdit,
   type OutlineEditError,
@@ -116,4 +117,14 @@ export const moveVertex = outlineCommand({
     'Rectangles become freeform parts.',
   params: z.strictObject({ id: rectPartSchema.shape.id, index, x: num, y: num }),
   edit: (vs, p) => withVertexAt(vs, p.index, { x: p.x, y: p.y }),
+});
+
+/** Splits one outline segment at its middle (B50): a new corner to move; the shape stays. */
+export const splitSegment = outlineCommand({
+  name: 'splitSegment',
+  description:
+    'Add a corner in the middle of one outline segment (index), so it can be moved to make an L ' +
+    'or a notch. The shape does not change. Rectangles become freeform parts.',
+  params: z.strictObject({ id: rectPartSchema.shape.id, index }),
+  edit: (vs, p) => withSegmentSplit(vs, p.index),
 });

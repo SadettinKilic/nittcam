@@ -28,7 +28,7 @@ export interface BoardPart {
   /** Inner contours (CW) in board coordinates. */
   inners: Vertex[][];
   /** Hole centres and diameters in board coordinates. */
-  holes: { id: string; x: number; y: number; d: number }[];
+  holes: { id: string; x: number; y: number; d: number; type: Hole['type'] }[];
   /** Linear dimensions (T133, annotations) in board coordinates. */
   dims: { id: string; a: Point; b: Point }[];
   /** Bounding box in board coordinates. */
@@ -88,7 +88,7 @@ export function boardPositions(project: Project): Map<string, Point> {
 }
 
 function holeCentre(hole: Hole, at: Point) {
-  return { id: hole.id, x: hole.cx + at.x, y: hole.cy + at.y, d: hole.d };
+  return { id: hole.id, x: hole.cx + at.x, y: hole.cy + at.y, d: hole.d, type: hole.type };
 }
 
 /** Every part as drawn on the board, in project order. */

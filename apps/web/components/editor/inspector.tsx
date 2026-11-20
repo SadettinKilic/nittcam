@@ -137,6 +137,28 @@ export function EditorInspector({
     }),
     { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
   );
+  // B50 (CTO #7, #8): holes and templates sit right under "Parça" as collapsed summary rows.
+  const partExtras =
+    selected.length === 1 && part && run ? (
+      <>
+        <HoleProperties
+          t={t.hole}
+          part={part}
+          run={run}
+          thickness={project.stock.thickness}
+          toolDiameter={(toolRadius ?? 0) * 2}
+        />
+        {onPendingTemplate ? (
+          <TemplateProperties
+            t={t.template}
+            part={part}
+            run={run}
+            pending={pendingTemplate}
+            onPending={onPendingTemplate}
+          />
+        ) : null}
+      </>
+    ) : null;
   return (
     <section
       data-density="compact"
@@ -211,26 +233,11 @@ export function EditorInspector({
               onSub={onSub}
               toolRadius={toolRadius ?? 0}
               thickness={project.stock.thickness}
+              afterPart={partExtras}
             />
-          ) : null}
-          {selected.length === 1 && part && run ? (
-            <HoleProperties
-              t={t.hole}
-              part={part}
-              run={run}
-              thickness={project.stock.thickness}
-              toolDiameter={(toolRadius ?? 0) * 2}
-            />
-          ) : null}
-          {selected.length === 1 && part && run && onPendingTemplate ? (
-            <TemplateProperties
-              t={t.template}
-              part={part}
-              run={run}
-              pending={pendingTemplate}
-              onPending={onPendingTemplate}
-            />
-          ) : null}
+          ) : (
+            partExtras
+          )}
         </>
       )}
     </section>

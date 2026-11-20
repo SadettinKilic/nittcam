@@ -667,3 +667,10 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-086 The workshop day uses one time zone (2026-11-20, Dev 2, B46 P4, tester B38)
 - "Today" for the maintenance reminder is the calendar day in the workshop's time zone, `Europe/Istanbul` by default (`NEXT_PUBLIC_WORKSHOP_TIME_ZONE` overrides it), computed the same way on the server (home page, first render of Makineler) and in the browser. Before, the home page used the server clock (often UTC), so between 00:00 and 03:00 the reminder was a day behind.
 - Byte limits are measured in UTF-8 bytes (`Buffer.byteLength`), not string length: the client-log body (16 KB) and the log-file rotation (1 MB).
+
+## D-090 Board polish P1 conventions (2026-11-21, Dev 1, B50)
+- Properties panel: holes and template instances are collapsed summary rows ("Delik 3 · Geçme · Ø35 · T2"), placed right under "Parça". Open by default: the newest row and every row with an error or warning; the person's own toggle wins. Errors and the hinge-edge warning stay visible when a row is closed.
+- Part label on the board: a plain rectangle keeps its box centre; any other shape (L, notch, arcs, cut-outs) puts the label at the grid point inside the material with the largest 5 : 1 label box. Edge-length chips clear their own edge; a chip that would overlap another is left out (the active edge and longer edges win).
+- Canvas hole look: through = dark disc, blind pocket = light disc, groove = ring only; the selected part numbers its holes like the panel.
+- Selection = 2 px accent outline over the wood tone (no tint). A corner node in reach wins over a bend handle.
+- "Köşe ekle" = new command `splitSegment` (UI only, not an AI tool): a vertex in the middle of the edge (arcs split on the same circle), picked at once so it can be moved.

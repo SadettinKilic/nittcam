@@ -19,6 +19,7 @@ import {
 import type { DraftView } from '../../lib/editor/draw-tool';
 import type { TemplateGhost } from '../../lib/editor/template-place';
 import { dimText, type SegmentLabel } from '../../lib/editor/dims';
+import { labelSpot } from '../../lib/editor/label-spot';
 import type { EditorColors } from './colors';
 import { RULER_PX } from './ruler';
 
@@ -217,22 +218,41 @@ function drawParts(ctx: Ctx, p: EditorCanvasProps) {
     ctx.beginPath();
     traceContour(ctx, part.outline, v, d.x, d.y);
     for (const inner of part.inners) traceContour(ctx, inner, v, d.x, d.y);
-    ctx.fillStyle = selected ? colors.selectionFill : colors.part;
+    // B50 (CTO #5, #7): a selected part keeps its wood tone; the 2 px accent outline marks it.
+    ctx.fillStyle = colors.part;
     ctx.fill('evenodd');
     ctx.lineWidth = selected ? 2 : part.id === p.hover ? 1.75 : 1;
     ctx.strokeStyle = selected || part.id === p.hover ? colors.selection : colors.partStroke;
     ctx.stroke();
     if (part.holes.length > 0) {
-      ctx.beginPath();
+      // B50 (CTO #7): through = solid disc, blind pocket = light disc, groove = ring only.
       for (const h of part.holes) {
         const c = toScreen(v, { x: h.x + d.x, y: h.y + d.y });
         const r = Math.max((h.d / 2) * v.scale, 1.5);
-        ctx.moveTo(c.x + r, c.y);
+        ctx.beginPath();
         ctx.arc(c.x, c.y, r, 0, 2 * Math.PI);
+        if (h.type !== 'groove') {
+          ctx.globalAlpha = h.type === 'through' ? 0.85 : 0.3;
+          ctx.fillStyle = colors.partStroke;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.strokeStyle = colors.partStroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
-      ctx.strokeStyle = colors.partStroke;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      // B50 (CTO #7): the selected part numbers its holes as the panel does ("Delik 3").
+      if (selected) {
+        ctx.font = `bold 10px ${canvasMonoFont()}`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = colors.text;
+        part.holes.forEach((h, i) => {
+          const c = toScreen(v, { x: h.x + d.x, y: h.y + d.y });
+          const r = Math.max((h.d / 2) * v.scale, 1.5);
+          ctx.fillText(String(i + 1), c.x + r * 0.7 + 2, c.y - r * 0.7 - 1);
+        });
+      }
     }
   }
 }
@@ -248,13 +268,19 @@ function drawLabels(ctx: Ctx, p: EditorCanvasProps) {
     const d = p.selection.has(part.id) && p.drag ? p.drag : { x: 0, y: 0 };
     const w = part.box.maxX - part.box.minX;
     const h = part.box.maxY - part.box.minY;
-    const label = partLabel({ number: n.number, name: n.name, w, h, scale: v.scale });
+    // B50: an L part or a part with a cut-out labels its material, not the box centre.
+    const spot = labelSpot(part);
+    const label = partLabel({
+      number: n.number,
+      name: n.name,
+      w,
+      h,
+      scale: v.scale,
+      room: { w: spot.w, h: spot.h },
+    });
     if (label.lines.length === 0) continue;
     const fontPx = label.font * v.scale;
-    const c = toScreen(v, {
-      x: (part.box.minX + part.box.maxX) / 2 + d.x,
-      y: (part.box.minY + part.box.maxY) / 2 + d.y,
-    });
+    const c = toScreen(v, { x: spot.x + d.x, y: spot.y + d.y });
     const top = c.y - ((label.lines.length - 1) * fontPx * LINE_HEIGHT) / 2;
     label.lines.forEach((line, i) => {
       ctx.font = `${i === 0 ? 'bold ' : ''}${fontPx}px ${font}`;
@@ -264,8 +290,14 @@ function drawLabels(ctx: Ctx, p: EditorCanvasProps) {
     const grain = p.grains?.get(part.id);
     if (grain !== undefined) {
       // The layout canvas glyph (T254): a two-headed arrow below the label at the grain angle.
-      const corner = toScreen(v, { x: part.box.minX + d.x, y: part.box.maxY + d.y });
-      const [x1, y1, x2, y2] = grainArrowPoints(grain, w, h, label.font, label.lines.length);
+      const corner = toScreen(v, { x: spot.x - spot.w / 2 + d.x, y: spot.y + spot.h / 2 + d.y });
+      const [x1, y1, x2, y2] = grainArrowPoints(
+        grain,
+        spot.w,
+        spot.h,
+        label.font,
+        label.lines.length,
+      );
       drawGrainArrow(
         ctx,
         { x: corner.x + x1 * v.scale, y: corner.y + y1 * v.scale },

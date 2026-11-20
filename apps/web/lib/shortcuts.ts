@@ -20,6 +20,8 @@ export type ShortcutId =
   | 'boardArc'
   | 'boardHole'
   | 'boardDim'
+  | 'boardSnapHold'
+  | 'boardFitSelection'
   | 'boardTypeLength'
   | 'boardCancel'
   | 'boardPanHold'
@@ -75,9 +77,12 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'boardTypeLength', keys: 'enter', group: 'board', page: true },
   { id: 'boardCancel', keys: 'escape', group: 'board', page: true },
   { id: 'boardPanHold', keys: 'space', group: 'board', page: true },
+  // B50 (CTO #7): Alt held = snapping off for a moment (status bar snap menu).
+  { id: 'boardSnapHold', keys: 'alt', group: 'board', page: true },
   { id: 'boardZoomIn', keys: 'plus', group: 'board', page: true },
   { id: 'boardZoomOut', keys: '-', group: 'board', page: true },
   { id: 'boardFit', keys: 'f', group: 'board', page: true },
+  { id: 'boardFitSelection', keys: 'shift+f', group: 'board', page: true },
   { id: 'boardCopy', keys: 'mod+c', group: 'board', page: true },
   { id: 'boardPaste', keys: 'mod+v', group: 'board', page: true },
   { id: 'boardDuplicate', keys: 'mod+d', group: 'board', page: true },
@@ -253,6 +258,7 @@ const KEY_NAMES: Record<string, string> = {
   delete: 'Delete',
   escape: 'Esc',
   space: 'Space',
+  alt: 'Alt',
   // "+" cannot be written in a key step (it joins modifiers), so the registry names it.
   plus: '+',
 };
