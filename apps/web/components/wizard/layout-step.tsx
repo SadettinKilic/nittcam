@@ -1,13 +1,24 @@
 'use client';
 
 import type {
+  LayoutSummary,
   NestingMode,
   NestingRotation,
   Project,
   RunNestingParams,
   ValidationIssue,
 } from '@nittcam/core';
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
 import {
@@ -16,10 +27,10 @@ import {
   optionSetKey,
   optionSetKeyForMode,
 } from '../../lib/nesting-cache';
-import { createNestProgressStore } from '../../lib/nesting-progress';
+import { createNestProgressStore, type NestProgressStore } from '../../lib/nesting-progress';
 import type { ProjectSession } from '../../lib/project-session';
 import { NESTING_CANCELLED, useNestingWorker } from '../../lib/use-nesting-worker';
-import { LayoutView, type LockRequest } from '../layout-view/layout-view';
+import { LayoutView, RenestingContext, type LockRequest } from '../layout-view/layout-view';
 import { NestingPanel } from '../parts/nesting-panel';
 import { LayoutGrid } from 'lucide-react';
 import { Button, cn, RadioGroup, RadioGroupItem } from '@nittcam/ui';
@@ -61,23 +72,23 @@ function useNest(
     latest.current = { session, params };
   });
 
-  function record(base: Project, applied: Parameters<ProjectSession['recordApplied']>[1]) {
-    const { session } = latest.current;
-    const result = session.recordApplied('runNesting', applied, base);
-    if (!result.ok) {
-      setMessage(
-        result.error.code === 'STALE_BASE'
-          ? { kind: 'error', text: t.stale }
-          : { kind: 'error', text: fill(t.failed, { error: result.error.message }) },
-      );
-      return null;
+  // Stable (T281): passed to the memoised layout view as "Yeniden diz".
+  const nest = useCallback(async () => {
+    function record(base: Project, applied: Parameters<ProjectSession['recordApplied']>[1]) {
+      const result = latest.current.session.recordApplied('runNesting', applied, base);
+      if (!result.ok) {
+        setMessage(
+          result.error.code === 'STALE_BASE'
+            ? { kind: 'error', text: t.stale }
+            : { kind: 'error', text: fill(t.failed, { error: result.error.message }) },
+        );
+        return null;
+      }
+      if (!result.changed) setMessage({ kind: 'info', text: t.unchanged });
+      else setNested((n) => n + 1);
+      return result.project;
     }
-    if (!result.changed) setMessage({ kind: 'info', text: t.unchanged });
-    else setNested((n) => n + 1);
-    return result.project;
-  }
 
-  async function nest() {
     const { session, params } = latest.current;
     const base = session.project;
     const key = optionSetKey(base, params);
@@ -107,7 +118,7 @@ function useNest(
       setRunning(false);
       progress.set(null);
     }
-  }
+  }, [worker, cache, progress, t]);
   return {
     nest,
     cancel: worker.cancel,
@@ -118,6 +129,29 @@ function useNest(
     cache,
     cacheVersion,
   };
+}
+
+/**
+ * T281 (memo boundary): the run state of the step. Only the parts that show it (the options
+ * panel, the compact "Diz"/"İptal" button, the renest buttons of the layout view) read it, so a
+ * run starting or stopping does not re-render the layout view with its 1500 parts.
+ */
+interface NestRun {
+  running: boolean;
+  progress: NestProgressStore;
+  message: NestMessage;
+  nest: () => Promise<void>;
+  cancel: () => void;
+}
+const NestRunContext = createContext<NestRun | null>(null);
+
+/** The warnings panel under the options: a new element on every wizard render (T281). */
+const SideContext = createContext<ReactNode>(null);
+
+function useNestRun(): NestRun {
+  const run = useContext(NestRunContext);
+  if (!run) throw new Error('useNestRun outside LayoutStep');
+  return run;
 }
 
 /** Step 3 (spec §3.6 "Dizilim"): options + "Diz" on the left, the layout view on the right. */
@@ -139,11 +173,7 @@ export function LayoutStep({
   /** Machine table for the 3D preview (T152); null without a machine. */
   table?: TableSpec | null;
 }) {
-  const t = messages.wizard.layout;
   const nt = messages.cutList.nesting;
-  const modeLabelId = useId();
-  const rotationLabelId = useId();
-  const rotationHintId = useId();
   const params: RunNestingParams = useMemo(
     () => (contourTool === undefined ? { toolDiameter } : { toolDiameter, contourTool }),
     [toolDiameter, contourTool],
@@ -179,9 +209,7 @@ export function LayoutStep({
     return () => clearTimeout(timer);
   }, []);
   const issues: readonly ValidationIssue[] = session.issues;
-  const errors = messages.wizard.machine.errors;
   const run = session.run;
-  const rotation: NestingRotation = project.nesting.rotation ?? 'free';
 
   // Figures of the option sets already nested, per mode (T163: results kept per option set).
   const modeResults = useMemo(() => {
@@ -191,7 +219,145 @@ export function LayoutStep({
     );
   }, [cache, cacheVersion, project, params]);
 
-  const settings = (
+  const nestRun = useMemo<NestRun>(
+    () => ({ running, progress, message, nest, cancel }),
+    [running, progress, message, nest, cancel],
+  );
+
+  // T281: elements and callbacks of the memoised layout view stay the same while a run starts
+  // and stops (they change with the project, the options or the warnings panel only).
+  const settings = useMemo(
+    () => (
+      <NestSettings
+        messages={messages}
+        project={project}
+        run={run}
+        toolDiameter={toolDiameter}
+        modeResults={modeResults}
+      />
+    ),
+    [messages, project, run, toolDiameter, modeResults],
+  );
+  const hasParts = project.parts.length > 0;
+  const compactNest = useMemo(() => <CompactNest t={nt} hasParts={hasParts} />, [nt, hasParts]);
+  const onLock = useCallback((req: LockRequest) => run('lockPlacement', req), [run]);
+  const onRenest = useCallback(() => void nest(), [nest]);
+  // The wizard builds a new table object on every render (autosave states); keep it by value.
+  const tw = table?.width;
+  const td = table?.depth;
+  const tc = table?.corner;
+  const tx = table?.sheetOffset.x;
+  const ty = table?.sheetOffset.y;
+  const preview3d = useMemo(
+    () => ({
+      table:
+        tw === undefined ||
+        td === undefined ||
+        tc === undefined ||
+        tx === undefined ||
+        ty === undefined
+          ? null
+          : { width: tw, depth: td, corner: tc, sheetOffset: { x: tx, y: ty } },
+    }),
+    [tw, td, tc, tx, ty],
+  );
+
+  return (
+    <NestRunContext.Provider value={nestRun}>
+      <SideContext.Provider value={side}>
+        <RenestingContext.Provider value={running}>
+          {project.layout.sheets.length > 0 ? (
+            <LayoutView
+              t={messages.layout}
+              project={project}
+              toolDiameter={toolDiameter}
+              issues={issues}
+              onLock={onLock}
+              onRenest={onRenest}
+              appearKey={nested}
+              left={settings}
+              compactAction={compactNest}
+              preview3d={preview3d}
+            />
+          ) : (
+            <WorkspaceLayout
+              testId="layout-workspace"
+              labels={messages.layout.workspace}
+              left={settings}
+              compactAction={compactNest}
+              canvas={
+                <div
+                  data-testid="layout-empty"
+                  className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-8 text-center"
+                >
+                  <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface text-fg-muted">
+                    <LayoutGrid aria-hidden className="size-5" />
+                  </span>
+                  <p className="max-w-sm text-sm text-fg-muted">
+                    {hasParts ? messages.wizard.layout.empty : messages.wizard.layout.noParts}
+                  </p>
+                </div>
+              }
+            />
+          )}
+        </RenestingContext.Provider>
+      </SideContext.Provider>
+    </NestRunContext.Provider>
+  );
+}
+
+/**
+ * Below 1024 px "Diz" stays next to the panel buttons, never scrolled away (T198); while it runs
+ * the same place offers "İptal" (T163).
+ */
+function CompactNest({ t, hasParts }: { t: Messages['cutList']['nesting']; hasParts: boolean }) {
+  const { running, nest, cancel } = useNestRun();
+  return running ? (
+    <Button
+      variant="outline"
+      onClick={cancel}
+      data-testid="layout-cancel-compact"
+      className="shrink-0"
+    >
+      {t.cancel}
+    </Button>
+  ) : (
+    <Button
+      onClick={() => void nest()}
+      disabled={!hasParts}
+      data-testid="layout-nest-compact"
+      className="shrink-0"
+    >
+      <LayoutGrid aria-hidden />
+      {t.run}
+    </Button>
+  );
+}
+
+/** The options panel of the step: mode cards, gap/margin, rotation, "Diz" and the warnings. */
+function NestSettings({
+  messages,
+  project,
+  run,
+  toolDiameter,
+  modeResults,
+}: {
+  messages: Messages;
+  project: Project;
+  run: ProjectSession['run'];
+  toolDiameter: number;
+  modeResults: Record<string, LayoutSummary | undefined>;
+}) {
+  const { running, progress, message, nest, cancel } = useNestRun();
+  const side = useContext(SideContext);
+  const t = messages.wizard.layout;
+  const nt = messages.cutList.nesting;
+  const errors = messages.wizard.machine.errors;
+  const modeLabelId = useId();
+  const rotationLabelId = useId();
+  const rotationHintId = useId();
+  const rotation: NestingRotation = project.nesting.rotation ?? 'free';
+  return (
     <div className="flex min-w-0 flex-col gap-3">
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-xs">
         <h2 className="text-sm font-semibold tracking-tight text-fg">{t.options}</h2>
@@ -305,64 +471,5 @@ export function LayoutStep({
       />
       {side}
     </div>
-  );
-
-  // Below 1024 px "Diz" stays next to the panel buttons, never scrolled away (T198); while it runs
-  // the same place offers "İptal" (T163).
-  const compactNest = running ? (
-    <Button
-      variant="outline"
-      onClick={cancel}
-      data-testid="layout-cancel-compact"
-      className="shrink-0"
-    >
-      {nt.cancel}
-    </Button>
-  ) : (
-    <Button
-      onClick={() => void nest()}
-      disabled={project.parts.length === 0}
-      data-testid="layout-nest-compact"
-      className="shrink-0"
-    >
-      <LayoutGrid aria-hidden />
-      {nt.run}
-    </Button>
-  );
-
-  return project.layout.sheets.length > 0 ? (
-    <LayoutView
-      t={messages.layout}
-      project={project}
-      toolDiameter={toolDiameter}
-      issues={issues}
-      onLock={(req: LockRequest) => run('lockPlacement', req)}
-      onRenest={() => void nest()}
-      renesting={running}
-      appearKey={nested}
-      left={settings}
-      compactAction={compactNest}
-      preview3d={{ table }}
-    />
-  ) : (
-    <WorkspaceLayout
-      testId="layout-workspace"
-      labels={messages.layout.workspace}
-      left={settings}
-      compactAction={compactNest}
-      canvas={
-        <div
-          data-testid="layout-empty"
-          className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-8 text-center"
-        >
-          <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface text-fg-muted">
-            <LayoutGrid aria-hidden className="size-5" />
-          </span>
-          <p className="max-w-sm text-sm text-fg-muted">
-            {project.parts.length === 0 ? t.noParts : t.empty}
-          </p>
-        </div>
-      }
-    />
   );
 }
