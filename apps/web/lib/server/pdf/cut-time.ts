@@ -6,6 +6,7 @@
 import { simulateProject, validateProject } from '@nittcam/core';
 import type { CompanyScope, ProjectRow } from '@nittcam/db';
 import { POST_CONFIGS } from '@nittcam/machines';
+import type { PdfMachine } from './layout-pages';
 
 export async function estimateCutSeconds(
   scope: CompanyScope,
@@ -30,4 +31,17 @@ export async function estimateCutSeconds(
     { projectName: project.name, revision: project.revision },
   );
   return sim.ok && sim.summary ? sim.summary.seconds : null;
+}
+
+/** The pinned profile's origin data for the PDF program-zero mark (B51); null = no machine. */
+export async function pdfMachine(
+  scope: CompanyScope,
+  data: ProjectRow['data'],
+): Promise<PdfMachine> {
+  const machine = await scope.machines.getProfileVersion(data.machine.machineId, {
+    version: data.machine.profileVersion,
+  });
+  if (!machine) return null;
+  const { origin, zZero, workEnvelope } = machine.profile;
+  return { origin, zZero, workEnvelope };
 }

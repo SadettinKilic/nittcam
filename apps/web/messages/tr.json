@@ -2874,6 +2874,13 @@
     "grain": "Damar {angle}°",
     "noGrain": "Damarsız plaka",
     "offcut": "Artık parçadan",
+    "origin": "X{x} Y{y} · {corner}",
+    "corners": {
+      "frontLeft": "ön sol",
+      "frontRight": "ön sağ",
+      "backLeft": "arka sol",
+      "backRight": "arka sağ"
+    },
     "revision": "Revizyon {revision}",
     "page": "Sayfa {n} / {total}",
     "parts": "{count} parça",

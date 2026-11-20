@@ -18,7 +18,7 @@ import {
   type ExportSource,
 } from './exports';
 import { documentKind, exportFileName } from '../file-names';
-import { estimateCutSeconds } from './pdf/cut-time';
+import { estimateCutSeconds, pdfMachine } from './pdf/cut-time';
 import { renderLabelsPdf } from './pdf/labels-pdf';
 import { renderProjectPdf } from './pdf/project-pdf';
 
@@ -84,6 +84,7 @@ export async function buildDocument(
       revision,
       paper,
       cutSeconds: await estimateCutSeconds(scope, project),
+      machine: await pdfMachine(scope, project.data),
     }),
   };
 }

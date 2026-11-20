@@ -14,7 +14,14 @@ import { fill } from '../../fill';
 import { getMessages } from '../../messages';
 import { centred, MUTED, newDocument, saveDocument } from './document';
 import { addReportPages, reportPageCount } from './report-pages';
-import { addLayoutPages, contentBox, drawFrame, mm, type PageHeader } from './layout-pages';
+import {
+  addLayoutPages,
+  contentBox,
+  drawFrame,
+  mm,
+  type PageHeader,
+  type PdfMachine,
+} from './layout-pages';
 
 const messages = getMessages();
 const t = messages.pdf;
@@ -26,6 +33,8 @@ export interface ProjectPdfInput {
   paper: PaperSize;
   /** Estimated machining time, s (T173); null = not available. */
   cutSeconds: number | null;
+  /** The pinned machine profile, for the program-zero mark (B51); null/absent = no mark. */
+  machine?: PdfMachine | undefined;
 }
 
 /** Turkish material label and thickness for the page header. */
@@ -54,7 +63,7 @@ export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Arr
     const box = contentBox(page);
     centred(page, t.empty, box.x + box.width / 2, box.y + box.height / 2, fonts.regular, 11, MUTED);
   } else {
-    addLayoutPages(doc, fonts, head, sheets, paper, 0, pageCount);
+    addLayoutPages(doc, fonts, head, sheets, paper, 0, pageCount, input.machine ?? null);
   }
   addReportPages(doc, fonts, head, report, paper, layoutPages, pageCount);
   return saveDocument(doc);
