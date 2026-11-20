@@ -29,6 +29,11 @@ export interface PostMeta {
   };
   /** File-name stem; default `projectName`. */
   fileStem?: string;
+  /**
+   * Names of the unverified ready templates in the job (T282); absent or empty = no header line,
+   * so programs without such a template stay byte-identical.
+   */
+  unverifiedTemplates?: readonly string[];
 }
 
 export type PostCode =

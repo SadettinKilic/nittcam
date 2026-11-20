@@ -27,6 +27,7 @@ import {
   type ToolpathOptions,
 } from '../toolpath';
 import { programTools, type ProgramTools } from './program-tools';
+import { unverifiedTemplateNames } from '../template';
 
 export interface ExportNcOptions {
   /** Header and file name; default "NittCam". */
@@ -81,6 +82,7 @@ export function exportNc(
     projectName: options.projectName ?? 'NittCam',
     revision: options.revision ?? 0,
     ...(options.fileStem ? { fileStem: options.fileStem } : {}),
+    ...unverifiedTemplatesMeta(project),
     stock: {
       material: project.stock.material,
       thickness: project.stock.thickness,
@@ -91,6 +93,12 @@ export function exportNc(
     // one cutting tool per project (D-021): the cut-out loops are offset by its radius
     layout: expectedLayouts(project, tp.toolpath.operations[0]?.toolDiameter ?? 0),
   });
+}
+
+/** The unverified ready templates of the project (T282); nothing when none, so output is unchanged. */
+function unverifiedTemplatesMeta(project: Project): Pick<PostMeta, 'unverifiedTemplates'> {
+  const names = unverifiedTemplateNames(project.parts);
+  return names.length > 0 ? { unverifiedTemplates: names } : {};
 }
 
 /**

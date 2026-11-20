@@ -10,6 +10,8 @@ export interface ChecklistState {
   airCut: boolean;
   /** Manual tool changes inside the program are confirmed (T274); only asked when there are any. */
   toolChange: boolean;
+  /** Unverified ready-template values are checked by hand (T282); only asked when there are any. */
+  templates: boolean;
 }
 
 export const EMPTY_CHECKLIST: ChecklistState = {
@@ -17,6 +19,7 @@ export const EMPTY_CHECKLIST: ChecklistState = {
   tool: false,
   airCut: false,
   toolChange: false,
+  templates: false,
 };
 
 /** Why the download is disabled, in the order the user meets them; null = may download. */
@@ -29,10 +32,13 @@ export function downloadBlocker(
     | null,
   checklist: ChecklistState,
   accepted: boolean,
+  /** Unverified ready templates in the project (T282); each needs the templates line ticked. */
+  unverifiedTemplates = 0,
 ): DownloadBlocker | null {
   if (!preview || !preview.ok || preview.files.length === 0) return 'checks';
   if (!checklist.origin || !checklist.tool || !checklist.airCut) return 'checklist';
   if ((preview.checklist?.toolChanges ?? 0) > 0 && !checklist.toolChange) return 'checklist';
+  if (unverifiedTemplates > 0 && !checklist.templates) return 'checklist';
   if (preview.needsAcceptance && !accepted) return 'accept';
   return null;
 }

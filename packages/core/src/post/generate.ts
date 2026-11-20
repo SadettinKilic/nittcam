@@ -18,6 +18,7 @@ import {
   formatFixedUp,
   PostFormatError,
   sanitizeComment,
+  transliterateTurkish,
   type CommentFormat,
 } from './format';
 import {
@@ -42,6 +43,21 @@ import type {
 
 /** Header line of an unverified profile or post (§7.2 rule 10). Transliterated when ASCII-only. */
 export const UNVERIFIED_HEADER = 'DOĞRULANMADI, önce air cut';
+
+/**
+ * Header line naming the unverified ready templates of the job (T282, review #8 K2), always ASCII
+ * (`(SABLON DOGRULANMADI: Mentese cukuru D35 2 mentese)`): Ø becomes D, parentheses go.
+ */
+export function unverifiedTemplateHeader(names: readonly string[]): string {
+  const ascii = names.map((n) =>
+    transliterateTurkish(n.normalize('NFC').replace(/[Øø⌀]/g, 'D'))
+      .replace(/[()]/g, '')
+      .replace(/[^\x20-\x7E]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
+  return `SABLON DOGRULANMADI: ${ascii.join(', ')}`;
+}
 
 const VERIFICATION_LABEL: Record<string, string> = {
   draft: 'TASLAK',
@@ -584,6 +600,8 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
   const f3 = (v: number) => formatFixed(v, 3);
   const lines: string[] = [];
   if (c.unverified) lines.push(UNVERIFIED_HEADER);
+  if (meta.unverifiedTemplates?.length)
+    lines.push(unverifiedTemplateHeader(meta.unverifiedTemplates));
   lines.push(`PROJE: ${meta.projectName}`);
   lines.push(`REVİZYON: ${meta.revision}`);
   lines.push(
@@ -724,6 +742,9 @@ export function generateGcode(
   if (
     !meta ||
     typeof meta.projectName !== 'string' ||
+    (meta.unverifiedTemplates !== undefined &&
+      (!Array.isArray(meta.unverifiedTemplates) ||
+        !meta.unverifiedTemplates.every((n) => typeof n === 'string'))) ||
     !Number.isInteger(meta.revision) ||
     meta.revision < 0 ||
     !st ||

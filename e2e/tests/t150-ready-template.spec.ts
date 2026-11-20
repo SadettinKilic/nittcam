@@ -50,6 +50,10 @@ test('hinge door with the ready hinge template → nest → NC passes every chec
   await expect(page.getByTestId('template-pending')).toBeHidden();
   await door.click();
   await expect(page.getByTestId('template-instance-0')).toContainText('Menteşe çukuru Ø35');
+  // T282: the placed instance says its values are not verified (Şablonlar page badge).
+  await expect(page.getByTestId('template-instance-0-unverified')).toHaveText(
+    tpl.instanceUnverified,
+  );
   expect(await holeX(page, 0)).toBe(22.5);
   expect(await holeX(page, 1)).toBe(22.5);
   await saved(page);
@@ -67,6 +71,10 @@ test('hinge door with the ready hinge template → nest → NC passes every chec
   await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true', {
     timeout: 30_000,
   });
+  const names = 'Menteşe çukuru Ø35 (2 menteşe)';
+  await expect(page.getByTestId('sim-unverified-templates')).toHaveText(
+    tr.simulation.summary.unverifiedTemplates.replace('{names}', names),
+  );
 
   await page.getByTestId('wizard-next').click();
   await wizardReady(page, 'export');
@@ -81,9 +89,19 @@ test('hinge door with the ready hinge template → nest → NC passes every chec
   if (await toolChange.count()) await toolChange.check();
   await page.getByTestId('export-accept').check();
   const download = page.getByTestId('export-download');
+  // T282: İndir stays closed until the unverified template line is ticked.
+  const templates = page.getByTestId('export-check-templates');
+  await expect(page.getByTestId('export-checklist')).toContainText(
+    tr.wizard.export.checkTemplates.replace('{names}', names),
+  );
+  await expect(download).toBeDisabled();
+  await templates.check();
   await expect(download).toBeEnabled();
   const [d] = await Promise.all([page.waitForEvent('download'), download.click()]);
   const content = (await readFile(await d.path())).toString('utf8');
+  expect(content.split(/\r?\n/).filter((l) => l.includes('SABLON'))).toEqual([
+    '(SABLON DOGRULANMADI: Mentese cukuru D35 2 mentese)',
+  ]);
   const verdict = await verifyDownloaded(page.request, id, [
     { name: d.suggestedFilename(), content, sheet: 0 },
   ]);

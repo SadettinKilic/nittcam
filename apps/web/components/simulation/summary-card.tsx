@@ -16,11 +16,14 @@ export function SummaryCard({
   errorCount,
   warnings,
   program = null,
+  templateNames = [],
 }: {
   t: SimText;
   summary: SimSummary;
   /** Tools in order of use and manual changes (T274). */
   program?: ProgramTools | null;
+  /** Unverified ready templates in the project (T282): one yellow line, like the Z re-zero line. */
+  templateNames?: readonly string[];
   checksOk: boolean;
   errorCount: number;
   warnings: readonly Finding[];
@@ -96,6 +99,15 @@ export function SummaryCard({
           {fill(program.rezeroZ ? s.manualChangeZ : s.manualChange, {
             count: program.manualChanges,
           })}
+        </p>
+      ) : null}
+      {templateNames.length > 0 ? (
+        <p
+          className="flex items-start gap-1.5 text-sm font-medium text-warning-text"
+          data-testid="sim-unverified-templates"
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+          {fill(s.unverifiedTemplates, { names: templateNames.join(', ') })}
         </p>
       ) : null}
       <p className="text-xs text-fg-muted">

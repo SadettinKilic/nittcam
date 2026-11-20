@@ -8,6 +8,7 @@
  */
 import {
   localBox,
+  readyTemplate,
   templateFromPart,
   type Part,
   type TemplateEdge,
@@ -15,6 +16,7 @@ import {
   type TemplatePlacement,
 } from '@nittcam/core';
 import {
+  Badge,
   Button,
   Checkbox,
   Dialog,
@@ -508,8 +510,14 @@ export const TemplateProperties = memo(function TemplateProperties({
       {part.templates.map((ref, i) => (
         <div key={ref.instanceId} className="flex flex-col" data-testid={`template-instance-${i}`}>
           <div className="flex items-center justify-between pt-1">
-            <h3 className="text-xs font-medium text-fg-muted">
+            <h3 className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-medium text-fg-muted">
               {fill(t.instance, { name: ref.name, v: ref.version })}
+              {/* T282: an unverified ready template says so on the part too (Şablonlar page badge). */}
+              {readyTemplate(ref.templateId)?.verified === false ? (
+                <Badge variant="warning" data-testid={`template-instance-${i}-unverified`}>
+                  {t.instanceUnverified}
+                </Badge>
+              ) : null}
             </h3>
             <IconButton
               size="sm"

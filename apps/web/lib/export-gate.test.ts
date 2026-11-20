@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { downloadBlocker, EMPTY_CHECKLIST, errorCount } from './export-gate';
 
 const FILE = { name: 'a.nc', size: 10, hash: 'h', sheet: 0 };
-const ALL = { origin: true, tool: true, airCut: true, toolChange: false };
+const ALL = { origin: true, tool: true, airCut: true, toolChange: false, templates: false };
 
 describe('downloadBlocker (§6.6 checklist, §7.2 rules 9–10)', () => {
   it('no preview or failed checks block first', () => {
@@ -22,6 +22,14 @@ describe('downloadBlocker (§6.6 checklist, §7.2 rules 9–10)', () => {
     expect(downloadBlocker(p, { ...ALL, origin: false }, false)).toBe('checklist');
     expect(downloadBlocker(p, { ...ALL, tool: false }, false)).toBe('checklist');
     expect(downloadBlocker(p, ALL, false)).toBeNull();
+  });
+
+  it('unverified ready templates add a line that must be ticked (T282)', () => {
+    const p = { ok: true, files: [FILE], needsAcceptance: true };
+    expect(downloadBlocker(p, { ...ALL, templates: false }, true, 1)).toBe('checklist');
+    expect(downloadBlocker(p, { ...ALL, templates: true }, false, 1)).toBe('accept');
+    expect(downloadBlocker(p, { ...ALL, templates: true }, true, 2)).toBeNull();
+    expect(downloadBlocker(p, { ...ALL, templates: false }, true, 0)).toBeNull();
   });
 
   it('manual tool changes need their own confirmation (T274)', () => {
