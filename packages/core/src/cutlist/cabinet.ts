@@ -214,3 +214,117 @@ export function cabinetPartsForStock(
   const rows = parts.filter((p) => includeOther || same(p)).map(fit);
   return { rows, other };
 }
+
+/** One cut-list row of a cabinet group, as the assembly view reads it (T158). */
+export interface AssemblyRow {
+  role: CabinetPartRole;
+  /** Row id (the box carries it back for highlighting). */
+  id: string;
+  qty: number;
+  /** Part size along its X / Y, mm (as generated: sides D × H, shelves inner × depth, ...). */
+  w: number;
+  h: number;
+  /** Board thickness of the row, mm. */
+  thickness: number;
+}
+
+/** A board of the assembled box: axis-aligned, x right, y up from the floor, z from the back. */
+export interface AssemblyBox {
+  role: CabinetPartRole;
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  sx: number;
+  sy: number;
+  sz: number;
+}
+
+/** The assembled box of one cabinet group (T158). */
+export interface CabinetAssembly {
+  width: number;
+  height: number;
+  depth: number;
+  boxes: AssemblyBox[];
+}
+
+const near = (a: number, b: number) => Math.abs(a - b) <= 0.5;
+
+/**
+ * Places the rows of one generated cabinet in their box positions (T158, spec §3.8 "Montaj
+ * görünümü"), with the generator's own layout rules (`cabinetParts`, `cabinetFrontView`): sides
+ * D × H, top/bottom/shelves inner × depth between them, shelves evenly spaced, the back inset
+ * between the sides or overlaid behind them, doors in front with the gap, the plinth under the
+ * bottom. The box size is read back from the rows themselves (D-041: no link to the generator),
+ * so an edited row shows with its current size. Null without a side and a top or bottom.
+ * No joinery (spec): boards only.
+ */
+export function cabinetAssembly(rows: readonly AssemblyRow[]): CabinetAssembly | null {
+  const first = (r: CabinetPartRole) => rows.find((x) => x.role === r && x.qty > 0);
+  const side = first('side');
+  const deck = first('top') ?? first('bottom');
+  if (!side || !deck) return null;
+  const t = side.thickness;
+  const H = side.h;
+  const inner = deck.w;
+  const W = inner + 2 * t;
+  const depth = deck.h;
+  const plinth = first('plinth');
+  const p = plinth ? plinth.h : 0;
+  const back = first('back');
+  const overlay = back ? near(back.w, W) && !near(back.w, inner) : false;
+  const bt = back ? back.thickness : 0;
+  const D = Math.max(side.w + (overlay ? bt : 0), depth + bt);
+  const zDeck = D - depth;
+  const boxes: AssemblyBox[] = [];
+  const add = (
+    r: AssemblyRow,
+    x: number,
+    y: number,
+    z: number,
+    sx: number,
+    sy: number,
+    sz: number,
+  ) => boxes.push({ role: r.role, id: r.id, x, y, z, sx, sy, sz });
+
+  for (const r of rows) {
+    if (r.qty <= 0) continue;
+    const n = r.qty;
+    switch (r.role) {
+      case 'side':
+        for (let i = 0; i < Math.min(n, 2); i++)
+          add(r, i === 0 ? 0 : W - r.thickness, 0, D - r.w, r.thickness, r.h, r.w);
+        break;
+      case 'bottom':
+        add(r, (W - r.w) / 2, p, D - r.h, r.w, r.thickness, r.h);
+        break;
+      case 'top':
+        add(r, (W - r.w) / 2, H - r.thickness, D - r.h, r.w, r.thickness, r.h);
+        break;
+      case 'shelf': {
+        const space = H - p - 2 * t;
+        for (let i = 1; i <= n; i++) {
+          const y = p + t + (space * i) / (n + 1) - r.thickness / 2;
+          add(r, (W - r.w) / 2, y, D - r.h, r.w, r.thickness, r.h);
+        }
+        break;
+      }
+      case 'back':
+        if (overlay) add(r, (W - r.w) / 2, H - r.h, 0, r.w, r.h, r.thickness);
+        else
+          add(r, (W - r.w) / 2, H - r.h, Math.max(0, zDeck - r.thickness), r.w, r.h, r.thickness);
+        break;
+      case 'plinth':
+        add(r, (W - r.w) / 2, 0, D - r.thickness, r.w, r.h, r.thickness);
+        break;
+      case 'door': {
+        const doors = Math.min(n, 2);
+        const g = doors === 1 ? (W - r.w) / 2 : (W - 2 * r.w) / 3;
+        const y = p + (H - p - r.h) / 2;
+        for (let i = 0; i < doors; i++) add(r, g + i * (r.w + g), y, D, r.w, r.h, r.thickness);
+        break;
+      }
+    }
+  }
+  return { width: W, height: H, depth: D + (first('door')?.thickness ?? 0), boxes };
+}

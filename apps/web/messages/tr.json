@@ -936,6 +936,9 @@
       "explode": "Ayır/kaldır",
       "explodeTip": "Parçaları plakadan yukarı kaldırır",
       "hideWaste": "Fireyi gizle",
+      "assembly": "Montaj görünümü",
+      "assemblyTip": "\"Dolap ekle\" ile üretilen parçalar kutu hâlinde (birleştirme detayı yok). Diğer parçalar gösterilmez.",
+      "assemblyLabel": "Montaj görünümü: {count} dolap. Sürükleyerek döndürün, tekerlekle yakınlaştırın, sağ tuşla kaydırın.",
       "toolpath": "Takım yolu",
       "toolpathTip": "Okunan G-code'un yolu: kesikli çizgi boşta hareket, renk kesim derinliği",
       "info": {
