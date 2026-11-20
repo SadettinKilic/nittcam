@@ -12,11 +12,19 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  cn,
 } from '@nittcam/ui';
+import { Preview3D } from '../preview3d/preview3d';
+import type { CameraCommand } from '../preview3d/scene';
+import type { ViewPreset } from '../../lib/preview3d/camera';
+import { hasWebGL2 } from '../../lib/preview3d/capability';
+import type { TableSpec } from '../../lib/preview3d/stage';
+import type { Messages } from '../../lib/messages';
 import { PlateTabStrip } from '../wizard/plate-tab-strip';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import { canvasTouchClass, isZoomedIn, useMediaQuery } from '../../lib/use-media-query';
 import {
+  Box,
   Info,
   Maximize,
   Pause,
@@ -25,6 +33,7 @@ import {
   SkipForward,
   StepBack,
   StepForward,
+  Square,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -137,6 +146,12 @@ export interface SimMachine {
   pv: PostProfileVersion;
 }
 
+/** 3D view of the playback (T156, T157, spec §3.8): texts and the machine table. */
+export interface Sim3D {
+  t: Messages['layout']['preview3d'];
+  table: TableSpec | null;
+}
+
 /**
  * Önizleme / simülasyon step (T020, spec §6.5, §3.6 step 4; wizard since T023). Runs the export
  * pipeline + reader for the wizard's project on its selected machine in a Web Worker and plays
@@ -151,8 +166,11 @@ export function SimulationView({
   left,
   notice,
   onOpenPart,
+  view3d,
 }: {
   t: SimText;
+  /** Offers the 3D view of the playback (T156); absent = 2D only. */
+  view3d?: Sim3D | undefined;
   project: Project;
   machine: SimMachine | null;
   header: SimHeader;
@@ -336,6 +354,7 @@ export function SimulationView({
             machine={sim.machine ?? result.machine}
             left={side}
             tabs={tabs}
+            view3d={view3d}
           />
         </TabsContent>
       </Tabs>
@@ -416,8 +435,10 @@ function Player({
   machine,
   left,
   tabs,
+  view3d,
 }: {
   t: SimText;
+  view3d?: Sim3D | undefined;
   sim: SimSheet;
   project: Project;
   machine: SimMachineFrame | null;
@@ -452,6 +473,29 @@ function Player({
   );
   const height = size.h;
   const parts = useMemo(() => drawnParts(project, sim.sheet), [project, sim.sheet]);
+
+  // T156: 2D / 3D switch of the playback; both views follow the same player.
+  const [mode, setMode] = useState<'2d' | '3d'>('2d');
+  const [noWebGL, setNoWebGL] = useState(false);
+  const [camera, setCamera] = useState<CameraCommand>({
+    preset: 'iso',
+    from: 'top',
+    nonce: 0,
+    animate: true,
+  });
+  const show3d = view3d !== undefined && mode === '3d';
+  function chooseMode(next: '2d' | '3d') {
+    if (next === '3d' && !hasWebGL2()) {
+      setNoWebGL(true);
+      setMode('2d');
+      return;
+    }
+    if (next === '3d' && mode !== '3d')
+      setCamera((c) => ({ preset: 'iso', from: 'top', nonce: c.nonce + 1, animate: true }));
+    setMode(next);
+  }
+  const preset3d = (p: ViewPreset) =>
+    setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true }));
 
   const setTime = useCallback(
     (v: number) => {
@@ -619,35 +663,76 @@ function Player({
         ) : (
           <span />
         )}
-        <div className={`${floating} flex shrink-0 items-center p-0.5`}>
-          <Tooltip content={t.controls.zoomOut}>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              aria-label={t.controls.zoomOut}
-              onClick={() => zoomButton(1 / 1.25)}
+        <div className={`${floating} flex shrink-0 items-center gap-0.5 p-0.5`}>
+          {view3d ? (
+            <div
+              role="group"
+              aria-label={view3d.t.switchLabel}
+              className="flex items-center gap-px rounded-md bg-surface-subtle p-px"
+              data-testid="sim-view-switch"
             >
-              <ZoomOut aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t.controls.zoomIn}>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              aria-label={t.controls.zoomIn}
-              onClick={() => zoomButton(1.25)}
-            >
-              <ZoomIn aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t.controls.fit}>
-            <IconButton size="sm" variant="ghost" aria-label={t.controls.fit} onClick={fit}>
-              <Maximize aria-hidden />
-            </IconButton>
-          </Tooltip>
+              {(['2d', '3d'] as const).map((m) => (
+                <Tooltip key={m} content={m === '2d' ? view3d.t.view2dTip : view3d.t.view3dTip}>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    aria-label={m === '2d' ? view3d.t.view2dTip : view3d.t.view3dTip}
+                    aria-pressed={mode === m}
+                    data-testid={`sim-view-${m}`}
+                    onClick={() => chooseMode(m)}
+                    className={cn(
+                      'size-7',
+                      mode === m && 'bg-surface text-fg shadow-xs hover:bg-surface',
+                    )}
+                  >
+                    {m === '2d' ? <Square aria-hidden /> : <Box aria-hidden />}
+                  </IconButton>
+                </Tooltip>
+              ))}
+            </div>
+          ) : null}
+          {show3d ? null : (
+            <>
+              <Tooltip content={t.controls.zoomOut}>
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  aria-label={t.controls.zoomOut}
+                  onClick={() => zoomButton(1 / 1.25)}
+                >
+                  <ZoomOut aria-hidden />
+                </IconButton>
+              </Tooltip>
+              <Tooltip content={t.controls.zoomIn}>
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  aria-label={t.controls.zoomIn}
+                  onClick={() => zoomButton(1.25)}
+                >
+                  <ZoomIn aria-hidden />
+                </IconButton>
+              </Tooltip>
+              <Tooltip content={t.controls.fit}>
+                <IconButton size="sm" variant="ghost" aria-label={t.controls.fit} onClick={fit}>
+                  <Maximize aria-hidden />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
         </div>
       </div>
-      <div className="pointer-events-none absolute bottom-2 left-2 z-10">
+      {noWebGL && !show3d && view3d ? (
+        <div
+          role="status"
+          data-testid="preview3d-fallback"
+          className={`${floating} absolute inset-x-2 bottom-12 z-10 mx-auto flex max-w-md items-start gap-2 px-3 py-2 text-sm text-fg`}
+        >
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-info-text" />
+          <span>{view3d.t.fallback}</span>
+        </div>
+      ) : null}
+      <div className={cn('pointer-events-none absolute bottom-2 left-2 z-10', show3d && 'hidden')}>
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -699,7 +784,7 @@ function Player({
           className={`absolute inset-0 ${canvasTouchClass(zoomed)} overflow-hidden outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
         >
           {/* T259: no grain chip on a sheet without grain. */}
-          {sheetGrain !== null ? (
+          {sheetGrain !== null && !show3d ? (
             <span
               data-testid="sim-grain"
               data-grain={stock.grain ?? 'none'}
@@ -722,7 +807,22 @@ function Player({
               <span className="sr-only sm:hidden">{t.legend.grain}</span>
             </span>
           ) : null}
-          {width > 0 && view && colors ? (
+          {show3d && view3d ? (
+            <Preview3D
+              t={view3d.t}
+              project={project}
+              sheet={sim.sheet}
+              table={view3d.table}
+              command={camera}
+              onPreset={preset3d}
+              onFallback={() => {
+                setNoWebGL(true);
+                setMode('2d');
+              }}
+              partCount={parts.length}
+              toolpath={{ sim, time: null }}
+            />
+          ) : width > 0 && view && colors ? (
             <CanvasBoundary>
               <SimulationCanvas
                 width={width}

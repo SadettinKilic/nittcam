@@ -935,6 +935,8 @@
       "explode": "Ayır/kaldır",
       "explodeTip": "Parçaları plakadan yukarı kaldırır",
       "hideWaste": "Fireyi gizle",
+      "toolpath": "Takım yolu",
+      "toolpathTip": "Okunan G-code'un yolu: kesikli çizgi boşta hareket, renk kesim derinliği",
       "info": {
         "title": "Parça {label}",
         "name": "Ad",

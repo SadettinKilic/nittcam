@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { nest, saved } from './wizard-helpers';
+import { goStep, nest, openNewProject, pasteAndNest, saved } from './wizard-helpers';
 
 /**
  * B20 (T155–T157): 3D interaction, toolpath overlay and cutting playback. Picking, slots and the
@@ -120,4 +120,37 @@ test('T155: wizard İleri eases the 3D camera to the top view first; jumps with 
   });
   await page.getByTestId('wizard-next').click();
   await expect(page).toHaveURL(/adim=simulasyon/);
+});
+
+test('T156: simulation 3D view draws the read toolpath; Takım yolu toggles it', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page, 'parcalar');
+  await pasteAndNest(page);
+  await goStep(page, 'simulasyon');
+  await expect(page.getByTestId('sim-canvas')).toBeVisible({ timeout: 30_000 });
+
+  await page.getByTestId('sim-view-3d').click();
+  const host = page.getByTestId('preview3d');
+  await expect(host).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
+  await expect(host).toHaveAttribute('data-toolpath', 'on');
+  await expect(page.getByTestId('sim-banner')).toBeVisible();
+  const calls = async () => Number((await host.getAttribute('data-draw-calls')) ?? '0');
+  await expect.poll(calls).toBeGreaterThan(0);
+  const withPath = await calls();
+
+  const toggle = page.getByTestId('preview3d-toolpath');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await toggle.click();
+  await expect(host).toHaveAttribute('data-toolpath', 'off');
+  await expect.poll(calls).toBeLessThan(withPath);
+
+  // Back to 2D: the canvas player is still there.
+  await page.getByTestId('sim-view-2d').click();
+  await expect(host).toHaveCount(0);
+  await expect(page.getByTestId('sim-canvas')).toBeVisible();
+  expect(errors).toEqual([]);
 });

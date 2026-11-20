@@ -7,7 +7,7 @@
  * the 2D view (via `onFallback`) when the scene crashes or WebGL is lost.
  */
 import { Button, IconButton, Skeleton, Tooltip, cn } from '@nittcam/ui';
-import { EyeOff, Gauge, Move, RotateCcw, Undo2, X } from 'lucide-react';
+import { EyeOff, Gauge, Move, RotateCcw, Route, Undo2, X } from 'lucide-react';
 import { sheetSizeOf, type Project } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import {
@@ -36,7 +36,7 @@ import {
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
 import { useMediaQuery } from '../../lib/use-media-query';
-import type { CameraCommand, SceneColors, SceneInteraction } from './scene';
+import type { CameraCommand, SceneColors, SceneInteraction, SceneToolpath } from './scene';
 
 type Text = Messages['layout']['preview3d'];
 
@@ -58,6 +58,8 @@ const TOKENS: Record<keyof FlatColors, string> = {
   band: '--color-mat-band',
   simTool: '--color-sim-tool',
   simRapid: '--color-sim-rapid',
+  simDepthTop: '--color-sim-depth-top',
+  simDepthBottom: '--color-sim-depth-bottom',
   highlight: '--color-accent',
 };
 
@@ -99,6 +101,8 @@ export interface Preview3DProps {
   lifts?: ArrayLike<number> | null;
   /** Extra overlay content inside the scene's host (playback controls, banner; T157). */
   children?: ReactNode;
+  /** Toolpath overlay from the read program (T156); adds the "Takım yolu" toggle. */
+  toolpath?: SceneToolpath | null;
 }
 
 export function Preview3D({
@@ -112,7 +116,9 @@ export function Preview3D({
   partCount,
   lifts,
   children,
+  toolpath,
 }: Preview3DProps) {
+  const [showPath, setShowPath] = useState(true);
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)', false);
   // Opened by a click (never server-rendered), so the tokens can be read on the first render.
   const [colors, setColors] = useState<SceneColors | null>(() =>
@@ -198,6 +204,7 @@ export function Preview3D({
       data-selected={picked?.key ?? ''}
       data-explode={Math.round(lift)}
       data-hide-waste={hideWaste ? 'true' : 'false'}
+      data-toolpath={toolpath ? (showPath ? 'on' : 'off') : undefined}
       role="application"
       aria-label={fill(t.canvasLabel, { n: sheet + 1, count: partCount })}
       tabIndex={0}
@@ -221,6 +228,7 @@ export function Preview3D({
             onCamera={onCamera}
             onStats={onStats}
             interaction={interaction}
+            toolpath={toolpath ? { ...toolpath, path: showPath } : null}
           />
         </SceneBoundary>
       ) : (
@@ -325,6 +333,22 @@ export function Preview3D({
               >
                 <Undo2 aria-hidden />
                 {t.snapBack}
+              </Button>
+            </Tooltip>
+          ) : null}
+          {toolpath ? (
+            <Tooltip content={t.toolpathTip}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className={cn('h-7 px-2', showPath && active)}
+                aria-pressed={showPath}
+                aria-label={t.toolpath}
+                data-testid="preview3d-toolpath"
+                onClick={() => setShowPath(!showPath)}
+              >
+                <Route aria-hidden />
+                <span className="hidden @lg:inline">{t.toolpath}</span>
               </Button>
             </Tooltip>
           ) : null}

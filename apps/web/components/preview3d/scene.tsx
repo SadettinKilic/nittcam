@@ -11,7 +11,7 @@
  */
 import { ContactShadows, Grid, OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { sheetSizeOf, type Project } from '@nittcam/core';
+import { sheetSizeOf, type Project, type SimSheet } from '@nittcam/core';
 import { useEffect, useMemo, useRef, type ComponentRef } from 'react';
 import { NeutralToneMapping, Plane, Vector3, type PerspectiveCamera } from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
@@ -32,6 +32,7 @@ import {
   type ViewPreset,
 } from '../../lib/preview3d/camera';
 import { PartsLayer } from './parts-layer';
+import { ToolpathLayer } from './toolpath-layer';
 import { TABLE_THICKNESS, buildStage, type TableSpec } from '../../lib/preview3d/stage';
 
 /** Colours of the scene, read from the design tokens (never hard-coded; ui-conventions). */
@@ -51,6 +52,8 @@ export interface SceneColors {
   /** Tool and rapid colours shared with the 2D simulation (T154; used by T156/T157). */
   simTool: string;
   simRapid: string;
+  simDepthTop: string;
+  simDepthBottom: string;
   /** Hover / selection tint of a part (T155). */
   highlight: string;
 }
@@ -99,6 +102,17 @@ export interface SceneProps {
   /** Draw calls of the last frame (for perf checks; data attribute on the host). */
   onStats?: (drawCalls: number) => void;
   interaction: SceneInteraction;
+  /** Toolpath overlay from the read program (T156) and the playback state (T157). */
+  toolpath?: SceneToolpath | null;
+}
+
+export interface SceneToolpath {
+  sim: SimSheet;
+  /** Playback time, s; null = the whole program, no tool model. */
+  time: number | null;
+  /** Draw the path lines (the "Takım yolu" toggle); the tool model stays. Default true. */
+  path?: boolean;
+  tool?: { x: number; y: number; z: number; diameter: number } | null;
 }
 
 const FOV = 35;
@@ -173,6 +187,21 @@ export default function Scene(props: SceneProps) {
               top={T}
               interaction={ia}
             />
+            {props.toolpath ? (
+              <ToolpathLayer
+                sim={props.toolpath.sim}
+                top={T}
+                time={props.toolpath.time}
+                tool={props.toolpath.tool}
+                path={props.toolpath.path !== false}
+                colors={{
+                  depthTop: colors.simDepthTop,
+                  depthBottom: colors.simDepthBottom,
+                  rapid: colors.simRapid,
+                  tool: colors.simTool,
+                }}
+              />
+            ) : null}
           </group>
         </group>
       </group>

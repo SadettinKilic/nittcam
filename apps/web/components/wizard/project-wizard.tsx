@@ -827,6 +827,7 @@ function WizardSession({
         t={messages.simulation}
         project={project}
         machine={simMachine}
+        view3d={{ t: messages.layout.preview3d, table: tableSpecOf(profile) }}
         notice={versionNotice}
         onOpenPart={openPart}
         header={{
