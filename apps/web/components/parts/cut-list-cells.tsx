@@ -39,8 +39,15 @@ import type { Messages } from '../../lib/messages';
 
 export type Text = Messages['cutList'];
 export type Run = (name: string, params: unknown) => boolean;
-/** Moves focus from a cell; `enter` = the move came from Enter (may add a row). */
-export type Navigate = (row: number, col: string, dir: NavDirection, enter?: boolean) => void;
+/**
+ * Moves focus from a cell; `enter` = the move came from Enter (may add a row). False when there
+ * is no cell that way: Tab then leaves the grid (T185, no keyboard trap).
+ */
+export type Navigate = (row: number, col: string, dir: NavDirection, enter?: boolean) => boolean;
+
+/** Tab / Shift+Tab past the first or last cell leaves the grid instead of being swallowed. */
+const leavesGrid = (dir: NavDirection, moved: boolean) =>
+  !moved && (dir === 'next' || dir === 'prev');
 
 /** Spreadsheet-like cell input: quiet until hover or focus; 32 px inside a 36 px row (T118). */
 const inputClass =
@@ -69,8 +76,7 @@ function navKey(e: KeyboardEvent, editing: boolean): NavDirection | null {
 export function onButtonNav(e: KeyboardEvent, row: number, col: string, navigate: Navigate): void {
   const dir = navKey(e, false);
   if (!dir) return;
-  e.preventDefault();
-  navigate(row, col, dir);
+  if (!leavesGrid(dir, navigate(row, col, dir))) e.preventDefault();
 }
 
 interface TextCellProps<T> {
@@ -222,11 +228,12 @@ export function TextCell<T>({
     if (!navigate) return;
     const dir = navKey(e, editing.current);
     if (!dir) return;
-    e.preventDefault();
-    if (commit()) {
-      editing.current = false;
-      navigate(row, col, dir);
+    if (!commit()) {
+      e.preventDefault();
+      return;
     }
+    editing.current = false;
+    if (!leavesGrid(dir, navigate(row, col, dir))) e.preventDefault();
   }
 
   const errorId = `${id}-error`;

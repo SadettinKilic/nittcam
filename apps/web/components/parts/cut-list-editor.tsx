@@ -1482,11 +1482,12 @@ export function CutListEditor({
     const from = pendingFocus.current ?? { row, col };
     // Rows move in view order (T123); cell ids keep the project index.
     const position = order.indexOf(from.row);
-    if (position < 0) return;
+    if (position < 0) return false;
     const target = navTarget(position, from.col, dir, order.length, cols, enter);
-    if (!target) return;
+    if (!target) return false;
     if ('append' in target) addRow(target.col === 'actions' ? 'name' : target.col, true);
     else focusCell(order[target.row] ?? 0, target.col);
+    return true;
   };
 
   const issuesOf = (index: number) =>

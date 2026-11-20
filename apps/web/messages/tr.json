@@ -1254,7 +1254,7 @@
     },
     "gcode": {
       "title": "G-code",
-      "label": "G-code satırları. Bir satıra tıklayınca simülasyon o satıra gider.",
+      "label": "G-code satırları. Bir satıra tıklayınca ya da yukarı ve aşağı ok tuşlarıyla simülasyon o satıra gider; Home ve End ilk ve son satıra gider.",
       "file": "Dosya: {name}",
       "lineWord": "Satır",
       "revisionPending": "kaydedilince"
