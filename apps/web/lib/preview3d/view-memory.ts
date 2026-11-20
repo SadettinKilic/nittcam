@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import type { CameraCommand } from '../../components/preview3d/scene';
 import { PRESET_MS, type CameraPose, type ViewPreset } from './camera';
 import { registerLeaveTransition } from './leave';
-import { useReducedMotion } from '../preferences';
+import { useReducedMotion } from '../use-preferences';
 import { hasWebGL2 } from './capability';
 
 export type ViewMode = '2d' | '3d';

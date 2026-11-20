@@ -5,8 +5,6 @@
 // subscribes to changes. Stored in localStorage only (D-074): a preference of this screen, not
 // of the company or the user account.
 
-import { useSyncExternalStore } from 'react';
-
 export const DENSITY_STORAGE_KEY = 'nittcam-density';
 export const MOTION_STORAGE_KEY = 'nittcam-motion';
 /** Same key as the 3D preview's own "Basit mod" button (T154), so both stay in step. */
@@ -18,8 +16,9 @@ export type Density = (typeof DENSITIES)[number];
 export const MOTION_CHOICES = ['system', 'reduce'] as const;
 export type MotionChoice = (typeof MOTION_CHOICES)[number];
 
-const EVENT = 'nittcam:preferences';
-const REDUCE_QUERY = '(prefers-reduced-motion: reduce)';
+/** Fired on window after a preference changes (same tab). */
+export const PREFERENCES_EVENT = 'nittcam:preferences';
+export const REDUCE_QUERY = '(prefers-reduced-motion: reduce)';
 
 /** Anything but "compact" is the default comfortable density. */
 export function parseDensity(stored: string | null | undefined): Density {
@@ -62,7 +61,7 @@ function setRootAttr(name: string, value: string | null): void {
 }
 
 function notify(): void {
-  window.dispatchEvent(new Event(EVENT));
+  window.dispatchEvent(new Event(PREFERENCES_EVENT));
 }
 
 export function readDensity(): Density {
@@ -94,18 +93,6 @@ export function setSimple3d(on: boolean): void {
   notify();
 }
 
-function subscribe(cb: () => void): () => void {
-  window.addEventListener(EVENT, cb);
-  window.addEventListener('storage', cb);
-  const mq = window.matchMedia?.(REDUCE_QUERY);
-  mq?.addEventListener('change', cb);
-  return () => {
-    window.removeEventListener(EVENT, cb);
-    window.removeEventListener('storage', cb);
-    mq?.removeEventListener('change', cb);
-  };
-}
-
 /**
  * True when motion should be cut: the OS asks for it or the user chose "reduce" in Ayarlar →
  * Görünüm. Plain function for code outside React (canvas fade-in).
@@ -113,22 +100,4 @@ function subscribe(cb: () => void): () => void {
 export function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined') return false;
   return readMotion() === 'reduce' || !!window.matchMedia?.(REDUCE_QUERY).matches;
-}
-
-/** `prefersReducedMotion()` as React state (false on the server and during hydration). */
-export function useReducedMotion(): boolean {
-  return useSyncExternalStore(subscribe, prefersReducedMotion, () => false);
-}
-
-/** The stored choices as React state; the server snapshot is the default. */
-export function useDensity(): Density {
-  return useSyncExternalStore(subscribe, readDensity, () => 'comfortable');
-}
-
-export function useMotionChoice(): MotionChoice {
-  return useSyncExternalStore(subscribe, readMotion, () => 'system');
-}
-
-export function useSimple3d(): boolean {
-  return useSyncExternalStore(subscribe, readSimple3d, () => false);
 }

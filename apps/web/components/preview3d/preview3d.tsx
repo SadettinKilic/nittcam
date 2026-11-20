@@ -37,7 +37,8 @@ import {
 } from '../../lib/preview3d/camera';
 import type { TableSpec } from '../../lib/preview3d/stage';
 import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
-import { readSimple3d, setSimple3d, useReducedMotion } from '../../lib/preferences';
+import { readSimple3d, setSimple3d } from '../../lib/preferences';
+import { useReducedMotion } from '../../lib/use-preferences';
 import type { CaptureFn } from './capture';
 import { exportPng } from '../../lib/preview3d/png';
 import type {

@@ -11,11 +11,9 @@ import {
   setDensity,
   setMotion,
   setSimple3d,
-  useDensity,
-  useMotionChoice,
-  useSimple3d,
   type Density,
 } from '../../../lib/preferences';
+import { useDensity, useMotionChoice, useSimple3d } from '../../../lib/use-preferences';
 import { useMediaQuery } from '../../../lib/use-media-query';
 
 type Text = Messages['settings']['appearance'];
