@@ -1,12 +1,19 @@
 /**
- * The project PDF (spec §6.6): layout pages (T172). Generated on the server from the saved
+ * The project PDF (spec §6.6): layout pages (T172), then the part list and waste report (T173). Generated on the server from the saved
  * revision; the same project, revision and paper always give the same bytes.
  */
-import { layoutDrawing, materialKindOf, type PaperSize, type Project } from '@nittcam/core';
+import {
+  layoutDrawing,
+  materialKindOf,
+  projectReport,
+  type PaperSize,
+  type Project,
+} from '@nittcam/core';
 import { PAPER_SIZES } from '@nittcam/core';
 import { fill } from '../../draft-project';
 import { getMessages } from '../../messages';
 import { centred, MUTED, newDocument, saveDocument } from './document';
+import { addReportPages, reportPageCount } from './report-pages';
 import { addLayoutPages, contentBox, drawFrame, mm, type PageHeader } from './layout-pages';
 
 const messages = getMessages();
@@ -17,6 +24,8 @@ export interface ProjectPdfInput {
   projectName: string;
   revision: number;
   paper: PaperSize;
+  /** Estimated machining time, s (T173); null = not available. */
+  cutSeconds: number | null;
 }
 
 /** Turkish material label and thickness for the page header. */
@@ -31,11 +40,13 @@ export function materialLabel(project: Project): string {
 }
 
 export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Array> {
-  const { project, projectName, revision, paper } = input;
+  const { project, projectName, revision, paper, cutSeconds } = input;
   const head: PageHeader = { projectName, revision, material: materialLabel(project) };
   const { doc, fonts } = await newDocument(projectName, fill(t.revision, { revision }));
   const sheets = layoutDrawing(project);
-  const pageCount = Math.max(1, sheets.length);
+  const report = projectReport(project, cutSeconds);
+  const layoutPages = Math.max(1, sheets.length);
+  const pageCount = layoutPages + reportPageCount(report, paper);
   if (sheets.length === 0) {
     const size = PAPER_SIZES[paper];
     const page = doc.addPage([size.width, size.height]);
@@ -45,5 +56,6 @@ export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Arr
   } else {
     addLayoutPages(doc, fonts, head, sheets, paper, 0, pageCount);
   }
+  addReportPages(doc, fonts, head, report, paper, layoutPages, pageCount);
   return saveDocument(doc);
 }

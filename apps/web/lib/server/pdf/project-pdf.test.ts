@@ -9,12 +9,18 @@ const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 
 describe('project PDF layout pages (T172)', () => {
   const project = pdfTestProject();
-  const input = { project, projectName: 'Mutfak dolabı Şişli', revision: 3, paper: 'A4' as const };
+  const input = {
+    project,
+    projectName: 'Mutfak dolabı Şişli',
+    revision: 3,
+    paper: 'A4' as const,
+    cutSeconds: 754,
+  };
 
-  it('has one landscape page per layout sheet', async () => {
+  it('has one landscape page per layout sheet, then the part list page', async () => {
     expect(project.layout.sheets.length).toBeGreaterThan(1);
     const doc = await PDFDocument.load(await renderProjectPdf(input));
-    expect(doc.getPageCount()).toBe(project.layout.sheets.length);
+    expect(doc.getPageCount()).toBe(project.layout.sheets.length + 1);
     const { width, height } = doc.getPage(0).getSize();
     expect(width).toBeGreaterThan(height);
   });
@@ -50,10 +56,10 @@ describe('project PDF layout pages (T172)', () => {
     expect(bytes.byteLength).toBeGreaterThan(1000);
   });
 
-  it('still makes one page for a project without a layout', async () => {
+  it('still makes one layout page (plus the list) for a project without a layout', async () => {
     const empty = { ...project, layout: { sheets: [] } };
     const doc = await PDFDocument.load(await renderProjectPdf({ ...input, project: empty }));
-    expect(doc.getPageCount()).toBe(1);
+    expect(doc.getPageCount()).toBe(2);
   });
 });
 
