@@ -1482,18 +1482,23 @@ Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by
 - Özet cutting-settings line wraps to two lines at 232 px and also names the thin skin; Özet warning count equals the Uyarılar panel; Dizilim says the part gap is added to the tool diameter [#12]
 - Phone: Simülasyon 3rd sheet tab cut at 390 (scrollable) [T B43]
 
-### P3 Kesim listesi, adım 1, makine formu, DXF
-- Cut list: "Uyarılar" panel does not cover cells, clicking an issue focuses its row; row marker for parts with inner cuts; edge band unit "mm"; a name-only row is not counted in the part total; cabinet toast and button use the same unit [#5, #6, #9, #10]
-- Paste: skipped rows (e.g. size 0) are named with the reason in the preview [#10]
-- Step 1: thickness row only when there is a choice; red "kesim ayarı yok" box does not push "Plaka ölçüsü" under the footer [#5]
+### P3 Kesim listesi, adım 1, makine formu, DXF   [status: partial, B46 #150]
+Partly done in B46 (#150): items marked "done in B46"; the rest stays open.
+- Cut list: edge band unit "mm"; a name-only row is not counted in the part total; cabinet toast and button use the same unit [#9, #10] (done in B46)
+- Cut list: "Uyarılar" panel does not cover cells, clicking an issue focuses its row; row marker for parts with inner cuts [#5, #6]
+- Paste: skipped rows (e.g. size 0) are named with the reason in the preview [#10] (done in B46)
+- Step 1: thickness row only when there is a choice [#5] (done in B46)
+- Step 1: red "kesim ayarı yok" box does not push "Plaka ölçüsü" under the footer [#5]
 - ★ Machine form and Ayarlar → Malzemeler: parameter table fits 1440 and 1024 without horizontal scroll; copied-set note spans the row; from the fix flow the section nav and breadcrumb are right and "Değerleri doğruladım" is not under the sticky bar; "Projeye dön" back to the project [#5, #6, #7]
 - Wizard header stays one row down to ~1095 px container width [#6]
-- DXF dialog: focus returns to "DXF içe aktar", first focus visible; duplicate `data-testid="dxf-open"`; a LINE over a closed polyline edge counts as duplicate; report shows holes separately [T B16]
-- Step 1 "ince tabaka" switch and Simülasyon "Köprü: Kapalı" use the same word and link to each other [#11]
-- Server accepts a grain value on a grainless offcut PATCH; T292 rows get a stray thickness note when the target thickness differs [T B36]
-- Out-of-range fields say the limit (Ayarlar defaults, offcut dialog) instead of a silent disabled Kaydet [#12]
-- ★ One vocabulary across Ayarlar / Simülasyon / step 1: Köprü, Kapalı, ince tabaka, Climb (tırmanma) [#11, #12]
-- "Ayrı plaka parçalarını yeni projeye aktar" also on an unsaved new project (saves first); a project on an archived machine shows "bu makine arşivlendi" on step 1 and Dışa aktar [#12]
+- DXF dialog: focus returns to "DXF içe aktar"; duplicate `data-testid="dxf-open"` [T B16] (done in B46)
+- DXF dialog: first focus visible; a LINE over a closed polyline edge counts as duplicate; report shows holes separately [T B16]
+- Step 1 "ince tabaka" switch and Simülasyon "Köprü: Kapalı" use the same word and link to each other [#11] (done in B46)
+- Server accepts a grain value on a grainless offcut PATCH [T B36] (done in B46)
+- T292 rows get a stray thickness note when the target thickness differs [T B36]
+- Out-of-range fields say the limit (Ayarlar defaults, offcut dialog) instead of a silent disabled Kaydet [#12] (done in B46)
+- ★ One vocabulary across Ayarlar / Simülasyon / step 1: Köprü, Kapalı, ince tabaka, Climb (tırmanma) [#11, #12] (done in B46)
+- "Ayrı plaka parçalarını yeni projeye aktar" also on an unsaved new project (saves first); a project on an archived machine shows "bu makine arşivlendi" on step 1 and Dışa aktar [#12] (done in B46)
 
 ### P4 Kabuk, bildirimler, ana sayfa   [status: done, B39]
 Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is already the box.
@@ -1507,7 +1512,7 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 - ★ Projeler row 205 px on a 3-sheet project: one line + "3 dosya" / zip button, no mid-word breaks; search / filter / sort in the URL [#11, #12]
 - Ana sayfa: "Bu hafta dışa aktarma" counts NC only (or relabel), deleted projects not counted; "Makine yok" when no active machine [#12]
 - Dışa aktar: the footer hint jumps to the checklist (or the list sits above Dosyalar); file names break at _ / - or are middle-truncated; report card time rounds like Simülasyon [#12]
-- Small server fixes: maintenance day in local time; client-log limit in bytes [T B38, T B43]
+- Small server fixes: maintenance day in local time; client-log limit in bytes [T B38, T B43] (done in B46 #150, D-086)
 
 ### P5 Output (golden impact: tester gcode-safety review, D-051)
 - Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi") [#7]

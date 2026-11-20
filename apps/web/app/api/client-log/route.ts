@@ -13,7 +13,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: Request) {
   const raw = await request.text().catch(() => '');
-  if (raw.length > MAX_BODY_BYTES)
+  // P4 (tester B43): the limit is in bytes, so a body of 2-byte Turkish letters is measured right.
+  if (Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES)
     return NextResponse.json({ error: 'too_large' }, { status: 413 });
   let body: unknown = null;
   try {

@@ -390,8 +390,10 @@ test.describe('T023 tester: wizard step 1', () => {
     await expect(page.getByTestId('wizard-material')).toHaveAttribute('data-library-id', /.+/);
     await pickOption(page.getByTestId('wizard-material'), tr.materials.mdf);
     await expect(page.getByTestId('wizard-material')).toHaveAttribute('data-value', 'mdf');
-    // The thickness hint lists the profile's thicknesses; a listed one has cutting params.
-    await expect(page.getByText(/Bu makinede kesim ayarı olan kalınlıklar/)).toBeVisible();
+    // P3 (B46): the profile has one MDF thickness and it is already the value, so there is no
+    // chip row (no choice); the value comes from the profile and has cutting params.
+    await expect(page.getByText(/Bu makinede kesim ayarı olan kalınlıklar/)).toHaveCount(0);
+    await expect(page.getByTestId('no-cutting-params')).toHaveCount(0);
     // Grain for MDF (spec: grain shown), also for wood types; not for plastic.
     await expect(page.getByTestId('sheet-grain-dial')).toBeVisible();
     const material = page.getByTestId('wizard-material');
@@ -432,19 +434,27 @@ test.describe('T023 tester: wizard step 1', () => {
       void ww;
       void hh;
     }
-    // Thickness chips (profile sets) are real buttons or radios: pick one and see the field follow.
-    const hint = await page.getByText(/Bu makinede kesim ayarı olan kalınlıklar/).textContent();
-    const nums = (hint?.match(/\d+(?:[.,]\d+)?/g) ?? []).map((x) => x.replace(',', '.'));
-    expect(nums.length).toBeGreaterThan(0);
+    // P3 (B46): the chip row shows only when there is a choice. The profile's one MDF thickness
+    // is already the value: no chips, cutting params found.
     const thickness = page.getByTestId('wizard-thickness');
-    const last = nums[nums.length - 1] ?? '18';
-    await thickness.fill(last);
-    await thickness.press('Enter');
+    const hint = page.getByText(/Bu makinede kesim ayarı olan kalınlıklar/);
+    await expect(hint).toHaveCount(0);
     await expect(page.getByTestId('no-cutting-params')).toHaveCount(0);
-    // A thickness without cutting params is called out.
+    // A thickness without cutting params is called out, and the profile's thickness is offered.
     await thickness.fill('7');
     await thickness.press('Enter');
     await expect(page.getByTestId('no-cutting-params')).toBeVisible();
+    await expect(hint).toBeVisible();
+    const nums = ((await hint.textContent())?.match(/\d+(?:[.,]\d+)?/g) ?? []).map((x) =>
+      x.replace(',', '.'),
+    );
+    expect(nums.length).toBeGreaterThan(0);
+    // Chips are real buttons: picking one sets the field, the params are found, the row goes.
+    const pick = nums[nums.length - 1] ?? '18';
+    await page.getByRole('button', { name: pick, exact: true }).click();
+    await expect(thickness).toHaveValue(pick);
+    await expect(page.getByTestId('no-cutting-params')).toHaveCount(0);
+    await expect(hint).toHaveCount(0);
     // Garbage input: Turkish message, project not broken.
     for (const bad of ['abc', '-5', '0', '']) {
       await thickness.fill(bad);

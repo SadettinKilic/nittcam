@@ -480,7 +480,15 @@ export function PastePanel({ t, onApply, onCancel, intro }: PastePanelProps) {
             {validCount === 0
               ? t.nothing
               : invalidCount > 0
-                ? fill(t.summary, { valid: validCount, invalid: invalidCount })
+                ? fill(t.summary, {
+                    valid: validCount,
+                    invalid: invalidCount,
+                    // P3 (CTO #10): the skipped rows are named; each one's reason is in Durum.
+                    lines: result.rows
+                      .filter((r) => r.errors.length > 0)
+                      .map((r) => r.line)
+                      .join(', '),
+                  })
                 : fill(t.summaryAllValid, { valid: validCount })}
           </p>
           {applyError ? (
