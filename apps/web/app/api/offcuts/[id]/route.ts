@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 import { companyScope } from '../../../../lib/server/company';
-import { isUuid, offcutError, readStatus, toOffcutItem } from '../../../../lib/server/offcuts';
+import { isUuid, offcutError, readOffcutPatch, toOffcutItem } from '../../../../lib/server/offcuts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** PATCH /api/offcuts/:id `{ status }` → changes the status (e.g. back to available, T168). */
+/**
+ * PATCH /api/offcuts/:id
+ * - `{ status }` and/or `{ material, thickness, width, height, grain }` → edits the offcut (T168
+ *   status, T291 "Düzelt"); its source project and date stay.
+ * - `{ deleted: boolean }` → soft deletes or restores it (T291 "Sil" / "Geri al"); a deleted offcut
+ *   leaves the stock and the nesting, and comes back with the same id.
+ * Company-scoped: another company's id is 404.
+ */
 export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   if (!isUuid(id)) return offcutError({ error: 'not_found' }, 404);
@@ -15,13 +22,16 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   } catch {
     return offcutError({ error: 'bad_request' }, 400);
   }
-  const status = readStatus(body);
-  if (!status) return offcutError({ error: 'bad_request' }, 400);
+  const patch = readOffcutPatch(body);
+  if (!patch) return offcutError({ error: 'bad_request' }, 400);
   try {
     const scope = await companyScope();
-    const row = await scope.offcuts.update(id, { status });
+    const row =
+      patch.kind === 'deleted'
+        ? await scope.offcuts.setDeleted(id, patch.deleted)
+        : await scope.offcuts.update(id, patch.edit);
     if (!row) return offcutError({ error: 'not_found' }, 404);
-    return NextResponse.json(toOffcutItem(row));
+    return NextResponse.json({ ...toOffcutItem(row), deleted: row.deletedAt !== null });
   } catch (err) {
     console.error(err);
     return offcutError({ error: 'server_error' }, 500);

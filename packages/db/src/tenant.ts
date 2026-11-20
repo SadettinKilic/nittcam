@@ -1001,6 +1001,7 @@ function templatesRepo(db: Db, companyId: string) {
 }
 
 export type ExportRow = typeof exportsTable.$inferSelect;
+export type OffcutRow = typeof offcuts.$inferSelect;
 export type NewExport = NewRow<typeof exportsTable> & { id?: string };
 
 /** The fields that make two exports the same (D-030 idempotency). */
@@ -1014,6 +1015,32 @@ export type ExportKey = Pick<
   | 'kind'
   | 'sha256'
 >;
+
+/**
+ * Offcut stock (T168, T291). `list` leaves out soft-deleted offcuts (stock tab and nesting);
+ * `get` and `update` still reach them, so "Geri al" and the post-export "used" marking work.
+ */
+function offcutsRepo(db: Db, companyId: string) {
+  const base = mutable(db, companyId, offcuts);
+  return {
+    ...base,
+    async list(): Promise<OffcutRow[]> {
+      return db
+        .select()
+        .from(offcuts)
+        .where(and(eq(offcuts.companyId, companyId), isNull(offcuts.deletedAt)));
+    },
+    /** Soft delete or restore (T291); null for an unknown id or another company's offcut. */
+    async setDeleted(id: string, deleted: boolean): Promise<OffcutRow | null> {
+      const rows = await db
+        .update(offcuts)
+        .set({ deletedAt: deleted ? new Date() : null, updatedAt: new Date() })
+        .where(and(eq(offcuts.id, id), eq(offcuts.companyId, companyId)))
+        .returning();
+      return rows[0] ?? null;
+    },
+  };
+}
 
 function exportsRepo(db: Db, companyId: string) {
   const sameKey = (k: ExportKey) =>
@@ -1176,7 +1203,7 @@ export function forCompany(db: Db, companyId: string) {
     projectCommands: reader(db, companyId, projectCommands),
     exports: exportsRepo(db, companyId),
     validations: appendOnly(db, companyId, validations),
-    offcuts: mutable(db, companyId, offcuts),
+    offcuts: offcutsRepo(db, companyId),
     chatMessages: appendOnly(db, companyId, chatMessages),
     aiUsage: aiUsageRepo(db, companyId),
   };

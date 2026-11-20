@@ -465,6 +465,11 @@ export const offcuts = pgTable(
     grain: integer('grain'),
     sourceProjectId: uuid('source_project_id'),
     status: offcutStatus('status').notNull().default('available'),
+    /**
+     * Soft delete (T291): hidden from the stock and the nesting; "Geri al" restores it with the
+     * same id, so a layout that cuts from it keeps its link. Null = in stock.
+     */
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

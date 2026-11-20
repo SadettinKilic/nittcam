@@ -1316,7 +1316,7 @@
       "error": "Artık parçalar yüklenemedi.",
       "retry": "Tekrar dene",
       "empty": "Kayıtlı artık parça yok",
-      "emptyText": "Dizilimden sonra kalan büyük parçaları Dizilim adımında stoğa kaydedebilirsiniz.",
+      "emptyText": "Dizilimden sonra kalan büyük parçaları Dizilim adımında stoğa kaydedebilir ya da atölyedekileri elle ekleyebilirsiniz.",
       "count": "{count} artık parça",
       "columns": {
         "size": "Ölçü",
@@ -1339,7 +1339,37 @@
       "markUsed": "Kullanıldı say",
       "markAvailable": "Stoğa geri al",
       "statusFailed": "Durum değiştirilemedi.",
-      "openSource": "Projeyi aç"
+      "openSource": "Projeyi aç",
+      "add": "Artık parça ekle",
+      "edit": "Düzelt",
+      "delete": "Sil",
+      "rowAction": "{action}: {size}, {material}",
+      "undo": "Geri al",
+      "form": {
+        "titleNew": "Artık parça ekle",
+        "titleEdit": "Artık parçayı düzelt",
+        "description": "Atölyede duran parçayı stoğa girin. Dizilim, aynı malzeme ve kalınlıktaki projelerde onu önce kullanır.",
+        "material": "Malzeme",
+        "thickness": "Kalınlık",
+        "width": "En",
+        "height": "Boy",
+        "grain": "Damar",
+        "grainNone": "Damarsız",
+        "grain0": "Boyuna (0°)",
+        "grain90": "Enine (90°)",
+        "grainNoneHint": "Bu malzemede damar yok.",
+        "save": "Kaydet",
+        "cancel": "Vazgeç",
+        "invalid": "En, boy ve kalınlık 0'dan büyük ve en çok 10.000 mm olmalı.",
+        "unchanged": "Değişiklik yok."
+      },
+      "toast": {
+        "added": "Artık parça eklendi: {size}.",
+        "saved": "Artık parça kaydedildi: {size}.",
+        "deleted": "Artık parça silindi: {size}.",
+        "restored": "Artık parça geri alındı: {size}.",
+        "failed": "İşlem yapılamadı. Tekrar deneyin."
+      }
     }
   },
   "materials": {
