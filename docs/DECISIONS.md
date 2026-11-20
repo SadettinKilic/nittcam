@@ -628,3 +628,10 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-082 CTO review #12 triage (2026-11-20, PO)
 - M8 is closed when B41 (#139) lands and T298 + T301 are done. Must-fix A → T298 (thin-skin bounds, safety), B → T299, gap E1 → T300: batch B47 on Dev 2 before polish P3. E2 → T301, E3 → T302, T295/T296 follow-ups → T303: batch B48 on Dev 1 after B42. 14 polish items into P2–P5.
 - Thin-skin bounds proposal: ≥ 0,2 mm and ≤ thickness − 1 mm (final numbers by dev + tester, tuned in the field test).
+
+## D-084 Company name and logo on screen and documents (T301, 2026-11-20, Dev 1)
+- Sidebar: the static layout keeps "Atölyem" only as the fallback; the shell reads `/api/settings` once per page load and Ayarlar publishes a saved name / logo to the same client store, so the sidebar updates without a reload.
+- PDF header: logo top-left (box ≤ 84 × 30 pt, aspect kept), project name beside it, company name first on the second line ("Şirket · Revizyon n · MDF, 18 mm"). Header height unchanged (44 pt), so the drawing area stays the same.
+- Labels: no logo (no room); the foot line reads "Proje · Şirket", the project keeps up to 60 % of the width.
+- Only PNG and JPEG logos are embedded (pdf-lib); a WebP logo stays on screen and the PDF carries the name. The Ayarlar logo hint says so.
+- Name and logo are part of the document input: same name and logo → same bytes; generator versions `pdf-2`, `labels-2`.

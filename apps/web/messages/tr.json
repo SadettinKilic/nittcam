@@ -2935,7 +2935,7 @@
       },
       "logo": {
         "title": "Logo",
-        "hint": "PNG, JPEG veya WebP, en fazla 512 KB.",
+        "hint": "PNG, JPEG veya WebP, en fazla 512 KB. PDF çıktılarına yalnız PNG ve JPEG logo basılır.",
         "choose": "Logo yükle",
         "replace": "Logoyu değiştir",
         "remove": "Logoyu kaldır",

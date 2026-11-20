@@ -20,6 +20,7 @@ import {
   SHEET_FILL,
   text,
   WHITE,
+  type PdfCompany,
   type PdfFonts,
 } from './document';
 
@@ -37,6 +38,28 @@ export interface PageHeader {
   revision: number;
   /** "MDF, 18 mm". */
   material: string;
+  /** The company (T301): logo left of the project name, name first on the second line. */
+  company?: PdfCompany | null;
+}
+
+/** Largest logo box in the page header, points. */
+const LOGO_MAX_W = 84;
+const LOGO_MAX_H = 30;
+
+/** Draws the logo top-left in the header; returns the width it takes (0 without a logo). */
+function drawLogo(page: PDFPage, company: PdfCompany | null | undefined, top: number): number {
+  const logo = company?.logo;
+  if (!logo) return 0;
+  const scale = Math.min(LOGO_MAX_W / logo.width, LOGO_MAX_H / logo.height);
+  const w = logo.width * scale;
+  const h = logo.height * scale;
+  page.drawImage(logo, {
+    x: PAGE_MARGIN,
+    y: top - LOGO_MAX_H + (LOGO_MAX_H - h) / 2,
+    width: w,
+    height: h,
+  });
+  return w + 8;
 }
 
 const nf = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
@@ -55,18 +78,28 @@ export function drawFrame(
 ): void {
   const { width, height } = page.getSize();
   const top = height - PAGE_MARGIN;
+  const shift = drawLogo(page, head.company, top);
+  const left = PAGE_MARGIN + shift;
   text(
     page,
-    fitText(head.projectName, fonts.bold, 14, width / 2),
-    PAGE_MARGIN,
+    fitText(head.projectName, fonts.bold, 14, width / 2 - shift),
+    left,
     top - 12,
     fonts.bold,
     14,
   );
+  const company = head.company?.name
+    ? `${fitText(head.company.name, fonts.regular, 9, width / 4)} · `
+    : '';
   text(
     page,
-    `${fill(t.revision, { revision: head.revision })} · ${head.material}`,
-    PAGE_MARGIN,
+    fitText(
+      `${company}${fill(t.revision, { revision: head.revision })} · ${head.material}`,
+      fonts.regular,
+      9,
+      width / 2 - shift,
+    ),
+    left,
     top - 28,
     fonts.regular,
     9,

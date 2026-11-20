@@ -17,6 +17,7 @@ import {
   storedStage,
   type ExportSource,
 } from './exports';
+import { currentCompanyMark } from './company-mark';
 import { documentFileName } from './file-names';
 import { estimateCutSeconds } from './pdf/cut-time';
 import { renderLabelsPdf } from './pdf/labels-pdf';
@@ -35,9 +36,10 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 export const DOCUMENT_GENERATORS: Readonly<Record<DocumentType, string>> = {
   'dxf-dizilim': 'dxf-r12-1',
   'dxf-parcalar': 'dxf-r12-1',
-  'pdf-a4': 'pdf-1',
-  'pdf-a3': 'pdf-1',
-  etiket: 'labels-1',
+  // T301: company name and logo in the header / label foot.
+  'pdf-a4': 'pdf-2',
+  'pdf-a3': 'pdf-2',
+  etiket: 'labels-2',
 };
 
 export function isDocumentType(v: unknown): v is DocumentType {
@@ -71,7 +73,13 @@ export async function buildDocument(
     return {
       kind: 'pdf',
       name: documentFileName(name, revision, 'etiket', 'pdf'),
-      bytes: await renderLabelsPdf({ project: data, projectName: name, revision, ...labels }),
+      bytes: await renderLabelsPdf({
+        project: data,
+        projectName: name,
+        revision,
+        ...labels,
+        company: await currentCompanyMark(scope),
+      }),
     };
   }
   const paper = type === 'pdf-a3' ? 'A3' : 'A4';
@@ -84,6 +92,7 @@ export async function buildDocument(
       revision,
       paper,
       cutSeconds: await estimateCutSeconds(scope, project),
+      company: await currentCompanyMark(scope),
     }),
   };
 }

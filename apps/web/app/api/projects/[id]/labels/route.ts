@@ -1,4 +1,5 @@
 import { companyScope } from '../../../../../lib/server/company';
+import { currentCompanyMark } from '../../../../../lib/server/company-mark';
 import { apiError, sha256Hex } from '../../../../../lib/server/exports';
 import { asciiStem } from '../../../../../lib/server/file-names';
 import { renderLabelsPdf } from '../../../../../lib/server/pdf/labels-pdf';
@@ -34,6 +35,7 @@ export async function GET(request: Request, ctx: RouteContext<'/api/projects/[id
       revision,
       grid: settings.grid,
       offset: settings.offset,
+      company: await currentCompanyMark(scope),
     });
     const name = `${asciiStem(project.name, 'proje')}-r${revision}-etiket.pdf`;
     const disposition = url.searchParams.get('download') === '1' ? 'attachment' : 'inline';

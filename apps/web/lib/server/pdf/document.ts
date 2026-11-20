@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import fontkit from '@pdf-lib/fontkit';
-import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 
 /**
  * Fixed metadata date of every generated PDF: the bytes must not depend on the clock (§6.6 "Aynı
@@ -55,6 +55,41 @@ export async function newDocument(
   doc.setCreationDate(PDF_FIXED_DATE);
   doc.setModificationDate(PDF_FIXED_DATE);
   return { doc, fonts: { regular, bold } };
+}
+
+/**
+ * The company on generated documents (T301, CTO #12 E2): its name and, when one is uploaded as
+ * PNG or JPEG, its logo bytes. Both are part of the input: same name and logo, same bytes.
+ */
+export interface CompanyMark {
+  name: string;
+  logo: { type: 'png' | 'jpeg'; bytes: Uint8Array } | null;
+}
+
+/** A company mark embedded into one document. */
+export interface PdfCompany {
+  name: string;
+  logo: PDFImage | null;
+}
+
+/** Embeds the company logo (a broken image is left out, the name stays); null without a company. */
+export async function embedCompany(
+  doc: PDFDocument,
+  company: CompanyMark | null | undefined,
+): Promise<PdfCompany | null> {
+  if (!company) return null;
+  let logo: PDFImage | null = null;
+  if (company.logo) {
+    try {
+      logo =
+        company.logo.type === 'png'
+          ? await doc.embedPng(company.logo.bytes)
+          : await doc.embedJpg(company.logo.bytes);
+    } catch {
+      logo = null;
+    }
+  }
+  return { name: company.name.trim(), logo };
 }
 
 /** Saves with settings that keep the bytes stable. */

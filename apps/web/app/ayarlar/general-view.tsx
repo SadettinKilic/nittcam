@@ -25,6 +25,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
 import { SettingsCard } from '../../components/settings/settings-card';
+import { setCompanyBrand } from '../../lib/company-brand';
 import { LOGO_ACCEPT, logoProblem, type LogoProblem } from '../../lib/logo';
 import type { Messages } from '../../lib/messages';
 import { COMPANY_NAME_MAX, type CompanySettings } from '../../lib/settings-api';
@@ -116,6 +117,7 @@ function CompanyCard({ t, data }: { t: Text['general']; data: CompanySettings })
       const body = (await res.json()) as CompanySettings;
       setName(body.name);
       setSavedName(body.name);
+      setCompanyBrand({ name: body.name, logoUrl: body.logoUrl });
       notify.success(c.saved);
     } catch {
       notify.error(c.failed);
@@ -144,6 +146,7 @@ function CompanyCard({ t, data }: { t: Text['general']; data: CompanySettings })
         return;
       }
       setLogoUrl(body.logoUrl);
+      setCompanyBrand({ logoUrl: body.logoUrl });
       notify.success(l.uploaded);
     } catch {
       setLogoError(l.problems.failed);
@@ -159,6 +162,7 @@ function CompanyCard({ t, data }: { t: Text['general']; data: CompanySettings })
       const res = await fetch('/api/settings/logo', { method: 'DELETE' });
       if (!res.ok) throw new Error(String(res.status));
       setLogoUrl(null);
+      setCompanyBrand({ logoUrl: null });
       setLogoError(null);
       notify.success(l.removed);
     } catch {

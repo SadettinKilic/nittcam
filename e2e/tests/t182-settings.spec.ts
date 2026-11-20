@@ -94,6 +94,9 @@ test('company name and logo: limits, upload, remove', async ({ page, request }) 
     await name.fill('Usta Mobilya');
     await page.getByTestId('settings-company-save').click();
     await expect(page.getByText(g.company.saved)).toBeVisible();
+    // T301: the sidebar shows the saved name without a reload.
+    const sidebar = page.getByTestId('shell-sidebar');
+    await expect(sidebar.getByTestId('shell-company')).toHaveText('Usta Mobilya');
 
     const file = page.getByTestId('settings-logo-file');
     await file.setInputFiles({
@@ -111,12 +114,16 @@ test('company name and logo: limits, upload, remove', async ({ page, request }) 
       page.getByTestId('settings-logo-preview').getByRole('img', { name: g.logo.alt }),
     ).toBeVisible();
     await expect(page.getByTestId('settings-logo-error')).toHaveCount(0);
+    await expect(sidebar.getByTestId('shell-company-logo').locator('img')).toBeVisible();
 
     await page.reload();
     await expect(name).toHaveValue('Usta Mobilya');
+    await expect(sidebar.getByTestId('shell-company')).toHaveText('Usta Mobilya');
+    await expect(sidebar.getByTestId('shell-company-logo')).toBeVisible();
     await expect(page.getByTestId('settings-logo-preview').getByRole('img')).toBeVisible();
     await page.getByTestId('settings-logo-remove').click();
     await expect(page.getByTestId('settings-logo-preview')).toContainText(g.logo.none);
+    await expect(sidebar.getByTestId('shell-company-logo')).toHaveCount(0);
   } finally {
     await request.patch('/api/settings', { data: { name: before.name } });
     await request.delete('/api/settings/logo');
