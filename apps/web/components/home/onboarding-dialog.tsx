@@ -27,7 +27,6 @@ import {
   shouldOpenOnboarding,
 } from '../../lib/onboarding';
 import type { ProjectDetail } from '../../lib/projects-api';
-import { buildSampleProject, pickSampleMachine } from '../../lib/sample-project';
 import { STEPS } from '../../lib/wizard-steps';
 import { Callout } from '../wizard/panels';
 
@@ -36,6 +35,8 @@ type SampleState =
 
 /** Creates the sample project (T184, D-075) and returns its id; throws on any failure. */
 async function createSample(messages: OnboardingMessages): Promise<string> {
+  // T186: the generator and the command layer load only when the sample is asked for.
+  const { buildSampleProject, pickSampleMachine } = await import('../../lib/sample-project');
   const list = await fetch('/api/machines', { cache: 'no-store' });
   if (!list.ok) throw new Error(String(list.status));
   const machine = pickSampleMachine((await list.json()) as MachineListItem[]);
