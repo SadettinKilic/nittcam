@@ -302,6 +302,8 @@ test.describe('axe and captures: 1440 / 390, light / dark', () => {
         await page.keyboard.press('Escape');
         await expect(page.getByTestId('bulk-edit')).toHaveCount(0);
 
+        // Phones: the selection bar takes the toolbar row (T248), so clear the selection first.
+        if (width === 390) await page.getByRole('button', { name: t.select.clear }).click();
         await page.getByRole('button', { name: t.pasteOpen }).click();
         await page
           .getByTestId('import-file')

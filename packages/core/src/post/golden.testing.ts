@@ -106,11 +106,224 @@ export function holeFixtureProject(holes: readonly unknown[]): Project {
   return parsed.project;
 }
 
+// ---------------------------------------------------------------------------
+// Operation fixtures (T189): true-shape layout, inner contours, arcs, rotated grain, arc tabs
+// (D-058), cutting settings (T288), thin skin (T143). Nested by the engine (deterministic).
+// ---------------------------------------------------------------------------
+
+type V = { x: number; y: number; bulge: number };
+const v = (x: number, y: number, bulge = 0): V => ({ x, y, bulge });
+
+/** Full circle of diameter `d`, bottom-left of its box at the origin; CCW (outline) or CW (inner). */
+function circle(d: number, ox = 0, oy = 0, cw = false): V[] {
+  const r = d / 2;
+  const b = cw ? -1 : 1;
+  return [v(ox, oy + r, b), v(ox + d, oy + r, b)];
+}
+
+/** Stadium `len` × `w` (two straight sides, two half-circle ends: sweep 180°), CCW. */
+function stadium(len: number, w: number): V[] {
+  const r = w / 2;
+  return [v(r, 0), v(len - r, 0, 1), v(len - r, w), v(r, w, 1)];
+}
+
+/** L-shape `w` × `h` with a `leg`-wide leg on each side, CCW. */
+function lShape(w: number, h: number, leg: number): V[] {
+  return [v(0, 0), v(w, 0), v(w, leg), v(leg, leg), v(leg, h), v(0, h)];
+}
+
+/** Axis rectangle inner contour (CW), bottom-left at (x, y). */
+function rectInner(x: number, y: number, w: number, h: number): V[] {
+  return [v(x, y), v(x, y + h), v(x + w, y + h), v(x + w, y)];
+}
+
+interface OpPart {
+  id: string;
+  name: string;
+  qty: number;
+  grain?: { mode: 'free' | 'fixed'; angle: number };
+  rect?: { w: number; h: number; r: number };
+  outline?: V[];
+  inners?: V[][];
+  holes?: unknown[];
+}
+
+interface OpCutting {
+  tabs: { auto: boolean; count?: number; width?: number; height?: number };
+  skin?: { thickness: number };
+  leadIn: 'arc' | 'line';
+  direction: 'climb' | 'conventional';
+}
+
+const DEFAULT_CUTTING: OpCutting = { tabs: { auto: false }, leadIn: 'arc', direction: 'climb' };
+
+export const GOLDEN_OP_FIXTURES: readonly {
+  id: string;
+  name: string;
+  revision: number;
+  parts: OpPart[];
+  cutting: OpCutting;
+}[] = [
+  {
+    id: 'true-shape',
+    name: 'Serbest biçim dizilim',
+    revision: 1,
+    /**
+     * True-shape layout (T165–T167: freeform parts switch the job to the true-shape engine): two
+     * L-shapes, two Ø250 discs, a frame 600 × 400 r30 (corner arcs) with a window and a Ø100
+     * round cut-out (inner contours, inner arcs) whose grain is fixed at 90° on a 0° sheet, so it
+     * is placed turned (rotated grain). Default cutting settings.
+     */
+    parts: [
+      { id: 'ell', name: 'L parça', qty: 2, outline: lShape(500, 400, 150) },
+      { id: 'disc', name: 'Disk', qty: 2, outline: circle(250) },
+      {
+        id: 'frame',
+        name: 'Çerçeve',
+        qty: 1,
+        grain: { mode: 'fixed', angle: 90 },
+        rect: { w: 600, h: 400, r: 30 },
+        inners: [rectInner(80, 100, 300, 200), circle(100, 440, 150, true)],
+      },
+    ],
+    cutting: DEFAULT_CUTTING,
+  },
+  {
+    id: 'arc-tabs',
+    name: 'Yay üstünde köprü',
+    revision: 1,
+    /**
+     * Tabs on every part (D-058): a Ø300 disc (no straight edge: tabs centred on its arcs), a
+     * 450 × 150 stadium (tabs on the straight sides first), a 500 × 300 r40 rounded rectangle
+     * (corner arcs never hold a tab) and a small Ø180 disc (small-part rule, ≥ 2 tabs on arcs).
+     */
+    parts: [
+      { id: 'disc', name: 'Disk', qty: 1, outline: circle(300) },
+      { id: 'stadium', name: 'Oval', qty: 1, outline: stadium(450, 150) },
+      { id: 'rounded', name: 'Yuvarlak köşe', qty: 1, rect: { w: 500, h: 300, r: 40 } },
+      { id: 'small-disc', name: 'Küçük disk', qty: 1, outline: circle(180) },
+    ],
+    cutting: { tabs: { auto: true }, leadIn: 'arc', direction: 'climb' },
+  },
+  {
+    id: 'cutting-settings',
+    name: 'Kesim ayarları',
+    revision: 1,
+    /**
+     * T288 non-default settings: tabs on every part, 3 per part, 8 × 2 mm; straight lead-in;
+     * conventional direction. A 600 × 400 panel with a window, a Ø8 through drill and a Ø35 ×
+     * 12.5 pocket (holes and pockets under the same settings), and two 300 × 200 shelves.
+     */
+    parts: [
+      {
+        id: 'panel',
+        name: 'Panel',
+        qty: 1,
+        rect: { w: 600, h: 400, r: 0 },
+        inners: [rectInner(320, 120, 200, 160)],
+        holes: [
+          { id: 'h1', type: 'through', d: 8, cx: 60, cy: 60, tool: 2 },
+          { id: 'h2', type: 'pocket', d: 35, depth: 12.5, cx: 160, cy: 200, tool: 2 },
+        ],
+      },
+      { id: 'shelf', name: 'Raf', qty: 2, rect: { w: 300, h: 200, r: 0 } },
+    ],
+    cutting: {
+      tabs: { auto: true, count: 3, width: 8, height: 2 },
+      leadIn: 'line',
+      direction: 'conventional',
+    },
+  },
+  {
+    id: 'thin-skin',
+    name: 'İnce tabaka',
+    revision: 1,
+    /**
+     * Thin skin (T143): small parts (four 150 × 80 strips and a Ø120 disc) keep a 0.5 mm skin
+     * instead of tabs; the cleanup pass removes it after every part; the 600 × 400 panel is cut
+     * through without tabs (tabs off).
+     */
+    parts: [
+      { id: 'panel', name: 'Panel', qty: 1, rect: { w: 600, h: 400, r: 0 } },
+      { id: 'strip', name: 'Çıta', qty: 4, rect: { w: 150, h: 80, r: 0 } },
+      { id: 'disc', name: 'Disk', qty: 1, outline: circle(120) },
+    ],
+    cutting: { tabs: { auto: false }, skin: { thickness: 0.5 }, leadIn: 'arc', direction: 'climb' },
+  },
+  {
+    id: 'tab-bounds-min',
+    name: 'Köprü alt sınır',
+    revision: 1,
+    /**
+     * T293 lower bounds exactly: tabs 3 mm wide, 1 mm of material left (the smallest tab that
+     * still holds a part on 18 mm), on a 400 × 300 panel and a small 150 × 90 strip.
+     */
+    parts: [
+      { id: 'panel', name: 'Panel', qty: 1, rect: { w: 400, h: 300, r: 0 } },
+      { id: 'strip', name: 'Çıta', qty: 1, rect: { w: 150, h: 90, r: 0 } },
+    ],
+    cutting: { tabs: { auto: true, width: 3, height: 1 }, leadIn: 'arc', direction: 'climb' },
+  },
+  {
+    id: 'tab-bounds-max',
+    name: 'Köprü üst sınır',
+    revision: 1,
+    /** T293 upper height bound: 17 mm left on 18 mm stock (thickness − 1), width 3 mm. */
+    parts: [
+      { id: 'panel', name: 'Panel', qty: 1, rect: { w: 400, h: 300, r: 0 } },
+      { id: 'strip', name: 'Çıta', qty: 1, rect: { w: 150, h: 90, r: 0 } },
+    ],
+    cutting: { tabs: { auto: true, width: 3, height: 17 }, leadIn: 'arc', direction: 'climb' },
+  },
+];
+
+/** The nested project of an operation fixture (MDF 18, 2800 × 2070, sheet grain 0°). */
+export function opFixtureProject(
+  fx: (typeof GOLDEN_OP_FIXTURES)[number],
+  toolDiameter: number,
+): Project {
+  const parsed = parseProject({
+    schemaVersion: 2,
+    machine: { machineId: 'golden', profileVersion: 1 },
+    stock: {
+      material: 'mdf',
+      thickness: 18,
+      sheet: { width: 2800, height: 2070, grain: 0 },
+      useOffcuts: false,
+    },
+    parts: fx.parts.map((p) => ({
+      id: p.id,
+      name: p.name,
+      qty: p.qty,
+      grain: p.grain ?? { mode: 'free', angle: 0 },
+      ...(p.rect
+        ? { kind: 'rect', params: p.rect }
+        : { kind: 'freeform', outline: structuredClone(p.outline) }),
+      inners: structuredClone(p.inners ?? []),
+      holes: structuredClone(p.holes ?? []),
+      edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+      templates: [],
+    })),
+    nesting: { mode: 'minWaste', gap: 10, margin: 12 },
+    layout: { sheets: [] },
+    cutting: structuredClone(fx.cutting),
+  });
+  if (!parsed.ok) throw new Error(`op fixture ${fx.id} invalid: ${JSON.stringify(parsed.issues)}`);
+  const nested = nestProject(parsed.project, { toolDiameter });
+  return { ...parsed.project, layout: nested.layout };
+}
+
 /** Every golden fixture id with its project (the existing three keep their rect-only derivative). */
 export function goldenFixtureProjects(
   toolDiameter: number,
 ): { id: string; name: string; revision: number; project: Project }[] {
   return [
+    ...GOLDEN_OP_FIXTURES.map((fx) => ({
+      id: fx.id,
+      name: fx.name,
+      revision: fx.revision,
+      project: opFixtureProject(fx, toolDiameter),
+    })),
     ...GOLDEN_FIXTURES.map((fx) => ({
       id: fx.id,
       name: fx.name,

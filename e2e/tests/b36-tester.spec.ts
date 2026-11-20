@@ -6,6 +6,7 @@ import {
   fill,
   goStep,
   nest,
+  openCutListAction,
   openNewProject,
   paste,
   pickOption,
@@ -294,7 +295,7 @@ for (const vp of [
       await paste(page, ['Parça adı\tEn\tBoy\tAdet', 'Raf\t500\t300\t2'].join('\n'), 1);
       await saved(page);
       await projectId(page);
-      await page.getByTestId('cabinet-open').click();
+      await openCutListAction(page, 'cabinet-open');
       // The dialog does not scroll (DialogContent has no max height): at 390 the split box sits
       // below the fold already on main, so the phone smoke opens the dialog only (mobile pass).
       if (vp.width > 600) {

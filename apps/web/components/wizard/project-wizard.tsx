@@ -18,6 +18,9 @@ import { pickableMachines, type MachineDetail, type MachineListItem } from '../.
 import type { Messages } from '../../lib/messages';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
 import { STEP_REQUEST_EVENT } from '../../lib/step-request';
+import { nextFailing, saveBannerKind } from '../../lib/save-banner';
+import { useOnline } from '../../lib/use-online';
+import { SaveBanner } from './save-banner';
 import { TemplateUpdatePrompt } from '../editor/template-update';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
 import { isUntitledName, untitledName } from '../../lib/untitled-name';
@@ -610,15 +613,13 @@ function WizardSession({
     url.searchParams.delete(LATEST_PARAM);
     window.history.replaceState(window.history.state, '', url);
   }, [takeLatest, detail, session]);
-  // Save failures are announced once as a toast (T105); autosave keeps retrying.
-  const saveFailed = session.saveState === 'error';
-  useEffect(() => {
-    if (!saveFailed) return;
-    notify.error(messages.feedback.saveError, {
-      id: 'save-error',
-      description: messages.feedback.saveErrorText,
-    });
-  }, [saveFailed, messages.feedback.saveError, messages.feedback.saveErrorText]);
+  // T187: offline or a failed save shows a banner with the unsent queue and Tekrar dene (it
+  // replaces the T105 toast); autosave keeps retrying and sends at once when the network is back.
+  const online = useOnline();
+  const [failing, setFailing] = useState(false);
+  const failingNow = nextFailing(session.saveState, failing);
+  if (failingNow !== failing) setFailing(failingNow);
+  const bannerKind = saveBannerKind(session.saveState, online, session.dirty, failingNow);
   // Top-bar title (T103): the project name once it is saved, "Yeni proje" before (phones show
   // "Adsız proje" until the first save, B10a).
   useShellTitle(session.projectId ? session.name : null, t.defaultName);
@@ -1301,6 +1302,15 @@ function WizardSession({
         </div>
       )}
 
+      {bannerKind ? (
+        <SaveBanner
+          t={t.saveBanner}
+          kind={bannerKind}
+          unsent={session.unsentCount}
+          saving={session.saveState === 'saving'}
+          onRetry={() => void session.retry()}
+        />
+      ) : null}
       {session.saveState === 'conflict' ? (
         <ConflictNotice
           t={t.conflict}
@@ -1629,7 +1639,15 @@ function CompactStepper({
             data-step={current}
             className="truncate text-base leading-tight font-semibold tracking-tight text-fg focus:outline-none"
           >
-            {t[current]}
+            {/* T255: below 640 px a long step name gets its short label (same step, spec §3.7). */}
+            {current in t.short ? (
+              <>
+                <span className="sm:hidden">{t.short[current as keyof typeof t.short]}</span>
+                <span className="max-sm:hidden">{t[current]}</span>
+              </>
+            ) : (
+              t[current]
+            )}
           </h1>
           <span
             aria-hidden="true"

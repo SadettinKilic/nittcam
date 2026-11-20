@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { openNewProject } from './wizard-helpers';
+import { openCutListAction, openNewProject } from './wizard-helpers';
 
 // B16 tester 2 (T146): refusal texts (binary, oversize, empty, parse), keyboard path, drill layer
 // → holes through the dialog, drawing-board entry, axe at 1440 / 1024 (light + dark), 390 smoke.
@@ -25,7 +25,7 @@ async function axeClean(page: Page) {
 async function openDialog(page: Page, width = 1440) {
   await page.setViewportSize({ width, height: 900 });
   await openNewProject(page, 'parcalar');
-  await page.getByTestId('dxf-open').click();
+  await openCutListAction(page, 'dxf-open');
   const dialog = page.getByTestId('dxf-dialog');
   await expect(dialog).toBeVisible();
   return dialog;

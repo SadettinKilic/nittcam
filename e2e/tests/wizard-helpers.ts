@@ -239,3 +239,15 @@ export async function openIssues(page: Page) {
   await page.getByTestId('cut-list-issue-chip').click();
   await expect(panel).toBeVisible();
 }
+
+/**
+ * Opens a cut-list toolbar action ("Dolap ekle", "DXF içe aktar", CSV). On phones (< 640 px,
+ * T248) these sit in the toolbar's "⋯" menu; wider screens show them as buttons.
+ */
+export async function openCutListAction(
+  page: Page,
+  testId: 'cabinet-open' | 'dxf-open' | 'cut-list-export',
+) {
+  if ((page.viewportSize()?.width ?? 1280) < 640) await page.getByTestId('cut-list-more').click();
+  await page.getByTestId(testId).click();
+}

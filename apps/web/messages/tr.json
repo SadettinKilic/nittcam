@@ -540,6 +540,7 @@
     "empty": "Henüz parça yok.",
     "addRow": "Satır ekle",
     "pasteOpen": "İçe aktar",
+    "toolbarMore": "Diğer işlemler",
     "undo": "Geri al",
     "redo": "Yinele",
     "shortcuts": "Enter alt satıra, Tab sonraki hücreye geçer; oklarla gezinin, F2 ile düzenleyin, Esc vazgeçer. Satır numarasına Ctrl/Shift ile tıklayarak çoklu seçin; Ctrl+D çoğaltır, Delete seçili satırları siler (hücre dışında). Tablo dışında Ctrl+Z geri alır.",
@@ -1589,6 +1590,7 @@
       "dizilim": "Dizilim",
       "simulasyon": "Önizleme / simülasyon",
       "export": "Dışa aktar",
+      "short": { "simulasyon": "Simülasyon" },
       "stepOf": "Adım {n} / {total}",
       "status": {
         "done": "tamamlandı",
@@ -1627,6 +1629,14 @@
         "error": "Kaydedilemedi",
         "new": "Taslak"
       }
+    },
+    "saveBanner": {
+      "offlineTitle": "Bağlantı yok",
+      "failedTitle": "Proje kaydedilemedi",
+      "unsent": "{count} değişiklik henüz sunucuya gitmedi.",
+      "unsentNone": "Son değişiklikler henüz sunucuya gitmedi.",
+      "kept": "Bu sekmede saklanıyor; bağlantı gelince kendiliğinden gönderilir. Sekmeyi kapatmayın.",
+      "retry": "Tekrar dene"
     },
     "conflict": {
       "title": "Proje başka bir yerde değişti",

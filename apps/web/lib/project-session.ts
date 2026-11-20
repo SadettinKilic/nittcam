@@ -152,6 +152,13 @@ export function useProjectSession({
     }
   }, [boot, initial.name, queue, stack]);
 
+  // T187: the connection is back, send the unsent queue now instead of waiting for the backoff.
+  useEffect(() => {
+    const onOnline = () => void queue.flush();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [queue]);
+
   // Leaving the wizard (or the tab going to the background) saves what is pending right away.
   useEffect(() => {
     const onHide = () => {
@@ -229,12 +236,16 @@ export function useProjectSession({
     canRedo: stack.canRedo,
     redoCommand: stack.redoCommand,
     dirty: queue.dirty,
+    /** Commands not on the server yet (T187 banner). */
+    unsentCount: queue.pending.length,
     run,
     recordApplied,
     undo,
     redo,
     rename,
     flush: () => queue.flush(),
+    /** "Tekrar dene" (T187): send now, skipping the retry backoff. */
+    retry: () => queue.flush(),
     /** Saves and waits until the project is on the server; its id or `null` (T264). */
     settle: () => queue.settle(),
     /** Forget unsent changes (after a conflict was resolved by reloading or copying). */

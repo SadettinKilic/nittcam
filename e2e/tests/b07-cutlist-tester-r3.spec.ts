@@ -248,7 +248,8 @@ test.describe('B7 r3: touch', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(URL);
     await pasteMany(page, 60);
-    await page.mouse.wheel(0, 2400);
+    // T248 cards are ~92 px (were ~196): scroll about 12 cards so row 20 stays mounted.
+    await page.mouse.wheel(0, 1100);
     await page.waitForTimeout(400);
     const input = cell(page, 20, t.columns.name);
     await input.scrollIntoViewIfNeeded();
