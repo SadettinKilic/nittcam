@@ -7,7 +7,18 @@
  * the 2D view (via `onFallback`) when the scene crashes or WebGL is lost.
  */
 import { Button, IconButton, Skeleton, Tooltip, cn } from '@nittcam/ui';
-import { Boxes, EyeOff, ImageDown, Gauge, Move, RotateCcw, Route, Undo2, X } from 'lucide-react';
+import {
+  Boxes,
+  EyeOff,
+  ImageDown,
+  Gauge,
+  Maximize,
+  Move,
+  RotateCcw,
+  Route,
+  Undo2,
+  X,
+} from 'lucide-react';
 import { sheetSizeOf, type Project } from '@nittcam/core';
 import dynamic from 'next/dynamic';
 import {
@@ -21,7 +32,7 @@ import {
   type ReactNode,
 } from 'react';
 import { sizeText } from '../../lib/canvas-labels';
-import { drawnParts, type DrawnPart } from '../layout-view/model';
+import { drawnParts, jobBox, type DrawnPart } from '../layout-view/model';
 import { clampOffset, explodeMax } from '../../lib/preview3d/interaction';
 import { onThemeChange, readTokenColors } from '../../lib/canvas-theme';
 import { fill } from '../../lib/draft-project';
@@ -94,7 +105,7 @@ export interface Preview3DProps {
   table: TableSpec | null;
   command: CameraCommand;
   /** A view-cube click asks the owner for a preset (the owner keeps the command state). */
-  onPreset: (preset: ViewPreset) => void;
+  onPreset: (preset: ViewPreset, whole?: boolean) => void;
   /** The scene could not run (crash, lost context) or stayed too slow in Basit mod: the owner
    * shows the 2D view with the matching note (spec §3.8). */
   onFallback: (reason: FallbackReason) => void;
@@ -164,6 +175,11 @@ export function Preview3D({
   const [explode, setExplode] = useState(0);
   const [selected, setSelected] = useState(-1);
   const copies = useMemo(() => drawnParts(project, sheet), [project, sheet]);
+  // B44: a small job opens framed on its parts; "Tümünü göster" frames the whole sheet.
+  const smallJob = useMemo(
+    () => jobBox(copies, sheetSizeOf(project, sheet)) !== null,
+    [copies, project, sheet],
+  );
   // A new sheet (or a new layout) starts at rest (state reset during render, no effect).
   const [restFor, setRestFor] = useState({ sheet, layout: project.layout });
   if (restFor.sheet !== sheet || restFor.layout !== project.layout) {
@@ -340,6 +356,20 @@ export function Preview3D({
             <RotateCcw aria-hidden />
           </IconButton>
         </Tooltip>
+        {smallJob ? (
+          <Tooltip content={t.fitSheet}>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              className="size-7"
+              aria-label={t.fitSheet}
+              data-testid="preview3d-fit-sheet"
+              onClick={() => onPreset(command.preset, true)}
+            >
+              <Maximize aria-hidden />
+            </IconButton>
+          </Tooltip>
+        ) : null}
       </div>
       <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex flex-col items-start gap-2 max-sm:bottom-8">
         {autoSimple ? (

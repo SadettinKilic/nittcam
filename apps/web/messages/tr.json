@@ -912,7 +912,8 @@
     "sheetTabWaste": "fire %{waste}",
     "zoomIn": "Yakınlaştır",
     "zoomOut": "Uzaklaştır",
-    "fit": "Ekrana sığdır",
+    "fit": "Tümünü göster",
+    "fitJob": "İşe sığdır",
     "grid": "Milimetre ızgarası (100 mm)",
     "renest": "Yeniden diz",
     "renesting": "Diziliyor…",
@@ -1008,6 +1009,7 @@
       },
       "presetTip": "{view} görünümü",
       "reset": "Görünümü sıfırla",
+      "fitSheet": "Tümünü göster",
       "cube": "Görünüm küpü",
       "bottom": "Alt",
       "simple": "Basit mod",
@@ -1276,7 +1278,8 @@
       "shortcuts": "Kısayollar: Boşluk oynat/duraklat · ← → önceki/sonraki hareket · Home/End baş/son",
       "zoomIn": "Yakınlaştır",
       "zoomOut": "Uzaklaştır",
-      "fit": "Ekrana sığdır"
+      "fit": "Tümünü göster",
+      "fitJob": "İşe sığdır"
     },
     "canvasLabel": "Plaka {n} simülasyonu: {moves} hareket. Boşluk oynatır/duraklatır, sol ve sağ ok tuşları bir hareket geri/ileri gider.",
     "readout": {

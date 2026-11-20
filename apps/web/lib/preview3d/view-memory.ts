@@ -65,8 +65,8 @@ export function useView3d(available: boolean) {
     }
     setMode(next);
   }
-  function preset(p: ViewPreset) {
-    setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true }));
+  function preset(p: ViewPreset, whole = false) {
+    setCamera((c) => ({ preset: p, nonce: c.nonce + 1, animate: true, whole }));
   }
   function fallback(reason: FallbackReason) {
     setNoWebGL(reason);

@@ -17,9 +17,11 @@ import { NeutralToneMapping, Plane, Vector3, type PerspectiveCamera } from 'thre
 import type { ThreeEvent } from '@react-three/fiber';
 import { buildSheetScene, pickSlot, type SheetScene } from '../../lib/preview3d/sheet-scene';
 import { SlotState } from './slots';
+import { installThreeConsole } from '../../lib/preview3d/three-console';
 import { autoDowngradeOff, FpsWatch, feedSlowHook, slowHookFps } from '../../lib/preview3d/fps';
 import { materialLook, type MaterialLook } from '../../lib/preview3d/textures';
 import { stockMaterials } from './materials';
+import { drawnParts, jobBox } from '../layout-view/model';
 type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
 import {
   INTRO_MS,
@@ -29,6 +31,7 @@ import {
   presetPose,
   sheetFrameBox,
   type CameraPose,
+  type Vec3,
   type ViewPreset,
 } from '../../lib/preview3d/camera';
 import { PartsLayer } from './parts-layer';
@@ -88,6 +91,8 @@ export interface CameraCommand {
   from?: ViewPreset;
   /** Restore this pose (no ease) instead of the preset's, e.g. after a wizard step change (T160). */
   pose?: CameraPose;
+  /** Frame the whole sheet ("Tümünü göster"); otherwise a small job is framed (B44 fit to job). */
+  whole?: boolean;
 }
 
 export interface SceneProps {
@@ -135,6 +140,9 @@ export interface SceneToolpath {
 
 const FOV = 35;
 
+// B44 (D-080): drop fiber's THREE.Clock deprecation warning; all other three messages stay.
+installThreeConsole();
+
 export default function Scene(props: SceneProps) {
   const { project, sheet, table, colors, simple } = props;
   const stock = project.stock;
@@ -159,6 +167,15 @@ export default function Scene(props: SceneProps) {
   );
   useEffect(() => () => materials.dispose(), [materials]);
   const { width: W, height: H } = stage.sheet;
+  // B44 fit to job: on a small job the camera frames the parts, centred on them.
+  const jobFrame = useMemo(() => {
+    const b = jobBox(drawnParts(project, sheet), stage.sheet);
+    if (!b) return null;
+    return {
+      box: sheetFrameBox(b, stage.thickness),
+      target: [b.x + b.width / 2 - W / 2, 0, H / 2 - (b.y + b.height / 2)] as Vec3,
+    };
+  }, [project, sheet, stage, W, H]);
   const T = stage.thickness;
   // T157: during playback a copy lifts slightly once its outer contour has ended.
   const play = props.toolpath && props.toolpath.time !== null ? props.toolpath : null;
@@ -279,7 +296,7 @@ export default function Scene(props: SceneProps) {
           color={colors.shadow}
         />
       </group>
-      <Rig {...props} box={sheetFrameBox(stage.sheet, T)} />
+      <Rig {...props} box={sheetFrameBox(stage.sheet, T)} job={jobFrame} />
       <Capture onCapture={props.onCapture} />
     </Canvas>
   );
@@ -398,7 +415,11 @@ function Rig({
   onSlow,
   simple,
   box,
-}: SceneProps & { box: ReturnType<typeof sheetFrameBox> }) {
+  job,
+}: SceneProps & {
+  box: ReturnType<typeof sheetFrameBox>;
+  job: { box: ReturnType<typeof sheetFrameBox>; target: Vec3 } | null;
+}) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
   const size = useThree((s) => s.size);
   const invalidate = useThree((s) => s.invalidate);
@@ -444,13 +465,20 @@ function Rig({
   const touched = useRef(false);
   const ready = size.width > 0 && size.height > 0;
   const aspectKey = Math.round(aspect * 100);
+  const jobKey = job
+    ? `${job.target.map(Math.round).join()},${Math.round(job.box.hx)},${Math.round(job.box.hz)}`
+    : '';
   useEffect(() => {
     if (!ready) return;
     const fresh = handled.current !== command.nonce;
     if (!fresh && touched.current) return;
     handled.current = command.nonce;
     touched.current = false;
-    const to = command.pose ?? presetPose(command.preset, box, FOV, aspect);
+    const frame = (p: ViewPreset) =>
+      job && !command.whole
+        ? presetPose(p, job.box, FOV, aspect, job.target)
+        : presetPose(p, box, FOV, aspect);
+    const to = command.pose ?? frame(command.preset);
     const running = anim.current;
     if (!fresh) {
       if (running) running.to = to;
@@ -458,7 +486,7 @@ function Rig({
       invalidate();
       return;
     }
-    const from = command.from ? presetPose(command.from, box, FOV, aspect) : currentPose();
+    const from = command.from ? frame(command.from) : currentPose();
     if (command.animate && !reduced) {
       if (command.from) apply(from);
       anim.current = {
@@ -474,7 +502,7 @@ function Rig({
     invalidate();
     // Only a new request (nonce), a new sheet size or a new aspect re-frames the camera.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, command.nonce, box.hx, box.hy, box.hz, aspectKey]);
+  }, [ready, command.nonce, box.hx, box.hy, box.hz, aspectKey, jobKey]);
 
   useFrame(() => {
     const a = anim.current;
