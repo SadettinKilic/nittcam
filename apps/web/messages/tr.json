@@ -1531,7 +1531,8 @@
         "save": "Kaydet",
         "cancel": "Vazgeç",
         "invalid": "En, boy ve kalınlık 0'dan büyük ve en çok 10.000 mm olmalı.",
-        "unchanged": "Değişiklik yok."
+        "unchanged": "Değişiklik yok.",
+        "range": "0,1–{max} mm arası olmalı; bu değer alınmadı."
       },
       "toast": {
         "added": "Artık parça eklendi: {size}.",
@@ -1590,7 +1591,9 @@
       "dizilim": "Dizilim",
       "simulasyon": "Önizleme / simülasyon",
       "export": "Dışa aktar",
-      "short": { "simulasyon": "Simülasyon" },
+      "short": {
+        "simulasyon": "Simülasyon"
+      },
       "stepOf": "Adım {n} / {total}",
       "status": {
         "done": "tamamlandı",
@@ -1685,7 +1688,7 @@
       "paramsOk": "Kesim ayarı: T{tool} takım, {feed} besleme, {rpm}, {step} paso.",
       "skin": {
         "label": "Son pasoda ince tabaka bırak",
-        "hint": "Küçük parçalar köprü yerine altta ince bir tabakayla tutulur; tabaka plakanın sonunda temizleme pasosuyla kesilir.",
+        "hint": "Küçük parçalar köprü yerine altta ince bir tabakayla tutulur; tabaka plakanın sonunda temizleme pasosuyla kesilir. Simülasyon → Kesim ayarlarında “Köprü: Kapalı” seçilirse küçük parçalar yine bu tabakayla tutulur.",
         "thickness": "Tabaka kalınlığı"
       },
       "units": {
@@ -2968,14 +2971,14 @@
       },
       "defaults": {
         "title": "Yeni proje varsayılanları",
-        "hint": "Yeni açılan projeler bu değerlerle başlar; mevcut projeler değişmez. Tab adedi, genişliği ve yüksekliği malzeme ayarından gelir.",
+        "hint": "Yeni açılan projeler bu değerlerle başlar; mevcut projeler değişmez. Köprü adedi, genişliği ve yüksekliği malzeme ayarından gelir.",
         "gap": "Parça arası boşluk",
         "margin": "Plaka kenar payı",
-        "tabs": "Tutucu (tab)",
+        "tabs": "Köprü (tab)",
         "tabModes": {
           "all": "Her parçada",
-          "small": "Yalnız küçük parçalarda",
-          "off": "Yok, ince taban bırak"
+          "small": "Yalnız küçük parçada",
+          "off": "Kapalı (küçük parçalar ince tabakayla)"
         },
         "leadIn": "Giriş / çıkış",
         "leadIns": {
@@ -2984,8 +2987,8 @@
         },
         "direction": "Kesim yönü",
         "directions": {
-          "climb": "Tırmanma (climb)",
-          "conventional": "Geleneksel (conventional)"
+          "climb": "Climb (tırmanma)",
+          "conventional": "Conventional (geleneksel)"
         },
         "dimensionMode": "Kenar bandı",
         "dimensionModes": {
@@ -2998,8 +3001,9 @@
         "invalid": "Boşluk ve kenar payı 0–100 mm olmalı.",
         "failed": "Kaydedilemedi. Tekrar deneyin.",
         "materialsTitle": "Malzeme varsayılanları",
-        "materialsHint": "Malzeme, kalınlık, plaka ölçüsü ve damar malzeme kütüphanesinde; kesim değerleri ve tab ölçüleri makinenin malzeme ayarında.",
-        "materialsLink": "Malzeme kütüphanesine git"
+        "materialsHint": "Malzeme, kalınlık, plaka ölçüsü ve damar malzeme kütüphanesinde; kesim değerleri ve köprü ölçüleri makinenin malzeme ayarında.",
+        "materialsLink": "Malzeme kütüphanesine git",
+        "range": "0–{max} mm arası olmalı; bu değer alınmadı."
       }
     },
     "dxf": {
