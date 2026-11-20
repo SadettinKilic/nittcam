@@ -14,7 +14,7 @@ import {
 } from 'react';
 import { findMaterialParams, findTool } from '@nittcam/core';
 import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
-import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
+import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
 import { TemplateUpdatePrompt } from '../editor/template-update';
@@ -209,7 +209,7 @@ export function ProjectWizard({
             project: p.body.project,
           };
         } else {
-          const first = machines.body[0];
+          const first = pickableMachines(machines.body)[0];
           if (first) {
             firstDetail = (await getJson<MachineDetail>(`/api/machines/${first.id}`)).body;
           }
@@ -227,7 +227,9 @@ export function ProjectWizard({
             project: newProject(firstDetail ?? undefined, library),
           };
         }
-        if (live) setLoaded({ status: 'ready', machines: machines.body, init, firstDetail });
+        // T289: archived machines cannot be picked; a project bound to one still shows it.
+        const pickable = pickableMachines(machines.body, init.project.machine.machineId);
+        if (live) setLoaded({ status: 'ready', machines: pickable, init, firstDetail });
       } catch {
         if (live) setLoaded({ status: 'error' });
       }

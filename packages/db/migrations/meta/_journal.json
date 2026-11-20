@@ -57,6 +57,13 @@
       "when": 1795172414509,
       "tag": "0007_t178_project_soft_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795186818917,
+      "tag": "0008_t289_machine_archive",
+      "breakpoints": true
     }
   ]
 }

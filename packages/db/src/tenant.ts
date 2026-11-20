@@ -859,7 +859,22 @@ function machinesRepo(db: Db, companyId: string) {
       return machine ? withProfile(machine) : null;
     },
     /**
+     * Archive or restore (T289): an archived machine keeps its profile versions, validations and
+     * exports, so projects bound to it still open and old exports stay; callers hide it from the
+     * new-project picker and the Ana sayfa counts (`machine.archivedAt`).
+     * Null for an unknown id or another company's machine.
+     */
+    async setArchived(machineId: string, archived: boolean): Promise<MachineRow | null> {
+      const rows = await db
+        .update(machinesTable)
+        .set({ archivedAt: archived ? new Date() : null })
+        .where(ownedMachine(machineId))
+        .returning();
+      return rows[0] ?? null;
+    },
+    /**
      * Every machine that has a valid profile version, oldest first, with its verification state.
+     * Archived machines are included (`machine.archivedAt` set; old projects still name them).
      * Machines without a T010 profile (none exist outside tests) are left out.
      */
     async listWithProfiles(): Promise<MachineWithProfile[]> {

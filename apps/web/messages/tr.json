@@ -245,6 +245,16 @@
     "retry": "Tekrar dene",
     "empty": "Henüz makine yok. Başlamak için yeni bir makine ekleyin.",
     "example": "Örnek",
+    "archive": {
+      "action": "Arşivle",
+      "restore": "Geri yükle",
+      "undo": "Geri al",
+      "archived": "“{name}” arşivlendi. Yeni projelerde seçilemez; onu kullanan projeler açılmaya devam eder.",
+      "restored": "“{name}” arşivden çıkarıldı.",
+      "failed": "İşlem yapılamadı. Tekrar deneyin.",
+      "section": "Arşivlenen makineler ({n})",
+      "hint": "Arşivlenen makineler yeni projede seçilemez ve Ana sayfada sayılmaz; eski projeler ve dışa aktarmalar korunur."
+    },
     "columns": {
       "name": "Ad",
       "controller": "Kontrol ünitesi",

@@ -128,6 +128,11 @@ export const machines = pgTable(
     model: text('model').notNull().default(''),
     /** Maintenance log entries (§9.1 "bakım kaydı"); shape is decided with the machine screens. */
     maintenanceLog: jsonb('maintenance_log').$type<unknown[]>().notNull().default([]),
+    /**
+     * Archived (T289): hidden from the new-project picker, Makineler's active list and Ana sayfa
+     * counts; kept for the projects and exports that use it, restorable. Null = active.
+     */
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
