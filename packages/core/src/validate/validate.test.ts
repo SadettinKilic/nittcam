@@ -6,7 +6,14 @@ import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import { parseProject, type Project } from '../schema';
 import { defaultMachineProfile } from '../machine';
 import { CommandStack } from '../commands';
-import { holeDepthBelowThickness, holeVsTool, partLargerThanSheet, validateProject } from './index';
+import {
+  exportBlockingIssues,
+  holeDepthBelowThickness,
+  holeVsTool,
+  partLargerThanSheet,
+  partNotInLayout,
+  validateProject,
+} from './index';
 
 function project(mutate: (json: any) => void = () => {}, base: unknown = cabinetDoors): Project {
   const json = JSON.parse(JSON.stringify(base));
@@ -30,9 +37,12 @@ const rectPart = (id: string, w: number, h: number, grainLock: boolean) => ({
 });
 
 describe('validateProject', () => {
+  // The mixed fixture keeps a partial layout on purpose (2 of 3 trays unplaced, see (a2)).
+  const placedAll = (i: { code: string }) => i.code !== 'PART_NOT_IN_LAYOUT';
+
   it('the example projects are clean', () => {
     for (const fixture of [cabinetDoors, shelfSet, mixed]) {
-      expect(validateProject(project(() => {}, fixture))).toEqual([]);
+      expect(validateProject(project(() => {}, fixture)).filter(placedAll)).toEqual([]);
     }
   });
 });
@@ -166,7 +176,8 @@ describe('(c) hole / groove vs tool diameter (spec §4.5, T010)', () => {
   // fixture sheets and it has no plywood/melamine sets; those rules (D-029) are tested separately,
   // so the table is enlarged here and the stock rule is filtered out.
   const machine = { ...defaultMachineProfile(), table: { width: 3100, depth: 2200 } };
-  const notStock = (i: { code: string }) => i.code !== 'NO_CUTTING_PARAMS';
+  const notStock = (i: { code: string }) =>
+    i.code !== 'NO_CUTTING_PARAMS' && i.code !== 'PART_NOT_IN_LAYOUT';
   const withHoles = (holes: object[]) =>
     project((j) => {
       j.parts[0].holes = holes;
@@ -286,5 +297,60 @@ describe('(a) part larger than the sheet subtracts nesting.margin (T012)', () =>
       j.parts[0].grainLock = true;
     }, mixed);
     expect(partLargerThanSheet(tight).map((i) => i.path)).toEqual(['parts[0].outline']);
+  });
+});
+
+describe('(a2) part not in the layout (T287)', () => {
+  it('a fully nested project has no issue', () => {
+    expect(partNotInLayout(project())).toEqual([]);
+  });
+
+  it('a part added after nesting is one error on its row, counting the missing copies', () => {
+    const p = project((j) => {
+      j.parts.push({ ...rectPart('late', 300, 200, false), qty: 2 });
+    });
+    const issues = partNotInLayout(p);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({
+      code: 'PART_NOT_IN_LAYOUT',
+      severity: 'error',
+      path: `parts[${p.parts.length - 1}]`,
+    });
+    expect(issues[0]?.message).toContain('2 of 2 copies');
+    // Same list as the export gate.
+    expect(exportBlockingIssues(p).map((i) => i.code)).toContain('PART_NOT_IN_LAYOUT');
+  });
+
+  it('a raised quantity reports only the missing copies', () => {
+    const p = project((j) => {
+      j.parts[0].qty += 1;
+    });
+    expect(partNotInLayout(p).map((i) => i.message)).toEqual([
+      expect.stringContaining('1 of 3 copies'),
+    ]);
+  });
+
+  it('an oversize part is reported once, as PART_LARGER_THAN_SHEET', () => {
+    const p = project((j) => {
+      j.parts.push(rectPart('huge', 9000, 600, false));
+    });
+    const codes = validateProject(p).map((i) => i.code);
+    expect(codes).toContain('PART_LARGER_THAN_SHEET');
+    expect(codes).not.toContain('PART_NOT_IN_LAYOUT');
+  });
+
+  it('without a layout nothing is reported (the user has not nested yet)', () => {
+    const p = project((j) => {
+      j.layout.sheets = [];
+    });
+    expect(partNotInLayout(p)).toEqual([]);
+  });
+
+  it('deleting the unplaced part makes the export gate clean again', () => {
+    const added = project((j) => {
+      j.parts.push(rectPart('late', 300, 200, false));
+    });
+    const removed = { ...added, parts: added.parts.slice(0, -1) };
+    expect(exportBlockingIssues(removed)).toEqual([]);
   });
 });
