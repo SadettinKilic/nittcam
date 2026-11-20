@@ -1,12 +1,6 @@
 import { expect, test } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import {
-  openNewProject,
-  pasteAndNest,
-  projectId,
-  saved,
-  watchConsole,
-} from './wizard-helpers';
+import { openNewProject, pasteAndNest, projectId, saved, watchConsole } from './wizard-helpers';
 
 /**
  * T296: a file made from an older revision than the project is marked "eski revizyon" in the
