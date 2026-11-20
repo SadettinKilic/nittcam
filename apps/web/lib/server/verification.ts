@@ -6,10 +6,12 @@
 import {
   canRecordVerification,
   evaluateTestCut,
+  extendedTestProgram,
   parsePostConfig,
   testCutStage,
   testProgram,
   unverifiedReasons,
+  type ExtendedProgramResult,
   type PostConfig,
   type TestCutMeasurements,
   type TestProgramKind,
@@ -22,6 +24,7 @@ import { NextResponse } from 'next/server';
 import { fileInfos, turkish, violationsOf } from './exports';
 import {
   testProgramUrl,
+  type ProgramKind,
   type TestProgramPreview,
   type VerificationApiError,
   type VerificationHistoryItem,
@@ -35,9 +38,14 @@ export function apiError(
   return NextResponse.json(body, { status });
 }
 
-export const PROGRAM_KINDS: readonly TestProgramKind[] = ['airCut', 'testCut'];
+export const PROGRAM_KINDS: readonly ProgramKind[] = [
+  'airCut',
+  'testCut',
+  'extAirCut',
+  'extTestCut',
+];
 
-export function isProgramKind(v: string): v is TestProgramKind {
+export function isProgramKind(v: string): v is ProgramKind {
   return (PROGRAM_KINDS as readonly string[]).includes(v);
 }
 
@@ -60,33 +68,49 @@ export async function loadMachine(
   return { machine, rawPost, post: parsed?.ok ? parsed.config : null };
 }
 
-/** Runs one test program for the machine's latest profile version. */
-export function runProgram(ctx: MachineContext, kind: TestProgramKind): TestProgramResult {
+/** The §7.3 program kind behind a program kind (the extended part has the same two). */
+function baseKind(kind: ProgramKind): TestProgramKind {
+  return kind === 'extAirCut' ? 'airCut' : kind === 'extTestCut' ? 'testCut' : kind;
+}
+
+function profileVersionOf(ctx: MachineContext) {
   const m = ctx.machine;
-  return testProgram(
-    kind,
-    { profile: m.profile, version: m.version.version, verification: m.state },
-    ctx.rawPost,
-  );
+  return { profile: m.profile, version: m.version.version, verification: m.state };
+}
+
+/** Runs one §7.3 test program for the machine's latest profile version. */
+export function runProgram(ctx: MachineContext, kind: TestProgramKind): TestProgramResult {
+  return testProgram(kind, profileVersionOf(ctx), ctx.rawPost);
+}
+
+/** Runs any downloadable program: the §7.3 pair or the extended field-test part (T191). */
+export function runAnyProgram(
+  ctx: MachineContext,
+  kind: ProgramKind,
+): TestProgramResult | ExtendedProgramResult {
+  return kind === 'extAirCut' || kind === 'extTestCut'
+    ? extendedTestProgram(baseKind(kind), profileVersionOf(ctx), ctx.rawPost)
+    : runProgram(ctx, kind);
 }
 
 /** May the program be downloaded in this state? The test cut needs an approved air cut. */
-export function programAllowed(ctx: MachineContext, kind: TestProgramKind): boolean {
-  return kind === 'airCut' || canRecordVerification(ctx.machine.state, 'testCut');
+export function programAllowed(ctx: MachineContext, kind: ProgramKind): boolean {
+  // The extended part is cut after the §7.3 air cut, like the test part (§7.3 order).
+  return baseKind(kind) === 'airCut' || canRecordVerification(ctx.machine.state, 'testCut');
 }
 
 /**
  * Does the program of this kind generate for the latest profile version and pass every automatic
  * check (rule 9)? A step may only be approved for a program the user could actually download.
  */
-export function programPasses(ctx: MachineContext, kind: TestProgramKind): boolean {
+export function programPasses(ctx: MachineContext, kind: ProgramKind): boolean {
   if (ctx.post === null) return false;
-  const r = runProgram(ctx, kind);
+  const r = runAnyProgram(ctx, kind);
   return r.ok && r.check !== null && r.check.ok && r.files.length > 0;
 }
 
-function preview(ctx: MachineContext, kind: TestProgramKind): TestProgramPreview {
-  const r = runProgram(ctx, kind);
+function preview(ctx: MachineContext, kind: ProgramKind): TestProgramPreview {
+  const r = runAnyProgram(ctx, kind);
   const ok = r.ok && r.check !== null && r.check.ok && r.files.length > 0;
   const violations = violationsOf(r);
   for (const i of r.issues) {
@@ -153,6 +177,7 @@ export async function overview(
   const cut = preview(ctx, 'testCut');
   const info = runProgram(ctx, 'testCut').info;
   const history = await scope.machines.verificationHistory(m.machine.id);
+  const downloads = (await scope.machines.testDownloads(m.machine.id)) ?? [];
   return {
     machineId: m.machine.id,
     machineName: m.profile.identity.name,
@@ -165,6 +190,12 @@ export async function overview(
     testPart: info,
     origin: { corner: m.profile.origin.corner, sheetOffset: { ...m.profile.origin.sheetOffset } },
     programs: { airCut: air, testCut: cut },
+    extended: {
+      info: extendedTestProgram('testCut', profileVersionOf(ctx), ctx.rawPost).info,
+      airCut: preview(ctx, 'extAirCut'),
+      testCut: preview(ctx, 'extTestCut'),
+    },
+    downloads: downloads.map((d) => ({ ...d, kind: d.kind as ProgramKind })),
     history: history.map(historyItem),
   };
 }

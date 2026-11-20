@@ -6,6 +6,7 @@ import { ClientErrorReporter } from '../components/feedback/client-error-reporte
 import { AppShell } from '../components/shell/app-shell';
 import { DEFAULT_COMPANY_NAME } from '../lib/company-defaults';
 import { defaultLocale, getMessages } from '../lib/messages';
+import type { ShellText } from '../components/shell/sidebar';
 import { PREFERENCES_INIT_SCRIPT } from '../lib/preferences';
 import { SIDEBAR_INIT_SCRIPT } from '../lib/sidebar-state';
 import './globals.css';
@@ -17,6 +18,14 @@ const shellText = {
   palette: messages.palette,
   shortcuts: messages.shortcuts,
   steps: messages.wizard.steps,
+  // T192: titles and search words only; the topic texts load with the help page.
+  helpTopics: Object.fromEntries(
+    Object.entries(messages.help.topics).map(([id, t]) => [
+      id,
+      { title: t.title, keywords: t.keywords },
+    ]),
+  ) as ShellText['helpTopics'],
+  whatsNew: messages.whatsNew,
 };
 
 // Inter (OFL-1.1, D-032), downloaded and self-hosted at build time by next/font.

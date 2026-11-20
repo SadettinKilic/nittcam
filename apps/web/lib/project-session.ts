@@ -32,6 +32,15 @@ function sessionStore(): KeyValueStorage | null {
   }
 }
 
+/** The address parameter that names a new project's draft (T305, D-094). */
+export const DRAFT_PARAM = 'taslak';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The draft id from the address, when it is a well-formed UUID. */
+function validDraft(v: string | null | undefined): string | undefined {
+  return v && UUID.test(v) ? v.toLowerCase() : undefined;
+}
+
 /** Sends one autosave request: POST for a new project, PUT with the revision lock otherwise. */
 export async function sendSave(req: SaveRequest): Promise<SendResult> {
   let res: Response;
@@ -93,15 +102,22 @@ export function useProjectSession({
   initial,
   machine,
   onCreated,
+  draft,
 }: {
   initial: SessionInit;
   machine: MachineProfile | null;
   onCreated: (id: string) => void;
+  /** `?taslak=` of the address (T305); only read for a project not created yet. */
+  draft?: string | null;
 }) {
   // A reload before the last save went through: replay the unsent commands of this tab (§8.2).
   const [boot] = useState(() => {
     const stack = new CommandStack(initial.project);
-    const stored = takeUnsentQueue(sessionStore(), initial.id, initial.revision);
+    // T305 (D-094): a new project's queue is keyed by its draft id, which the address carries
+    // (`?taslak=`) until the first save; only that draft's own queue is replayed. Another
+    // "Yeni proje" (no draft in the address, or one this tab has no queue for) starts empty.
+    const draftId = initial.id === null ? validDraft(draft) : undefined;
+    const stored = takeUnsentQueue(sessionStore(), initial.id, initial.revision, draftId);
     const replayed = stored ? stored.entries.slice(0, replayLog(stack, stored.entries)) : [];
     // A new project gets its id here (D-030); after a reload during the first save the stored
     // queue keeps it, so the repeated create returns the same project instead of a duplicate.
@@ -231,6 +247,8 @@ export function useProjectSession({
     saveState,
     revision,
     projectId: queue.projectId,
+    /** The draft id of a project not created yet (T305: `?taslak=` in the address). */
+    draftId: boot.newId,
     restoredCount: boot.replayed.length,
     canUndo: stack.canUndo,
     canRedo: stack.canRedo,
