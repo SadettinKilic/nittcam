@@ -1626,6 +1626,19 @@ Tester focus: final full run (unit, property, golden, e2e, visual, axe, perf) wi
 
 ---
 
+### Batch B54: T307–T308 (owner requests 2026-11-21, before the field test; Dev 1, PR #161)
+
+### T307 Spindle speed per project (slider)   [status: todo]
+Owner 2026-11-21. Default = rpm of the job material set; per-tool override in Simülasyon "Kesim ayarları" (slider + field, recommended tick, ±20 % band, chip load), within the machine min/max (command + validator), NC `S` and header show it; no override = same bytes.
+
+### T308 Per-job tool choice per operation   [status: todo]
+Owner 2026-11-21. Outer / inner contour, pocket, hole: pick a compatible tool from the machine profile (default = today), "Önerilene dön", rpm suggestion follows the tool.
+
+### Batch B55: T309 (owner request 2026-11-21; Dev 2, PR #162)
+
+### T309 Park position for manual tool change   [status: todo]
+Owner 2026-11-21. Machine profile option (X/Y in machine coordinates G53, on/off); manual change goes safe Z → park → M0 + message; field-kit note linked; park off = same bytes.
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine
