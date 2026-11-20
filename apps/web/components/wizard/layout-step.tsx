@@ -482,7 +482,12 @@ function NestSettings({
                   />
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="text-sm font-medium text-fg">{t.modes[m]}</span>
-                    <span id={`${modeLabelId}-${m}`} className="text-xs text-fg-muted">
+                    {/* B44: only the chosen mode shows its hint (screen readers get all), so
+                        the panel stays short and "Diz" does not move. */}
+                    <span
+                      id={`${modeLabelId}-${m}`}
+                      className={selected ? 'text-xs text-fg-muted' : 'sr-only'}
+                    >
                       {t.modeHints[m]}
                     </span>
                     {result && result.sheetCount > 0 ? (
@@ -599,16 +604,19 @@ function NestSettings({
           </p>
         </div>
       </section>
-      <NestingPanel
-        t={nt}
-        project={project}
-        toolDiameter={toolDiameter}
-        running={running}
-        progress={progress}
-        message={message}
-        onRun={() => void nest()}
-        onCancel={cancel}
-      />
+      {/* B44: "Diz" stays in reach at the bottom of the panel while the options scroll. */}
+      <div className="lg:sticky lg:bottom-0 lg:z-10 lg:bg-bg">
+        <NestingPanel
+          t={nt}
+          project={project}
+          toolDiameter={toolDiameter}
+          running={running}
+          progress={progress}
+          message={message}
+          onRun={() => void nest()}
+          onCancel={cancel}
+        />
+      </div>
       <OffcutsPanel
         t={t.offcuts}
         project={project}

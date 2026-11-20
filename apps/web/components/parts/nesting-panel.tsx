@@ -91,7 +91,7 @@ export function NestingPanel({
             className="min-w-0 flex-1"
           >
             <LayoutGrid aria-hidden />
-            {running ? t.running : t.run}
+            {running ? <RunningLabel t={t} store={progress} /> : t.run}
           </Button>
           {running && onCancel ? (
             <Button variant="outline" onClick={onCancel} data-testid="nesting-cancel">
@@ -189,6 +189,14 @@ export function NestingPanel({
       </div>
     </section>
   );
+}
+
+/** "Diziliyor… %40" on the running "Diz" button (B44); "İptal" sits next to it. */
+function RunningLabel({ t, store }: { t: Text; store: NestProgressStore | null }) {
+  const progress = useNestProgress(store);
+  if (!progress || progress.total <= 0) return <>{t.running}</>;
+  const pct = Math.min(100, Math.round((100 * progress.done) / progress.total));
+  return <span className="tabular-nums">{fill(t.runningPercent, { pct })}</span>;
 }
 
 /** The progress bar of a running nesting (T163); subscribes to the store by itself. */

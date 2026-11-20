@@ -696,6 +696,7 @@
       "title": "Dizilim",
       "run": "Diz",
       "running": "Diziliyor…",
+      "runningPercent": "Diziliyor… %{pct}",
       "cancel": "İptal",
       "progress": "Dizilim ilerlemesi",
       "progressText": "{done} / {total} deneme",
