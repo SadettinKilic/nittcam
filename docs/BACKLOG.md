@@ -1238,7 +1238,7 @@ Acceptance:
 - [ ] profile run/cancel at 1500 copies (CPU-throttled), split or defer the main-thread work; restore the 50 ms bar in the spec
 Tester focus: none beyond CI.
 
-### T286 Handle template is not placed on the hinge edge (must-fix: wrong output; CTO review #9 A)   [status: todo]
+### T286 Handle template is not placed on the hinge edge (must-fix: wrong output; CTO review #9 A)   [status: done]
 Spec: §4.7 · Depends: T148, T150 · Review: `docs/reviews/2026-11-20-cto-design-review-9.md` §"Şimdi düzelt" A
 Found: "Yerleştir" from the panel puts both a hinge and a handle template on the left edge; the handle holes land on the hinge side (X 30), every check passes, the door is scrap.
 Acceptance:
