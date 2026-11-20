@@ -575,3 +575,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Search folds Turkish letters (ç→c, ğ→g, ı/İ→i, ö→o, ş→s, ü→u) and needs every word; filters status / machine / material come from the loaded rows; sort by date or Turkish name order; 20 rows per page. All client side (the list is one company's projects).
 - A saved project opened without `?adim=` resumes: exported (with a layout) → Dışa aktar, layout → Dizilim, otherwise Parçalar. Parts without a layout stay on Parçalar (the parts step is not "done" before a nesting). `?adim=` always wins.
 - The Parçalar view (Liste / Çizim) is remembered per project in the browser (localStorage); `?gorunum=cizim` wins.
+
+## D-068 CTO review #11 triage (2026-11-20, PO)
+- Must-fix A → T293 (tab lower bounds, safety), gap E1 → T294, both batch B40 on Dev 2 before the rest of B38. T176 gap → T295 (one file-name pattern), T179 gap → T296 (old-revision badge). 13 polish items into P2–P5.
+- NC re-export from history needs the same checklist + acceptance as the main download (tester note on B37; fixed in #131 before landing).
