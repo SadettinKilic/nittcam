@@ -66,6 +66,7 @@ import type {
   CutOrderSummary,
   ToolpathSeverity,
 } from './types';
+import { toCutSizes } from '../schema/cut-size';
 
 /** Defaults of the toolpath options (D-021). */
 export const TOOLPATH_DEFAULTS = {
@@ -679,10 +680,12 @@ function positive(x: number | undefined): x is number {
  * present; an erroneous toolpath must never be exported.
  */
 export function buildToolpath(
-  project: Project,
+  entered: Project,
   machine: MachineProfile,
   options: ToolpathOptions = {},
 ): ToolpathResult {
+  // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
+  const project = toCutSizes(entered);
   const warnings: ToolpathIssue[] = [];
   const errors: ToolpathIssue[] = [];
   const safeZ = machine.safeZ;

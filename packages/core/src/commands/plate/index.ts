@@ -1,6 +1,11 @@
 /** Plate and machine commands (spec §5.1 "Plaka ve makine"). */
 import { z } from 'zod';
-import { machineRefSchema, projectSheetSizeSchema, stockSchema } from '../../schema';
+import {
+  dimensionModeSchema,
+  machineRefSchema,
+  projectSheetSizeSchema,
+  stockSchema,
+} from '../../schema';
 import { defineCommand } from '../types';
 
 /** Selects the machine profile the project uses. Selecting is allowed for AI; editing a profile is not. */
@@ -163,5 +168,22 @@ export const setThinSkin = defineCommand({
   apply: (draft, p) => {
     if (p.thickness === null) delete draft.cutting.skin;
     else draft.cutting.skin = { thickness: p.thickness };
+  },
+});
+
+/**
+ * How entered part sizes are read (spec §4.8, T169): `cut` = the sizes are cut sizes; `finished` =
+ * the sizes are finished sizes and the edge-band thickness is deducted from the cut size. One undo
+ * step; nesting and toolpath read the cut size (`toCutSizes`).
+ */
+export const setDimensionMode = defineCommand({
+  name: 'setDimensionMode',
+  area: 'plate',
+  description:
+    'Set how entered part sizes are read: "cut" = cut sizes, "finished" = finished sizes (the edge band thickness of each banded edge is deducted from the cut size). Run nesting afterwards.',
+  aiTool: false,
+  params: z.strictObject({ mode: dimensionModeSchema }),
+  apply: (draft, p) => {
+    if (draft.settings.dimensionMode !== p.mode) draft.settings.dimensionMode = p.mode;
   },
 });

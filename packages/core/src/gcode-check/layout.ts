@@ -14,6 +14,7 @@ import type { Polyline } from '../geometry/types';
 import { innerOperation, outlineOperation, type Project } from '../schema';
 import { placedHoleCentre, placedInners, placedOutline } from '../toolpath';
 import type { ExpectedPart } from './types';
+import { toCutSizes } from '../schema/cut-size';
 
 function centre(pl: Polyline): { cx: number; cy: number } {
   const box = bbox(pl);
@@ -34,7 +35,9 @@ function innerCentre(inner: Polyline, toolRadius: number): { cx: number; cy: num
  * Parts expected on one sheet (index of `project.layout.sheets`). `toolDiameter`: the cutting
  * tool, for the cut-out loop centres (0 = the openings' own centres).
  */
-export function expectedLayout(project: Project, sheet: number, toolDiameter = 0): ExpectedPart[] {
+export function expectedLayout(entered: Project, sheet: number, toolDiameter = 0): ExpectedPart[] {
+  // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
+  const project = toCutSizes(entered);
   const out: ExpectedPart[] = [];
   for (const pl of project.layout.sheets[sheet]?.placements ?? []) {
     const part = project.parts.find((p) => p.id === pl.partId);

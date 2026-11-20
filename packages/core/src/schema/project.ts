@@ -461,6 +461,8 @@ export const layoutSchema = z.strictObject({
        * `sheetSizeOf(project, sheetIndex)`.
        */
       size: z.strictObject({ width: positiveMm, height: positiveMm }).optional(),
+      /** T168: the stock offcut this sheet is cut from (its `offcuts` row id). Absent = a stock sheet. */
+      offcutId: nonEmptyId.max(64, { error: 'at most 64 characters' }).optional(),
       placements: z.array(placementSchema),
     }),
   ),

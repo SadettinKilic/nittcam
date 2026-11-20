@@ -10,6 +10,10 @@ import {
   IconButton,
   Input,
   Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   notify,
 } from '@nittcam/ui';
@@ -18,6 +22,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
 import { fill } from '../../lib/draft-project';
+import { OffcutStock } from './offcut-stock';
 import type { Messages } from '../../lib/messages';
 import {
   PROJECT_STATUS_TONE,
@@ -54,6 +59,7 @@ function fold(s: string): string {
  * "+ Yeni proje". Data comes from `/api/projects`.
  */
 export function ProjectsView({ t, materials }: { t: Text; materials: Messages['materials'] }) {
+  const [tab, setTab] = useState('projects');
   const searchId = useId();
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [query, setQuery] = useState('');
@@ -171,191 +177,206 @@ export function ProjectsView({ t, materials }: { t: Text; materials: Messages['m
         }
       />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={searchId} className="text-sm font-medium text-fg">
-          {t.search}
-        </label>
-        <div className="relative w-full max-w-md">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-subtle"
-          />
-          <Input
-            id={searchId}
-            type="search"
-            data-testid="projects-search"
-            placeholder={t.searchPlaceholder}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
+      <Tabs value={tab} onValueChange={setTab} className="flex flex-col gap-6">
+        <TabsList aria-label={t.title} className="self-start">
+          <TabsTrigger value="projects" data-testid="projects-tab">
+            {t.tabs.projects}
+          </TabsTrigger>
+          <TabsTrigger value="offcuts" data-testid="offcuts-tab">
+            {t.tabs.offcuts}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="projects" className="flex flex-col gap-6">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={searchId} className="text-sm font-medium text-fg">
+              {t.search}
+            </label>
+            <div className="relative w-full max-w-md">
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-subtle"
+              />
+              <Input
+                id={searchId}
+                type="search"
+                data-testid="projects-search"
+                placeholder={t.searchPlaceholder}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
 
-      {list.status === 'loading' ? (
-        <div role="status" data-testid="projects-loading" className="flex flex-col gap-2">
-          <span className="sr-only">{t.loading}</span>
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : list.status === 'error' ? (
-        <ErrorState
-          data-testid="projects-error"
-          title={t.error}
-          retryLabel={t.retry}
-          onRetry={() => void load()}
-        />
-      ) : items.length === 0 ? (
-        <EmptyState
-          data-testid="projects-empty"
-          icon={<FolderPlus />}
-          title={t.empty}
-          description={t.emptyText}
-          action={
-            <Button asChild>
-              <Link href="/projeler/yeni">{t.emptyAction}</Link>
-            </Button>
-          }
-        />
-      ) : (
-        <section className="flex min-w-0 flex-col gap-3" aria-labelledby="projects-table">
-          <p id="projects-table" className="text-sm text-fg-muted" data-testid="projects-count">
-            {fill(t.count, { count: shown.length })}
-          </p>
-          {shown.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border-strong p-8 text-center text-sm text-fg-muted">
-              {fill(t.noMatch, { q: query.trim() })}
-            </p>
+          {list.status === 'loading' ? (
+            <div role="status" data-testid="projects-loading" className="flex flex-col gap-2">
+              <span className="sr-only">{t.loading}</span>
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : list.status === 'error' ? (
+            <ErrorState
+              data-testid="projects-error"
+              title={t.error}
+              retryLabel={t.retry}
+              onRetry={() => void load()}
+            />
+          ) : items.length === 0 ? (
+            <EmptyState
+              data-testid="projects-empty"
+              icon={<FolderPlus />}
+              title={t.empty}
+              description={t.emptyText}
+              action={
+                <Button asChild>
+                  <Link href="/projeler/yeni">{t.emptyAction}</Link>
+                </Button>
+              }
+            />
           ) : (
-            <Card className="overflow-hidden p-0">
-              <div
-                aria-hidden="true"
-                className={`hidden gap-4 border-b border-border bg-surface-subtle px-5 py-2.5 text-xs font-medium text-fg-muted lg:grid ${COLS}`}
-              >
-                <span>{t.columns.name}</span>
-                <span>{t.columns.machine}</span>
-                <span>{t.columns.material}</span>
-                <span>{t.columns.updated}</span>
-                <span>{t.columns.lastExport}</span>
-                <span className="w-32" />
-              </div>
-              <ul className="flex flex-col divide-y divide-border-subtle">
-                {shown.map((item) => (
-                  <li
-                    key={item.id}
-                    data-testid="project-row"
-                    data-id={item.id}
-                    className={`grid gap-3 px-4 py-3.5 transition-colors duration-(--duration-fast) hover:bg-surface-hover lg:items-center lg:gap-4 lg:px-5 ${COLS}`}
+            <section className="flex min-w-0 flex-col gap-3" aria-labelledby="projects-table">
+              <p id="projects-table" className="text-sm text-fg-muted" data-testid="projects-count">
+                {fill(t.count, { count: shown.length })}
+              </p>
+              {shown.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border-strong p-8 text-center text-sm text-fg-muted">
+                  {fill(t.noMatch, { q: query.trim() })}
+                </p>
+              ) : (
+                <Card className="overflow-hidden p-0">
+                  <div
+                    aria-hidden="true"
+                    className={`hidden gap-4 border-b border-border bg-surface-subtle px-5 py-2.5 text-xs font-medium text-fg-muted lg:grid ${COLS}`}
                   >
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <Link
-                        href={`/projeler/${item.id}`}
-                        className={`min-w-0 truncate rounded-sm font-medium text-fg hover:underline ${focusRing}`}
+                    <span>{t.columns.name}</span>
+                    <span>{t.columns.machine}</span>
+                    <span>{t.columns.material}</span>
+                    <span>{t.columns.updated}</span>
+                    <span>{t.columns.lastExport}</span>
+                    <span className="w-32" />
+                  </div>
+                  <ul className="flex flex-col divide-y divide-border-subtle">
+                    {shown.map((item) => (
+                      <li
+                        key={item.id}
+                        data-testid="project-row"
+                        data-id={item.id}
+                        className={`grid gap-3 px-4 py-3.5 transition-colors duration-(--duration-fast) hover:bg-surface-hover lg:items-center lg:gap-4 lg:px-5 ${COLS}`}
                       >
-                        {item.name}
-                      </Link>
-                      <Badge
-                        data-testid="project-status"
-                        variant={PROJECT_STATUS_TONE[item.status]}
-                        dot
-                      >
-                        {t.status[item.status]}
-                      </Badge>
-                    </div>
-                    <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted lg:contents lg:text-sm">
-                      <div className="flex min-w-0 gap-1">
-                        <dt className="lg:sr-only">{t.columns.machine}:</dt>
-                        <dd className="truncate">{item.machine ?? t.noMachine}</dd>
-                      </div>
-                      <div className="flex min-w-0 gap-1">
-                        <dt className="lg:sr-only">{t.columns.material}:</dt>
-                        <dd className="numeric">
-                          {fill(t.material, {
-                            material: materialLabel(materials, item.material),
-                            thickness: mmFormat.format(item.thickness),
-                          })}
-                          {' · '}
-                          {fill(t.pieces, { count: item.pieces })}
-                        </dd>
-                      </div>
-                      <div className="flex min-w-0 gap-1">
-                        <dt className="lg:sr-only">{t.columns.updated}:</dt>
-                        <dd className="numeric">
-                          <time dateTime={item.updatedAt}>
-                            {dateFormat.format(new Date(item.updatedAt))}
-                          </time>
-                        </dd>
-                      </div>
-                      <div className="flex min-w-0 gap-1" data-testid="project-last-export">
-                        <dt className="lg:sr-only">{t.columns.lastExport}:</dt>
-                        <dd className="flex min-w-0 flex-wrap gap-x-2">
-                          {item.lastExport ? (
-                            <>
-                              <time dateTime={item.lastExport.createdAt}>
-                                {fill(t.lastExport, {
-                                  revision: item.lastExport.revision,
-                                  date: dateFormat.format(new Date(item.lastExport.createdAt)),
-                                })}
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <Link
+                            href={`/projeler/${item.id}`}
+                            className={`min-w-0 truncate rounded-sm font-medium text-fg hover:underline ${focusRing}`}
+                          >
+                            {item.name}
+                          </Link>
+                          <Badge
+                            data-testid="project-status"
+                            variant={PROJECT_STATUS_TONE[item.status]}
+                            dot
+                          >
+                            {t.status[item.status]}
+                          </Badge>
+                        </div>
+                        <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted lg:contents lg:text-sm">
+                          <div className="flex min-w-0 gap-1">
+                            <dt className="lg:sr-only">{t.columns.machine}:</dt>
+                            <dd className="truncate">{item.machine ?? t.noMachine}</dd>
+                          </div>
+                          <div className="flex min-w-0 gap-1">
+                            <dt className="lg:sr-only">{t.columns.material}:</dt>
+                            <dd className="numeric">
+                              {fill(t.material, {
+                                material: materialLabel(materials, item.material),
+                                thickness: mmFormat.format(item.thickness),
+                              })}
+                              {' · '}
+                              {fill(t.pieces, { count: item.pieces })}
+                            </dd>
+                          </div>
+                          <div className="flex min-w-0 gap-1">
+                            <dt className="lg:sr-only">{t.columns.updated}:</dt>
+                            <dd className="numeric">
+                              <time dateTime={item.updatedAt}>
+                                {dateFormat.format(new Date(item.updatedAt))}
                               </time>
-                              {item.lastExport.files.map((file) => (
-                                <a
-                                  key={file.name}
-                                  href={file.downloadUrl}
-                                  download={file.name}
-                                  title={file.hash}
-                                  className={`rounded-sm break-all text-accent-text underline underline-offset-4 ${focusRing}`}
-                                >
-                                  {fill(t.downloadLast, { name: file.name })}
-                                </a>
-                              ))}
-                            </>
-                          ) : (
-                            <span className="text-fg-subtle">{t.noExport}</span>
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
-                    <div className="flex shrink-0 items-center gap-1 lg:w-32 lg:justify-end">
-                      <Button asChild variant="outline" size="sm">
-                        <Link
-                          href={`/projeler/${item.id}`}
-                          aria-label={fill(t.rowAction, { action: t.open, name: item.name })}
-                        >
-                          {t.open}
-                        </Link>
-                      </Button>
-                      <Tooltip content={t.copy}>
-                        <IconButton
-                          size="sm"
-                          aria-label={fill(t.rowAction, { action: t.copy, name: item.name })}
-                          disabled={copying !== null}
-                          loading={copying === item.id}
-                          onClick={() => void copy(item)}
-                        >
-                          <Copy aria-hidden />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip content={t.delete}>
-                        <IconButton
-                          size="sm"
-                          data-testid="project-delete"
-                          aria-label={fill(t.rowAction, { action: t.delete, name: item.name })}
-                          disabled={deleting !== null}
-                          loading={deleting === item.id}
-                          onClick={() => void remove(item)}
-                        >
-                          <Trash2 aria-hidden />
-                        </IconButton>
-                      </Tooltip>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+                            </dd>
+                          </div>
+                          <div className="flex min-w-0 gap-1" data-testid="project-last-export">
+                            <dt className="lg:sr-only">{t.columns.lastExport}:</dt>
+                            <dd className="flex min-w-0 flex-wrap gap-x-2">
+                              {item.lastExport ? (
+                                <>
+                                  <time dateTime={item.lastExport.createdAt}>
+                                    {fill(t.lastExport, {
+                                      revision: item.lastExport.revision,
+                                      date: dateFormat.format(new Date(item.lastExport.createdAt)),
+                                    })}
+                                  </time>
+                                  {item.lastExport.files.map((file) => (
+                                    <a
+                                      key={file.name}
+                                      href={file.downloadUrl}
+                                      download={file.name}
+                                      title={file.hash}
+                                      className={`rounded-sm break-all text-accent-text underline underline-offset-4 ${focusRing}`}
+                                    >
+                                      {fill(t.downloadLast, { name: file.name })}
+                                    </a>
+                                  ))}
+                                </>
+                              ) : (
+                                <span className="text-fg-subtle">{t.noExport}</span>
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                        <div className="flex shrink-0 items-center gap-1 lg:w-32 lg:justify-end">
+                          <Button asChild variant="outline" size="sm">
+                            <Link
+                              href={`/projeler/${item.id}`}
+                              aria-label={fill(t.rowAction, { action: t.open, name: item.name })}
+                            >
+                              {t.open}
+                            </Link>
+                          </Button>
+                          <Tooltip content={t.copy}>
+                            <IconButton
+                              size="sm"
+                              aria-label={fill(t.rowAction, { action: t.copy, name: item.name })}
+                              disabled={copying !== null}
+                              loading={copying === item.id}
+                              onClick={() => void copy(item)}
+                            >
+                              <Copy aria-hidden />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip content={t.delete}>
+                            <IconButton
+                              size="sm"
+                              data-testid="project-delete"
+                              aria-label={fill(t.rowAction, { action: t.delete, name: item.name })}
+                              disabled={deleting !== null}
+                              loading={deleting === item.id}
+                              onClick={() => void remove(item)}
+                            >
+                              <Trash2 aria-hidden />
+                            </IconButton>
+                          </Tooltip>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+            </section>
           )}
-        </section>
-      )}
+        </TabsContent>
+        <TabsContent value="offcuts">
+          <OffcutStock t={t.offcuts} materials={materials} />
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }

@@ -5,7 +5,7 @@
  * draw-call count stays bounded: one per shared shape + one merged mesh + waste + edges, so 300
  * parts never need more than ~150 + 3 calls (spec §3.8 perf budget). Pure data.
  */
-import { defaultSheet, placedOutline, sheetSizeOf, type Project } from '@nittcam/core';
+import { defaultSheet, placedOutline, sheetSizeOf, type Project, toCutSizes } from '@nittcam/core';
 import { flatten } from './outlines';
 import { effectiveGrain } from './textures';
 import {
@@ -93,7 +93,9 @@ export function meshCacheSize(): number {
   return cache.size;
 }
 
-export function buildSheetScene(project: Project, sheet: number): SheetScene {
+export function buildSheetScene(entered: Project, sheet: number): SheetScene {
+  // T169: parts are drawn at their cut size (edge-band deduction).
+  const project = toCutSizes(entered);
   const T = project.stock.thickness;
   const parts = new Map(project.parts.map((p) => [p.id, p]));
   const groups = new Map<string, ShapeGroup>();

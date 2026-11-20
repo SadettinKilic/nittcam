@@ -23,6 +23,7 @@ import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../edito
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { lineLeavesPart } from '../editor/lines';
 import { unsecuredSlugs } from '../toolpath/slug-check';
+import { toCutSizes } from '../schema/cut-size';
 
 export type ValidationSeverity = 'error' | 'warning';
 
@@ -504,8 +505,10 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
 
 /** Runs every rule and returns the combined list (errors and warnings, in rule order). */
 export function validateProject(
-  project: Project,
+  entered: Project,
   context: ValidationContext = {},
 ): ValidationIssue[] {
+  // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
+  const project = toCutSizes(entered);
   return VALIDATION_RULES.flatMap((rule) => rule(project, context));
 }

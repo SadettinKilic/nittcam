@@ -3,6 +3,7 @@ import type { MachineProfile } from '../machine';
 import type { Project } from '../schema';
 import { defaultSheet } from '../schema';
 import { buildToolpath, placedOutline } from './build';
+import { toCutSizes } from '../schema/cut-size';
 
 /** A cut-out whose slug has no room for the 2 tabs that hold it (D-049). */
 export interface UnsecuredSlug {
@@ -24,7 +25,9 @@ const ROOM = 50;
  * cut-out, the tool and the cutting settings (no leads inside an opening), not on where the part
  * lies. Without cutting parameters nothing is reported (that has its own error). Pure.
  */
-export function unsecuredSlugs(project: Project, machine: MachineProfile): UnsecuredSlug[] {
+export function unsecuredSlugs(entered: Project, machine: MachineProfile): UnsecuredSlug[] {
+  // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
+  const project = toCutSizes(entered);
   const out: UnsecuredSlug[] = [];
   const margin = project.nesting.margin;
   project.parts.forEach((part, i) => {

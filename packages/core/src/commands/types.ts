@@ -36,6 +36,11 @@ export interface CommandDefinition<S extends z.ZodType = z.ZodType> {
   aiTool: boolean;
   params: S;
   /**
+   * The params the AI may pass, when narrower than `params` (e.g. `runNesting` without the stock
+   * offcuts the app loads, T168). The tool definition shows it and an `ai` actor is held to it.
+   */
+  aiParams?: z.ZodType | undefined;
+  /**
    * Optional precondition on the current project (e.g. a free part id). Returns an English
    * message when the command cannot run; `undefined` when it can.
    */
