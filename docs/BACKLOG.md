@@ -1113,6 +1113,26 @@ Tester focus: run suite twice → stable screenshots; review all images.
 
 ---
 
+
+### Batch B20a: T282, T283 + rider T281 (CTO review #8 must-fixes, D-047)
+Review: `docs/reviews/2026-11-20-cto-design-review-8.md` §"Şimdi düzelt" A and B (full acceptance text there; the lines below are the contract).
+
+### T282 Unverified ready-template values reach the checklist, summary, panel and G-code (must-fix: wrong output risk)   [status: todo]
+Spec: §4.7, §7.2, §14.2 · Depends: T150, T151 · Decision: K2 in review #8
+Acceptance:
+- [ ] a project with an instance of an unverified ready template gets its own Dışa aktar checklist line ("Hazır şablon ölçüleri doğrulanmadı: … Ölçüleri kendi menteşe / kulp verinizle karşılaştırdım."); İndir stays closed until it is ticked. Company templates (or ready ones copied and edited) add no line
+- [ ] the Simülasyon summary shows the same as one yellow line (Z-sıfırla pattern); the properties panel shows a "Doğrulanacak" badge on the instance header
+- [ ] the G-code header gets one ASCII comment `(SABLON DOGRULANMADI: ...)` only when such an instance exists; every other file and all goldens byte-identical (a new golden needs PO + tester approval, D-051)
+- [ ] if over half a day: checklist + summary now, badge + comment as a follow-up task
+Tester focus: ready-template door (line, İndir closed), company-template door (no line), cabinet without templates (unchanged); comment in the downloaded file; 1440 light/dark; axe.
+
+### T283 Project name: typing replaces the default name, never appends (must-fix: wrong file name on every job)   [status: todo]
+Spec: §3.6, §6.4 · Depends: none
+Acceptance:
+- [ ] while the name is the default ("Adsız proje"), click / focus / pencil selects the whole text; the first typed character replaces it. A user-set name keeps today's caret behaviour
+- [ ] walkthrough 1 path (Yeni proje → click name → "Mutfak alt dolap 60") gives `Mutfak_alt_dolap_60_S1.tap` with no extra click
+- [ ] e2e: click and type; Esc keeps the old name; undo
+Tester focus: new project, renaming an existing one, undo; 1440 + 390 smoke.
 ## M7: Dizilim yükseltmeleri (exit: 3 modes, true-shape nesting with rotation, offcuts, edge-band deduction)
 
 ### Batch B22: T162–T164 (modes and options)
@@ -1364,6 +1384,17 @@ From CTO review #7 (2026-11-19, `docs/reviews/2026-11-19-cto-design-review-7.md`
 From the B14a tester (2026-11-19):
 - Hinge cup at zoom %100 snaps to the 5 mm grid, so 22,5 mm must be typed; offer a finer snap near hinge positions
 - DXF import "Çizgi üzerinden" layer mapping has no browser test (unit tests only)
+
+From CTO review #8 (2026-11-20, `docs/reviews/2026-11-20-cto-design-review-8.md`):
+- Dizilim: holes and template instances not drawn on parts; mirrored left/right doors indistinguishable (raise priority)
+- Board: properties panel 2.511 px on a templated door; show instances and holes as collapsed rows
+- Simülasyon 3D: toolbar clipped on the right at 1440
+- Simülasyon 2D/3D: small jobs sit in a corner; add "fit to job" view or make it the default
+- Toast "dosya.dxf: 3 parça eklendi · Geri al" stays across steps and covers the G-code panel on step 4; close on step change
+- Nesting mode cards: show path/time for "En hızlı", change count for "En az takım değişimi"; note on single-tool jobs
+- Şablonlar page thumbnails not to scale (Ø35 cup smaller than Ø6 hole)
+- G-code: float residue (`Y117.9999`); clean before rounding to 4 decimals (check golden impact)
+- Dizilim "Diz" progress bar has no text; add "Diziliyor… %40 · İptal"
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
