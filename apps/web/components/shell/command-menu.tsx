@@ -19,15 +19,23 @@ import {
   FolderKanban,
   House,
   Keyboard,
+  LayoutTemplate,
+  ListOrdered,
   Monitor,
   Moon,
+  Layers,
   PanelLeft,
   Plus,
+  Settings,
+  ShieldCheck,
   SunMoon,
   Sun,
 } from 'lucide-react';
 import { useEffect, useState, type ComponentType } from 'react';
+import { fill } from '../../lib/draft-project';
 import type { Messages } from '../../lib/messages';
+import { requestStep } from '../../lib/step-request';
+import { STEPS } from '../../lib/wizard-steps';
 import type { ProjectListItem } from '../../lib/projects-api';
 import { NEW_PROJECT_HREF } from '../../lib/shell-nav';
 import type { ShortcutId } from '../../lib/shortcuts';
@@ -49,6 +57,8 @@ export interface CommandMenuProps {
   t: { palette: Messages['palette']; nav: Messages['nav']; shortcuts: Messages['shortcuts'] };
   actions: CommandActions;
   onCloseAutoFocus?: (event: Event) => void;
+  /** Inside the project wizard: step names for the "Bu proje" commands (P4); null elsewhere. */
+  steps?: Record<(typeof STEPS)[number], string> | null;
 }
 
 type Recent =
@@ -89,6 +99,7 @@ export function CommandMenu({
   t,
   actions,
   onCloseAutoFocus,
+  steps = null,
 }: CommandMenuProps) {
   const p = t.palette;
   const [recent, setRecent] = useState<Recent>({ status: 'loading' });
@@ -176,7 +187,49 @@ export function CommandMenu({
             shortcut="goMachines"
             onSelect={() => run(() => actions.navigate('/makineler'))}
           />
+          <PaletteItem
+            then={t.shortcuts.then}
+            value={p.verify}
+            icon={ShieldCheck}
+            keywords={p.keywords.verify}
+            onSelect={() => run(() => actions.navigate('/makineler'))}
+          />
+          <PaletteItem
+            then={t.shortcuts.then}
+            value={p.templates}
+            icon={LayoutTemplate}
+            keywords={p.keywords.templates}
+            onSelect={() => run(() => actions.navigate('/sablonlar'))}
+          />
+          <PaletteItem
+            then={t.shortcuts.then}
+            value={p.settings}
+            icon={Settings}
+            keywords={p.keywords.settings}
+            onSelect={() => run(() => actions.navigate('/ayarlar'))}
+          />
+          <PaletteItem
+            then={t.shortcuts.then}
+            value={p.materials}
+            icon={Layers}
+            keywords={p.keywords.materials}
+            onSelect={() => run(() => actions.navigate('/ayarlar/malzemeler'))}
+          />
         </CommandGroup>
+        {steps ? (
+          <CommandGroup heading={p.groups.project}>
+            {STEPS.map((key, i) => (
+              <PaletteItem
+                key={key}
+                then={t.shortcuts.then}
+                value={fill(p.step, { n: i + 1, name: steps[key] })}
+                icon={ListOrdered}
+                keywords={p.keywords.step}
+                onSelect={() => run(() => requestStep(key))}
+              />
+            ))}
+          </CommandGroup>
+        ) : null}
         <CommandGroup heading={p.groups.actions}>
           <PaletteItem
             then={t.shortcuts.then}

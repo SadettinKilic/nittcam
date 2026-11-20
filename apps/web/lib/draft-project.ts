@@ -1,4 +1,6 @@
 import {
+  BUILT_IN_PROJECT_DEFAULTS,
+  applyProjectDefaults,
   findMaterialParams,
   materialHasGrain,
   materialKindOf,
@@ -9,6 +11,7 @@ import {
   type MachineProfile,
   type MaterialKind,
   type Project,
+  type ProjectDefaults,
   defaultSheet,
 } from '@nittcam/core';
 
@@ -48,9 +51,23 @@ export function firstUsableLibraryStock(
 /**
  * A new project (T023): the given machine profile version and the default sheet. The stock is the
  * company library's first entry the machine can cut (T259), else the profile's first material set
- * (the first verified one, T271; else MDF 18 mm). Nothing is stored until the first change (D-029).
+ * (the first verified one, T271; else MDF 18 mm), with the company's project defaults (T182).
+ * Nothing is stored until the first change (D-029).
  */
 export function newProject(
+  machine?: {
+    id: string;
+    version: number;
+    profile: MachineProfile;
+  },
+  library: readonly (LibraryMaterial & { id: string })[] = [],
+  defaults: ProjectDefaults = BUILT_IN_PROJECT_DEFAULTS,
+): Project {
+  // T182: the company defaults (Ayarlar) go through the project commands' own logic (D-067).
+  return applyProjectDefaults(baseProject(machine, library), defaults);
+}
+
+function baseProject(
   machine?: {
     id: string;
     version: number;
@@ -64,7 +81,7 @@ export function newProject(
   const set = sets.find((m) => !m.unverified) ?? sets[0];
   const usable = machine ? firstUsableLibraryStock(library, machine.profile) : undefined;
   if (usable) {
-    const base = newProject(machine);
+    const base = baseProject(machine);
     const pick = stockFromLibrary(usable.entry, {
       thickness: usable.thickness,
       sheet: defaultSheet(base),
@@ -90,7 +107,11 @@ export function newProject(
       useOffcuts: false,
     },
     parts: [],
-    nesting: { mode: 'minWaste', gap: 8, margin: 10 },
+    nesting: {
+      mode: 'minWaste',
+      gap: BUILT_IN_PROJECT_DEFAULTS.gap,
+      margin: BUILT_IN_PROJECT_DEFAULTS.margin,
+    },
     layout: { sheets: [] },
     cutting: { tabs: { auto: true }, leadIn: 'arc', direction: 'climb' },
     settings: { dimensionMode: 'cut' },

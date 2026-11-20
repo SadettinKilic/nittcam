@@ -50,3 +50,4 @@ export {
   updateTemplateVersion,
   nextInstanceId,
 } from './part/templates';
+export * from './project-defaults';

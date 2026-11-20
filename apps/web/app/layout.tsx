@@ -5,6 +5,7 @@ import { ThemeProvider } from '@nittcam/ui';
 import { AppShell } from '../components/shell/app-shell';
 import { DEFAULT_COMPANY_NAME } from '../lib/company-defaults';
 import { defaultLocale, getMessages } from '../lib/messages';
+import { PREFERENCES_INIT_SCRIPT } from '../lib/preferences';
 import { SIDEBAR_INIT_SCRIPT } from '../lib/sidebar-state';
 import './globals.css';
 
@@ -14,6 +15,7 @@ const shellText = {
   shell: messages.shell,
   palette: messages.palette,
   shortcuts: messages.shortcuts,
+  steps: messages.wizard.steps,
 };
 
 // Inter (OFL-1.1, D-032), downloaded and self-hosted at build time by next/font.
@@ -51,6 +53,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: PREFERENCES_INIT_SCRIPT }} />
       </head>
       <body>
         <ThemeProvider>

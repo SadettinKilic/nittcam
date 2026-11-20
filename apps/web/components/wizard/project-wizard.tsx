@@ -17,6 +17,7 @@ import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
+import { STEP_REQUEST_EVENT } from '../../lib/step-request';
 import { TemplateUpdatePrompt } from '../editor/template-update';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
 import { isUntitledName, untitledName } from '../../lib/untitled-name';
@@ -32,6 +33,7 @@ import { tableSpecOf } from '../../lib/preview3d/stage';
 import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
 import { IssuesOkChip } from './issues-ok-chip';
 import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
+import { fetchProjectDefaults } from '../../lib/settings-api';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
@@ -312,11 +314,13 @@ export function ProjectWizard({
           );
           // T259: a new project starts on the library's first entry the machine can cut.
           const library = firstDetail ? ((await fetchMaterials()) ?? []) : [];
+          // T182: the company's project defaults (Ayarlar); built-ins when they cannot be read.
+          const defaults = await fetchProjectDefaults();
           init = {
             id: null,
             revision: 0,
             name: untitledName(t.defaultName, names),
-            project: newProject(firstDetail ?? undefined, library),
+            project: newProject(firstDetail ?? undefined, library, defaults),
           };
         }
         // T289: archived machines cannot be picked; a project bound to one still shows it.
@@ -398,7 +402,7 @@ const GRID: Record<StepKey, string> = {
   parcalar: 'xl:grid-cols-[17rem_minmax(0,1fr)]',
   dizilim: 'xl:grid-cols-[19rem_minmax(0,1fr)]',
   simulasyon: '2xl:grid-cols-[17rem_minmax(0,1fr)]',
-  export: 'lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]',
+  export: 'lg:grid-cols-2',
 };
 
 /** On narrow screens the main work area comes first; warnings follow it. */
@@ -487,6 +491,40 @@ function WizardSession({
       root.style.removeProperty('--wizard-footer-h');
     };
   }, []);
+
+  // P4 (CTO #8–#10): a toast belongs to the step it was raised on; a step change closes it.
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    notify.dismiss();
+  }, [step]);
+
+  // P4: publish the bottom edge of the wizard header, so the toasts sit just under it (top-centre)
+  // and never over the right panel or the canvas scale bar (see AppShell's Toaster).
+  useEffect(() => {
+    const root = document.documentElement;
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const head = document.querySelector(
+          '[data-testid="wizard-head-row"], [data-testid="wizard-compact-header"]',
+        );
+        const bottom = head ? Math.max(0, head.getBoundingClientRect().bottom) : 0;
+        root.style.setProperty('--wizard-head-bottom', `${Math.round(bottom)}px`);
+      });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, { passive: true, capture: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, { capture: true });
+      root.style.removeProperty('--wizard-head-bottom');
+    };
+  }, [step]);
 
   // Machine profiles by id (the selected one is fetched when the selection changes).
   const [details, setDetails] = useState<Record<string, MachineDetail>>(() =>
@@ -769,6 +807,18 @@ function WizardSession({
     return `${stepUrl(id, 'makine')}&${LATEST_PARAM}=${LATEST_VALUE}`;
   }, [settle]);
 
+  // P4: "Adım n" commands of the palette (the shell's command menu) open a step here.
+  useEffect(() => {
+    function onRequest(e: Event) {
+      const next = (e as CustomEvent<unknown>).detail;
+      if (typeof next === 'string' && (STEPS as readonly string[]).includes(next)) {
+        go(next as StepKey);
+      }
+    }
+    window.addEventListener(STEP_REQUEST_EVENT, onRequest);
+    return () => window.removeEventListener(STEP_REQUEST_EVENT, onRequest);
+  }, [go]);
+
   // Browser Back/forward between steps: follow the URL's `?adim=` (no new entry).
   const projectIdRef = useRef(session.projectId);
   useEffect(() => {
@@ -989,8 +1039,6 @@ function WizardSession({
         onSelectionChange={setPartsSelection}
         dxfText={messages.dxfImport}
         holeTool={holeToolNo}
-        focusPart={rowFocus}
-        onFocusedPart={clearRowFocus}
         splitOff={
           sourceId
             ? {
@@ -999,6 +1047,8 @@ function WizardSession({
               }
             : undefined
         }
+        focusPart={rowFocus}
+        onFocusedPart={clearRowFocus}
       />
     );
     // T246 + T253: the table always takes the full width; with issues the Uyarılar panel floats

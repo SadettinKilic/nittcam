@@ -33,7 +33,7 @@ test.describe('T184 first-run tour and sample project', () => {
   test('reopens from Ayarlar', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('onboarding-skip').click();
-    await page.goto('/ayarlar/malzemeler');
+    await page.goto('/ayarlar');
     await page.getByTestId('onboarding-reopen').click();
     await expect(page.getByTestId('onboarding-dialog')).toBeVisible();
     await expect(page).toHaveURL(/\/$/);

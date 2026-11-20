@@ -177,6 +177,7 @@ export type ToolpathCode =
   | 'INVALID_TAB'
   | 'SMALL_PART_UNSECURED'
   | 'SMALL_SLUG_UNSECURED'
+  | 'SMALL_PART_TAB_TOO_SMALL'
   // warnings
   | 'ARC_COLLAPSED'
   | 'LEAD_SHORTENED'
@@ -187,7 +188,8 @@ export type ToolpathCode =
   | 'SMALL_PART_AUTO_TABS'
   | 'SMALL_SLUG_AUTO_TABS'
   | 'TABS_REDUCED'
-  | 'TABS_NOT_PLACED';
+  | 'TABS_NOT_PLACED'
+  | 'TABS_TOO_SMALL';
 
 export interface ToolpathIssue {
   code: ToolpathCode;

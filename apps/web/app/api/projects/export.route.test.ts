@@ -187,8 +187,14 @@ describe('POST /api/projects/:id/export', () => {
     const twice = (await again.json()) as ExportResponse;
     expect(twice.created).toBe(false);
     expect(twice.exportId).toBe(out.exportId);
+    // The files plus the project snapshot of the revision (T179, D-066; not a download).
+    expect((await storage.list(`exports/${out.exportId}/`)).sort()).toEqual(
+      [
+        ...out.files.map((f) => `exports/${out.exportId}/${f.name}`),
+        `exports/${out.exportId}/project.json`,
+      ].sort(),
+    );
     expect(await scope.exports.listForProject(detail.id)).toHaveLength(1);
-    expect(await storage.list(`exports/${out.exportId}/`)).toHaveLength(out.files.length);
 
     // History and the Projeler list show it.
     const h = (await (

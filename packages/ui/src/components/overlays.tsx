@@ -202,8 +202,10 @@ export function DropdownMenuShortcut({ className, ...props }: ComponentProps<'sp
 const overlayClass =
   'fixed inset-0 z-50 bg-overlay backdrop-blur-[2px] data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out';
 
+// B39 rider: never taller than the viewport; the panel scrolls and `DialogFooter` stays pinned to
+// its bottom edge, so the actions are always on screen (1366×768, 1024×768, phones).
 const dialogPanel =
-  'fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 ' +
+  'fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain ' +
   'rounded-xl border border-border bg-surface-raised p-6 text-fg shadow-xl outline-none ' +
   'data-[state=open]:animate-pop-in data-[state=closed]:animate-pop-out';
 
@@ -247,10 +249,18 @@ export function DialogHeader({ className, ...props }: ComponentProps<'div'>) {
   return <div className={cn('flex flex-col gap-1.5 pr-8', className)} {...props} />;
 }
 
+/**
+ * The action row. Sticky at the bottom of the scrolling panel (it bleeds over the panel padding with
+ * the panel colour), so a long dialog never hides its buttons; it looks the same when nothing scrolls.
+ */
 export function DialogFooter({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
-      className={cn('flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end', className)}
+      data-dialog-footer=""
+      className={cn(
+        'sticky -bottom-6 z-10 -mx-6 -mb-6 flex flex-col-reverse gap-2 bg-surface-raised px-6 pt-2 pb-6 sm:flex-row sm:justify-end',
+        className,
+      )}
       {...props}
     />
   );

@@ -1,3 +1,4 @@
+import { latestMaintenance, parseMaintenanceLog } from '@nittcam/core';
 import type { MachineWithProfile } from '@nittcam/db';
 import { InvalidMachineProfile, NotFound } from '@nittcam/db';
 import { NextResponse } from 'next/server';
@@ -15,6 +16,7 @@ export function toListItem(m: MachineWithProfile): MachineListItem {
     example: m.profile.example,
     table: m.profile.table,
     archived: m.machine.archivedAt !== null,
+    maintenance: latestMaintenance(parseMaintenanceLog(m.machine.maintenanceLog)),
   };
 }
 

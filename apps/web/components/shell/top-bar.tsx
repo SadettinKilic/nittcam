@@ -27,6 +27,8 @@ function crumbText(t: ShellText, crumb: Crumb): string {
     case 'project':
     case 'verification':
     case 'materials':
+    case 'dxfLayers':
+    case 'appearance':
     case 'notFound':
       return t.shell.crumbs[crumb.key];
     default:

@@ -18,6 +18,9 @@ export { toolpathSafetyViolations, operationMoves, toolpathMoves } from './safet
 export { summarizeToolpath, moveLength } from './stats';
 export {
   TAB_DEFAULTS,
+  TAB_BOUNDS,
+  maxTabHeight,
+  tabSizeProblem,
   defaultTabHeight,
   isSmallPart,
   placeTabs,

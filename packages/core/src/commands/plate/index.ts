@@ -6,6 +6,7 @@ import {
   projectSheetSizeSchema,
   stockSchema,
 } from '../../schema';
+import { TAB_BOUNDS, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
 
 /** Selects the machine profile the project uses. Selecting is allowed for AI; editing a profile is not. */
@@ -222,16 +223,21 @@ export const setTabs = defineCommand({
         .min(1, { error: 'count must be at least 1' })
         .max(20, { error: 'count must be at most 20' }),
     ),
+    // T293 (CTO #11 A, D-069): a bridge below these sizes does not hold the part.
     width: tabOverride(
-      z.number({ error: 'width must be a number' }).positive({ error: 'width must be > 0' }),
+      z
+        .number({ error: 'width must be a number' })
+        .min(TAB_BOUNDS.minWidth, { error: `width must be at least ${TAB_BOUNDS.minWidth} mm` }),
     ),
     height: tabOverride(
-      z.number({ error: 'height must be a number' }).positive({ error: 'height must be > 0' }),
+      z
+        .number({ error: 'height must be a number' })
+        .min(TAB_BOUNDS.minHeight, { error: `height must be at least ${TAB_BOUNDS.minHeight} mm` }),
     ),
   }),
   check: (project, p) =>
-    p.height !== undefined && p.height !== null && !(p.height < project.stock.thickness)
-      ? `tab height ${p.height} mm must be less than the stock thickness (${project.stock.thickness} mm)`
+    p.height !== undefined && p.height !== null && p.height > maxTabHeight(project.stock.thickness)
+      ? `tab height ${p.height} mm must be at most ${maxTabHeight(project.stock.thickness)} mm (stock thickness ${project.stock.thickness} mm minus ${TAB_BOUNDS.belowThickness} mm)`
       : undefined,
   apply: (draft, p) => {
     const tabs = draft.cutting.tabs;

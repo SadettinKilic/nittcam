@@ -42,8 +42,21 @@
       "machinesPending": "{n} makine doğrulama bekliyor",
       "machinesAllVerified": "Bütün makineler doğrulanmış",
       "waste": "Ortalama fire",
-      "wasteHint": "Kesimden sonra raporlanacak",
-      "soon": "Yakında"
+      "wasteHint": "Son 30 gün, {n} proje"
+    },
+    "waste": {
+      "title": "Fire özeti",
+      "description": "Son 30 günde dizilimi değişen projeler",
+      "average": "Ortalama fire",
+      "wasteArea": "Fire alanı",
+      "sheets": "Plaka",
+      "chartLabel": "Proje başına fire yüzdesi, en yeni üstte",
+      "bar": "{name}: fire {value}, {sheets} plaka",
+      "more": "+{n} proje daha (toplama dahil)",
+      "emptyTitle": "Son 30 günde dizilim yok",
+      "empty": "Bir projeyi dizdiğinizde fire oranı burada görünür.",
+      "scaleStart": "%0",
+      "scaleEnd": "%100"
     },
     "recent": "Son projeler",
     "recentDescription": "En son değiştirdiğiniz projeler",
@@ -116,7 +129,9 @@
       "project": "Proje",
       "verification": "Doğrulama",
       "notFound": "Sayfa bulunamadı",
-      "materials": "Malzemeler"
+      "materials": "Malzemeler",
+      "dxfLayers": "DXF katmanları",
+      "appearance": "Görünüm"
     },
     "theme": {
       "label": "Tema",
@@ -137,8 +152,14 @@
       "pages": "Sayfalar",
       "actions": "Eylemler",
       "recent": "Son projeler",
-      "theme": "Tema"
+      "theme": "Tema",
+      "project": "Bu proje"
     },
+    "templates": "Şablonlar",
+    "settings": "Ayarlar",
+    "materials": "Ayarlar / Malzemeler",
+    "verify": "Makine doğrulama",
+    "step": "Adım {n}: {name}",
     "recentLoading": "Son projeler yükleniyor…",
     "recentError": "Son projeler yüklenemedi.",
     "themeLight": "Açık temaya geç",
@@ -154,7 +175,12 @@
       "newProject": "oluştur yeni proje sihirbaz",
       "theme": "tema karanlık aydınlık koyu açık görünüm",
       "sidebar": "menü kenar çubuğu daralt genişlet",
-      "help": "kısayol klavye yardım"
+      "help": "kısayol klavye yardım",
+      "templates": "şablon hazır parça kapak menteşe",
+      "settings": "ayar tercih şirket",
+      "materials": "malzeme plaka mdf sunta kalınlık stok",
+      "verify": "doğrula air cut test kesimi makine onay",
+      "step": "adım sihirbaz git"
     }
   },
   "shortcuts": {
@@ -471,7 +497,41 @@
     },
     "verify": "Doğrula",
     "emptyTitle": "Henüz makine yok",
-    "count": "{n} makine"
+    "count": "{n} makine",
+    "maintenance": {
+      "column": "Bakım",
+      "none": "Kayıt yok",
+      "ok": "Sonraki: {date}",
+      "soon": "Bakım yaklaşıyor",
+      "overdue": "Bakım gecikti",
+      "soonDetail": "{days} gün kaldı ({date})",
+      "todayDetail": "Bugün ({date})",
+      "overdueDetail": "{days} gün gecikti ({date})",
+      "action": "Bakım",
+      "actionLabel": "Bakım kaydı: {name}",
+      "title": "Bakım kaydı: {name}",
+      "description": "Makine internete bağlı olmadığı için bakım elle kaydedilir. En son kayıt ve aralığı hatırlatmayı belirler.",
+      "date": "Bakım tarihi",
+      "interval": "Sonraki bakım",
+      "intervalUnit": "gün sonra",
+      "note": "Not",
+      "notePlaceholder": "ör. ray yağlama, kayış kontrolü",
+      "save": "Bakımı kaydet",
+      "cancel": "Kapat",
+      "history": "Geçmiş",
+      "historyEmpty": "Henüz bakım kaydı yok.",
+      "entry": "{interval} gün aralık",
+      "saved": "Bakım kaydedildi.",
+      "failed": "Kaydedilemedi. Tekrar deneyin.",
+      "invalid": "Geçerli bir tarih ve 1–3650 gün arası bir aralık girin.",
+      "loadError": "Bakım kaydı yüklenemedi."
+    },
+    "library": {
+      "label": "Kontrolcü kütüphanesi",
+      "placeholder": "Kontrolcü ailesi seçin",
+      "hint": "Seçilen ailenin post ayarına göre program biçimi, takım değiştirme ve kısıtlar dolar. Ad, marka ve model korunur; makineye özgü değerleri kontrol edin.",
+      "applied": "“{name}” değerleri dolduruldu."
+    }
   },
   "cutList": {
     "title": "Parçalar",
@@ -1062,7 +1122,8 @@
       "linePlace": "{name} · Çizgi {n}",
       "rowPlace": "Satır {n} · {name}",
       "openPart": "Çizimde aç",
-      "openRow": "Parçalara git"
+      "openRow": "Parçalara git",
+      "openCutting": "Kesim ayarlarına git"
     },
     "rules": {
       "R1": "Kural 1 · Birim, mutlak koordinat, düzlem ve iş ofseti baştan yazılır",
@@ -1098,7 +1159,7 @@
       "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
       "NO_OPERATIONS": "Kesilecek parça yok.",
       "DEPTH_EXCEEDS_FLUTE_LENGTH": "Kesim derinliği takımın kesici boyunu aşıyor.",
-      "SMALL_PART_UNSECURED": "Küçük parça sabitlenemiyor (köprü yerleşmedi). Kesim ayarlarında “Son pasoda ince tabaka bırak” seçeneğini açın.",
+      "SMALL_PART_UNSECURED": "Küçük parçaya köprü sığmıyor (köprü genişliği ya da sayısı bu parçaya fazla); kesilince serbest kalır. Kesim ayarlarında köprüyü küçültün ya da “Köprü: Kapalı” seçin (küçük parçalar ince tabakayla tutulur).",
       "INVALID_SKIN": "İnce tabaka kalınlığı 0’dan büyük ve malzeme kalınlığından az olmalı.",
       "SMALL_SLUG_UNSECURED": "İç kesimden düşecek küçük parçaya (göbek) 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin (delik içi tamamen boşaltılır, göbek kalmaz).",
       "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç kesime değiyor.",
@@ -1188,7 +1249,9 @@
       "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
       "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
       "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
-      "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin."
+      "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
+      "SMALL_PART_TAB_TOO_SMALL": "Köprü bu küçük parçayı tutamayacak kadar küçük (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası); parça serbest kalır. Kesim ayarlarında köprü ölçüsünü düzeltin ya da “Köprü: Kapalı” seçin.",
+      "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası)."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -1293,7 +1356,7 @@
         "small": "Köprü yalnız küçük parçalara konur; vakum onları tutamaz.",
         "off": "Köprü yok. Küçük parçalar yine de güvende: altta {skin} mm ince tabaka kalır, plakanın sonunda temizleme pasosuyla kesilir."
       },
-      "count": "Adet",
+      "count": "Adet (parça başına)",
       "width": "Genişlik",
       "height": "Yükseklik",
       "source": {
@@ -1312,7 +1375,24 @@
         "climb": "Climb (tırmanma)",
         "conventional": "Conventional (geleneksel)"
       },
-      "note": "Her değişiklik geri alınabilir; önizleme ve dışa aktarılan dosya aynı değerleri kullanır."
+      "note": "Her değişiklik geri alınabilir; önizleme ve dışa aktarılan dosya aynı değerleri kullanır.",
+      "bounds": {
+        "count": "1–20 arası tam sayı girin.",
+        "width": "En az {min} mm.",
+        "height": "{min}–{max} mm arası olmalı."
+      },
+      "smallCount": "Küçük parçalarda en az {n} köprü konur (güvenlik kuralı).",
+      "heightWarn": "Köprü kalınlığın yarısından yüksek: parçayı plakadan kırmak zorlaşır.",
+      "skinOn": "Küçük parçalarda {skin} mm ince tabaka da açık (1. adımdaki ayar).",
+      "skinOff": "Kapat",
+      "directionHint": "Climb çoğu router'da daha temiz kenar verir; boşluklu ya da hafif makinede veya kenar yırtılırsa conventional seçin.",
+      "summaryLine": "Köprü: {tabs} · Giriş: {lead} · Yön: {direction}",
+      "summaryTabs": {
+        "all": "her parçada {count} × {width} × {height} mm",
+        "small": "yalnız küçük parçada {count} × {width} × {height} mm",
+        "off": "kapalı, {skin} mm ince tabaka"
+      },
+      "summaryEdit": "Kesim ayarları"
     }
   },
   "projects": {
@@ -1741,7 +1821,9 @@
         "post": "Post",
         "profile": "Profil sürümü",
         "state": "Doğrulama",
-        "files": "Dosyalar"
+        "files": "Dosyalar",
+        "kind": "Tür",
+        "actions": "İşlem"
       },
       "historyRevision": "Rev. {n}",
       "historyProfile": "Sürüm {n}",
@@ -1752,7 +1834,31 @@
         "profile": "Bu makine profili sürümü doğrulanmadı (air cut + test kesimi gerekli).",
         "example": "Bu bir örnek profil: kendi makineniz için yeni bir makine profili oluşturup doğrulayın.",
         "post": "Post işlemci henüz gerçek makinede test edilmedi; dosyalar bu yüzden uyarıyı taşır."
-      }
+      },
+      "zip": "Tümünü indir (.zip)",
+      "kinds": {
+        "nc": "NC",
+        "dxf-dizilim": "DXF dizilim",
+        "dxf-parcalar": "DXF parçalar",
+        "pdf-a4": "PDF A4",
+        "pdf-a3": "PDF A3",
+        "etiket": "Etiket"
+      },
+      "reexport": "Yeniden üret",
+      "reexportLabel": "{kind}, Rev. {n}: yeniden üret",
+      "reexportBusy": "Üretiliyor…",
+      "reexportSame": "Aynı dosya üretildi; kayıt değişmedi.",
+      "reexportNew": "Yeni kayıt eklendi.",
+      "reexportStateChanged": "Doğrulama durumu değiştiği için yeni kayıt eklendi; eski kayıt duruyor.",
+      "reexportError": "Yeniden üretilemedi.",
+      "reexportFailed": "Bu revizyon artık kontrollerden geçmiyor ({count} hata).",
+      "reexportMissing": "Bu eski kayıt için proje anlık görüntüsü yok; yeniden üretilemez.",
+      "reexportAcceptConfirm": "Kabul et ve üret",
+      "reexportCancel": "Vazgeç",
+      "reexportConfirm": "Üret ve indir",
+      "reexportChecklistTitle": "Rev. {n} NC dosyasını yeniden üret",
+      "reexportChecklistBody": "Makine dosyası: ilk dışa aktarmadaki kontrol listesini yeniden onaylayın.",
+      "stateChanged": "doğrulama durumu değişti"
     },
     "issues": {
       "title": "Uyarılar",
@@ -1793,9 +1899,18 @@
       },
       "other": "Kontrol {code}"
     },
+    "report": {
+      "title": "Proje raporu",
+      "hint": "PDF raporundaki değerler, kaydedilmiş revizyondan.",
+      "loading": "Rapor hesaplanıyor…",
+      "error": "Rapor alınamadı.",
+      "waitSave": "Önce değişiklikler kaydedilsin.",
+      "noLayout": "Rapor için önce dizilim gerekir.",
+      "unplaced": "{count} parça dizilmedi"
+    },
     "documents": {
-      "title": "Belgeler (PDF) ve etiketler",
-      "hint": "Kaydedilmiş revizyondan sunucuda üretilir: plaka dizilimi, parça listesi ve fire raporu.",
+      "title": "DXF, PDF ve etiketler",
+      "hint": "Her dosya kaydedilmiş revizyondan sunucuda üretilir ve geçmişe yazılır.",
       "a4": "PDF aç (A4)",
       "a3": "PDF aç (A3)",
       "waitSave": "Önce değişiklikler kaydedilsin.",
@@ -1822,8 +1937,25 @@
         "offsetY": "Aşağı (mm)",
         "open": "Etiketleri aç (PDF)",
         "count": "{count} etiket, {pages} sayfa",
-        "invalid": "Izgara A4 sayfaya sığmıyor veya bir değer aralık dışında."
-      }
+        "invalid": "Izgara A4 sayfaya sığmıyor veya bir değer aralık dışında.",
+        "download": "İndir"
+      },
+      "preview": "Önizle",
+      "download": "İndir",
+      "failed": "Dosya üretilemedi. Tekrar deneyin.",
+      "dxfLayout": "DXF: plaka dizilimi",
+      "dxfParts": "DXF: parçalar tek tek",
+      "pdfA4": "PDF A4: dizilim, parça listesi, fire",
+      "pdfA3": "PDF A3: dizilim, parça listesi, fire"
+    },
+    "projectStatus": {
+      "title": "Proje durumu",
+      "hintDraft": "Başarılı bir NC dışa aktarmasından sonra durum \"üretildi\" olur.",
+      "hintProduced": "Kesim bitince projeyi tamamlandı olarak işaretleyin.",
+      "hintCompleted": "Proje tamamlandı.",
+      "markCompleted": "Tamamlandı olarak işaretle",
+      "markProduced": "Üretildi durumuna geri al",
+      "error": "Durum değiştirilemedi."
     }
   },
   "verification": {
@@ -2824,5 +2956,132 @@
       "hint": "İlk açılıştaki tanıtımı ve örnek projeyi yeniden gösterir.",
       "reopen": "Tanıtımı yeniden aç"
     }
+  },
+  "settings": {
+    "nav": {
+      "label": "Ayarlar bölümleri",
+      "general": "Genel",
+      "materials": "Malzemeler",
+      "dxf": "DXF katmanları",
+      "appearance": "Görünüm"
+    },
+    "loadError": "Ayarlar yüklenemedi.",
+    "retry": "Tekrar dene",
+    "general": {
+      "title": "Ayarlar",
+      "subtitle": "Şirket bilgileri ve yeni projelerin başlangıç değerleri.",
+      "company": {
+        "title": "Şirket",
+        "name": "Şirket adı",
+        "nameHint": "Ekranda ve çıktılarda görünür.",
+        "save": "Kaydet",
+        "saved": "Şirket adı kaydedildi.",
+        "invalid": "Şirket adı 1–120 karakter olmalı.",
+        "failed": "Kaydedilemedi. Tekrar deneyin."
+      },
+      "logo": {
+        "title": "Logo",
+        "hint": "PNG, JPEG veya WebP, en fazla 512 KB.",
+        "choose": "Logo yükle",
+        "replace": "Logoyu değiştir",
+        "remove": "Logoyu kaldır",
+        "none": "Logo yok",
+        "alt": "Şirket logosu",
+        "uploaded": "Logo yüklendi.",
+        "removed": "Logo kaldırıldı.",
+        "problems": {
+          "empty": "Dosya boş.",
+          "size": "Dosya çok büyük (en fazla 512 KB).",
+          "type": "Yalnızca PNG, JPEG veya WebP yüklenebilir.",
+          "failed": "Yüklenemedi. Tekrar deneyin."
+        }
+      },
+      "defaults": {
+        "title": "Yeni proje varsayılanları",
+        "hint": "Yeni açılan projeler bu değerlerle başlar; mevcut projeler değişmez. Tab adedi, genişliği ve yüksekliği malzeme ayarından gelir.",
+        "gap": "Parça arası boşluk",
+        "margin": "Plaka kenar payı",
+        "tabs": "Tutucu (tab)",
+        "tabModes": {
+          "all": "Her parçada",
+          "small": "Yalnız küçük parçalarda",
+          "off": "Yok, ince taban bırak"
+        },
+        "leadIn": "Giriş / çıkış",
+        "leadIns": {
+          "arc": "Yay",
+          "line": "Düz"
+        },
+        "direction": "Kesim yönü",
+        "directions": {
+          "climb": "Tırmanma (climb)",
+          "conventional": "Geleneksel (conventional)"
+        },
+        "dimensionMode": "Kenar bandı",
+        "dimensionModes": {
+          "cut": "Ölçüler kesim ölçüsü",
+          "finished": "Ölçüler bitmiş ölçü (bant düşülür)"
+        },
+        "save": "Varsayılanları kaydet",
+        "saved": "Varsayılanlar kaydedildi; yeni projelerde geçerli.",
+        "reset": "Yerleşik değerlere dön",
+        "invalid": "Boşluk ve kenar payı 0–100 mm olmalı.",
+        "failed": "Kaydedilemedi. Tekrar deneyin.",
+        "materialsTitle": "Malzeme varsayılanları",
+        "materialsHint": "Malzeme, kalınlık, plaka ölçüsü ve damar malzeme kütüphanesinde; kesim değerleri ve tab ölçüleri makinenin malzeme ayarında.",
+        "materialsLink": "Malzeme kütüphanesine git"
+      }
+    },
+    "dxf": {
+      "title": "DXF katmanları",
+      "subtitle": "DXF içe aktarırken her katmanın ne olacağı. İçe aktarmada yaptığınız seçimler de buraya kaydedilir.",
+      "hint": "Katman adlarında büyük/küçük harf fark etmez. Listede olmayan katmanlar otomatik okunur (dış = parça, iç = iç kontur).",
+      "layer": "Katman adı",
+      "op": "İşlem",
+      "add": "Katman ekle",
+      "remove": "Kaldır: {name}",
+      "removeUnnamed": "Boş satırı kaldır",
+      "empty": "Kayıtlı eşleme yok; tüm katmanlar otomatik okunur.",
+      "save": "Eşlemeyi kaydet",
+      "saved": "Katman eşlemesi kaydedildi.",
+      "failed": "Kaydedilemedi. Tekrar deneyin.",
+      "duplicate": "Bu katman listede birden fazla var.",
+      "emptyName": "Katman adı boş olamaz.",
+      "hasErrors": "Kaydetmeden önce işaretli satırları düzeltin.",
+      "pocketSoon": "Cep henüz içe aktarılmıyor; bu katmandaki şekiller raporda gösterilir.",
+      "count": "{n} katman"
+    },
+    "appearance": {
+      "title": "Görünüm",
+      "subtitle": "Tema, yoğunluk ve hareket. Seçimler bu tarayıcıda saklanır ve sayfa yenilense de kalır.",
+      "themeTitle": "Tema",
+      "themeHint": "Sistem, bilgisayarınızın açık/koyu ayarını izler. Kısayol: Shift+T.",
+      "densityTitle": "Yoğunluk",
+      "densityHint": "Sıkı görünümde düğmeler ve tablo satırları daha alçak, ekrana daha çok satır sığar. Dokunmatik ekranda Rahat önerilir.",
+      "comfortable": "Rahat",
+      "comfortableHint": "40 px düğmeler ve tablo satırları",
+      "compact": "Sıkı",
+      "compactHint": "32 px düğmeler, 36 px satırlar",
+      "previewTitle": "3D önizleme",
+      "simple3d": "Basit mod",
+      "simple3dHint": "Doku ve gölge olmadan çizer; zayıf bilgisayarlarda akıcı kalır. Önizlemedeki Basit mod düğmesiyle aynı ayardır.",
+      "motionTitle": "Hareket",
+      "reduceMotion": "Hareketi azalt",
+      "reduceMotionHint": "Geçiş ve kamera animasyonlarını kapatır. Kapalıyken işletim sisteminin ayarı geçerlidir.",
+      "reduceMotionSystem": "İşletim sisteminiz şu an hareketi azaltıyor; bu ayar kapalı olsa da animasyonlar kapalı kalır.",
+      "shortcutsTitle": "Klavye kısayolları",
+      "shortcutsHint": "Her yerde ? tuşu bu listeyi açar. Metin kutusuna yazarken kısayollar çalışmaz (komut paleti hariç)."
+    }
+  },
+  "exportReadme": {
+    "title": "NittCAM · {project} · Rev. {revision}",
+    "noName": "Adsız proje",
+    "generator": "Üretici: {id} {version}",
+    "verification": "Makine doğrulama durumu: {state}",
+    "sheetsTitle": "Plaka → dosya",
+    "filesTitle": "Dosyalar",
+    "sheetLine": "Plaka {n}: {name}  (sha256 {hash})",
+    "fileLine": "{name}  (sha256 {hash})",
+    "note": "Dosyalar NittCAM dışa aktarma geçmişindeki dosyaların aynısıdır; sha256 değerleri geçmişteki özetlerle karşılaştırılabilir."
   }
 }

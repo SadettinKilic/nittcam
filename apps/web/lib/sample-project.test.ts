@@ -88,6 +88,7 @@ describe('pickSampleMachine (T184)', () => {
     example,
     table: { width: 1300, depth: 2500 },
     archived,
+    maintenance: null,
   });
 
   it('prefers the active example machine, else the first active one', () => {
