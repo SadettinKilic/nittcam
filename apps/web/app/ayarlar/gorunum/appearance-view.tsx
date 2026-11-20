@@ -30,7 +30,7 @@ function useMounted(): boolean {
 
 /**
  * Ayarlar → Görünüm (T183, spec §3.7): theme, density, 3D simple mode, reduced motion and the
- * shortcut list. Every change applies at once and is kept in this browser (D-074).
+ * shortcut list. Every change applies at once and is kept in this browser (D-076).
  */
 export function AppearanceView({
   t,

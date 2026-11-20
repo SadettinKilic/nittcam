@@ -2,7 +2,7 @@
 // The theme lives in next-themes (`THEME_STORAGE_KEY`). Density and motion sit on <html>
 // (`data-density="compact"`, `data-motion="reduce"`), set by an inline script before the first
 // paint, so a reload shows the stored choice without a jump; CSS reads the attributes and React
-// subscribes to changes. Stored in localStorage only (D-074): a preference of this screen, not
+// subscribes to changes. Stored in localStorage only (D-076): a preference of this screen, not
 // of the company or the user account.
 
 export const DENSITY_STORAGE_KEY = 'nittcam-density';
