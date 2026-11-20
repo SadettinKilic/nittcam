@@ -2575,6 +2575,17 @@
       }
     },
     "copied": "{count} parça kopyalandı",
+    "menu": {
+      "label": "Parça menüsü",
+      "duplicate": "Çoğalt",
+      "remove": "Sil",
+      "rotate": "90° döndür",
+      "template": "Şablon ekle…",
+      "back": "Geri",
+      "loading": "Şablonlar yükleniyor…",
+      "loadError": "Şablonlar yüklenemedi.",
+      "empty": "Kayıtlı şablon yok."
+    },
     "copyName": "{name} kopya",
     "defaultName": "Parça {n}",
     "draw": {

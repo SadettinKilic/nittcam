@@ -110,10 +110,12 @@ import { boardSummary } from '../../lib/editor/summary';
 import {
   addTemplateParams,
   snapPlacement,
+  startPlacement,
   templateGhost,
   type PendingTemplate,
 } from '../../lib/editor/template-place';
 import { BoardPartList } from './part-list';
+import { BoardMenu } from './board-menu';
 import { DxfImportDialog } from '../parts/dxf-import-dialog';
 import { StatusBar } from './status-bar';
 
@@ -260,6 +262,8 @@ export function DrawingBoard({
   const bounds = useMemo(() => boardBox(parts), [parts]);
   // T148: a template being placed; its ghost follows the cursor and snaps to the part edges.
   const [pendingTpl, setPendingTpl] = useState<PendingTemplate | null>(null);
+  // B52 (D-092): right-click menu position on the canvas (px), null = closed.
+  const [menuAt, setMenuAt] = useState<Pt | null>(null);
   const tplPart = pendingTpl ? project.parts.find((p) => p.id === pendingTpl.partId) : undefined;
   const tplAt = pendingTpl ? parts.find((p) => p.id === pendingTpl.partId)?.at : undefined;
   const tplBox = useMemo(() => (tplPart ? localBox(tplPart) : null), [tplPart]);
@@ -880,6 +884,21 @@ export function DrawingBoard({
       e.pointerType === 'touch'
         ? { kind: 'pan', last: s }
         : { kind: 'marquee', start: w, startScreen: s, additive: e.shiftKey, moved: false };
+  }
+
+  /**
+   * Right-click in Seç (B52, D-092): the part under the cursor joins / becomes the selection and
+   * the board menu opens there. Empty canvas or another tool: the browser menu stays off, nothing
+   * opens.
+   */
+  function onContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+    e.preventDefault();
+    if (!view || state.tool !== 'select' || gesture.current) return;
+    const s = local(e);
+    const hit = hitPart(parts, toWorld(view, s), 4 / view.scale);
+    if (!hit) return;
+    if (!selection.has(hit)) dispatch({ type: 'select', ids: [hit] });
+    setMenuAt(s);
   }
 
   /** Adds the hole in progress with diameter `d`; a refusal names its reason (T276). */
@@ -1516,6 +1535,7 @@ export function DrawingBoard({
       onMouseDown={(e) => {
         if (e.button === 1) e.preventDefault();
       }}
+      onContextMenu={onContextMenu}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -1578,6 +1598,22 @@ export function DrawingBoard({
           />
         </CanvasBoundary>
       ) : null}
+      <BoardMenu
+        t={t.menu}
+        instanceText={(item) =>
+          fill(t.inspector.template.instance, { name: item.name, v: item.version })
+        }
+        at={menuAt}
+        onClose={() => setMenuAt(null)}
+        canTemplate={single !== undefined}
+        onDuplicate={() => actions.duplicate()}
+        onRemove={() => actions.remove()}
+        onRotate={() => actions.rotate()}
+        onTemplate={(item) => {
+          const part = single && project.parts.find((p) => p.id === single.id);
+          if (part) setPendingTpl(startPlacement(part.id, item, localBox(part), part.templates));
+        }}
+      />
     </div>
   );
 
