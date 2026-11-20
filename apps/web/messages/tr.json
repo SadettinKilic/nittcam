@@ -1701,6 +1701,15 @@
       },
       "other": "Kontrol {code}"
     },
+    "report": {
+      "title": "Proje raporu",
+      "hint": "PDF raporundaki değerler, kaydedilmiş revizyondan.",
+      "loading": "Rapor hesaplanıyor…",
+      "error": "Rapor alınamadı.",
+      "waitSave": "Önce değişiklikler kaydedilsin.",
+      "noLayout": "Rapor için önce dizilim gerekir.",
+      "unplaced": "{count} parça dizilmedi"
+    },
     "documents": {
       "title": "DXF, PDF ve etiketler",
       "hint": "Her dosya kaydedilmiş revizyondan sunucuda üretilir ve geçmişe yazılır.",

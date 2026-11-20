@@ -40,6 +40,7 @@ import {
 import type { SaveState } from '../../lib/autosave';
 import { getMessages, type Messages } from '../../lib/messages';
 import { ExportDocuments } from './export-documents';
+import { ReportCard } from './report-card';
 import type { SimMachine } from '../simulation/simulation-view';
 
 type Text = Messages['wizard']['export'];
@@ -368,6 +369,13 @@ export function ExportStep({
             </div>
           ) : null}
         </section>
+        <ReportCard
+          t={getMessages().wizard.report}
+          projectId={projectId}
+          revision={revision}
+          hasLayout={hasLayout}
+          saved={!busySaving}
+        />
         {preview && preview.files.length > 0 ? (
           <section
             aria-labelledby="export-files-title"

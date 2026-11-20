@@ -5,36 +5,18 @@
 import { PAPER_SIZES, type PaperSize, type ProjectReport, type ReportPartRow } from '@nittcam/core';
 import type { PDFDocument, PDFPage } from 'pdf-lib';
 import { fill } from '../../draft-project';
+import { formatPercentNumber, summaryTiles } from '../../report-summary';
 import { getMessages } from '../../messages';
 import { ACCENT, fitText, INK, LINE, MUTED, right, text, type PdfFonts } from './document';
 import { contentBox, drawFrame, mm, type PageHeader } from './layout-pages';
+
+export { formatArea, formatCutTime, formatPercent } from '../../report-summary';
 
 const t = getMessages().pdf;
 
 const ROW_H = 17;
 const HEAD_H = 20;
 const SUMMARY_H = 92;
-
-const pctFormat = new Intl.NumberFormat('tr-TR', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-const areaFormat = new Intl.NumberFormat('tr-TR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-export const formatPercent = (v: number): string => fill(t.percent, { value: pctFormat.format(v) });
-export const formatArea = (m2: number): string => fill(t.area, { value: areaFormat.format(m2) });
-
-/** "1 sa 5 dk" / "12 dk" (minutes rounded up), or the "not available" text. */
-export function formatCutTime(seconds: number | null): string {
-  if (seconds === null) return t.cutTimeNone;
-  const total = Math.max(1, Math.ceil(seconds / 60));
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  return h > 0 ? fill(t.minutes, { h, m }) : fill(t.minutesOnly, { m });
-}
 
 /** "Üst 0,8 · Sağ 2" or "—". */
 export function bandText(row: Pick<ReportPartRow, 'band' | 'bandedEdges'>): string {
@@ -108,14 +90,8 @@ function bandGlyph(page: PDFPage, x: number, y: number, row: ReportPartRow): voi
 function drawSummary(page: PDFPage, fonts: PdfFonts, report: ProjectReport, top: number): void {
   const box = contentBox(page);
   text(page, t.reportTitle, box.x, top - 12, fonts.bold, 11);
-  const tiles: [string, string][] = [
-    [t.sheets, String(report.sheetCount)],
-    [t.waste, formatPercent(report.wastePercent)],
-    [t.wasteArea, formatArea(report.wasteAreaM2)],
-    [t.partArea, formatArea(report.partAreaM2)],
-    [t.pieces, String(report.totalPieces)],
-    [t.cutTime, formatCutTime(report.cutSeconds)],
-  ];
+  // T177: the same tiles (labels, values, order) as the project page report card.
+  const tiles = summaryTiles(report).map((tile): [string, string] => [tile.label, tile.value]);
   const tileW = box.width / tiles.length;
   tiles.forEach(([label, value], i) => {
     const x = box.x + i * tileW;
@@ -143,7 +119,7 @@ function drawSummary(page: PDFPage, fonts: PdfFonts, report: ProjectReport, top:
       w: mm(s.width),
       h: mm(s.height),
       sheets: s.sheets,
-      waste: pctFormat.format(s.wastePercent),
+      waste: formatPercentNumber(s.wastePercent),
     }),
   );
   if (report.cutSeconds === null) notes.push(t.cutTimeHint);
