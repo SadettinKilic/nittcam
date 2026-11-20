@@ -667,3 +667,6 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-086 The workshop day uses one time zone (2026-11-20, Dev 2, B46 P4, tester B38)
 - "Today" for the maintenance reminder is the calendar day in the workshop's time zone, `Europe/Istanbul` by default (`NEXT_PUBLIC_WORKSHOP_TIME_ZONE` overrides it), computed the same way on the server (home page, first render of Makineler) and in the browser. Before, the home page used the server clock (often UTC), so between 00:00 and 03:00 the reminder was a day behind.
 - Byte limits are measured in UTF-8 bytes (`Buffer.byteLength`), not string length: the client-log body (16 KB) and the log-file rotation (1 MB).
+
+## D-091 Output polish P5 (2026-11-21, PO decision, Dev 1, B51)
+- **KESİM header in every NC file:** the "KESİM: köprü …, giriş …, yön …" comment line is written in every cutting program, default settings too (before: only when a setting differed from the new-project defaults). Air-cut and test-cut programs keep their fixed header (they cut no parts). Golden change: only that one line is added (arc-tabs, cabinet-doors, mixed; generic + mach3).
