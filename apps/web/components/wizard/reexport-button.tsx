@@ -74,6 +74,32 @@ export function ReexportButton({
     setAsk(next);
   }
 
+  /** GET the regenerated program's checklist (nothing is stored) and open the dialog. */
+  async function askChecklist() {
+    setBusy(true);
+    try {
+      const res = await fetch(reexportUrl(record.exportId), { cache: 'no-store' });
+      if (res.ok) {
+        open((await res.json()) as ReexportChecklistRequired);
+        return;
+      }
+      const body = (await res.json().catch(() => null)) as ExportApiError | null;
+      notify.error(errorText(body), { id: 'export-reexport' });
+    } catch {
+      notify.error(t.reexportError, { id: 'export-reexport' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function errorText(body: ExportApiError | null): string {
+    return body?.error === 'export_failed'
+      ? fill(t.reexportFailed, { count: Math.max(1, body.violations.length) })
+      : body?.error === 'snapshot_missing'
+        ? t.reexportMissing
+        : t.reexportError;
+  }
+
   async function run(confirm: { checklist: boolean; accept: boolean }) {
     setBusy(true);
     try {
@@ -113,13 +139,7 @@ export function ReexportButton({
         return;
       }
       const body = (await res.json().catch(() => null)) as ExportApiError | null;
-      const message =
-        body?.error === 'export_failed'
-          ? fill(t.reexportFailed, { count: Math.max(1, body.violations.length) })
-          : body?.error === 'snapshot_missing'
-            ? t.reexportMissing
-            : t.reexportError;
-      notify.error(message, { id: 'export-reexport' });
+      notify.error(errorText(body), { id: 'export-reexport' });
     } catch {
       notify.error(t.reexportError, { id: 'export-reexport' });
     } finally {
@@ -136,8 +156,10 @@ export function ReexportButton({
         aria-busy={busy}
         aria-label={fill(t.reexportLabel, { kind: label, n: record.revision })}
         data-testid="export-reexport"
-        // NC: the server answers 428 with the checklist, which the dialog then asks (D-071).
-        onClick={() => void run({ checklist: false, accept: false })}
+        // NC: the dialog asks the checklist first (D-071); documents regenerate at once.
+        onClick={() =>
+          void (record.kind === 'nc' ? askChecklist() : run({ checklist: false, accept: false }))
+        }
       >
         <RotateCcw aria-hidden />
         {busy ? t.reexportBusy : t.reexport}

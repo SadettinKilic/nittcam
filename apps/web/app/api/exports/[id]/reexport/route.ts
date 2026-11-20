@@ -1,6 +1,11 @@
 import { hingeEdgeHandleParts, unverifiedTemplateNames } from '@nittcam/core';
 import { NextResponse } from 'next/server';
-import type { ExportResponse, ReexportChecklistRequired } from '../../../../../lib/exports-api';
+import type { CompanyScope, ExportRow } from '@nittcam/db';
+import type {
+  ExportApiError,
+  ExportResponse,
+  ReexportChecklistRequired,
+} from '../../../../../lib/exports-api';
 import { parseLabelQuery } from '../../../../../lib/labels-query';
 import { companyScope, companyStorage } from '../../../../../lib/server/company';
 import { buildDocument, isDocumentType, storeDocument } from '../../../../../lib/server/documents';
@@ -42,22 +47,9 @@ export async function POST(request: Request, ctx: RouteContext<'/api/exports/[id
   }
   try {
     const scope = await companyScope();
-    const row = await scope.exports.get(id);
-    if (!row) return apiError({ error: 'not_found' }, 404);
-    const project = await scope.projects.get(row.projectId);
-    if (!project || project.deletedAt !== null) return apiError({ error: 'not_found' }, 404);
-
-    const snap = await readSnapshot(companyStorage(scope.companyId), row.id);
-    let source: ExportSource;
-    let labels: string | undefined;
-    if (snap) {
-      source = { id: project.id, name: snap.name, revision: snap.revision, data: snap.data };
-      labels = snap.labels;
-    } else if (project.revision === row.projectRevision && row.postId !== 'etiket') {
-      source = project;
-    } else {
-      return apiError({ error: 'snapshot_missing' }, 410);
-    }
+    const found = await sourceOf(scope, id);
+    if (found instanceof NextResponse) return found;
+    const { row, source, labels } = found;
 
     let out: ExportResponse;
     let created: boolean;
@@ -74,16 +66,7 @@ export async function POST(request: Request, ctx: RouteContext<'/api/exports/[id
         );
       }
       // D-071: an NC re-export is a machine file like the first export: the same checklist first.
-      if (confirmed !== true) {
-        const ask: ReexportChecklistRequired = {
-          error: 'checklist_required',
-          checklist: run.checklist,
-          needsAcceptance: run.needsAcceptance,
-          templates: unverifiedTemplateNames(source.data.parts),
-          hingeHandles: hingeEdgeHandleParts(source.data.parts),
-        };
-        return NextResponse.json(ask, { status: 428 });
-      }
+      if (confirmed !== true) return NextResponse.json(askOf(run, source), { status: 428 });
       if (run.needsAcceptance && accept !== true) {
         return apiError({ error: 'acceptance_required' }, 428);
       }
@@ -106,6 +89,78 @@ export async function POST(request: Request, ctx: RouteContext<'/api/exports/[id
     }
     out.stateChanged = out.exportId !== row.id && out.verification !== row.verificationState;
     return NextResponse.json(out, { status: created ? 201 : 200 });
+  } catch (err) {
+    console.error(err);
+    return apiError({ error: 'server_error' }, 500);
+  }
+}
+
+/** The history row and the project revision it was made from (snapshot, D-066). */
+async function sourceOf(
+  scope: CompanyScope,
+  id: string,
+): Promise<
+  | NextResponse<ExportApiError>
+  | { row: ExportRow; source: ExportSource; labels: string | undefined }
+> {
+  const row = await scope.exports.get(id);
+  if (!row) return apiError({ error: 'not_found' }, 404);
+  const project = await scope.projects.get(row.projectId);
+  if (!project || project.deletedAt !== null) return apiError({ error: 'not_found' }, 404);
+  const snap = await readSnapshot(companyStorage(scope.companyId), row.id);
+  if (snap) {
+    return {
+      row,
+      source: { id: project.id, name: snap.name, revision: snap.revision, data: snap.data },
+      labels: snap.labels,
+    };
+  }
+  if (project.revision === row.projectRevision && row.postId !== 'etiket') {
+    return { row, source: project, labels: undefined };
+  }
+  return apiError({ error: 'snapshot_missing' }, 410);
+}
+
+/** What the NC dialog asks before a re-export (D-071). */
+function askOf(
+  run: Awaited<ReturnType<typeof runExportOf>>,
+  source: ExportSource,
+): ReexportChecklistRequired {
+  return {
+    error: 'checklist_required',
+    checklist: run.checklist,
+    needsAcceptance: run.needsAcceptance,
+    templates: unverifiedTemplateNames(source.data.parts),
+    hingeHandles: hingeEdgeHandleParts(source.data.parts),
+  };
+}
+
+/**
+ * GET /api/exports/:id/reexport (D-071): the checklist of an NC re-export, without storing
+ * anything (the dialog asks it before the POST). 200 with the `checklist_required` body; 422 when
+ * the revision no longer passes the checks; 400 for a document row (they need no checklist).
+ */
+export async function GET(_request: Request, ctx: RouteContext<'/api/exports/[id]/reexport'>) {
+  const { id } = await ctx.params;
+  if (!UUID.test(id)) return apiError({ error: 'not_found' }, 404);
+  try {
+    const scope = await companyScope();
+    const found = await sourceOf(scope, id);
+    if (found instanceof NextResponse) return found;
+    const { row, source } = found;
+    if (row.kind !== 'nc') return apiError({ error: 'bad_request' }, 400);
+    const run = await runExportOf(scope, source, row.machineProfileVersionId);
+    if (!run.ok || !run.machine || !run.post) {
+      return apiError(
+        {
+          error: 'export_failed',
+          stage: run.stage,
+          violations: run.violations.filter((v) => v.severity === 'error'),
+        },
+        422,
+      );
+    }
+    return NextResponse.json(askOf(run, source));
   } catch (err) {
     console.error(err);
     return apiError({ error: 'server_error' }, 500);

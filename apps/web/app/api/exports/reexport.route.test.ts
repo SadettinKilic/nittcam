@@ -16,7 +16,7 @@ import { POST as doExport } from '../projects/[id]/export/route';
 import { POST as documents } from '../projects/[id]/documents/route';
 import { GET as history } from '../projects/[id]/exports/route';
 import { GET as download } from './[id]/files/[name]/route';
-import { POST as reexport } from './[id]/reexport/route';
+import { GET as reexportAsk, POST as reexport } from './[id]/reexport/route';
 
 const json = (method: string, body: unknown) =>
   new Request('http://test', {
@@ -126,6 +126,10 @@ describe('status flow and re-export (T179)', () => {
     expect(list.error).toBe('checklist_required');
     expect(list.checklist?.tools.length).toBeGreaterThan(0);
     expect(list.needsAcceptance).toBe(true);
+    // GET gives the same checklist without storing anything.
+    const asked = await reexportAsk(new Request('http://test'), ctx({ id: nc.exportId }));
+    expect(asked.status).toBe(200);
+    expect(await asked.json()).toEqual(list);
     // Acceptance alone is not enough.
     expect(
       (await reexport(json('POST', { acceptUnverified: true }), ctx({ id: nc.exportId }))).status,
