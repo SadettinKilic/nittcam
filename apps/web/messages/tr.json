@@ -1545,6 +1545,14 @@
         "new": "Taslak"
       }
     },
+    "saveBanner": {
+      "offlineTitle": "Bağlantı yok",
+      "failedTitle": "Proje kaydedilemedi",
+      "unsent": "{count} değişiklik henüz sunucuya gitmedi.",
+      "unsentNone": "Son değişiklikler henüz sunucuya gitmedi.",
+      "kept": "Bu sekmede saklanıyor; bağlantı gelince kendiliğinden gönderilir. Sekmeyi kapatmayın.",
+      "retry": "Tekrar dene"
+    },
     "conflict": {
       "title": "Proje başka bir yerde değişti",
       "body": "Bu proje başka bir sekmede ya da cihazda kaydedildi. Buradaki son değişiklikleriniz kaydedilmedi.",

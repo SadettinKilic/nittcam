@@ -1,5 +1,6 @@
 'use client';
 
+import { reportClientError } from '../../lib/report-client-error';
 import { ErrorState } from '@nittcam/ui';
 import { ImageOff } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
@@ -27,6 +28,7 @@ export class CanvasBoundary extends Component<CanvasBoundaryProps, { failed: boo
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('canvas crashed', error, info.componentStack);
+    reportClientError('canvas', error);
   }
 
   override render(): ReactNode {

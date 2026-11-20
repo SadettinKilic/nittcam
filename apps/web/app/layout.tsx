@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { ThemeProvider } from '@nittcam/ui';
+import { ClientErrorReporter } from '../components/feedback/client-error-reporter';
 import { AppShell } from '../components/shell/app-shell';
 import { DEFAULT_COMPANY_NAME } from '../lib/company-defaults';
 import { defaultLocale, getMessages } from '../lib/messages';
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
       </head>
       <body>
+        <ClientErrorReporter />
         <ThemeProvider>
           <AppShell t={shellText} company={DEFAULT_COMPANY_NAME}>
             {children}
