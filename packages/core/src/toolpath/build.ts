@@ -50,7 +50,16 @@ import { buildOnlineOperation, onlineStart } from './online';
 import { partInHoleHosts } from './enclose';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
 
-import { TAB_DEFAULTS, defaultTabHeight, isSmallPart, passMovesWithTabs, placeTabs } from './tabs';
+import {
+  TAB_BOUNDS,
+  TAB_DEFAULTS,
+  defaultTabHeight,
+  isSmallPart,
+  maxTabHeight,
+  passMovesWithTabs,
+  placeTabs,
+  tabSizeProblem,
+} from './tabs';
 import type {
   LeadType,
   Move,
@@ -261,6 +270,10 @@ interface TabParams {
   top: number;
   smallPartArea: number;
   smallPartMinSide: number;
+  /** T293: the resolved size is below the holding bounds (`tabSizeProblem`), else null. */
+  sizeProblem: 'width' | 'height' | null;
+  /** Largest holding tab height on this stock, mm (T293). */
+  maxHeight: number;
 }
 
 function rapid(p: Point, z: number): Move {
@@ -529,6 +542,36 @@ function buildOuterOperation(
           where,
         ),
       );
+    }
+    // T293 (CTO #11 A, D-069): tabs below the holding bounds do not hold. A small part (or slug)
+    // held only by them would be cut free: an error, whatever project or material set the size
+    // came from (old and hand-edited projects too). Other parts: a warning.
+    const sizeKey = `${warnKey}/tab-size`;
+    if (tabs.length > 0 && p.tabs.sizeProblem && !smallWarned.has(sizeKey)) {
+      smallWarned.add(sizeKey);
+      const size = `${p.tabs.width} × ${p.tabs.height} mm`;
+      const bounds = `width ≥ ${TAB_BOUNDS.minWidth} mm, height ${TAB_BOUNDS.minHeight}–${p.tabs.maxHeight} mm`;
+      if (small) {
+        errors.push(
+          issue(
+            'SMALL_PART_TAB_TOO_SMALL',
+            'error',
+            partId,
+            `${what}: the ${size} tabs are too small to hold it (${bounds}); it would be cut free.`,
+            isInner ? { ...where, inner: ctx.inner as number } : where,
+          ),
+        );
+      } else {
+        warnings.push(
+          issue(
+            'TABS_TOO_SMALL',
+            'warning',
+            partId,
+            `The ${size} tabs are below the holding size (${bounds}).`,
+            where,
+          ),
+        );
+      }
     }
   }
 
@@ -930,6 +973,13 @@ export function buildToolpath(
       top: 0 - (thickness - tabHeight),
       smallPartArea,
       smallPartMinSide,
+      // T293: every project and material-set size is checked. `options.tabs` sizes are the
+      // low-level geometry hook (property tests, no UI or command reaches it) and are not.
+      sizeProblem:
+        to.width !== undefined || to.height !== undefined
+          ? null
+          : tabSizeProblem(tabWidth, tabHeight, thickness),
+      maxHeight: maxTabHeight(thickness),
     },
   };
 

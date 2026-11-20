@@ -15,7 +15,10 @@ export interface CuttingSettings {
   /** `all` = every part, `small` = small parts only (safety rule), `off` = none, skin instead. */
   tabMode: TabMode;
   tabs: {
+    /** Per part. */
     count: number;
+    /** T294: what a small part really gets: at least `TAB_DEFAULTS.smallPartMinCount`. */
+    smallCount: number;
     width: number;
     height: number;
     source: { count: TabSource; width: TabSource; height: TabSource };
@@ -54,7 +57,13 @@ export function cuttingSettingsOf(project: Project, machine?: MachineProfile): C
   );
   return {
     tabMode: tabModeOf(project),
-    tabs: { count, width, height, source: { count: countSrc, width: widthSrc, height: heightSrc } },
+    tabs: {
+      count,
+      smallCount: Math.max(count, TAB_DEFAULTS.smallPartMinCount),
+      width,
+      height,
+      source: { count: countSrc, width: widthSrc, height: heightSrc },
+    },
     skin: project.cutting.skin?.thickness ?? null,
     leadIn: project.cutting.leadIn,
     direction: project.cutting.direction,
