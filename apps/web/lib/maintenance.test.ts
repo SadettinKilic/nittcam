@@ -22,6 +22,14 @@ describe('maintenanceView (T181)', () => {
   });
 
   it('localDay pads month and day', () => {
-    expect(localDay(new Date(2026, 0, 5, 23, 30))).toBe('2026-01-05');
+    expect(localDay(new Date(Date.UTC(2026, 0, 5, 12, 0)))).toBe('2026-01-05');
+  });
+
+  it('localDay is the workshop day, not the server (UTC) day (P4, tester B38, D-086)', () => {
+    // 22:30 UTC on 19 Nov is 01:30 on 20 Nov in Istanbul (UTC+3).
+    const late = new Date(Date.UTC(2026, 10, 19, 22, 30));
+    expect(localDay(late)).toBe('2026-11-20');
+    expect(localDay(late, 'UTC')).toBe('2026-11-19');
+    expect(localDay(new Date(Date.UTC(2026, 11, 31, 21, 0)))).toBe('2027-01-01');
   });
 });

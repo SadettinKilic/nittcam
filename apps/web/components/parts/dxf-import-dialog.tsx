@@ -204,7 +204,19 @@ export function DxfImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl" data-testid="dxf-dialog">
+      <DialogContent
+        className="max-w-5xl"
+        data-testid="dxf-dialog"
+        // P3 (tester B16): the dialog has no Radix trigger, so focus goes back to "DXF içe aktar"
+        // (the toolbar button) when it is on screen; from a menu item the default applies.
+        onCloseAutoFocus={(e) => {
+          const back = document.querySelector<HTMLElement>('button[data-testid="dxf-open"]');
+          if (back && back.offsetParent !== null) {
+            e.preventDefault();
+            back.focus();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{t.title}</DialogTitle>
           <DialogDescription>{t.description}</DialogDescription>
@@ -311,7 +323,7 @@ export function DxfImportDialog({
                       strokeWidth={2}
                       strokeDasharray="6 4"
                       vectorEffect="non-scaling-stroke"
-                      data-testid="dxf-open"
+                      data-testid="dxf-open-path"
                     />
                   ))}
                   {plan.parts.flatMap((p, k) =>

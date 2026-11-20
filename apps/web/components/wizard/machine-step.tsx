@@ -14,7 +14,7 @@ import {
   defaultSheet,
   stockSheetSizes,
 } from '@nittcam/core';
-import { Plus, TriangleAlert } from 'lucide-react';
+import { Archive, Plus, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useMemo, useState, type ReactNode } from 'react';
@@ -136,6 +136,8 @@ export function MachineFields({
   const kind = materialKindOf(stock.material);
   const profile = detail?.profile ?? null;
   const known = machines.some((m) => m.id === project.machine.machineId);
+  // P3 (CTO #12): a project bound to a machine archived later says so (T289 keeps it pickable here).
+  const archived = machines.some((m) => m.id === project.machine.machineId && m.archived);
   const entry = libraryEntryOf(library, stock);
   // T121: a library pick offers its own thicknesses and sheet sizes; else the profile's and §3.6.
   const presets: readonly Preset[] = entry
@@ -201,6 +203,16 @@ export function MachineFields({
                 <Measure value={[profile.table.width, profile.table.depth]} unit={t.units.mm} />
               ),
             })}
+          </p>
+        ) : null}
+        {archived ? (
+          <p
+            role="note"
+            data-testid="machine-archived-notice"
+            className="flex items-start gap-2 rounded-lg border border-info-border bg-info-subtle px-3 py-2 text-xs text-info-text"
+          >
+            <Archive aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>{t.archivedNote}</span>
           </p>
         ) : null}
         {/* T199: the unverified-profile notice is the header chip (ProfileStatusChip). */}
@@ -339,7 +351,8 @@ export function MachineFields({
           errors={errors}
           onCommit={(thickness) => run('setThickness', { thickness })}
         />
-        {thicknesses.length > 0 ? (
+        {/* P3 (CTO #5): the chip row only when there is a choice (not one chip = the value). */}
+        {thicknesses.some((v) => v !== stock.thickness) ? (
           <>
             {/* T259: the chips are the list; no native datalist arrow next to the number. */}
             <div className="flex flex-wrap items-center gap-1.5">
@@ -361,7 +374,7 @@ export function MachineFields({
               ))}
             </div>
           </>
-        ) : profile ? (
+        ) : profile && thicknesses.length === 0 ? (
           <p className="text-xs text-fg-muted">{t.thicknessNone}</p>
         ) : null}
         {profile && !set ? (

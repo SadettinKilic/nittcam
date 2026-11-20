@@ -1675,7 +1675,10 @@ export function CutListEditor({
     const ok = run('importCutList', { parts: rows });
     if (ok) {
       notify.success(
-        fill(t.cabinet.added, { group: group.trim() || t.cabinet.title, count: rows.length }),
+        fill(t.cabinet.added, {
+          group: group.trim() || t.cabinet.title,
+          count: rows.reduce((s, r) => s + r.qty, 0),
+        }),
         {
           id: 'cut-list-cabinet',
           ...undoAction,

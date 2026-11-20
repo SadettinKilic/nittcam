@@ -94,7 +94,9 @@ test.describe('T121 material library', () => {
     await expect(material).toHaveAttribute('data-library-id', /.+/);
     await expect(material).toHaveText(/Kontrplak/);
     // Thickness and sheet come from the entry; the entry's grain (0°) is set.
-    await expect(page.getByText(fill(w.libraryThicknessHint, { list: '18' }))).toBeVisible();
+    // P3 (B46): one thickness = the value, so no chip row (only shown when there is a choice).
+    await expect(page.getByText(fill(w.libraryThicknessHint, { list: '18' }))).toHaveCount(0);
+    await expect(page.getByTestId('wizard-thickness')).toHaveValue(/18/);
     await expect(page.getByLabel(fill(w.preset, { a: '2.070', b: '2.800' }))).toBeChecked();
     await expect(page.getByLabel(fill(w.preset, { a: '1.220', b: '2.440' }))).toBeVisible();
     await expect(page.getByLabel(fill(w.preset, { a: '2.100', b: '2.800' }))).toHaveCount(0);

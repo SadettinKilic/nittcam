@@ -79,7 +79,9 @@ test.describe('T011 cut list (tester)', () => {
     await page.getByLabel(p.textLabel).fill(TSV);
     const preview = page.getByRole('table', { name: p.preview });
     await expect(preview.locator('tr[data-invalid="true"]')).toHaveCount(2);
-    await expect(page.getByText(fill(p.summary, { valid: 2, invalid: 2 }))).toBeVisible();
+    await expect(
+      page.getByText(fill(p.summary, { valid: 2, invalid: 2, lines: '' }).split(' (')[0] as string),
+    ).toBeVisible();
     const text = await page.locator('main').innerText();
     expect(text).not.toMatch(/NOT_POSITIVE|INVALID_NUMBER|REQUIRED|must be|undefined|\{\w+\}/);
   });
