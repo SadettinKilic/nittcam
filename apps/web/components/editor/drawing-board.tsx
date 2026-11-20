@@ -630,6 +630,12 @@ export function DrawingBoard({
     const tool = drawTool;
     function onKey(e: KeyboardEvent) {
       if (typing(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+      // B50 tester round 1: keys typed inside an open dialog (e.g. "İç kesim olarak ekle?")
+      // belong to that dialog, never to the drawing tool behind it.
+      if (e.target instanceof Element && e.target.closest('[role="dialog"], [role="alertdialog"]'))
+        return;
+      if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"]'))
+        return;
       const k = e.key;
       const n = fields.length;
       if (/^[0-9]$/.test(k) || k === '.' || k === ',' || k === '-') {
