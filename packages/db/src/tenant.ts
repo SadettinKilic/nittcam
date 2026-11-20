@@ -18,7 +18,7 @@ import {
   type VerificationStage,
   type VerificationState,
 } from '@nittcam/core';
-import { and, asc, desc, eq, isNull, max, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, max, sql } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import type { Db } from './client';
 import {
@@ -438,6 +438,15 @@ function projectsRepo(db: Db, companyId: string) {
         .from(projectsTable)
         .where(and(eq(projectsTable.companyId, companyId), isNull(projectsTable.deletedAt)))
         .orderBy(desc(projectsTable.updatedAt));
+      return rows.map(upgradeRow);
+    },
+    /** Soft-deleted projects (T178 "Silinenler"), newest deletion first. */
+    async listDeleted() {
+      const rows = await db
+        .select()
+        .from(projectsTable)
+        .where(and(eq(projectsTable.companyId, companyId), isNotNull(projectsTable.deletedAt)))
+        .orderBy(desc(projectsTable.deletedAt));
       return rows.map(upgradeRow);
     },
     /**

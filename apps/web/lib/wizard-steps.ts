@@ -53,3 +53,19 @@ export function saveIndicator(
   if (state === 'idle' && !saved) return 'new';
   return 'saved';
 }
+
+/**
+ * The step a saved project opens on when the URL names none (T290, D-063): the export step once
+ * it was exported, Dizilim once it has a layout, otherwise Parçalar (the machine step only by
+ * `?adim=makine`).
+ */
+export function resumeStep(p: WizardProgress & { exported: boolean }): StepKey {
+  if (p.exported && p.partCount > 0 && p.sheetCount > 0) return 'export';
+  if (p.partCount > 0 && p.sheetCount > 0) return 'dizilim';
+  return 'parcalar';
+}
+
+/** localStorage key of a saved project's Parçalar view (T290: Liste / Çizim remembered). */
+export function partsViewKey(projectId: string): string {
+  return `nittcam.partsView.${projectId}`;
+}

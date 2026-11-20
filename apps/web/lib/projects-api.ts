@@ -20,6 +20,8 @@ export interface ProjectListItem {
   updatedAt: string;
   /** Name of the selected machine, or null when the machine is unknown to the company. */
   machine: string | null;
+  /** ISO 8601 when soft-deleted (T178), else null. */
+  deletedAt: string | null;
   material: string;
   thickness: number;
   sheet: { width: number; height: number };
@@ -36,6 +38,8 @@ export interface ProjectDetail {
   revision: number;
   updatedAt: string;
   project: Project;
+  /** True when the project has at least one export (GET /api/projects/:id only; T290). */
+  exported?: boolean;
 }
 
 /**
@@ -81,6 +85,7 @@ export type ProjectApiError =
   | { error: 'invalid_project'; issues: { path: string; message: string }[] }
   | { error: 'invalid_commands'; detail: string }
   | { error: 'not_found' }
+  | { error: 'deleted'; name: string }
   | { error: 'id_taken' }
   | { error: 'bad_request' }
   | { error: 'server_error' };

@@ -563,3 +563,15 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - **Determinism:** creation and modification dates fixed to 2000-01-01T00:00:00Z, producer/creator "NittCAM", no object streams; same project, revision and paper → same bytes (`ETag` = sha256).
 - **Split:** the drawing and report numbers are pure functions in `packages/core/src/report` (no pages, fonts or I/O); only the rendering lives in the web app.
 - **Paper:** A4 or A3 landscape, one page per layout sheet; a project without a layout gets one page that says so.
+
+## D-062 DXF export format (2026-11-20, Dev 1, T175)
+- R12 (AC1009) ASCII DXF in mm (`$INSUNITS` 4): POLYLINE/VERTEX with bulge (group 42) for every contour, CIRCLE for holes. No ARC/LWPOLYLINE, no handles: R12 opens in every viewer (LibreCAD) and our importer reads it back exactly.
+- Layers: DIS_KESIM (outline, outside), IC_KESIM (inner, inside), CEP (pocket and ring groove holes), DELIK (through holes), CIZGI (on-line contours and open lines), plus PLAKA for the sheet frames in the layout file. A contour with operation `none` is not written.
+- Layout file: sheets left to right with 100 mm between them. Parts file: each part once, unrotated, rows up to 3000 mm wide.
+- `DXF_EXPORT_LAYER_MAP` is the import mapping that reads our export back (PLAKA ignored). Download: `GET /api/projects/:id/dxf?revision=n&tur=dizilim|parcalar` (not stored; storing comes with T176).
+
+## D-063 Projeler list and resume step (2026-11-20, Dev 1, T178/T290)
+- Projeler has a third tab "Silinenler" (`?sekme=silinenler`; `?sekme=artik` opens the offcut tab). A deleted project's name is not a link; "Geri yükle" restores it. `GET /api/projects/:id` and `PUT` of a deleted project answer 410 `{ error: 'deleted', name }`, its export routes 404; the wizard shows "… silindi" with "Geri yükle".
+- Search folds Turkish letters (ç→c, ğ→g, ı/İ→i, ö→o, ş→s, ü→u) and needs every word; filters status / machine / material come from the loaded rows; sort by date or Turkish name order; 20 rows per page. All client side (the list is one company's projects).
+- A saved project opened without `?adim=` resumes: exported (with a layout) → Dışa aktar, layout → Dizilim, otherwise Parçalar. Parts without a layout stay on Parçalar (the parts step is not "done" before a nesting). `?adim=` always wins.
+- The Parçalar view (Liste / Çizim) is remembered per project in the browser (localStorage); `?gorunum=cizim` wins.

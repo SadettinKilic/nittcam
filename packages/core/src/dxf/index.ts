@@ -6,3 +6,4 @@ export * from './join';
 export * from './layers';
 export * from './recognize';
 export * from './plan';
+export * from './write';
