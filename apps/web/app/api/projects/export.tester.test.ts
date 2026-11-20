@@ -63,7 +63,7 @@ describe('T021 tester: exported bytes', () => {
     expect(res.status).toBe(201);
     const d = (await res.json()) as ProjectDetail;
     const ex = await doExport(
-      post({ revision: d.revision, acceptUnverified: true }),
+      post({ revision: d.revision, acceptUnverified: true, checklistConfirmed: true }),
       ctx({ id: d.id }),
     );
     expect([200, 201]).toContain(ex.status);
@@ -121,7 +121,7 @@ describe('B5 round 2 tester: grain lock export gate', () => {
     expect(res.status).toBe(201);
     const d = (await res.json()) as ProjectDetail;
     const ex = await doExport(
-      post({ revision: d.revision, acceptUnverified: true }),
+      post({ revision: d.revision, acceptUnverified: true, checklistConfirmed: true }),
       ctx({ id: d.id }),
     );
     const scope = await companyScope();

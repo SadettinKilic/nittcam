@@ -37,6 +37,8 @@ export interface ExportNcOptions {
   /** Saved project revision; default 0. */
   revision?: number;
   fileStem?: string;
+  /** `_r<revision>` in every NC file name (T295, D-073). */
+  revisionInFileName?: boolean;
   toolpath?: ToolpathOptions;
 }
 
@@ -84,6 +86,7 @@ export function exportNc(
     projectName: options.projectName ?? 'NittCam',
     revision: options.revision ?? 0,
     ...(options.fileStem ? { fileStem: options.fileStem } : {}),
+    ...(options.revisionInFileName ? { revisionInFileName: true } : {}),
     ...unverifiedTemplatesMeta(project),
     ...cuttingMeta(project, profile),
     stock: {

@@ -935,7 +935,7 @@ export function generateGcode(
           sheet: plan.sheet,
         });
       }
-      let suffix = `_S${plan.sheetIndex}`;
+      let suffix = `${meta.revisionInFileName ? `_r${meta.revision}` : ''}_S${plan.sheetIndex}`;
       if (plan.tool !== null) {
         const key = `${plan.sheet}/${plan.tool}`;
         const k = (toolRuns.get(key) ?? 0) + 1;

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { PDFDocument } from 'pdf-lib';
 import { describe, expect, it } from 'vitest';
-import { asciiStem } from '../file-names';
+import { asciiStem } from '../../file-names';
 import { PDF_FIXED_DATE } from './document';
 import { pdfTestProject } from './pdf.testing';
 import { renderProjectPdf } from './project-pdf';
@@ -66,7 +66,7 @@ describe('project PDF layout pages (T172)', () => {
 
 describe('asciiStem', () => {
   it('transliterates Turkish and drops the rest', () => {
-    expect(asciiStem('Mutfak dolabı Şişli / 2', 'x')).toBe('Mutfak-dolabi-Sisli-2');
+    expect(asciiStem('Mutfak dolabı Şişli / 2', 'x')).toBe('Mutfak_dolabi_Sisli_2');
     expect(asciiStem('✓✓', 'proje')).toBe('proje');
   });
 });

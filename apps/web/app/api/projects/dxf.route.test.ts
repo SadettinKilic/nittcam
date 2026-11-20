@@ -8,7 +8,7 @@ import type { DbHandle } from '@nittcam/db';
 import { afterAll, describe, expect, it } from 'vitest';
 import { companyScope } from '../../../lib/server/company';
 import { dxfFileName } from '../../../lib/server/dxf';
-import { asciiStem } from '../../../lib/server/file-names';
+import { asciiStem } from '../../../lib/file-names';
 import type { ProjectDetail } from '../../../lib/projects-api';
 import { POST as create } from './route';
 import { PATCH as patch } from './[id]/route';
@@ -71,7 +71,7 @@ describe('GET /api/projects/:id/dxf (T175)', () => {
     const layout = await get(d.id, `revision=${d.revision}&tur=dizilim`);
     expect(layout.status).toBe(200);
     expect(layout.headers.get('content-disposition')).toBe(
-      `attachment; filename="Mutfak-dolabi-Cekmece-r${d.revision}-dizilim.dxf"`,
+      `attachment; filename="Mutfak_dolabi_Cekmece_r${d.revision}_dizilim.dxf"`,
     );
     expect(await layout.text()).toBe(writeProjectDxf(p, 'layout'));
     const parts = await get(d.id, `revision=${d.revision}&tur=parcalar`);
@@ -95,8 +95,8 @@ describe('GET /api/projects/:id/dxf (T175)', () => {
   });
 
   it('file names are ASCII', () => {
-    expect(asciiStem('Şişli İş ğüöç')).toBe('Sisli-Is-guoc');
+    expect(asciiStem('Şişli İş ğüöç')).toBe('Sisli_Is_guoc');
     expect(asciiStem('***')).toBe('proje');
-    expect(dxfFileName('a/b', 3, 'parts')).toBe('a-b-r3-parcalar.dxf');
+    expect(dxfFileName('a/b', 3, 'parts')).toBe('a_b_r3_parcalar.dxf');
   });
 });

@@ -72,6 +72,21 @@ describe('exportNc', () => {
     },
   );
 
+  it('revisionInFileName: `<stem>_r<rev>_S1`, same content as the golden (T295)', () => {
+    const g = golden('generic', 'mixed');
+    const pv = { profile: g.context.profile, version: 1, verification: 'draft' as const };
+    const meta = { projectName: 'Karışık (dikdörtgen alt küme)', revision: 7, fileStem: 'mixed' };
+    const plain = exportNc(g.project, pv, postConfig('generic'), meta);
+    const tagged = exportNc(g.project, pv, postConfig('generic'), {
+      ...meta,
+      revisionInFileName: true,
+    });
+    expect(tagged.ok).toBe(true);
+    expect(tagged.files[0]?.name).toBe(plain.files[0]?.name.replace('_S1', '_r7_S1'));
+    expect(tagged.files[0]?.name).toMatch(/^mixed_r7_S1\./);
+    expect(tagged.files.map((f) => f.content)).toEqual(plain.files.map((f) => f.content));
+  });
+
   it('is deterministic', () => {
     const g = golden('generic', 'shelf-set');
     const pv = { profile: g.context.profile, version: 1, verification: 'draft' as const };

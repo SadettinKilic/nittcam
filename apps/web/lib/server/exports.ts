@@ -9,9 +9,11 @@ import {
   exportNc,
   findMaterialParams,
   exportBlockingIssues,
+  hingeEdgeHandleParts,
   needsUnverifiedAcceptance,
   parsePostConfig,
   unverifiedReasons,
+  unverifiedTemplateNames,
   type ExportNcResult,
   type PostFile,
   type ProgramTools,
@@ -31,8 +33,10 @@ import {
   type ExportRecord,
   type ExportStage,
   type ExportViolation,
+  type ReexportChecklistRequired,
 } from '../exports-api';
 import { blockingItems } from '../blocking-issues';
+import { ncNameOptions } from '../file-names';
 import { fill } from '../draft-project';
 import { getMessages } from '../messages';
 
@@ -226,7 +230,7 @@ export async function runExportOf(
     version: machine.version.version,
     verification: machine.state,
   };
-  const r = exportNc(data, pv, raw, { projectName: project.name, revision: project.revision });
+  const r = exportNc(data, pv, raw, ncNameOptions(project.name, project.revision));
   const ok = r.ok && r.check !== null && canDownload(r.check) && r.files.length > 0;
   return {
     ...base,
@@ -360,3 +364,17 @@ export const newExportId = (): string => randomUUID();
 
 /** Storage folder of an export's files. */
 export const exportFolder = (exportId: string): string => `exports/${exportId}`;
+
+/**
+ * The 428 `checklist_required` body of an NC export without the checklist confirmation: what the
+ * operator confirms (D-071 re-export, D-072 main export).
+ */
+export function checklistAsk(run: ExportRun, source: ExportSource): ReexportChecklistRequired {
+  return {
+    error: 'checklist_required',
+    checklist: run.checklist,
+    needsAcceptance: run.needsAcceptance,
+    templates: unverifiedTemplateNames(source.data.parts),
+    hingeHandles: hingeEdgeHandleParts(source.data.parts),
+  };
+}
