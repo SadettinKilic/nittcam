@@ -64,10 +64,12 @@ export function formatCutTime(seconds: number | null): string {
 }
 
 /** The six tiles in PDF order: label and value text. */
-export function summaryTiles(s: Pick<
-  ReportSummary,
-  'sheetCount' | 'wastePercent' | 'wasteAreaM2' | 'partAreaM2' | 'totalPieces' | 'cutSeconds'
->): { key: string; label: string; value: string }[] {
+export function summaryTiles(
+  s: Pick<
+    ReportSummary,
+    'sheetCount' | 'wastePercent' | 'wasteAreaM2' | 'partAreaM2' | 'totalPieces' | 'cutSeconds'
+  >,
+): { key: string; label: string; value: string }[] {
   return [
     { key: 'sheets', label: t.sheets, value: String(s.sheetCount) },
     { key: 'waste', label: t.waste, value: formatPercent(s.wastePercent) },

@@ -468,11 +468,7 @@ function projectsRepo(db: Db, companyId: string) {
      * data: the revision and `updatedAt` stay. Null for an unknown id or another company's project.
      */
     async setStatus(id: string, status: ProjectRow['status']): Promise<ProjectRow | null> {
-      const rows = await db
-        .update(projectsTable)
-        .set({ status })
-        .where(scope(id))
-        .returning();
+      const rows = await db.update(projectsTable).set({ status }).where(scope(id)).returning();
       const row = rows[0];
       return row ? upgradeRow(row) : null;
     },

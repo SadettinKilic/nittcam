@@ -30,9 +30,7 @@ test('report card shows the saved revision report', async ({ page }) => {
   const res = await page.request.get(`/api/projects/${id}/report?revision=${rev}`);
   expect(res.ok()).toBe(true);
   const body = (await res.json()) as { sheetCount: number; totalPieces: number };
-  await expect(card.getByTestId('report-sheets').locator('dd')).toHaveText(
-    String(body.sheetCount),
-  );
+  await expect(card.getByTestId('report-sheets').locator('dd')).toHaveText(String(body.sheetCount));
   await expect(card.getByTestId('report-pieces').locator('dd')).toHaveText(
     String(body.totalPieces),
   );

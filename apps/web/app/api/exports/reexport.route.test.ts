@@ -169,7 +169,10 @@ describe('status flow and re-export (T179)', () => {
   });
 
   it('refuses unknown exports and bad input', async () => {
-    const bad = await reexport(json('POST', { acceptUnverified: 'yes' }), ctx({ id: randomUUID() }));
+    const bad = await reexport(
+      json('POST', { acceptUnverified: 'yes' }),
+      ctx({ id: randomUUID() }),
+    );
     expect(bad.status).toBe(400);
     expect((await reexport(json('POST', {}), ctx({ id: randomUUID() }))).status).toBe(404);
     expect((await reexport(json('POST', {}), ctx({ id: 'nope' }))).status).toBe(404);
