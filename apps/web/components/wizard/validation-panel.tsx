@@ -3,7 +3,7 @@
 import type { Project, ValidationIssue } from '@nittcam/core';
 import { ChevronDown, CircleAlert, CircleCheck, TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 
 type Text = Messages['wizard']['issues'];

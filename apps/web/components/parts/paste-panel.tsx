@@ -16,7 +16,8 @@ import {
 import { FileUp, Info } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type DragEvent } from 'react';
 import { readCutListFile, type CutListFileError } from '../../lib/cut-list-file';
-import { fill, newPartId } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
+import { newPartId } from '../../lib/part-id';
 import type { Messages } from '../../lib/messages';
 import {
   Button,

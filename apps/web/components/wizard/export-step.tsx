@@ -9,7 +9,7 @@ import { focusRing } from '../page/page-header';
 import { Callout } from './panels';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { itemPlace, machineRelated, onDrawnItem, onPartRow } from '../../lib/part-items';
 import {
   downloadBlocker,

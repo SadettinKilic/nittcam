@@ -1,6 +1,6 @@
 'use client';
 
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import { focusRing } from '../page/page-header';
 
 export { versionGap } from '../../lib/profile-version';

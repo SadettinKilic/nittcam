@@ -2,7 +2,7 @@ import { Card, EmptyState } from '@nittcam/ui';
 import { Percent } from 'lucide-react';
 import Link from 'next/link';
 import type { WasteSummary } from '../../lib/dashboard';
-import { fill } from '../../lib/draft-project';
+import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { formatArea, formatPercent } from '../../lib/report-summary';
 import { SectionHeader, focusRing } from '../page/page-header';

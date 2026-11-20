@@ -2,7 +2,8 @@
  * Command registry, pure apply and the undo/redo stack (spec §5.1).
  * Every change to project data goes through `applyCommand` (or `CommandStack.execute`).
  */
-import { Immer, enablePatches, type Patch } from 'immer';
+import type { Patch } from 'immer';
+import { immer } from './immer';
 import { z } from 'zod';
 import { formatPath, projectSchema, type Project } from '../schema';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
@@ -74,10 +75,6 @@ import {
   type CommandError,
   type CommandLogEntry,
 } from './types';
-
-enablePatches();
-/** Private Immer instance so core never changes the global Immer configuration. */
-const immer = new Immer({ autoFreeze: true });
 
 /** All registered commands by name. */
 export const COMMANDS = {

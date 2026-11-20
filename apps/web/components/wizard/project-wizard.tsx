@@ -16,6 +16,7 @@ import { findMaterialParams, findTool } from '@nittcam/core';
 import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
+import { MessagesContext } from '../../lib/messages-context';
 import { useProjectSession, type SessionInit } from '../../lib/project-session';
 import { STEP_REQUEST_EVENT } from '../../lib/step-request';
 import { nextFailing, saveBannerKind } from '../../lib/save-banner';
@@ -27,10 +28,14 @@ import { isUntitledName, untitledName } from '../../lib/untitled-name';
 import { CutListEditor } from '../parts/cut-list-editor';
 import { splitOffProject, type SplitTarget } from '../../lib/split-project';
 import { ProjectLinksBar } from './project-links';
-import { DrawingBoard } from '../editor/drawing-board';
-import { SimulationView, type SimMachine } from '../simulation/simulation-view';
-import { ExportStep } from './export-step';
-import { LayoutStep } from './layout-step';
+import type { SimMachine } from '../simulation/simulation-view';
+import {
+  DrawingBoard,
+  ExportStep,
+  LayoutStep,
+  SimulationView,
+  preloadWizardSteps,
+} from './lazy-steps';
 import { runLeaveTransition } from '../../lib/preview3d/leave';
 import { tableSpecOf } from '../../lib/preview3d/stage';
 import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
@@ -239,16 +244,23 @@ async function getJson<T>(
  * The Oluştur wizard (T023, spec §3.6): loads the company's machines and the project (or starts a
  * new one that the first autosave creates), then runs the five steps on one project session.
  */
-export function ProjectWizard({
-  messages,
-  projectId,
-  step,
-}: {
+interface ProjectWizardProps {
   messages: Messages;
   projectId: string | null;
   /** The URL's `?adim=`; null = none (a saved project then opens where work stopped, T290). */
   step: StepKey | null;
-}) {
+}
+
+export function ProjectWizard(props: ProjectWizardProps) {
+  // T186: deep components read texts from here instead of importing tr.json.
+  return (
+    <MessagesContext.Provider value={props.messages}>
+      <WizardBody {...props} />
+    </MessagesContext.Provider>
+  );
+}
+
+function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
   const t = messages.wizard;
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   // The URL's step when the wizard mounts (keyed by project); later steps are the session's own.
@@ -268,6 +280,9 @@ export function ProjectWizard({
       setAttempt((a) => a + 1);
     }
   }
+
+  // T186: the other steps' chunks come after the page has loaded.
+  useEffect(() => preloadWizardSteps(), []);
 
   useEffect(() => {
     let live = true;
