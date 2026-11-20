@@ -48,6 +48,18 @@ export interface PageHeader {
 }
 
 /** What the sheet page needs of the machine to mark program zero (B51); null = not known. */
+/** B51 (D-091): what the sheet page tells about a stock offcut, by offcut id. */
+export interface PdfOffcut {
+  width: number;
+  height: number;
+  /** "MDF 18". */
+  material: string;
+  /** Source project name; null = none (added by hand or the project is gone). */
+  source: string | null;
+  /** Short record number: the first 8 characters of the offcut id. */
+  ref: string;
+}
+
 export type PdfMachine = Pick<MachineProfile, 'origin' | 'zZero' | 'workEnvelope'> | null;
 
 const nf = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
@@ -330,6 +342,18 @@ function drawOrigin(
   else right(page, label, px(sheet.width), textY, fonts.bold, 7, ACCENT);
 }
 
+/** "Artık parçadan: 1200 × 800 · MDF 18 · Mutfak · kayıt 1a2b3c4d"; plain when the row is unknown. */
+export function offcutLine(o: PdfOffcut | undefined): string {
+  if (!o) return t.offcut;
+  return fill(t.offcutInfo, {
+    w: mm(o.width),
+    h: mm(o.height),
+    material: o.material,
+    source: o.source ?? t.offcutNoSource,
+    ref: o.ref,
+  });
+}
+
 /** Adds one page per layout sheet; returns the pages added. */
 export function addLayoutPages(
   doc: PDFDocument,
@@ -340,6 +364,7 @@ export function addLayoutPages(
   pageOffset: number,
   pageCount: number,
   machine: PdfMachine = null,
+  offcuts: Readonly<Record<string, PdfOffcut>> = {},
 ): PDFPage[] {
   const size = PAPER_SIZES[paper];
   return sheets.map((sheet, i) => {
@@ -348,7 +373,7 @@ export function addLayoutPages(
       fill(t.sheetSize, { w: mm(sheet.width), h: mm(sheet.height) }),
       sheet.grain === null ? t.noGrain : fill(t.grain, { angle: mm(sheet.grain) }),
       fill(t.parts, { count: sheet.parts.length }),
-      ...(sheet.offcut ? [t.offcut] : []),
+      ...(sheet.offcut ? [offcutLine(sheet.offcutId ? offcuts[sheet.offcutId] : undefined)] : []),
     ].join(' · ');
     drawFrame(
       page,

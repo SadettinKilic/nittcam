@@ -1435,6 +1435,14 @@ Gap E3 (CTO #12). Acceptance: the material parameter set has tab count / width /
 ### T303 Export follow-ups   [status: todo]
 CTO #12 on T295 / T296. Acceptance: the NC file name respects the machine file-name length limit (post config; shorten the project part, keep revision and sheet); a project changed after "üretildi" shows that the last file is older (status or badge), not a silent "üretildi".
 
+### T306 Nesting positions without nudge residue   [status: todo]
+Spec: §6.2 · From: CTO #8, B51 (D-091)
+The true-shape placer starts candidates 1e-4 mm off a neighbour (`nesting/trueshape.ts`, `NUDGE`), so positions such as 522.0001 reach the 4-decimal Mach3 output (`X522.0001`, `Y117.9999`). Acceptance:
+- [ ] placements carry no residue near the 0.001 mm grid (e.g. a clean candidate grid, or a final tidy pass over finished sheets that never creates an overlap)
+- [ ] interlock results (sheet counts) and determinism unchanged; real 4th decimals of rotated shapes untouched
+- [ ] goldens regenerated with the per-file reason; no post-side rounding change
+Tester focus: true-shape and arc-tabs goldens read back clean; nesting property tests.
+
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
 
 Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.
@@ -1516,7 +1524,7 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 
 ### P5 Output (golden impact: tester gcode-safety review, D-051)
 - Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi") [#7]
-- Float residue in G-code (`Y117.9999`): clean before rounding [#8]
+- Float residue in G-code (`Y117.9999`): clean before rounding [#8] → T306 (nesting side)
 - Lead-in arc / ramp on inner contours, plunge mark off the visible edge (check what T288 already covers) [#6]
 - Passes above tab height do not lift over tab gaps [#6]
 - PDF sheet page: mark the origin corner (X0 / Y0, front left); grain arrow not over the name on small parts [#11]

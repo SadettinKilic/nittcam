@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { originMark, type PdfMachine } from './layout-pages';
+import { offcutLine, originMark, type PdfMachine } from './layout-pages';
 import { pdfTestProject } from './pdf.testing';
 import { renderProjectPdf } from './project-pdf';
 
@@ -46,5 +46,22 @@ describe('PDF sheet page: program-zero mark (B51, D-091)', () => {
     const b = await renderProjectPdf({ ...input, machine: machine('frontLeft') });
     expect(Buffer.from(a).equals(Buffer.from(b))).toBe(true);
     expect(Buffer.from(a).equals(Buffer.from(plain))).toBe(false);
+  });
+});
+
+describe('PDF sheet page: offcut line (B51, D-091)', () => {
+  it('names the stock offcut: size, material, source project, record number', () => {
+    const o = {
+      width: 1200,
+      height: 800,
+      material: 'MDF, 18 mm',
+      source: 'Mutfak',
+      ref: '1a2b3c4d',
+    };
+    expect(offcutLine(o)).toBe(
+      'Artık parçadan: 1.200 × 800 · MDF, 18 mm · Mutfak · kayıt 1a2b3c4d',
+    );
+    expect(offcutLine({ ...o, source: null })).toContain('· kaynak proje yok ·');
+    expect(offcutLine(undefined)).toBe('Artık parçadan');
   });
 });

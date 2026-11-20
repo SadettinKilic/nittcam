@@ -2876,6 +2876,8 @@
     "grain": "Damar {angle}°",
     "noGrain": "Damarsız plaka",
     "offcut": "Artık parçadan",
+    "offcutInfo": "Artık parçadan: {w} × {h} · {material} · {source} · kayıt {ref}",
+    "offcutNoSource": "kaynak proje yok",
     "origin": "X{x} Y{y} · {corner}",
     "corners": {
       "frontLeft": "ön sol",
