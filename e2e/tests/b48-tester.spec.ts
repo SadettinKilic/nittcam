@@ -132,7 +132,8 @@ test('T302: save-only tab bounds through the API; an old profile without tabs st
     p.example = false;
     p.identity = { ...p.identity, name: `B48 ${tag} ${Date.now()}` };
     p.materials = p.materials.map((m) => {
-      const { tabs: _drop, ...rest } = m;
+      const rest: { thickness: number; tabs?: unknown } = { ...m };
+      delete rest.tabs;
       return tabs === undefined ? rest : { ...rest, tabs };
     });
     return p;
