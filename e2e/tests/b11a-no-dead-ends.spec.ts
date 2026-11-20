@@ -70,7 +70,7 @@ test.describe('B11a no dead ends', () => {
     await page.getByTestId('add-cutting-params').click();
     await expect(page).toHaveURL(new RegExp(`/makineler\\?duzenle=${machineId}`));
     await expect(page.getByTestId('machine-form')).toBeVisible({ timeout: 30_000 });
-    const rows = page.getByTestId('materials-table').locator('tbody tr');
+    const rows = page.getByTestId('materials-table').locator('tbody tr:not([data-detail])');
     const last = rows.last();
     await expect(last.locator('[id$="-feed"]')).toBeFocused();
     await expect(page.locator('#sec-materials')).toBeInViewport();
@@ -108,7 +108,7 @@ test.describe('B11a no dead ends', () => {
     // "Kesim ayarını doğrula": the same row; the note survived save and reload. Confirm it.
     await page.getByTestId('add-cutting-params').click();
     await expect(page.getByTestId('machine-form')).toBeVisible({ timeout: 30_000 });
-    const row = page.getByTestId('materials-table').locator('tbody tr').last();
+    const row = page.getByTestId('materials-table').locator('tbody tr:not([data-detail])').last();
     await expect(row.locator('[id$="-feed"]')).toBeFocused();
     await row.getByTestId('material-unverified-confirm').click();
     await expect(row.getByTestId('material-unverified-note')).toHaveCount(0);

@@ -6,6 +6,7 @@
  * and, for cross-field rules, by `params.key` (see `MachineProfileIssue`).
  */
 import { z } from 'zod';
+import { maxTabHeight, TAB_BOUNDS } from '../toolpath/tabs';
 
 /** The machine profile schema version this build writes and reads. */
 export const MACHINE_PROFILE_SCHEMA_VERSION = 1;
@@ -429,6 +430,53 @@ export function parseMachineProfile(json: unknown): ParseMachineProfileResult {
   const result = machineProfileSchema.safeParse(json);
   if (result.success) return { ok: true, profile: result.data };
   return { ok: false, issues: result.error.issues.map(toIssue) };
+}
+
+/**
+ * Tab sizes of the material sets below the holding bounds (T302, CTO #12 E3; bounds of T293,
+ * D-069). Checked when a profile is saved, not when one is read: a stored set below the bounds
+ * stays readable and the toolpath blocks NC for it (`tabSizeProblem`). The issues carry the
+ * bound, so the form can say it ("En az 3", "En fazla 17").
+ */
+export function materialTabIssues(
+  profile: Pick<MachineProfile, 'materials'>,
+): MachineProfileIssue[] {
+  const out: MachineProfileIssue[] = [];
+  profile.materials.forEach((m, i) => {
+    if (!m.tabs) return;
+    const at = (k: string) => `materials[${i}].tabs.${k}`;
+    const small = (k: string, minimum: number) =>
+      out.push({
+        path: at(k),
+        code: 'too_small',
+        message: `${k} must be at least ${minimum} mm`,
+        minimum,
+        inclusive: true,
+        origin: 'number',
+      });
+    if (m.tabs.width < TAB_BOUNDS.minWidth) small('width', TAB_BOUNDS.minWidth);
+    if (m.tabs.height < TAB_BOUNDS.minHeight) small('height', TAB_BOUNDS.minHeight);
+    else if (m.tabs.height > maxTabHeight(m.thickness)) {
+      const maximum = maxTabHeight(m.thickness);
+      out.push({
+        path: at('height'),
+        code: 'too_big',
+        message: `height must be at most ${maximum} mm (thickness minus ${TAB_BOUNDS.belowThickness} mm)`,
+        maximum,
+        inclusive: true,
+        origin: 'number',
+      });
+    }
+  });
+  return out;
+}
+
+/** `parseMachineProfile` plus the rules that only apply to a profile being saved (T302). */
+export function parseMachineProfileForSave(json: unknown): ParseMachineProfileResult {
+  const parsed = parseMachineProfile(json);
+  if (!parsed.ok) return parsed;
+  const issues = materialTabIssues(parsed.profile);
+  return issues.length > 0 ? { ok: false, issues } : parsed;
 }
 
 /** Tool by number, or `undefined`. */

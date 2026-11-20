@@ -635,3 +635,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Labels: no logo (no room); the foot line reads "Proje · Şirket", the project keeps up to 60 % of the width.
 - Only PNG and JPEG logos are embedded (pdf-lib); a WebP logo stays on screen and the PDF carries the name. The Ayarlar logo hint says so.
 - Name and logo are part of the document input: same name and logo → same bytes; generator versions `pdf-2`, `labels-2`.
+
+## D-085 Tab defaults in the machine's material sets (T302, 2026-11-20, Dev 1)
+- Each material set row in the machine form has a line below it: switch "Bu set için köprü ölçüsü gir". Off = no `tabs` in the set (older profiles unchanged) and the built-in 4 × 10 × min(3, t/2) applies, which the line says; on = count / width / height fields.
+- The T293 bounds (width ≥ 3 mm, height 1 … thickness − 1 mm) are checked when a profile is **saved** (`parseMachineProfileForSave`, form and `machines.create/update`), not when one is read: a stored set below the bounds stays readable and NC stays blocked for it by the toolpath check. Messages carry the bound ("En az 3 olmalı.", "En fazla 17 olmalı.").
+- Kesim ayarları: the source line names the inherited sizes ("Değerler malzeme ayarından: 6 × 12 × 2 mm."), "Malzeme ayarına dön" names them too, and "Malzeme ayarında değiştir" opens the machine form at that set's tab switch (`alan=kopru`) and comes back to Simülasyon on the new profile version (`profil=son`). Ayarlar links to Makineler.

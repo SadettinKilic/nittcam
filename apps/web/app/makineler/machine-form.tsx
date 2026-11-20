@@ -2,8 +2,13 @@
 
 import { setNavigationGuard } from '../../lib/navigation-guard';
 import {
+  defaultTabHeight,
   KNOWN_POSTS,
+  materialTabIssues,
+  maxTabHeight,
   parseMachineProfile,
+  TAB_BOUNDS,
+  TAB_DEFAULTS,
   TOOLPATH_DEFAULTS,
   type MachineProfile,
   type MachineProfileIssue,
@@ -36,7 +41,7 @@ import {
 } from '@nittcam/ui';
 import { CircleAlert, Info, Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { focusRing } from '../../components/page/page-header';
 import { CONTROLLER_LIBRARY, controllerProfile } from '../../lib/controller-library';
 import { fill } from '../../lib/draft-project';
@@ -70,6 +75,8 @@ export interface MachineFormProps {
    * scrolled to "Malzeme parametreleri". The set stays unsaved until the user saves the form.
    */
   addParams?: { material: MaterialKind; thickness: number } | null | undefined;
+  /** T302: with `addParams`, land on the set's tab fields ("Malzeme ayarında değiştir"). */
+  focusTabs?: boolean;
 }
 
 function Section({
@@ -147,6 +154,7 @@ export function MachineForm({
   onSaved,
   onCancel,
   addParams = null,
+  focusTabs = false,
 }: MachineFormProps) {
   const f = t.form.fields;
   const o = t.form.options;
@@ -178,13 +186,18 @@ export function MachineForm({
     if (startIndex === null) return;
     const raf = requestAnimationFrame(() => {
       document.getElementById('sec-materials')?.scrollIntoView({ block: 'start' });
-      const feed = document.getElementById(fieldId(`materials[${startIndex}].feed`));
-      feed?.focus({ preventScroll: true });
+      // T302: "Malzeme ayarında değiştir" lands on the tab fields (or their switch), else the feed.
+      const target =
+        (focusTabs &&
+          (document.getElementById(fieldId(`materials[${startIndex}].tabs.count`)) ??
+            document.getElementById(fieldId(`materials[${startIndex}].tabs`)))) ||
+        document.getElementById(fieldId(`materials[${startIndex}].feed`));
+      target?.focus({ preventScroll: true });
       // T265: the whole row (and its "starting values" note) in view, not only the section top.
-      feed?.closest('tr')?.scrollIntoView({ block: 'nearest' });
+      target?.closest('tr')?.scrollIntoView({ block: 'nearest' });
     });
     return () => cancelAnimationFrame(raf);
-  }, [startIndex]);
+  }, [startIndex, focusTabs]);
 
   const dirty = isDirty(initial, profile) || Object.keys(parseErrors).length > 0;
 
@@ -256,7 +269,11 @@ export function MachineForm({
       out[path] = parseErrorText(code, t.errors);
     if (!submitted) return out;
     const r = parseMachineProfile(profile);
-    const issues = r.ok ? serverIssues : [...r.issues, ...serverIssues];
+    // T302: the save-only tab bounds are checked on the form state too, so they show with the rest.
+    const tabIssues = materialTabIssues(profile);
+    const issues = r.ok
+      ? [...tabIssues, ...serverIssues]
+      : [...r.issues, ...tabIssues, ...serverIssues];
     return { ...fieldErrors(issues, t.errors), ...out };
   }, [submitted, profile, serverIssues, parseErrors, t.errors]);
   const errorCount = Object.keys(errors).length;
@@ -937,6 +954,23 @@ export function MachineForm({
                   cell('tool', f.materialTool),
                 ];
               }}
+              renderDetail={(i) => (
+                <MaterialTabsDetail
+                  t={t.form.tabs}
+                  index={i}
+                  set={profile.materials[i] as MaterialParams}
+                  error={e}
+                  onParseError={onParseError}
+                  onChange={(fn) =>
+                    update((p) => {
+                      const x = p.materials[i] as MaterialParams;
+                      fn(x);
+                      delete x.copiedFrom;
+                      delete x.unverified;
+                    })
+                  }
+                />
+              )}
             />
           </Section>
         </div>
@@ -1014,6 +1048,8 @@ function RowTable(props: {
   onAdd: () => void;
   onRemove: (index: number) => void;
   renderRow: (index: number) => ReactNode[];
+  /** T302: a full-width line under each row (the material set's tab defaults). */
+  renderDetail?: (index: number) => ReactNode;
   /** Narrow cells and wrapping headers (T265, materials table). */
   dense?: boolean;
 }) {
@@ -1041,24 +1077,33 @@ function RowTable(props: {
           </thead>
           <tbody className="divide-y divide-border-subtle">
             {keys.map((key, i) => (
-              <tr key={key} className="align-top">
-                {renderRow(i).map((cell, c) => (
-                  <td key={c} className={`${pad} py-2`}>
-                    {cell}
+              <Fragment key={key}>
+                <tr className={props.renderDetail ? 'border-b-0! align-top' : 'align-top'}>
+                  {renderRow(i).map((cell, c) => (
+                    <td key={c} className={`${pad} py-2`}>
+                      {cell}
+                    </td>
+                  ))}
+                  <td className="px-2 py-2 text-right">
+                    <IconButton
+                      type="button"
+                      size="sm"
+                      aria-label={`${removeLabel} (${i + 1})`}
+                      onClick={() => onRemove(i)}
+                      className="hover:text-danger-text"
+                    >
+                      <Trash2 aria-hidden />
+                    </IconButton>
                   </td>
-                ))}
-                <td className="px-2 py-2 text-right">
-                  <IconButton
-                    type="button"
-                    size="sm"
-                    aria-label={`${removeLabel} (${i + 1})`}
-                    onClick={() => onRemove(i)}
-                    className="hover:text-danger-text"
-                  >
-                    <Trash2 aria-hidden />
-                  </IconButton>
-                </td>
-              </tr>
+                </tr>
+                {props.renderDetail ? (
+                  <tr data-detail="">
+                    <td colSpan={headers.length + 1} className={`${pad} pt-0 pb-3`}>
+                      {props.renderDetail(i)}
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -1071,5 +1116,99 @@ function RowTable(props: {
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * T302 (CTO #12 E3, §3.6 "tab ayarı varsayılanları"): the set's tab defaults under its row. Off =
+ * no `tabs` in the set (older profiles stay as they are) and the built-in default applies; on =
+ * count, width and height with the T293 bounds, which the save checks (`materialTabIssues`).
+ */
+function MaterialTabsDetail({
+  t,
+  index,
+  set,
+  error,
+  onParseError,
+  onChange,
+}: {
+  t: Text['form']['tabs'];
+  index: number;
+  set: MaterialParams;
+  error: (path: string) => string | undefined;
+  onParseError: (path: string, error: NumberParseError | null) => void;
+  onChange: (fn: (x: MaterialParams) => void) => void;
+}) {
+  const path = (k: string) => `materials[${index}].tabs${k ? `.${k}` : ''}`;
+  const thickness = Number.isFinite(set.thickness) && set.thickness > 0 ? set.thickness : 0;
+  const builtIn = {
+    count: TAB_DEFAULTS.count,
+    width: TAB_DEFAULTS.width,
+    height: thickness > 0 ? defaultTabHeight(thickness) : TAB_DEFAULTS.materialLeft,
+  };
+  const nf = (v: number) => String(Math.round(v * 1000) / 1000).replace('.', ',');
+  const tabs = set.tabs;
+  return (
+    <fieldset
+      className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2"
+      data-testid={`material-tabs-${index}`}
+    >
+      <legend className="sr-only">{t.title}</legend>
+      <CheckField
+        path={path('')}
+        label={t.own}
+        help={
+          tabs
+            ? t.ownHint
+            : fill(t.defaultHint, {
+                count: builtIn.count,
+                width: nf(builtIn.width),
+                height: nf(builtIn.height),
+              })
+        }
+        checked={!!tabs}
+        onChange={(on) =>
+          onChange((x) => {
+            if (on) x.tabs = { ...builtIn };
+            else delete x.tabs;
+          })
+        }
+      />
+      {tabs ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:max-w-2xl">
+          <NumberField
+            path={path('count')}
+            label={t.count}
+            help={t.countHelp}
+            value={tabs.count}
+            maxDecimals={0}
+            error={error(path('count'))}
+            onParseError={onParseError}
+            onChange={(v) => onChange((x) => void (x.tabs = { ...(x.tabs ?? builtIn), count: v }))}
+          />
+          <NumberField
+            path={path('width')}
+            label={t.width}
+            help={fill(t.widthHelp, { min: nf(TAB_BOUNDS.minWidth) })}
+            value={tabs.width}
+            error={error(path('width'))}
+            onParseError={onParseError}
+            onChange={(v) => onChange((x) => void (x.tabs = { ...(x.tabs ?? builtIn), width: v }))}
+          />
+          <NumberField
+            path={path('height')}
+            label={t.height}
+            help={fill(t.heightHelp, {
+              min: nf(TAB_BOUNDS.minHeight),
+              max: nf(Math.max(TAB_BOUNDS.minHeight, maxTabHeight(thickness))),
+            })}
+            value={tabs.height}
+            error={error(path('height'))}
+            onParseError={onParseError}
+            onChange={(v) => onChange((x) => void (x.tabs = { ...(x.tabs ?? builtIn), height: v }))}
+          />
+        </div>
+      ) : null}
+    </fieldset>
   );
 }

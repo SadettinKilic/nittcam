@@ -63,7 +63,21 @@ describe('"Kesim ayarı ekle" link (T258, D-045)', () => {
       machineId: 'm1',
       set: { material: 'melamine', thickness: 18 },
       returnTo: '/projeler/p1?adim=makine&profil=son',
+      field: null,
     });
+  });
+
+  it('T302: carries "land on the tab fields" (alan=kopru)', () => {
+    const href = paramFixHref({
+      machineId: 'm1',
+      set: { material: 'mdf', thickness: 18 },
+      returnTo: null,
+      field: 'tabs',
+    });
+    expect(href).toContain('alan=kopru');
+    const q = Object.fromEntries(new URL(href, 'http://x').searchParams);
+    expect(parseParamFix(q)?.field).toBe('tabs');
+    expect(parseParamFix({ duzenle: 'm', alan: 'x' })?.field).toBeNull();
   });
 
   it('keeps decimal thicknesses and drops unknown kinds', () => {

@@ -82,6 +82,15 @@ export function GeneralView({ t }: { t: Text }) {
               {g.defaults.materialsLink}
               <ArrowRight aria-hidden className="size-4" />
             </Link>
+            {/* T302: the tab sizes live in each machine's material sets. */}
+            <Link
+              href="/makineler"
+              data-testid="settings-machines-link"
+              className={`inline-flex w-fit items-center gap-1 rounded-sm text-sm font-medium text-accent-text hover:underline ${focusRing}`}
+            >
+              {g.defaults.machinesLink}
+              <ArrowRight aria-hidden className="size-4" />
+            </Link>
           </SettingsCard>
         </div>
       )}
