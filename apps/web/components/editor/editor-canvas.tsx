@@ -225,16 +225,34 @@ function drawParts(ctx: Ctx, p: EditorCanvasProps) {
     ctx.strokeStyle = selected || part.id === p.hover ? colors.selection : colors.partStroke;
     ctx.stroke();
     if (part.holes.length > 0) {
-      ctx.beginPath();
+      // B50 (CTO #7): through = solid disc, blind pocket = light disc, groove = ring only.
       for (const h of part.holes) {
         const c = toScreen(v, { x: h.x + d.x, y: h.y + d.y });
         const r = Math.max((h.d / 2) * v.scale, 1.5);
-        ctx.moveTo(c.x + r, c.y);
+        ctx.beginPath();
         ctx.arc(c.x, c.y, r, 0, 2 * Math.PI);
+        if (h.type !== 'groove') {
+          ctx.globalAlpha = h.type === 'through' ? 0.85 : 0.3;
+          ctx.fillStyle = colors.partStroke;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.strokeStyle = colors.partStroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
-      ctx.strokeStyle = colors.partStroke;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      // B50 (CTO #7): the selected part numbers its holes as the panel does ("Delik 3").
+      if (selected) {
+        ctx.font = `bold 10px ${canvasMonoFont()}`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = colors.text;
+        part.holes.forEach((h, i) => {
+          const c = toScreen(v, { x: h.x + d.x, y: h.y + d.y });
+          const r = Math.max((h.d / 2) * v.scale, 1.5);
+          ctx.fillText(String(i + 1), c.x + r * 0.7 + 2, c.y - r * 0.7 - 1);
+        });
+      }
     }
   }
 }

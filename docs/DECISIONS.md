@@ -663,3 +663,10 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-082 CTO review #12 triage (2026-11-20, PO)
 - M8 is closed when B41 (#139) lands and T298 + T301 are done. Must-fix A → T298 (thin-skin bounds, safety), B → T299, gap E1 → T300: batch B47 on Dev 2 before polish P3. E2 → T301, E3 → T302, T295/T296 follow-ups → T303: batch B48 on Dev 1 after B42. 14 polish items into P2–P5.
 - Thin-skin bounds proposal: ≥ 0,2 mm and ≤ thickness − 1 mm (final numbers by dev + tester, tuned in the field test).
+
+## D-090 Board polish P1 conventions (2026-11-21, Dev 1, B50)
+- Properties panel: holes and template instances are collapsed summary rows ("Delik 3 · Geçme · Ø35 · T2"), placed right under "Parça". Open by default: the newest row and every row with an error or warning; the person's own toggle wins. Errors and the hinge-edge warning stay visible when a row is closed.
+- Part label on the board: a plain rectangle keeps its box centre; any other shape (L, notch, arcs, cut-outs) puts the label at the grid point inside the material with the largest 5 : 1 label box. Edge-length chips clear their own edge; a chip that would overlap another is left out (the active edge and longer edges win).
+- Canvas hole look: through = dark disc, blind pocket = light disc, groove = ring only; the selected part numbers its holes like the panel.
+- Selection = 2 px accent outline over the wood tone (no tint). A corner node in reach wins over a bend handle.
+- "Köşe ekle" = new command `splitSegment` (UI only, not an AI tool): a vertex in the middle of the edge (arcs split on the same circle), picked at once so it can be moved.

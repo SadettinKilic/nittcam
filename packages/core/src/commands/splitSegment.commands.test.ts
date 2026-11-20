@@ -28,7 +28,9 @@ describe('withSegmentSplit (B50)', () => {
     const vs = [v(0, 0), v(100, 0, b), v(200, 100), v(0, 100)];
     const r = withSegmentSplit(vs, 1);
     if (!r.ok) throw new Error(r.error);
-    const [a, m, c] = [r.vertices[1], r.vertices[2], r.vertices[3]] as Vertex[];
+    const a = r.vertices[1] as Vertex;
+    const m = r.vertices[2] as Vertex;
+    const c = r.vertices[3] as Vertex;
     const whole = arcOf(vs[1] as Vertex, vs[2] as Vertex, b);
     const h1 = arcOf(a, m, a.bulge);
     expect(h1?.radius).toBeCloseTo(whole?.radius ?? NaN, 4);
