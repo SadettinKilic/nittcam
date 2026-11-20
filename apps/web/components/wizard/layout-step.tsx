@@ -1,13 +1,17 @@
 'use client';
 
-import type {
-  LayoutSummary,
-  NestingMode,
-  NestingRotation,
-  Project,
-  RunNestingParams,
-  ValidationIssue,
+import {
+  usableOffcuts,
+  type LayoutSummary,
+  type NestingMode,
+  type NestingRotation,
+  type OffcutSheet,
+  type Project,
+  type RunNestingParams,
+  type ValidationIssue,
 } from '@nittcam/core';
+import type { OffcutItem } from '../../lib/offcuts-api';
+import { OffcutsPanel } from './offcuts-panel';
 import {
   createContext,
   useCallback,
@@ -174,10 +178,13 @@ export function LayoutStep({
   table?: TableSpec | null;
 }) {
   const nt = messages.cutList.nesting;
-  const params: RunNestingParams = useMemo(
-    () => (contourTool === undefined ? { toolDiameter } : { toolDiameter, contourTool }),
-    [toolDiameter, contourTool],
-  );
+  const stock = useOffcutStock(session.project);
+  const params: RunNestingParams = useMemo(() => {
+    const base: RunNestingParams =
+      contourTool === undefined ? { toolDiameter } : { toolDiameter, contourTool };
+    // T168: the stock offcuts go into the command (recorded in the log, so a replay is the same).
+    return stock.offcuts.length > 0 ? { ...base, offcuts: stock.offcuts } : base;
+  }, [toolDiameter, contourTool, stock.offcuts]);
   const { nest, cancel, running, progress, message, nested, cache, cacheVersion } = useNest(
     session,
     params,
@@ -194,6 +201,8 @@ export function LayoutStep({
     autoNest.current = { nest, session };
   });
   useEffect(() => {
+    // T168: with "önce artık parçalar" the first run waits for the offcut stock.
+    if (!stock.ready) return;
     const timer = setTimeout(() => {
       const a = autoNest.current;
       if (autoDone.current) return;
@@ -207,7 +216,7 @@ export function LayoutStep({
       if (p.parts.length > 0 && !hasLayout && !redoNests) void a.nest();
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [stock.ready]);
   const issues: readonly ValidationIssue[] = session.issues;
   const run = session.run;
 
@@ -234,9 +243,11 @@ export function LayoutStep({
         run={run}
         toolDiameter={toolDiameter}
         modeResults={modeResults}
+        offcutCount={stock.offcuts.length}
+        projectId={session.projectId}
       />
     ),
-    [messages, project, run, toolDiameter, modeResults],
+    [messages, project, run, toolDiameter, modeResults, stock.offcuts.length, session.projectId],
   );
   const hasParts = project.parts.length > 0;
   const compactNest = useMemo(() => <CompactNest t={nt} hasParts={hasParts} />, [nt, hasParts]);
@@ -341,12 +352,17 @@ function NestSettings({
   run,
   toolDiameter,
   modeResults,
+  offcutCount,
+  projectId,
 }: {
   messages: Messages;
   project: Project;
   run: ProjectSession['run'];
   toolDiameter: number;
   modeResults: Record<string, LayoutSummary | undefined>;
+  /** T168: usable stock offcuts (same material and thickness, matching grain). */
+  offcutCount: number;
+  projectId: string | null;
 }) {
   const { running, progress, message, nest, cancel } = useNestRun();
   const side = useContext(SideContext);
@@ -357,6 +373,7 @@ function NestSettings({
   const rotationLabelId = useId();
   const rotationHintId = useId();
   const partInHoleHintId = useId();
+  const offcutHintId = useId();
   const rotation: NestingRotation = project.nesting.rotation ?? 'free';
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -471,6 +488,25 @@ function NestSettings({
           <p id={partInHoleHintId} className="text-xs text-fg-muted">
             {t.partInHoleHint}
           </p>
+          <label className="mt-1 flex items-center gap-2 text-sm text-fg">
+            <Switch
+              checked={project.stock.useOffcuts}
+              onCheckedChange={(on) => run('setNestingOptions', { useOffcuts: on })}
+              disabled={running}
+              data-testid="layout-use-offcuts"
+              aria-describedby={offcutHintId}
+            />
+            {t.useOffcuts}
+          </label>
+          <p id={offcutHintId} className="text-xs text-fg-muted">
+            {t.useOffcutsHint}
+            {project.stock.useOffcuts ? (
+              <span data-testid="layout-offcut-count" data-count={offcutCount}>
+                {' '}
+                {fill(t.useOffcutsCount, { count: offcutCount })}
+              </span>
+            ) : null}
+          </p>
         </div>
       </section>
       <NestingPanel
@@ -483,7 +519,45 @@ function NestSettings({
         onRun={() => void nest()}
         onCancel={cancel}
       />
+      <OffcutsPanel
+        t={t.offcuts}
+        project={project}
+        projectId={projectId}
+        toolDiameter={toolDiameter}
+        disabled={running}
+      />
       {side}
     </div>
   );
+}
+
+/**
+ * T168: the company's available offcuts of the stock material and thickness, matched to the sheet
+ * grain. Loaded only with `stock.useOffcuts`; `ready` is false while loading (a failed load =
+ * no offcuts, the nesting then uses the stock sheets).
+ */
+function useOffcutStock(project: Project): { offcuts: OffcutSheet[]; ready: boolean } {
+  const { useOffcuts, material, thickness } = project.stock;
+  const key = useOffcuts ? `${material}|${thickness}` : '';
+  const [loaded, setLoaded] = useState<{ key: string; rows: OffcutItem[] } | null>(null);
+  useEffect(() => {
+    if (!key) return;
+    let live = true;
+    const q = new URLSearchParams({ material, thickness: String(thickness), status: 'available' });
+    fetch(`/api/offcuts?${q.toString()}`)
+      .then((r) => (r.ok ? (r.json() as Promise<OffcutItem[]>) : []))
+      .catch(() => [] as OffcutItem[])
+      .then((rows) => {
+        if (live) setLoaded({ key, rows });
+      });
+    return () => {
+      live = false;
+    };
+  }, [key, material, thickness]);
+  const stock = project.stock;
+  const offcuts = useMemo(
+    () => (key && loaded?.key === key ? usableOffcuts({ stock }, loaded.rows) : []),
+    [key, loaded, stock],
+  );
+  return { offcuts, ready: !key || loaded?.key === key };
 }

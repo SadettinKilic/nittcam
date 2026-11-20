@@ -668,7 +668,8 @@
       "unplaced": "{count} parça dizilimde yok (plakaya sığmıyor ya da dizilimden sonra eklendi).",
       "stale": "Dizilim sürerken parçalar değişti; sonuç uygulanmadı. Yeniden \"Diz\"e basın.",
       "failed": "Dizilim çalıştırılamadı: {error}",
-      "unchanged": "Dizilim zaten güncel."
+      "unchanged": "Dizilim zaten güncel.",
+      "fromOffcuts": "{count} plaka artık parçadan kesiliyor."
     },
     "views": {
       "label": "Parça görünümü",
@@ -1270,7 +1271,42 @@
     "lastExport": "Rev. {revision} · {date}",
     "noExport": "Henüz yok",
     "downloadLast": "İndir: {name}",
-    "emptyText": "Kesim listesini yapıştırın, plakaya dizin ve G-code alın. İlk projeniz birkaç dakika sürer."
+    "emptyText": "Kesim listesini yapıştırın, plakaya dizin ve G-code alın. İlk projeniz birkaç dakika sürer.",
+    "tabs": {
+      "projects": "Projeler",
+      "offcuts": "Artık parçalar"
+    },
+    "offcuts": {
+      "label": "Artık parça stoğu",
+      "loading": "Artık parçalar yükleniyor…",
+      "error": "Artık parçalar yüklenemedi.",
+      "retry": "Tekrar dene",
+      "empty": "Kayıtlı artık parça yok",
+      "emptyText": "Dizilimden sonra kalan büyük parçaları Dizilim adımında stoğa kaydedebilirsiniz.",
+      "count": "{count} artık parça",
+      "columns": {
+        "size": "Ölçü",
+        "material": "Malzeme",
+        "grain": "Damar",
+        "source": "Kaynak proje",
+        "status": "Durum"
+      },
+      "size": "{w} × {h} mm",
+      "material": "{material}, {thickness} mm",
+      "grain": {
+        "none": "Yok"
+      },
+      "noSource": "—",
+      "status": {
+        "available": "Kullanılabilir",
+        "reserved": "Ayrıldı",
+        "used": "Kullanıldı"
+      },
+      "markUsed": "Kullanıldı say",
+      "markAvailable": "Stoğa geri al",
+      "statusFailed": "Durum değiştirilemedi.",
+      "openSource": "Projeyi aç"
+    }
   },
   "materials": {
     "mdf": "MDF",
@@ -1446,6 +1482,18 @@
       "rotationHint": "Damar yönü sabit parçalar her zaman damara göre yerleşir.",
       "partInHole": "Küçük parçaları iç boşluklara yerleştir",
       "partInHoleHint": "Büyük parçaların iç kesimlerine küçük parçalar dizilir; önce iç parça kesilir.",
+      "useOffcuts": "Önce artık parçaları kullan",
+      "useOffcutsHint": "Aynı malzeme ve kalınlıktaki kayıtlı artık parçalar tam plakadan önce denenir.",
+      "useOffcutsCount": "Stokta {count} uygun artık parça var.",
+      "offcuts": {
+        "title": "Artık parça önerisi",
+        "hint": "Dizilimden kalan, en az {min} × {min} mm dikdörtgen parçalar. Seçtiklerinizi stoğa kaydedin.",
+        "item": "Plaka {sheet}: {w} × {h} mm",
+        "save": "Stoğa kaydet ({count})",
+        "saving": "Kaydediliyor…",
+        "saved": "{count} artık parça stoğa kaydedildi.",
+        "failed": "Artık parçalar kaydedilemedi. Tekrar deneyin."
+      },
       "gap": "Parça arası boşluk (mm)",
       "margin": "Kenar payı (mm)",
       "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
