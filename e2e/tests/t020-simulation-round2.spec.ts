@@ -18,8 +18,11 @@ import {
 const t = tr.cutList;
 const s = tr.simulation;
 const PARTS = '/projeler/yeni?adim=parcalar';
-/** The unsent-command queue of a project that is not created yet (D-029). */
-const KEY = 'nittcam.unsent.new';
+/** The unsent-command queue of a project that is not created yet (D-029; per draft, T305). */
+async function draftKey(page: Page): Promise<string> {
+  await expect(page).toHaveURL(/taslak=[0-9a-f-]{36}/);
+  return `nittcam.unsent.new.${new URL(page.url()).searchParams.get('taslak')}`;
+}
 
 const fill = (text: string, v: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? String(v[k]) : m));
@@ -161,6 +164,7 @@ test.describe('T020 round 2: persistence (server since T023)', () => {
       const problems = watch(page);
       await page.goto(PARTS);
       await wizardReady(page, 'parcalar');
+      const KEY = await draftKey(page);
       await page.evaluate(([k, v]) => sessionStorage.setItem(k as string, v as string), [KEY, bad]);
       await page.reload();
       await wizardReady(page, 'parcalar');

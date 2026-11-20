@@ -273,7 +273,7 @@ describe('AutosaveQueue: unsent queue in sessionStorage (§8.2)', () => {
     expect(sent[0]).toMatchObject({ id: null, newId: NEW });
     // "Reload": the stored queue still carries the id, so the next page creates the same project.
     first.dispose();
-    const stored = takeUnsentQueue(storage, null, 0);
+    const stored = takeUnsentQueue(storage, null, 0, NEW);
     expect(stored?.newId).toBe(NEW);
     const second = new AutosaveQueue(
       { ...deps, send: async (req) => (sent.push(req), { ok: true, id: NEW, revision: 1 }) },
@@ -362,5 +362,53 @@ describe('AutosaveQueue: settle (T264)', () => {
     await expect(q.settle()).resolves.toBeNull();
     expect(sent).toHaveLength(1);
     expect(c.pending).toBe(1);
+  });
+});
+
+describe('T305: a new project replays only its own draft queue (D-094)', () => {
+  const A = '11111111-1111-4111-8111-111111111111';
+  const B = '22222222-2222-4222-8222-222222222222';
+
+  async function leftBeforeFirstSave(storage: KeyValueStorage, newId: string) {
+    const c = clock();
+    const q = new AutosaveQueue(
+      {
+        send: async () => ({ ok: false, kind: 'network' }) as SendResult,
+        storage,
+        setTimer: c.setTimer,
+        clearTimer: c.clearTimer,
+      },
+      { id: null, revision: 0, name: 'A', project: P(0), newId },
+    );
+    q.push({ entries: [e('addPart')], project: P(1) });
+    await c.advance(1000);
+    q.dispose();
+  }
+
+  it('keys the queue by the draft id', async () => {
+    const storage = memoryStorage();
+    await leftBeforeFirstSave(storage, A);
+    expect([...storage.data.keys()]).toEqual([queueKey(null, A)]);
+    expect(queueKey(null, A)).toBe(`nittcam.unsent.new.${A}`);
+  });
+
+  it('another draft (or no draft) never gets the queue; the same draft does', async () => {
+    const storage = memoryStorage();
+    await leftBeforeFirstSave(storage, A);
+    expect(takeUnsentQueue(storage, null, 0)).toBeNull();
+    expect(takeUnsentQueue(storage, null, 0, B)).toBeNull();
+    expect(takeUnsentQueue(storage, null, 0, A)?.entries).toHaveLength(1);
+  });
+
+  it('drops the shared key of earlier versions and a queue whose newId does not match its key', () => {
+    const storage = memoryStorage();
+    const q = (newId: string) =>
+      JSON.stringify({ baseRevision: 0, entries: [e('x')], name: 'A', newId });
+    storage.setItem('nittcam.unsent.new', q(A));
+    expect(takeUnsentQueue(storage, null, 0, A)).toBeNull();
+    expect(storage.data.has('nittcam.unsent.new')).toBe(false);
+    storage.setItem(queueKey(null, B), q(A));
+    expect(takeUnsentQueue(storage, null, 0, B)).toBeNull();
+    expect(storage.data.has(queueKey(null, B))).toBe(false);
   });
 });

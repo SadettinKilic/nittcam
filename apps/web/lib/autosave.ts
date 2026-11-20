@@ -74,11 +74,16 @@ export interface StoredQueue {
 
 export const DEBOUNCE_MS = 1000;
 const KEY_PREFIX = 'nittcam.unsent.';
-/** Queue key of a project that is not created on the server yet. */
+/**
+ * Queue key of a project that is not created on the server yet: `new.<draft id>`. T305 (D-094):
+ * the key names that one draft, so another new project never picks up its commands. The bare
+ * `new` key of earlier versions was shared by every draft and is only ever removed.
+ */
 export const NEW_PROJECT_KEY = 'new';
 
-export function queueKey(id: string | null): string {
-  return KEY_PREFIX + (id ?? NEW_PROJECT_KEY);
+export function queueKey(id: string | null, newId?: string): string {
+  if (id !== null) return KEY_PREFIX + id;
+  return KEY_PREFIX + NEW_PROJECT_KEY + (newId ? `.${newId}` : '');
 }
 
 /** 1 s, 2 s, 4 s, … up to 30 s. */
@@ -118,11 +123,30 @@ export function takeUnsentQueue(
   storage: KeyValueStorage | null | undefined,
   id: string | null,
   serverRevision: number,
+  /** For a new project: its draft id (T305: only this draft's own queue is ever replayed). */
+  newId?: string,
 ): StoredQueue | null {
-  const key = queueKey(id);
+  if (id === null) {
+    // The shared key of earlier versions cannot say which draft it belongs to: drop it.
+    try {
+      storage?.removeItem(queueKey(null));
+    } catch {
+      // Storage is a convenience.
+    }
+    if (!newId) return null;
+  }
+  const key = queueKey(id, newId);
   const q = readQueue(storage, key);
-  if (!q) return null;
-  if (q.baseRevision !== serverRevision) {
+  if (!q) {
+    // Nothing stored, or a value that is not a queue (T020): never leave a corrupt one behind.
+    try {
+      storage?.removeItem(key);
+    } catch {
+      // Storage is a convenience.
+    }
+    return null;
+  }
+  if (q.baseRevision !== serverRevision || (id === null && q.newId !== newId)) {
     try {
       storage?.removeItem(key);
     } catch {
@@ -236,7 +260,7 @@ export class AutosaveQueue {
     this.cancelTimer();
     this.entries = [];
     this.savedGeneration = this.generation;
-    this.removeStored(queueKey(this.id));
+    this.removeStored(queueKey(this.id, this.newId));
     this.setState('idle');
   }
 
@@ -297,7 +321,7 @@ export class AutosaveQueue {
     if (this.disposed) return;
 
     if (result.ok) {
-      const oldKey = queueKey(this.id);
+      const oldKey = queueKey(this.id, this.newId);
       this.id = result.id;
       this.revision = result.revision;
       this.entries.splice(0, sentCount);
@@ -336,7 +360,7 @@ export class AutosaveQueue {
   }
 
   private persist(): void {
-    const key = queueKey(this.id);
+    const key = queueKey(this.id, this.newId);
     if (!this.dirty) {
       this.removeStored(key);
       return;

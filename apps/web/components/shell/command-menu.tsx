@@ -15,6 +15,8 @@ import {
   type ThemeChoice,
 } from '@nittcam/ui';
 import {
+  BookOpen,
+  CircleHelp,
   FileText,
   FolderKanban,
   House,
@@ -28,6 +30,7 @@ import {
   Plus,
   Settings,
   ShieldCheck,
+  Sparkles,
   SunMoon,
   Sun,
 } from 'lucide-react';
@@ -37,6 +40,7 @@ import type { Messages } from '../../lib/messages';
 import { requestStep } from '../../lib/step-request';
 import { STEPS } from '../../lib/wizard-steps';
 import type { ProjectListItem } from '../../lib/projects-api';
+import { HELP_HREF, HELP_TOPICS, helpHref, type HelpTopicId } from '../../lib/help';
 import { NEW_PROJECT_HREF } from '../../lib/shell-nav';
 import type { ShortcutId } from '../../lib/shortcuts';
 import { ShortcutKeys } from './keys';
@@ -49,12 +53,20 @@ export interface CommandActions {
   toggleTheme: () => void;
   toggleSidebar: () => void;
   openHelp: () => void;
+  /** "Yenilikler" (T192). */
+  openWhatsNew: () => void;
 }
 
 export interface CommandMenuProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  t: { palette: Messages['palette']; nav: Messages['nav']; shortcuts: Messages['shortcuts'] };
+  t: {
+    palette: Messages['palette'];
+    nav: Messages['nav'];
+    shortcuts: Messages['shortcuts'];
+    /** Help topic titles and search words (T192). */
+    helpTopics: Record<HelpTopicId, { title: string; keywords: string }>;
+  };
   actions: CommandActions;
   onCloseAutoFocus?: (event: Event) => void;
   /** Inside the project wizard: step names for the "Bu proje" commands (P4); null elsewhere. */
@@ -254,6 +266,33 @@ export function CommandMenu({
             keywords={p.keywords.help}
             shortcut="help"
             onSelect={() => run(actions.openHelp)}
+          />
+        </CommandGroup>
+        {/* T192 (CTO #12): "yardım", "air cut", "köprü" … find the help topics. */}
+        <CommandGroup heading={p.groups.help}>
+          <PaletteItem
+            then={t.shortcuts.then}
+            value={p.helpCenter}
+            icon={BookOpen}
+            keywords={p.keywords.helpCenter}
+            onSelect={() => run(() => actions.navigate(HELP_HREF))}
+          />
+          {HELP_TOPICS.map((id) => (
+            <PaletteItem
+              key={id}
+              then={t.shortcuts.then}
+              value={fill(p.helpTopic, { title: t.helpTopics[id].title })}
+              icon={CircleHelp}
+              keywords={`${t.helpTopics[id].keywords} yardım`}
+              onSelect={() => run(() => actions.navigate(helpHref(id)))}
+            />
+          ))}
+          <PaletteItem
+            then={t.shortcuts.then}
+            value={p.whatsNew}
+            icon={Sparkles}
+            keywords={p.keywords.whatsNew}
+            onSelect={() => run(actions.openWhatsNew)}
           />
         </CommandGroup>
         {recent.status === 'loading' ? (
