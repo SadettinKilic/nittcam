@@ -19,13 +19,24 @@ export interface LabelSettings {
   /** Used when `preset` is `custom`. */
   custom: LabelGrid;
   offset: LabelOffset;
+  /**
+   * B51: first free label on the first sheet (1-based, left to right, top to bottom), for a
+   * half-used label sheet. Not remembered: every print starts from 1 again.
+   */
+  start: number;
 }
 
 export const DEFAULT_LABEL_SETTINGS: LabelSettings = {
   preset: 'a4-3x8',
   custom: { ...LABEL_PRESETS['a4-3x8'] },
   offset: { x: 0, y: 0 },
+  start: 1,
 };
+
+/** Whether `start` is a label of the grid (1 … cols × rows). */
+export function validStart(start: number, grid: LabelGrid): boolean {
+  return Number.isInteger(start) && start >= 1 && start <= grid.cols * grid.rows;
+}
 
 const GRID_KEYS = ['cols', 'rows', 'width', 'height', 'left', 'top', 'gapX', 'gapY'] as const;
 
@@ -40,6 +51,7 @@ export function labelQuery(revision: number, s: LabelSettings): string {
   if (s.preset === 'custom') for (const k of GRID_KEYS) q.set(k, String(s.custom[k]));
   if (s.offset.x !== 0) q.set('dx', String(s.offset.x));
   if (s.offset.y !== 0) q.set('dy', String(s.offset.y));
+  if (s.start !== 1) q.set('start', String(s.start));
   return q.toString();
 }
 
@@ -48,7 +60,7 @@ const num = (v: string | null): number => (v === null || v.trim() === '' ? NaN :
 /** Reads and validates a label query; null when anything is missing or out of range. */
 export function parseLabelQuery(
   q: URLSearchParams,
-): { grid: LabelGrid; offset: LabelOffset } | null {
+): { grid: LabelGrid; offset: LabelOffset; start: number } | null {
   const preset = q.get('preset') ?? 'a4-3x8';
   let grid: LabelGrid;
   if (preset === 'custom') {
@@ -65,7 +77,9 @@ export function parseLabelQuery(
     x: q.has('dx') ? num(q.get('dx')) : 0,
     y: q.has('dy') ? num(q.get('dy')) : 0,
   });
-  return offset.success ? { grid, offset: offset.data } : null;
+  const start = q.has('start') ? num(q.get('start')) : 1;
+  if (!validStart(start, grid)) return null;
+  return offset.success ? { grid, offset: offset.data, start } : null;
 }
 
 /** Settings from storage (any shape) or the defaults; invalid parts fall back one by one. */
@@ -84,6 +98,7 @@ export function readLabelSettings(raw: unknown): LabelSettings {
     preset,
     custom: custom.success ? custom.data : d.custom,
     offset: offset.success ? offset.data : d.offset,
+    start: 1,
   };
 }
 

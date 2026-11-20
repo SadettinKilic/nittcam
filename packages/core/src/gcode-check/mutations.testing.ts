@@ -297,7 +297,7 @@ export const MUTATIONS: readonly Mutation[] = [
     code: 'FEED_UNDEFINED',
     posts: BOTH,
     what: 'drop the first F',
-    apply: (l) => edit(l, find(l, /^G1 Z-.* F1500$/), (t) => t.replace(' F1500', '')),
+    apply: (l) => edit(l, find(l, /^G1 Z-?[0-9.]+ F1500$/), (t) => t.replace(' F1500', '')),
   },
   {
     id: 'R5-F-after-rapid',
@@ -602,7 +602,7 @@ export const MUTATIONS: readonly Mutation[] = [
     code: 'TOOL_PROMPT_MISMATCH',
     posts: ['mach3'],
     what: 'operator prompt names T3',
-    apply: (l) => edit(l, find(l, /^\(TAKIM T2 /), (t) => t.replace('T2', 'T3')),
+    apply: (l) => edit(l, find(l, /^\(TAKIM T[12] /), (t) => t.replace(/T[12]/, 'T3')),
   },
   {
     id: 'T-no-M0',

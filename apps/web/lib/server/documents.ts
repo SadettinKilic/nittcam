@@ -19,7 +19,7 @@ import {
 } from './exports';
 import { currentCompanyMark } from './company-mark';
 import { documentKind, exportFileName } from '../file-names';
-import { estimateCutSeconds } from './pdf/cut-time';
+import { estimateCutSeconds, pdfMachine, pdfOffcuts } from './pdf/cut-time';
 import { renderLabelsPdf } from './pdf/labels-pdf';
 import { renderProjectPdf } from './pdf/project-pdf';
 
@@ -57,7 +57,7 @@ export async function buildDocument(
   scope: CompanyScope,
   project: ExportSource,
   type: DocumentType,
-  labels?: { grid: LabelGrid; offset: LabelOffset },
+  labels?: { grid: LabelGrid; offset: LabelOffset; start?: number },
 ): Promise<BuiltDocument> {
   const { name, revision, data } = project;
   if (type === 'dxf-dizilim' || type === 'dxf-parcalar') {
@@ -93,6 +93,8 @@ export async function buildDocument(
       paper,
       cutSeconds: await estimateCutSeconds(scope, project),
       company: await currentCompanyMark(scope),
+      machine: await pdfMachine(scope, project.data),
+      offcuts: await pdfOffcuts(scope, project.data),
     }),
   };
 }

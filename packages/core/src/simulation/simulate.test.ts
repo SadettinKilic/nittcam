@@ -79,19 +79,18 @@ describe.each(['generic', 'mach3'] as const)('%s', (post) => {
     expect(simPlayheadAt(sheet.steps, t).done).toBe(sheet.steps.length);
   });
 
-  it('holes-through (T2 → T1 → T2): two in-program changes, tools in order of use (T274)', () => {
+  it('holes-through (T1 → T2, B51 fewest changes): one in-program change, tools in order of use (T274)', () => {
     const g = golden(post, 'holes-through');
     const r = simulateProject(g.project, pv(post), postConfig(post));
     expect(r.ok).toBe(true);
-    expect(r.summary?.toolChanges).toBe(2);
+    expect(r.summary?.toolChanges).toBe(1);
     const tools = r.export.tools;
     expect(tools?.sheets[0]?.tools.map((t) => `T${t.number} D${t.diameter}`)).toEqual([
-      'T2 D8',
       'T1 D6',
       'T2 D8',
     ]);
     expect(tools?.mode).toBe(post === 'mach3' ? 'manual' : 'auto');
-    expect(tools?.manualChanges).toBe(post === 'mach3' ? 2 : 0);
+    expect(tools?.manualChanges).toBe(post === 'mach3' ? 1 : 0);
     expect(tools?.rezeroZ).toBe(post === 'mach3');
   });
 });

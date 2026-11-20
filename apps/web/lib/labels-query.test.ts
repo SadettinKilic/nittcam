@@ -16,6 +16,7 @@ describe('label query (T174)', () => {
       preset: 'custom' as const,
       custom: { cols: 2, rows: 5, width: 100, height: 55, left: 3, top: 5, gapX: 2, gapY: 1 },
       offset: { x: -1.5, y: 2 },
+      start: 7,
     };
     for (const s of [
       DEFAULT_LABEL_SETTINGS,
@@ -23,7 +24,7 @@ describe('label query (T174)', () => {
       custom,
     ]) {
       const back = parse(labelQuery(4, s));
-      expect(back).toEqual({ grid: gridOf(s), offset: s.offset });
+      expect(back).toEqual({ grid: gridOf(s), offset: s.offset, start: s.start });
     }
     expect(labelQuery(4, DEFAULT_LABEL_SETTINGS)).toBe('revision=4&preset=a4-3x8');
   });
@@ -39,6 +40,7 @@ describe('label query (T174)', () => {
     expect(parse('preset=a4-3x8')).toEqual({
       grid: LABEL_PRESETS['a4-3x8'],
       offset: { x: 0, y: 0 },
+      start: 1,
     });
   });
 
@@ -48,5 +50,16 @@ describe('label query (T174)', () => {
       ...DEFAULT_LABEL_SETTINGS,
       preset: 'a4-2x7',
     });
+  });
+
+  it('first free label (B51): 1 … cols × rows, not remembered', () => {
+    expect(labelQuery(4, { ...DEFAULT_LABEL_SETTINGS, start: 5 })).toBe(
+      'revision=4&preset=a4-3x8&start=5',
+    );
+    expect(parse('preset=a4-3x8&start=24')?.start).toBe(24);
+    expect(parse('preset=a4-3x8&start=25')).toBeNull();
+    expect(parse('preset=a4-3x8&start=0')).toBeNull();
+    expect(parse('preset=a4-3x8&start=2.5')).toBeNull();
+    expect(readLabelSettings({ ...DEFAULT_LABEL_SETTINGS, start: 9 }).start).toBe(1);
   });
 });
