@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { openNewProject, paste, projectId, saved, wizardReady } from './wizard-helpers';
+import { openNewProject, paste, pickOption, projectId, saved, wizardReady } from './wizard-helpers';
 
 // B52 (polish P1b, D-092): right-click menu, holes and cut-outs picked and dragged on the canvas,
 // cut-out box in the panel.
@@ -125,4 +125,55 @@ test('B52: "Hep böyle yap" asks "İç kesim olarak ekle?" once', async ({ page,
   await page.keyboard.press('Escape');
   await page.getByTestId('editor-part-list').getByRole('button').first().click();
   await expect(page.getByTestId('prop-inner')).toHaveCount(2);
+});
+
+test('B52: corner X/Y are part-relative, numbers stay after "Ortasına köşe ekle"; right angles kept', async ({
+  page,
+  request,
+}) => {
+  await openKapak(page, request, {});
+  const ins = tr.editor.inspector;
+  const vname = (n: string) => ins.vertexN.replace('{n}', n);
+  // Bottom edge: 596 → 500 keeps the right angles (the box shrinks, no slanted edge).
+  await pickOption(page.getByTestId('prop-segment-pick'), ins.segmentN.replace('{n}', '1'));
+  await expect(page.getByTestId('prop-seg-keep-right')).toBeChecked();
+  const len = page.getByTestId('prop-seg-length');
+  await len.fill('500');
+  await len.press('Enter');
+  await expect(page.getByTestId('editor-size')).toHaveText(/500\s*×\s*716/);
+  // Split edge 2 (right side): the new corner is "2a", corner 3 keeps its number.
+  await pickOption(page.getByTestId('prop-segment-pick'), ins.segmentN.replace('{n}', '2'));
+  await page.getByTestId('prop-seg-split').click();
+  await expect(page.getByTestId('prop-vertex-pick')).toContainText(vname('2a'));
+  await expect(page.getByTestId('prop-vertex-x')).toHaveValue('500');
+  await expect(page.getByTestId('prop-vertex-y')).toHaveValue('358');
+  await pickOption(page.getByTestId('prop-vertex-pick'), vname('3'));
+  await expect(page.getByTestId('prop-vertex-y')).toHaveValue('716');
+});
+
+test('B52: line tool takes the direction from an arrow key when only a length is typed', async ({
+  page,
+  request,
+}) => {
+  const { canvas } = await openKapak(page, request, {});
+  await canvas.focus();
+  await page.keyboard.press('l');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('no canvas box');
+  // Start far right of the part (empty board), then 100 up via ↑, 100 left via ←, 100 down.
+  const sx = box.x + box.width - 120;
+  const sy = box.y + box.height - 120;
+  await page.mouse.click(sx, sy, { modifiers: ['Alt'] });
+  for (const k of ['ArrowUp', 'ArrowLeft', 'ArrowDown']) {
+    await page.mouse.move(sx + 5, sy + 5);
+    await page.keyboard.type('100');
+    await page.keyboard.press(k);
+    await page.keyboard.press('Enter');
+  }
+  // Close back to the start: a 100 × 100 square part.
+  await page.keyboard.type('100');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('editor-part-list').getByRole('button')).toHaveCount(2);
+  await expect(page.getByTestId('editor-size')).toHaveText(/100\s*×\s*100/);
 });
