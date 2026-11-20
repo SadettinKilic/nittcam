@@ -10,6 +10,7 @@ import { DEPTH_LEVELS, depthLevel, depthRamp, toolDiameterOf, type SimColors } f
 import { canvasMonoFont } from '../../lib/canvas-theme';
 import { LINE_HEIGHT, badgeCentre, labelBox, partLabel } from '../../lib/canvas-labels';
 import { grainArrowPoints, grainLines } from '../../lib/grain-texture';
+import { labelSpot, type LabelSpot } from '../../lib/label-spot';
 
 /**
  * Konva drawing of the simulation (T020, spec §6.5). Units inside the stage are millimetres in a
@@ -66,6 +67,10 @@ const StaticLayer = memo(function StaticLayer({
       grainLines(W, H, sheet.grain, grainStep).map(([x1, y1, x2, y2]) => [x1, H - y1, x2, H - y2]),
     [W, H, sheet.grain, grainStep],
   );
+  // B44: labels sit in the material (not over an opening or an empty corner).
+  const spots = useMemo(() => new Map(parts.map((p) => [p.key, labelSpot(p)])), [parts]);
+  const spotOf = (p: DrawnPart): LabelSpot =>
+    spots.get(p.key) ?? { cx: p.w / 2, cy: p.h / 2, w: p.w, h: p.h };
   return (
     <Layer listening={false}>
       {machine ? (
@@ -125,8 +130,23 @@ const StaticLayer = memo(function StaticLayer({
               ctx.lineTo(p.x + (o[i] ?? 0), top + (o[i + 1] ?? 0));
             ctx.closePath();
           }
+          // B44: cut-outs, holes and template instances read as openings (even-odd fill).
+          for (const p of parts) {
+            const top = H - p.y - p.h;
+            for (const ring of p.inners) {
+              ctx.moveTo(p.x + (ring[0] ?? 0), top + (ring[1] ?? 0));
+              for (let i = 2; i + 1 < ring.length; i += 2)
+                ctx.lineTo(p.x + (ring[i] ?? 0), top + (ring[i + 1] ?? 0));
+              ctx.closePath();
+            }
+            for (const c of p.holes) {
+              ctx.moveTo(p.x + c.x + c.r, top + c.y);
+              ctx.arc(p.x + c.x, top + c.y, c.r, 0, 2 * Math.PI);
+              ctx.closePath();
+            }
+          }
           ctx.fillStyle = colors.part;
-          ctx.fill();
+          ctx.fill('evenodd');
           ctx.lineWidth = px;
           ctx.strokeStyle = colors.partStroke;
           ctx.stroke();
@@ -134,18 +154,19 @@ const StaticLayer = memo(function StaticLayer({
       />
       {/* Part labels: the same zoom fallback as the layout view (T196). */}
       {parts.map((p) => {
-        const label = partLabel({ number: p.label, name: p.name, w: p.w, h: p.h, scale });
+        const spot = spotOf(p);
+        const label = partLabel({ number: p.label, name: p.name, w: spot.w, h: spot.h, scale });
         // A fixed-grain part lifts its label to make room for the grain arrow (as in the layout view).
         const lift = p.grainAngle !== null ? label.font * 0.6 : 0;
         const top =
-          H - p.y - p.h + p.h / 2 - (label.lines.length * label.font * LINE_HEIGHT) / 2 - lift;
+          H - p.y - p.h + spot.cy - (label.lines.length * label.font * LINE_HEIGHT) / 2 - lift;
         return label.lines.map((line, i) => (
           <Text
             key={`${p.key}:${i}`}
             text={line}
-            x={p.x}
+            x={p.x + spot.cx - spot.w / 2}
             y={top + i * label.font * LINE_HEIGHT}
-            width={p.w}
+            width={spot.w}
             align="center"
             fontSize={label.font}
             fontFamily={canvasMonoFont()}
@@ -159,20 +180,22 @@ const StaticLayer = memo(function StaticLayer({
       {/* Grain arrow of each fixed-grain part at its effective angle (part grain + rot, T116). */}
       {parts.map((p) => {
         if (p.grainAngle === null) return null;
-        const label = partLabel({ number: p.label, name: p.name, w: p.w, h: p.h, scale });
+        const spot = spotOf(p);
+        const label = partLabel({ number: p.label, name: p.name, w: spot.w, h: spot.h, scale });
         if (label.level === 'none') return null;
         const [x1, y1, x2, y2] = grainArrowPoints(
           p.grainAngle,
-          p.w,
-          p.h,
+          spot.w,
+          spot.h,
           label.font,
           label.lines.length,
         );
-        const top = H - p.y - p.h;
+        const top = H - p.y - p.h + spot.cy - spot.h / 2;
+        const left = p.x + spot.cx - spot.w / 2;
         return (
           <Arrow
             key={`${p.key}:grain`}
-            points={[p.x + x1, top + y1, p.x + x2, top + y2]}
+            points={[left + x1, top + y1, left + x2, top + y2]}
             stroke={colors.dim}
             fill={colors.dim}
             strokeWidth={Math.max(px, label.font * 0.08)}
@@ -303,9 +326,14 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
   // Cut-order badges never cover a part label (T199b): placed once per zoom level.
   const badges = useMemo(() => {
     const r = 8 / view.scale;
-    const labels = props.parts.map((p) =>
-      labelBox(p, partLabel({ number: p.label, name: p.name, w: p.w, h: p.h, scale: view.scale })),
-    );
+    const labels = props.parts.map((p) => {
+      const spot = labelSpot(p);
+      return labelBox(
+        p,
+        partLabel({ number: p.label, name: p.name, w: spot.w, h: spot.h, scale: view.scale }),
+        spot,
+      );
+    });
     return sim.contours.map((c) => badgeCentre(c, r, props.parts, labels));
   }, [sim.contours, props.parts, view.scale]);
   const badgeRef = useRef(badges);
