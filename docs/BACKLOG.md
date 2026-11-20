@@ -30,7 +30,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M5 Çizim tahtası II: delik, cep, şablon, DXF | T138–T151 (14) + T272–T273 | B14–B18 | hinge-door project via template and a DXF sign job both give checked G-code |
 | M6 3D önizleme | T152–T161 (10) | B19–B21 | 360° preview + cutting playback, 300 parts within the perf budget, 2D fallback |
 | M7 Dizilim yükseltmeleri | T162–T171 (10) | B22–B24 | 3 modes, true-shape with rotation, offcuts, edge-band deduction |
-| M8 Export, etiket, proje yönetimi | T172–T183 (12) | B25–B28 | NC + DXF + PDF + labels from the server; projects/home/settings complete |
+| M8 Export, etiket, proje yönetimi | T172–T183 (12) | B25–B28 | NC + DXF + PDF + labels from the server; projects/home/settings complete (closed 2026-11-21: CTO #12 exit B41 + T298 + T301 met) |
 | M9 Cila ve saha hazırlığı | T184–T193 (10) | B29–B31 | **~90 % line: field-test ready** (owner sign-off) |
 | Saha 1 (owner) | – | – | air cut + test cut incl. holes, pockets, arcs on both machines |
 | M10 Hesap ve çok şirket | T200+ (outline) | – | after field test |
@@ -1246,7 +1246,7 @@ Acceptance:
 - [ ] placing a handle on the hinge edge by hand shows a non-blocking warning at the instance ("Kulp menteşe kenarında") and a line in the Dışa aktar checklist; no silent pass
 - [ ] unit test for the default edge; e2e: hinge + handle via the panel → handle on the opposite edge; G-code goldens byte-identical
 Tester focus: left/right doors, mirrored placement, manual move onto the hinge edge.
-## M8: Export, etiket, proje yönetimi (exit: NC, DXF, PDF and labels from the server; projects, home and settings complete)
+## M8: Export, etiket, proje yönetimi (exit: NC, DXF, PDF and labels from the server; projects, home and settings complete)   [status: closed 2026-11-21]
 
 ### Batch B25: T172–T174 (PDF)
 
@@ -1412,6 +1412,8 @@ Acceptance: `POST /api/projects/:id/export` without `checklistConfirmed: true` a
 
 M8 exit (CTO #12): closes when B41 (#139) lands and T298 + T301 are done.
 
+**M8 closed 2026-11-21:** B41 landed in #144, T298 in #154, T301 in B48 (#148, integration/22).
+
 ### Batch B47: T298–T300 (must-fix A, B + gap E1; Dev 2, before polish P3)
 
 ### T298 Thin-skin thickness bounds   [status: done]
@@ -1426,16 +1428,16 @@ Gap E1 (CTO #12), D-045. Acceptance: as review #12 E1: Dizilim warns when margin
 
 ### Batch B48: T301–T303 (M8 exit gap E2, gap E3, export follow-ups; Dev 1 after B42)
 
-### T301 Company name and logo are used   [status: todo]
+### T301 Company name and logo are used   [status: done]
 Gap E2 (CTO #12); needed to close M8. Acceptance: the sidebar shows the company name (not "Atölyem"); PDF pages and labels carry name and logo (deterministic bytes kept: same logo, same hash).
 
-### T302 Tab default in the material parameters   [status: todo]
+### T302 Tab default in the material parameters   [status: done]
 Gap E3 (CTO #12). Acceptance: the material parameter set has tab count / width / height fields with the T293 bounds; the three screens that point there land on them.
 
-### T303 Export follow-ups   [status: todo]
+### T303 Export follow-ups   [status: done]
 CTO #12 on T295 / T296. Acceptance: the NC file name respects the machine file-name length limit (post config; shorten the project part, keep revision and sheet); a project changed after "üretildi" shows that the last file is older (status or badge), not a silent "üretildi".
 
-### T304 2 000-row paste without a frozen page (rider)   [status: todo]
+### T304 2 000-row paste without a frozen page (rider)   [status: done]
 B42 perf budget (D-079): pasting / applying 2 000 cut-list rows blocks the main thread ~8–9 s, while core import + validation take < 50 ms, so the cost is in the React render path. Acceptance: batch / defer / virtualise so that no single main-thread task exceeds 200 ms and the whole apply takes < 2 s locally; the 20 s guard in the perf spec is tightened to these numbers.
 
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
@@ -1460,18 +1462,24 @@ Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
 
 Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by screen. Source in brackets (#5 = CTO review 5, T = tester). The M9 polish phase takes **one group per batch** (P1–P5), not item by item; inside a group the dev may skip an item that costs more than an hour and note it. Items marked ★ were seen in 2+ reviews: do them first.
 
-### P1 Çizim tahtası
-- Add a corner / split an edge on a shape (L or notch without redrawing) [#5]
-- Zoom to selection; corner X/Y part-relative or whole mm; stable corner numbers, picked corner shown on canvas [#5]
+### P1 Çizim tahtası   [status: partial, B50 #153]
+Done in B50 (#153, D-090) or already on main; the rest stays open.
+- Add a corner / split an edge on a shape (L or notch without redrawing) [#5] (done in B50)
+- Zoom to selection; picked corner shown on canvas [#5] (done in B50; picked corner already on main)
+- Corner X/Y part-relative or whole mm; stable corner numbers (needs a decision) [#5]
 - Line tool: take the direction from arrow keys / mouse when only a length is typed; "keep right angles" when editing an edge of an orthogonal shape [#5]
-- ★ Labels: part label inside the shape (L parts), edge-length labels do not overlap on small parts [#5, #6]
-- Selection keeps the wood tone (outline only); tool rail keeps a canvas inset at 1024; small part: corner handle wins over the edge handle [#5, #7]
-- Inner cut: select, move, resize after it is added; "İç kesim olarak ekle?" dialog fits, Enter works, asked once [#6]
-- Holes: select, drag and number on the canvas; "continue with the same values"; blind vs through look different; hole tool takes a diameter like the circle (one convention) [#7]
-- Hole snapping: no centre snap when zoomed out; finer snap near hinge positions (22,5 mm) [T B14, T B14a]
-- ★ Properties panel: holes and template instances as collapsed summary rows (panel is 1.500–2.500 px today) [#7, #8]
+- ★ Labels: part label inside the shape (L parts), edge-length labels do not overlap on small parts [#5, #6] (done in B50)
+- Selection keeps the wood tone (outline only); small part: corner handle wins over the edge handle [#5, #7] (done in B50)
+- Tool rail keeps a canvas inset at 1024 (not reproduced in B50) [#5, #7]
+- "İç kesim olarak ekle?" dialog fits, Enter works [#6] (done in B50)
+- Inner cut: select, move, resize after it is added; asked once (needs a product rule) [#6]
+- Holes: number on the canvas; blind vs through look different; hole tool takes a diameter like the circle (one convention) [#7] (done in B50; typed diameter already on main)
+- Holes: select and drag on the canvas; "continue with the same values" [#7]
+- Hole snapping: finer snap near hinge positions (22,5 mm) [T B14a] (already on main, B14a)
+- Hole snapping: no centre snap when zoomed out [T B14]
+- ★ Properties panel: holes and template instances as collapsed summary rows (panel is 1.500–2.500 px today) [#7, #8] (done in B50)
 - Right-click menu: duplicate, delete, rotate, add template [#10]
-- Hints and tour: hint texts not cut (Delik, Seç, Kaydır), shortcut sheet lists Alt, tour explains hole properties and does not cover the board/toolbar [#7, T B13]
+- Hints and tour: hint texts not cut (Delik, Seç, Kaydır), shortcut sheet lists Alt, tour explains hole properties and does not cover the board/toolbar [#7, T B13] (done in B50; tour position already on main)
 
 ### P2 Dizilim, Simülasyon, 3D   [status: partial, B44 #145]
 Done in B44 (#145) except the two items left open below.
