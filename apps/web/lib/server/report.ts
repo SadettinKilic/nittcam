@@ -15,3 +15,12 @@ export async function reportSummary(
   const cutSeconds = await estimateCutSeconds(scope, project);
   return summaryOf(projectReport(project.data, cutSeconds), project.revision);
 }
+
+/**
+ * The layout part of the summary without the cut-time simulation (T180, D-070): the home page
+ * reads every project, and simulating each program there would be too slow. Same `projectReport`,
+ * so waste, areas and sheets equal the PDF; `cutSeconds` is null.
+ */
+export function layoutSummary(project: Pick<ProjectRow, 'data' | 'revision'>): ReportSummary {
+  return summaryOf(projectReport(project.data), project.revision);
+}

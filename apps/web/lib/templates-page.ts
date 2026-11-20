@@ -147,3 +147,29 @@ export function sameParams(a: TemplateParams, b: TemplateParams): boolean {
     da.every((k) => a.d[k] === b.d[k])
   );
 }
+
+/**
+ * P4 (CTO #8): thumbnails of one list are drawn to the same scale. Every viewBox gets the size of
+ * the largest box (`span` = the widest width and the tallest height), centred on its own box, so a
+ * hinge cup looks small next to a long handle rail, as on the part.
+ */
+export function commonSpan(boxes: readonly (readonly number[])[]): { w: number; h: number } {
+  let w = 1;
+  let h = 1;
+  for (const b of boxes) {
+    w = Math.max(w, b[2] ?? 0);
+    h = Math.max(h, b[3] ?? 0);
+  }
+  return { w, h };
+}
+
+/** `box` ([x, y, w, h]) widened to `span`, same centre. */
+export function scaledBox(
+  box: readonly [number, number, number, number],
+  span: { w: number; h: number },
+): [number, number, number, number] {
+  const [x, y, w, h] = box;
+  const W = Math.max(w, span.w);
+  const H = Math.max(h, span.h);
+  return [x + w / 2 - W / 2, y + h / 2 - H / 2, W, H];
+}

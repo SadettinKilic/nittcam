@@ -28,7 +28,9 @@ export async function GET(request: Request) {
         (thickness === null || r.thickness === Number(thickness)) &&
         (status === null || r.status === status),
     );
-    return NextResponse.json(sortOffcuts(rows.map(toOffcutItem)));
+    // P4 (CTO #9/#10): the list shows the source project's name (deleted projects are not named).
+    const names = new Map((await scope.projects.list()).map((p) => [p.id, p.name]));
+    return NextResponse.json(sortOffcuts(rows.map((r) => toOffcutItem(r, names))));
   } catch (err) {
     console.error(err);
     return offcutError({ error: 'server_error' }, 500);
@@ -56,7 +58,10 @@ export async function POST(request: Request) {
           : null;
       created.push(await scope.offcuts.create(toInsert({ ...o, sourceProjectId: source })));
     }
-    return NextResponse.json(created.map(toOffcutItem), { status: 201 });
+    return NextResponse.json(
+      created.map((r) => toOffcutItem(r)),
+      { status: 201 },
+    );
   } catch (err) {
     console.error(err);
     return offcutError({ error: 'server_error' }, 500);

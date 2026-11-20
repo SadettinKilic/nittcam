@@ -1307,11 +1307,11 @@ Acceptance:
 - [x] (CTO #10 E6, D-060) the export record stores the machine verification state; re-export with the same state gives the same bytes; if the state changed, a new record "doğrulama durumu değişti" is added instead of overwriting
 Tester focus: status transitions; re-export of an old revision gives the same hash as before.
 
-### T180 Ana sayfa with real data   [status: todo]
-Spec: §3.4 · Depends: T177, T178
+### T180 Ana sayfa with real data   [status: review]
+Spec: §3.4 · Depends: T177, T178 · Decision: D-070 (B39)
 Acceptance:
-- [ ] recent projects, machines needing verification, waste summary chart (last 30 days, accessible colours), quick actions
-- [ ] project cards use a larger layout thumbnail (16:10, sheet with material tint and part outlines, plate count as stacked sheets) or the 3D PNG from T160 when one exists
+- [x] recent projects, machines needing verification, waste summary chart (last 30 days, accessible colours), quick actions
+- [x] project cards use a larger layout thumbnail (16:10, sheet with material tint and part outlines, plate count as stacked sheets) or the 3D PNG from T160 when one exists (no stored PNG exists, D-070)
 Tester focus: numbers match seeded data; chart readable in dark mode; axe.
 
 ### Batch B28: T181–T183 (machines and settings)
@@ -1459,7 +1459,8 @@ Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by
 - Step 1 "ince tabaka" switch and Simülasyon "Köprü: Kapalı" use the same word and link to each other [#11]
 - Server accepts a grain value on a grainless offcut PATCH; T292 rows get a stray thickness note when the target thickness differs [T B36]
 
-### P4 Kabuk, bildirimler, ana sayfa
+### P4 Kabuk, bildirimler, ana sayfa   [status: review, B39]
+B39 (#134): all items done; the Dışa aktar profile-version gap was already the T269 box (checked, no change).
 - ★ Toasts close on step change and never cover the panel / scale bar [#8, #9, #10]
 - Command palette: Şablonlar, Ayarlar / Malzemeler, Makine doğrulama and in-project step commands [#10]
 - Empty 0-part drafts do not fill "Son projeler"; home card date not truncated [#10]

@@ -100,3 +100,15 @@ describe('templates page model (T151)', () => {
     expect(s.ready.map((i) => i.id)).toEqual(['ready-x']);
   });
 });
+
+describe('thumbnails to scale (P4)', () => {
+  it('gives every box the largest span, centred on its own box', async () => {
+    const { commonSpan, scaledBox } = await import('./templates-page');
+    const small: [number, number, number, number] = [0, 0, 40, 40];
+    const long: [number, number, number, number] = [-10, -5, 400, 30];
+    const span = commonSpan([small, long]);
+    expect(span).toEqual({ w: 400, h: 40 });
+    expect(scaledBox(small, span)).toEqual([-180, 0, 400, 40]);
+    expect(scaledBox(long, span)).toEqual([-10, -10, 400, 40]);
+  });
+});
