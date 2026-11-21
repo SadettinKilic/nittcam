@@ -56,3 +56,33 @@ export function parkOff(profile: {
 }): boolean {
   return profile.toolChanger.type === 'manual' && profile.toolChanger.park?.enabled !== true;
 }
+
+/** T322: file names of an NC export against the machine's limit (and the newest version's). */
+export interface FileNameInfo {
+  /** The profile version's `maxFileNameLength`. */
+  limit: number;
+  /** Longest file name of the export, characters (0 = no files yet). */
+  longest: number;
+  /** The machine's newest version has a stricter limit the names exceed (project on an older one). */
+  latestLimit: number | null;
+}
+
+export function fileNameInfo(
+  names: readonly string[],
+  limit: number,
+  latestLimit: number | null,
+): FileNameInfo {
+  const longest = names.reduce((m, n) => Math.max(m, n.length), 0);
+  return {
+    limit,
+    longest,
+    latestLimit: latestLimit !== null && longest > latestLimit ? latestLimit : null,
+  };
+}
+
+/** The checklist warns when a name is longer than the limit the operator may expect. */
+export function fileNameWarning(info: FileNameInfo | undefined): number | null {
+  if (!info || info.longest === 0) return null;
+  if (info.longest > info.limit) return info.limit;
+  return info.latestLimit;
+}

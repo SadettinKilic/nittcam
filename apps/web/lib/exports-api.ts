@@ -1,5 +1,6 @@
 /** Shapes of the NC export routes (T021, D-030), shared by server and client. */
 import type { OriginCorner, UnverifiedReason, VerificationState } from '@nittcam/core';
+import type { FileNameInfo } from './check-state';
 
 /** Where the export stopped: the machine profile lookup, then `exportNc`'s stages. */
 export type ExportStage = 'profile' | 'toolpath' | 'post' | 'check' | 'done';
@@ -45,6 +46,8 @@ export interface ExportChecklistInfo {
   rezeroZ: boolean;
   /** T321: a manual tool changer without a park point: the tool stops above the sheet at a change. */
   parkOff: boolean;
+  /** T322: file-name length against the machine limit (the checker blocks names over it). */
+  fileNames?: FileNameInfo;
 }
 
 export interface ExportProfileInfo {

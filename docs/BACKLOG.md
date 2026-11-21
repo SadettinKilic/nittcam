@@ -1696,7 +1696,7 @@ Usta 1 (Kemal): a Ø35 hinge cup with a Ø5 drill was accepted silently; templat
 ### T321 One warning state across the summary, the checks box and the cut list   [status: done]
 Usta 1 + 2: (a) leads removed ("yer yok") on 7 parts while the summary said green "Tüm kontroller geçti" → the summary shows a warning state with the count; (b) "1 uyarı" next to "Sorun bulunmadı" → one source of truth; (c) after a quantity change every row showed red "Hata" → neutral "Yeniden diz" state; (d) a manual tool changer with park off → checklist warning "takım değişiminde takım plakanın üstünde kalır; park noktası ayarlayın", mentioned in the field kit too.
 
-### T322 NC file name respects the machine's length limit   [status: todo]
+### T322 NC file name respects the machine's length limit   [status: done]
 Usta 1: `Kemal_Mutfak_alt_dolap_800_r19_S1.tap` (37 chars) on a machine with a 32-char limit. The file name is shortened deterministically to the profile limit (the sheet suffix, revision and extension stay, the project part is cut; names stay unique) and Turkish characters follow the profile; the checker/checklist warns if a name still exceeds. Unit tests.
 
 ## Field test 1 (owner)   [status: todo]

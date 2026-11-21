@@ -1,6 +1,13 @@
 import type { ValidationIssue } from '@nittcam/core';
 import { describe, expect, it } from 'vitest';
-import { checkState, parkOff, renestOnly, summarizeIssues } from './check-state';
+import {
+  checkState,
+  fileNameInfo,
+  fileNameWarning,
+  parkOff,
+  renestOnly,
+  summarizeIssues,
+} from './check-state';
 
 const issue = (code: string, severity: 'error' | 'warning', path = 'parts[0]'): ValidationIssue =>
   ({ code, severity, path, message: code }) as ValidationIssue;
@@ -40,5 +47,18 @@ describe('check state (T321)', () => {
     expect(parkOff({ toolChanger: { type: 'manual', park: { enabled: false } } })).toBe(true);
     expect(parkOff({ toolChanger: { type: 'manual', park: { enabled: true } } })).toBe(false);
     expect(parkOff({ toolChanger: { type: 'auto' } })).toBe(false);
+  });
+});
+
+describe('file names in the checklist (T322)', () => {
+  it('warns when the newest machine version is stricter than the names', () => {
+    const info = fileNameInfo(['Kemal_Mutfak_alt_dolap_800_r19_S1.tap'], 64, 32);
+    expect(info).toEqual({ limit: 64, longest: 37, latestLimit: 32 });
+    expect(fileNameWarning(info)).toBe(32);
+  });
+  it('no warning when every name fits', () => {
+    expect(fileNameWarning(fileNameInfo(['Kemal_Mutfak_alt_dol_r19_S1.tap'], 32, null))).toBeNull();
+    expect(fileNameWarning(fileNameInfo(['a_S1.tap'], 32, 8))).toBeNull();
+    expect(fileNameWarning(undefined)).toBeNull();
   });
 });
