@@ -33,14 +33,17 @@ const SHELF_SET = [
   'Üst tabla\t800\t300\t1\thayır',
 ].join('\n');
 
-/** 30 pieces, 3 sheets (see the T012 spec). */
-const KITCHEN = [
+/**
+ * 45 pieces, 3 sheets with tool + 0.1 mm (T313, D-103; the old 30-piece kitchen set now fits 2);
+ * the minimap needs 3 sheets (T171).
+ */
+const KITCHEN_3 = [
   'Parça adı\tEn\tBoy\tAdet\tDamar',
-  'Yan\t560\t720\t8\tevet',
-  'Taban\t564\t560\t4\thayır',
-  'Kapak\t596\t716\t6\tevet',
-  'Raf\t564\t520\t8\thayır',
-  'Çekmece önü\t596\t176\t4\tevet',
+  'Yan\t560\t720\t12\tevet',
+  'Taban\t564\t560\t6\thayır',
+  'Kapak\t596\t716\t9\tevet',
+  'Raf\t564\t520\t12\thayır',
+  'Çekmece önü\t596\t176\t6\tevet',
 ].join('\n');
 
 async function paste(page: Page, text: string, count: number) {
@@ -293,7 +296,7 @@ test.describe('T013 layout view', () => {
   test('sheet tabs switch the drawn sheet', async ({ page }) => {
     const problems = watchConsole(page);
     await page.goto(URL);
-    await paste(page, KITCHEN, 5);
+    await paste(page, KITCHEN_3, 5);
     await nest(page);
     const tabs = page.getByRole('tab');
     await expect(tabs).toHaveCount(3);
@@ -305,7 +308,7 @@ test.describe('T013 layout view', () => {
       counts.push(Number(await page.getByTestId('layout-canvas').getAttribute('data-part-count')));
     }
     await tabs.nth(0).click();
-    expect(counts.reduce((a, b) => a + b, 0)).toBe(30);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(45);
     await page.getByRole('tab', { name: new RegExp(`^${fill(l.sheetTab, { n: 2 })}`) }).click();
     await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('layout-canvas')).toHaveAttribute(

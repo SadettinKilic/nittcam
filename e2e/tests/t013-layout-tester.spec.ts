@@ -290,15 +290,16 @@ test.describe('T013 tester: locks and re-nest', () => {
 });
 
 test.describe('T013 tester: sheet tabs', () => {
-  test('3 sheets: every tab carries its waste %; plate part counts add up', async ({ page }) => {
+  test('every sheet tab carries its waste %; plate part counts add up', async ({ page }) => {
     const problems = watchConsole(page);
     await page.goto(URL);
     await paste(page, KITCHEN, 5);
     await runDiz(page);
     const tabs = page.getByRole('tab');
-    await expect(tabs).toHaveCount(3);
+    // T313 (D-103): with tool + 0.1 mm the kitchen set needs 2 sheets (3 with the old 16 mm).
+    await expect(tabs).toHaveCount(2);
     const sums: number[] = [];
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 2; i += 1) {
       const tab = tabs.nth(i);
       await tab.click();
       await expect(tab).toHaveAttribute('aria-selected', 'true');
