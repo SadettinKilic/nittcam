@@ -6,7 +6,7 @@ import { applyMatrix, assemblyFaceMatrix, cabinetGroups, hasFaceOnlyWork } from 
 // T310 tester: a two-door row whose doors have only through holes (asymmetric handle holes, no
 // hinge cups) can show both doors with the drawing's top on top: a board with only through work
 // may be turned over about its vertical axis, so the handles meet in the middle at the drawn
-// height on both doors. With hinge cups (face-only work) the 180° turn is unavoidable (D-098).
+// height on both doors. With hinge cups (face-only work) the 180° turn is unavoidable (D-099).
 
 const roles = tr.cutList.cabinet.roles;
 

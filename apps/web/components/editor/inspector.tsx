@@ -147,6 +147,7 @@ export function EditorInspector({
           run={run}
           thickness={project.stock.thickness}
           toolDiameter={(toolRadius ?? 0) * 2}
+          picked={sub?.kind === 'hole' ? sub.index : null}
         />
         {onPendingTemplate ? (
           <TemplateProperties

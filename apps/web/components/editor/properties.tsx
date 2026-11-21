@@ -13,6 +13,8 @@ import {
   contour,
   deriveOutline,
   segmentInfo,
+  keepsRightAngle,
+  tidy,
   withSegmentAngle,
   withSegmentLength,
   withVertexAt,
@@ -41,10 +43,11 @@ import {
   Switch,
   Tooltip,
 } from '@nittcam/ui';
-import { CircleAlert, Plus, X } from 'lucide-react';
+import { CircleAlert, Move, Plus, X } from 'lucide-react';
 import { useInnerIssues } from './inner-issues';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { formatMm, sizeText } from '../../lib/canvas-labels';
+import { cornerLabels } from '../../lib/editor/corner-labels';
 import { fill } from '../../lib/fill';
 import { grainDialLabels } from '../../lib/grain-labels';
 import { useMessages } from '../../lib/messages-context';
@@ -55,7 +58,8 @@ type T = Messages['editor']['inspector'];
 export type Run = (command: string, params: unknown) => boolean;
 
 /** A segment or vertex of the selected part's outline (UI state, T130). */
-export type SubSelection = { kind: 'segment' | 'vertex'; index: number } | null;
+/** B52 (D-096): or a hole / cut-out picked on the canvas. */
+export type SubSelection = { kind: 'segment' | 'vertex' | 'hole' | 'inner'; index: number } | null;
 
 /** Error text of a refused value, or null when the edit ran. */
 type Commit = (value: number | null) => string | null;
@@ -341,7 +345,6 @@ function OperationRow({
 export function PartProperties({
   t,
   part,
-  at,
   run,
   sub,
   onSub,
@@ -351,7 +354,7 @@ export function PartProperties({
 }: {
   t: T;
   part: Part;
-  /** Board position of the part's local origin (vertex X/Y are shown in board mm). */
+  /** Board position of the part's local origin (unused since B52: corner X/Y are part-relative). */
   at: Point;
   run: Run;
   sub: SubSelection;
@@ -369,14 +372,21 @@ export function PartProperties({
   const seg = sub?.kind === 'segment' && sub.index < n ? sub.index : null;
   const ver = sub?.kind === 'vertex' && sub.index < n ? sub.index : null;
   const info = seg === null ? undefined : segmentInfo(outline, seg);
+  const ortho = seg !== null && keepsRightAngle(outline, seg);
+  const [keepRight, setKeepRight] = useState(true);
   const vertex = ver === null ? undefined : outline[ver];
+  // B52 (D-096): corner X/Y are part-relative, 0,0 = the part's lower-left corner.
+  const box = bbox(contour(outline));
+  const origin = { x: box.minX, y: box.minY };
   const fixed = part.grain.mode === 'fixed';
   const [liveGrain, setLiveGrain] = useState<number | null>(null);
   const op = t.operation;
   // T270: cut-outs whose slug has no room for 2 tabs (the wizard's validation).
   const innerIssues = useInnerIssues(part.id);
-  const segName = (i: number) => fill(t.segmentN, { n: i + 1 });
-  const verName = (i: number) => fill(t.vertexN, { n: i + 1 });
+  // B52 (D-096): stable corner numbers in the session; an edge is named after its start corner.
+  const labels = cornerLabels(part.id, outline);
+  const segName = (i: number) => fill(t.segmentN, { n: labels[i] ?? i + 1 });
+  const verName = (i: number) => fill(t.vertexN, { n: labels[i] ?? i + 1 });
 
   // T266: a corner picked on the canvas or in the list brings the "Köşe" group (radius,
   // "Köşeyi yuvarla", "Taşma aç") into the panel's view; it is the last group.
@@ -571,34 +581,76 @@ export function PartProperties({
             {part.inners.map((inner, i) => {
               const b = bbox(contour(inner));
               const bad = innerIssues.has(i);
+              const picked = sub?.kind === 'inner' && sub.index === i;
+              // B52 (D-096): the picked cut-out's box (part frame), one `updateInnerContour` each.
+              const place = (patch: Record<string, number>) =>
+                run('updateInnerContour', {
+                  id: part.id,
+                  index: i,
+                  toolDiameter: toolRadius * 2,
+                  ...patch,
+                })
+                  ? null
+                  : t.innerRefused;
+              const field = (key: 'x' | 'y' | 'width' | 'height', label: string, v: number) => (
+                <NumberRow
+                  label={label}
+                  value={v}
+                  testId={`prop-inner-${key}`}
+                  onCommit={(n) =>
+                    n === null || ((key === 'width' || key === 'height') && n <= 0)
+                      ? t.errors.length
+                      : place({ [key]: n })
+                  }
+                />
+              );
               return (
-                <Row
-                  key={i}
-                  label={fill(t.innerN, { n: i + 1 })}
-                  valueProps={{ className: 'flex items-center justify-end gap-1' }}
-                  data-testid="prop-inner"
-                  data-error={bad ? 'slug' : undefined}
-                >
-                  {bad ? (
-                    <CircleAlert
-                      role="img"
-                      aria-label={fill(t.innerSlugUnsecured, { n: i + 1 })}
-                      className="size-4 shrink-0 text-danger-text"
-                    />
-                  ) : null}
-                  <span className={bad ? 'text-danger-text' : undefined}>
-                    {sizeText(b.maxX - b.minX, b.maxY - b.minY)}
-                  </span>
-                  <IconButton
-                    size="sm"
-                    variant="ghost"
-                    aria-label={fill(t.innerRemove, { n: i + 1 })}
-                    data-testid="prop-inner-remove"
-                    onClick={() => run('removeInnerContour', { id: part.id, index: i })}
+                <Fragment key={i}>
+                  <Row
+                    label={fill(t.innerN, { n: i + 1 })}
+                    valueProps={{ className: 'flex items-center justify-end gap-1' }}
+                    data-testid="prop-inner"
+                    data-error={bad ? 'slug' : undefined}
                   >
-                    <X aria-hidden />
-                  </IconButton>
-                </Row>
+                    {bad ? (
+                      <CircleAlert
+                        role="img"
+                        aria-label={fill(t.innerSlugUnsecured, { n: i + 1 })}
+                        className="size-4 shrink-0 text-danger-text"
+                      />
+                    ) : null}
+                    <span className={bad ? 'text-danger-text' : undefined}>
+                      {sizeText(b.maxX - b.minX, b.maxY - b.minY)}
+                    </span>
+                    <IconButton
+                      size="sm"
+                      variant="ghost"
+                      aria-label={fill(t.innerEdit, { n: i + 1 })}
+                      aria-pressed={picked}
+                      data-testid="prop-inner-edit"
+                      onClick={() => onSub(picked ? null : { kind: 'inner', index: i })}
+                    >
+                      <Move aria-hidden />
+                    </IconButton>
+                    <IconButton
+                      size="sm"
+                      variant="ghost"
+                      aria-label={fill(t.innerRemove, { n: i + 1 })}
+                      data-testid="prop-inner-remove"
+                      onClick={() => run('removeInnerContour', { id: part.id, index: i })}
+                    >
+                      <X aria-hidden />
+                    </IconButton>
+                  </Row>
+                  {picked ? (
+                    <>
+                      {field('x', t.relX, b.minX)}
+                      {field('y', t.relY, b.minY)}
+                      {field('width', t.innerW, b.maxX - b.minX)}
+                      {field('height', t.innerH, b.maxY - b.minY)}
+                    </>
+                  ) : null}
+                </Fragment>
               );
             })}
           </InspectorRows>
@@ -662,13 +714,35 @@ export function PartProperties({
                 onCommit={(v) =>
                   v === null || v <= 0
                     ? t.errors.length
-                    : outlineRun(t, run, withSegmentLength(outline, seg, v), 'setSegmentLength', {
-                        id: part.id,
-                        index: seg,
-                        length: v,
-                      })
+                    : outlineRun(
+                        t,
+                        run,
+                        withSegmentLength(outline, seg, v, ortho && keepRight),
+                        'setSegmentLength',
+                        {
+                          id: part.id,
+                          index: seg,
+                          length: v,
+                          ...(ortho && keepRight ? { keepRight: true } : {}),
+                        },
+                      )
                 }
               />
+              {ortho ? (
+                // B52 (D-096): "Dik açıyı koru" (default on) on an orthogonal corner run.
+                <Row
+                  label={<label htmlFor={`keep-right-${part.id}`}>{t.keepRight}</label>}
+                  mono={false}
+                  valueProps={{ className: 'overflow-visible' }}
+                >
+                  <Switch
+                    id={`keep-right-${part.id}`}
+                    checked={keepRight}
+                    data-testid="prop-seg-keep-right"
+                    onCheckedChange={setKeepRight}
+                  />
+                </Row>
+              ) : null}
               <NumberRow
                 label={t.angle}
                 value={info.angle}
@@ -741,8 +815,8 @@ export function PartProperties({
           {ver !== null && vertex ? (
             <>
               <NumberRow
-                label="X"
-                value={vertex.x + at.x}
+                label={t.relX}
+                value={tidy(vertex.x - origin.x)}
                 testId="prop-vertex-x"
                 onCommit={(v) =>
                   v === null
@@ -750,15 +824,15 @@ export function PartProperties({
                     : outlineRun(
                         t,
                         run,
-                        withVertexAt(outline, ver, { x: v - at.x, y: vertex.y }),
+                        withVertexAt(outline, ver, { x: v + origin.x, y: vertex.y }),
                         'moveVertex',
-                        { id: part.id, index: ver, x: v - at.x, y: vertex.y },
+                        { id: part.id, index: ver, x: v + origin.x, y: vertex.y },
                       )
                 }
               />
               <NumberRow
-                label="Y"
-                value={vertex.y + at.y}
+                label={t.relY}
+                value={tidy(vertex.y - origin.y)}
                 testId="prop-vertex-y"
                 onCommit={(v) =>
                   v === null
@@ -766,9 +840,9 @@ export function PartProperties({
                     : outlineRun(
                         t,
                         run,
-                        withVertexAt(outline, ver, { x: vertex.x, y: v - at.y }),
+                        withVertexAt(outline, ver, { x: vertex.x, y: v + origin.y }),
                         'moveVertex',
-                        { id: part.id, index: ver, x: vertex.x, y: v - at.y },
+                        { id: part.id, index: ver, x: vertex.x, y: v + origin.y },
                       )
                 }
               />

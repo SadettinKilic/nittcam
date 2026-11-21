@@ -90,7 +90,7 @@ type V3 = [number, number, number];
  *   right side is the same row turned over, so its local top end is at the bottom;
  * - bottom, shelves: front edge = local bottom edge, machined face up; top: machined face down;
  * - back, plinth: machined face to the front (into the cabinet for the back);
- * - doors (T310, D-098): the drawing's top stays the door's top wherever the boards allow it.
+ * - doors (T310, D-099): the drawing's top stays the door's top wherever the boards allow it.
  *   A door with work that must face the carcass (`faceInside`: hinge cups, blind holes, pockets,
  *   grooves, lines) has its machined face inside, so seen from the front it is the drawing turned
  *   over about its vertical axis (left and right swap, a hinge drawn at the local left edge is at

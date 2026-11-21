@@ -2510,6 +2510,7 @@
       "asInner": "İç kesim olarak ekle",
       "asPart": "Ayrı parça olarak ekle",
       "cancel": "Vazgeç",
+      "always": "Hep böyle yap (bu oturumda bir daha sorma)",
       "errors": {
         "degenerate": "İç kesimin alanı yok.",
         "crossing": "İç kesim kendini kesiyor.",
@@ -2606,10 +2607,17 @@
       "innerN": "İç kesim {n}",
       "innerSlugUnsecured": "İç kesim {n}: göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün ya da delik aracıyla çizin.",
       "innerRemove": "İç kesim {n} sil",
+      "innerEdit": "İç kesim {n}: konum ve ölçü",
+      "relX": "X (parçaya göre)",
+      "relY": "Y (parçaya göre)",
+      "innerW": "Genişlik",
+      "innerH": "Yükseklik",
+      "innerRefused": "İç kesim buraya sığmıyor: parçanın içinde, diğer kesimlerden ayrı ve takıma yetecek kadar büyük olmalı.",
       "dimRemove": "Ölçü {n} sil",
       "vertexN": "Köşe {n}",
       "length": "Uzunluk",
       "angle": "Açı",
+      "keepRight": "Dik açıyı koru",
       "arcRadius": "Yay yarıçapı",
       "straight": "Düz",
       "pickHint": "Tuvalde bir kenarın ortasına ya da bir köşeye tıklayın.",
@@ -2751,6 +2759,17 @@
       }
     },
     "copied": "{count} parça kopyalandı",
+    "menu": {
+      "label": "Parça menüsü",
+      "duplicate": "Çoğalt",
+      "remove": "Sil",
+      "rotate": "90° döndür",
+      "template": "Şablon ekle…",
+      "back": "Geri",
+      "loading": "Şablonlar yükleniyor…",
+      "loadError": "Şablonlar yüklenemedi.",
+      "empty": "Kayıtlı şablon yok."
+    },
     "copyName": "{name} kopya",
     "defaultName": "Parça {n}",
     "draw": {
