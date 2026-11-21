@@ -12,7 +12,7 @@ import { buildToolpath } from './build';
 import { rpmBand, spindleSettingsOf } from './spindle';
 import { clone, machineOf, projectOf } from './toolpath.testing';
 
-// T307 (D-095): spindle speed per tool, editable per project. Default = the material set's rpm;
+// T307 (D-098): spindle speed per tool, editable per project. Default = the material set's rpm;
 // the override is a command, reaches the S word and the KESİM line, and never leaves the machine's
 // spindle range (command, validation, toolpath, post).
 

@@ -68,6 +68,7 @@ import {
   setLeadIn,
   setCutDirection,
   setSpindleRpm,
+  setOperationTool,
   setDimensionMode,
 } from './plate';
 import {
@@ -90,6 +91,7 @@ export const COMMANDS = {
   setLeadIn,
   setCutDirection,
   setSpindleRpm,
+  setOperationTool,
   setSheetSize,
   setStockSheets,
   setGrain,

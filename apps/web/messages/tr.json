@@ -1273,7 +1273,8 @@
       "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
       "TABS_TOO_SMALL_HIGH": "Köprü çok yüksek: yükseklik en fazla kalınlık − 1 mm olabilir. Kesim ayarlarında köprü yüksekliğini düşürün.",
       "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin.",
-      "SPINDLE_RPM_OUT_OF_RANGE": "Bir takımın devri makinenin devir aralığının dışında. Kesim ayarlarında “Önerilene dön” deyin ya da aralık içinde bir değer seçin."
+      "SPINDLE_RPM_OUT_OF_RANGE": "Bir takımın devri makinenin devir aralığının dışında. Kesim ayarlarında “Önerilene dön” deyin ya da aralık içinde bir değer seçin.",
+      "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor (türü, boyu ya da çapı). Kesim ayarlarında “Önerilene dön” deyin ya da listeden başka bir takım seçin."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -1412,6 +1413,33 @@
       "skinOn": "Küçük parçalarda {skin} mm ince tabaka da açık (1. adımdaki ayar).",
       "skinOff": "Kapat",
       "directionHint": "Climb çoğu router'da daha temiz kenar verir; boşluklu ya da hafif makinede veya kenar yırtılırsa conventional seçin.",
+      "tools": {
+        "title": "Takım (işleme göre)",
+        "ops": {
+          "outer": "Dış kontur",
+          "inner": "İç kontur",
+          "pocket": "Cep",
+          "hole": "Delik"
+        },
+        "option": "T{tool} · Ø{diameter} mm {type}",
+        "recommendedSuffix": "(önerilen)",
+        "perHole": "Her delik kendi takımı",
+        "types": {
+          "flatEndMill": "düz freze",
+          "ballEndMill": "küresel freze",
+          "compression": "kompresyon",
+          "vBit": "V uç",
+          "drill": "matkap"
+        },
+        "source": {
+          "recommended": "Önerilen takım.",
+          "project": "Bu projeye özel takım."
+        },
+        "reset": "Önerilene dön",
+        "only": "Bu işe uyan başka takım yok.",
+        "problem": "Seçilen takım bu işe artık uymuyor (ölçü, boy ya da tür); önerilene dönün ya da başka takım seçin.",
+        "hint": "Listede yalnız bu işe uyan takımlar var: tür, boy ve çap (iç köşe, kanal, delik) kontrol edilir. Devir, seçilen takıma göre önerilir."
+      },
       "spindle": {
         "title": "Devir (iş mili hızı)",
         "tool": "T{tool} · Ø{diameter} mm",
@@ -1975,7 +2003,8 @@
         "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
         "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
         "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
-        "SPINDLE_RPM_OUT_OF_RANGE": "Takım devri makinenin devir aralığının dışında; Simülasyon → Kesim ayarlarında düzeltin."
+        "SPINDLE_RPM_OUT_OF_RANGE": "Takım devri makinenin devir aralığının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
+        "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor; Simülasyon → Kesim ayarlarında başka takım seçin."
       },
       "other": "Kontrol {code}"
     },

@@ -68,7 +68,7 @@ export function cuttingHeader(c: PostCuttingMeta): string {
 }
 
 /**
- * T307 (D-095): one header line per tool the project runs at its own spindle speed, right under
+ * T307 (D-098): one header line per tool the project runs at its own spindle speed, right under
  * "KESİM" (its own line: the KESİM line is near the 120-character comment limit), e.g.
  * "DEVİR T2: 20000 d/dk elle, önerilen 18000". None when every tool runs at the recommended value.
  */
@@ -76,6 +76,23 @@ export function spindleHeaders(c: PostCuttingMeta): string[] {
   return (c.spindle ?? []).map(
     (s) => `DEVİR T${s.tool}: ${s.rpm} d/dk elle, önerilen ${s.recommended}`,
   );
+}
+
+const OPERATION_HEADER = {
+  outer: 'dış kontur',
+  inner: 'iç kontur',
+  pocket: 'cep',
+  hole: 'delik',
+} as const;
+
+/**
+ * T308 (D-099): one header line with the tools the project chose per operation, under "KESİM",
+ * e.g. "TAKIM ELLE: dış kontur T3, delik T5". None with the default tools.
+ */
+export function operationToolHeaders(c: PostCuttingMeta): string[] {
+  const tools = c.tools ?? [];
+  if (tools.length === 0) return [];
+  return [`TAKIM ELLE: ${tools.map((t) => `${OPERATION_HEADER[t.op]} T${t.tool}`).join(', ')}`];
 }
 
 /**
@@ -655,7 +672,13 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
     `ORİJİN: ${CORNER_LABEL[profile.origin.corner] ?? profile.origin.corner}, X+ ${profile.origin.xPositive === 'right' ? 'sağ' : 'sol'}, Y+ ${profile.origin.yPositive === 'back' ? 'arka' : 'ön'}, plaka ofseti ${f3(profile.origin.sheetOffset.x)} / ${f3(profile.origin.sheetOffset.y)}`,
   );
   lines.push(`Z SIFIR: ${profile.zZero.reference === 'table' ? 'tabla yüzeyi' : 'malzeme üstü'}`);
-  if (meta.cutting) lines.push(cuttingHeader(meta.cutting), ...spindleHeaders(meta.cutting));
+  if (meta.cutting) {
+    lines.push(
+      cuttingHeader(meta.cutting),
+      ...spindleHeaders(meta.cutting),
+      ...operationToolHeaders(meta.cutting),
+    );
+  }
   const tools = [...new Set(plan.ops.map((o) => o.tool))];
   lines.push(
     `TAKIMLAR: ${tools

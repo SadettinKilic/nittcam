@@ -26,7 +26,7 @@ const chipFormat = new Intl.NumberFormat('tr-TR', {
 });
 
 /**
- * T307 (D-095): "Devir" in the Simülasyon "Kesim ayarları": one row per tool of the job with a
+ * T307 (D-098): "Devir" in the Simülasyon "Kesim ayarları": one row per tool of the job with a
  * slider over the machine's spindle range and a typed field. The recommended value (the material
  * set's rpm) is marked on the track; a calm band shows ±20 %; outside it the value turns warning
  * colour with one line why. Every committed value is one `setSpindleRpm` command (undoable); the

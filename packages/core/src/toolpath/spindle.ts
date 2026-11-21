@@ -1,5 +1,5 @@
 /**
- * T307 (D-095): spindle speed (devir) per tool of a job. The recommended value is automatic: the
+ * T307 (D-098): spindle speed (devir) per tool of a job. The recommended value is automatic: the
  * rpm of the material parameter set chosen for the job (machine × material × thickness, its tool).
  * Tools used in the job without their own set (hole tools) get the machine's value for this job,
  * which is that same set rpm (what the toolpath has always cut with). A project may override the
@@ -9,6 +9,7 @@
  */
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
 import type { Project } from '../schema';
+import { contourTool, effectiveHoleTool, hasInnerCut, recommendedRpm } from './op-tools';
 
 /** Slider step, typed-value step, and the half-width of the "uygun aralık" band (±20 %). */
 export const SPINDLE_RPM_STEP = 500;
@@ -60,15 +61,18 @@ export function rpmBand(rpm: number, recommended: number): { band: RpmBand; devi
 }
 
 /**
- * The tools the job cuts with, in tool-number order: the material set's tool (outer contours,
- * inner cuts and on-line operations) and every hole tool the machine has. Empty without a set.
+ * The tools the job cuts with, in tool-number order: the outer contour tool (also on-line
+ * operations), the inner contour tool when the job has inner cuts, and every hole tool the machine
+ * has. By default the first two are the material set's tool and the holes their own (T308 lets
+ * the project choose per operation). Empty without a set.
  */
 export function jobToolNumbers(project: Project, machine: MachineProfile): number[] {
   const set = findMaterialParams(machine, project.stock);
   if (!set) return [];
-  const tools = new Set<number>([set.tool]);
+  const tools = new Set<number>([contourTool(project, 'outer', set.tool)]);
+  if (hasInnerCut(project)) tools.add(contourTool(project, 'inner', set.tool));
   for (const part of project.parts) {
-    for (const h of part.holes) if (findTool(machine, h.tool)) tools.add(h.tool);
+    for (const h of part.holes) tools.add(effectiveHoleTool(project, h));
   }
   return [...tools].filter((n) => findTool(machine, n)).sort((a, b) => a - b);
 }
@@ -81,13 +85,14 @@ export function spindleSettingsOf(project: Project, machine: MachineProfile): To
     const tool = findTool(machine, n);
     if (!tool) return [];
     const own = spindleOverride(project, n);
-    const rpm = own ?? set.rpm;
-    const { band, deviation } = rpmBand(rpm, set.rpm);
+    const recommended = recommendedRpm(project, machine, set, n);
+    const rpm = own ?? recommended;
+    const { band, deviation } = rpmBand(rpm, recommended);
     const row: ToolSpindle = {
       tool: n,
       diameter: tool.diameter,
       flutes: tool.flutes,
-      recommended: set.rpm,
+      recommended,
       rpm,
       override: own !== undefined,
       feed: set.feed,

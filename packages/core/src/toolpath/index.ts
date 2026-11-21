@@ -74,3 +74,20 @@ export {
   type RpmBand,
   type ToolSpindle,
 } from './spindle';
+export {
+  OPERATION_TOOL_KINDS,
+  OPERATION_TOOL_TYPES,
+  contourTool,
+  effectiveHoleTool,
+  holeToolKind,
+  operationToolChoice,
+  operationsInJob,
+  recommendedRpm,
+  type OperationToolKind,
+} from './op-tools';
+export {
+  operationToolProblem,
+  operationToolsOf,
+  type OperationToolProblem,
+  type OperationToolRow,
+} from './op-tool-choice';

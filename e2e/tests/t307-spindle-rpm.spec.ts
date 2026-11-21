@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { goStep, openNewProject, pasteAndNest, saved, toastsSettled } from './wizard-helpers';
 
-// T307 (D-095): spindle speed per tool in Simülasyon "Kesim ayarları": slider + typed field over
+// T307 (D-098): spindle speed per tool in Simülasyon "Kesim ayarları": slider + typed field over
 // the machine's range, the recommended value marked, a warning line outside ±20 %, keyboard
 // operable, one command per change (Ctrl+Z undoes it), "Önerilene dön" clears it.
 
