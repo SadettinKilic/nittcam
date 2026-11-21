@@ -4,15 +4,18 @@
  * board keeps the in-progress centre as UI state.
  */
 import {
+  bestHoleTool,
   boardPositions,
   checkHolePlacement,
   contourDistance,
   deriveOutline,
   holeSchema,
+  holeToolProblem,
   insideContour,
   type BoardPart,
   type Hole,
   type HolePlacementError,
+  type HoleRuleTool,
   type Part,
   type Project,
 } from '@nittcam/core';
@@ -46,6 +49,9 @@ const r3 = (v: number) => Math.round(v * 1000) / 1000;
  * properties panel turns it into a pocket or a groove) in the part frame. B52 (D-096, "aynı
  * değerlerle devam"): with `like` (the last hole added), the new hole copies its type, depth,
  * groove width and tool; a copy that does not fit the new diameter falls back to a through hole.
+ * T320 (D-108): with the machine's `tools`, a new hole takes the best compatible tool (a drill of
+ * its size, else `tool` when it suits, else a mill that suits); a copied tool that no longer suits
+ * the new diameter is replaced the same way.
  */
 export function addHoleParams(
   project: Project,
@@ -53,6 +59,7 @@ export function addHoleParams(
   d: number,
   tool: number,
   like?: Hole,
+  tools?: readonly HoleRuleTool[] | null,
 ): { id: string; hole: Hole } | null {
   const part = project.parts.find((p) => p.id === draft.partId);
   const at = boardPositions(project).get(draft.partId);
@@ -63,11 +70,19 @@ export function addHoleParams(
     cx: r3(draft.c.x - at.x),
     cy: r3(draft.c.y - at.y),
   };
+  const fitTool = (hole: Hole): Hole =>
+    tools && holeToolProblem(hole, tools) !== null
+      ? { ...hole, tool: bestHoleTool(hole, tools, tool) }
+      : hole;
   if (like) {
     const copy = holeSchema.safeParse({ ...like, ...base });
-    if (copy.success) return { id: part.id, hole: copy.data };
+    if (copy.success) return { id: part.id, hole: fitTool(copy.data) };
   }
-  return { id: part.id, hole: { ...base, type: 'through', tool } };
+  const fresh: Hole = { ...base, type: 'through', tool };
+  return {
+    id: part.id,
+    hole: tools ? { ...fresh, tool: bestHoleTool(fresh, tools, tool) } : fresh,
+  };
 }
 
 /** The last hole added in this session, as it is now (edited since), or the remembered copy. */

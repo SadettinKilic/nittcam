@@ -57,6 +57,8 @@ export interface VerificationOverview {
   origin: { corner: string; sheetOffset: { x: number; y: number } };
   /** T309: machine-coordinate (G53) park point of a manual tool change; null when not used. */
   park: { x: number; y: number } | null;
+  /** T321: a manual tool changer without a usable park point (the tool stops over the sheet). */
+  parkOff: boolean;
   programs: { airCut: TestProgramPreview; testCut: TestProgramPreview };
   /** T191: the extended field-test part (holes, pocket, groove, arcs, inner contour). */
   extended: {

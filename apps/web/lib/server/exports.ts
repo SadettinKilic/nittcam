@@ -20,6 +20,7 @@ import {
   type UnverifiedReason,
 } from '@nittcam/core';
 import type { CompanyScope, ExportRow, MachineWithProfile, ProjectRow } from '@nittcam/db';
+import { fileNameInfo, parkOff } from '../check-state';
 import { POST_CONFIGS } from '@nittcam/machines';
 import { NextResponse } from 'next/server';
 import {
@@ -241,7 +242,13 @@ export async function runExportOf(
     violations: violationsOf(r),
     needsAcceptance: needsUnverifiedAcceptance(pv, cfg.config),
     unverifiedReasons: unverifiedReasons(pv, cfg.config),
-    checklist: checklistOf(machine, data, r.tools),
+    checklist: checklistOf(machine, data, r.tools, {
+      names: r.files.map((x) => x.name),
+      latestLimit:
+        latest && latest.version.version !== machine.version.version
+          ? latest.profile.constraints.maxFileNameLength
+          : null,
+    }),
   };
 }
 
@@ -254,6 +261,10 @@ function checklistOf(
   machine: MachineWithProfile,
   data: ProjectRow['data'],
   program: ProgramTools | null,
+  files: { names: readonly string[]; latestLimit: number | null } = {
+    names: [],
+    latestLimit: null,
+  },
 ): ExportChecklistInfo {
   const p = machine.profile;
   let tools: ExportChecklistInfo['tools'];
@@ -279,6 +290,8 @@ function checklistOf(
     tools,
     toolChanges: program?.manualChanges ?? 0,
     rezeroZ: program?.rezeroZ ?? false,
+    parkOff: parkOff(p),
+    fileNames: fileNameInfo(files.names, p.constraints.maxFileNameLength, files.latestLimit),
   };
 }
 

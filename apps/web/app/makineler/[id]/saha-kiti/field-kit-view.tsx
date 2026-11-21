@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, ErrorState, Skeleton } from '@nittcam/ui';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { pageContainer, sectionLink } from '../../../../components/page/page-header';
@@ -225,6 +225,16 @@ function Kit({
             ? fill(t.park.on, { x: String(data.park.x), y: String(data.park.y) })
             : t.park.text}
         </p>
+        {data.parkOff ? (
+          // T321 (usta 2): a manual change without a park point leaves the tool over the sheet.
+          <p
+            className="flex items-start gap-1.5 text-sm font-medium text-warning-text"
+            data-testid="field-kit-park-off"
+          >
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+            {t.park.off}
+          </p>
+        ) : null}
         {data.park ? null : <p className="text-sm text-fg-muted">{t.park.hint}</p>}
       </Section>
       <Section title={t.extended.title} testId="field-kit-extended">

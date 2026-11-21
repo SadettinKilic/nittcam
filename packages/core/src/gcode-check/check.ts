@@ -241,10 +241,65 @@ export function checkGcodeFiles(
     }
   }
   for (const f of out) for (const v of f.result.violations) all.push({ ...v, file: f.name });
+  all.push(...fileNameViolations(files, context.profile.constraints.maxFileNameLength));
   return { ok: !all.some((v) => v.severity === 'error'), violations: all, files: out };
 }
 
 /** T021 gate (§7.2 rule 9): a file set may be downloaded only when every check passed. */
 export function canDownload(result: GcodeCheckResult | GcodeCheckFilesResult): boolean {
   return result.ok && !result.violations.some((v) => v.severity === 'error');
+}
+
+/** Characters every controller reads in a file name (D-025: ASCII only). */
+const SAFE_FILE_NAME = /^[A-Za-z0-9_.-]+$/;
+
+/**
+ * T322 (usta 1: a 37-character name for a 32-character controller): every file name fits the
+ * machine profile's `maxFileNameLength` and uses only ASCII letters, digits, `_`, `-` and `.`;
+ * a name the controller cannot open (or opens truncated, colliding with another sheet) blocks the
+ * download. Checked here independently of how the generator builds the names.
+ */
+export function fileNameViolations(
+  files: readonly { name: string }[],
+  maxLength: number,
+): GcodeCheckViolation[] {
+  const out: GcodeCheckViolation[] = [];
+  for (const f of files) {
+    if (f.name.length > maxLength) {
+      out.push({
+        rule: 'INPUT',
+        code: 'FILE_NAME_TOO_LONG',
+        severity: 'error',
+        line: 0,
+        file: f.name,
+        message: `File name "${f.name}" has ${f.name.length} characters; the machine reads at most ${maxLength}.`,
+      });
+    }
+    if (!SAFE_FILE_NAME.test(f.name)) {
+      out.push({
+        rule: 'INPUT',
+        code: 'FILE_NAME_CHARS',
+        severity: 'error',
+        line: 0,
+        file: f.name,
+        message: `File name "${f.name}" has characters other than A-Z, a-z, 0-9, "_", "-" and ".".`,
+      });
+    }
+  }
+  const seen = new Set<string>();
+  for (const f of files) {
+    const key = f.name.toLowerCase();
+    if (seen.has(key)) {
+      out.push({
+        rule: 'INPUT',
+        code: 'FILE_NAME_DUPLICATE',
+        severity: 'error',
+        line: 0,
+        file: f.name,
+        message: `File name "${f.name}" is used twice.`,
+      });
+    }
+    seen.add(key);
+  }
+  return out;
 }

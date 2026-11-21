@@ -6,10 +6,10 @@ import { Arrow, Circle, Group, Layer, Line, Rect, Stage, Text } from 'react-konv
 import type { CanvasColors, DrawnPart, ViewState } from './model';
 import { zoomAt } from './zoom';
 import { canvasMonoFont } from '../../lib/canvas-theme';
-import { formatMm, partLabel } from '../../lib/canvas-labels';
+import { formatMm } from '../../lib/canvas-labels';
 import { grainArrowPoints, grainLines } from '../../lib/grain-texture';
 import { prefersReducedMotion } from '../../lib/preferences';
-import { labelSpot } from '../../lib/label-spot';
+import { labelSpot, spotLabel } from '../../lib/label-spot';
 
 /** True when the operator asked for less motion (no fade-in after "Diz"; OS or Ayarlar, T183). */
 const reducedMotion = prefersReducedMotion;
@@ -275,7 +275,7 @@ const PartShape = memo(function PartShape({
   const dash = part.locked && !selected && !conflict ? [6 * hair, 4 * hair] : [];
   // B44: the label sits in the material, not over an opening or an empty corner.
   const spot = useMemo(() => labelSpot(part), [part]);
-  const label = partLabel({ number: part.label, name: part.name, w: spot.w, h: spot.h, scale });
+  const label = spotLabel(part, spot, scale);
   const font = label.font;
   // Grain arrow of a fixed-grain part at its sheet-frame angle (D-034: part grain + rotation).
   // Canvas Y points down, so 90° (up on the sheet) is -Y here.

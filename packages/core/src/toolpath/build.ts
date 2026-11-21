@@ -1239,6 +1239,14 @@ export function buildToolpath(
         );
         continue;
       }
+      // T320 (D-108): a drill only drills a hole of its own size; never run it sideways.
+      if (problem?.code === 'DRILL_SIZE_MISMATCH') {
+        bad(
+          'DRILL_SIZE_MISMATCH',
+          `the drill T${ht.number} (Ø${ht.diameter} mm) only drills holes of its own size, ${h.type === 'groove' ? 'not a groove' : `not Ø${h.d} mm`}.`,
+        );
+        continue;
+      }
       const depth = h.type === 'through' ? target : -h.depth;
       if (h.type !== 'through' && blindDepthInvalid(h, thickness)) {
         bad('HOLE_DEPTH_INVALID', `blind depth ${h.depth} mm must be less than the thickness.`);

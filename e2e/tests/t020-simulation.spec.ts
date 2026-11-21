@@ -125,7 +125,8 @@ test.describe('T020 simulation', () => {
     await readyCanvas(page);
     const summary = page.getByTestId('sim-summary');
     await expect(summary).toBeVisible();
-    await expect(page.getByTestId('sim-check-status')).toHaveText(new RegExp(s.summary.checksOk));
+    // T321 (D-109): KITCHEN_3 passes with warnings (yellow chip); no blocking error is what counts here.
+    await expect(page.getByTestId('sim-check-status')).toHaveText(/kontroller geçti/i);
     await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true');
     await expect(page.getByTestId('sim-summary-time')).toContainText('≈');
     // one tool: the first tool is set-up, no in-program change (T274)

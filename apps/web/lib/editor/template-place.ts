@@ -4,10 +4,12 @@
  * the ghost geometry. UI state only; the placement becomes one `addTemplate` command.
  */
 import {
+  bestHoleTool,
   defaultTemplateEdge,
   deriveTemplate,
   EDGE_ROTATION,
   type BBox,
+  type HoleRuleTool,
   type TemplateEdge,
   type TemplateGeometry,
   type TemplateParams,
@@ -120,6 +122,8 @@ export function startPlacement(
   },
   box: BBox,
   templates: Parameters<typeof defaultTemplateEdge>[1] = [],
+  /** T320 (D-108): the machine's tools; each template hole then takes its best compatible tool. */
+  tools?: readonly HoleRuleTool[] | null,
 ): PendingTemplate {
   const edge = defaultTemplateEdge(item.id, templates);
   const e = item.params.edgeDistance;
@@ -136,7 +140,7 @@ export function startPlacement(
     templateId: item.id,
     version: item.version,
     name: item.name,
-    geometry: item.geometry,
+    geometry: tools ? withHoleTools(item.geometry, item.params, tools) : item.geometry,
     defaults: item.params,
     params: item.params,
     placement: { ...at, rot: EDGE_ROTATION[edge], mirror: false, edge },
@@ -156,5 +160,24 @@ export function addTemplateParams(p: PendingTemplate) {
       params: p.params,
       placement: p.placement,
     },
+  };
+}
+
+/**
+ * T320 (D-108, usta 1: "şablon delikleri hep T1 ile geliyor"): the template's holes with the best
+ * compatible tool of this machine (a drill of the hole's size, else the template's tool when it
+ * suits, else a mill that suits), at the size the params give them.
+ */
+export function withHoleTools(
+  geometry: TemplateGeometry,
+  params: TemplateParams,
+  tools: readonly HoleRuleTool[],
+): TemplateGeometry {
+  return {
+    ...geometry,
+    holes: geometry.holes.map((h) => {
+      const d = params.d[h.id] ?? h.d;
+      return { ...h, tool: bestHoleTool({ ...h, d }, tools, h.tool) };
+    }),
   };
 }
