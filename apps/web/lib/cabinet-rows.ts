@@ -1,5 +1,5 @@
 /** Cabinet generator rows for the cut list (T122, T260), shared by the dialog and T292. */
-import type { CabinetPart } from '@nittcam/core';
+import { enteredSize, type CabinetPart, type DimensionMode } from '@nittcam/core';
 import type { Messages } from './messages';
 
 const nf = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
@@ -8,14 +8,17 @@ const fmt = (v: number) => nf.format(v);
 /**
  * Generated rows as `importCutList` input: a plain row each (D-041), the group only a label. A part
  * in another thickness than the stock (added on purpose, T260) carries it as a note ("8 mm").
+ * The generator gives finished sizes (with the band); in `cut` mode the band is taken off so the
+ * entered cut size gives the same finished part (T316, D-105: a door gap stays the gap).
  */
 export function cabinetRows(
   parts: readonly CabinetPart[],
   names: Messages['cutList']['cabinet']['roles'],
   group: string,
   newId: () => string,
-  stockThickness?: number,
+  opts: { mode: DimensionMode; stockThickness?: number },
 ) {
+  const { mode, stockThickness } = opts;
   return parts.map((p) => ({
     id: newId(),
     name: names[p.role],
@@ -25,7 +28,7 @@ export function cabinetRows(
       ? { note: `${fmt(p.thickness)} mm` }
       : {}),
     grain: p.grain,
-    params: { w: p.w, h: p.h, r: 0 },
+    params: { ...enteredSize(p, p.edgeBand, mode), r: 0 },
     edgeBand: p.edgeBand,
   }));
 }

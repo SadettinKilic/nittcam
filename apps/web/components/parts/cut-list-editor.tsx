@@ -1677,7 +1677,10 @@ export function CutListEditor({
 
   /** T122: the generated rows in one importCutList = one undo step (D-041). */
   function addCabinet(generated: Parameters<typeof cabinetRows>[0], group: string): boolean {
-    const rows = cabinetRows(generated, t.cabinet.roles, group, newPartId, project.stock.thickness);
+    const rows = cabinetRows(generated, t.cabinet.roles, group, newPartId, {
+      mode: project.settings.dimensionMode,
+      stockThickness: project.stock.thickness,
+    });
     const ok = run('importCutList', { parts: rows });
     if (ok) {
       notify.success(
@@ -2096,13 +2099,10 @@ export function CutListEditor({
                       materials: splitOff.materials,
                       onSplit: (generated, target, group) =>
                         splitOff.onSplit(
-                          cabinetRows(
-                            generated,
-                            t.cabinet.roles,
-                            group,
-                            newPartId,
-                            target.thickness,
-                          ),
+                          cabinetRows(generated, t.cabinet.roles, group, newPartId, {
+                            mode: project.settings.dimensionMode,
+                            stockThickness: target.thickness,
+                          }),
                           target,
                           group,
                         ),

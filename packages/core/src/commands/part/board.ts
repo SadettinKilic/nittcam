@@ -123,23 +123,75 @@ export const mirrorPart = defineCommand({
   apply: (draft, params) => {
     freezeBoard(draft);
     const ids = new Set(params.ids);
-    for (const part of draft.parts) {
-      if (!ids.has(part.id)) continue;
-      const b = localBox(part as Part);
-      const h = params.axis === 'h';
-      const sx = b.minX + b.maxX;
-      const sy = b.minY + b.maxY;
-      const map: Mapper = (p) => (h ? { x: sx - p.x, y: p.y } : { x: p.x, y: sy - p.y });
-      const contourMap = (pl: Polyline) =>
-        h ? translate(mirror(pl, 'x'), sx, 0) : translate(mirror(pl, 'y'), 0, sy);
-      mapPart(part, map, contourMap, false, (pl) => mirrorPlacement(pl, params.axis, map));
-      const band = part.edgeBand;
-      part.edgeBand = h
-        ? { ...band, left: band.right, right: band.left }
-        : { ...band, top: band.bottom, bottom: band.top };
-      // Grain follows the piece (D-038): a mirror reflects the grain line, a → −a (mod 180).
-      const grain = mirrorGrain(part.grain.angle);
-      if (grain !== part.grain.angle) part.grain.angle = grain;
+    for (const part of draft.parts) if (ids.has(part.id)) mirrorInPlace(part, params.axis);
+  },
+});
+
+/** Mirrors one part in its own frame: holes, cut-outs, templates, lines, band and grain follow. */
+function mirrorInPlace(part: Draft<Part>, axis: 'h' | 'v'): void {
+  const b = localBox(part as Part);
+  const h = axis === 'h';
+  const sx = b.minX + b.maxX;
+  const sy = b.minY + b.maxY;
+  const map: Mapper = (p) => (h ? { x: sx - p.x, y: p.y } : { x: p.x, y: sy - p.y });
+  const contourMap = (pl: Polyline) =>
+    h ? translate(mirror(pl, 'x'), sx, 0) : translate(mirror(pl, 'y'), 0, sy);
+  mapPart(part, map, contourMap, false, (pl) => mirrorPlacement(pl, axis, map));
+  const band = part.edgeBand;
+  part.edgeBand = h
+    ? { ...band, left: band.right, right: band.left }
+    : { ...band, top: band.bottom, bottom: band.top };
+  // Grain follows the piece (D-038): a mirror reflects the grain line, a → −a (mod 180).
+  const grain = mirrorGrain(part.grain.angle);
+  if (grain !== part.grain.angle) part.grain.angle = grain;
+}
+
+/**
+ * Left / right pair (T317, D-106; spec §4.7 "Aynalama (sol/sağ açılan kapak)"): a part with
+ * quantity ≥ 2 becomes two rows, the original with ⌈qty / 2⌉ and a left ↔ right mirrored copy
+ * with ⌊qty / 2⌋ right after it. The copy is a real part, so nesting, toolpath, G-code, labels
+ * and the assembly view all see the mirrored work (hinge cups, handle holes) without any special
+ * case. Placements of copies that no longer exist are dropped; the copy is not placed.
+ */
+export const splitMirrorPair = defineCommand({
+  name: 'splitMirrorPair',
+  area: 'part',
+  description:
+    'Make a left/right pair from a part with quantity 2 or more: the part keeps half (rounded ' +
+    'up) and a mirrored copy (left/right flipped, with its holes and templates) under newId ' +
+    'gets the rest. Optional note for the copy.',
+  aiTool: false,
+  params: z.strictObject({
+    id: rectPartSchema.shape.id,
+    newId: rectPartSchema.shape.id,
+    note: z.string().max(200, { error: 'at most 200 characters' }).optional(),
+  }),
+  check: (project, params) => {
+    const part = project.parts.find((p) => p.id === params.id);
+    if (!part) return `no part with id "${params.id}"`;
+    if (project.parts.some((p) => p.id === params.newId))
+      return `a part with id "${params.newId}" already exists`;
+    if (part.qty < 2) return 'the part needs a quantity of 2 or more';
+    return undefined;
+  },
+  apply: (draft, params) => {
+    const index = draft.parts.findIndex((p) => p.id === params.id);
+    const source = draft.parts[index];
+    if (!source) return;
+    // Plain JSON data (schema-valid project), so a JSON copy is a deep copy.
+    const copy = JSON.parse(JSON.stringify(source)) as typeof source;
+    copy.id = params.newId;
+    copy.qty = Math.floor(source.qty / 2);
+    source.qty = Math.ceil(source.qty / 2);
+    delete copy.draw;
+    if (params.note !== undefined) copy.note = params.note;
+    mirrorInPlace(copy, 'h');
+    draft.parts.splice(index + 1, 0, copy);
+    for (const sheet of draft.layout.sheets) {
+      const keep = sheet.placements.filter(
+        (pl) => pl.partId !== params.id || pl.index < source.qty,
+      );
+      if (keep.length !== sheet.placements.length) sheet.placements = keep;
     }
   },
 });

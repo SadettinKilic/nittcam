@@ -173,7 +173,8 @@ test.describe('T013 layout view', () => {
     await expect(page.getByTestId('layout-minimap-button')).toHaveCount(0);
     await pickOption(page.getByTestId('layout-select'), '1.1 · Yan dikme');
     await expect(page.getByTestId('layout-info-grain')).toHaveText(
-      fill(l.info.grainYes, { angle: '0' }),
+      // T318 (D-107): a pasted "evet" runs along Boy (the 1800 side) = 90° in the part frame.
+      fill(l.info.grainYes, { angle: '90' }),
     );
     await expect(page.getByTestId('layout-info-size')).toHaveText('300 × 1.800 mm');
     await page.getByTestId('layout-canvas').scrollIntoViewIfNeeded();

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { expectNoA11yViolations } from './visual/helpers';
-import { fill, goStep, KITCHEN, openNewProject, paste, watchConsole } from './wizard-helpers';
+import { fill, goStep, KITCHEN_3, openNewProject, paste, watchConsole } from './wizard-helpers';
 
 /** B22 / T164: stock quantity per library sheet size and several sheet sizes in one nesting. */
 
@@ -76,7 +76,7 @@ test.describe('T164 several stock sheet sizes', () => {
     await expect(second).toBeChecked();
 
     await goStep(page, 'parcalar');
-    await paste(page, KITCHEN, 5);
+    await paste(page, KITCHEN_3, 5);
     await goStep(page, 'dizilim');
     await expect(page.getByTestId('nesting-sheets')).toBeVisible({ timeout: 20_000 });
     const bySize = page.getByTestId('nesting-by-size');

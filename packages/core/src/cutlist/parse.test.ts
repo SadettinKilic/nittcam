@@ -395,6 +395,7 @@ describe('cutListToParts', () => {
         name: 'Kapak',
         qty: 2,
         grainLock: true,
+        grain: { mode: 'fixed', angle: 90 },
         params: { w: 396, h: 716, r: 0 },
         edgeBand: { top: 0.8, right: 0.8, bottom: 0.8, left: 0.8 },
       },
@@ -407,6 +408,23 @@ describe('cutListToParts', () => {
         edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
       },
     ]);
+  });
+
+  it('T318: "Var" without an angle column = fixed along Boy (90°); an angle column wins', () => {
+    const r = parseCutList(
+      'Parça Adı;Boy;En;Adet;Damar\nBaza;2400;100;2;Var\nÜst kapak;716;297;4;Var\nRaf;564;300;1;Yok',
+    );
+    const parts = cutListToParts(r.rows, ['a', 'b', 'c'], 'mm');
+    expect(parts.map((p) => [p.name, p.params.w, p.params.h, p.grain])).toEqual([
+      ['Baza', 100, 2400, { mode: 'fixed', angle: 90 }],
+      ['Üst kapak', 297, 716, { mode: 'fixed', angle: 90 }],
+      ['Raf', 300, 564, undefined],
+    ]);
+    const withAngle = parseCutList('Ad;En;Boy;Adet;Damar;Damar açısı\nA;100;200;1;evet;30');
+    expect(cutListToParts(withAngle.rows, ['x'], 'mm')[0]?.grain).toEqual({
+      mode: 'fixed',
+      angle: 30,
+    });
   });
 
   it('cm → mm only when the caller says so; edge band stays mm', () => {

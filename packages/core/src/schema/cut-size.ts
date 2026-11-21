@@ -14,6 +14,8 @@ import type { DimensionMode, Part, Project, RectParams, Vertex } from './project
 /** Smallest cut side kept when bands are as thick as the part (mm); never zero or negative. */
 export const MIN_CUT_SIZE = 1;
 
+const round3 = (v: number): number => Math.round(v * 1000) / 1000;
+
 /** Cut size (w, h) of a rectangle part in a dimension mode. */
 export function cutSize(
   params: Pick<RectParams, 'w' | 'h'>,
@@ -25,6 +27,38 @@ export function cutSize(
     w: Math.max(MIN_CUT_SIZE, params.w - band.left - band.right),
     h: Math.max(MIN_CUT_SIZE, params.h - band.top - band.bottom),
   };
+}
+
+/**
+ * Finished size (with the bands) of a rectangle entered as `params` in a dimension mode: in
+ * `finished` mode the entered size, in `cut` mode the cut size plus the band on each edge.
+ */
+export function finishedSize(
+  params: Pick<RectParams, 'w' | 'h'>,
+  band: Part['edgeBand'],
+  mode: DimensionMode,
+): { w: number; h: number } {
+  if (mode === 'finished') return { w: params.w, h: params.h };
+  return {
+    w: round3(params.w + band.left + band.right),
+    h: round3(params.h + band.top + band.bottom),
+  };
+}
+
+/**
+ * The size to enter for a part whose finished size is known (T316, D-105): in `finished` mode the
+ * finished size itself, in `cut` mode the finished size minus the band on each edge (what
+ * `cutSize` gives in `finished` mode). Generators (Dolap ekle) produce finished sizes and enter
+ * them through this, so the part comes out the same in both modes.
+ */
+export function enteredSize(
+  finished: Pick<RectParams, 'w' | 'h'>,
+  band: Part['edgeBand'],
+  mode: DimensionMode,
+): { w: number; h: number } {
+  if (mode === 'finished') return { w: finished.w, h: finished.h };
+  const c = cutSize(finished, band, 'finished');
+  return { w: round3(c.w), h: round3(c.h) };
 }
 
 /** True when the part is cut smaller than entered (finished mode and at least one banded edge). */

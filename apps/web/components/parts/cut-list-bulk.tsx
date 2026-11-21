@@ -55,7 +55,7 @@ export function BulkEditSheet({
   const b = t.bulk;
   const [qty, setQty] = useState<number | null>(null);
   const [grain, setGrain] = useState<GrainChoice>('__keep__');
-  const [angle, setAngle] = useState(0);
+  const [angle, setAngle] = useState(90);
   const [edges, setEdges] = useState(noEdges);
   const [prefix, setPrefix] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export function BulkEditSheet({
   function reset() {
     setQty(null);
     setGrain('__keep__');
-    setAngle(0);
+    setAngle(90);
     setEdges(noEdges());
     setPrefix('');
     setError(null);
@@ -132,6 +132,8 @@ export function BulkEditSheet({
                 <SelectContent>
                   <SelectItem value="__keep__">{b.grainKeep}</SelectItem>
                   <SelectItem value="free">{b.grainFree}</SelectItem>
+                  <SelectItem value="alongH">{b.grainAlongH}</SelectItem>
+                  <SelectItem value="alongW">{b.grainAlongW}</SelectItem>
                   <SelectItem value="fixed">{b.grainFixed}</SelectItem>
                 </SelectContent>
               </Select>
