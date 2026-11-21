@@ -8,9 +8,9 @@ import type { DrawnPart, ViewState } from '../layout-view/model';
 import { zoomAt } from '../layout-view/zoom';
 import { DEPTH_LEVELS, depthLevel, depthRamp, toolDiameterOf, type SimColors } from './model';
 import { canvasMonoFont } from '../../lib/canvas-theme';
-import { LINE_HEIGHT, badgeCentre, labelBox, partLabel } from '../../lib/canvas-labels';
+import { LINE_HEIGHT, badgeCentre, labelBox } from '../../lib/canvas-labels';
 import { grainArrowPoints, grainLines } from '../../lib/grain-texture';
-import { labelSpot, type LabelSpot } from '../../lib/label-spot';
+import { labelSpot, spotLabel, type LabelSpot } from '../../lib/label-spot';
 
 /**
  * Konva drawing of the simulation (T020, spec §6.5). Units inside the stage are millimetres in a
@@ -155,7 +155,7 @@ const StaticLayer = memo(function StaticLayer({
       {/* Part labels: the same zoom fallback as the layout view (T196). */}
       {parts.map((p) => {
         const spot = spotOf(p);
-        const label = partLabel({ number: p.label, name: p.name, w: spot.w, h: spot.h, scale });
+        const label = spotLabel(p, spot, scale);
         // A fixed-grain part lifts its label to make room for the grain arrow (as in the layout view).
         const lift = p.grainAngle !== null ? label.font * 0.6 : 0;
         const top =
@@ -181,7 +181,7 @@ const StaticLayer = memo(function StaticLayer({
       {parts.map((p) => {
         if (p.grainAngle === null) return null;
         const spot = spotOf(p);
-        const label = partLabel({ number: p.label, name: p.name, w: spot.w, h: spot.h, scale });
+        const label = spotLabel(p, spot, scale);
         if (label.level === 'none') return null;
         const [x1, y1, x2, y2] = grainArrowPoints(
           p.grainAngle,
@@ -328,11 +328,7 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
     const r = 8 / view.scale;
     const labels = props.parts.map((p) => {
       const spot = labelSpot(p);
-      return labelBox(
-        p,
-        partLabel({ number: p.label, name: p.name, w: spot.w, h: spot.h, scale: view.scale }),
-        spot,
-      );
+      return labelBox(p, spotLabel(p, spot, view.scale), spot);
     });
     return sim.contours.map((c) => badgeCentre(c, r, props.parts, labels));
   }, [sim.contours, props.parts, view.scale]);

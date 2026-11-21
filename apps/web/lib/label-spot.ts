@@ -6,6 +6,8 @@
  * Footprint frame: origin top left, Y down (as `DrawnPart`).
  */
 
+import { partLabel, type PartLabel } from './canvas-labels';
+
 export interface LabelShape {
   w: number;
   h: number;
@@ -100,4 +102,24 @@ export function labelSpot(shape: LabelShape): LabelSpot {
     }
   if (best.d <= 0) return whole;
   return { cx: best.x, cy: best.y, w: 1.6 * best.d, h: best.d };
+}
+
+/**
+ * Label of a drawn part at its label spot (T319). The size text is always the part's own
+ * footprint W × H; the spot only limits the room the text may use. Passing the spot as the size
+ * printed the free room ("276 × 172,5") on a 600 × 400 panel with a cut-out.
+ */
+export function spotLabel(
+  part: { label: string; name: string; w: number; h: number },
+  spot: LabelSpot,
+  scale: number,
+): PartLabel {
+  return partLabel({
+    number: part.label,
+    name: part.name,
+    w: part.w,
+    h: part.h,
+    scale,
+    room: { w: spot.w, h: spot.h },
+  });
 }

@@ -1685,6 +1685,20 @@ Owner 2026-11-21 (D-103): "Dolap eklediğimde 2 kapağı da plakada görmüyorum
 ### T313 Clear distance between parts = tool Ø + clearance (default 0.1 mm)   [status: done]
 Owner 2026-11-21 (D-104): "8'lik takım kullanıyorsak arada offset 8 değil 8,1 mm olmamalı mı?" The rule was already tool Ø + `nesting.gap` (D-019) but the built-in gap was 8, so neighbours stood 16 mm apart. New projects start with gap 0.1 (Ø8 → 8.1 mm clear); per project in step 3, company default in Ayarlar. UI says "Parça arası pay" and "Parça arası boşluk: takım Ø8 + pay 0,1 = 8,1 mm". Rectangle and true-shape placers share `partSpacing`; leads keep their neighbour check (shortened / removed with a warning), tabs stay on the contour. Unit tests: measured clear distance ≥ Ø + clearance for both engines.
 
+### Batch B58: T319–T322 (usta reports 2026-11-21, must-fix before the field test; Dev 1)
+
+### T319 Canvas part label shows the part size, not the label room   [status: done]
+Usta 2 (Elif): a 600 × 400 panel (R20 corners, cut-out, circle, holes) read "276 × 172,5" on the Dizilim and Simülasyon canvases while the inspector said 600 × 400. Root cause: since B44 the label sits at a spot inside the material and both canvases passed that spot's free room as the part's W × H to `partLabel()`. Fix: `spotLabel()` (`apps/web/lib/label-spot.ts`) prints the footprint W × H and uses the spot only as room (the drawing board already did). Unit test with Elif's panel.
+
+### T320 Hole tool: a drill must match the hole; default the best compatible tool   [status: todo]
+Usta 1 (Kemal): a Ø35 hinge cup with a Ø5 drill was accepted silently; template holes always came with T1 (Ø6 mill). Rule (D-099, D-108): a drill only drills a hole of its own Ø (through or blind); a bigger hole needs a mill (helical / pocket) and is rejected with a clear message in validation and the export checklist. New holes default to the best compatible tool (a drill of the hole's Ø if the machine has one, else the mill). Unit tests.
+
+### T321 One warning state across the summary, the checks box and the cut list   [status: todo]
+Usta 1 + 2: (a) leads removed ("yer yok") on 7 parts while the summary said green "Tüm kontroller geçti" → the summary shows a warning state with the count; (b) "1 uyarı" next to "Sorun bulunmadı" → one source of truth; (c) after a quantity change every row showed red "Hata" → neutral "Yeniden diz" state; (d) a manual tool changer with park off → checklist warning "takım değişiminde takım plakanın üstünde kalır; park noktası ayarlayın", mentioned in the field kit too.
+
+### T322 NC file name respects the machine's length limit   [status: todo]
+Usta 1: `Kemal_Mutfak_alt_dolap_800_r19_S1.tap` (37 chars) on a machine with a 32-char limit. The file name is shortened deterministically to the profile limit (the sheet suffix, revision and extension stay, the project part is cut; names stay unique) and Turkish characters follow the profile; the checker/checklist warns if a name still exceeds. Unit tests.
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine
