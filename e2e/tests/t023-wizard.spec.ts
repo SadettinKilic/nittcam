@@ -132,7 +132,7 @@ test.describe('T023 wizard', () => {
     await wizardReady(page, 'dizilim');
     await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
     await saved(page);
     await shot(page, 't023-adim3-dizilim');
 
@@ -184,7 +184,7 @@ test.describe('T023 wizard', () => {
           fill(tr.cutList.count, { rows: 5, pieces: 30 }),
         );
       }
-      if (step === 'dizilim') await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
+      if (step === 'dizilim') await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
       if (step === 'simulasyon') {
         await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true', {
           timeout: 30_000,

@@ -11,7 +11,7 @@ export type StepKey = (typeof STEP_KEYS)[number];
 /** The seeded example machine (D-028). */
 export const SEEDED = 'Örnek router (Mach3)';
 
-/** 30 pieces, 3 sheets on the 2800 × 2070 sheet (as in T012/T013/T020). */
+/** 30 pieces: 2 sheets on the 2800 × 2070 sheet with tool + 0.1 mm (T313, D-103; 3 before B56). */
 export const KITCHEN = [
   'Parça adı\tEn\tBoy\tAdet\tDamar',
   'Yan\t560\t720\t8\tevet',
@@ -19,6 +19,19 @@ export const KITCHEN = [
   'Kapak\t596\t716\t6\tevet',
   'Raf\t564\t520\t8\thayır',
   'Çekmece önü\t596\t176\t4\tevet',
+].join('\n');
+
+/**
+ * 45 pieces (KITCHEN × 1.5): 3 sheets on the 2800 × 2070 sheet with tool + 0.1 mm (T313, D-103).
+ * For specs about several plates (tab strip, plate switch, tab row at 390 px).
+ */
+export const KITCHEN_3 = [
+  'Parça adı\tEn\tBoy\tAdet\tDamar',
+  'Yan\t560\t720\t12\tevet',
+  'Taban\t564\t560\t6\thayır',
+  'Kapak\t596\t716\t9\tevet',
+  'Raf\t564\t520\t12\thayır',
+  'Çekmece önü\t596\t176\t6\tevet',
 ].join('\n');
 
 export const fill = (text: string, values: Record<string, string | number>) =>

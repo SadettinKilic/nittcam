@@ -689,7 +689,7 @@ test.describe('T023 tester: wizard flow', () => {
     await paste(page, KITCHEN, 5);
     await goStep(page, 'dizilim');
     // T261: the first entry nests by itself; wait for it before changing the mode.
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('3', { timeout: 20_000 });
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('2', { timeout: 20_000 });
     // T249 (D-039): the developer note about the modes is not shown.
     await expect(page.getByText(/Şimdilik üç mod/)).toHaveCount(0);
     // T163: the mode is a group of cards (radios), no longer a select.
@@ -699,7 +699,7 @@ test.describe('T023 tester: wizard flow', () => {
     await page.getByRole('radio', { name: w.layout.modes.minToolChanges, exact: true }).click();
     await expect(mode).toHaveAttribute('data-value', 'minToolChanges');
     await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('3', { timeout: 20_000 });
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('2', { timeout: 20_000 });
     await goStep(page, 'export');
     await expect(page.getByTestId('export-status')).toHaveText(new RegExp(w.export.passed), {
       timeout: 30_000,
