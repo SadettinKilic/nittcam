@@ -67,8 +67,6 @@ test('machine form: park toggle, out-of-travel error, saved point in the field k
 
   await page.goto(`/makineler/${machine.id}/saha-kiti`);
   const park = page.getByTestId('field-kit-park');
-  await expect(park).toContainText(
-    tr.fieldKit.park.on.replace('{x}', '-50').replace('{y}', '900'),
-  );
+  await expect(park).toContainText(tr.fieldKit.park.on.replace('{x}', '-50').replace('{y}', '900'));
   expect(problems).toEqual([]);
 });
