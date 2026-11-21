@@ -1,6 +1,6 @@
 /** Values the checks derive once from the context (T019, D-027). Pure. */
 import type { Operation } from '../toolpath';
-import { checkFrame, sheetXY, type CheckFrame } from './frame';
+import { checkFrame, type CheckFrame } from './frame';
 import type { GcodeCheckContext, GcodeCheckViolation } from './types';
 
 /** Default tolerances (D-027). */
@@ -32,7 +32,7 @@ export interface Derived {
   limitTol: number;
   layoutTol: number;
   toolMode: 'auto' | 'manual' | 'none';
-  /** T309: sheet-frame park point of a manual tool change, null when the profile has none. */
+  /** T309 (D-097): machine-coordinate (G53) park point of a manual tool change, or null. */
   park: { x: number; y: number } | null;
   /** Vacuum codes as numbers, null when the program is not expected to switch vacuum. */
   vacuum: { on: number; off: number } | null;
@@ -110,7 +110,9 @@ export function derive(
   const frame = checkFrame(profile, stock);
   const parkCfg = profile.toolChanger.park;
   const park =
-    toolMode === 'manual' && parkCfg?.enabled ? sheetXY(frame, parkCfg.x, parkCfg.y) : null;
+    toolMode === 'manual' && parkCfg?.enabled && ctx.post?.motion?.machineCoordinates === true
+      ? { x: parkCfg.x, y: parkCfg.y }
+      : null;
 
   return {
     ok: true,

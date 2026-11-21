@@ -238,6 +238,37 @@ export function motionRules(
           );
         }
         return;
+      case 'machineMove': {
+        // T309 (D-097): a G53 move is only the profile's park point: G0, X and Y both given and
+        // equal to the park, at safe Z, spindle off, and a pause follows before any move.
+        const park = d.park;
+        const pauseFollows = events.some(
+          (x) => x.kind === 'pause' && x.moveIndex === e.moveIndex && x.line >= e.line,
+        );
+        const ok =
+          park !== null &&
+          e.motion === 'G0' &&
+          e.x !== null &&
+          e.y !== null &&
+          Math.abs(e.x - park.x) <= tol &&
+          Math.abs(e.y - park.y) <= tol &&
+          prev !== undefined &&
+          !prev.toAssumed.includes('z') &&
+          prev.to.z >= d.safeZ - tol &&
+          st.spindle === 'off' &&
+          pauseFollows;
+        if (!ok) {
+          push(
+            'R6',
+            'MACHINE_MOVE',
+            e.line,
+            park === null
+              ? 'G53 (machine coordinates) move, but the profile has no park point for this post.'
+              : `G53 move is not the profile's park move (G0 X${park.x} Y${park.y} at safe Z, spindle off, then a pause).`,
+          );
+        }
+        return;
+      }
       case 'coolant':
       case 'mcode':
         if (isVacuum(e, 'on')) {

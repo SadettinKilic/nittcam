@@ -34,3 +34,12 @@ export function controllerProfile(id: string, keep?: MachineProfile): MachinePro
   }
   return p;
 }
+
+/**
+ * The post `id` writes G53 (machine coordinates), so the park point of a manual tool change can be
+ * used (T309, D-097). False for an unknown id or a post without the flag.
+ */
+export function postSupportsMachineCoordinates(id: string): boolean {
+  const parsed = parsePostConfig(POST_CONFIGS[id]);
+  return parsed.ok && parsed.config.motion.machineCoordinates === true;
+}

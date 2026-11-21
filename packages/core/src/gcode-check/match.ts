@@ -10,8 +10,7 @@
  *   monotonically along the model's sweep and the last one must end at the model's end point;
  * - a model move of (near) zero length may be absent (the generator writes nothing for it);
  * - besides the model, only Z-only rapids up to safe Z may appear (the generator's first move,
- *   its retract after a tool change and its end retract), and with a park point in the profile a
- *   rapid at safe Z to that point (manual tool change, T309).
+ *   its retract after a tool change and its end retract).
  * The first divergence is reported; matching stops there. Pure.
  */
 import { operationMoves, type Move, type Operation } from '../toolpath';
@@ -67,24 +66,14 @@ export function matchModel(
 ): MatchOutcome {
   const tol = d.posTol;
   const chordTol = d.ctx.post?.arcs?.chordTolerance ?? CHORD_TOLERANCE;
-  const park = d.park;
-  const isPark = (r: SheetMove): boolean =>
-    park !== null &&
-    r.kind === 'rapid' &&
-    r.toAssumed.length === 0 &&
-    Math.abs(r.to.x - park.x) <= tol &&
-    Math.abs(r.to.y - park.y) <= tol &&
-    r.from.z >= d.safeZ - tol &&
-    r.to.z >= d.safeZ - tol;
   const isExtra = (r: SheetMove): boolean =>
-    isPark(r) ||
-    (r.kind === 'rapid' &&
-      Math.abs(r.to.x - r.from.x) <= tol &&
-      Math.abs(r.to.y - r.from.y) <= tol &&
-      r.fromAssumed.includes('x') === r.toAssumed.includes('x') &&
-      r.fromAssumed.includes('y') === r.toAssumed.includes('y') &&
-      !r.toAssumed.includes('z') &&
-      Math.abs(r.to.z - d.safeZ) <= tol);
+    r.kind === 'rapid' &&
+    Math.abs(r.to.x - r.from.x) <= tol &&
+    Math.abs(r.to.y - r.from.y) <= tol &&
+    r.fromAssumed.includes('x') === r.toAssumed.includes('x') &&
+    r.fromAssumed.includes('y') === r.toAssumed.includes('y') &&
+    !r.toAssumed.includes('z') &&
+    Math.abs(r.to.z - d.safeZ) <= tol;
   const feedOk = (r: SheetMove, feed: number) =>
     r.raw.feed !== null && Math.abs(r.raw.feed - feed) <= d.feedTol;
 

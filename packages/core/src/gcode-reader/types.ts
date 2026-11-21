@@ -72,6 +72,17 @@ export type GcodeEvent =
   | (EventBase & { kind: 'mcode'; code: number })
   /** A feed or arc move with no F defined yet (the T019 checks judge it). */
   | (EventBase & { kind: 'missingFeed' })
+  /**
+   * `G53 G0/G1 X.. Y..` (T309, D-097): an XY move in machine coordinates. The reader does not know
+   * the work offset, so no move is recorded and the moved axes are unknown (assumed) afterwards.
+   * `x`/`y` are the machine values (mm), null when the axis word is absent.
+   */
+  | (EventBase & {
+      kind: 'machineMove';
+      motion: 'G0' | 'G1';
+      x: number | null;
+      y: number | null;
+    })
   | (EventBase & { kind: 'end'; code: 'M2' | 'M30' });
 
 export type GcodeEventKind = GcodeEvent['kind'];

@@ -332,26 +332,36 @@ class Writer {
   }
 
   /**
-   * T309: before a manual tool change pause, go to the profile's park point: up to safe Z, then a
-   * rapid to park X/Y (program coordinates) at safe Z (rules 2 and 6). Nothing when it is off.
+   * T309 (D-097): before a manual tool change pause, go to the profile's park point: up to safe Z,
+   * then `G53 G0 X.. Y..` (machine coordinates, independent of the work zero) at safe Z. Nothing
+   * when the park is off or the post has no G53. XY in the work frame is unknown afterwards.
    */
   private park(): void {
     const park = this.c.profile.toolChanger.park;
-    if (!park?.enabled) return;
-    const f = this.c.frame;
-    const safe = this.c.toolpath.safeZ;
-    if (Math.abs(this.pos.z - safe) > EPS) this.safeZ();
-    // Program X/Y → sheet frame (inverse of toMachine), so the envelope check and position agree.
-    const at: Point3 = { x: f.axX * park.x - f.originDx, y: f.axY * park.y - f.originDy, z: safe };
-    this.finite(at);
-    this.checkEnvelope(at);
-    this.comment('PARK: TAKIM DEĞİŞİM NOKTASI');
-    const words: string[] = [];
-    this.motionWord(this.c.cfg.motion.rapid, words);
-    this.axisWords(toMachine(f, at), words, true);
-    this.block(words);
-    this.pos = at;
-    this.xyKnown = true;
+    if (!park?.enabled || this.c.cfg.motion.machineCoordinates !== true) return;
+    const env = this.c.profile.workEnvelope;
+    if (
+      !Number.isFinite(park.x) ||
+      !Number.isFinite(park.y) ||
+      Math.abs(park.x) > env.x + EPS ||
+      Math.abs(park.y) > env.y + EPS
+    ) {
+      this.fail('OUT_OF_ENVELOPE', 'Park point outside the machine travel.', 6);
+    }
+    if (!this.zKnown || Math.abs(this.pos.z - this.c.toolpath.safeZ) > EPS) this.safeZ();
+    const d = this.c.cfg.decimals.xy;
+    this.comment('PARK: TAKIM DEĞİŞİM NOKTASI (MAKİNE KOORDİNATI)');
+    const rapid = this.c.cfg.motion.rapid;
+    this.block([
+      'G53',
+      rapid,
+      `X${this.num(park.x, d, 'Park X')}`,
+      `Y${this.num(park.y, d, 'Park Y')}`,
+    ]);
+    this.motion = rapid;
+    this.xyKnown = false;
+    this.wx = null;
+    this.wy = null;
     this.atSafeZOnly = false;
   }
 
