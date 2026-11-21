@@ -840,6 +840,13 @@ export interface CutListPartInput {
   note?: string;
 }
 
+/**
+ * Grain of a "Damar: Var / evet" row without an angle column (T318, D-107): along the part's
+ * length (Boy = h = the part's Y axis), i.e. 90° in the part frame, as the workshop means it and
+ * as "Dolap ekle" gives doors and sides. Not the sheet grain (that put Baza 2400 × 100 across).
+ */
+export const GRAIN_ALONG_LENGTH = 90;
+
 /** Sizes in `unit` → mm, rounded to 1 µm so 39.6 cm gives exactly 396 mm. */
 export function toMillimetres(value: number, unit: LengthUnit): number {
   return unit === 'cm' ? Math.round(value * 10 * 1000) / 1000 : value;
@@ -871,7 +878,9 @@ export function cutListToParts(
       edgeBand: { ...edgeBand },
       ...(grainAngle !== null
         ? { grain: { mode: grainLock ? ('fixed' as const) : ('free' as const), angle: grainAngle } }
-        : {}),
+        : grainLock
+          ? { grain: { mode: 'fixed' as const, angle: GRAIN_ALONG_LENGTH } }
+          : {}),
       ...(note !== '' ? { note } : {}),
     };
   });

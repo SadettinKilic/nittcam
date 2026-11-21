@@ -1,11 +1,12 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { openNewProject, paste, projectId, saved } from './wizard-helpers';
+import { openNewProject, paste, pickOption, projectId, saved } from './wizard-helpers';
 
 /**
  * B57 (usta 1 user test, before the field test).
  * T317 (D-106): "Sol / sağ kapak yap" turns a door row of 2 into a left row and a mirrored right
  * row (holes mirrored left ↔ right), one undo step.
+ * T318 (D-107): a pasted "Damar: Var" runs along Boy (90°); bulk edit offers the directions.
  */
 const ins = tr.editor.inspector;
 
@@ -69,4 +70,37 @@ test('T317: Sol / sağ kapak yap gives a mirrored second row; undo restores', as
   await page.getByTestId('wizard-undo').click();
   await saved(page);
   expect((await stored(request, id)).project.parts.map((p) => p.qty)).toEqual([2]);
+});
+
+test('T318: pasted "Var" = grain along Boy (90°); bulk edit sets En boyunca (0°)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page, 'parcalar');
+  await paste(
+    page,
+    [
+      'Parça Adı\tBoy\tEn\tAdet\tDamar',
+      'Üst kapak\t716\t297\t4\tVar',
+      'Baza\t2400\t100\t2\tVar',
+      'Raf\t564\t300\t1\tYok',
+    ].join('\n'),
+    3,
+  );
+  for (const n of [1, 2]) {
+    await expect(page.getByTestId(`grain-cell-${n}`)).toHaveAttribute('data-mode', 'fixed');
+    await expect(page.getByTestId(`grain-cell-${n}`)).toHaveAttribute('data-angle', '90');
+  }
+  await expect(page.getByTestId('grain-cell-3')).toHaveAttribute('data-mode', 'free');
+  // Bulk edit: the direction presets are in the grain select.
+  await page.getByTestId('row-select-all').click();
+  await page.getByTestId('bulk-open').click();
+  const sheet = page.getByTestId('bulk-edit');
+  await pickOption(sheet.getByTestId('bulk-grain'), tr.cutList.bulk.grainAlongW);
+  await sheet.getByTestId('bulk-apply').click();
+  await expect(sheet).toHaveCount(0);
+  for (const n of [1, 2, 3]) {
+    await expect(page.getByTestId(`grain-cell-${n}`)).toHaveAttribute('data-angle', '0');
+    await expect(page.getByTestId(`grain-cell-${n}`)).toHaveAttribute('data-mode', 'fixed');
+  }
 });

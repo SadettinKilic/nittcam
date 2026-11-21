@@ -813,3 +813,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Real parts everywhere: nesting, toolpath, G-code, labels and PDF see two boards, so no per-copy mirror in core output paths (G-code safety rules and goldens untouched).
 - Assembly view: two door rows of one door each are a pair (`AssemblyBox.pair`), placed side by side; both keep the drawing's top on top (face-only work faces the carcass, through-only work faces the front). The row whose handle (through holes, seen from the front) is right of centre hangs left; without through holes the one whose hinges (face-only work) are left of centre. A single row of 2 keeps the T310 / D-101 mapping.
 - The template option "Aynala" only flips the template along its edge; its label now says that ("Kenar boyunca ters çevir").
+
+## D-107 A yes/no grain column means along the part's length (2026-11-21, usta 1 test, Dev 2, T318)
+- Workshop lists say "Damar: Var" for parts whose grain runs along Boy (the long, h side as entered). The import used the old grainLock alias (fixed at the sheet grain angle, usually 0° = along En), so every "Var" part lay across the grain. Now `cutListToParts` gives `{ mode: 'fixed', angle: 90 }` (`GRAIN_ALONG_LENGTH`, part frame: w = En = X, h = Boy = Y) when there is no angle column; an angle column (T120) still wins. Same as "Dolap ekle" (doors and sides 90°).
+- The command alias `grainLock` and the v1 → v2 migration keep their meaning (D-034). The grid checkbox keeps the part's angle.
+- Bulk edit offers the two directions directly (Boy boyunca 90°, En boyunca 0°) next to Serbest and "Açı seç…" (the dial, starting at 90°).

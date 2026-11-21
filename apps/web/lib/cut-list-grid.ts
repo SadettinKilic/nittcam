@@ -169,7 +169,13 @@ export function cutListSummary(
 }
 
 /** Grain choice of the bulk edit (T119): keep, or set free / fixed. */
-export type GrainChoice = '__keep__' | 'free' | 'fixed';
+/**
+ * Bulk grain choice (T119, T318): keep, free, along Boy (90°), along En (0°) or a typed angle
+ * (`fixed`, with the dial).
+ */
+export type GrainChoice = '__keep__' | 'free' | 'alongH' | 'alongW' | 'fixed';
+
+const GRAIN_PRESET: Partial<Record<GrainChoice, number>> = { alongH: 90, alongW: 0 };
 
 /** `updateParts` params from the bulk-edit form (T119); `null` when nothing is to change. */
 export function bulkParams(
@@ -184,7 +190,11 @@ export function bulkParams(
 ): Record<string, unknown> | null {
   const params: Record<string, unknown> = { ids };
   if (form.qty !== null) params.qty = form.qty;
-  if (form.grain !== '__keep__') params.grain = { mode: form.grain, angle: form.angle };
+  if (form.grain === 'free' || form.grain === 'fixed') {
+    params.grain = { mode: form.grain, angle: form.angle };
+  } else if (form.grain !== '__keep__') {
+    params.grain = { mode: 'fixed', angle: GRAIN_PRESET[form.grain] ?? form.angle };
+  }
   const band = Object.fromEntries(
     EDGES.flatMap((e) => (form.edges[e] === null ? [] : [[e, form.edges[e]]])),
   );
