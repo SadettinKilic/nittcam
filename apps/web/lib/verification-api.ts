@@ -55,6 +55,8 @@ export interface VerificationOverview {
   /** The test part the programs cut (null when the profile cannot make it). */
   testPart: TestPartInfo | null;
   origin: { corner: string; sheetOffset: { x: number; y: number } };
+  /** T309: machine-coordinate (G53) park point of a manual tool change; null when not used. */
+  park: { x: number; y: number } | null;
   programs: { airCut: TestProgramPreview; testCut: TestProgramPreview };
   /** T191: the extended field-test part (holes, pocket, groove, arcs, inner contour). */
   extended: {

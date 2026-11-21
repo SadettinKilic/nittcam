@@ -73,6 +73,8 @@ export interface GcodeCheckPostExpectations {
   vacuum?: { enabled: boolean };
   /** Decimals of the written numbers: they set the comparison tolerances. */
   decimals?: { xy: number; z: number; arc: number; feed: number };
+  /** The controller takes G53 (T309, D-097): only then may a park move appear. */
+  motion?: { machineCoordinates?: boolean | undefined };
 }
 
 /** Where one placed part is expected (sheet frame): the centre of its outline's bounding box. */

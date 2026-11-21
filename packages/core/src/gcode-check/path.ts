@@ -2,7 +2,7 @@
  * The read path in the sheet frame (T019, D-027): every move of the reader converted with the
  * checks' own inverse frame, plus small arc helpers. Pure.
  */
-import type { GcodeAxis, GcodeMove } from '../gcode-reader';
+import type { GcodeAxis, GcodeEvent, GcodeMove } from '../gcode-reader';
 import { sheetDirection, sheetPoint, sheetXY, type CheckFrame } from './frame';
 
 export interface P3 {
@@ -34,10 +34,29 @@ export interface SheetMove {
   raw: GcodeMove;
 }
 
-export function toSheetMoves(moves: readonly GcodeMove[], f: CheckFrame): SheetMove[] {
+export function toSheetMoves(
+  moves: readonly GcodeMove[],
+  f: CheckFrame,
+  events: readonly GcodeEvent[] = [],
+): SheetMove[] {
   const out: SheetMove[] = [];
   let prevAssumed: readonly GcodeAxis[] = ['x', 'y', 'z'];
+  // A G53 machine move (T309) makes its axes unknown in the work frame before the next move.
+  const unknownBefore = new Map<number, Set<GcodeAxis>>();
+  for (const e of events) {
+    if (e.kind !== 'machineMove') continue;
+    const set = unknownBefore.get(e.moveIndex) ?? new Set<GcodeAxis>();
+    if (e.x !== null) set.add('x');
+    if (e.y !== null) set.add('y');
+    unknownBefore.set(e.moveIndex, set);
+  }
   moves.forEach((m, index) => {
+    const extra = unknownBefore.get(index);
+    if (extra) {
+      prevAssumed = (['x', 'y', 'z'] as const).filter(
+        (a) => prevAssumed.includes(a) || extra.has(a),
+      );
+    }
     const s: SheetMove = {
       index,
       line: m.line,

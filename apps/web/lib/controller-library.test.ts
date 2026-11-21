@@ -1,7 +1,11 @@
 import { defaultMachineProfile, parsePostConfig } from '@nittcam/core';
 import { POST_CONFIGS } from '@nittcam/machines';
 import { describe, expect, it } from 'vitest';
-import { CONTROLLER_LIBRARY, controllerProfile } from './controller-library';
+import {
+  CONTROLLER_LIBRARY,
+  controllerProfile,
+  postSupportsMachineCoordinates,
+} from './controller-library';
 
 describe('controller library (T181)', () => {
   it('lists generic and Mach3, each pre-filled from its post config', () => {
@@ -23,5 +27,13 @@ describe('controller library (T181)', () => {
     expect(p?.identity).toMatchObject({ name: 'Atölye 1', brand: 'X', model: 'Y', notes: 'n' });
     expect(p?.identity.controller.family).toBe('Mach3');
     expect(controllerProfile('nope')).toBeNull();
+  });
+});
+
+describe('park point needs G53 in the post (T309)', () => {
+  it('shipped posts write G53; an unknown post does not', () => {
+    expect(postSupportsMachineCoordinates('mach3')).toBe(true);
+    expect(postSupportsMachineCoordinates('generic')).toBe(true);
+    expect(postSupportsMachineCoordinates('nope')).toBe(false);
   });
 });

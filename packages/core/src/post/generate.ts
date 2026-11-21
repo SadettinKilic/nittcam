@@ -331,6 +331,40 @@ class Writer {
     this.ready = false;
   }
 
+  /**
+   * T309 (D-097): before a manual tool change pause, go to the profile's park point: up to safe Z,
+   * then `G53 G0 X.. Y..` (machine coordinates, independent of the work zero) at safe Z. Nothing
+   * when the park is off or the post has no G53. XY in the work frame is unknown afterwards.
+   */
+  private park(): void {
+    const park = this.c.profile.toolChanger.park;
+    if (!park?.enabled || this.c.cfg.motion.machineCoordinates !== true) return;
+    const env = this.c.profile.workEnvelope;
+    if (
+      !Number.isFinite(park.x) ||
+      !Number.isFinite(park.y) ||
+      Math.abs(park.x) > env.x + EPS ||
+      Math.abs(park.y) > env.y + EPS
+    ) {
+      this.fail('OUT_OF_ENVELOPE', 'Park point outside the machine travel.', 6);
+    }
+    if (!this.zKnown || Math.abs(this.pos.z - this.c.toolpath.safeZ) > EPS) this.safeZ();
+    const d = this.c.cfg.decimals.xy;
+    this.comment('PARK: TAKIM DEĞİŞİM NOKTASI (MAKİNE KOORDİNATI)');
+    const rapid = this.c.cfg.motion.rapid;
+    this.block([
+      'G53',
+      rapid,
+      `X${this.num(park.x, d, 'Park X')}`,
+      `Y${this.num(park.y, d, 'Park Y')}`,
+    ]);
+    this.motion = rapid;
+    this.xyKnown = false;
+    this.wx = null;
+    this.wy = null;
+    this.atSafeZOnly = false;
+  }
+
   private toolChange(op: Operation): void {
     const cfg = this.c.cfg;
     const first = this.tool === null;
@@ -347,6 +381,7 @@ class Writer {
         this.block(['G43', `H${op.tool}`]);
       }
     } else if (mode === 'manual' && !first) {
+      this.park();
       // No tool length offset: the new tool sticks out a different length, so Z must be re-zeroed (T274, K2).
       const offset = cfg.toolChange.lengthOffset && this.c.profile.toolChanger.lengthCompensation;
       this.comment(
@@ -356,6 +391,7 @@ class Writer {
       );
       this.block([cfg.toolChange.manualStop]);
     } else if (mode === 'manual' && cfg.toolChange.pauseForFirstTool) {
+      this.park();
       this.comment(`TAKIM ${label} TAKILI MI? DEVAM İÇİN CYCLE START`);
       this.block([cfg.toolChange.manualStop]);
     } else {

@@ -63,6 +63,7 @@ const G_GROUP: Record<number, string> = {
   570: 'wcs',
   580: 'wcs',
   590: 'wcs',
+  530: 'machineCoords', // G53: read only as an XY-only G0/G1 move (T309, D-097)
   610: 'pathMode',
   640: 'pathMode',
   800: 'cycle',
@@ -91,7 +92,6 @@ const G_UNSUPPORTED: Record<number, string> = {
   430: 'G43 (tool length offset)',
   510: 'G51 (scaling)',
   520: 'G52 (local offset)',
-  530: 'G53 (machine coordinates)',
   541: 'G54.1 (extra work offsets)',
   680: 'G68 (rotation)',
   730: 'G73 (drill cycle)',
@@ -495,6 +495,29 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
         fail('AXIS_WORD_CONFLICT', 'G4 cannot be combined with a motion code in one line');
       }
     }
+    const machine = has(530);
+    if (machine) {
+      // T309 (D-097): only `G53 G0/G1 X.. Y..` in absolute mode; G53 with Z, arcs, cycles or no
+      // XY words changes the position in a way the reader does not model.
+      const m = motionCode ?? (st.motion === 'G0' ? 0 : st.motion === 'G1' ? 10 : undefined);
+      const absolute = has(900) || (st.distance === 'G90' && !has(910));
+      if (
+        (m !== 0 && m !== 10) ||
+        dwell ||
+        has(810) ||
+        !absolute ||
+        (!val.has('X') && !val.has('Y')) ||
+        val.has('Z') ||
+        val.has('I') ||
+        val.has('J') ||
+        val.has('R')
+      ) {
+        fail(
+          'UNSUPPORTED_CODE',
+          'G53 (machine coordinates) is read only as an absolute G0/G1 X/Y move without Z',
+        );
+      }
+    }
     if (val.has('I') || val.has('J') || val.has('R')) {
       if (val.has('R') && (val.has('I') || val.has('J'))) {
         fail('ARC_INVALID', 'An arc cannot have both R and I/J');
@@ -582,7 +605,24 @@ export function readGcode(text: string, options: GcodeReadOptions = {}): GcodeRe
     }
 
     if (has(980) || has(990)) cycleReturn = has(990) ? 'G99' : 'G98';
-    if (has(810)) {
+    if (machine) {
+      if (motionCode !== undefined) st.motion = MOTION[motionCode] ?? null;
+      const x = val.get('X');
+      const y = val.get('Y');
+      events.push({
+        kind: 'machineMove',
+        motion: st.motion === 'G1' ? 'G1' : 'G0',
+        x: x ? x.value * k : null,
+        y: y ? y.value * k : null,
+        line: lineNo,
+        moveIndex: moveIndex(),
+      });
+      // The work position of the moved axes is unknown from here on.
+      const assumed = new Set<GcodeAxis>(st.assumedAxes);
+      if (x) assumed.add('x');
+      if (y) assumed.add('y');
+      st.assumedAxes = (['x', 'y', 'z'] as const).filter((a) => assumed.has(a));
+    } else if (has(810)) {
       executeDrill(lineNo, block, val, k, f !== undefined);
     } else if (dwell) {
       const p = val.get('P');

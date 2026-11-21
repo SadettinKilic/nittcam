@@ -148,6 +148,19 @@ export const toolChangerSchema = z.strictObject({
   capacity: int().min(PROFILE_BOUNDS.toolCapacity.min).max(PROFILE_BOUNDS.toolCapacity.max),
   /** Tool length compensation (G43) available. */
   lengthCompensation: z.boolean({ error: 'must be true or false' }),
+  /**
+   * Park point for a manual tool change (T309, D-097): when `enabled` and the post supports G53,
+   * the program goes up to safe Z and rapids to X/Y in MACHINE coordinates (`G53 G0 X.. Y..`,
+   * independent of the work zero) before the pause. Optional so older profiles stay valid;
+   * absent = off.
+   */
+  park: z
+    .strictObject({
+      enabled: z.boolean({ error: 'must be true or false' }),
+      x: num().min(-PROFILE_BOUNDS.axisXY.max).max(PROFILE_BOUNDS.axisXY.max),
+      y: num().min(-PROFILE_BOUNDS.axisXY.max).max(PROFILE_BOUNDS.axisXY.max),
+    })
+    .optional(),
 });
 
 /** Tutma: vacuum, clamp or T-slot; vacuum on/off M codes ('' = none). */
@@ -284,6 +297,27 @@ export const machineProfileSchema = z
   .superRefine((p, ctx) => {
     if (p.safeZ > p.workEnvelope.z) {
       crossIssue(ctx, ['safeZ'], 'safeZAboveTravel', 'safe Z must be within the Z travel');
+    }
+    const park = p.toolChanger.park;
+    if (park?.enabled) {
+      // T309 (D-097): machine coordinates (G53) within the travel. Machine zero is the home
+      // position; depending on the controller the travel runs to + or −, so |value| ≤ travel.
+      if (Math.abs(park.x) > p.workEnvelope.x) {
+        crossIssue(
+          ctx,
+          ['toolChanger', 'park', 'x'],
+          'parkOutOfTravel',
+          'park X is outside the X travel',
+        );
+      }
+      if (Math.abs(park.y) > p.workEnvelope.y) {
+        crossIssue(
+          ctx,
+          ['toolChanger', 'park', 'y'],
+          'parkOutOfTravel',
+          'park Y is outside the Y travel',
+        );
+      }
     }
     if (p.holdDown.type === 'vacuum' && p.holdDown.vacuumOn === '' && p.holdDown.vacuumOff !== '') {
       crossIssue(
