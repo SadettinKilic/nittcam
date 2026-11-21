@@ -184,7 +184,7 @@ test.describe('T023 wizard', () => {
           fill(tr.cutList.count, { rows: 5, pieces: 30 }),
         );
       }
-      if (step === 'dizilim') await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
+      if (step === 'dizilim') await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
       if (step === 'simulasyon') {
         await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true', {
           timeout: 30_000,
