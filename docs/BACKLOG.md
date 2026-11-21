@@ -1685,6 +1685,22 @@ Owner 2026-11-21 (D-103): "Dolap eklediğimde 2 kapağı da plakada görmüyorum
 ### T313 Clear distance between parts = tool Ø + clearance (default 0.1 mm)   [status: done]
 Owner 2026-11-21 (D-104): "8'lik takım kullanıyorsak arada offset 8 değil 8,1 mm olmamalı mı?" The rule was already tool Ø + `nesting.gap` (D-019) but the built-in gap was 8, so neighbours stood 16 mm apart. New projects start with gap 0.1 (Ø8 → 8.1 mm clear); per project in step 3, company default in Ayarlar. UI says "Parça arası pay" and "Parça arası boşluk: takım Ø8 + pay 0,1 = 8,1 mm". Rectangle and true-shape placers share `partSpacing`; leads keep their neighbour check (shortened / removed with a warning), tabs stay on the contour. Unit tests: measured clear distance ≥ Ø + clearance for both engines.
 
+### Batch B59: T323, T324 (usta 2 / Elif findings, owner-approved before the field test; Dev 1)
+
+### T323 Per-tool cutting feed and plunge feed   [status: test, B59]
+From: `.team/usta2-rapor.md` #4 (Ø6 and Ø8 both at 6 000 mm/min) · D-111
+- [x] each job tool has its own cutting and plunge feed: recommended from the tool's material set (the job set; a tool chosen per operation (T308) takes its own set, like the T307 rpm); per-tool override in Kesim ayarları (`setToolFeed`, undoable, "İlerlemede önerilene dön")
+- [x] validation: feed/plunge > 0 and inside the machine limits (`machineFeedLimits`: the profile-wide bounds 100–60 000 / 50–30 000 mm/min; the profile has no own max yet) in command, validation (`FEED_OUT_OF_RANGE`), toolpath and post; chip load uses the tool's own feed; plunge > feed warns
+- [x] G-code: F per tool, plunges at the tool's plunge feed; "İLERLEME T..: ..." header line only with an override; checker R5 `FEED_ABOVE_MACHINE`
+- [x] goldens byte-identical with defaults
+
+### T324 Ramp entry for contours   [status: test, B59]
+From: `.team/usta2-rapor.md` #3 (dik dalma uç yakar) · D-111 · Spec §6.3 "Dalma düz veya rampalı"
+- [x] per job "Dalma (konturda): Dik dalma | Rampa" with angle (default 3°, 0,5–45°) and shortest leg (default tool Ø, 1–1 000 mm); `setEntry`; default stays straight (goldens identical)
+- [x] zig-zag along the contour (outer and inner) down to each pass depth at the plunge feed; tabs keep clear of the ramp; the ramp stays on the contour line, so never outside the part's allowed region or into a neighbour; "GİRİŞ: rampa ..." header line
+- [x] checker R3 `RAMP_OUTSIDE_KERF`: a ramp is accepted only on a level cut of the same block (independent of the generator); property test over random contours, depths, passes, tabs, inner cut-outs
+- [ ] per-operation ramp setting (not done: one job setting covers outer and inner contours)
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine

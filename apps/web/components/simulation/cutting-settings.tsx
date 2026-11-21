@@ -301,7 +301,7 @@ function EntrySettings({
   const A = RAMP_BOUNDS.angle;
   const L = RAMP_BOUNDS.length;
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" data-testid="sim-cutting-entry-block">
       <Choice
         legend={t.title}
         name="entry"
@@ -319,6 +319,7 @@ function EntrySettings({
               : { type: 'ramp', angleDeg: RAMP_DEFAULT_ANGLE, length: null },
           )
         }
+        segmented
       />
       {entry ? (
         <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">

@@ -92,15 +92,32 @@ test('T323 + T324: per-tool feed and plunge, ramp entry', async ({ page }) => {
   await checkOk(page);
   await axeClean(page);
 
-  // Visual record of Kesim ayarları (desktop and phone; light theme).
-  await panel.screenshot({ path: test.info().outputPath('t323-1440.png') });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(panel).toBeAttached();
-  const noScroll = await page.evaluate(
-    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-  );
-  expect(noScroll).toBe(true);
-  await page.setViewportSize({ width: 1440, height: 900 });
+  // Visual record of Kesim ayarları (desktop and phone, light and dark); no sideways scroll.
+  for (const width of [1440, 390]) {
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
+      if (width < 1024 && !(await panel.isVisible())) {
+        await page.getByRole('button', { name: 'Ayarlar', exact: true }).click();
+      }
+      await panel.scrollIntoViewIfNeeded();
+      await toastsSettled(page);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(1);
+      const inner = await panel.evaluate((el) => el.scrollWidth - el.clientWidth);
+      expect(inner).toBeLessThanOrEqual(1);
+      for (const block of ['sim-cutting-entry-block', `${rowId}-feeds`]) {
+        const el = page.getByTestId(block);
+        await el.scrollIntoViewIfNeeded();
+        await el.screenshot({
+          path: test.info().outputPath(`t323-${block}-${width}-${scheme}.png`),
+        });
+      }
+      await axeClean(page);
+    }
+  }
 
   await panel.getByLabel(c.entry.straight, { exact: true }).check();
   await expect(entry).toHaveAttribute('data-value', 'straight');
