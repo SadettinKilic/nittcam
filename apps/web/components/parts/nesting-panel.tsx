@@ -1,6 +1,6 @@
 'use client';
 
-import { summarizeLayout, usedOffcutIds, type Project } from '@nittcam/core';
+import { partClearDistance, summarizeLayout, usedOffcutIds, type Project } from '@nittcam/core';
 import { useMemo } from 'react';
 import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
@@ -13,6 +13,8 @@ const sizeFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 type Text = Messages['cutList']['nesting'];
 
 const percent = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+/** Millimetres in the help text: up to 2 decimals, no trailing zeros (0,15 stays 0,15; 8,1 not 8,10). */
+const mm = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 });
 
 /**
  * Minimal nesting panel (T012): the "Diz" button and the result of the current layout (sheet
@@ -62,9 +64,10 @@ export function NestingPanel({
             <PopoverContent align="end" className="flex w-72 flex-col gap-2 text-sm">
               <p className="text-fg">
                 {fill(t.help, {
-                  gap: percent.format(project.nesting.gap),
-                  margin: percent.format(project.nesting.margin),
-                  tool: percent.format(toolDiameter),
+                  gap: mm.format(project.nesting.gap),
+                  clear: mm.format(partClearDistance(toolDiameter, project.nesting.gap)),
+                  margin: mm.format(project.nesting.margin),
+                  tool: mm.format(toolDiameter),
                 })}
               </p>
               <p className="text-xs text-fg-muted">{t.toolNote}</p>

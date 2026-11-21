@@ -107,9 +107,9 @@ describe('newProject with company defaults (T182)', () => {
     expect(p.settings.dimensionMode).toBe('finished');
   });
 
-  it('without defaults it is the built-in start', () => {
+  it('without defaults it is the built-in start (gap 0.1 on top of the tool, T313)', () => {
     const p = newProject();
-    expect(p.nesting).toMatchObject({ gap: 8, margin: 10 });
+    expect(p.nesting).toMatchObject({ gap: 0.1, margin: 10 });
     expect(p.cutting).toEqual({ tabs: { auto: true }, leadIn: 'arc', direction: 'climb' });
   });
 });

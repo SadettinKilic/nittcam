@@ -2,6 +2,7 @@
 
 import {
   minSheetMargin,
+  partClearDistance,
   usableOffcuts,
   type LayoutSummary,
   type NestingMode,
@@ -525,7 +526,11 @@ function NestSettings({
             note={
               toolDiameter > 0
                 ? {
-                    text: fill(t.gapNote, { tool: mmText.format(toolDiameter) }),
+                    text: fill(t.gapNote, {
+                      tool: mmText.format(toolDiameter),
+                      gap: mmText.format(project.nesting.gap),
+                      clear: mmText.format(partClearDistance(toolDiameter, project.nesting.gap)),
+                    }),
                     tone: 'muted',
                     testId: 'layout-gap-note',
                   }
