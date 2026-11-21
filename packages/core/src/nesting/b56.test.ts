@@ -13,6 +13,7 @@ import { buildToolpath } from '../toolpath/build';
 import { machineOf, projectOf } from '../toolpath/toolpath.testing';
 import { MaxRectsBin } from './bins';
 import {
+  better,
   nest,
   nestingInputFromProject,
   nestPartRotations,
@@ -20,6 +21,7 @@ import {
   partSpacing,
   placementRect,
   sizePolicies,
+  type Candidate,
 } from './nest';
 import { invariantViolations } from './nest.testing';
 import { DEFAULT_PART_CLEARANCE, partClearDistance } from './tool';
@@ -131,13 +133,14 @@ function missedFits(input: NestingInput, res: NestingResult): string[] {
   const s = partSpacing(input.toolDiameter, input.gap);
   const parts = new Map(input.parts.map((p) => [p.id, p]));
   const sizes = new Map(input.parts.map((p) => [p.id, { w: p.w, h: p.h }]));
-  const area: Rect = {
-    x: input.margin - s,
-    y: input.margin - s,
-    w: input.sheet.width - 2 * input.margin + 2 * s,
-    h: input.sheet.height - 2 * input.margin + 2 * s,
-  };
   const bins = res.layout.sheets.map((sh) => {
+    const size = sh.size ?? input.sheet;
+    const area: Rect = {
+      x: input.margin - s,
+      y: input.margin - s,
+      w: size.width - 2 * input.margin + 2 * s,
+      h: size.height - 2 * input.margin + 2 * s,
+    };
     const bin = new MaxRectsBin(area, 'bl');
     for (const pl of sh.placements) {
       const r = placementRect(pl, sizes)!;
@@ -163,7 +166,8 @@ function missedFits(input: NestingInput, res: NestingResult): string[] {
   return out;
 }
 
-describe('T312 property: no new sheet while an open sheet has room', () => {
+// With several stock sizes only: one size keeps the old path byte for byte (B56 round 1).
+describe('T312 property: no new sheet while an open sheet has room (several sizes)', () => {
   const partArb = (i: number): fc.Arbitrary<NestPart> =>
     fc.record({
       id: fc.constant(`p${i}`),
@@ -175,6 +179,10 @@ describe('T312 property: no new sheet while an open sheet has room', () => {
   const inputArb: fc.Arbitrary<NestingInput> = fc.integer({ min: 1, max: 10 }).chain((n) =>
     fc.record({
       sheet: fc.constant({ width: 2800, height: 2070 }),
+      sheets: fc.constant([
+        { width: 2800, height: 2070 },
+        { width: 2440, height: 1220 },
+      ]),
       parts: fc.tuple(...Array.from({ length: n }, (_, i) => partArb(i))),
       gap: fc.constantFrom(0, 0.1, 2, 8),
       margin: fc.constant(10),
@@ -260,5 +268,51 @@ describe('T313 leads with a tight clearance', () => {
     const codes = tp.warnings.map((w) => w.code);
     expect(codes).not.toContain('LEAD_SHORTENED');
     expect(codes).not.toContain('LEAD_REMOVED');
+  });
+});
+
+describe('T312 ranking with several sizes (D-102)', () => {
+  const cand = (sheets: { width: number; height: number }[], total = 0): Candidate => ({
+    ordering: 'area',
+    heuristic: 'maxrects-bssf',
+    layout: sheets.map(() => []),
+    dims: sheets,
+    unplaced: [],
+    stats: [],
+    cost: { wasteArea: 0, cutLength: 0, toolChanges: 0, handling: sheets.length, total },
+  });
+  const big = { width: 2800, height: 2070 };
+  const small = { width: 2440, height: 1220 };
+  const many = (n: number, d: { width: number; height: number }) =>
+    Array.from({ length: n }, () => d);
+
+  it('area within 2 %: fewer sheets win (19 big / 110.1 m² vs 37 small / 110.1 m²)', () => {
+    const fewer = cand(many(19, big)); // 110.12 m²
+    const more = cand(many(37, small)); // 110.14 m²
+    expect(better(fewer, more, true)).toBe(true);
+    expect(better(more, fewer, true)).toBe(false);
+  });
+
+  it('0.7 % less area for 13 more sheets loses (the tester 300-part case: 19 vs 32 sheets)', () => {
+    const nineteen = cand(many(19, big)); // 110.12 m²
+    const thirtyTwo = cand(many(32, { width: 2440, height: 1400 })); // 109.31 m², 0.73 % less
+    expect(better(nineteen, thirtyTwo, true)).toBe(true);
+    expect(better(thirtyTwo, nineteen, true)).toBe(false);
+  });
+
+  it('2 % or more less area wins even with more sheets', () => {
+    const one = cand([{ width: 3000, height: 3000 }]); // 9 m²
+    const two = cand(many(2, { width: 2000, height: 2000 })); // 8 m², 11 % less
+    expect(better(two, one, true)).toBe(true);
+    expect(better(one, two, true)).toBe(false);
+  });
+
+  it('the cabinet case: one big sheet (5.80 m²) beats two small ones (5.95 m², 2.7 % more)', () => {
+    expect(better(cand([big]), cand([small, small]), true)).toBe(true);
+  });
+
+  it('equal sheets and area: the objective decides', () => {
+    expect(better(cand([big], 1), cand([big], 2), true)).toBe(true);
+    expect(better(cand([big], 2), cand([big], 1), true)).toBe(false);
   });
 });

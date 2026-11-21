@@ -223,8 +223,9 @@ export function sizePolicies(dims: readonly { offcutId?: string | undefined }[])
 /**
  * Packs the items in the given order with one heuristic. Always terminates: one pass per item.
  * Open sheets come first (T312): every open sheet and every allowed rotation is tried before a new
- * sheet is opened. A guillotine bin keeps only part of its free space, so for those heuristics an
- * exact MaxRects shadow of each sheet is asked too before a new sheet is opened.
+ * sheet is opened. A guillotine bin keeps only part of its free space, so with several stock sizes
+ * an exact MaxRects shadow of each sheet is asked too before a new sheet is opened. One stock size
+ * keeps the old path byte for byte (PO, B56 round 1).
  */
 function pack(
   ctx: Context,
@@ -234,7 +235,7 @@ function pack(
 ): Packed {
   const { input, s } = ctx;
   const bins: Bin[] = [];
-  const exact = heuristic.startsWith('guillotine');
+  const exact = ctx.dims.length > 1 && heuristic.startsWith('guillotine');
   const shadows: MaxRectsBin[] = [];
   const sheets: Placement[][] = [];
   const sizeOf: number[] = [];
@@ -545,17 +546,29 @@ export interface Candidate {
 const sheetArea = (c: Candidate) => c.dims.reduce((s, d) => s + d.width * d.height, 0);
 
 /**
+ * Total sheet areas closer than this share count as equal (D-102): then fewer sheets win, since
+ * handling 13 more sheets for 0.7 % less board is a bad trade.
+ */
+export const SHEET_AREA_TOLERANCE = 0.02;
+
+/**
  * Candidate ranking: fewer unplaced copies, then fewer sheets, then the objective. With several
- * stock sizes (`mixed`, D-056) the total sheet area replaces the sheet count (two small sheets
- * can beat one big one), then the objective. One size: the area is the count times one size, but
- * the count is compared as before so single-size results stay byte-identical.
+ * stock sizes (`mixed`, D-056, D-102) the total sheet area decides when it differs by
+ * `SHEET_AREA_TOLERANCE` or more (two small sheets can beat one big one); within it fewer sheets
+ * win, then less area, then the objective. One size: the count is compared as before, so
+ * single-size results stay byte-identical.
  */
 export function better(a: Candidate, b: Candidate, mixed: boolean): boolean {
-  return (
-    (a.unplaced.length - b.unplaced.length ||
-      (mixed ? sheetArea(a) - sheetArea(b) : a.layout.length - b.layout.length) ||
-      a.cost.total - b.cost.total) < 0
-  );
+  const unplaced = a.unplaced.length - b.unplaced.length;
+  if (unplaced !== 0) return unplaced < 0;
+  if (!mixed) {
+    return (a.layout.length - b.layout.length || a.cost.total - b.cost.total) < 0;
+  }
+  const areaA = sheetArea(a);
+  const areaB = sheetArea(b);
+  const close = Math.abs(areaA - areaB) < SHEET_AREA_TOLERANCE * Math.min(areaA, areaB);
+  if (!close) return areaA < areaB;
+  return (a.layout.length - b.layout.length || areaA - areaB || a.cost.total - b.cost.total) < 0;
 }
 
 /** Optional callbacks of a placer run (T163). They never change the result. */
