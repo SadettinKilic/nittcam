@@ -74,6 +74,13 @@ export const contourSchema = z
 // Holes (spec §4.5)
 // ---------------------------------------------------------------------------
 
+/** T308: a tool number chosen for an operation (1–99, the profile's tool numbers). */
+const operationToolNumber = z
+  .number({ error: 'tool must be a number' })
+  .int({ error: 'tool must be a whole number' })
+  .min(1, { error: 'tool must be 1–99' })
+  .max(99, { error: 'tool must be 1–99' });
+
 const holeBase = {
   /** Unique within the part (commands address holes by id). */
   id: nonEmptyId,
@@ -468,6 +475,9 @@ export const layoutSchema = z.strictObject({
   ),
 });
 
+/** Profile-wide spindle bounds (= `PROFILE_BOUNDS.rpm`, kept equal by a test; no machine import here). */
+export const SPINDLE_RPM_BOUNDS = { min: 1_000, max: 60_000 } as const;
+
 export const cuttingSchema = z.strictObject({
   /**
    * Tabs (§6.3, D-022). `auto: true` = tabs on every part, placed automatically; `false` = tabs only
@@ -499,6 +509,38 @@ export const cuttingSchema = z.strictObject({
   direction: z.enum(['climb', 'conventional'], {
     error: 'direction must be "climb" or "conventional"',
   }),
+  /**
+   * T307 (D-098): spindle speed chosen for this project, per tool number ("2" → 20000 rpm).
+   * Absent tool = the recommended value (the material parameter set's rpm). The machine's own
+   * min/max is checked by `setSpindleRpm`, the validation (`SPINDLE_RPM_OUT_OF_RANGE`), the
+   * toolpath and the post; the schema only holds the profile-wide bounds. Optional; older projects
+   * stay valid.
+   */
+  spindleRpm: z
+    .record(
+      z.string().regex(/^[1-9]\d?$/, { error: 'tool number key must be 1–99' }),
+      z
+        .number({ error: 'rpm must be a number' })
+        .int({ error: 'rpm must be a whole number' })
+        .min(SPINDLE_RPM_BOUNDS.min, { error: `rpm must be at least ${SPINDLE_RPM_BOUNDS.min}` })
+        .max(SPINDLE_RPM_BOUNDS.max, { error: `rpm must be at most ${SPINDLE_RPM_BOUNDS.max}` }),
+    )
+    .optional(),
+  /**
+   * T308 (D-099): cutting tool chosen for this project, per operation (tool number). Absent = the
+   * default: outer and inner contours cut with the material set's tool, pocket and through holes
+   * with each hole's own tool. Suitability (type, diameter, flute length) is checked against the
+   * machine by `setOperationTool`, the validation and the toolpath. Optional; older projects stay
+   * valid.
+   */
+  tools: z
+    .strictObject({
+      outer: operationToolNumber.optional(),
+      inner: operationToolNumber.optional(),
+      pocket: operationToolNumber.optional(),
+      hole: operationToolNumber.optional(),
+    })
+    .optional(),
 });
 
 /**

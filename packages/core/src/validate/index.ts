@@ -23,6 +23,14 @@ import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../edito
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { lineLeavesPart } from '../editor/lines';
 import { unsecuredSlugs } from '../toolpath/slug-check';
+import { spindleSettingsOf } from '../toolpath/spindle';
+import {
+  contourTool,
+  effectiveHoleTool,
+  operationToolChoice,
+  operationsInJob,
+} from '../toolpath/op-tools';
+import { operationToolProblem } from '../toolpath/op-tool-choice';
 import { toCutSizes } from '../schema/cut-size';
 
 export type ValidationSeverity = 'error' | 'warning';
@@ -39,6 +47,8 @@ export type ValidationCode =
   | 'PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
   | 'CUTTING_PARAMS_UNVERIFIED'
+  | 'SPINDLE_RPM_OUT_OF_RANGE'
+  | 'OPERATION_TOOL_UNSUITABLE'
   | 'SHEET_LARGER_THAN_TABLE'
   | 'HOLE_OUTSIDE_PART'
   | 'INNER_CONTOUR_INVALID'
@@ -222,15 +232,17 @@ export const holeVsTool: ValidationRule = (project, context) => {
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     part.holes.forEach((hole, h) => {
-      const problem = holeToolProblem(hole, machine.tools);
+      // T308: the project's tool for the hole's operation, else the hole's own.
+      const toolNo = effectiveHoleTool(project, hole);
+      const problem = holeToolProblem({ ...hole, tool: toolNo }, machine.tools);
       if (!problem) return;
-      const tool = findTool(machine, hole.tool);
+      const tool = findTool(machine, toolNo);
       if (!tool || problem.code === 'TOOL_NOT_IN_PROFILE') {
         issues.push({
           code: 'TOOL_NOT_IN_PROFILE',
           severity: 'error',
           path: formatPath(['parts', i, 'holes', h, 'tool']),
-          message: `${hole.type} "${hole.id}" in part "${part.id}" uses tool T${hole.tool}, which is not in the machine's tool table`,
+          message: `${hole.type} "${hole.id}" in part "${part.id}" uses tool T${toolNo}, which is not in the machine's tool table`,
         });
         return;
       }
@@ -382,6 +394,51 @@ export const unverifiedCuttingParams: ValidationRule = (project, context) => {
 };
 
 /**
+ * (e3) T308 (D-099): a tool chosen per operation that no longer suits the job (wrong type, too
+ * short, wider than the layout spacing, a drill for holes of another size). An error; the
+ * toolpath refuses it too; "Önerilene dön" clears it. Skipped without a profile.
+ */
+export const operationToolUnsuitable: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || !project.cutting.tools) return [];
+  return operationsInJob(project).flatMap((op) => {
+    const tool = operationToolChoice(project, op);
+    if (tool === undefined) return [];
+    const problem = operationToolProblem(project, machine, op, tool);
+    // Hole sizes and inner openings are reported where they are drawn (rules above).
+    if (problem === null || problem === 'HOLE_SMALLER' || (op === 'inner' && problem === 'CONTOUR'))
+      return [];
+    return [
+      {
+        code: 'OPERATION_TOOL_UNSUITABLE' as const,
+        severity: 'error' as const,
+        path: `cutting.tools.${op}`,
+        message: `tool T${tool} chosen for the ${op} operation does not suit this job (${problem})`,
+      },
+    ];
+  });
+};
+
+/**
+ * (e2) T307 (D-098): a project spindle speed outside the selected machine's spindle range (an old
+ * project on another machine, or a hand-edited file). An error: the toolpath and the post refuse it
+ * too; "Önerilene dön" clears it. Only the job's tools count (a stale value of an unused tool is
+ * never cut). Skipped without a profile.
+ */
+export const spindleRpmOutOfRange: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || !project.cutting.spindleRpm) return [];
+  return spindleSettingsOf(project, machine)
+    .filter((s) => s.outOfRange)
+    .map(({ tool, rpm }) => ({
+      code: 'SPINDLE_RPM_OUT_OF_RANGE' as const,
+      severity: 'error' as const,
+      path: `cutting.spindleRpm.${tool}`,
+      message: `spindle speed ${rpm} rpm for T${tool} is outside the machine's range ${machine.spindle.minRpm}–${machine.spindle.maxRpm}`,
+    }));
+};
+
+/**
  * T300 (CTO #12 E1, D-085): the smallest sheet margin that keeps the cutter on the sheet. An
  * outside profile runs the tool centre one radius outside the part, so a part on a margin below
  * the radius sends the tool past the sheet edge (and past the work envelope when the sheet sits
@@ -479,7 +536,8 @@ export const holeInsidePart: ValidationRule = (project) => {
 export const innerContourRules: ValidationRule = (project, context) => {
   const machine = context?.machine;
   const params = machine ? findMaterialParams(machine, project.stock) : undefined;
-  const tool = machine && params ? findTool(machine, params.tool) : undefined;
+  const tool =
+    machine && params ? findTool(machine, contourTool(project, 'inner', params.tool)) : undefined;
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     if (part.inners.length === 0) return;
@@ -564,6 +622,8 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   placementGrain,
   noCuttingParams,
   unverifiedCuttingParams,
+  spindleRpmOutOfRange,
+  operationToolUnsuitable,
   marginBelowToolRadius,
   sheetLargerThanTable,
   holeInsidePart,

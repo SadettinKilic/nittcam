@@ -180,3 +180,4 @@ export {
   snapGrainAngle,
   stepGrainAngle,
 } from './lib/angle';
+export { Slider, type SliderProps } from './components/slider';

@@ -21,6 +21,7 @@ export function SummaryCard({
   program = null,
   templateNames = [],
   cutting = null,
+  stale = false,
 }: {
   t: SimText;
   summary: SimSummary;
@@ -36,6 +37,8 @@ export function SummaryCard({
   links?: PartLinks;
   /** T294: one line with the cutting settings and a way to the panel ("Kesim ayarları"). */
   cutting?: { line: string; edit: string } | null;
+  /** T307: the shown run is for the previous project state; the new one is on its way. */
+  stale?: boolean;
 }) {
   const s = t.summary;
   // Measure (T195): Turkish digits, tabular figures, the unit quieter than the number.
@@ -59,6 +62,7 @@ export function SummaryCard({
     <section
       aria-labelledby="sim-summary-title"
       data-testid="sim-summary"
+      aria-busy={stale || undefined}
       className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-xs"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -67,8 +71,8 @@ export function SummaryCard({
         </h2>
         <p
           data-testid="sim-check-status"
-          data-ok={checksOk}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${checksOk ? 'border-success-border bg-success-subtle text-success-text' : 'border-danger-border bg-danger-subtle text-danger-text'}`}
+          data-ok={stale ? 'pending' : checksOk}
+          className={`inline-flex transition-opacity duration-(--duration-fast) ${stale ? 'opacity-60' : ''} items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${checksOk ? 'border-success-border bg-success-subtle text-success-text' : 'border-danger-border bg-danger-subtle text-danger-text'}`}
         >
           <span aria-hidden="true">{checksOk ? '✓' : '✕'}</span>
           {checksOk ? s.checksOk : fill(s.checksFail, { count: errorCount })}

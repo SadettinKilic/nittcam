@@ -30,6 +30,8 @@ import {
 import { programTools, type ProgramTools } from './program-tools';
 import { unverifiedTemplateNames } from '../template';
 import { cuttingSettingsOf } from '../toolpath/cutting-settings';
+import { spindleOverridesOf } from '../toolpath/spindle';
+import { operationToolChoice, operationsInJob } from '../toolpath/op-tools';
 
 export interface ExportNcOptions {
   /** Header and file name; default "NittCam". */
@@ -121,6 +123,15 @@ export function cuttingMeta(
     leadIn: c.leadIn,
     direction: c.direction,
   };
+  // T307: only when the project has its own spindle speed, so default programs stay byte-identical.
+  const spindle = spindleOverridesOf(project, profile);
+  if (spindle.length > 0) cutting.spindle = spindle;
+  // T308: the same for the tools chosen per operation.
+  const tools = operationsInJob(project).flatMap((op) => {
+    const tool = operationToolChoice(project, op);
+    return tool === undefined ? [] : [{ op, tool }];
+  });
+  if (tools.length > 0) cutting.tools = tools;
   return { cutting };
 }
 

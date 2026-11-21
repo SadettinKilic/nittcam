@@ -207,14 +207,19 @@ export function SimulationView({
   // A run for an older name or revision stays on screen until the new one arrives (the
   // program is the same; only the header differs), so playback is not interrupted by an autosave.
   const fresh = run && run.project === project && run.machineKey === machineKey ? run : null;
-  const response = fresh?.response ?? null;
+  // T307: after a project change (a "Kesim ayarları" command) the last run for the same machine
+  // stays on screen until the new one arrives, marked stale. Dropping it to the loading view would
+  // swap the panel tree and remount the settings, so a focused slider or field lost focus.
+  const shown = fresh ?? (run && run.machineKey === machineKey ? run : null);
+  const stale = shown !== null && shown !== fresh;
+  const response = shown?.response ?? null;
   const result = response?.ok ? response.result : null;
   const sheets = result?.ok ? result.sheets : [];
   const sheet = Math.min(sheetIndex, Math.max(0, sheets.length - 1));
   const generated = sheets[sheet] ?? null;
   // T262: the revision is only known once the changes are saved; until then the header says so.
-  const pending = !saved || (fresh !== null && fresh.meta.revision !== revision);
-  const runRevision = fresh?.meta.revision ?? revision;
+  const pending = !saved || (shown !== null && shown.meta.revision !== revision);
+  const runRevision = shown?.meta.revision ?? revision;
   const sim = useMemo(
     () =>
       generated && pending
@@ -304,6 +309,7 @@ export function SimulationView({
             edit: t.cutting.summaryEdit,
           }}
           checksOk={errors.length === 0}
+          stale={stale}
           errorCount={errors.length}
           warnings={warnings}
           errors={errors}
