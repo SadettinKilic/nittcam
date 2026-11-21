@@ -1452,6 +1452,23 @@ Tester focus: true-shape and arc-tabs goldens read back clean; nesting property 
 
 Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.
 
+
+### T307 Spindle speed (devir) editable per project   [status: done, B54]
+Spec: §4.x / §7 "Malzeme = parametre seti", "Kesim parametreleri … varsayılanlar malzeme parametre setinden" · From: owner request 2026-11-21, before the field test (M9) · D-098
+Acceptance:
+- [x] default = the material set rpm of the job; per-tool override as an undoable command stored in the project; "Önerilene dön"
+- [x] S word + "DEVİR" header line use the override; server export the same; out-of-range refused by command, validation, toolpath, post
+- [x] Simülasyon "Kesim ayarları": slider + typed field, recommended tick, ±20 % band, warning line, chip load, keyboard + screen reader
+- [x] goldens unchanged without an override
+Tester focus: gcode-safety (S within range, M3 + dwell before cutting), keyboard on the slider, undo, old project with an out-of-range value.
+
+### T308 Cutting tool per operation, per job   [status: done, B54]
+From: PO 2026-11-21 (after T307) · D-099
+Today the outer/inner contour tool comes from the material set (`set.tool`), hole/pocket tools from the operation; the user cannot change them per job. Acceptance:
+- [x] in "Kesim ayarları" next to the T307 rows: one tool picker per operation (dış kontur, iç kontur, cep, delik); only suitable types (contour/pocket: flat end mill + compression; hole: drill + flat end mill) and diameters that pass the existing rules (inner corner / slot width)
+- [x] default = today's choice; "Önerilene dön"; an undoable command; the server export uses it; goldens unchanged by default
+- [x] a changed tool takes its spindle recommendation (T307) from that tool's set
+
 ### T248 Phone cut list: compact cards, one-row toolbar (moved here; text above in B8a)   [status: done]
 
 ### T255 Phone Simülasyon transport visible, short header label   [status: done]
@@ -1640,10 +1657,10 @@ Tester focus: final full run (unit, property, golden, e2e, visual, axe, perf) wi
 
 ### Batch B54: T307–T308 (owner requests 2026-11-21, before the field test; Dev 1, PR #161)
 
-### T307 Spindle speed per project (slider)   [status: todo]
+### T307 Spindle speed per project (slider)   [status: done, B54 #161; details above]
 Owner 2026-11-21. Default = rpm of the job material set; per-tool override in Simülasyon "Kesim ayarları" (slider + field, recommended tick, ±20 % band, chip load), within the machine min/max (command + validator), NC `S` and header show it; no override = same bytes.
 
-### T308 Per-job tool choice per operation   [status: todo]
+### T308 Per-job tool choice per operation   [status: done, B54 #161; details above]
 Owner 2026-11-21. Outer / inner contour, pocket, hole: pick a compatible tool from the machine profile (default = today), "Önerilene dön", rpm suggestion follows the tool.
 
 ### Batch B55: T309 (owner request 2026-11-21; Dev 2, PR #162)
