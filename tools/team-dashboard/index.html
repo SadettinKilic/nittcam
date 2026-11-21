@@ -8,7 +8,7 @@
   --accent:#2f56e3; --accent-subtle:#eff4ff; --accent-border:#c0d2fd; --accent-text:#2443c8;
   --ok:#039855; --ok-subtle:#ecfdf3; --warn:#b54708; --warn-c:#f79009; --warn-subtle:#fffaeb; --bad:#d92d20; --bad-subtle:#fef3f2; --bad-border:#fecdca;
   --floor:#e8ebef; --room:#fcfcfd; --wall:#9da5b3; --glass:#c0d2fd; --desk:#d9dee6; --desk-edge:#b3bac6; --screen:#1e2229; --sofa:#c0d2fd; --plant:#12b76a; --rack:#3f4652; --chair:#586170; --skin:#f2c9a4;
-  --c-po:#2f56e3; --c-dev:#0e9384; --c-dev2:#5f8f16; --c-tester:#dc6803; --c-devops:#0086c9; --c-fable:#7a5af8;
+  --c-po:#2f56e3; --c-dev:#0e9384; --c-dev2:#5f8f16; --c-tester:#dc6803; --c-devops:#0086c9; --c-fable:#7a5af8; --c-usta1:#c11574; --c-usta2:#a15c07;
   --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --f-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",monospace;
   color-scheme:light;
@@ -19,7 +19,7 @@
   --accent:#4470f0; --accent-subtle:#141c38; --accent-border:#26356e; --accent-text:#94b3fb;
   --ok:#32d583; --ok-subtle:#052e1d; --warn:#fdb022; --warn-c:#fdb022; --warn-subtle:#2b1d05; --bad:#f97066; --bad-subtle:#2a0f0c; --bad-border:#571d16;
   --floor:#0d0f12; --room:#16191e; --wall:#3f4652; --glass:#26356e; --desk:#2a2f38; --desk-edge:#3f4652; --screen:#08090b; --sofa:#213380; --plant:#12b76a; --rack:#2a2f38; --chair:#3f4652; --skin:#e9b98f;
-  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-tester:#f79009; --c-devops:#36bffa; --c-fable:#9b8afb;
+  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-tester:#f79009; --c-devops:#36bffa; --c-fable:#9b8afb; --c-usta1:#f670c7; --c-usta2:#fac515;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
@@ -28,7 +28,7 @@
   --accent:#4470f0; --accent-subtle:#141c38; --accent-border:#26356e; --accent-text:#94b3fb;
   --ok:#32d583; --ok-subtle:#052e1d; --warn:#fdb022; --warn-c:#fdb022; --warn-subtle:#2b1d05; --bad:#f97066; --bad-subtle:#2a0f0c; --bad-border:#571d16;
   --floor:#0d0f12; --room:#16191e; --wall:#3f4652; --glass:#26356e; --desk:#2a2f38; --desk-edge:#3f4652; --screen:#08090b; --sofa:#213380; --plant:#12b76a; --rack:#2a2f38; --chair:#3f4652; --skin:#e9b98f;
-  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-tester:#f79009; --c-devops:#36bffa; --c-fable:#9b8afb;
+  --c-po:#6690f7; --c-dev:#15b79e; --c-dev2:#8fcf3a; --c-tester:#f79009; --c-devops:#36bffa; --c-fable:#9b8afb; --c-usta1:#f670c7; --c-usta2:#fac515;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -189,6 +189,18 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
 .answered li b{color:var(--fg);font-weight:550}
 
 /* log */
+.fb{list-style:none;margin:0;padding:0;max-height:360px;overflow:auto}
+.fb li{display:grid;grid-template-columns:26px 96px minmax(0,1fr) auto;gap:10px;padding:7px 2px;border-top:1px solid var(--border);font-size:13.5px;align-items:center}
+.fb li:first-child{border-top:0}
+.fb .k{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;font-weight:700;font-family:var(--f-mono);font-size:14px;border:1px solid}
+.fb .k.plus{color:var(--ok);background:var(--ok-subtle);border-color:var(--ok)}
+.fb .k.minus{color:var(--bad);background:var(--bad-subtle);border-color:var(--bad-border)}
+.fb .k.ask{color:var(--warn);background:var(--warn-subtle);border-color:var(--warn-c)}
+.fb .w{font-size:12px;font-weight:650;color:var(--c,var(--muted))}
+.fb .tx{white-space:pre-wrap;overflow-wrap:anywhere}
+.fb time{font-family:var(--f-mono);font-size:12px;color:var(--subtle)}
+.fb li.e{display:block}.fb .empty{color:var(--muted)}
+@media (max-width:720px){.fb li{grid-template-columns:26px minmax(0,1fr) auto}.fb .tx{grid-column:2/-1}}
 .log{list-style:none;margin:0;padding:0;max-height:420px;overflow:auto}
 .log li{display:grid;grid-template-columns:44px 64px minmax(0,1fr);gap:10px;padding:6px 2px;border-top:1px solid var(--border);font-size:13px;align-items:baseline}
 .log li:first-child{border-top:0}
@@ -266,6 +278,11 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     <div class="crew" id="crew"></div>
   </section>
 
+  <section class="card" id="ustalar" aria-labelledby="h-usta" hidden>
+    <div class="sec-h"><h2 id="h-usta">Usta yorumları</h2><span class="meta" id="fbMeta">en yeni önce</span></div>
+    <ul class="fb" id="fbList"></ul>
+  </section>
+
   <section class="card" id="fazlar" aria-labelledby="h-faz">
     <div class="sec-h"><h2 id="h-faz">Fazlar</h2><span class="meta" id="rmMeta">docs/BACKLOG.md</span></div>
     <div class="overall" id="overall"></div>
@@ -301,9 +318,14 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     {key:'tester', name:'Tester', role:'Test', hair:'#7a4a24'},
     {key:'devops', name:'DevOps', role:'Entegrasyon ve CI', hair:'#2b2f39', on:true},
     {key:'fable', name:'CTO', role:'Tasarım ve ürün incelemesi', hair:'#c9c3b8', on:true},
+    // T315 guest seats: CNC operators testing the app as real users; shown while `status.mjs seat <key> on` (state.ustas)
+    {key:'usta1', name:'Usta 1 · Kemal', tag:'KEMAL', role:'CNC operatörü (Alphacam + nesting)', hair:'#4a4038', guest:true},
+    {key:'usta2', name:'Usta 2 · Elif', tag:'ELİF', role:'CNC operatörü (SolidCAM / Fusion)', hair:'#2a1a12', guest:true},
   ];
-  // D-054: "paralellik on" = the whole crew, "off" = PO, Dev 1, Tester (status.mjs mode on|off; default on)
-  const rosterOf = (mode)=>CREW.filter(c=>mode==='off' ? !c.on : true);
+  const USTA_KEYS = CREW.filter(c=>c.guest).map(c=>c.key);
+  const seatOn = (k)=>{ const u = (S.ustas||{})[k]; return !!u && u.on!==false; };
+  // D-054: "paralellik on" = the whole crew, "off" = PO, Dev 1, Tester (status.mjs mode on|off; default on); guest seats in both modes
+  const rosterOf = (mode)=>CREW.filter(c=>c.guest ? seatOn(c.key) : mode==='off' ? !c.on : true);
   const $ = (id) => document.getElementById(id);
   const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const trunc = (s,n) => { s = String(s||''); return s.length>n ? s.slice(0,Math.max(1,n-1))+'…' : s; };
@@ -373,6 +395,8 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     tester:{c:'#f08a1c', d:'#c45f07', h:'#7a4a24', a:'#d9480f', b:'#a8370a', acc:'cap', tag:'#dc6803'},
     devops:{c:'#1aa0dc', d:'#0b6f9e', h:'#2b2f39', a:'#1b1e24', b:'#f4c542', acc:'glasses', tag:'#0086c9'},
     fable:{c:'#8466f9', d:'#5d40d8', h:'#e4dfd6', a:'#f4c542', b:'#f4c542', acc:'scarf', tag:'#7a5af8'},
+    usta1:{c:'#6b7280', d:'#4b5260', h:'#4a4038', a:'#f79009', b:'#f79009', acc:'phones', tag:'#c11574'}, // grey work coat + orange ear defenders
+    usta2:{c:'#2c4a7a', d:'#1d3357', h:'#2a1a12', a:'#e9ecf0', b:'#f4c542', acc:'glasses', tag:'#a15c07'}, // navy overall + safety glasses
     tea:{c:'#d65a8a', d:'#a33a63', h:'#5a3a2a', a:'#f4f1ea', b:'#e3d9c6', acc:'cap', tag:'#c2417a'}, // ambient tea lady: headscarf + apron colours
   };
   const SKIN = '#f2c9a4', EYE = '#2a1f1a', PANTS = '#2f3542', SHOE = '#15171c';
@@ -514,6 +538,11 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       });
       SP.bench = [{room:'lab', x:mx, y:by+16, face:'up', pose:'sit', scr:'lab'}, tall ? {room:'lab', x:cx0+(cw>>1), y:by+16, face:'up', pose:'sit', scr:'cnc'} : {room:'lab', x:mx2, y:by+16, face:'up', pose:'sit', scr:'lab2'}];
       SP.bench.forEach(chairB);
+      // T315 operators' desk below the bench, clear of the bench seats' walking lines (wide x mx/mx2, tall x mx/cnc)
+      { const dw = tall?24:52, dx = tall ? r.x+20 : r.x+49, dy = r.y+(tall?40:38), off = tall?6:14, us = [dx+off, dx+dw-off];
+        desk(dx, dy, dw, us.map((x,k)=>({x, id:'usta'+k})), tall?null:{mug:dx+(dw>>1)-1});
+        SP.usta = us.map((x,k)=>({room:'lab', x, y:dy+16, face:'up', pose:'sit', scr:'usta'+k}));
+        SP.usta.forEach(chairB); }
       if(!tall) plant(r.x+7, r.y+r.h-3);
     }
     // break area: rug, sofa, coffee counter, side table with lamp
@@ -526,6 +555,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       SP.brk = [0,1,2,3].map(i=>({room:'brk', x:sx+Math.round(sw*(i+.5)/4), y:sy+16, face:'down', pose:'sit', cup:true}));
       const cx = r.x+3+pw+6, cwid = tall ? Math.min(26, r.x+r.w-cx-3) : 34;
       L.coffee = {x:cx+8, y:r.y-8};
+      SP.brkStand = [0,1].map(i=>({room:'brk', x:cx+4+i*10, y:r.y+19, face:'up', pose:'stand'})); // extra standing spots at the coffee counter (crowded break)
       add(r.y+10, (c)=>{ F(c,cx,r.y,cwid,5,P.deskTop); F(c,cx,r.y,cwid,1,P.deskHi); F(c,cx,r.y+5,cwid,5,P.deskFr);
         F(c,cx+3,r.y-10,9,12,P.machine); F(c,cx+3,r.y-10,9,1,P.machHi); F(c,cx+5,r.y-6,5,2,'#20232a'); F(c,cx+6,r.y-4,3,1,'#20232a'); F(c,cx+6,r.y,3,2,'#f4f1ea');
         F(c,cx+15,r.y-2,2,3,'#f4f1ea'); F(c,cx+18,r.y-2,2,3,'#f2c94c'); if(cwid>26){ F(c,cx+23,r.y-4,6,5,'#b9463a'); F(c,cx+23,r.y-4,6,1,'#d4655a'); } });
@@ -724,7 +754,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
       if(!A.vis || A.path.length || A.amb || !A.grp || A.grp==='door') continue;
       const sp = spotOf(A.grp, A.idx);
       if(A.st==='coding' && sp.scr) s.scr[sp.scr==='cnc'?'lab':sp.scr] = 'code';
-      if(A.st==='testing'){ s.testing = true; s.scr[sp.scr==='lab2'?'lab2':'lab'] = 'test'; }
+      if(A.st==='testing'){ s.testing = true; s.scr[sp.scr==='lab2' || /^usta/.test(sp.scr||'') ? sp.scr : 'lab'] = 'test'; }
       if(A.st==='reviewing' && sp.scr==='po') s.scr.po = 'doc';
       if((A.st==='reviewing') && sp.room==='meet') s.meeting = true;
       if(A.st==='planning' && A.grp==='board') s.planning = true;
@@ -824,7 +854,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     for(const p of L.plaques){ F(c,p.x,p.y,p.w,9,P.plaque); F(c,p.x,p.y+9,p.w,1,'rgba(0,0,0,.25)'); ptext(c,p.s,p.x+2,p.y+3,P.plaqueT); }
     // name tags, nudged so they never overlap
     const tags = [];
-    for(const A of [...Object.values(actors), ...NPCS]){ if(!A.vis) continue; const b = actorBox(A,t), s = A.c.name.toUpperCase(), w = ptw(s)+4;
+    for(const A of [...Object.values(actors), ...NPCS]){ if(!A.vis) continue; const b = actorBox(A,t), s = A.c.tag || A.c.name.toUpperCase(), w = ptw(s)+4;
       tags.push({A, x:b.x-(w>>1), y:b.y+2, w, s}); }
     tags.sort((a,b)=>a.x-b.x);
     tags.forEach((g,i)=>{ for(let j=0;j<i;j++){ const o = tags[j]; if(g.x < o.x+o.w+1 && o.x < g.x+g.w+1 && Math.abs(g.y-o.y) < 8) g.y = o.y+8; } });
@@ -1183,13 +1213,14 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   // where each agent stands, from its state (D-054): Tester at the bench, Dev 1/Dev 2 at the dev desks (also while testing),
   // PO in its office, DevOps at the console in the server / CI room, CTO in the meeting room while working; idle → break room.
   const isCTO = (c)=>c.key==='fable';
-  const ALT = [{spot:'meet', i:0}, {spot:'board', i:0}, {spot:'board', i:1}, {spot:'brk', i:3}, {spot:'brk', i:2}, {spot:'brk', i:1}, {spot:'brk', i:0}]; // standing fallbacks when a group is full
+  const ALT = [{spot:'meet', i:0}, {spot:'board', i:0}, {spot:'board', i:1}, {spot:'brk', i:3}, {spot:'brk', i:2}, {spot:'brk', i:1}, {spot:'brk', i:0}, {spot:'brkStand', i:0}, {spot:'brkStand', i:1}]; // standing fallbacks when a group is full
   function spotFor(c, st, ctx){
     if(isCTO(c) && (ctx.limited || st==='idle') && L.SP.balc) return {spot:'balc', i:0}; // owner: the idle CTO smokes a cigar on the balcony
     if(ctx.limited) return {spot:'brk'};
     if(st==='idle') return {spot:'brk'};
     if(isCTO(c)) return {spot:'meet', i:0};
     if(c.key==='devops') return {spot:'ciDesk', i:0};
+    if(c.guest) return {spot:'usta', i:USTA_KEYS.indexOf(c.key)}; // T315 operators work at their own desk in the test lab
     if(st==='planning') return {spot:'board'};
     if(st==='reviewing') return c.key!=='po' ? {spot:'meet', seq:true} : {spot:'poDesk'};
     const isTester = c.key==='tester';
@@ -1417,6 +1448,19 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     }catch(err){ note.style.color = 'var(--bad)'; note.textContent = 'Gönderilemedi. Terminalden cevapla.'; }
   });
 
+  // ---------- T315 operators' feedback (status.mjs feedback <usta1|usta2> "<+|-|?>" "<text>"), newest first ----------
+  const FB_KIND = {'+':['plus','+','Avantaj'], '-':['minus','−','Dezavantaj'], '?':['ask','?','Soru / fikir']};
+  function renderFeedback(){
+    const fb = Array.isArray(S.feedback) ? S.feedback : [], anyOn = USTA_KEYS.some(seatOn);
+    $('ustalar').hidden = !anyOn && !fb.length;
+    if($('ustalar').hidden) return;
+    const n = (k)=>fb.filter(f=>f.kind===k).length;
+    $('fbMeta').textContent = fb.length ? `${n('+')} avantaj · ${n('-')} dezavantaj · ${n('?')} soru · en yeni önce` : 'en yeni önce';
+    $('fbList').innerHTML = fb.length ? fb.map(f=>{ const k = FB_KIND[f.kind] || FB_KIND['?'], c = CREW.find(x=>x.key===f.who);
+      return `<li><span class="k ${k[0]}" title="${k[2]}" aria-label="${k[2]}">${k[1]}</span><span class="w" style="--c:var(--c-${esc(f.who)})">${esc(c?c.name:f.who)}</span><span class="tx">${esc(f.text)}</span><time title="${esc(f.t)}">${esc(ago(f.t))}</time></li>`; }).join('')
+      : '<li class="e"><span class="empty">Henüz yorum yok. Ustalar uygulamayı denedikçe burada görünecek.</span></li>';
+  }
+
   // ---------- log ----------
   function renderLog(){
     const log = S.log||[];
@@ -1458,7 +1502,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     const tstat = {}; (S.tasks||[]).forEach(t=>{ tstat[t.id] = t.status; });
     if(prevTask && Object.keys(tstat).some(id=>prevTask[id] && prevTask[id]!=='done' && tstat[id]==='done')) confetti();
     prevTask = tstat;
-    drawQuota(Li); renderOffice(); renderPhases(); renderTasks(); renderAsks(); renderLog(); drawAlarm(Li); callSignal();
+    drawQuota(Li); renderOffice(); renderPhases(); renderTasks(); renderAsks(); renderFeedback(); renderLog(); drawAlarm(Li); callSignal();
   }
 
   // ---------- data ----------
@@ -1466,7 +1510,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
   let lastS = '', lastRM = '';
   async function poll(){
     try{ const r = await fetch('state.json?ts='+Date.now(), {cache:'no-store'}); if(!r.ok) throw 0; const t = await r.text(); conn('ok','canlı · 2 sn');
-      if(t!==lastS){ lastS = t; const j = JSON.parse(t); if(j && j.agents){ S = j; render(); } } }
+      if(t!==lastS){ lastS = t; const j = JSON.parse(t); if(j && j.agents){ USTA_KEYS.forEach(k=>{ const u = (j.ustas||{})[k]; if(u) j.agents[k] = u; }); S = j; render(); } } }
     catch(e){ conn('bad','bağlantı yok'); }
   }
   async function pollRM(){
