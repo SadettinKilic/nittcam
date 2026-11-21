@@ -13,7 +13,7 @@ import {
   type Part,
   type Project,
 } from '@nittcam/core';
-import { MIN_FLOOR } from './part-mesh';
+import { MIN_FLOOR } from './min-floor';
 
 export interface CabinetGroup {
   group: string;
