@@ -48,7 +48,7 @@ export function OperationTools({
   const rows = operationToolsOf(project, machine);
   if (rows.length === 0) return null;
   return (
-    <fieldset className="flex flex-col gap-3" data-testid="sim-cutting-tools">
+    <fieldset className="flex min-w-0 flex-col gap-3" data-testid="sim-cutting-tools">
       <legend className="mb-1 text-xs font-medium text-fg">{t.title}</legend>
       {rows.map((row) => (
         <ToolRow key={row.op} t={t} row={row} machine={machine} run={run} />
@@ -87,8 +87,8 @@ function ToolRow({
   const testId = `sim-tool-${row.op}`;
   const statusId = `${id}-status`;
   return (
-    <div className="flex flex-col gap-1.5" data-testid={testId} data-value={row.tool ?? ''}>
-      <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1.5" data-testid={testId} data-value={row.tool ?? ''}>
+      <div className="flex min-w-0 flex-col gap-1">
         <label htmlFor={`${id}-select`} className="text-xs text-fg-muted">
           {t.ops[row.op]}
         </label>
@@ -101,7 +101,7 @@ function ToolRow({
           <SelectTrigger
             id={`${id}-select`}
             size="sm"
-            className="w-full min-w-0"
+            className="w-full min-w-0 [&>span]:min-w-0"
             aria-describedby={statusId}
             aria-invalid={row.problem !== null || undefined}
             data-testid={`${testId}-select`}

@@ -46,7 +46,7 @@ export function SpindleSettings({
   if (!machine) return null;
   const rows = spindleSettingsOf(project, machine);
   return (
-    <fieldset className="flex flex-col gap-3" data-testid="sim-cutting-spindle">
+    <fieldset className="flex min-w-0 flex-col gap-3" data-testid="sim-cutting-spindle">
       <legend className="mb-1 text-xs font-medium text-fg">{t.title}</legend>
       {rows.length === 0 ? (
         <p className="text-xs text-fg-muted">{t.none}</p>
