@@ -57,12 +57,30 @@ export function hasInnerCut(project: Project): boolean {
   return project.parts.some((p) => p.inners.some((_, k) => innerOperation(p, k).kind === 'inside'));
 }
 
+/** Whether any part has an inner contour cleared as a blind pocket (T325, the `pocket` operation). */
+export function hasContourPocket(project: Project): boolean {
+  return project.parts.some((p) => p.inners.some((_, k) => innerOperation(p, k).kind === 'pocket'));
+}
+
+/**
+ * The tool a contour pocket (T325) is cut with: the project's choice for the `pocket` operation,
+ * else `base` (the set's tool, like the inner contours).
+ */
+export function contourPocketTool<T extends number | undefined>(
+  project: Project,
+  base: T,
+): number | T {
+  return operationToolChoice(project, 'pocket') ?? base;
+}
+
 /** Operations the job has, in display order (outer always: every job cuts its outlines). */
 export function operationsInJob(project: Project): OperationToolKind[] {
   const out: OperationToolKind[] = ['outer'];
   if (hasInnerCut(project)) out.push('inner');
   const holes = project.parts.flatMap((p) => p.holes);
-  if (holes.some((h) => holeToolKind(h) === 'pocket')) out.push('pocket');
+  if (holes.some((h) => holeToolKind(h) === 'pocket') || hasContourPocket(project)) {
+    out.push('pocket');
+  }
   if (holes.some((h) => holeToolKind(h) === 'hole')) out.push('hole');
   return out;
 }

@@ -9,7 +9,14 @@
  */
 import { findMaterialParams, findTool, type MachineProfile } from '../machine';
 import type { Project } from '../schema';
-import { contourTool, effectiveHoleTool, hasInnerCut, recommendedRpm } from './op-tools';
+import {
+  contourPocketTool,
+  contourTool,
+  effectiveHoleTool,
+  hasContourPocket,
+  hasInnerCut,
+  recommendedRpm,
+} from './op-tools';
 
 /** Slider step, typed-value step, and the half-width of the "uygun aralık" band (±20 %). */
 export const SPINDLE_RPM_STEP = 500;
@@ -71,6 +78,7 @@ export function jobToolNumbers(project: Project, machine: MachineProfile): numbe
   if (!set) return [];
   const tools = new Set<number>([contourTool(project, 'outer', set.tool)]);
   if (hasInnerCut(project)) tools.add(contourTool(project, 'inner', set.tool));
+  if (hasContourPocket(project)) tools.add(contourPocketTool(project, set.tool));
   for (const part of project.parts) {
     for (const h of part.holes) tools.add(effectiveHoleTool(project, h));
   }

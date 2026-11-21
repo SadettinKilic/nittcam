@@ -93,7 +93,8 @@ export interface Tab {
 
 /**
  * `outerContour`: a part's outer contour (T014). `innerContour`: a cut-out (T134), cut before it.
- * `pocket`: a circular pocket cleared from its centre
+ * `pocket`: a circular pocket cleared from its centre (with `inner` set: a closed inner contour
+ * cleared with offset rings, the contour pocket of T325; else the following)
  * with concentric rings (the test part of T022, D-031, and the holes of §4.5: through and blind,
  * T139–T140); down to the target depth it is a through hole. `drill`: a hole as wide as the tool,
  * one plunge per pass (peck, D-050). `groove`: a ring groove around the hole's centreline (T140).
@@ -116,6 +117,8 @@ export interface Operation {
   skinCleanup?: true;
   /** The part's hole this operation cuts (hole operations only). */
   holeId?: string;
+  /** The part's inner contour this operation clears (contour pockets only, T325). */
+  inner?: number;
   tool: number;
   toolDiameter: number;
   rpm: number;
@@ -174,6 +177,9 @@ export type ToolpathCode =
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
   | 'HOLE_DEPTH_INVALID'
+  | 'POCKET_TOO_SMALL'
+  | 'POCKET_SPLIT'
+  | 'POCKET_DEPTH_INVALID'
   | 'NO_PLACEMENTS'
   | 'SAFETY_VIOLATION'
   | 'INVALID_TAB'
@@ -192,7 +198,8 @@ export type ToolpathCode =
   | 'SMALL_SLUG_AUTO_TABS'
   | 'TABS_REDUCED'
   | 'TABS_NOT_PLACED'
-  | 'TABS_TOO_SMALL';
+  | 'TABS_TOO_SMALL'
+  | 'POCKET_PLUNGE_ENTRY';
 
 export interface ToolpathIssue {
   code: ToolpathCode;

@@ -3,10 +3,11 @@
  * a generated file may be downloaded (rule 9). The text is read by the independent reader (T018,
  * strict mode) and the read program is judged; nothing from the post processor is used. Pure.
  */
-import { readGcode, type GcodeReadResult } from '../gcode-reader';
+import { readGcode, type GcodeEvent, type GcodeReadResult } from '../gcode-reader';
 import { derive, type Derived } from './derive';
 import { cutLoops, expectedLoopCount, matchLayout, matchModel, type CutLoop } from './match';
-import { toSheetMoves } from './path';
+import { toSheetMoves, type SheetMove } from './path';
+import { pocketMoveRule, pocketNotCutRule } from './pocket';
 import {
   floorRule,
   headerRule,
@@ -65,6 +66,9 @@ interface Analysis {
   matched: boolean;
   loops: CutLoop[];
   moves: number;
+  /** The read path and events (sheet frame), for the layout-level pocket rule (T325). */
+  sm: SheetMove[];
+  events: readonly GcodeEvent[];
 }
 
 function read(text: string, d: Derived): GcodeReadResult {
@@ -99,6 +103,8 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
     matched: m.ok,
     loops,
     moves: r.moves.length,
+    sm,
+    events: r.events,
   };
 }
 
@@ -120,7 +126,10 @@ function finish(
   layout: readonly ExpectedPart[] | null | undefined,
   d: Derived,
 ): GcodeCheckResult {
-  if (layout) matchLayout(a.loops, layout, d, a.push);
+  if (layout) {
+    matchLayout(a.loops, layout, d, a.push);
+    pocketNotCutRule(layout, pocketMoveRule(a.sm, a.events, layout, d, a.push), a.push);
+  }
   const ok = !a.violations.some((v) => v.severity === 'error');
   return {
     ok,
@@ -194,6 +203,8 @@ export function checkGcodeFiles(
     const sheetOps = context.toolpath?.operations.filter((o) => o.sheet === sheet) ?? [];
     let cursor = 0;
     const loops: CutLoop[] = [];
+    const sheetLayout = context.layout?.get(sheet);
+    const pocketsReached = new Set<string>();
     let lastResult: { analysis: Analysis; d: Derived; index: number } | null = null;
     group.forEach((file, gi) => {
       const isLast = gi === group.length - 1;
@@ -220,6 +231,11 @@ export function checkGcodeFiles(
         return;
       }
       const a = analyse(file.content, dr.d, !isLast);
+      if (sheetLayout) {
+        for (const k of pocketMoveRule(a.sm, a.events, sheetLayout, dr.d, a.push)) {
+          pocketsReached.add(k);
+        }
+      }
       cursor += a.consumed;
       loops.push(...a.loops);
       out.push({ name: file.name, sheet, result: finish(a, null, dr.d) });
@@ -230,6 +246,7 @@ export function checkGcodeFiles(
     if (layout && lr) {
       const before = lr.analysis.violations.length;
       matchLayout(loops, layout, lr.d, lr.analysis.push);
+      pocketNotCutRule(layout, pocketsReached, lr.analysis.push);
       const entry = out[lr.index];
       if (entry && lr.analysis.violations.length > before) {
         entry.result = finish(lr.analysis, null, lr.d);

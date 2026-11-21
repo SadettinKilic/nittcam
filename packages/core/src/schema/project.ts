@@ -143,7 +143,8 @@ export const edgeBandSchema = z.strictObject({
 
 /**
  * Operation of a template contour (T147). Same shape as the per-contour operation of T142
- * (`inside` | `online` with depth | `none`); kept separate so templates do not depend on it.
+ * (`inside` | `online` with depth | `pocket` with depth (T325, inner contours) | `none`); kept
+ * separate so templates do not depend on it.
  */
 export const templateContourOpSchema = z.discriminatedUnion(
   'kind',
@@ -151,8 +152,9 @@ export const templateContourOpSchema = z.discriminatedUnion(
     z.strictObject({ kind: z.literal('inside') }),
     z.strictObject({ kind: z.literal('none') }),
     z.strictObject({ kind: z.literal('online'), depth: positiveMm }),
+    z.strictObject({ kind: z.literal('pocket'), depth: positiveMm }),
   ],
-  { error: 'operation must be "inside", "online" (with depth) or "none"' },
+  { error: 'operation must be "inside", "online" (with depth), "pocket" (with depth) or "none"' },
 );
 
 /**
@@ -268,8 +270,10 @@ export const dimensionLineSchema = z.strictObject({
  * line (the default of an outline). `inside`: through cut with the tool inside the line (the
  * default of an inner contour). `online`: the tool centre follows the line at `depth` mm
  * (engraving; open lines allowed; never a through cut: depth < thickness). `none`: not cut.
- * Allowed kinds per contour: outline outside | online | none; inner inside | online | none;
- * open line online | none (`allowedOperations`). DXF layer mapping (T145) writes this same value.
+ * `pocket` (T325): a closed inner contour cleared to `depth` mm (blind pocket, depth < thickness).
+ * Allowed kinds per contour: outline outside | online | none; inner inside | online | pocket |
+ * none; open line online | none (`allowedOperations`). DXF layer mapping (T145) writes this same
+ * value.
  */
 export const contourOperationSchema = z.discriminatedUnion(
   'kind',
@@ -278,8 +282,12 @@ export const contourOperationSchema = z.discriminatedUnion(
     z.strictObject({ kind: z.literal('inside') }),
     z.strictObject({ kind: z.literal('none') }),
     z.strictObject({ kind: z.literal('online'), depth: positiveMm }),
+    z.strictObject({ kind: z.literal('pocket'), depth: positiveMm }),
   ],
-  { error: 'operation must be "outside", "inside", "online" (with depth) or "none"' },
+  {
+    error:
+      'operation must be "outside", "inside", "online" (with depth), "pocket" (with depth) or "none"',
+  },
 );
 
 /** An open polyline in the part frame (T142); `bulge` on the last vertex is ignored. */

@@ -21,7 +21,10 @@ export const DXF_EXPORT_LAYERS = {
   outside: 'DIS_KESIM',
   /** Inner contour, through cut inside the line. */
   inside: 'IC_KESIM',
-  /** Blind holes: pocket and ring groove (circle = pocket diameter / groove centreline). */
+  /**
+   * Blind holes: pocket and ring groove (circle = pocket diameter / groove centreline), and blind
+   * contour pockets (T325, the pocket's closed contour).
+   */
   pocket: 'CEP',
   /** Through holes. */
   drill: 'DELIK',
@@ -91,7 +94,14 @@ export function partEntities(
 ): DxfEntity[] {
   const out: DxfEntity[] = [];
   const opLayer = (kind: string, cut: string): string | undefined =>
-    kind === 'none' ? undefined : kind === 'online' ? DXF_EXPORT_LAYERS.online : cut;
+    kind === 'none'
+      ? undefined
+      : kind === 'online'
+        ? DXF_EXPORT_LAYERS.online
+        : // T325: a blind contour pocket goes on the pocket layer, never on a through-cut layer.
+          kind === 'pocket'
+          ? DXF_EXPORT_LAYERS.pocket
+          : cut;
   const outlineLayer = opLayer(outlineOperation(part).kind, DXF_EXPORT_LAYERS.outside);
   if (outlineLayer) {
     out.push({

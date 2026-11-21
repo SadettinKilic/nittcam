@@ -19,8 +19,10 @@ import { deriveOutline } from '../schema/outline';
 import { innerOperation, outlineOperation } from '../schema/operations';
 import { innerContourPath, outerContourPath } from './build';
 import { throughCutTarget } from './depth';
+import { contourPocketRings } from './contour-pocket';
 import {
   OPERATION_TOOL_TYPES,
+  hasContourPocket,
   holeToolKind,
   operationToolChoice,
   operationsInJob,
@@ -81,6 +83,17 @@ export function operationToolProblem(
     }
     case 'pocket':
     case 'hole': {
+      if (op === 'pocket') {
+        // T325: contour pockets need the rings to fit and the flutes to reach their depth.
+        for (const part of project.parts) {
+          for (const [k, inner] of part.inners.entries()) {
+            const o = innerOperation(part, k);
+            if (o.kind !== 'pocket') continue;
+            if (!reach(o.depth)) return 'FLUTE_LENGTH';
+            if (!contourPocketRings(contour(inner), tool.diameter).ok) return 'CONTOUR';
+          }
+        }
+      }
       for (const part of project.parts) {
         for (const h of part.holes) {
           if (holeToolKind(h) !== op) continue;
@@ -123,6 +136,8 @@ export function operationToolsOf(project: Project, machine: MachineProfile): Ope
           p.holes.filter((h) => holeToolKind(h) === op).map((h) => h.tool),
         ),
       );
+      // T325: contour pockets cut with the set's tool by default.
+      if (op === 'pocket' && hasContourPocket(project)) own.add(set.tool);
       defaultTool = own.size === 1 ? ([...own][0] as number) : null;
     }
     const chosen = operationToolChoice(project, op);

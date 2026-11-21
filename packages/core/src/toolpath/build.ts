@@ -12,6 +12,7 @@ import { findMaterialParams, findTool, type MachineProfile } from '../machine';
 import { jobToolNumbers, rpmInRange, spindleOverride } from './spindle';
 import {
   OPERATION_TOOL_TYPES,
+  contourPocketTool,
   contourTool,
   effectiveHoleTool,
   holeToolKind,
@@ -58,6 +59,11 @@ import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../edito
 import { lineLeavesPart } from '../editor/lines';
 import { summarizeToolpath } from './stats';
 import { buildOnlineOperation, onlineStart } from './online';
+import {
+  buildContourPocketOperation,
+  contourPocketRings,
+  contourPocketStart,
+} from './contour-pocket';
 import { partInHoleHosts } from './enclose';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
 
@@ -1195,6 +1201,59 @@ export function buildToolpath(
     }
   }
 
+  // Contour pockets (T325, D-113): an inner contour cleared flat to a blind depth with the
+  // `pocket` operation's tool (the set's tool by default). Checked once per part; cut per copy.
+  const pocketNo = contourPocketTool(project, toolNo);
+  const pocketTool = findTool(machine, pocketNo);
+  const pocketDepths = new Map<string, number[]>();
+  for (const part of project.parts) {
+    part.inners.forEach((inner, k) => {
+      const op = innerOperation(part, k);
+      if (op.kind !== 'pocket') return;
+      const bad = (code: ToolpathCode, message: string) =>
+        errors.push(
+          issue(code, 'error', part.id, `Inner contour ${k + 1} (pocket): ${message}`, {
+            inner: k,
+          }),
+        );
+      if (!pocketTool) {
+        bad('TOOL_NOT_IN_PROFILE', `tool T${pocketNo} is not in the machine profile.`);
+        return;
+      }
+      if (!(op.depth < thickness - EPS)) {
+        bad(
+          'POCKET_DEPTH_INVALID',
+          `depth ${op.depth} mm must be less than the thickness (${thickness} mm).`,
+        );
+        return;
+      }
+      if (op.depth > pocketTool.fluteLength + EPS) {
+        bad(
+          'DEPTH_EXCEEDS_FLUTE_LENGTH',
+          `depth ${op.depth} mm exceeds the flute length ${pocketTool.fluteLength} mm of T${pocketTool.number}.`,
+        );
+        return;
+      }
+      const rings = contourPocketRings(contour(inner), pocketTool.diameter);
+      if (!rings.ok) {
+        bad(rings.code, rings.message);
+        return;
+      }
+      if (rings.arcCollapsed) {
+        warnings.push(
+          issue(
+            'ARC_COLLAPSED',
+            'warning',
+            part.id,
+            `Inner contour ${k + 1} (pocket): a corner radius is smaller than the tool radius; the corner stays rounded (R${pocketTool.diameter / 2} mm).`,
+            { inner: k },
+          ),
+        );
+      }
+      pocketDepths.set(`${part.id}/${k}`, passDepths(0 - op.depth, passDepth));
+    });
+  }
+
   // Holes (T139–T140, D-050): each hole uses its own tool's diameter and flute length with the
   // stock's material set feeds, rpm and step-down. Checked once per part; cut per placed copy.
   const holeTools = new Map<string, { tool: number; diameter: number; depths: number[] }>();
@@ -1347,6 +1406,54 @@ export function buildToolpath(
         itemCtx.push(-1);
         itemHole.push(op);
       };
+      // Contour pockets (T325): prebuilt like holes (one start point), cut with the holes.
+      const addPocket = (inner: Polyline, k: number) => {
+        const depths = pocketDepths.get(`${x.part.id}/${k}`);
+        if (!depths || !pocketTool) return;
+        const res = buildContourPocketOperation({
+          id: `${copyKey}/pocket${k}`,
+          sheet: sheetIndex,
+          partId: x.part.id,
+          copy: x.placement.index,
+          inner: k,
+          contour: inner,
+          tool: pocketTool.number,
+          toolDiameter: pocketTool.diameter,
+          feed: params.feed,
+          plungeFeed: params.plungeFeed,
+          rpm: rpmOf(pocketTool.number),
+          passDepths: depths,
+          safeZ,
+          clearanceZ,
+          // Climb inside a pocket (CW spindle) = CCW travel (D-021), like the hole pockets.
+          travel: direction === 'climb' ? 'ccw' : 'cw',
+        });
+        if (!res.ok) {
+          opErrors.push(issue(res.code, 'error', x.part.id, res.message, { ...where, inner: k }));
+          return;
+        }
+        if (res.plungeEntry) {
+          opWarnings.push(
+            issue(
+              'POCKET_PLUNGE_ENTRY',
+              'warning',
+              x.part.id,
+              `Inner contour ${k + 1} (pocket): too small for a ramp; the tool plunges straight in.`,
+              { ...where, inner: k },
+            ),
+          );
+        }
+        items.push({
+          sheet: sheetIndex,
+          part: copyKey,
+          cls: 'pocket',
+          tool: pocketTool.number,
+          area: 0,
+          starts: [contourPocketStart(res.operation)],
+        });
+        itemCtx.push(-1);
+        itemHole.push(res.operation);
+      };
       for (const it of contourRes.issues) {
         (it.severity === 'error' ? opErrors : opWarnings).push(
           issue(it.code, it.severity, x.part.id, it.message, where),
@@ -1402,6 +1509,7 @@ export function buildToolpath(
       placedInners(x.part, x.placement).forEach((innerPoly, k) => {
         const innerOp = innerOperation(x.part, k);
         if (innerOp.kind === 'online') addOnline(innerPoly, `inner${k}`, innerOp.depth);
+        if (innerOp.kind === 'pocket') addPocket(innerPoly, k);
         if (innerOp.kind !== 'inside') return;
         const res = innerContourPath(innerPoly, innerRadius);
         const loop = res.paths[0];
