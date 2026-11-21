@@ -1416,7 +1416,7 @@
         "title": "Devir (iş mili hızı)",
         "tool": "T{tool} · Ø{diameter} mm",
         "label": "T{tool} devri",
-        "unit": "devir/dk",
+        "unit": "d/dk",
         "valueText": "{value} devir/dk",
         "recommended": "Önerilen {value}",
         "band": "Uygun aralık {min}–{max}",

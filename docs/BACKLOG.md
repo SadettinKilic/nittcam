@@ -1453,7 +1453,7 @@ Tester focus: true-shape and arc-tabs goldens read back clean; nesting property 
 Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.
 
 
-### T307 Spindle speed (devir) editable per project   [status: in progress, B54]
+### T307 Spindle speed (devir) editable per project   [status: done, B54]
 Spec: §4.x / §7 "Malzeme = parametre seti", "Kesim parametreleri … varsayılanlar malzeme parametre setinden" · From: owner request 2026-11-21, before the field test (M9) · D-095
 Acceptance:
 - [x] default = the material set rpm of the job; per-tool override as an undoable command stored in the project; "Önerilene dön"
