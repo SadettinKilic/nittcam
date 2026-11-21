@@ -4,6 +4,7 @@
  * matter. Pure.
  */
 import type { GcodeEvent, GcodeIssueCode, GcodeReadResult } from '../gcode-reader';
+import { PROFILE_BOUNDS } from '../machine/profile';
 import type { Operation } from '../toolpath';
 import type { Derived } from './derive';
 import { aboveTable, intoTable } from './frame';
@@ -346,6 +347,8 @@ export function motionRules(
     }
   };
 
+  // T323: the machine's feed limits, taken here from the profile bounds (not from the generator).
+  const feedCap = { feed: PROFILE_BOUNDS.feed.max, plunge: PROFILE_BOUNDS.plungeFeed.max };
   const plungeLimit = (tool: number | null): number => {
     const ops = d.ops.filter((o) => tool === null || o.tool === tool);
     return Math.max(...(ops.length > 0 ? ops : d.ops).map((o) => o.plungeFeed));
@@ -469,6 +472,19 @@ export function motionRules(
           m.line,
           'The first cutting move after a rapid must state its feed (F).',
         );
+      }
+      // --- R5 (T323): no feed above what the machine can run ---
+      if (raw.feed !== null) {
+        const down = m.to.z < m.from.z - tol && m.to.z < -tol;
+        const cap = down ? feedCap.plunge : feedCap.feed;
+        if (raw.feed > cap + d.feedTol) {
+          push(
+            'R5',
+            'FEED_ABOVE_MACHINE',
+            m.line,
+            `F${raw.feed} is above the machine's ${down ? 'plunge' : 'cutting'} feed limit ${cap}.`,
+          );
+        }
       }
       afterRapid = false;
     }
@@ -690,4 +706,105 @@ export function floorRule(sm: readonly SheetMove[], d: Derived, push: Push): voi
       return;
     }
   }
+}
+/**
+ * T324 (spec §7.2 rule 3, §6.3 "Dalma düz veya rampalı"): ramps stay inside the declared envelope.
+ * A ramp is a feed move that goes down inside the material while it travels in XY (a contour ramp
+ * or a hole helix). It is accepted only when every point of it lies on the XY trace of the level
+ * cuts inside the material of the same block (the moves between two rapids that do not go down):
+ * the kerf the program cuts there anyway. So a ramp never leaves the cut line of its contour,
+ * never cuts into a neighbour, a tab bridge or the waste beside a lead. Independent of the
+ * generator: judged on the read path only.
+ */
+export function rampRule(sm: readonly SheetMove[], d: Derived, push: Push): void {
+  const tol = d.posTol;
+  const reach = tol + (d.ctx.post?.arcs?.chordTolerance ?? RAMP_CHORD_TOLERANCE);
+  const xyLen = (m: SheetMove): number =>
+    m.arc ? m.arc.r * m.arc.sweep : Math.hypot(m.to.x - m.from.x, m.to.y - m.from.y);
+  const isRamp = (m: SheetMove): boolean =>
+    m.kind !== 'rapid' && m.to.z < m.from.z - tol && m.to.z < -tol && xyLen(m) > tol;
+  let reported = 0;
+  let i = 0;
+  while (i < sm.length && reported < 5) {
+    // One block: the feed moves between two rapids.
+    let end = i;
+    while (end < sm.length && (sm[end] as SheetMove).kind !== 'rapid') end++;
+    const block = sm.slice(i, end);
+    i = end + 1;
+    const ramps = block.filter(isRamp);
+    if (ramps.length === 0) continue;
+    const trace = block.filter(
+      (t) =>
+        !isRamp(t) &&
+        t.to.z <= t.from.z + tol &&
+        t.to.z < -tol &&
+        t.from.z < -tol &&
+        xyLen(t) > tol,
+    );
+    for (const m of ramps) {
+      const off = samples(m).find((p) => !trace.some((t) => distToMove(p, t) <= reach));
+      if (!off) continue;
+      reported++;
+      push(
+        'R3',
+        'RAMP_OUTSIDE_KERF',
+        m.line,
+        `Ramp leaves the cut it enters: (${off.x.toFixed(3)}, ${off.y.toFixed(3)}) is not on a level cut of the same block.`,
+      );
+      if (reported >= 5) break;
+    }
+  }
+}
+
+/** Chord tolerance when the post writes arcs as lines (as the model match uses). */
+const RAMP_CHORD_TOLERANCE = 0.01;
+
+type XY = { x: number; y: number };
+
+/** Points along a read move (ends and 3 inner points; arcs by angle). */
+function samples(m: SheetMove): XY[] {
+  const out: XY[] = [];
+  const n = 4;
+  if (m.arc) {
+    const a = m.arc;
+    const a0 = Math.atan2(m.from.y - a.cy, m.from.x - a.cx);
+    const s = a.dir === 'ccw' ? 1 : -1;
+    for (let k = 0; k <= n; k++) {
+      const ang = a0 + (s * a.sweep * k) / n;
+      out.push({ x: a.cx + a.r * Math.cos(ang), y: a.cy + a.r * Math.sin(ang) });
+    }
+    return out;
+  }
+  for (let k = 0; k <= n; k++) {
+    out.push({
+      x: m.from.x + ((m.to.x - m.from.x) * k) / n,
+      y: m.from.y + ((m.to.y - m.from.y) * k) / n,
+    });
+  }
+  return out;
+}
+
+/** XY distance from `p` to a read move (segment or arc). */
+function distToMove(p: XY, m: SheetMove): number {
+  if (m.arc) {
+    const a = m.arc;
+    const a0 = Math.atan2(m.from.y - a.cy, m.from.x - a.cx);
+    const ap = Math.atan2(p.y - a.cy, p.x - a.cx);
+    const twoPi = 2 * Math.PI;
+    let t = a.dir === 'ccw' ? ap - a0 : a0 - ap;
+    t = ((t % twoPi) + twoPi) % twoPi;
+    if (t <= a.sweep + 1e-12 || a.sweep >= twoPi - 1e-12) {
+      return Math.abs(Math.hypot(p.x - a.cx, p.y - a.cy) - a.r);
+    }
+    return Math.min(
+      Math.hypot(p.x - m.from.x, p.y - m.from.y),
+      Math.hypot(p.x - m.to.x, p.y - m.to.y),
+    );
+  }
+  const dx = m.to.x - m.from.x;
+  const dy = m.to.y - m.from.y;
+  const l2 = dx * dx + dy * dy;
+  const u =
+    l2 > 0 ? Math.max(0, Math.min(1, ((p.x - m.from.x) * dx + (p.y - m.from.y) * dy) / l2)) : 0;
+  return Math.hypot(p.x - (m.from.x + u * dx), p.y - (m.from.y + u * dy));
 }

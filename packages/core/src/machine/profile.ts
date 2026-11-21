@@ -515,3 +515,32 @@ export function parseMachineProfileForSave(json: unknown): ParseMachineProfileRe
 export function findTool(profile: Pick<MachineProfile, 'tools'>, number: number): Tool | undefined {
   return profile.tools.find((t) => t.number === number);
 }
+
+/** A feed range in mm/min, both ends inclusive. */
+export interface FeedRange {
+  min: number;
+  max: number;
+}
+
+/**
+ * T323: the cutting feed and plunge feed a program may run on this machine, mm/min. The profile
+ * has no own cutting-feed limit yet, so these are the profile-wide bounds of a material set (the
+ * rapid rate is only an estimate input and is not used: a low typed rapid rate must not block
+ * projects that cut today). One place, so a later per-machine limit changes only this function.
+ * Used by the command, the validation, the toolpath and the post; the G-code check derives its
+ * own limit from the profile.
+ */
+export function machineFeedLimits(): {
+  feed: FeedRange;
+  plungeFeed: FeedRange;
+} {
+  return {
+    feed: { min: PROFILE_BOUNDS.feed.min, max: PROFILE_BOUNDS.feed.max },
+    plungeFeed: { min: PROFILE_BOUNDS.plungeFeed.min, max: PROFILE_BOUNDS.plungeFeed.max },
+  };
+}
+
+/** Whether `v` is a finite feed inside `range`. */
+export function feedInRange(range: FeedRange, v: number): boolean {
+  return Number.isFinite(v) && v >= range.min && v <= range.max;
+}

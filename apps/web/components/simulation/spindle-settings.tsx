@@ -5,6 +5,7 @@ import {
   SPINDLE_RPM_INPUT_STEP,
   SPINDLE_RPM_PAGE_STEP,
   SPINDLE_RPM_STEP,
+  machineFeedLimits,
   rpmBand,
   spindleSettingsOf,
   type MachineProfile,
@@ -14,10 +15,13 @@ import {
 import { NumberInput, Slider, cn, formatNumberTr } from '@nittcam/ui';
 import { useId, useState } from 'react';
 import { fill } from '../../lib/fill';
+import { NumberField } from '../wizard/number-field';
 import type { Messages } from '../../lib/messages';
 
 type Text = Messages['simulation']['cutting']['spindle'];
 type Run = (name: string, params: unknown) => boolean;
+type FieldErrors = { number: string; positive: string; rejected: string };
+type Limits = ReturnType<typeof machineFeedLimits>;
 
 const rpmText = (v: number) => formatNumberTr(v, { maxDecimals: 0 });
 const chipFormat = new Intl.NumberFormat('tr-TR', {
@@ -30,21 +34,26 @@ const chipFormat = new Intl.NumberFormat('tr-TR', {
  * slider over the machine's spindle range and a typed field. The recommended value (the material
  * set's rpm) is marked on the track; a calm band shows ±20 %; outside it the value turns warning
  * colour with one line why. Every committed value is one `setSpindleRpm` command (undoable); the
- * recommended value itself clears the project's own value.
+ * recommended value itself clears the project's own value. T323: each row also holds the tool's
+ * cutting feed and plunge feed (`setToolFeed`, inside the machine limits); the chip load uses the
+ * tool's own feed.
  */
 export function SpindleSettings({
   t,
+  errors,
   project,
   machine,
   run,
 }: {
   t: Text;
+  errors: FieldErrors;
   project: Project;
   machine: MachineProfile | null;
   run: Run;
 }) {
   if (!machine) return null;
   const rows = spindleSettingsOf(project, machine);
+  const limits = machineFeedLimits();
   return (
     <fieldset className="flex min-w-0 flex-col gap-3" data-testid="sim-cutting-spindle">
       <legend className="mb-1 text-xs font-medium text-fg">{t.title}</legend>
@@ -58,6 +67,8 @@ export function SpindleSettings({
             row={row}
             min={machine.spindle.minRpm}
             max={machine.spindle.maxRpm}
+            limits={limits}
+            errors={errors}
             run={run}
           />
         ))
@@ -71,12 +82,16 @@ function SpindleRow({
   row,
   min,
   max,
+  limits,
+  errors,
   run,
 }: {
   t: Text;
   row: ToolSpindle;
   min: number;
   max: number;
+  limits: Limits;
+  errors: FieldErrors;
   run: Run;
 }) {
   const id = useId();
@@ -207,6 +222,7 @@ function SpindleRow({
           })}
         </p>
       ) : null}
+      <FeedFields t={t} row={row} limits={limits} errors={errors} run={run} testId={testId} />
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-muted">
         <span>{row.override ? t.source.project : t.source.recommended}</span>
         {row.override ? (
@@ -217,6 +233,83 @@ function SpindleRow({
             className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             {t.reset}
+          </button>
+        ) : null}
+      </p>
+    </div>
+  );
+}
+
+/** T323: the tool's cutting feed and plunge feed, mm/min; the recommended value clears the own one. */
+function FeedFields({
+  t,
+  row,
+  limits,
+  errors,
+  run,
+  testId,
+}: {
+  t: Text;
+  row: ToolSpindle;
+  limits: Limits;
+  errors: FieldErrors;
+  run: Run;
+  testId: string;
+}) {
+  const n = (v: number) => formatNumberTr(v, { maxDecimals: 0 });
+  const bounds = (r: { min: number; max: number }) => ({
+    min: r.min,
+    max: r.max,
+    message: fill(t.feedBounds, { min: n(r.min), max: n(r.max) }),
+  });
+  const own = row.feedOverride || row.plungeOverride;
+  const values = { feed: n(row.recommendedFeed), plunge: n(row.recommendedPlungeFeed) };
+  return (
+    <div className="flex flex-col gap-1.5" data-testid={`${testId}-feeds`}>
+      <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+        <NumberField
+          label={`${t.feed} (${t.feedUnit})`}
+          value={row.feed}
+          testId={`${testId}-feed`}
+          inRow
+          errors={errors}
+          bounds={bounds(limits.feed)}
+          onCommit={(v) =>
+            run('setToolFeed', { tool: row.tool, feed: v === row.recommendedFeed ? null : v })
+          }
+        />
+        <NumberField
+          label={`${t.plungeFeed} (${t.feedUnit})`}
+          value={row.plungeFeed}
+          testId={`${testId}-plunge`}
+          inRow
+          errors={errors}
+          bounds={bounds(limits.plungeFeed)}
+          onCommit={(v) =>
+            run('setToolFeed', {
+              tool: row.tool,
+              plungeFeed: v === row.recommendedPlungeFeed ? null : v,
+            })
+          }
+        />
+      </div>
+      {row.plungeFeed > row.feed ? (
+        <p className="text-xs text-warning-text" data-testid={`${testId}-plunge-warn`}>
+          {t.plungeFaster}
+        </p>
+      ) : null}
+      <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-muted">
+        <span data-testid={`${testId}-feed-source`}>
+          {fill(own ? t.feedSource.project : t.feedSource.recommended, values)}
+        </span>
+        {own ? (
+          <button
+            type="button"
+            data-testid={`${testId}-feeds-clear`}
+            onClick={() => run('setToolFeed', { tool: row.tool, feed: null, plungeFeed: null })}
+            className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            {t.feedReset}
           </button>
         ) : null}
       </p>

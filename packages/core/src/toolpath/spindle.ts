@@ -7,9 +7,21 @@
  * `S` word and the "KESİM" header read the override. It must stay inside the machine's spindle
  * range: the command, the validation, the toolpath and the post refuse values outside. Pure.
  */
-import { findMaterialParams, findTool, type MachineProfile } from '../machine';
+import {
+  feedInRange,
+  findMaterialParams,
+  findTool,
+  machineFeedLimits,
+  type MachineProfile,
+} from '../machine';
 import type { Project } from '../schema';
-import { contourTool, effectiveHoleTool, hasInnerCut, recommendedRpm } from './op-tools';
+import {
+  contourTool,
+  effectiveHoleTool,
+  hasInnerCut,
+  recommendedFeeds,
+  recommendedRpm,
+} from './op-tools';
 
 /** Slider step, typed-value step, and the half-width of the "uygun aralık" band (±20 %). */
 export const SPINDLE_RPM_STEP = 500;
@@ -29,9 +41,20 @@ export interface ToolSpindle {
   rpm: number;
   /** True when the project holds its own value for this tool. */
   override: boolean;
-  /** Feed of the job, mm/min (the material set's). */
+  /** T323: cutting feed of this tool in the job, mm/min: the project's own value, else recommended. */
   feed: number;
-  /** Chip load, mm per tooth: feed / (rpm × flutes). */
+  /** T323: plunge feed of this tool in the job, mm/min. */
+  plungeFeed: number;
+  /** T323: the feeds of the tool's material set (the job set unless the tool was chosen, T308). */
+  recommendedFeed: number;
+  recommendedPlungeFeed: number;
+  /** T323: the project holds its own cutting / plunge feed for this tool. */
+  feedOverride: boolean;
+  plungeOverride: boolean;
+  /** T323: an own feed outside the machine's limits (old or hand-edited project). */
+  feedOutOfRange: boolean;
+  plungeOutOfRange: boolean;
+  /** Chip load, mm per tooth: feed / (rpm × flutes), with this tool's own feed. */
   chipLoad: number;
   band: RpmBand;
   /** Signed deviation from `recommended`, whole percent (e.g. 30 for 30 % higher). */
@@ -43,6 +66,14 @@ export interface ToolSpindle {
 /** The project's own value for a tool, if any. */
 export function spindleOverride(project: Project, tool: number): number | undefined {
   return project.cutting.spindleRpm?.[String(tool)];
+}
+
+/** T323: the project's own feeds for a tool (each field absent = recommended). */
+export function feedOverride(
+  project: Project,
+  tool: number,
+): { feed?: number | undefined; plungeFeed?: number | undefined } {
+  return project.cutting.feeds?.[String(tool)] ?? {};
 }
 
 /** Whether `rpm` lies inside the machine's spindle range. */
@@ -88,6 +119,10 @@ export function spindleSettingsOf(project: Project, machine: MachineProfile): To
     const recommended = recommendedRpm(project, machine, set, n);
     const rpm = own ?? recommended;
     const { band, deviation } = rpmBand(rpm, recommended);
+    const rec = recommendedFeeds(project, machine, set, n);
+    const ownFeed = feedOverride(project, n);
+    const limits = machineFeedLimits();
+    const feed = ownFeed.feed ?? rec.feed;
     const row: ToolSpindle = {
       tool: n,
       diameter: tool.diameter,
@@ -95,8 +130,16 @@ export function spindleSettingsOf(project: Project, machine: MachineProfile): To
       recommended,
       rpm,
       override: own !== undefined,
-      feed: set.feed,
-      chipLoad: rpm > 0 && tool.flutes > 0 ? set.feed / (rpm * tool.flutes) : 0,
+      feed,
+      plungeFeed: ownFeed.plungeFeed ?? rec.plungeFeed,
+      recommendedFeed: rec.feed,
+      recommendedPlungeFeed: rec.plungeFeed,
+      feedOverride: ownFeed.feed !== undefined,
+      plungeOverride: ownFeed.plungeFeed !== undefined,
+      feedOutOfRange: ownFeed.feed !== undefined && !feedInRange(limits.feed, ownFeed.feed),
+      plungeOutOfRange:
+        ownFeed.plungeFeed !== undefined && !feedInRange(limits.plungeFeed, ownFeed.plungeFeed),
+      chipLoad: rpm > 0 && tool.flutes > 0 ? feed / (rpm * tool.flutes) : 0,
       band,
       deviation,
       outOfRange: own !== undefined && !rpmInRange(machine, own),
@@ -113,4 +156,29 @@ export function spindleOverridesOf(
   return spindleSettingsOf(project, machine)
     .filter((s) => s.override)
     .map((s) => ({ tool: s.tool, rpm: s.rpm, recommended: s.recommended }));
+}
+
+/**
+ * T323: the job tools with an own feed, for the "İLERLEME" header lines (tool, the feeds the job
+ * cuts with, the recommended ones). Empty with the recommended feeds, so programs stay unchanged.
+ */
+export function feedOverridesOf(
+  project: Project,
+  machine: MachineProfile,
+): {
+  tool: number;
+  feed: number;
+  plungeFeed: number;
+  recommendedFeed: number;
+  recommendedPlungeFeed: number;
+}[] {
+  return spindleSettingsOf(project, machine)
+    .filter((s) => s.feedOverride || s.plungeOverride)
+    .map((s) => ({
+      tool: s.tool,
+      feed: s.feed,
+      plungeFeed: s.plungeFeed,
+      recommendedFeed: s.recommendedFeed,
+      recommendedPlungeFeed: s.recommendedPlungeFeed,
+    }));
 }

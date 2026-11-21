@@ -30,7 +30,7 @@ import {
 import { programTools, type ProgramTools } from './program-tools';
 import { unverifiedTemplateNames } from '../template';
 import { cuttingSettingsOf } from '../toolpath/cutting-settings';
-import { spindleOverridesOf } from '../toolpath/spindle';
+import { feedOverridesOf, spindleOverridesOf } from '../toolpath/spindle';
 import { operationToolChoice, operationsInJob } from '../toolpath/op-tools';
 
 export interface ExportNcOptions {
@@ -132,6 +132,16 @@ export function cuttingMeta(
     return tool === undefined ? [] : [{ op, tool }];
   });
   if (tools.length > 0) cutting.tools = tools;
+  // T323 / T324: per-tool feeds and the ramp entry, again only when set.
+  const feeds = feedOverridesOf(project, profile);
+  if (feeds.length > 0) cutting.feeds = feeds;
+  const entry = project.cutting.entry;
+  if (entry) {
+    cutting.entry =
+      entry.length === undefined
+        ? { angleDeg: entry.angleDeg }
+        : { angleDeg: entry.angleDeg, length: entry.length };
+  }
   return { cutting };
 }
 

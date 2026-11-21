@@ -158,6 +158,7 @@ export type ToolpathCode =
   | 'NO_CUTTING_PARAMS'
   | 'CUTTING_PARAMS_UNVERIFIED'
   | 'SPINDLE_RPM_OUT_OF_RANGE'
+  | 'FEED_OUT_OF_RANGE'
   | 'OPERATION_TOOL_UNSUITABLE'
   | 'TOOL_NOT_IN_PROFILE'
   | 'INVALID_OPTION'
@@ -219,7 +220,13 @@ export type PlungeOption =
    * Zig-zag ramp along the contour: forward over `length` mm, back to the start point, reaching
    * the pass depth there. `length` wins over `angleDeg` (angle of each leg against the XY plane).
    */
-  | { type: 'ramp'; angleDeg?: number; length?: number };
+  | {
+      type: 'ramp';
+      angleDeg?: number;
+      length?: number;
+      /** T324: shortest leg, mm, when the angle gives a shorter one (project ramps: tool Ø). */
+      minLength?: number;
+    };
 
 /** Overrides of the material parameter set (spec §7.1 "Kesim parametreleri"). */
 export interface CuttingParamsOverride {

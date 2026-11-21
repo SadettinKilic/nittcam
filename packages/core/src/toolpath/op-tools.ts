@@ -78,18 +78,17 @@ function chosenTools(project: Project, set: MaterialParams): Set<number> {
 }
 
 /**
- * T308 + T307: the recommended spindle speed of a job tool. The set's own tool and every tool the
- * project did not choose (hole tools by default) get the set's rpm, as before. A tool the project
- * chose for an operation takes the rpm of the machine's set of the same material that names it
- * (nearest thickness, the thinner on a tie); without one, the job set's rpm.
+ * The machine's set of the job's material that names `tool` (nearest thickness, the thinner on a
+ * tie), for a tool the project chose for an operation; else the job set. The set's own tool and
+ * every tool the project did not choose (hole tools by default) use the job set, as before.
  */
-export function recommendedRpm(
+function recommendationSet(
   project: Project,
   machine: Pick<MachineProfile, 'materials'>,
   set: MaterialParams,
   tool: number,
-): number {
-  if (tool === set.tool || !chosenTools(project, set).has(tool)) return set.rpm;
+): MaterialParams {
+  if (tool === set.tool || !chosenTools(project, set).has(tool)) return set;
   const kind = materialKindOf(project.stock.material);
   const own = machine.materials
     .filter((m) => m.material === kind && m.tool === tool && !m.unverified)
@@ -98,5 +97,29 @@ export function recommendedRpm(
         Math.abs(a.thickness - project.stock.thickness) -
           Math.abs(b.thickness - project.stock.thickness) || a.thickness - b.thickness,
     )[0];
-  return own?.rpm ?? set.rpm;
+  return own ?? set;
+}
+
+/**
+ * T308 + T307: the recommended spindle speed of a job tool: the rpm of its recommendation set
+ * (the job set, or for a tool the project chose, that tool's own set of the same material).
+ */
+export function recommendedRpm(
+  project: Project,
+  machine: Pick<MachineProfile, 'materials'>,
+  set: MaterialParams,
+  tool: number,
+): number {
+  return recommendationSet(project, machine, set, tool).rpm;
+}
+
+/** T323: the recommended cutting and plunge feed of a job tool, from the same set as its rpm. */
+export function recommendedFeeds(
+  project: Project,
+  machine: Pick<MachineProfile, 'materials'>,
+  set: MaterialParams,
+  tool: number,
+): { feed: number; plungeFeed: number } {
+  const own = recommendationSet(project, machine, set, tool);
+  return { feed: own.feed, plungeFeed: own.plungeFeed };
 }
