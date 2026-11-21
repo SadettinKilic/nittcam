@@ -1714,14 +1714,14 @@ Usta 1: `Kemal_Mutfak_alt_dolap_800_r19_S1.tap` (37 chars) on a machine with a 3
 
 ### Batch B59: T323, T324 (usta 2 / Elif findings, owner-approved before the field test; Dev 1)
 
-### T323 Per-tool cutting feed and plunge feed   [status: test, B59]
+### T323 Per-tool cutting feed and plunge feed   [status: done]
 From: `.team/usta2-rapor.md` #4 (Ø6 and Ø8 both at 6 000 mm/min) · D-111
 - [x] each job tool has its own cutting and plunge feed: recommended from the tool's material set (the job set; a tool chosen per operation (T308) takes its own set, like the T307 rpm); per-tool override in Kesim ayarları (`setToolFeed`, undoable, "İlerlemede önerilene dön")
 - [x] validation: feed/plunge > 0 and inside the machine limits (`machineFeedLimits`: the profile-wide bounds 100–60 000 / 50–30 000 mm/min; the profile has no own max yet) in command, validation (`FEED_OUT_OF_RANGE`), toolpath and post; chip load uses the tool's own feed; plunge > feed warns
 - [x] G-code: F per tool, plunges at the tool's plunge feed; "İLERLEME T..: ..." header line only with an override; checker R5 `FEED_ABOVE_MACHINE`
 - [x] goldens byte-identical with defaults
 
-### T324 Ramp entry for contours   [status: test, B59]
+### T324 Ramp entry for contours   [status: done]
 From: `.team/usta2-rapor.md` #3 (dik dalma uç yakar) · D-111 · Spec §6.3 "Dalma düz veya rampalı"
 - [x] per job "Dalma (konturda): Dik dalma | Rampa" with angle (default 3°, 0,5–45°) and shortest leg (default tool Ø, 1–1 000 mm); `setEntry`; default stays straight (goldens identical)
 - [x] zig-zag along the contour (outer and inner) down to each pass depth at the plunge feed; tabs keep clear of the ramp; the ramp stays on the contour line, so never outside the part's allowed region or into a neighbour; "GİRİŞ: rampa ..." header line
