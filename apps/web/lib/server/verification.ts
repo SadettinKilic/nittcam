@@ -168,6 +168,17 @@ function historyItem(row: {
   };
 }
 
+/** T309 (D-097): the park point the programs use, or null (off, no manual change, no G53). */
+export function parkPoint(
+  profile: MachineWithProfile['profile'],
+  post: PostConfig | null,
+): { x: number; y: number } | null {
+  const park = profile.toolChanger.park;
+  if (!park?.enabled || post?.toolChange.mode !== 'manual') return null;
+  if (post.motion.machineCoordinates !== true) return null;
+  return { x: park.x, y: park.y };
+}
+
 export async function overview(
   scope: CompanyScope,
   ctx: MachineContext,
@@ -189,6 +200,7 @@ export async function overview(
     unverifiedReasons: unverifiedReasons({ profile: m.profile, verification: m.state }, ctx.post),
     testPart: info,
     origin: { corner: m.profile.origin.corner, sheetOffset: { ...m.profile.origin.sheetOffset } },
+    park: parkPoint(m.profile, ctx.post),
     programs: { airCut: air, testCut: cut },
     extended: {
       info: extendedTestProgram('testCut', profileVersionOf(ctx), ctx.rawPost).info,

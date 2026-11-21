@@ -1646,8 +1646,8 @@ Owner 2026-11-21. Outer / inner contour, pocket, hole: pick a compatible tool fr
 
 ### Batch B55: T309 (owner request 2026-11-21; Dev 2, PR #162)
 
-### T309 Park position for manual tool change   [status: todo]
-Owner 2026-11-21. Machine profile option (X/Y in machine coordinates G53, on/off); manual change goes safe Z → park → M0 + message; field-kit note linked; park off = same bytes.
+### T309 Park position for manual tool change   [status: review]
+Owner 2026-11-21 (D-097). Machine profile option `toolChanger.park` (X/Y in machine coordinates, written as `G53 G0 X.. Y..`, on/off, within the machine travel); every manual pause (tool change and first-tool check) goes safe Z → park → message + M0; only for posts with G53 (`motion.machineCoordinates`), otherwise forced off with a form note; the independent reader accepts the G53 move only at the profile's point; field-kit note names the point; park off = same bytes (goldens unchanged).
 
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)

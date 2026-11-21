@@ -220,7 +220,12 @@ function Kit({
         <Checklist items={f(t.cut.steps)} ordered />
       </Section>
       <Section title={t.park.title} testId="field-kit-park">
-        <p className="text-sm text-fg">{t.park.text}</p>
+        <p className="text-sm text-fg">
+          {data.park
+            ? fill(t.park.on, { x: String(data.park.x), y: String(data.park.y) })
+            : t.park.text}
+        </p>
+        {data.park ? null : <p className="text-sm text-fg-muted">{t.park.hint}</p>}
       </Section>
       <Section title={t.extended.title} testId="field-kit-extended">
         <p className="text-sm text-fg">{t.extended.text}</p>
