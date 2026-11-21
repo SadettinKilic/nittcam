@@ -170,7 +170,7 @@ describe('T324 tester: checker R3 on hand-made programs', () => {
   });
 
   // Known gap (not blocking): fails today; when the checker samples by length, drop `.fails`.
-  it.fails('a long ramp over uncut material whose 5 sample points touch short level cuts', () => {
+  it('a long ramp over uncut material whose 5 sample points touch short level cuts', () => {
     // The ramp X100 → X200 crosses uncut board; level cuts at the same depth cross it only at
     // X100, 125, 150, 175 and 200 (the checker's sample points).
     const cross = [100, 125, 150, 175, 200].flatMap((x) => [

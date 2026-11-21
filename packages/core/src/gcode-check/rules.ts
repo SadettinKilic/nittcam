@@ -719,6 +719,10 @@ export function floorRule(sm: readonly SheetMove[], d: Derived, push: Push): voi
 export function rampRule(sm: readonly SheetMove[], d: Derived, push: Push): void {
   const tol = d.posTol;
   const reach = tol + (d.ctx.post?.arcs?.chordTolerance ?? RAMP_CHORD_TOLERANCE);
+  // Sample spacing along a ramp: at most min(1 mm, smallest tool radius), so no stretch of a ramp
+  // over uncut material can hide between two points (a fixed point count could, tester B59).
+  const radii = d.ops.map((o) => o.toolDiameter / 2).filter((r) => r > 0);
+  const spacing = Math.min(RAMP_SAMPLE_MAX_SPACING, ...radii);
   const xyLen = (m: SheetMove): number =>
     m.arc ? m.arc.r * m.arc.sweep : Math.hypot(m.to.x - m.from.x, m.to.y - m.from.y);
   const isRamp = (m: SheetMove): boolean =>
@@ -742,7 +746,7 @@ export function rampRule(sm: readonly SheetMove[], d: Derived, push: Push): void
         xyLen(t) > tol,
     );
     for (const m of ramps) {
-      const off = samples(m).find((p) => !trace.some((t) => distToMove(p, t) <= reach));
+      const off = samples(m, spacing).find((p) => !trace.some((t) => distToMove(p, t) <= reach));
       if (!off) continue;
       reported++;
       push(
@@ -761,10 +765,14 @@ const RAMP_CHORD_TOLERANCE = 0.01;
 
 type XY = { x: number; y: number };
 
-/** Points along a read move (ends and 3 inner points; arcs by angle). */
-function samples(m: SheetMove): XY[] {
+/** Largest gap between two checked points of a ramp, mm. */
+const RAMP_SAMPLE_MAX_SPACING = 1;
+
+/** Points along a read move, at most `spacing` mm apart, ends included (arcs by angle). */
+function samples(m: SheetMove, spacing: number): XY[] {
   const out: XY[] = [];
-  const n = 4;
+  const len = m.arc ? m.arc.r * m.arc.sweep : Math.hypot(m.to.x - m.from.x, m.to.y - m.from.y);
+  const n = Math.max(1, Math.ceil(len / spacing));
   if (m.arc) {
     const a = m.arc;
     const a0 = Math.atan2(m.from.y - a.cy, m.from.x - a.cx);
