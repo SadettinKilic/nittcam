@@ -201,6 +201,7 @@ export async function overview(
     testPart: info,
     origin: { corner: m.profile.origin.corner, sheetOffset: { ...m.profile.origin.sheetOffset } },
     park: parkPoint(m.profile, ctx.post),
+    parkOff: ctx.post?.toolChange.mode === 'manual' && parkPoint(m.profile, ctx.post) === null,
     programs: { airCut: air, testCut: cut },
     extended: {
       info: extendedTestProgram('testCut', profileVersionOf(ctx), ctx.rawPost).info,

@@ -72,6 +72,16 @@ export function ExportChecklist({
           })}
         />
       ) : null}
+      {checklist?.parkOff ? (
+        // T321 (usta 2): a manual change without a park point stops with the tool over the sheet.
+        <p
+          className="flex items-start gap-1.5 text-sm text-warning-text"
+          data-testid={`${testIdPrefix}-park-off`}
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t.parkOff}
+        </p>
+      ) : null}
       {templateNames.length > 0 ? (
         <ChecklistItem
           testId={`${testIdPrefix}-check-templates`}

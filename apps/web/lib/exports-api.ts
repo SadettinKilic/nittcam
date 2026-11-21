@@ -43,6 +43,8 @@ export interface ExportChecklistInfo {
   toolChanges: number;
   /** After each manual change Z must be re-zeroed (no tool length offset). */
   rezeroZ: boolean;
+  /** T321: a manual tool changer without a park point: the tool stops above the sheet at a change. */
+  parkOff: boolean;
 }
 
 export interface ExportProfileInfo {

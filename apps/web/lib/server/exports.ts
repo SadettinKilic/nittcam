@@ -20,6 +20,7 @@ import {
   type UnverifiedReason,
 } from '@nittcam/core';
 import type { CompanyScope, ExportRow, MachineWithProfile, ProjectRow } from '@nittcam/db';
+import { parkOff } from '../check-state';
 import { POST_CONFIGS } from '@nittcam/machines';
 import { NextResponse } from 'next/server';
 import {
@@ -279,6 +280,7 @@ function checklistOf(
     tools,
     toolChanges: program?.manualChanges ?? 0,
     rezeroZ: program?.rezeroZ ?? false,
+    parkOff: parkOff(p),
   };
 }
 

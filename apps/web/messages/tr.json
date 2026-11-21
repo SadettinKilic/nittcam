@@ -1261,7 +1261,7 @@
       "AXIS_AWAY_FROM_TABLE": "Bir eksen tabladan dışarı bakıyor: koordinatlar negatif olur.",
       "FILE_SPLIT": "Program boyut sınırı yüzünden birden çok dosyaya bölündü.",
       "LEAD_SHORTENED": "Giriş/çıkış hareketi kısaltıldı.",
-      "LEAD_REMOVED": "Giriş/çıkış hareketi yer olmadığı için kaldırıldı.",
+      "LEAD_REMOVED": "Giriş/çıkış hareketi yer olmadığı için kaldırıldı; takım parçaya dik dalar ve iz bırakabilir. Dizilim adımında parça arası payı artırıp yeniden dizin.",
       "SMALL_PART_AUTO_TABS": "Küçük parçaya otomatik köprü eklendi.",
       "SMALL_PART_SKIN": "Küçük parçanın altında ince tabaka bırakıldı; plakanın sonunda temizleme pasosuyla kesilir.",
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
@@ -1308,6 +1308,7 @@
       "files": "{files} dosya · {sheets} plaka · {moves} hareket",
       "checksOk": "Tüm kontroller geçti",
       "checksFail": "{count} kontrol geçmedi",
+      "checksWarn": "Kontroller geçti · {count} uyarı",
       "warnings": "{count} uyarı",
       "noDownloadHere": "İndirme, kontrol listesiyle birlikte Dışa aktar adımında yapılır.",
       "toolOrder": "Takımlar: {tools}",
@@ -1932,6 +1933,7 @@
       "checkToolNone": "Takım doğru mu?",
       "checkToolChange": "Program içinde {count} kez durup takım ister.",
       "checkToolChangeZ": "Program içinde {count} kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayacağım.",
+      "parkOff": "Park noktası kapalı: takım değişiminde takım plakanın üstünde kalır. Makineler › makine › Takım değiştirici bölümünden park noktası ayarlayın.",
       "checkAirCut": "Air cut yapılacak mı?",
       "checkTemplates": "Hazır şablon ölçüleri doğrulanmadı: {names}. Ölçüleri kendi menteşe / kulp verinizle karşılaştırdım.",
       "hingeHandle": "Kulp delikleri menteşe ile aynı kenarda ({names}). Kulp menteşe tarafında olamaz; kenarı kontrol edin.",
@@ -2003,6 +2005,8 @@
     "issues": {
       "title": "Uyarılar",
       "none": "Sorun bulunmadı.",
+      "simWarnings": "Kesimde {count} uyarı var; ayrıntısı Özet'te.",
+      "renest": "{count} parça dizilimde yok (adet ya da parça değişti). Dizilim adımında yeniden dizin.",
       "errors": "Hata ({count})",
       "warnings": "Uyarı ({count})",
       "groups": {
@@ -2291,6 +2295,7 @@
       "title": "Not: takım değişimi ve park konumu",
       "text": "Elle takım değişiminde makine malzemenin 20 mm üstünde durur; ayrı bir park konumu yok. Takımı değiştirmeden önce spindle’ın durduğunu görün, gerekirse Z’yi elle kaldırın. Bu yükseklik sizin makinenizde yeterli mi, not alın.",
       "on": "Elle takım değişiminde makine önce güvenli Z'ye (malzemenin 20 mm üstü) çıkar, sonra makine koordinatında X {x} / Y {y} park noktasına gider (G53) ve durur. Takımı değiştirmeden önce spindle'ın durduğunu görün; park noktasının sizin makinenizde rahat bir yer olduğunu not alın.",
+      "off": "Uyarı: park noktası kapalı. Takım değişiminde takım plakanın üstünde kalır; park noktası ayarlayın.",
       "hint": "Park noktası makine profilinde açılabilir: Makineler › makine › Takım değiştirici › “Takım değişiminde park noktasına git” (makine koordinatı, G53)."
     },
     "extended": {

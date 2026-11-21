@@ -1693,7 +1693,7 @@ Usta 2 (Elif): a 600 × 400 panel (R20 corners, cut-out, circle, holes) read "27
 ### T320 Hole tool: a drill must match the hole; default the best compatible tool   [status: done]
 Usta 1 (Kemal): a Ø35 hinge cup with a Ø5 drill was accepted silently; template holes always came with T1 (Ø6 mill). Rule (D-099, D-108): a drill only drills a hole of its own Ø (through or blind); a bigger hole needs a mill (helical / pocket) and is rejected with a clear message in validation and the export checklist. New holes default to the best compatible tool (a drill of the hole's Ø if the machine has one, else the mill). Unit tests.
 
-### T321 One warning state across the summary, the checks box and the cut list   [status: todo]
+### T321 One warning state across the summary, the checks box and the cut list   [status: done]
 Usta 1 + 2: (a) leads removed ("yer yok") on 7 parts while the summary said green "Tüm kontroller geçti" → the summary shows a warning state with the count; (b) "1 uyarı" next to "Sorun bulunmadı" → one source of truth; (c) after a quantity change every row showed red "Hata" → neutral "Yeniden diz" state; (d) a manual tool changer with park off → checklist warning "takım değişiminde takım plakanın üstünde kalır; park noktası ayarlayın", mentioned in the field kit too.
 
 ### T322 NC file name respects the machine's length limit   [status: todo]
