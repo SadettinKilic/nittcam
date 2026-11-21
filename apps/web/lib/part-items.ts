@@ -9,6 +9,7 @@ const MACHINE_FIXABLE_HOLE_CODES: ReadonlySet<string> = new Set([
   'TOOL_NOT_IN_PROFILE',
   'HOLE_SMALLER_THAN_TOOL',
   'GROOVE_NARROWER_THAN_TOOL',
+  'DRILL_SIZE_MISMATCH',
 ]);
 
 export interface ItemRef {

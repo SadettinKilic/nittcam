@@ -1690,7 +1690,7 @@ Owner 2026-11-21 (D-104): "8'lik takım kullanıyorsak arada offset 8 değil 8,1
 ### T319 Canvas part label shows the part size, not the label room   [status: done]
 Usta 2 (Elif): a 600 × 400 panel (R20 corners, cut-out, circle, holes) read "276 × 172,5" on the Dizilim and Simülasyon canvases while the inspector said 600 × 400. Root cause: since B44 the label sits at a spot inside the material and both canvases passed that spot's free room as the part's W × H to `partLabel()`. Fix: `spotLabel()` (`apps/web/lib/label-spot.ts`) prints the footprint W × H and uses the spot only as room (the drawing board already did). Unit test with Elif's panel.
 
-### T320 Hole tool: a drill must match the hole; default the best compatible tool   [status: todo]
+### T320 Hole tool: a drill must match the hole; default the best compatible tool   [status: done]
 Usta 1 (Kemal): a Ø35 hinge cup with a Ø5 drill was accepted silently; template holes always came with T1 (Ø6 mill). Rule (D-099, D-108): a drill only drills a hole of its own Ø (through or blind); a bigger hole needs a mill (helical / pocket) and is rejected with a clear message in validation and the export checklist. New holes default to the best compatible tool (a drill of the hole's Ø if the machine has one, else the mill). Unit tests.
 
 ### T321 One warning state across the summary, the checks box and the cut list   [status: todo]

@@ -891,7 +891,7 @@ function WizardSession({
     () => ({
       byPart: holeErrors(project, session.issues),
       tools: profileTools
-        ? profileTools.map((x) => ({ number: x.number, diameter: x.diameter }))
+        ? profileTools.map((x) => ({ number: x.number, diameter: x.diameter, type: x.type }))
         : null,
       focus: holeFocus,
     }),
