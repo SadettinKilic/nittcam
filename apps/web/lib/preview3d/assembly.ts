@@ -6,6 +6,7 @@
  */
 import {
   cabinetAssembly,
+  finishedSize,
   type AssemblyBox,
   type AssemblyRow,
   type CabinetAssembly,
@@ -37,6 +38,8 @@ export function cabinetGroups(
 ): CabinetGroup[] {
   const byName = new Map<string, CabinetPartRole>();
   for (const [role, name] of Object.entries(roles)) byName.set(fold(name), role as CabinetPartRole);
+  const settings = project.settings as Project['settings'] | undefined;
+  const mode = settings?.dimensionMode ?? 'cut';
   const rows = new Map<string, AssemblyRow[]>();
   const parts = new Map<string, Map<string, Part>>();
   for (const p of project.parts) {
@@ -44,12 +47,16 @@ export function cabinetGroups(
     const role = byName.get(fold(p.name));
     if (!role) continue;
     const list = rows.get(p.group) ?? [];
+    // T316: the box is built from finished sizes (cut mode rows are entered without the band).
+    // Partial projects (older callers, tests) may lack settings or bands: read as cut, no band.
+    const band = p.edgeBand as Part['edgeBand'] | undefined;
+    const size = band ? finishedSize(p.params, band, mode) : p.params;
     list.push({
       role,
       id: p.id,
       qty: p.qty,
-      w: p.params.w,
-      h: p.params.h,
+      w: size.w,
+      h: size.h,
       thickness: noteThickness(p.note) ?? project.stock.thickness,
     });
     rows.set(p.group, list);

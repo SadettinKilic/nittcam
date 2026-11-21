@@ -13,7 +13,11 @@ import {
 const roles = tr.cutList.cabinet.roles;
 
 function projectWith(parts: unknown[]): Project {
-  return { stock: { thickness: 18 }, parts } as unknown as Project;
+  return {
+    stock: { thickness: 18 },
+    settings: { dimensionMode: 'finished' },
+    parts,
+  } as unknown as Project;
 }
 
 function generated(group: string, width = 600) {
@@ -28,6 +32,7 @@ function generated(group: string, width = 600) {
     ...(x.thickness !== 18 ? { note: `${x.thickness} mm` } : {}),
     kind: 'rect',
     params: { w: x.w, h: x.h, r: 0 },
+    edgeBand: x.edgeBand,
     holes: [] as unknown[],
     inners: [] as unknown[],
   }));

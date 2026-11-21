@@ -3420,7 +3420,7 @@
           "Parçalar adımında “Yapıştır” ile Excel ya da Google E-Tablolar’dan kopyaladığınız satırları ekleyin. İlk satır başlıksa sütunlar adından tanınır (Parça adı, En, Boy, Adet, Damar).",
           "Ölçüler milimetredir. Hücreleri tabloda doğrudan düzeltebilirsiniz.",
           "Her değişiklik bir adımdır: Ctrl+Z geri alır, Ctrl+Y yineler.",
-          "Kenar bandı kalınlığı girilen kenarlar dizilimde parça ölçüsünden düşülür."
+          "Kenar bandı: “Bitmiş ölçü” açıksa girilen en ve boy bantlı (bitmiş) ölçüdür, bant kalınlığı kesimden düşülür. Kapalıysa girilen ölçü kesim ölçüsüdür, bant üstüne eklenir. “Dolap ekle” iki durumda da bitmiş ölçüyü tutar: kapalıyken bandı satırlardan kendisi düşer."
         ]
       },
       "cizim": {

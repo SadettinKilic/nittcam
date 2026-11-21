@@ -71,7 +71,9 @@ async function addCabinet(page: Page, values: Record<string, string>, extra?: ()
   await expect(dialog).toHaveCount(0);
 }
 
-// Hand calculation (W × H × D, t, back, shelves, doors, gap, plinth):
+// Hand calculation (W × H × D, t, back, shelves, doors, gap, plinth). These are finished sizes;
+// T316 (D-105): the project is in cut mode, so each row is entered minus its 1 mm band (sides and
+// decks lose 1 on the front edge, doors 2 on each side). Cases 1 and 2 below list the cut rows.
 // 1) defaults 600 × 720 × 560, t18, inset back 8, 1 shelf, 1 door g3:
 //    sides 560 × 720 ×2; top/bottom/shelf (600−36) × (560−8) = 564 × 552; back 564 × 720;
 //    door (600−6) × (720−6) = 594 × 714.
@@ -81,20 +83,20 @@ async function addCabinet(page: Page, values: Record<string, string>, extra?: ()
 // 3) 450 × 900 × 300, t16, no back, 2 shelves, no doors, band 0:
 //    sides 300 × 900 ×2; top/bottom 418 × 300; shelves 418 × 300 ×2.
 const CAB1 = [
-  ['Dolap 1', c.roles.side, 560, 720, 2],
-  ['Dolap 1', c.roles.top, 564, 552, 1],
-  ['Dolap 1', c.roles.bottom, 564, 552, 1],
-  ['Dolap 1', c.roles.shelf, 564, 552, 1],
+  ['Dolap 1', c.roles.side, 559, 720, 2],
+  ['Dolap 1', c.roles.top, 564, 551, 1],
+  ['Dolap 1', c.roles.bottom, 564, 551, 1],
+  ['Dolap 1', c.roles.shelf, 564, 551, 1],
   ['Dolap 1', c.roles.back, 564, 720, 1],
-  ['Dolap 1', c.roles.door, 594, 714, 1],
+  ['Dolap 1', c.roles.door, 592, 712, 1],
 ];
 const CAB2 = [
-  ['Uzun dolap', c.roles.side, 596, 2000, 2],
-  ['Uzun dolap', c.roles.top, 764, 596, 1],
-  ['Uzun dolap', c.roles.bottom, 764, 596, 1],
-  ['Uzun dolap', c.roles.shelf, 764, 596, 4],
+  ['Uzun dolap', c.roles.side, 595, 2000, 2],
+  ['Uzun dolap', c.roles.top, 764, 595, 1],
+  ['Uzun dolap', c.roles.bottom, 764, 595, 1],
+  ['Uzun dolap', c.roles.shelf, 764, 595, 4],
   ['Uzun dolap', c.roles.back, 800, 2000, 1],
-  ['Uzun dolap', c.roles.door, 397, 1896, 2],
+  ['Uzun dolap', c.roles.door, 395, 1894, 2],
   ['Uzun dolap', c.roles.plinth, 764, 100, 1],
 ];
 const CAB3 = [

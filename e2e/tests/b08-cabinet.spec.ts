@@ -56,7 +56,8 @@ test.describe('T122 cabinet generator', () => {
       fill(t.count, { rows: 5, pieces: 9 }),
     );
     await expect(cell(page, 1, t.columns.name)).toHaveValue(c.roles.side);
-    await expect(cell(page, 1, t.columns.w)).toHaveValue('560');
+    // T316 (D-105): cut mode enters the side without its 1 mm front band (560 finished).
+    await expect(cell(page, 1, t.columns.w)).toHaveValue('559');
     await expect(cell(page, 2, t.columns.w)).toHaveValue('764');
     // One undo removes every generated row.
     await page.getByTestId('wizard-undo').click();

@@ -1685,6 +1685,11 @@ Owner 2026-11-21 (D-103): "Dolap eklediğimde 2 kapağı da plakada görmüyorum
 ### T313 Clear distance between parts = tool Ø + clearance (default 0.1 mm)   [status: done]
 Owner 2026-11-21 (D-104): "8'lik takım kullanıyorsak arada offset 8 değil 8,1 mm olmamalı mı?" The rule was already tool Ø + `nesting.gap` (D-019) but the built-in gap was 8, so neighbours stood 16 mm apart. New projects start with gap 0.1 (Ø8 → 8.1 mm clear); per project in step 3, company default in Ayarlar. UI says "Parça arası pay" and "Parça arası boşluk: takım Ø8 + pay 0,1 = 8,1 mm". Rectangle and true-shape placers share `partSpacing`; leads keep their neighbour check (shortened / removed with a warning), tabs stay on the contour. Unit tests: measured clear distance ≥ Ø + clearance for both engines.
 
+### Batch B57: T316–T318 (usta 1 user test, before the field test; Dev 2)
+
+### T316 Dolap ekle keeps finished sizes in cut mode (edge band)   [status: review]
+Usta 1 (Kemal) 2026-11-21, D-105. With "Bitmiş ölçü" off (cut mode) the "Dolap ekle" rows were entered at the generator's finished sizes, so the band was added on top (door 395,5 × 714 cut, 397,1 × 715,6 finished; a 3 mm door gap became 1,4 mm). Fix: the generator's sizes are finished sizes; in cut mode each row is entered minus its band (`enteredSize`, door 393,9 × 712,4), in finished mode as generated, so both modes cut the same parts. The assembly view reads finished sizes (`finishedSize`), so the box and the door gap stay as designed. Cut list, PDF, labels and G-code all read `toCutSizes` (unchanged). Help text states both rules. Unit: `cut-size.test.ts` (+ property), `cabinet-rows.test.ts`; cabinet e2e expectations updated (cut rows).
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine
