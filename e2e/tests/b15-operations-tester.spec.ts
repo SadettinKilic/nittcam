@@ -68,7 +68,12 @@ test('inner contour: inside / online / none by keyboard; depth ≥ thickness ref
   await expect(picker).toContainText(kinds.inside);
   await picker.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('option')).toHaveText([kinds.inside, kinds.online, kinds.none]);
+  await expect(page.getByRole('option')).toHaveText([
+    kinds.inside,
+    kinds.online,
+    kinds.pocket,
+    kinds.none,
+  ]);
   await expect(page.getByRole('option', { name: kinds.inside })).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('option', { name: kinds.online })).toBeFocused();
