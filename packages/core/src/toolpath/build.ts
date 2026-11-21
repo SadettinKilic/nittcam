@@ -1484,8 +1484,8 @@ export function buildToolpath(
           contour: inner,
           tool: pocketTool.number,
           toolDiameter: pocketTool.diameter,
-          feed: params.feed,
-          plungeFeed: params.plungeFeed,
+          // T323: the pocket tool's own feeds, like its rpm.
+          ...feedsOf(pocketTool.number),
           rpm: rpmOf(pocketTool.number),
           passDepths: depths,
           safeZ,
