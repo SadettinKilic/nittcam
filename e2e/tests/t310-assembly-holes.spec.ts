@@ -31,10 +31,19 @@ async function doorHoles(request: APIRequestContext, id: string, cups: boolean) 
   expect(res.status(), await res.text()).toBe(200);
 }
 
-async function assembly(page: Page, request: APIRequestContext, cups: boolean, name: string) {
+async function assembly(
+  page: Page,
+  request: APIRequestContext,
+  cups: boolean,
+  name: string,
+  doors: 1 | 2 = 1,
+) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openNewProject(page, 'parcalar');
   await page.getByTestId('cabinet-open').click();
+  if (doors === 2) {
+    await page.getByTestId('cabinet-dialog').getByRole('radio', { name: c.doorCount[2] }).click();
+  }
   await page.getByTestId('cabinet-add').click();
   await expect(page.getByTestId('cabinet-dialog')).toHaveCount(0);
   await saved(page);
@@ -68,4 +77,12 @@ test('single door, handle holes + hinge cup: assembly renders (screenshot)', asy
 }) => {
   test.setTimeout(150_000);
   await assembly(page, request, true, 'tek-kapak-kulp-mentese');
+});
+
+test('two doors, handle holes only: both at the drawn height (screenshot)', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(150_000);
+  await assembly(page, request, false, 'iki-kapak-kulp', 2);
 });
