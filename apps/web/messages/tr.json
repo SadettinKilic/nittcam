@@ -1648,6 +1648,21 @@
     "unknown": "{id} (tanınmayan malzeme)"
   },
   "wizard": {
+    "assistant": {
+      "open": "Asistan",
+      "openLabel": "Asistanı aç",
+      "title": "Asistan",
+      "soon": "Yakında",
+      "close": "Asistanı kapat",
+      "intro": "Yapay zekâ asistanı hazırlanıyor. Şimdilik yazdıklarına sabit bir yanıt verir; projende hiçbir şeyi değiştirmez.",
+      "log": "Sohbet",
+      "inputLabel": "Mesaj",
+      "placeholder": "Bir şey yaz…",
+      "send": "Gönder",
+      "you": "Sen",
+      "bot": "Asistan",
+      "reply": "Yapay zekâ asistanı yakında geliyor. Şimdilik parçaları kesim listesinden veya çizimden ekleyebilirsin."
+    },
     "links": {
       "source": "Kaynak proje",
       "derived": "Ayrı plaka projeleri"
