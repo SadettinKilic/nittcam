@@ -95,9 +95,11 @@ type V3 = [number, number, number];
  *   grooves, lines) has its machined face inside, so seen from the front it is the drawing turned
  *   over about its vertical axis (left and right swap, a hinge drawn at the local left edge is at
  *   the right). A door with only through holes / cutouts has its machined face to the front and
- *   looks exactly like the drawing. With two doors (one row, identical boards) the left door is
- *   the right one turned 180° in its plane, so their hinges sit at the outer edges and handles
- *   meet in the middle; the left door's drawing is then upside down (unavoidable for one row).
+ *   looks exactly like the drawing. Two doors of one row (identical boards): with through work
+ *   only, the left door faces the drawing to the front and the right door is the same board
+ *   turned over about its vertical axis, so both keep the drawn height and handles meet in the
+ *   middle; with face-only work the left door is the right one turned 180° in its plane (hinges
+ *   at the outer edges), so its drawing is upside down (unavoidable for one row).
  * `width` is the cabinet width (tells left from right). Returns a column-major 4×4 matrix
  * (`Matrix4.fromArray` order): world = M · (x, y, z, 1), in the cabinet frame.
  */
@@ -150,17 +152,19 @@ export function assemblyFaceMatrix(box: AssemblyBox, width: number, faceInside =
           cy = [0, 1, 0];
           o = [bx + sx, by, bz + sz];
         }
-      } else {
+      } else if (leftDoor || Math.abs(centre - width / 2) <= 1e-6) {
+        // Through work only, left or single door: machined face to the front = the drawing.
+        cx = [1, 0, 0];
+        cy = [0, 1, 0];
         cz = [0, 0, 1];
-        if (leftDoor || Math.abs(centre - width / 2) <= 1e-6) {
-          cx = [1, 0, 0];
-          cy = [0, 1, 0];
-          o = [bx, by, bz];
-        } else {
-          cx = [-1, 0, 0];
-          cy = [0, -1, 0];
-          o = [bx + sx, by + sy, bz];
-        }
+        o = [bx, by, bz];
+      } else {
+        // Through work only, right door: the same board turned over about its vertical axis, so
+        // the handle stays at its drawn height and meets the left door's in the middle.
+        cx = [-1, 0, 0];
+        cy = [0, 1, 0];
+        cz = [0, 0, -1];
+        o = [bx + sx, by, bz + sz];
       }
       break;
     default: // back, plinth

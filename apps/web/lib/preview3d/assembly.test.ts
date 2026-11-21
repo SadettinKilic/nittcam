@@ -258,9 +258,10 @@ describe('door holes keep the drawing in the assembly (T310)', () => {
       const r = world(g, R)[2];
       expect(Math.abs((l?.[0] ?? 0) - mid)).toBeLessThan(L.sx / 2);
       expect(Math.abs((r?.[0] ?? 0) - mid)).toBeLessThan(R.sx / 2);
-      // one row = identical boards: one door keeps the drawing's top, the other is turned 180°
       const tops = [l?.[1] ?? 0, r?.[1] ?? 0].map((y) => y > L.y + L.sy / 2);
-      expect(tops.sort()).toEqual([false, true]);
+      // through work only: both keep the drawing's top; with hinge cups (one row = identical
+      // boards) one door is turned 180°
+      expect(tops.sort()).toEqual(extra.length === 0 ? [true, true] : [false, true]);
     }
   });
 });
