@@ -253,6 +253,7 @@ describe('contour pocket generator, random shapes × tools Ø3–Ø12 × passes 
         }
       }
       if (!plunged) expect(worst).toBeLessThanOrEqual(3 + 1e-6);
+      if (w === 10) expect(plunged).toBe(true);
     },
   );
 
