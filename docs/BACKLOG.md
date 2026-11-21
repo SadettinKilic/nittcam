@@ -1521,6 +1521,8 @@ Partly done in B46 (#150): items marked "done in B46"; the rest stays open.
 - Out-of-range fields say the limit (Ayarlar defaults, offcut dialog) instead of a silent disabled Kaydet [#12] (done in B46)
 - ★ One vocabulary across Ayarlar / Simülasyon / step 1: Köprü, Kapalı, ince tabaka, Climb (tırmanma) [#11, #12] (done in B46)
 - "Ayrı plaka parçalarını yeni projeye aktar" also on an unsaved new project (saves first); a project on an archived machine shows "bu makine arşivlendi" on step 1 and Dışa aktar [#12] (done in B46)
+- Machine form park fields: the unit sits against the number ("0mm"), needs a space like the other fields [T B55 tester]
+- Flaky e2e seen in CI round 24 (green on rerun): `b07-cutlist-tester-r3.spec.ts:247` 390 touch tap after scroll (scrollIntoViewIfNeeded timeout), `b21-preview3d-perf.spec.ts:69` fps read 0 on the CPU runner [T CI]
 
 ### P4 Kabuk, bildirimler, ana sayfa   [status: done, B39]
 Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is already the box.
@@ -1646,7 +1648,7 @@ Owner 2026-11-21. Outer / inner contour, pocket, hole: pick a compatible tool fr
 
 ### Batch B55: T309 (owner request 2026-11-21; Dev 2, PR #162)
 
-### T309 Park position for manual tool change   [status: review]
+### T309 Park position for manual tool change   [status: done]
 Owner 2026-11-21 (D-097). Machine profile option `toolChanger.park` (X/Y in machine coordinates, written as `G53 G0 X.. Y..`, on/off, within the machine travel); every manual pause (tool change and first-tool check) goes safe Z → park → message + M0; only for posts with G53 (`motion.machineCoordinates`), otherwise forced off with a form note; the independent reader accepts the G53 move only at the profile's point; field-kit note names the point; park off = same bytes (goldens unchanged).
 
 ## Field test 1 (owner)   [status: todo]
