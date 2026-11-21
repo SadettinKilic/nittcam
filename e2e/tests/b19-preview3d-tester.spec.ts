@@ -92,7 +92,9 @@ test('the 3D chunk loads on no page until 3D is clicked', async ({ page }) => {
     await page.waitForLoadState('networkidle');
   }
   await nestShelfSet(page);
-  // Every wizard step of the project (Dizilim last, 2D).
+  // Every wizard step of the project (Dizilim last, 2D). Wait for the first save: an unsaved
+  // `/projeler/yeni` draft is tab-scoped by `?taslak=` (T305), so a bare `yeni` address is empty.
+  await expect(page).not.toHaveURL(/\/projeler\/yeni/, { timeout: 15_000 });
   const project = /\/projeler\/([^/?]+)/.exec(page.url())?.[1];
   for (const step of ['makine', 'parcalar', 'dizilim']) {
     await page.goto(`/projeler/${project}?adim=${step}`);

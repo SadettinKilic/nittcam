@@ -1616,24 +1616,34 @@ Tester focus: full safety review; golden list prepared for the owner's approval.
 
 ### Batch B31: T190–T193 (final e2e and field-test readiness)
 
-### T190 Full regression e2e scenarios   [status: todo]
+### T190 Full regression e2e scenarios   [status: done]
 Spec: §11 · Depends: T189
 Acceptance:
 - [ ] 5 scenarios in CI: cabinet + hinge doors, DXF sign letters, grain-rotated panels, mixed holes/pockets, offcut reuse; each: input → nest → 3D → simulation → NC + PDF + DXF + labels; all checks pass
 Tester focus: run the suite; review every NC with the safety checklist.
 
-### T191 Field-test kit   [status: todo]
+### T191 Field-test kit   [status: done]
 Spec: §7.3, §12.3 · Depends: T190
 Acceptance:
 - [ ] extended test program (holes, pocket, groove, arcs, inner contour) + measurement form fields; printable field checklist PDF (origin, Z zero, tool, air cut first); `docs/machines/_template/` for the info collection; air-cut/test exports recorded
 Tester focus: safety review of the extended test program; air-cut floor (D-031) holds for the new operations.
 
-### T192 In-app help and "Yenilikler"   [status: todo]
+### T192 In-app help and "Yenilikler"   [status: done]
 > CTO #12: add a search in the help.
 Spec: §8.2 · Depends: T190
 Acceptance:
 - [ ] Turkish help pages (getting started, cut list, drawing, grain, 3D, export, air cut) linked from the palette; "Yenilikler" dialog per release
 Tester focus: links work; text in `tr.json`; axe.
+
+### T305 A new project never receives another project's parts (unsent queue per draft)   [status: done]
+Must-fix (data loss / wrong project), found in the T190 offcut scenario; rider in B49. Spec: §8.2 · D-094
+Cause: the unsent queue of a project not created yet lived under one shared `sessionStorage` key `nittcam.unsent.new`. Leaving a new project before its first save came back (e.g. Projeler → + Yeni proje) left that key, and the next new project replayed it: the first project's parts **and its client id**, so the repeated create returned the first project and later saves went into it.
+Acceptance:
+- [ ] the queue key is per draft (`nittcam.unsent.new.<draft id>`); the address of a project not saved yet carries `?taslak=<draft id>`; a new project replays only the queue of its own draft (and only when this tab holds it); the old shared key is dropped, never replayed
+- [ ] "+ Yeni proje" (menu, list, home) while a draft is not saved yet opens an empty project with a new draft id
+- [ ] a reload (or the way back from the machine form) before the first save still restores the draft's own edits (§8.2, T187, T264)
+- [ ] unit tests (`autosave.test.ts`) + e2e `t305-new-project-queue.spec.ts` (leave without waiting for the save; menu Yeni proje; reload)
+Tester focus: try to get one project's parts into another (leave fast, offline, two tabs, Back/forward, machine form round trip).
 
 ### T193 Field-test readiness review   [status: todo]
 Spec: §12.1 · Depends: T191, T192 · Owner: PO + tester · **Human gate: owner sign-off**
@@ -1642,6 +1652,19 @@ Acceptance:
 Tester focus: final full run (unit, property, golden, e2e, visual, axe, perf) with one summary report.
 
 ---
+
+### Batch B54: T307–T308 (owner requests 2026-11-21, before the field test; Dev 1, PR #161)
+
+### T307 Spindle speed per project (slider)   [status: todo]
+Owner 2026-11-21. Default = rpm of the job material set; per-tool override in Simülasyon "Kesim ayarları" (slider + field, recommended tick, ±20 % band, chip load), within the machine min/max (command + validator), NC `S` and header show it; no override = same bytes.
+
+### T308 Per-job tool choice per operation   [status: todo]
+Owner 2026-11-21. Outer / inner contour, pocket, hole: pick a compatible tool from the machine profile (default = today), "Önerilene dön", rpm suggestion follows the tool.
+
+### Batch B55: T309 (owner request 2026-11-21; Dev 2, PR #162)
+
+### T309 Park position for manual tool change   [status: todo]
+Owner 2026-11-21. Machine profile option (X/Y in machine coordinates G53, on/off); manual change goes safe Z → park → M0 + message; field-kit note linked; park off = same bytes.
 
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)

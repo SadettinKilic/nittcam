@@ -26,6 +26,7 @@ import {
   Check,
   CircleAlert,
   CircleCheck,
+  ClipboardList,
   Download,
   FileCode2,
   Lightbulb,
@@ -126,6 +127,15 @@ export function VerificationView({
                 {fill(t.subtitle, { machine: load.data.machineName, version: load.data.version })}
               </p>
             ) : null}
+            {/* T191: the printable machine-day kit for this machine. */}
+            <Link
+              href={`/makineler/${encodeURIComponent(machineId)}/saha-kiti`}
+              className={`${sectionLink} self-start`}
+              data-testid="verification-field-kit"
+            >
+              <ClipboardList aria-hidden />
+              {t.fieldKitLink}
+            </Link>
           </div>
           {load.status === 'ready' ? (
             <MachineStateBadge
@@ -368,7 +378,7 @@ function Ready({
 }
 
 /** Download cards for a test program; rule 10: unverified files need the acceptance first. */
-function ProgramFiles({
+export function ProgramFiles({
   program,
   t,
   testId,

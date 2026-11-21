@@ -24,6 +24,7 @@ import { usePathname } from 'next/navigation';
 import { useId, type ComponentType, type ReactNode } from 'react';
 import { useCompanyBrand } from '../../lib/company-brand';
 import type { Messages } from '../../lib/messages';
+import type { HelpTopicId } from '../../lib/help';
 import { NAV_ITEMS, NEW_PROJECT_HREF, isNavActive, type NavKey } from '../../lib/shell-nav';
 
 export type ShellText = {
@@ -33,6 +34,9 @@ export type ShellText = {
   shortcuts: Messages['shortcuts'];
   /** Wizard step names, for the palette's in-project commands (P4). */
   steps: Messages['wizard']['steps'];
+  /** Help topic titles and search words for the palette (T192). */
+  helpTopics: Record<HelpTopicId, { title: string; keywords: string }>;
+  whatsNew: Messages['whatsNew'];
 };
 
 const ICONS: Record<NavKey, ComponentType<{ className?: string; 'aria-hidden'?: boolean }>> = {

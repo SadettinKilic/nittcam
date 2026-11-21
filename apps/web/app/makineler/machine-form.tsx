@@ -1,6 +1,7 @@
 'use client';
 
 import { setNavigationGuard } from '../../lib/navigation-guard';
+import { usePageBarClearance } from '../../lib/use-page-bar';
 import {
   defaultTabHeight,
   KNOWN_POSTS,
@@ -189,6 +190,9 @@ export function MachineForm({
   const materialRows = useRowKeys((start?.profile ?? initial).materials.length);
   const active = useActiveSection();
   const formRef = useRef<HTMLFormElement>(null);
+  // B49: toasts stack above the sticky save bar (bottom-4 = 16 px) instead of covering "Kaydet".
+  const saveBar = useRef<HTMLDivElement>(null);
+  usePageBarClearance(saveBar, 16);
 
   // T258: opened to add a parameter set: show "Malzeme parametreleri" and focus the set's feed.
   // After the page's own scroll-to-top (MachinesView), hence the next frame.
@@ -989,6 +993,7 @@ export function MachineForm({
 
       {/* Sticky save bar: unsaved-changes state, errors and the actions, always in reach. */}
       <div
+        ref={saveBar}
         data-testid="machine-save-bar"
         className="sticky bottom-4 z-10 rounded-xl border border-border bg-surface/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:px-5"
       >
