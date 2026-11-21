@@ -284,4 +284,64 @@ describe('toolpath, spindle and program follow the choice (T308)', () => {
       'OPERATION_TOOL_UNSUITABLE',
     );
   });
+
+  it('a choice left for an operation the job does not have is ignored (tester r1)', () => {
+    // A plain part: outer contour only, no inner cut, no pocket, no through hole.
+    const plain = projectOf({
+      parts: [{ id: 'a', w: 300, h: 200, qty: 1 }],
+      placements: [[{ partId: 'a', index: 0, x: 20, y: 20, rot: 0 }]],
+    });
+    const ref = buildToolpath(plain, machine);
+    expect(ref.errors).toEqual([]);
+    // Too short (T7), not in the profile (42), a drill (T3): none of them is used.
+    for (const leftover of [
+      { inner: 7 },
+      { inner: 42 },
+      { inner: 3 },
+      { pocket: 3 },
+      { pocket: 42, hole: 5, inner: 7 },
+    ]) {
+      const p = clone(plain) as Project;
+      p.cutting.tools = leftover;
+      const r = buildToolpath(p, machine);
+      expect(r.errors, JSON.stringify(leftover)).toEqual([]);
+      expect(r.toolpath.operations).toEqual(ref.toolpath.operations);
+      const codes = validateProject(p, { machine }).map((i) => i.code);
+      expect(codes).not.toContain('OPERATION_TOOL_UNSUITABLE');
+      expect(spindleSettingsOf(p, machine).map((s) => s.tool)).toEqual([2]);
+      const set = machine.materials[0];
+      if (set) expect(recommendedRpm(p, machine, set, 3)).toBe(set.rpm);
+      // No row for an absent operation, so nothing to clear in the UI.
+      expect(operationToolsOf(p, machine).map((row) => row.op)).toEqual(['outer']);
+    }
+    // The header names only choices of operations the job has.
+    const exp = exportNc(
+      Object.assign(clone(plain) as Project, {
+        cutting: { ...plain.cutting, tools: { inner: 1, outer: 1 } },
+      }),
+      { profile: machine, version: 1, verification: 'draft' },
+      postConfig('generic'),
+    );
+    expect(exp.ok).toBe(true);
+    const header = (exp.ok ? (exp.files[0]?.content ?? '') : '')
+      .split(/\r?\n/)
+      .find((l) => l.startsWith('(TAKIM ELLE'));
+    expect(header).toBe('(TAKIM ELLE: dis kontur T1)');
+  });
+
+  it('a left-over choice comes back into use when its operation does', () => {
+    const p = clone(project()) as Project;
+    const part = p.parts[0];
+    if (!part) throw new Error('no part');
+    const inners = part.inners;
+    part.inners = [];
+    p.cutting.tools = { inner: 1 };
+    expect(buildToolpath(p, machine).errors).toEqual([]);
+    part.inners = inners;
+    const r = buildToolpath(p, machine);
+    expect(r.errors).toEqual([]);
+    const inner = r.toolpath.operations.filter((o) => o.kind === 'innerContour');
+    expect(inner.length).toBeGreaterThan(0);
+    expect(new Set(inner.map((o) => o.tool))).toEqual(new Set([1]));
+  });
 });

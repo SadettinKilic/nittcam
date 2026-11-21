@@ -22,9 +22,15 @@ export const OPERATION_TOOL_TYPES: Record<OperationToolKind, readonly ToolType[]
   hole: ['drill', 'flatEndMill'],
 };
 
-/** The project's own tool for an operation, if any. */
+/**
+ * The project's own tool for an operation, if any. A choice left for an operation the job does
+ * not have (e.g. `inner` after the last inner contour was removed) is ignored everywhere (toolpath,
+ * validation, spindle rows, header) and comes back into use when the operation does.
+ */
 export function operationToolChoice(project: Project, op: OperationToolKind): number | undefined {
-  return project.cutting.tools?.[op];
+  const tool = project.cutting.tools?.[op];
+  if (tool === undefined) return undefined;
+  return operationsInJob(project).includes(op) ? tool : undefined;
 }
 
 /** The operation a hole belongs to: through holes = `hole`, blind pockets and grooves = `pocket`. */
