@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import {
   KITCHEN,
+  KITCHEN_3,
   goStep,
   openNewProject,
   paste,
@@ -542,7 +543,7 @@ test.describe('B9 tester: plate tabs (T199b)', () => {
   test('390: simulation plate tabs sit on their own row, like Dizilim', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openNewProject(page, 'parcalar');
-    await pasteAndNest(page, KITCHEN, 5);
+    await pasteAndNest(page, KITCHEN_3, 5);
     const layoutStrip = page.getByTestId('sheet-tabs-scroll');
     await expect(layoutStrip.getByRole('tab')).toHaveCount(3);
     await goStep(page, 'simulasyon');

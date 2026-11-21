@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { goStep, nest, openWorkspacePanel } from './wizard-helpers';
+import { goStep, KITCHEN_3, nest, openWorkspacePanel } from './wizard-helpers';
 
 /** T012: "Diz" on the parts page runs the placer in a Web Worker and shows sheets + waste %. */
 
@@ -46,7 +46,7 @@ test.describe('T012 nesting', () => {
     const run = page.getByRole('button', { name: n.run, exact: true });
     await expect(run).toBeDisabled();
     await goStep(page, 'parcalar');
-    await paste(page, KITCHEN, 5);
+    await paste(page, KITCHEN_3, 5);
     // T261: entering Dizilim with parts and no layout runs the nesting by itself (no click).
     const worker = page.waitForEvent('worker');
     await goStep(page, 'dizilim');
@@ -99,7 +99,7 @@ test.describe('T012 nesting', () => {
     // T198: below 1024 px the nesting summary lives in the left bottom sheet.
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
     const panel = await openWorkspacePanel(page, 'left');
-    await expect(panel.getByTestId('nesting-sheets')).toHaveText('3');
+    await expect(panel.getByTestId('nesting-sheets')).toHaveText('2');
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );

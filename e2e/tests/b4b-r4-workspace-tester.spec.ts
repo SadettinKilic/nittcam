@@ -6,6 +6,7 @@ import {
   openNewProject,
   openWorkspacePanel,
   pasteAndNest,
+  KITCHEN_3,
 } from './wizard-helpers';
 
 /** B4b round 4 tester: header, phone layout step and simulation tiles after 8a2c7f6. */
@@ -50,7 +51,8 @@ for (const width of [320, 390]) {
   }) => {
     await page.setViewportSize({ width, height: 844 });
     await openNewProject(page, 'parcalar');
-    await pasteAndNest(page);
+    // Several plates (T313: KITCHEN fits 2 now), so the tab strip has something to span.
+    await pasteAndNest(page, KITCHEN_3, 5);
     await goStep(page, 'dizilim');
     await noPageHScroll(page);
 

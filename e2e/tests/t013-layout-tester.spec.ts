@@ -10,7 +10,7 @@ const t = tr.cutList;
 const p = t.paste;
 const l = tr.layout;
 const URL = '/projeler/yeni/parcalar';
-/** Draft sheet 2800 × 2070, margin 10, gap 8, example tool 8 mm → spacing 16 mm. */
+/** Draft sheet 2800 × 2070, margin 10, clearance 0.1 (T313, D-104), example tool 8 mm → spacing 8.1 mm. */
 const SHEET = { width: 2800, height: 2070 };
 const MARGIN = 10;
 
@@ -210,7 +210,7 @@ test.describe('T013 tester: refusals and undo/redo', () => {
     const alert = page.locator('p[role=alert]', { hasText: 'Buraya bırakılamaz' });
     await expect(alert).toHaveCount(1);
     await expect(alert).toContainText('2.1');
-    await expect(alert).toContainText("16 mm'den yakın");
+    await expect(alert).toContainText("8,1 mm'den yakın");
     expect(await info(page, TOP)).toEqual(before);
     // the single undo step is still the nesting: one click removes the whole layout
     await page.getByTestId('wizard-undo').click();
@@ -290,15 +290,16 @@ test.describe('T013 tester: locks and re-nest', () => {
 });
 
 test.describe('T013 tester: sheet tabs', () => {
-  test('3 sheets: every tab carries its waste %; plate part counts add up', async ({ page }) => {
+  test('every sheet tab carries its waste %; plate part counts add up', async ({ page }) => {
     const problems = watchConsole(page);
     await page.goto(URL);
     await paste(page, KITCHEN, 5);
     await runDiz(page);
     const tabs = page.getByRole('tab');
-    await expect(tabs).toHaveCount(3);
+    // T313 (D-104): with tool + 0.1 mm the kitchen set needs 2 sheets (3 with the old 16 mm).
+    await expect(tabs).toHaveCount(2);
     const sums: number[] = [];
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 2; i += 1) {
       const tab = tabs.nth(i);
       await tab.click();
       await expect(tab).toHaveAttribute('aria-selected', 'true');

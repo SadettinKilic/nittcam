@@ -132,7 +132,7 @@ test.describe('T023 wizard', () => {
     await wizardReady(page, 'dizilim');
     await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
     await saved(page);
     await shot(page, 't023-adim3-dizilim');
 
