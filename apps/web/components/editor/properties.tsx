@@ -362,6 +362,7 @@ export function PartProperties({
   sub,
   onSub,
   toolRadius = 0,
+  pocketToolRadius = toolRadius,
   thickness = 18,
   afterPart,
 }: {
@@ -374,6 +375,8 @@ export function PartProperties({
   onSub: (sub: SubSelection) => void;
   /** Tool radius of the selected machine, mm (inner-corner rule, dogbone; T131/T132). */
   toolRadius?: number;
+  /** Radius of the tool that cuts pockets (T308 choice, else the set's tool), mm (T325). */
+  pocketToolRadius?: number;
   /** Stock thickness, mm (default on-line depth, T277). */
   thickness?: number;
   /** Groups right under "Parça" (B50: holes and templates, collapsed rows). */
@@ -566,7 +569,7 @@ export function PartProperties({
               contour={{ type: 'inner', index: i }}
               testId={`prop-op-inner-${i}`}
               thickness={thickness}
-              toolRadius={toolRadius}
+              toolRadius={pocketToolRadius}
             />
           ))}
           {(part.lines ?? []).map((_, i) => (

@@ -106,6 +106,7 @@ export function EditorInspector({
   sub = null,
   onSub,
   toolRadius,
+  pocketToolRadius,
   pendingTemplate = null,
   onPendingTemplate,
 }: {
@@ -120,6 +121,8 @@ export function EditorInspector({
   onSub?: (sub: SubSelection) => void;
   /** Tool radius of the selected machine, mm (T131/T132). */
   toolRadius?: number;
+  /** Radius of the tool that cuts pockets (T308 choice, else the set's tool), mm (T325). */
+  pocketToolRadius?: number;
   /** With nothing selected: counts, total area and extents of the board (T242). */
   summary?: BoardSummary;
   /** The template being placed (T148), with its setter; without the setter no template group. */
@@ -233,6 +236,7 @@ export function EditorInspector({
               sub={sub}
               onSub={onSub}
               toolRadius={toolRadius ?? 0}
+              pocketToolRadius={pocketToolRadius ?? toolRadius ?? 0}
               thickness={project.stock.thickness}
               afterPart={partExtras}
             />

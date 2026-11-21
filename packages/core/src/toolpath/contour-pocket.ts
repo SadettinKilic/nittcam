@@ -36,7 +36,7 @@ export const CONTOUR_POCKET_DEFAULTS = {
   stepoverFraction: 0.4,
   /** Ramp angle of the entry against the XY plane, degrees. */
   rampAngleDeg: 3,
-  /** Most ramp laps per pass on the entry ring; a short ring descends more steeply. */
+  /** Most ramp laps per pass on the entry ring; a ring too short for them gets a plunge entry. */
   maxRampLaps: 8,
   /** Safety limit of rings (a 2 m pocket with a 1 mm tool stays far below it). */
   maxRings: 5000,
@@ -182,8 +182,18 @@ export function buildContourPocketOperation(input: ContourPocketInput): ContourP
   loops[0] = entrySegs;
   const entry = entrySegs[0]?.p0 ?? { x: 0, y: 0 };
   const entryLen = pathLength(entrySegs);
-  const ramp = rampFits(entryLen, input.toolDiameter);
   const tan = Math.tan((CONTOUR_POCKET_DEFAULTS.rampAngleDeg * Math.PI) / 180);
+  // Never steeper than rampAngleDeg: when the deepest pass cannot be reached within
+  // maxRampLaps on the entry ring, fall back to a straight plunge (POCKET_PLUNGE_ENTRY).
+  let maxDrop = 0;
+  let zLast = 0;
+  for (const z of input.passDepths) {
+    maxDrop = Math.max(maxDrop, zLast - z);
+    zLast = z;
+  }
+  const ramp =
+    rampFits(entryLen, input.toolDiameter) &&
+    maxDrop <= CONTOUR_POCKET_DEFAULTS.maxRampLaps * entryLen * tan + EPS;
   const { safeZ, clearanceZ, plungeFeed, feed } = input;
   const last = input.passDepths.length - 1;
   const segments: MoveSegment[] = [

@@ -211,6 +211,7 @@ export function DrawingBoard({
   onToList,
   viewSwitch,
   toolDiameter,
+  pocketToolDiameter,
   holeTool,
   initialSelection,
   onSelectionChange,
@@ -222,6 +223,8 @@ export function DrawingBoard({
   onToList: () => void;
   /** Cutting tool diameter of the selected machine, mm (inner-corner rule, dogbone; T131). */
   toolDiameter?: number;
+  /** Diameter of the tool that cuts contour pockets (T308 choice, else the set's tool), mm (T325). */
+  pocketToolDiameter?: number;
   /** Tool of a newly drawn hole (T138): the stock material set's tool, else the cutting tool. */
   holeTool?: { number: number; diameter: number };
   /** Liste / Çizim switch placed in the canvas toolbar band (below 1024 px, T240). */
@@ -1823,6 +1826,7 @@ export function DrawingBoard({
           sub={subShown}
           onSub={setSub}
           toolRadius={toolDiameter ? toolDiameter / 2 : 0}
+          pocketToolRadius={(pocketToolDiameter ?? toolDiameter ?? 0) / 2}
           pendingTemplate={pendingTpl}
           onPendingTemplate={setPendingTpl}
         />
