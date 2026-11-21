@@ -141,3 +141,20 @@ describe('aynı değerlerle devam (B52, D-096)', () => {
     expect(lastHoleNow(p, { partId: 'a', hole: pocket })).toMatchObject({ depth: 10 });
   });
 });
+
+describe('addHoleParams tool (T320)', () => {
+  const tools = [
+    { number: 1, type: 'flatEndMill', diameter: 6 },
+    { number: 3, type: 'drill', diameter: 5 },
+  ];
+  const at = { partId: 'a', c: { x: 1100, y: 600 } };
+  it('a new Ø5 hole takes the Ø5 drill; a Ø35 hole keeps the mill', () => {
+    expect(addHoleParams(project(), at, 5, 1, undefined, tools)?.hole.tool).toBe(3);
+    expect(addHoleParams(project(), at, 35, 1, undefined, tools)?.hole.tool).toBe(1);
+  });
+  it('a copied drill that no longer fits the new size is replaced by a mill', () => {
+    const like: Hole = { id: 'h', type: 'through', d: 5, cx: 0, cy: 0, tool: 3 };
+    expect(addHoleParams(project(), at, 35, 1, like, tools)?.hole.tool).toBe(1);
+    expect(addHoleParams(project(), at, 5, 1, like, tools)?.hole.tool).toBe(3);
+  });
+});

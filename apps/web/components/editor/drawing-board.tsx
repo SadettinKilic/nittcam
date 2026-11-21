@@ -39,6 +39,7 @@ import {
 import dynamic from 'next/dynamic';
 import {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useReducer,
@@ -68,6 +69,7 @@ import {
 } from '../../lib/editor/draw-tool';
 import { claimPageGroup, claimPageKeys } from '../../lib/shortcuts';
 import { EditorTour } from './editor-tour';
+import { HoleIssuesContext } from './hole-issues';
 import { useMediaQuery } from '../../lib/use-media-query';
 import { boxFrom, hitPart, partsInBox } from '../../lib/editor/hit';
 import {
@@ -328,6 +330,8 @@ export function DrawingBoard({
   const [holeDraft, setHoleDraft] = useState<HoleDraft | null>(null);
   const [holeTyped, setHoleTyped] = useState('');
   const holeToolDia = holeTool?.diameter ?? toolDiameter ?? 0;
+  // T320: the machine's tools, so a new hole or template takes the best compatible tool.
+  const machineTools = useContext(HoleIssuesContext).tools;
   const holeTypedD = holeDraft ? typedDiameter(holeTyped) : null;
   // B52 (D-096) "aynı değerlerle devam": the last hole added this session (type, depth, groove,
   // tool are copied; its diameter is prefilled until the cursor moves away from the centre).
@@ -1019,7 +1023,7 @@ export function DrawingBoard({
   /** Adds the hole in progress with diameter `d`; a refusal names its reason (T276). */
   function finishHole(at: HoleDraft, d: number) {
     const like = lastHoleNow(project, lastHole);
-    const params = addHoleParams(project, at, d, holeTool?.number ?? 1, like);
+    const params = addHoleParams(project, at, d, holeTool?.number ?? 1, like, machineTools);
     if (!params || !run('addHole', params)) {
       const why = params ? holeRefusal(project, params) : 'outside';
       notify.error(why === 'cutout' ? t.holeCutout : t.holeEdge, HOLE_TOAST);
@@ -1780,7 +1784,11 @@ export function DrawingBoard({
         onRotate={() => actions.rotate()}
         onTemplate={(item) => {
           const part = single && project.parts.find((p) => p.id === single.id);
-          if (part) setPendingTpl(startPlacement(part.id, item, localBox(part), part.templates));
+          if (part) {
+            setPendingTpl(
+              startPlacement(part.id, item, localBox(part), part.templates, machineTools),
+            );
+          }
         }}
       />
     </div>

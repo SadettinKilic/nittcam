@@ -56,6 +56,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   Rows3,
   Search,
   Trash2,
@@ -92,6 +93,7 @@ import {
   type EdgeKey,
   type NavDirection,
 } from '../../lib/cut-list-grid';
+import { renestOnly } from '../../lib/check-state';
 import { downloadText } from '../../lib/cut-list-file';
 import {
   SORT_KEYS,
@@ -177,6 +179,8 @@ function issueText(t: Text, issue: ValidationIssue): string {
 function NameCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: number }) {
   const { t } = ctx;
   const issues = ctx.issuesOf(row);
+  // T321: a row only missing from the layout (quantity changed) gets a neutral "yeniden diz" mark.
+  const neutral = renestOnly(issues);
   return (
     <div className="flex items-center gap-1">
       <div className="min-w-0 flex-1">
@@ -203,9 +207,13 @@ function NameCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: numbe
             })}
             data-testid={`row-issue-${row + 1}`}
             data-codes={issues.map((i) => i.code).join(' ')}
-            className="flex size-6 shrink-0 items-center justify-center text-warning-text"
+            className={`flex size-6 shrink-0 items-center justify-center ${neutral ? 'text-fg-muted' : 'text-warning-text'}`}
           >
-            <TriangleAlert aria-hidden className="size-3.5" />
+            {neutral ? (
+              <RefreshCw aria-hidden className="size-3.5" />
+            ) : (
+              <TriangleAlert aria-hidden className="size-3.5" />
+            )}
           </span>
         </Tooltip>
       ) : null}

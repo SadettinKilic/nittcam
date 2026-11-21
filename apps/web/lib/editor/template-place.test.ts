@@ -7,6 +7,7 @@ import {
   snapPlacement,
   startPlacement,
   templateGhost,
+  withHoleTools,
 } from './template-place';
 
 const box = { minX: 0, minY: 0, maxX: 400, maxY: 700 };
@@ -92,5 +93,33 @@ describe('ghost and start (T148)', () => {
     });
     expect(startPlacement('door', handle, box, [hinge('right')]).placement.edge).toBe('left');
     expect(startPlacement('door', handle, box).placement.edge).toBe('left');
+  });
+});
+
+describe('template hole tools (T320)', () => {
+  const tools = [
+    { number: 1, type: 'flatEndMill', diameter: 6 },
+    { number: 3, type: 'drill', diameter: 5 },
+    { number: 4, type: 'drill', diameter: 35 },
+  ];
+  it('a Ø35 cup takes the Ø35 drill; without one a mill that suits', () => {
+    const p = startPlacement('a', item, box, [], tools);
+    expect(p.geometry.holes[0]?.tool).toBe(4);
+    // The template's T2 is not on this machine: the widest mill that suits (T1).
+    expect(startPlacement('a', item, box, [], tools.slice(0, 2)).geometry.holes[0]?.tool).toBe(1);
+  });
+  it('a Ø5 handle hole (params override) takes the Ø5 drill, not T1', () => {
+    const handle = {
+      ...item,
+      geometry: {
+        holes: [{ id: 's', type: 'through' as const, d: 6, cx: 0, cy: 0, tool: 1 }],
+        inners: [],
+      },
+      params: { ...item.params, d: { s: 5 } },
+    };
+    expect(withHoleTools(handle.geometry, handle.params, tools).holes[0]?.tool).toBe(3);
+  });
+  it('without tools the geometry is unchanged', () => {
+    expect(startPlacement('a', item, box).geometry).toBe(item.geometry);
   });
 });

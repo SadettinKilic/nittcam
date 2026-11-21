@@ -27,6 +27,7 @@ import { spindleSettingsOf } from '../toolpath/spindle';
 import {
   contourTool,
   effectiveHoleTool,
+  holeToolKind,
   operationToolChoice,
   operationsInJob,
 } from '../toolpath/op-tools';
@@ -42,6 +43,7 @@ export type ValidationCode =
   | 'TOOL_NOT_IN_PROFILE'
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
+  | 'DRILL_SIZE_MISMATCH'
   | 'LOCKED_PLACEMENT_INVALID'
   | 'LOCKED_PLACEMENT_GRAIN'
   | 'PLACEMENT_GRAIN'
@@ -263,6 +265,19 @@ export const holeVsTool: ValidationRule = (project, context) => {
           severity: 'error',
           path: formatPath(['parts', i, 'holes', h, 'd']),
           message: `${hole.type} "${hole.id}" in part "${part.id}" is ${mm(hole.d)} mm, smaller than the ${mm(tool.diameter)} mm tool T${tool.number}`,
+        });
+      }
+      // T320 (D-108): a drill drills only its own size. A chosen operation tool is reported once,
+      // as OPERATION_TOOL_UNSUITABLE (D-099), not twice.
+      if (
+        problem.code === 'DRILL_SIZE_MISMATCH' &&
+        operationToolChoice(project, holeToolKind(hole)) === undefined
+      ) {
+        issues.push({
+          code: 'DRILL_SIZE_MISMATCH',
+          severity: 'error',
+          path: formatPath(['parts', i, 'holes', h, 'tool']),
+          message: `${hole.type} "${hole.id}" in part "${part.id}" (Ø${mm(hole.d)} mm) uses the Ø${mm(tool.diameter)} mm drill T${tool.number}; a drill only drills a hole of its own size, a bigger hole or a groove needs a mill`,
         });
       }
     });

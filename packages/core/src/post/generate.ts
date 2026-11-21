@@ -1005,20 +1005,21 @@ export function generateGcode(
           sheet: plan.sheet,
         });
       }
-      let suffix = `${meta.revisionInFileName ? `_r${meta.revision}` : ''}_S${plan.sheetIndex}`;
+      // T322 (D-110): the revision is the first marker dropped when even a one-character project
+      // part does not fit; sheet / tool / part markers always stay, so names stay unique.
+      const revision = meta.revisionInFileName ? `_r${meta.revision}` : '';
+      let marks = `_S${plan.sheetIndex}`;
       if (plan.tool !== null) {
         const key = `${plan.sheet}/${plan.tool}`;
         const k = (toolRuns.get(key) ?? 0) + 1;
         toolRuns.set(key, k);
-        suffix += `_T${plan.tool}${k > 1 ? `_${k}` : ''}`;
+        marks += `_T${plan.tool}${k > 1 ? `_${k}` : ''}`;
       }
       chunks.forEach((content, i) => {
-        const name = buildFileName(
-          stem,
-          chunks.length > 1 ? `${suffix}_P${i + 1}` : suffix,
-          cfg.file.extension,
-          maxName,
-        );
+        const own = chunks.length > 1 ? `${marks}_P${i + 1}` : marks;
+        const name =
+          buildFileName(stem, `${revision}${own}`, cfg.file.extension, maxName) ??
+          buildFileName(stem, own, cfg.file.extension, maxName);
         if (name === null) {
           err('FILE_NAME_TOO_LONG', `No file name fits in ${maxName} characters.`);
           return;

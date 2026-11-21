@@ -84,8 +84,9 @@ export function operationToolProblem(
       for (const part of project.parts) {
         for (const h of part.holes) {
           if (holeToolKind(h) !== op) continue;
-          if (holeToolProblem({ ...h, tool: tool.number }, [tool])) return 'HOLE_SMALLER';
-          if (tool.type === 'drill' && Math.abs(h.d - tool.diameter) > EPS) return 'DRILL_SIZE';
+          const p = holeToolProblem({ ...h, tool: tool.number }, [tool]);
+          if (p?.code === 'DRILL_SIZE_MISMATCH') return 'DRILL_SIZE';
+          if (p) return 'HOLE_SMALLER';
           if (!reach(h.type === 'through' ? through : h.depth)) return 'FLUTE_LENGTH';
         }
       }

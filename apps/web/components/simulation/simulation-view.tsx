@@ -1,5 +1,6 @@
 'use client';
 
+import { SimFindingsContext } from './sim-findings-context';
 import { cuttingSummary } from './cutting-settings';
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 import {
@@ -251,6 +252,7 @@ export function SimulationView({
   );
   const warnings = useMemo(() => all.filter((f) => f.severity === 'warning'), [all]);
   const errors = useMemo(() => all.filter((f) => f.severity === 'error'), [all]);
+  const simFindings = useMemo(() => ({ warnings: warnings.length }), [warnings.length]);
 
   let body: React.ReactNode;
   let player: React.ReactNode = null;
@@ -354,7 +356,7 @@ export function SimulationView({
 
       {player}
       {settings}
-      {left}
+      <SimFindingsContext.Provider value={simFindings}>{left}</SimFindingsContext.Provider>
     </div>
   );
 

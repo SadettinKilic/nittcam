@@ -12,7 +12,7 @@ export interface HoleIssues {
   /** Part id → its holes with errors. */
   byPart: ReadonlyMap<string, PartHoleIssues>;
   /** Tool table of the selected machine ("3 · Ø5"); null without a machine. */
-  tools: readonly { number: number; diameter: number }[] | null;
+  tools: readonly { number: number; diameter: number; type?: string }[] | null;
   /** The hole "Çizimde aç" asked for; its rows are scrolled into view once. */
   focus?: { partId: string; hole: number } | null;
 }
