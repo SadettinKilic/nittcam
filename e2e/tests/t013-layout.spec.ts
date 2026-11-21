@@ -8,10 +8,10 @@ const t = tr.cutList;
 const p = t.paste;
 const l = tr.layout;
 const URL = '/projeler/yeni/parcalar';
-/** Draft sheet 2800 × 2070, margin 10, gap 8, example tool 8 mm → spacing 16 mm. */
+/** Draft sheet 2800 × 2070, margin 10, clearance 0.1 (T313, D-103), example tool 8 mm → spacing 8.1 mm. */
 const SHEET = { width: 2800, height: 2070 };
 const MARGIN = 10;
-const SPACING = 16;
+const SPACING = 8.1;
 
 const fill = (text: string, values: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? String(values[k]) : m));

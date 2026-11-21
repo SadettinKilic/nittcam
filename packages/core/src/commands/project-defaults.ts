@@ -10,6 +10,7 @@
  */
 import { z } from 'zod';
 import type { Project } from '../schema';
+import { DEFAULT_PART_CLEARANCE } from '../nesting/tool';
 import { setCutDirection, setDimensionMode, setLeadIn, setTabs, tabModeSchema } from './plate';
 
 /** Upper bound of the gap and margin defaults, mm. */
@@ -40,7 +41,8 @@ export type ProjectDefaults = z.infer<typeof projectDefaultsSchema>;
 
 /** What a project starts with when the company changed nothing (the values before T182). */
 export const BUILT_IN_PROJECT_DEFAULTS: Readonly<ProjectDefaults> = Object.freeze({
-  gap: 8,
+  // T313 (D-103): the clearance on top of the tool diameter (Ø8 → 8.1 mm clear), was 8.
+  gap: DEFAULT_PART_CLEARANCE,
   margin: 10,
   tabMode: 'all',
   leadIn: 'arc',

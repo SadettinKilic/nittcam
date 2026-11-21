@@ -1674,6 +1674,14 @@ Owner test 2026-11-21 (before the field test, D-101; Dev 2). A single door with 
 ### T311 Manual tool change stops with M0 only (G-code safety)   [status: done]
 Tester finding 2026-11-21 (before the field test, D-100; Dev 2). The independent check accepted M1 (optional stop) as the pause of a manual tool change; with optional stop off on the controller the machine runs on with the old tool. Fix: in manual mode every pause (tool change and first-tool check) must be M0, M1/M01 is an error `TOOL_CHANGE_OPTIONAL_STOP` (rule TOOLS); the post config allows only `manualStop: "M0"` (shipped posts already write M0). Rejection tests in `gcode-check/manual-stop.t311.test.ts`; goldens byte-identical.
 
+### Batch B56: T312, T313 (owner requests 2026-11-21, before the field test; Dev 1)
+
+### T312 Cabinet doors on the sheet that has room   [status: review]
+Owner 2026-11-21 (D-102): "Dolap eklediğimde 2 kapağı da plakada görmüyorum ... fire vermeden diğer kapakları sıkıştırsak?" Root cause: with several stock sizes (library seed 2800 × 2070 + 2440 × 1220) every candidate chose each new sheet's size greedily (smallest waste share of that sheet), so the 800 mm two-door cabinet went onto two 2440 × 1220 sheets with one door alone on the second (91 % waste) although one 2800 × 2070 sheet takes it all (5.80 m² < 5.95 m²). Fix: size policies per candidate (greedy, smallest size that takes every remaining part, each stock size first); the existing rank (fewer unplaced, total sheet area, objective) picks. Also: guillotine heuristics ask an exact MaxRects shadow of each open sheet before opening a new one (open sheets always filled first). One size: unchanged path. Unit tests with the cabinet case + property "no part on a later sheet fits the free space of an earlier one".
+
+### T313 Clear distance between parts = tool Ø + clearance (default 0.1 mm)   [status: review]
+Owner 2026-11-21 (D-103): "8'lik takım kullanıyorsak arada offset 8 değil 8,1 mm olmamalı mı?" The rule was already tool Ø + `nesting.gap` (D-019) but the built-in gap was 8, so neighbours stood 16 mm apart. New projects start with gap 0.1 (Ø8 → 8.1 mm clear); per project in step 3, company default in Ayarlar. UI says "Parça arası pay" and "Parça arası boşluk: takım Ø8 + pay 0,1 = 8,1 mm". Rectangle and true-shape placers share `partSpacing`; leads keep their neighbour check (shortened / removed with a warning), tabs stay on the contour. Unit tests: measured clear distance ≥ Ø + clearance for both engines.
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine

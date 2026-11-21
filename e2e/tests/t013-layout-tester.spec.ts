@@ -10,7 +10,7 @@ const t = tr.cutList;
 const p = t.paste;
 const l = tr.layout;
 const URL = '/projeler/yeni/parcalar';
-/** Draft sheet 2800 × 2070, margin 10, gap 8, example tool 8 mm → spacing 16 mm. */
+/** Draft sheet 2800 × 2070, margin 10, clearance 0.1 (T313, D-103), example tool 8 mm → spacing 8.1 mm. */
 const SHEET = { width: 2800, height: 2070 };
 const MARGIN = 10;
 
@@ -210,7 +210,7 @@ test.describe('T013 tester: refusals and undo/redo', () => {
     const alert = page.locator('p[role=alert]', { hasText: 'Buraya bırakılamaz' });
     await expect(alert).toHaveCount(1);
     await expect(alert).toContainText('2.1');
-    await expect(alert).toContainText("16 mm'den yakın");
+    await expect(alert).toContainText("8,1 mm'den yakın");
     expect(await info(page, TOP)).toEqual(before);
     // the single undo step is still the nesting: one click removes the whole layout
     await page.getByTestId('wizard-undo').click();

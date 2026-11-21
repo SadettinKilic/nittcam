@@ -267,13 +267,16 @@ describe('direction, leads and plunge options', () => {
   });
 
   it('a lead that would touch a neighbour is shortened, or removed when nothing fits', () => {
-    // a between b (above) and c (below), 8 mm apart = tool 6 + gap 2
+    // a between b (above), c (below), d (left) and e (right), 8 mm apart = tool 6 + gap 2;
+    // boxed in on every side, so no start edge has room for the full lead (T313 picks one if any)
     const sandwich = (gap: number) =>
       projectOf({
         parts: [
           { id: 'a', w: 100, h: 50 },
           { id: 'b', w: 100, h: 50 },
           { id: 'c', w: 100, h: 50 },
+          { id: 'd', w: 50, h: 50 },
+          { id: 'e', w: 100, h: 50 },
         ],
         gap,
         placements: [
@@ -281,6 +284,8 @@ describe('direction, leads and plunge options', () => {
             { partId: 'a', index: 0, x: 100, y: 200, rot: 0 },
             { partId: 'b', index: 0, x: 100, y: 250 + 6 + gap, rot: 0 },
             { partId: 'c', index: 0, x: 100, y: 200 - 50 - 6 - gap, rot: 0 },
+            { partId: 'd', index: 0, x: 100 - 50 - 6 - gap, y: 200, rot: 0 },
+            { partId: 'e', index: 0, x: 200 + 6 + gap, y: 200, rot: 0 },
           ],
         ],
       });

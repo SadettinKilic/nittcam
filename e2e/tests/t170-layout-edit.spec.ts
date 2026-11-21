@@ -18,10 +18,10 @@ import {
 const t = tr.cutList;
 const l = tr.layout;
 const URL = '/projeler/yeni/parcalar';
-/** Draft sheet 2800 × 2070, margin 10, gap 8, example tool 8 mm → spacing 16 mm. */
+/** Draft sheet 2800 × 2070, margin 10, clearance 0.1 (T313, D-103), example tool 8 mm → spacing 8.1 mm. */
 const SHEET = { width: 2800, height: 2070 };
 const MARGIN = 10;
-const SPACING = 16;
+const SPACING = 8.1;
 const TOP = '3.1 · Üst tabla'; // free grain
 const SHELF = '2.1 · Raf'; // fixed grain
 

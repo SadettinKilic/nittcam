@@ -1,6 +1,6 @@
 'use client';
 
-import { summarizeLayout, usedOffcutIds, type Project } from '@nittcam/core';
+import { partClearDistance, summarizeLayout, usedOffcutIds, type Project } from '@nittcam/core';
 import { useMemo } from 'react';
 import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
@@ -63,6 +63,7 @@ export function NestingPanel({
               <p className="text-fg">
                 {fill(t.help, {
                   gap: percent.format(project.nesting.gap),
+                  clear: percent.format(partClearDistance(toolDiameter, project.nesting.gap)),
                   margin: percent.format(project.nesting.margin),
                   tool: percent.format(toolDiameter),
                 })}

@@ -356,6 +356,29 @@ function holdableStarts(ctx: OperationContext, cand: number[], p: Params): numbe
   return held.length > 0 ? held : cand;
 }
 
+/**
+ * T313 (D-103): with a tight clearance between parts (tool Ø + 0.1 mm) an edge facing a neighbour
+ * leaves no room for the full lead. Keep the start edges whose leads fit unshortened, so the cut
+ * order starts on an edge facing the waste or the sheet margin; when none fits, all stay (the
+ * lead is shortened or removed there with its warning, as before). The preferred (long) edges
+ * first, then any other straight edge with room.
+ */
+function leadRoomStarts(ctx: OperationContext, fraction: number, p: Params): number[] {
+  const cand = startEdgeCandidates(ctx.raw, fraction);
+  if (cand.length === 0 || p.lead === 'none' || !(p.leadLength > 0)) return cand;
+  const roomy = (edges: number[]) =>
+    edges.filter((edge) => {
+      const warnings: ToolpathIssue[] = [];
+      buildOuterOperation({ ...ctx, startEdge: edge }, p, warnings, [], new Set(), []);
+      return !warnings.some((w) => w.code === 'LEAD_SHORTENED' || w.code === 'LEAD_REMOVED');
+    });
+  const first = roomy(cand);
+  if (first.length > 0) return first;
+  // No preferred edge has room: any other straight edge that has (a short side facing the waste).
+  const rest = roomy(startEdgeCandidates(ctx.raw, 0).filter((e) => !cand.includes(e)));
+  return rest.length > 0 ? rest : cand;
+}
+
 function buildOuterOperation(
   ctx: OperationContext,
   p: Params,
@@ -1425,7 +1448,10 @@ export function buildToolpath(
         edges.push([]);
         return;
       }
-      const cand = startEdgeCandidates(raw, startFraction);
+      const cand = leadRoomStarts(ctx as OperationContext, startFraction, {
+        ...paramsOf(ctx as OperationContext),
+        sheet: sheetSizeOf(project, sheetIndex),
+      });
       edges.push(cand);
       itemHole.push(null);
       items.push({

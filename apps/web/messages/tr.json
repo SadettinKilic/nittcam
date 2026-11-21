@@ -751,7 +751,7 @@
       "progress": "Dizilim ilerlemesi",
       "progressText": "{done} / {total} deneme",
       "cancelled": "Dizilim iptal edildi; önceki dizilim aynen duruyor.",
-      "help": "Parçaları seçilen hedefe göre plakalara yerleştirir. Parça arası boşluk {gap} mm, kenar payı {margin} mm, takım çapı {tool} mm.",
+      "help": "Parçaları seçilen hedefe göre plakalara yerleştirir. Parça arası boşluk {clear} mm (takım Ø{tool} + pay {gap} mm), kenar payı {margin} mm.",
       "toolNote": "Takım çapı, seçilen makinenin bu malzeme ve kalınlık için önerdiği takımdan gelir.",
       "about": "Dizilim hakkında",
       "toolChip": "Takım Ø{value}",
@@ -1854,12 +1854,12 @@
         "saved": "{count} artık parça stoğa kaydedildi.",
         "failed": "Artık parçalar kaydedilemedi. Tekrar deneyin."
       },
-      "gap": "Parça arası boşluk (mm)",
+      "gap": "Parça arası pay (mm)",
       "margin": "Kenar payı (mm)",
       "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
       "noParts": "Önce Parçalar adımında parça ekleyin.",
       "marginWarning": "Kenar payı Ø{tool} takım için en az {min} mm olmalı; yoksa takım plakanın dışına çıkar.",
-      "gapNote": "Takım çapına (Ø{tool} mm) ek boşluk."
+      "gapNote": "Parça arası boşluk: takım Ø{tool} + pay {gap} = {clear} mm."
     },
     "simulation": {
       "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında “Diz” ile parçaları yerleştirin.",
@@ -3283,7 +3283,7 @@
       "defaults": {
         "title": "Yeni proje varsayılanları",
         "hint": "Yeni açılan projeler bu değerlerle başlar; mevcut projeler değişmez. Köprü adedi, genişliği ve yüksekliği makinenin malzeme ayarından gelir (Makineler → Malzeme parametreleri).",
-        "gap": "Parça arası boşluk",
+        "gap": "Parça arası pay (takım Ø'ına ek)",
         "margin": "Plaka kenar payı",
         "tabs": "Köprü (tab)",
         "tabModes": {
