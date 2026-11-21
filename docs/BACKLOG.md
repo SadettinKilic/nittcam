@@ -1679,10 +1679,10 @@ Owner request 2026-11-21 (before the field test, D-102; Dev 2). "AI botu ekle am
 
 ### Batch B56: T312, T313 (owner requests 2026-11-21, before the field test; Dev 1)
 
-### T312 Cabinet doors on the sheet that has room   [status: review]
+### T312 Cabinet doors on the sheet that has room   [status: done]
 Owner 2026-11-21 (D-103): "Dolap eklediğimde 2 kapağı da plakada görmüyorum ... fire vermeden diğer kapakları sıkıştırsak?" Root cause: with several stock sizes (library seed 2800 × 2070 + 2440 × 1220) every candidate chose each new sheet's size greedily (smallest waste share of that sheet), so the 800 mm two-door cabinet went onto two 2440 × 1220 sheets with one door alone on the second (91 % waste) although one 2800 × 2070 sheet takes it all (5.80 m² < 5.95 m²). Fix: size policies per candidate (greedy, smallest size that takes every remaining part, each stock size first); the rank picks: fewer unplaced, then total sheet area when it differs by 2 % or more, else fewer sheets, then area, then the objective (PO, round 1: 13 more sheets for 0.7 % less board is a bad trade). With several sizes guillotine heuristics also ask an exact MaxRects shadow of each open sheet before opening a new one. One size: byte-identical to before (regression test: 300 seeded jobs fingerprinted on main). Unit tests with the cabinet case, the ranking rule + property "no part on a later sheet fits the free space of an earlier one" (several sizes). Help text shows mm with up to 2 decimals (0,15 stays 0,15).
 
-### T313 Clear distance between parts = tool Ø + clearance (default 0.1 mm)   [status: review]
+### T313 Clear distance between parts = tool Ø + clearance (default 0.1 mm)   [status: done]
 Owner 2026-11-21 (D-104): "8'lik takım kullanıyorsak arada offset 8 değil 8,1 mm olmamalı mı?" The rule was already tool Ø + `nesting.gap` (D-019) but the built-in gap was 8, so neighbours stood 16 mm apart. New projects start with gap 0.1 (Ø8 → 8.1 mm clear); per project in step 3, company default in Ayarlar. UI says "Parça arası pay" and "Parça arası boşluk: takım Ø8 + pay 0,1 = 8,1 mm". Rectangle and true-shape placers share `partSpacing`; leads keep their neighbour check (shortened / removed with a warning), tabs stay on the contour. Unit tests: measured clear distance ≥ Ø + clearance for both engines.
 
 ## Field test 1 (owner)   [status: todo]
