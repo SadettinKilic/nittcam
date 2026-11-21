@@ -28,7 +28,8 @@
     "cw": "G2",
     "ccw": "G3",
     "suppressRepeatedCode": false,
-    "suppressUnchangedAxes": true
+    "suppressUnchangedAxes": true,
+    "machineCoordinates": true
   },
   "decimals": { "xy": 3, "z": 3, "arc": 3, "feed": 0 },
   "arcs": {

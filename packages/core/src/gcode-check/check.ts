@@ -85,7 +85,7 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
   readerFindings(r, push);
   headerRule(text, d, push);
   modalRule(r, d, push);
-  const sm = toSheetMoves(r.moves, d.frame);
+  const sm = toSheetMoves(r.moves, d.frame, r.events);
   motionRules(r, sm, d, push);
   floorRule(sm, d, push);
   const m = matchModel(sm, d.ops, d, prefix, push);
