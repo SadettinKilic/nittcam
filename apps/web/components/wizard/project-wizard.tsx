@@ -43,6 +43,7 @@ import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
 import { IssuesOkChip } from './issues-ok-chip';
 import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
 import { fetchProjectDefaults } from '../../lib/settings-api';
+import { AssistantLauncher } from '../assistant/assistant-launcher';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
@@ -1540,6 +1541,8 @@ function WizardSession({
             </span>
             <span aria-hidden className="hidden h-4 w-px bg-border sm:inline-block" />
             <AutosaveIndicator t={t.save.short} state={indicator} />
+            {/* T314 (D-102): AI chat shell (spec §5.2, bottom right); fixed "yakında" reply until M11. */}
+            <AssistantLauncher t={t.assistant} />
           </div>
           {nextKey ? (
             <Button
