@@ -119,7 +119,8 @@ describe('importCutList', () => {
       id: 'k1',
       name: 'Kapak',
       qty: 2,
-      grain: { mode: 'fixed', angle: 0 },
+      // T318 (D-107): "evet" = along Boy (90° in the part frame), not the sheet grain.
+      grain: { mode: 'fixed', angle: 90 },
       params: { w: 396, h: 716, r: 0 },
       edgeBand: { top: 0.8, right: 0.8, bottom: 0.8, left: 0.8 },
     });

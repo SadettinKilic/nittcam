@@ -238,6 +238,11 @@ export interface AssemblyBox {
   sx: number;
   sy: number;
   sz: number;
+  /**
+   * Doors only (T317, D-106): the two doors come from two rows (a left / right pair, each its own
+   * board), not from one row of 2 identical boards. Absent = not a pair.
+   */
+  pair?: true;
 }
 
 /** The assembled box of one cabinet group (T158). */
@@ -287,6 +292,7 @@ export function cabinetAssembly(rows: readonly AssemblyRow[]): CabinetAssembly |
     sz: number,
   ) => boxes.push({ role: r.role, id: r.id, x, y, z, sx, sy, sz });
 
+  const doorSlots: AssemblyRow[] = [];
   for (const r of rows) {
     if (r.qty <= 0) continue;
     const n = r.qty;
@@ -317,14 +323,25 @@ export function cabinetAssembly(rows: readonly AssemblyRow[]): CabinetAssembly |
       case 'plinth':
         add(r, (W - r.w) / 2, 0, D - r.thickness, r.w, r.h, r.thickness);
         break;
-      case 'door': {
-        const doors = Math.min(n, 2);
-        const g = doors === 1 ? (W - r.w) / 2 : (W - 2 * r.w) / 3;
-        const y = p + (H - p - r.h) / 2;
-        for (let i = 0; i < doors; i++) add(r, g + i * (r.w + g), y, D, r.w, r.h, r.thickness);
+      case 'door':
+        // Doors are placed together below: one row of 2 or two rows of 1 (a left / right pair).
+        for (let i = 0; i < n; i++) doorSlots.push(r);
         break;
-      }
     }
+  }
+  // At most two doors, left to right in row order (T317: a mirrored pair is two rows).
+  const doors = doorSlots.slice(0, 2);
+  const [d0, d1] = doors;
+  if (d0) {
+    const g = d1 ? (W - d0.w - d1.w) / 3 : (W - d0.w) / 2;
+    doors.forEach((r, i) => {
+      const x = i === 0 ? g : 2 * g + d0.w;
+      add(r, x, p + (H - p - r.h) / 2, D, r.w, r.h, r.thickness);
+      if (d1 && d0.id !== d1.id) {
+        const last = boxes[boxes.length - 1];
+        if (last) last.pair = true;
+      }
+    });
   }
   return { width: W, height: H, depth: D + (first('door')?.thickness ?? 0), boxes };
 }

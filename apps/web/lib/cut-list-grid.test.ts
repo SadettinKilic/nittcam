@@ -188,4 +188,21 @@ describe('cut-list summary and bulk params (T119)', () => {
       namePrefix: 'Mutfak ',
     });
   });
+
+  it('T318: bulk grain presets along Boy (90°) and along En (0°)', () => {
+    const edges = { top: null, right: null, bottom: null, left: null };
+    const base = { qty: null, angle: 45, edges, prefix: '' };
+    expect(bulkParams(['a'], { ...base, grain: 'alongH' })?.grain).toEqual({
+      mode: 'fixed',
+      angle: 90,
+    });
+    expect(bulkParams(['a'], { ...base, grain: 'alongW' })?.grain).toEqual({
+      mode: 'fixed',
+      angle: 0,
+    });
+    expect(bulkParams(['a'], { ...base, grain: 'fixed' })?.grain).toEqual({
+      mode: 'fixed',
+      angle: 45,
+    });
+  });
 });

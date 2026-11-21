@@ -21,7 +21,10 @@ function sourceWithCabinet() {
   if (!res.ok) throw new Error('cabinet');
   const split = cabinetPartsForStock(res.parts, { thickness: 18, hasGrain: true });
   let n = 0;
-  const rows = cabinetRows(split.other, roles, 'Dolap 1', () => `p${++n}`, 8);
+  const rows = cabinetRows(split.other, roles, 'Dolap 1', () => `p${++n}`, {
+    mode: 'cut',
+    stockThickness: 8,
+  });
   return { source, other: split.other, rows };
 }
 

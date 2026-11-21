@@ -814,7 +814,9 @@
       "grain": "Damar",
       "grainKeep": "Değiştirme",
       "grainFree": "Serbest",
-      "grainFixed": "Sabit",
+      "grainAlongH": "Boy boyunca (90°)",
+      "grainAlongW": "En boyunca (0°)",
+      "grainFixed": "Açı seç…",
       "edges": "Kenar bandı (mm)",
       "edgeKeep": "değişmez",
       "prefix": "Ad öneki",
@@ -2639,6 +2641,13 @@
       "noMatch": "Eşleşen parça yok."
     },
     "inspector": {
+      "mirrorPair": {
+        "title": "Sol / sağ kapak",
+        "hint": "{left} adet çizildiği gibi kalır, {right} adet sol ↔ sağ aynalı ayrı satır olur (delikler ve şablonlar da). Dizilim, G-code, etiket ve montaj görünümü sol ve sağ kapağı ayrı gösterir.",
+        "action": "Sol / sağ kapak yap",
+        "note": "Aynalı eş",
+        "done": "Aynalı eş ayrı satır olarak eklendi."
+      },
       "title": "Özellikler",
       "none": "Bir parça seçin: tıklayın, Shift ile ekleyin ya da boş alanda sürükleyin.",
       "many": "{count} parça seçili",
@@ -2804,7 +2813,7 @@
         "x": "Konum X",
         "y": "Konum Y",
         "rotate": "90° döndür",
-        "mirror": "Aynala (sol / sağ kapak)",
+        "mirror": "Kenar boyunca ters çevir",
         "diameter": "Çap · {hole}",
         "place": "Yerleştir",
         "cancel": "Vazgeç",
@@ -3420,7 +3429,7 @@
           "Parçalar adımında “Yapıştır” ile Excel ya da Google E-Tablolar’dan kopyaladığınız satırları ekleyin. İlk satır başlıksa sütunlar adından tanınır (Parça adı, En, Boy, Adet, Damar).",
           "Ölçüler milimetredir. Hücreleri tabloda doğrudan düzeltebilirsiniz.",
           "Her değişiklik bir adımdır: Ctrl+Z geri alır, Ctrl+Y yineler.",
-          "Kenar bandı kalınlığı girilen kenarlar dizilimde parça ölçüsünden düşülür."
+          "Kenar bandı: “Bitmiş ölçü” açıksa girilen en ve boy bantlı (bitmiş) ölçüdür, bant kalınlığı kesimden düşülür. Kapalıysa girilen ölçü kesim ölçüsüdür, bant üstüne eklenir. “Dolap ekle” iki durumda da bitmiş ölçüyü tutar: kapalıyken bandı satırlardan kendisi düşer."
         ]
       },
       "cizim": {

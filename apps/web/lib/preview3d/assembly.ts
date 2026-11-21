@@ -6,6 +6,7 @@
  */
 import {
   cabinetAssembly,
+  finishedSize,
   type AssemblyBox,
   type AssemblyRow,
   type CabinetAssembly,
@@ -37,6 +38,8 @@ export function cabinetGroups(
 ): CabinetGroup[] {
   const byName = new Map<string, CabinetPartRole>();
   for (const [role, name] of Object.entries(roles)) byName.set(fold(name), role as CabinetPartRole);
+  const settings = project.settings as Project['settings'] | undefined;
+  const mode = settings?.dimensionMode ?? 'cut';
   const rows = new Map<string, AssemblyRow[]>();
   const parts = new Map<string, Map<string, Part>>();
   for (const p of project.parts) {
@@ -44,12 +47,16 @@ export function cabinetGroups(
     const role = byName.get(fold(p.name));
     if (!role) continue;
     const list = rows.get(p.group) ?? [];
+    // T316: the box is built from finished sizes (cut mode rows are entered without the band).
+    // Partial projects (older callers, tests) may lack settings or bands: read as cut, no band.
+    const band = p.edgeBand as Part['edgeBand'] | undefined;
+    const size = band ? finishedSize(p.params, band, mode) : p.params;
     list.push({
       role,
       id: p.id,
       qty: p.qty,
-      w: p.params.w,
-      h: p.params.h,
+      w: size.w,
+      h: size.h,
       thickness: noteThickness(p.note) ?? project.stock.thickness,
     });
     rows.set(p.group, list);
@@ -59,10 +66,55 @@ export function cabinetGroups(
   }
   const out: CabinetGroup[] = [];
   for (const [group, list] of rows) {
-    const assembly = cabinetAssembly(list);
+    const byId = parts.get(group);
+    const assembly = cabinetAssembly(byId ? orderDoorPair(list, byId) : list);
     if (assembly) out.push({ group, assembly, parts: parts.get(group) ?? new Map() });
   }
   return out;
+}
+
+/**
+ * Which side a door of a left / right pair hangs on, from its work seen from the front (T317,
+ * D-106; each door is mounted with the drawing's top on top, see `assemblyFaceMatrix`). A face-only
+ * door shows its drawing turned over (left ↔ right), a through-only door as drawn. The handle
+ * (through holes) goes toward the middle: handle right of centre = left door. Without through
+ * holes the hinges (face-only work) go to the outer edge: hinges left of centre = left door.
+ */
+export function doorSide(part: Part, thickness: number): 'left' | 'right' | null {
+  if (part.kind !== 'rect') return null;
+  const w = part.params.w;
+  const flip = hasFaceOnlyWork(part, thickness);
+  const seen = (x: number) => (flip ? w - x : x);
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const through = part.holes.filter((h) => h.type === 'through').map((h) => seen(h.cx));
+  if (through.length > 0) {
+    const m = mean(through);
+    if (Math.abs(m - w / 2) > 1e-6) return m > w / 2 ? 'left' : 'right';
+  }
+  const face = part.holes.filter((h) => h.type !== 'through').map((h) => seen(h.cx));
+  if (face.length > 0) {
+    const m = mean(face);
+    if (Math.abs(m - w / 2) > 1e-6) return m < w / 2 ? 'left' : 'right';
+  }
+  return null;
+}
+
+/**
+ * Two door rows of one door each (a left / right pair, T317): the row that hangs on the left goes
+ * first, so `cabinetAssembly` puts it on the left. Anything else keeps its order.
+ */
+function orderDoorPair(list: AssemblyRow[], byId: ReadonlyMap<string, Part>): AssemblyRow[] {
+  const doors = list.filter((r) => r.role === 'door' && r.qty > 0);
+  const [a, b] = doors;
+  if (doors.length !== 2 || !a || !b || a.qty !== 1 || b.qty !== 1) return list;
+  const side = (r: AssemblyRow) => {
+    const part = byId.get(r.id);
+    return part ? doorSide(part, r.thickness) : null;
+  };
+  const sa = side(a);
+  const sb = side(b);
+  if (!(sb === 'left' && sa !== 'left') && !(sa === 'right' && sb !== 'right')) return list;
+  return list.map((r) => (r === a ? b : r === b ? a : r));
 }
 
 /**
@@ -141,7 +193,20 @@ export function assemblyFaceMatrix(box: AssemblyBox, width: number, faceInside =
       o = [bx, by, bz + sz];
       break;
     case 'door':
-      if (faceInside) {
+      if (box.pair && faceInside) {
+        // T317 (D-106): a door of a left / right pair is its own board: machined face inside,
+        // the drawing's top on top (seen from the front, left and right are swapped).
+        cx = [-1, 0, 0];
+        cy = [0, 1, 0];
+        cz = [0, 0, -1];
+        o = [bx + sx, by, bz + sz];
+      } else if (box.pair) {
+        // Through work only: machined face to the front, exactly the drawing.
+        cx = [1, 0, 0];
+        cy = [0, 1, 0];
+        cz = [0, 0, 1];
+        o = [bx, by, bz];
+      } else if (faceInside) {
         cz = [0, 0, -1];
         if (leftDoor) {
           cx = [1, 0, 0];

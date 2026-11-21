@@ -77,7 +77,9 @@ export function buildSampleProject(
     commands.push({ command, params: res.params, actor: 'user', at } as CommandLogEntry);
     return true;
   };
-  const cutRows = cabinetRows(rows, t.roles, t.group, newId);
+  const cutRows = cabinetRows(rows, t.roles, t.group, newId, {
+    mode: project.settings.dimensionMode,
+  });
   if (!run('importCutList', { parts: cutRows })) return null;
   const hinge = readyTemplate(SAMPLE_HINGE_ID);
   if (!hinge) return null;

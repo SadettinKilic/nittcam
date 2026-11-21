@@ -6,7 +6,15 @@ import { nestProject } from '../nesting';
 import { checkPlacement } from '../nesting/placement';
 import { buildToolpath } from '../toolpath';
 import { machineOf, projectOf } from '../toolpath/toolpath.testing';
-import { cutPart, cutSize, hasBandDeduction, MIN_CUT_SIZE, toCutSizes } from './cut-size';
+import {
+  cutPart,
+  cutSize,
+  enteredSize,
+  finishedSize,
+  hasBandDeduction,
+  MIN_CUT_SIZE,
+  toCutSizes,
+} from './cut-size';
 import { deriveOutline } from './outline';
 import type { Part, Project } from './project';
 
@@ -187,5 +195,38 @@ describe('nesting and toolpath read the cut size', () => {
       return Math.max(...xs) - Math.min(...xs);
     };
     expect(span(cut) - span(fin)).toBeCloseTo(4, 6);
+  });
+});
+
+describe('enteredSize / finishedSize (T316, D-105)', () => {
+  const band = { top: 0.8, right: 0.8, bottom: 0.8, left: 0.8 };
+
+  it('a 395,5 × 714 finished door with 0,8 mm band is entered as 393,9 × 712,4 in cut mode', () => {
+    expect(enteredSize({ w: 395.5, h: 714 }, band, 'cut')).toEqual({ w: 393.9, h: 712.4 });
+    expect(enteredSize({ w: 395.5, h: 714 }, band, 'finished')).toEqual({ w: 395.5, h: 714 });
+  });
+
+  it('finishedSize gives back the generator size in both modes', () => {
+    for (const mode of ['cut', 'finished'] as const) {
+      const e = enteredSize({ w: 395.5, h: 714 }, band, mode);
+      expect(finishedSize(e, band, mode)).toEqual({ w: 395.5, h: 714 });
+    }
+  });
+
+  it('entered then cut gives the same cut size in both modes (property)', () => {
+    const b = fc.double({ min: 0, max: 3, noNaN: true }).map((v) => Math.round(v * 10) / 10);
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 50, max: 2000 }),
+        fc.integer({ min: 50, max: 2000 }),
+        fc.record({ top: b, right: b, bottom: b, left: b }),
+        (w, h, eb) => {
+          const inCut = enteredSize({ w, h }, eb, 'cut');
+          const inFinished = cutSize(enteredSize({ w, h }, eb, 'finished'), eb, 'finished');
+          expect(inCut.w).toBeCloseTo(inFinished.w, 6);
+          expect(inCut.h).toBeCloseTo(inFinished.h, 6);
+        },
+      ),
+    );
   });
 });
