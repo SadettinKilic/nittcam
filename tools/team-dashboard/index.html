@@ -189,8 +189,19 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
 .answered li b{color:var(--fg);font-weight:550}
 
 /* log */
-.fb{list-style:none;margin:0;padding:0;max-height:360px;overflow:auto}
-.fb li{display:grid;grid-template-columns:26px 96px minmax(0,1fr) auto;gap:10px;padding:7px 2px;border-top:1px solid var(--border);font-size:13.5px;align-items:center}
+.fbcols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fbcard{border:1px solid var(--border);border-top:3px solid var(--c,var(--border-strong));border-radius:10px;background:var(--surface);display:flex;flex-direction:column;min-width:0}
+.fbcard .fh{padding:10px 12px;border-bottom:1px solid var(--border);display:grid;gap:4px}
+.fbcard .fh .row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.fbcard .fh .nm{font-weight:650;font-size:14.5px;color:var(--fg)}
+.fbcard .fh .nm small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.fbcard .fh .now{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.fbcard .fh .now b{font-family:var(--f-mono);font-weight:500;color:var(--fg)}
+.fbcard .cnt{display:flex;gap:6px;flex-wrap:wrap}
+.fbcard .cnt span{font-size:12px;font-family:var(--f-mono);border:1px solid var(--border);border-radius:999px;padding:1px 8px}
+.fbcard .cnt .plus{color:var(--ok)}.fbcard .cnt .minus{color:var(--bad)}.fbcard .cnt .ask{color:var(--warn)}
+.fb{list-style:none;margin:0;padding:4px 12px 8px;max-height:420px;overflow:auto;overscroll-behavior:contain}
+.fb li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;padding:7px 2px;border-top:1px solid var(--border);font-size:13.5px;align-items:center}
 .fb li:first-child{border-top:0}
 .fb .k{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;font-weight:700;font-family:var(--f-mono);font-size:14px;border:1px solid}
 .fb .k.plus{color:var(--ok);background:var(--ok-subtle);border-color:var(--ok)}
@@ -200,7 +211,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
 .fb .tx{white-space:pre-wrap;overflow-wrap:anywhere}
 .fb time{font-family:var(--f-mono);font-size:12px;color:var(--subtle)}
 .fb li.e{display:block}.fb .empty{color:var(--muted)}
-@media (max-width:720px){.fb li{grid-template-columns:26px minmax(0,1fr) auto}.fb .tx{grid-column:2/-1}}
+@media (max-width:720px){.fbcols{grid-template-columns:minmax(0,1fr)}.fb{max-height:320px}.fb li{grid-template-columns:26px minmax(0,1fr);row-gap:2px}.fb time{grid-column:2}}
 .log{list-style:none;margin:0;padding:0;max-height:420px;overflow:auto}
 .log li{display:grid;grid-template-columns:44px 64px minmax(0,1fr);gap:10px;padding:6px 2px;border-top:1px solid var(--border);font-size:13px;align-items:baseline}
 .log li:first-child{border-top:0}
@@ -280,7 +291,7 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
 
   <section class="card" id="ustalar" aria-labelledby="h-usta" hidden>
     <div class="sec-h"><h2 id="h-usta">Usta yorumları</h2><span class="meta" id="fbMeta">en yeni önce</span></div>
-    <ul class="fb" id="fbList"></ul>
+    <div class="fbcols" id="fbCols"></div>
   </section>
 
   <section class="card" id="fazlar" aria-labelledby="h-faz">
@@ -1454,11 +1465,24 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     const fb = Array.isArray(S.feedback) ? S.feedback : [], anyOn = USTA_KEYS.some(seatOn);
     $('ustalar').hidden = !anyOn && !fb.length;
     if($('ustalar').hidden) return;
-    const n = (k)=>fb.filter(f=>f.kind===k).length;
-    $('fbMeta').textContent = fb.length ? `${n('+')} avantaj · ${n('-')} dezavantaj · ${n('?')} soru · en yeni önce` : 'en yeni önce';
-    $('fbList').innerHTML = fb.length ? fb.map(f=>{ const k = FB_KIND[f.kind] || FB_KIND['?'], c = CREW.find(x=>x.key===f.who);
-      return `<li><span class="k ${k[0]}" title="${k[2]}" aria-label="${k[2]}">${k[1]}</span><span class="w" style="--c:var(--c-${esc(f.who)})">${esc(c?c.name:f.who)}</span><span class="tx">${esc(f.text)}</span><time title="${esc(f.t)}">${esc(ago(f.t))}</time></li>`; }).join('')
-      : '<li class="e"><span class="empty">Henüz yorum yok. Ustalar uygulamayı denedikçe burada görünecek.</span></li>';
+    $('fbMeta').textContent = fb.length+' yorum · her kartta en yeni üstte';
+    // one card per operator, side by side (owner): name, role, current state/step, +/−/? counts; the list scrolls inside the card
+    const scrolls = {}; document.querySelectorAll('#fbCols .fb').forEach(el=>{ scrolls[el.dataset.who] = el.scrollTop; });
+    const A = S.agents||{};
+    $('fbCols').innerHTML = CREW.filter(c=>c.guest).map(c=>{
+      const mine = fb.filter(f=>f.who===c.key).slice().sort((a,b)=>String(b.t).localeCompare(String(a.t)));
+      const n = (k)=>mine.filter(f=>f.kind===k).length, a = A[c.key]||{}, alive = !!a.updated && (Date.now()-new Date(a.updated)) < 12*3600e3;
+      const st = alive && STATE_TR[a.state] ? a.state : 'idle', pill = alive ? STATE_TR[st] : 'Yok';
+      const now = alive ? (a.task ? `<b>${esc(a.task)}</b> · ` : '') + esc(a.message || STATE_TR[st]) : 'Aktif değil';
+      const items = mine.length ? mine.map(f=>{ const k = FB_KIND[f.kind] || FB_KIND['?'];
+        return `<li><span class="k ${k[0]}" title="${k[2]}" aria-label="${k[2]}">${k[1]}</span><span class="tx">${esc(f.text)}</span><time title="${esc(f.t)}">${esc(ago(f.t))}</time></li>`; }).join('')
+        : '<li class="e"><span class="empty">Henüz yorum yok.</span></li>';
+      return `<article class="fbcard" style="--c:var(--c-${c.key})" aria-label="${esc(c.name)} yorumları"><div class="fh">
+        <div class="row"><span class="nm">${esc(c.name)}<small>${esc(c.role)}</small></span><span class="pill s-${st}">${pill}</span></div>
+        <div class="now">${now}</div>
+        <div class="cnt"><span class="plus" title="Avantaj">+ ${n('+')}</span><span class="minus" title="Dezavantaj">− ${n('-')}</span><span class="ask" title="Soru / fikir">? ${n('?')}</span></div></div>
+        <ul class="fb" data-who="${c.key}" tabindex="0" aria-label="${esc(c.name)}: yorum listesi">${items}</ul></article>`; }).join('');
+    document.querySelectorAll('#fbCols .fb').forEach(el=>{ if(scrolls[el.dataset.who]) el.scrollTop = scrolls[el.dataset.who]; });
   }
 
   // ---------- log ----------
