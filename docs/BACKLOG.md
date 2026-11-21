@@ -1470,23 +1470,23 @@ Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
 
 Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by screen. Source in brackets (#5 = CTO review 5, T = tester). The M9 polish phase takes **one group per batch** (P1–P5), not item by item; inside a group the dev may skip an item that costs more than an hour and note it. Items marked ★ were seen in 2+ reviews: do them first.
 
-### P1 Çizim tahtası   [status: partial, B50 #153]
-Done in B50 (#153, D-090) or already on main; the rest stays open.
+### P1 Çizim tahtası   [status: partial, B50 #153, B52 #156]
+Done in B50 (#153, D-090), B52 (#156, D-096) or already on main; the rest stays open.
 - Add a corner / split an edge on a shape (L or notch without redrawing) [#5] (done in B50)
 - Zoom to selection; picked corner shown on canvas [#5] (done in B50; picked corner already on main)
-- Corner X/Y part-relative or whole mm; stable corner numbers (needs a decision) [#5]
-- Line tool: take the direction from arrow keys / mouse when only a length is typed; "keep right angles" when editing an edge of an orthogonal shape [#5]
+- Corner X/Y part-relative or whole mm; stable corner numbers (needs a decision) [#5] (done in B52)
+- Line tool: take the direction from arrow keys / mouse when only a length is typed; "keep right angles" when editing an edge of an orthogonal shape [#5] (done in B52)
 - ★ Labels: part label inside the shape (L parts), edge-length labels do not overlap on small parts [#5, #6] (done in B50)
 - Selection keeps the wood tone (outline only); small part: corner handle wins over the edge handle [#5, #7] (done in B50)
 - Tool rail keeps a canvas inset at 1024 (not reproduced in B50) [#5, #7]
 - "İç kesim olarak ekle?" dialog fits, Enter works [#6] (done in B50)
-- Inner cut: select, move, resize after it is added; asked once (needs a product rule) [#6]
+- Inner cut: select, move, resize after it is added; asked once (needs a product rule) [#6] (done in B52)
 - Holes: number on the canvas; blind vs through look different; hole tool takes a diameter like the circle (one convention) [#7] (done in B50; typed diameter already on main)
-- Holes: select and drag on the canvas; "continue with the same values" [#7]
+- Holes: select and drag on the canvas; "continue with the same values" [#7] (done in B52)
 - Hole snapping: finer snap near hinge positions (22,5 mm) [T B14a] (already on main, B14a)
-- Hole snapping: no centre snap when zoomed out [T B14]
+- Hole snapping: no centre snap when zoomed out [T B14] (done in B52)
 - ★ Properties panel: holes and template instances as collapsed summary rows (panel is 1.500–2.500 px today) [#7, #8] (done in B50)
-- Right-click menu: duplicate, delete, rotate, add template [#10]
+- Right-click menu: duplicate, delete, rotate, add template [#10] (done in B52)
 - Hints and tour: hint texts not cut (Delik, Seç, Kaydır), shortcut sheet lists Alt, tour explains hole properties and does not cover the board/toolbar [#7, T B13] (done in B50; tour position already on main)
 
 ### P2 Dizilim, Simülasyon, 3D   [status: partial, B44 #145]
