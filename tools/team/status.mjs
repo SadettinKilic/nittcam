@@ -10,6 +10,11 @@
 //   node tools/team/status.mjs alert "<message>" | alert off   ("PC'ye bak" popup)
 //   node tools/team/status.mjs call   (owner wrote to the PO: desk phone rings on the dashboard, hangs up 10 s after the last call; silent on any error)
 //   (D-054 retired the flexible seats: `role` and `dev3` are accepted from old callers and ignored; every write drops them from state)
+//   T315 guest seats (CNC operators who test the app as real users). Kept in state.ustas, not state.agents, so older copies of
+//   this script in other worktrees never drop them:
+//   node tools/team/status.mjs <usta1|usta2> <state> "<task>" "<message>"
+//   node tools/team/status.mjs feedback <usta1|usta2> "<+|-|?>" "<short text>"   (+ advantage, - disadvantage, ? question/idea; "Usta yorumları" panel)
+//   node tools/team/status.mjs seat <usta1|usta2|ustalar> <on|off>   (off hides the seat in the office when the test is over)
 //   node tools/team/status.mjs print
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -23,6 +28,8 @@ try { root = dirname(execSync('git rev-parse --path-format=absolute --git-common
 const file = join(root, '.team', 'state.json');
 // D-054 fixed team: fable = CTO (reviews every 2 batches), devops = integration to main
 const AGENTS = ['po', 'dev', 'dev2', 'tester', 'devops', 'fable'];
+const USTAS = ['usta1', 'usta2']; // T315 guest seats
+const KINDS = ['+', '-', '?'];
 const RETIRED = ['dev3']; // D-052 flexible seat; old callers still send it
 const STATES = ['idle', 'planning', 'coding', 'testing', 'reviewing', 'blocked', 'done'];
 const TASK_STATES = ['todo', 'doing', 'review', 'done', 'blocked'];
@@ -61,6 +68,29 @@ if (cmd === 'prune') {
   s.agents[cmd] = { state, task, message, updated: now };
   s.log.unshift({ t: now, who: cmd, state, task, msg: message });
   s.log = s.log.slice(0, 60);
+} else if (USTAS.includes(cmd)) {
+  const [state, task = '', message = ''] = rest;
+  if (!STATES.includes(state)) die(`state must be one of: ${STATES.join(', ')}`);
+  s.ustas = s.ustas || {};
+  const prev = s.ustas[cmd] || {};
+  s.ustas[cmd] = { state, task, message, updated: now, on: prev.on !== false };
+  s.log.unshift({ t: now, who: cmd, state, task, msg: message });
+  s.log = s.log.slice(0, 60);
+} else if (cmd === 'feedback') {
+  // feedback <usta1|usta2> "<+|-|?>" "<short text>"
+  const [who, kindRaw = '', text = ''] = rest;
+  const kind = kindRaw.trim().replace('−', '-');
+  if (!USTAS.includes(who) || !KINDS.includes(kind) || !text.trim()) die('usage: feedback <usta1|usta2> "<+|-|?>" "<short text>"');
+  s.feedback = s.feedback || [];
+  s.feedback.unshift({ t: now, who, kind, text: text.trim().slice(0, 400) });
+  s.feedback = s.feedback.slice(0, 200);
+} else if (cmd === 'seat') {
+  // seat <usta1|usta2|ustalar> <on|off>
+  const [who = '', m] = rest;
+  const keys = who === 'ustalar' ? USTAS : [who];
+  if (!keys.every((k) => USTAS.includes(k)) || !['on', 'off'].includes(m)) die('usage: seat <usta1|usta2|ustalar> <on|off>');
+  s.ustas = s.ustas || {};
+  for (const k of keys) s.ustas[k] = { state: 'idle', task: '', message: '', updated: null, ...s.ustas[k], on: m === 'on' };
 } else if (cmd === 'task') {
   const [id, status, title, owner] = rest;
   if (!id || !TASK_STATES.includes(status)) die(`usage: task <Txxx> <${TASK_STATES.join('|')}> ["title"] [owner]`);
@@ -117,7 +147,7 @@ if (cmd === 'prune') {
 } else if (cmd === 'print') {
   process.stdout.write(JSON.stringify(s, null, 2) + '\n'); process.exit(0);
 } else {
-  die('usage: status.mjs <po|dev|dev2|tester|devops|fable> <state> "<task>" "<message>" | task <id> <status> ["title"] [owner] | mode <on|off> | prune | milestone "<name>" | call | print');
+  die('usage: status.mjs <po|dev|dev2|tester|devops|fable|usta1|usta2> <state> "<task>" "<message>" | feedback <usta1|usta2> "<+|-|?>" "<text>" | seat <usta1|usta2|ustalar> <on|off> | task <id> <status> ["title"] [owner] | mode <on|off> | prune | milestone "<name>" | call | print');
 }
 
 s.updated = now;
