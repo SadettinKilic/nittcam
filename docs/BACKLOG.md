@@ -1649,6 +1649,9 @@ Owner 2026-11-21. Outer / inner contour, pocket, hole: pick a compatible tool fr
 ### T309 Park position for manual tool change   [status: todo]
 Owner 2026-11-21. Machine profile option (X/Y in machine coordinates G53, on/off); manual change goes safe Z → park → M0 + message; field-kit note linked; park off = same bytes.
 
+### T310 Assembly view: door holes where the drawing has them   [status: review]
+Owner test 2026-11-21 (before the field test, D-098; Dev 2). A single door with asymmetric handle holes showed them upside down in "Montaj görünümü" (T285 turned every left/single door over about its horizontal axis). Fix: a door with only through work faces the drawing to the front (looks exactly like the drawing); a door with face-only work (hinge cups, pockets, blind holes, grooves, lines) keeps the drawing's top on top and shows the inside face (left/right turned, physically true); two doors of one row stay as T285 (hinges at the outer edges, handles meet in the middle; one door's drawing is upside down, unavoidable for identical boards). Unit tests on the part → assembly transform, e2e screenshots `t310-assembly-holes.spec.ts`. G-code untouched (web preview only).
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine

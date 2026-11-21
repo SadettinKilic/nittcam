@@ -6,6 +6,7 @@ import {
   assemblyFaceMatrix,
   cabinetGroups,
   hasFaceFeatures,
+  hasFaceOnlyWork,
   noteThickness,
 } from './assembly';
 
@@ -163,5 +164,103 @@ describe('assemblyFaceMatrix (T285)', () => {
     const side = g.assembly.boxes.find((b) => b.role === 'side');
     const part = side ? g.parts.get(side.id) : undefined;
     expect(part ? hasFaceFeatures(part) : null).toBe(false);
+  });
+});
+
+describe('door holes keep the drawing in the assembly (T310)', () => {
+  // Asymmetric handle holes near the top right of the drawing (part frame, y up).
+  const handle = [
+    { type: 'through', d: 5, cx: 0, cy: 0 },
+    { type: 'through', d: 5, cx: 0, cy: 0 },
+    { type: 'through', d: 8, cx: 0, cy: 0 },
+  ];
+  function cabinet(doors: 1 | 2, extra: unknown[] = []) {
+    const r = cabinetParts({ ...DEFAULT_CABINET, width: 800, doors });
+    if (!r.ok) throw new Error(r.error);
+    const rows = r.parts.map((x, i) => {
+      const isDoor = x.role === 'door';
+      const holes = isDoor
+        ? [
+            { ...handle[0], cx: x.w - 40, cy: x.h - 60 },
+            { ...handle[1], cx: x.w - 40, cy: x.h - 160 },
+            { ...handle[2], cx: x.w - 80, cy: x.h - 60 },
+            ...extra,
+          ]
+        : [];
+      return {
+        id: `c-${i}`,
+        name: roles[x.role],
+        qty: x.qty,
+        group: 'Dolap',
+        kind: 'rect',
+        params: { w: x.w, h: x.h, r: 0 },
+        holes,
+        inners: [],
+        templates: [],
+      };
+    });
+    const [g] = cabinetGroups(projectWith(rows), roles);
+    if (!g) throw new Error('no group');
+    const doorsOut = g.assembly.boxes.filter((b) => b.role === 'door');
+    return { g, doors: doorsOut };
+  }
+  const world = (
+    g: ReturnType<typeof cabinet>['g'],
+    b: ReturnType<typeof cabinet>['doors'][number],
+  ) => {
+    const part = g.parts.get(b.id);
+    if (!part || part.kind !== 'rect') throw new Error('no part');
+    const m = assemblyFaceMatrix(b, g.assembly.width, hasFaceOnlyWork(part, b.sz));
+    return part.holes.map((h) => applyMatrix(m, h.cx, h.cy, b.sz));
+  };
+
+  it('single door, through holes only: seen from the front exactly as drawn', () => {
+    const { g, doors } = cabinet(1);
+    const [d] = doors;
+    if (!d) throw new Error('no door');
+    const part = g.parts.get(d.id);
+    if (!part || part.kind !== 'rect') throw new Error('no part');
+    expect(hasFaceOnlyWork(part, d.sz)).toBe(false);
+    const pts = world(g, d);
+    part.holes.forEach((h, i) => {
+      expect(pts[i]?.[0]).toBeCloseTo(d.x + h.cx, 6);
+      expect(pts[i]?.[1]).toBeCloseTo(d.y + h.cy, 6);
+    });
+  });
+
+  it('single door with hinge cups: top stays top, machined face inside, left/right turned', () => {
+    const cup = { type: 'pocket', d: 35, cx: 22, cy: 100, depth: 13 };
+    const { g, doors } = cabinet(1, [cup]);
+    const [d] = doors;
+    if (!d) throw new Error('no door');
+    const part = g.parts.get(d.id);
+    if (!part || part.kind !== 'rect') throw new Error('no part');
+    expect(hasFaceOnlyWork(part, d.sz)).toBe(true);
+    const pts = world(g, d);
+    part.holes.forEach((h, i) => {
+      // vertical order and height as drawn (it was upside down before T310)
+      expect(pts[i]?.[1]).toBeCloseTo(d.y + h.cy, 6);
+      // seen from the front the inside face is turned over about the vertical axis
+      expect(pts[i]?.[0]).toBeCloseTo(d.x + d.sx - h.cx, 6);
+      expect(pts[i]?.[2]).toBe(d.z); // on the face toward the carcass
+    });
+  });
+
+  it('two doors (one row): handles meet in the middle, hinges at the outer edges', () => {
+    const cup = { type: 'pocket', d: 35, cx: 22, cy: 100, depth: 13 };
+    for (const extra of [[], [cup]]) {
+      const { g, doors } = cabinet(2, extra);
+      const [L, R] = doors;
+      if (!L || !R) throw new Error('two doors expected');
+      const mid = g.assembly.width / 2;
+      // the big handle hole (drawn near the right edge) is next to the middle on both doors
+      const l = world(g, L)[2];
+      const r = world(g, R)[2];
+      expect(Math.abs((l?.[0] ?? 0) - mid)).toBeLessThan(L.sx / 2);
+      expect(Math.abs((r?.[0] ?? 0) - mid)).toBeLessThan(R.sx / 2);
+      // one row = identical boards: one door keeps the drawing's top, the other is turned 180°
+      const tops = [l?.[1] ?? 0, r?.[1] ?? 0].map((y) => y > L.y + L.sy / 2);
+      expect(tops.sort()).toEqual([false, true]);
+    }
   });
 });

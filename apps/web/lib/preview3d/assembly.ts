@@ -13,6 +13,7 @@ import {
   type Part,
   type Project,
 } from '@nittcam/core';
+import { MIN_FLOOR } from './part-mesh';
 
 export interface CabinetGroup {
   group: string;
@@ -64,6 +65,15 @@ export function cabinetGroups(
   return out;
 }
 
+/**
+ * True when some work of the part is only on its machined face (T310): a blind hole, pocket or
+ * groove (not through the board) or a line. Such a door is mounted with that face inside.
+ */
+export function hasFaceOnlyWork(part: Part, thickness: number): boolean {
+  if ((part.lines?.length ?? 0) > 0) return true;
+  return part.holes.some((h) => h.type !== 'through' && h.depth < thickness - MIN_FLOOR);
+}
+
 /** True when the part has something to show on a face (T285): openings, holes, pockets, lines. */
 export function hasFaceFeatures(part: Part): boolean {
   return part.holes.length > 0 || part.inners.length > 0 || (part.lines?.length ?? 0) > 0;
@@ -80,16 +90,23 @@ type V3 = [number, number, number];
  *   right side is the same row turned over, so its local top end is at the bottom;
  * - bottom, shelves: front edge = local bottom edge, machined face up; top: machined face down;
  * - back, plinth: machined face to the front (into the cabinet for the back);
- * - doors: machined face inside (hinge cups face the carcass). The left door (and a single door)
- *   keeps local x left to right seen from the front, so a hinge drawn at the local left edge sits
- *   at its outer left edge; the right door is the same row turned the other way, its hinges at
- *   the outer right edge.
+ * - doors (T310, D-098): the drawing's top stays the door's top wherever the boards allow it.
+ *   A door with work that must face the carcass (`faceInside`: hinge cups, blind holes, pockets,
+ *   grooves, lines) has its machined face inside, so seen from the front it is the drawing turned
+ *   over about its vertical axis (left and right swap, a hinge drawn at the local left edge is at
+ *   the right). A door with only through holes / cutouts has its machined face to the front and
+ *   looks exactly like the drawing. With two doors (one row, identical boards) the left door is
+ *   the right one turned 180° in its plane, so their hinges sit at the outer edges and handles
+ *   meet in the middle; the left door's drawing is then upside down (unavoidable for one row).
  * `width` is the cabinet width (tells left from right). Returns a column-major 4×4 matrix
  * (`Matrix4.fromArray` order): world = M · (x, y, z, 1), in the cabinet frame.
  */
-export function assemblyFaceMatrix(box: AssemblyBox, width: number): number[] {
+export function assemblyFaceMatrix(box: AssemblyBox, width: number, faceInside = true): number[] {
   const { x: bx, y: by, z: bz, sx, sy, sz } = box;
-  const left = bx + sx / 2 <= width / 2 + 1e-6;
+  const centre = bx + sx / 2;
+  const left = centre <= width / 2 + 1e-6;
+  // A single door sits in the middle; with two doors one is clearly left of the middle.
+  const leftDoor = centre < width / 2 - 1e-6;
   // The world images of local x, y, z and the world position of the local origin.
   let cx: V3;
   let cy: V3;
@@ -122,15 +139,28 @@ export function assemblyFaceMatrix(box: AssemblyBox, width: number): number[] {
       o = [bx, by, bz + sz];
       break;
     case 'door':
-      cz = [0, 0, -1];
-      if (left) {
-        cx = [1, 0, 0];
-        cy = [0, -1, 0];
-        o = [bx, by + sy, bz + sz];
+      if (faceInside) {
+        cz = [0, 0, -1];
+        if (leftDoor) {
+          cx = [1, 0, 0];
+          cy = [0, -1, 0];
+          o = [bx, by + sy, bz + sz];
+        } else {
+          cx = [-1, 0, 0];
+          cy = [0, 1, 0];
+          o = [bx + sx, by, bz + sz];
+        }
       } else {
-        cx = [-1, 0, 0];
-        cy = [0, 1, 0];
-        o = [bx + sx, by, bz + sz];
+        cz = [0, 0, 1];
+        if (leftDoor || Math.abs(centre - width / 2) <= 1e-6) {
+          cx = [1, 0, 0];
+          cy = [0, 1, 0];
+          o = [bx, by, bz];
+        } else {
+          cx = [-1, 0, 0];
+          cy = [0, -1, 0];
+          o = [bx + sx, by + sy, bz];
+        }
       }
       break;
     default: // back, plinth

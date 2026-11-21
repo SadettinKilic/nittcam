@@ -38,7 +38,7 @@ export interface MeshData {
 }
 
 /** Smallest blind floor kept below the top (mm): a deeper pocket/groove is drawn as through. */
-const MIN_FLOOR = 0.05;
+export const MIN_FLOOR = 0.05;
 /** Adjacent wall facets closer than this turn smoothly (arcs, circles); sharper = hard edge. */
 const SMOOTH_DEG = 35;
 
