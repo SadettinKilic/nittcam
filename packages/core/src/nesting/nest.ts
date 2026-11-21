@@ -53,6 +53,7 @@ import {
   type UnplacedPart,
 } from './types';
 import { toCutSizes } from '../schema/cut-size';
+import { innerOperation } from '../schema/operations';
 import type { OffcutSheet } from './offcuts';
 
 /** Orderings tried, in this order (earlier wins ties). */
@@ -905,7 +906,11 @@ export function nestingInputFromProject(
       rotations: allowedRotations(part, defaultSheet(project), rotationPolicyOf(project.nesting)),
       outline: contour(deriveOutline(part)),
       holeTools: part.holes.map((h) => h.tool),
-      inners: part.inners.map((c) => contour(c)),
+      // Only cut-outs (through cuts) leave room for part-in-hole: a blind pocket (T325), an engraved
+      // or an uncut inner contour keeps its material.
+      inners: part.inners
+        .filter((_, k) => innerOperation(part, k).kind === 'inside')
+        .map((c) => contour(c)),
     })),
     gap: project.nesting.gap,
     margin: project.nesting.margin,
@@ -940,7 +945,12 @@ export function nestingEngineOf(project: Project): NestingEngine {
   for (const part of project.parts) {
     if (part.kind !== 'rect' && !isAxisRect(deriveOutline(part))) return 'trueShape';
     if (allowedRotations(part, sheet, policy).some((r) => !isQuarterTurn(r))) return 'trueShape';
-    if (project.nesting.partInHole === true && part.inners.length > 0) return 'trueShape';
+    if (
+      project.nesting.partInHole === true &&
+      part.inners.some((_, k) => innerOperation(part, k).kind === 'inside')
+    ) {
+      return 'trueShape';
+    }
   }
   return 'maxrects';
 }

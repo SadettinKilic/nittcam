@@ -200,6 +200,27 @@ describe('part mesh (T153)', () => {
     expect(b[5]).toBe(T);
   });
 
+  it('T325: a rectangular contour pocket is a recess with a flat floor; too deep = through', () => {
+    const inner = [
+      { x: 20, y: 10, bulge: 0 },
+      { x: 20, y: 40, bulge: 0 },
+      { x: 80, y: 40, bulge: 0 },
+      { x: 80, y: 10, bulge: 0 },
+    ];
+    const pocket = (depth: number) =>
+      partMesh(
+        rect(100, 50, { inners: [inner], ops: { inners: [{ kind: 'pocket', depth }] } } as never),
+        T,
+      );
+    const m = pocket(6);
+    expect(m.openings).toBe(1);
+    expect(m.throughOpenings).toBe(0);
+    expect(closedVolume(m)).toBeCloseTo(100 * 50 * T - 60 * 30 * 6, 3);
+    const deep = pocket(T);
+    expect(deep.throughOpenings).toBe(1);
+    expect(closedVolume(deep)).toBeCloseTo((100 * 50 - 60 * 30) * T, 3);
+  });
+
   it('holes of every type, mixed, still give a closed outward mesh', () => {
     const holes = [
       { id: 'a', type: 'through', d: 8, cx: 20, cy: 20, tool: 1 },

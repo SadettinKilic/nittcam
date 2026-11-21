@@ -24,10 +24,13 @@ const params = z.strictObject({
     z.strictObject({ type: z.literal('inner'), index }),
     z.strictObject({ type: z.literal('line'), index }),
   ]),
-  kind: z.enum(['outside', 'inside', 'online', 'none'], {
-    error: 'operation must be "outside", "inside", "online" or "none"',
+  kind: z.enum(['outside', 'inside', 'online', 'pocket', 'none'], {
+    error: 'operation must be "outside", "inside", "online", "pocket" or "none"',
   }),
-  /** Depth of an `online` operation in mm, from the material top; less than the thickness. */
+  /**
+   * Depth of an `online` or `pocket` (T325) operation in mm, from the material top; less than the
+   * thickness (a pocket as deep as the stock is an inner cut: use `inside`).
+   */
   depth: z
     .number({ error: 'depth must be a finite number (mm)' })
     .positive({ error: 'depth must be greater than 0' })
@@ -37,7 +40,8 @@ const params = z.strictObject({
 type Params = z.output<typeof params>;
 
 function operationOf(p: Params): ContourOperation {
-  return p.kind === 'online' ? { kind: 'online', depth: p.depth ?? 0 } : { kind: p.kind };
+  if (p.kind === 'online' || p.kind === 'pocket') return { kind: p.kind, depth: p.depth ?? 0 };
+  return { kind: p.kind };
 }
 
 function check(project: Project, p: Params): string | undefined {
@@ -49,14 +53,17 @@ function check(project: Project, p: Params): string | undefined {
   if (!ALLOWED_OPERATIONS[c.type].includes(p.kind)) {
     return `operation "${p.kind}" is not allowed on ${c.type === 'line' ? 'an open line' : `the ${c.type === 'outline' ? 'outline' : 'inner contour'}`} (allowed: ${ALLOWED_OPERATIONS[c.type].join(', ')})`;
   }
-  if (p.kind === 'online') {
-    if (p.depth === undefined) return 'an on-line operation needs a depth';
-    // Engraving never cuts through (no tabs or small-part rules apply to it).
+  if (p.kind === 'online' || p.kind === 'pocket') {
+    const what = p.kind === 'online' ? 'on-line' : 'pocket';
+    if (p.depth === undefined) return `a ${what} operation needs a depth`;
+    // Engraving and pockets never cut through (no tabs or small-part rules apply to them).
     if (!(p.depth < project.stock.thickness)) {
-      return `on-line depth ${p.depth} mm must be less than the thickness (${project.stock.thickness} mm)`;
+      return p.kind === 'pocket'
+        ? `pocket depth ${p.depth} mm must be less than the thickness (${project.stock.thickness} mm); a pocket as deep as the stock is an inner cut ("inside")`
+        : `on-line depth ${p.depth} mm must be less than the thickness (${project.stock.thickness} mm)`;
     }
   } else if (p.depth !== undefined) {
-    return 'only an on-line operation takes a depth (through cuts use the thickness + allowance)';
+    return 'only an on-line or pocket operation takes a depth (through cuts use the thickness + allowance)';
   }
   return undefined;
 }
@@ -67,8 +74,9 @@ export const setOperation = defineCommand({
   area: 'part',
   description:
     'Set the operation of one contour of a part: outline (outside | online | none), inner ' +
-    'contour (inside | online | none) or open line (online | none). "online" = the tool centre ' +
-    'follows the line at depth mm (less than the thickness); "none" = not cut.',
+    'contour (inside | online | pocket | none) or open line (online | none). "online" = the tool ' +
+    'centre follows the line at depth mm (less than the thickness); "pocket" = the inner contour ' +
+    'is cleared flat to depth mm (blind pocket, less than the thickness); "none" = not cut.',
   aiTool: true,
   params,
   check,

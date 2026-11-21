@@ -207,11 +207,20 @@ export function partMesh(part: Part, thickness: number): MeshData {
   // lines are engraved marks on the top face (drawn as lines; a recessed groove needs the tool
   // width, B20); `none` is not cut at all.
   const inners: number[][] = [];
+  // T325: blind contour pockets, a wall down to the floor and the floor face.
+  const pockets: { ring: number[]; floorRing: number[]; floor: number }[] = [];
   part.inners.forEach((c, k) => {
-    const op = innerOperation(part, k).kind;
+    const op = innerOperation(part, k);
     const ring = flatten(normalize(contour(c), 'inner'));
-    if (op === 'inside' || op === 'outside') inners.push(ring);
-    else if (op === 'online') b.loop(ring, T);
+    if (op.kind === 'pocket' && op.depth < T - MIN_FLOOR) {
+      pockets.push({
+        ring,
+        floorRing: flatten(normalize(contour(c), 'outer')),
+        floor: T - op.depth,
+      });
+    } else if (op.kind === 'inside' || op.kind === 'outside' || op.kind === 'pocket') {
+      inners.push(ring);
+    } else if (op.kind === 'online') b.loop(ring, T);
   });
   for (const line of part.lines ?? []) {
     if (line.op.kind === 'online') b.polyline(flattenOpen(line.vertices), T);
@@ -223,6 +232,12 @@ export function partMesh(part: Part, thickness: number): MeshData {
   for (const ring of inners) {
     b.wall(ring, 0, T);
     b.loop(ring, T);
+  }
+  for (const p of pockets) {
+    topHoles.push(p.ring);
+    b.wall(p.ring, p.floor, T);
+    b.loop(p.ring, T);
+    b.face(p.floorRing, [], p.floor, true);
   }
   for (const hole of part.holes) {
     const depth = blindDepth(hole, T);
@@ -261,7 +276,7 @@ export function partMesh(part: Part, thickness: number): MeshData {
   b.wall(outline, 0, T, bandedSide(part));
   b.loop(outline, T);
   b.loop(outline, 0);
-  return b.done(inners.length + part.holes.length, through);
+  return b.done(inners.length + pockets.length + part.holes.length, through);
 }
 
 /** Placement transform of a part: sheet = R(rot) · local + (tx, ty) (CCW degrees, spec §6.1). */

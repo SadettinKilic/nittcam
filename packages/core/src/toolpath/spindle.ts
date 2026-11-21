@@ -16,8 +16,10 @@ import {
 } from '../machine';
 import type { Project } from '../schema';
 import {
+  contourPocketTool,
   contourTool,
   effectiveHoleTool,
+  hasContourPocket,
   hasInnerCut,
   recommendedFeeds,
   recommendedRpm,
@@ -102,6 +104,7 @@ export function jobToolNumbers(project: Project, machine: MachineProfile): numbe
   if (!set) return [];
   const tools = new Set<number>([contourTool(project, 'outer', set.tool)]);
   if (hasInnerCut(project)) tools.add(contourTool(project, 'inner', set.tool));
+  if (hasContourPocket(project)) tools.add(contourPocketTool(project, set.tool));
   for (const part of project.parts) {
     for (const h of part.holes) tools.add(effectiveHoleTool(project, h));
   }

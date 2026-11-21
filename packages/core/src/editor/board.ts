@@ -9,6 +9,7 @@
 import { bbox, contour } from '../geometry/polyline';
 import type { BBox, Point } from '../geometry/types';
 import { deriveOutline } from '../schema/outline';
+import { innerOperation } from '../schema/operations';
 import type { Hole, Part, Project, Vertex } from '../schema/project';
 
 /** Gap between automatically arranged parts, mm. */
@@ -27,6 +28,8 @@ export interface BoardPart {
   outline: Vertex[];
   /** Inner contours (CW) in board coordinates. */
   inners: Vertex[][];
+  /** Indices into `inners` of the blind contour pockets (T325); omitted = none. */
+  pockets?: number[];
   /** Hole centres and diameters in board coordinates. */
   holes: { id: string; x: number; y: number; d: number; type: Hole['type'] }[];
   /** Linear dimensions (T133, annotations) in board coordinates. */
@@ -103,6 +106,13 @@ export function boardParts(project: Project): BoardPart[] {
       placed: part.draw !== undefined,
       outline: shift(deriveOutline(part), at.x, at.y),
       inners: part.inners.map((c) => shift(c, at.x, at.y)),
+      ...(part.inners.some((_, k) => innerOperation(part, k).kind === 'pocket')
+        ? {
+            pockets: part.inners.flatMap((_, k) =>
+              innerOperation(part, k).kind === 'pocket' ? [k] : [],
+            ),
+          }
+        : {}),
       holes: part.holes.map((h) => holeCentre(h, at)),
       dims: (part.dims ?? []).map((d) => ({
         id: d.id,
