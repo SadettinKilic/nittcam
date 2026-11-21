@@ -61,6 +61,8 @@ export type CrumbKey =
   | 'materials'
   | 'dxfLayers'
   | 'appearance'
+  | 'fieldKit'
+  | 'help'
   | 'notFound';
 
 export interface Crumb {
@@ -90,6 +92,9 @@ export function breadcrumbs(pathname: string): Crumb[] {
     if (parts.length === 3 && third === 'dogrulama') {
       return [{ key: 'machines', href: '/makineler' }, { key: 'verification' }];
     }
+    if (parts.length === 3 && third === 'saha-kiti') {
+      return [{ key: 'machines', href: '/makineler' }, { key: 'fieldKit' }];
+    }
   }
   if (first === 'projeler') {
     if (parts.length === 1) return [{ key: 'projects' }];
@@ -97,6 +102,7 @@ export function breadcrumbs(pathname: string): Crumb[] {
     if (parts.length === 2) return [{ key: 'projects', href: '/projeler' }, { key: 'project' }];
   }
   if (first === 'sablonlar' && parts.length === 1) return [{ key: 'templates' }];
+  if (first === 'yardim' && parts.length === 1) return [{ key: 'help' }];
   if (first === 'ayarlar') {
     if (parts.length === 1) return [{ key: 'settings' }];
     const sub = parts.length === 2 ? SETTINGS_SUB_CRUMB[second ?? ''] : undefined;

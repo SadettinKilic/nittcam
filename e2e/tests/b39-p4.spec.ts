@@ -59,11 +59,14 @@ test('palette: Şablonlar / Malzemeler pages and in-project step commands (P4)',
   await paste(page, KITCHEN, 5);
   const input = page.getByPlaceholder(tr.palette.placeholder);
   const options = page.getByRole('dialog').getByRole('option');
+  // Enter runs the highlighted option; cmdk moves the highlight a moment after the filter changes
+  // (and since T192 help topics match too), so wait for the highlight itself, not the first row.
+  const selected = page.getByRole('dialog').getByRole('option', { selected: true });
 
   // Inside a project: "Adım 3: Dizilim" opens that step.
   await page.keyboard.press('Control+k');
   await input.fill('dizilim');
-  await expect(options.first()).toContainText(
+  await expect(selected).toContainText(
     fill(tr.palette.step, { n: 3, name: tr.wizard.steps.dizilim }),
   );
   await page.keyboard.press('Enter');
@@ -73,7 +76,7 @@ test('palette: Şablonlar / Malzemeler pages and in-project step commands (P4)',
   await page.keyboard.press('Control+k');
   await input.fill('malzeme');
   await expect(options.filter({ hasText: tr.palette.materials })).toHaveCount(1);
-  await expect(options.first()).toContainText(tr.palette.materials);
+  await expect(selected).toContainText(tr.palette.materials);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/ayarlar\/malzemeler$/);
 
@@ -82,7 +85,7 @@ test('palette: Şablonlar / Malzemeler pages and in-project step commands (P4)',
   await input.fill('adım');
   await expect(options.filter({ hasText: tr.wizard.steps.dizilim })).toHaveCount(0);
   await input.fill('şablon');
-  await expect(options.first()).toContainText(tr.palette.templates);
+  await expect(selected).toContainText(tr.palette.templates);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/sablonlar$/);
 });

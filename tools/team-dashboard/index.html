@@ -127,7 +127,8 @@ body.limited .top{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}
 .bar{height:8px;border-radius:4px;background:var(--surface-2);border:1px solid var(--border);overflow:hidden;display:flex}
 .bar i{display:block;height:100%;background:var(--accent)}
 .bar i.rv{background:var(--warn-c);opacity:.7}
-.phases{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.phases{display:grid;gap:6px;margin:0;padding:0;list-style:none;grid-template-columns:repeat(auto-fill,minmax(min(100%,560px),1fr));align-items:start}
+.bgrid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));align-items:start}
 .ph{border:1px solid var(--border);border-radius:10px;background:var(--surface)}
 .ph>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:72px minmax(0,1fr) 150px 92px;gap:6px 14px;align-items:center;padding:10px 12px}
 .ph>summary::-webkit-details-marker{display:none}
@@ -165,7 +166,7 @@ body.limited .top{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}
 .batch.now h3{background:var(--accent-subtle);color:var(--accent-text)}
 .batch h3 span{font-weight:400;color:var(--muted);font-size:12.5px}
 .tl{list-style:none;margin:0;padding:0}
-.tl li{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 12px;border-top:1px solid var(--border);font-size:13.5px}
+.tl li{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 10px;border-top:1px solid var(--border);font-size:13px}
 .tl li:first-child{border-top:0}
 .tl .tid{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
 .tl .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1373,8 +1374,8 @@ details.more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4p
     const next = batches.filter(b=>!isCur(b) && /^B/.test(b.id) && openTasks(b)).slice(0,2);
     const card = (b, now)=>{ const s = BS[b.id], pr = ((PRS&&PRS.prs)||[]).filter(p=>prBatch(p)===b.id).map(p=>'#'+p.number).join(' ');
       return `<div class="batch ${now?'now':''}"><h3>${esc(b.id)} · ${esc(b.name||'')}<span>${s?`<span class="pill s-${s==='test'?'testing':s}">${TASK_TR[s]}</span> `:''}${pr?esc(pr)+' · ':''}${esc(b.ms.id)} · ${b.tasks.filter(t=>t.status==='done').length}/${b.tasks.length} bitti</span></h3><ul class="tl">${b.tasks.map(t=>taskRow({...t, status: taskState(t, s)})).join('')}</ul></div>`; };
-    let h = cur.length ? `<div class="sub-h">Şu anki paket</div>${cur.map(b=>card(b,true)).join('')}` : '<p class="empty">Şu an çalışılan paket yok.</p>';
-    if(next.length) h += `<div class="sub-h">Sıradaki</div>${next.map(b=>card(b,false)).join('')}`;
+    let h = cur.length ? `<div class="sub-h">Şu anki paketler (${cur.length})</div><div class="bgrid">${cur.map(b=>card(b,true)).join('')}</div>` : '<p class="empty">Şu an çalışılan paket yok.</p>';
+    if(next.length) h += `<div class="sub-h">Sıradaki</div><div class="bgrid">${next.map(b=>card(b,false)).join('')}</div>`;
     const tasks = S.tasks||[];
     if(tasks.length) h += `<details class="more"><summary>Panel görev kaydı (${tasks.length})</summary><div class="batch"><ul class="tl">${tasks.map(taskRow).join('')}</ul></div></details>`;
     const wasOpen = box.querySelector('details.more[open]');
