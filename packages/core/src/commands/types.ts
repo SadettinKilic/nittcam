@@ -4,6 +4,7 @@
  */
 import type { Draft } from 'immer';
 import { z } from 'zod';
+import type { MachineProfile } from '../machine';
 import type { Project } from '../schema';
 
 /** Who issued a command (spec §5.1 "kim yaptı"). */
@@ -19,6 +20,14 @@ export const commandContextSchema = z.strictObject({
   at: z.iso.datetime({ offset: true, error: 'at must be an ISO 8601 date-time string' }),
 });
 export type CommandContext = z.infer<typeof commandContextSchema>;
+
+/**
+ * Data from outside the project some preconditions need (T307): the selected machine profile.
+ * Without it a machine-dependent check is skipped; the validation and the toolpath still catch it.
+ */
+export interface CommandEnv {
+  machine?: MachineProfile | undefined;
+}
 
 /** Where a command lives (`packages/core/src/commands/<area>/`). */
 export type CommandArea = 'plate' | 'part' | 'nesting';
@@ -44,7 +53,7 @@ export interface CommandDefinition<S extends z.ZodType = z.ZodType> {
    * Optional precondition on the current project (e.g. a free part id). Returns an English
    * message when the command cannot run; `undefined` when it can.
    */
-  check?: (project: Project, params: z.output<S>) => string | undefined;
+  check?: (project: Project, params: z.output<S>, env: CommandEnv) => string | undefined;
   /** Pure mutation of the draft. No clock, randomness or I/O. */
   apply: (draft: Draft<Project>, params: z.output<S>) => void;
 }
