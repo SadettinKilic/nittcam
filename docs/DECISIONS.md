@@ -748,3 +748,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Holes: a click on a hole of the selected part picks it (its panel row opens), drag moves it (`updateHole` cx/cy, one undo step). "Aynı değerlerle devam": a new hole drawn in the same session copies the last added hole's type, depth, groove width and tool, and its diameter is prefilled (Enter or a click without dragging keeps it).
 - Corner X/Y in the panel are part-relative (0,0 = the part's lower-left). Corner numbers are stable in the session: after "Köşe ekle", a fillet or a dogbone, existing corners keep their number and new ones get the previous number with a suffix (3a, 3b); after a reload they are renumbered 1…n.
 - Line tool: a typed length with no angle takes its direction from the last arrow key (→ 0°, ↑ 90°, ← 180°, ↓ 270°) or, without one, from the mouse. Segment length in the panel has "Dik açıyı koru" (default on): on an orthogonal run the next edge slides along so the right angles stay (`setSegmentLength` `keepRight`); elsewhere the end corner moves as before.
+
+## D-100 A manual tool change stops with M0, never M1 (2026-11-21, PO task, Dev 2, T311)
+- M1 is an optional stop: whether it stops depends on a switch on the controller. A manual tool change (and the first-tool check) that relies on it can run on with the old tool, so it is a G-code safety rule, not a style choice.
+- Independent check: with a manual changer every M1 / M01 pause is an error `TOOL_CHANGE_OPTIONAL_STOP` (rule TOOLS), besides the existing pause count and prompt checks. Auto and "none" modes are unchanged.
+- Post config: `toolChange.manualStop` accepts only `"M0"` (was M0 | M1); generic and Mach3 already write M0, so the golden files are byte-identical.

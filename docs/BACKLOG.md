@@ -1649,6 +1649,9 @@ Owner 2026-11-21. Outer / inner contour, pocket, hole: pick a compatible tool fr
 ### T309 Park position for manual tool change   [status: todo]
 Owner 2026-11-21. Machine profile option (X/Y in machine coordinates G53, on/off); manual change goes safe Z → park → M0 + message; field-kit note linked; park off = same bytes.
 
+### T311 Manual tool change stops with M0 only (G-code safety)   [status: review]
+Tester finding 2026-11-21 (before the field test, D-100; Dev 2). The independent check accepted M1 (optional stop) as the pause of a manual tool change; with optional stop off on the controller the machine runs on with the old tool. Fix: in manual mode every pause (tool change and first-tool check) must be M0, M1/M01 is an error `TOOL_CHANGE_OPTIONAL_STOP` (rule TOOLS); the post config allows only `manualStop: "M0"` (shipped posts already write M0). Rejection tests in `gcode-check/manual-stop.t311.test.ts`; goldens byte-identical.
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine

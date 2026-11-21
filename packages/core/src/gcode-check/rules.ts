@@ -575,6 +575,18 @@ export function toolRules(
     }
   } else if (d.toolMode === 'manual') {
     const pauses = read.events.filter((e) => e.kind === 'pause');
+    // T311 (D-100): a manual change (and the first-tool check) must stop with M0. M1 is an
+    // optional stop: with optional stop off the controller runs on with the old tool.
+    for (const p of pauses) {
+      if (p.optional) {
+        push(
+          'TOOLS',
+          'TOOL_CHANGE_OPTIONAL_STOP',
+          p.line,
+          'Manual tool change stops with M1 (optional stop): the controller may skip it. Use M0.',
+        );
+      }
+    }
     const first = d.ctx.post?.toolChange?.pauseForFirstTool;
     const counts =
       first === undefined ? [runs.length - 1, runs.length] : [runs.length - 1 + (first ? 1 : 0)];
