@@ -254,6 +254,32 @@ function drawSheet(page: PDFPage, fonts: PdfFonts, sheet: SheetDrawing, machine:
         borderWidth: 0.5,
       });
     }
+    // T325: blind contour pockets, dashed, with their depth when there is room.
+    for (const pocket of part.pockets) {
+      page.drawSvgPath(ringPath(pocket.ring, svg), {
+        x: 0,
+        y: pageH,
+        borderColor: PART_STROKE,
+        borderWidth: 0.5,
+        borderDashArray: [2, 1.5],
+      });
+      const xs = pocket.ring.filter((_, i) => i % 2 === 0);
+      const ys = pocket.ring.filter((_, i) => i % 2 === 1);
+      const label = fill(t.pocketDepth, { d: mm(pocket.depth) });
+      const w = (Math.max(...xs) - Math.min(...xs)) * s;
+      const h = (Math.max(...ys) - Math.min(...ys)) * s;
+      if (w > fonts.regular.widthOfTextAtSize(label, 6) + 4 && h > 9) {
+        centred(
+          page,
+          label,
+          px((Math.max(...xs) + Math.min(...xs)) / 2),
+          py((Math.max(...ys) + Math.min(...ys)) / 2) - 2,
+          fonts.regular,
+          6,
+          MUTED,
+        );
+      }
+    }
     for (const hole of part.holes) {
       page.drawCircle({
         x: px(hole.x),

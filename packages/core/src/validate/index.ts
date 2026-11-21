@@ -22,9 +22,12 @@ import {
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { lineLeavesPart } from '../editor/lines';
+import { contour } from '../geometry/polyline';
+import { contourPocketRings } from '../toolpath/contour-pocket';
 import { unsecuredSlugs } from '../toolpath/slug-check';
 import { spindleSettingsOf } from '../toolpath/spindle';
 import {
+  contourPocketTool,
   contourTool,
   effectiveHoleTool,
   holeToolKind,
@@ -59,7 +62,10 @@ export type ValidationCode =
   | 'INNER_SLUG_UNSECURED'
   | 'LINE_OUTSIDE_PART'
   | 'PART_NOT_IN_LAYOUT'
-  | 'MARGIN_BELOW_TOOL_RADIUS';
+  | 'MARGIN_BELOW_TOOL_RADIUS'
+  | 'POCKET_DEPTH_NOT_BELOW_THICKNESS'
+  | 'POCKET_DEPTH_NEAR_THICKNESS'
+  | 'POCKET_TOO_SMALL';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -618,6 +624,55 @@ export const innerContourRules: ValidationRule = (project, context) => {
 };
 
 /**
+ * (g1) Contour pockets (T325, D-112): the depth must stay below the stock thickness (error; the
+ * same rule as the toolpath), less than HOLE_MIN_SKIN mm left under it is a warning (as for blind
+ * holes), and the `pocket` operation's tool must fit (`contourPocketRings`, the toolpath's own
+ * rings: the pocket at least as wide as the tool and one connected area). Skipped without a
+ * profile for the tool rule.
+ */
+export const innerPocketRules: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  const params = machine ? findMaterialParams(machine, project.stock) : undefined;
+  const tool =
+    machine && params ? findTool(machine, contourPocketTool(project, params.tool)) : undefined;
+  const { thickness } = project.stock;
+  const issues: ValidationIssue[] = [];
+  project.parts.forEach((part, i) => {
+    part.inners.forEach((inner, k) => {
+      const op = innerOperation(part, k);
+      if (op.kind !== 'pocket') return;
+      const name = `pocket ${k + 1} of part "${part.name}"`;
+      if (!(op.depth < thickness - EPS)) {
+        issues.push({
+          code: 'POCKET_DEPTH_NOT_BELOW_THICKNESS',
+          severity: 'error',
+          path: formatPath(['parts', i, 'inners', k]),
+          message: `${name} is ${mm(op.depth)} mm deep; a pocket must be less deep than the ${thickness} mm stock`,
+        });
+        return;
+      }
+      if (thickness - op.depth < HOLE_MIN_SKIN - EPS) {
+        issues.push({
+          code: 'POCKET_DEPTH_NEAR_THICKNESS',
+          severity: 'warning',
+          path: formatPath(['parts', i, 'inners', k]),
+          message: `${name} leaves ${mm(thickness - op.depth)} mm under it (less than ${HOLE_MIN_SKIN} mm of the ${thickness} mm stock)`,
+        });
+      }
+      if (tool && !contourPocketRings(contour(inner), tool.diameter).ok) {
+        issues.push({
+          code: 'POCKET_TOO_SMALL',
+          severity: 'error',
+          path: formatPath(['parts', i, 'inners', k]),
+          message: `${name} is too small or too narrow for the ${mm(tool.diameter)} mm tool`,
+        });
+      }
+    });
+  });
+  return issues;
+};
+
+/**
  * (g2) A cut-out whose slug has no room for 2 tabs (T270, D-049, D-045): the toolpath refuses it
  * (`SMALL_SLUG_UNSECURED`, the cutter could throw the slug), so it is an error on the cut-out where
  * it is drawn, from the same `buildToolpath` rule (`unsecuredSlugs`). Skipped without a profile.
@@ -676,6 +731,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   sheetLargerThanTable,
   holeInsidePart,
   innerContourRules,
+  innerPocketRules,
   innerSlugTabs,
   lineInsidePart,
 ];

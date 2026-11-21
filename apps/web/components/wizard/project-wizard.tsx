@@ -13,7 +13,7 @@ import {
   type RefObject,
 } from 'react';
 import { findMaterialParams, findTool, minSheetMargin } from '@nittcam/core';
-import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
+import { fill, newProject, pocketToolDiameterFor, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { MessagesContext } from '../../lib/messages-context';
@@ -1132,6 +1132,7 @@ function WizardSession({
             onToList={() => setPartsView('list')}
             viewSwitch={switchInCanvas ? viewSwitch : undefined}
             toolDiameter={toolDiameter}
+            pocketToolDiameter={pocketToolDiameterFor(project, profile)}
             holeTool={{
               number: holeToolNo,
               diameter: (profile && findTool(profile, holeToolNo)?.diameter) ?? toolDiameter,

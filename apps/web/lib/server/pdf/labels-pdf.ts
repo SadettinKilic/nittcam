@@ -161,6 +161,24 @@ function drawLabel(
     );
   }
 
+  // T325: the blind pockets and their depths, when a line fits above the foot.
+  if (label.pocketDepths.length > 0 && line - 9 * k > y + pad + 7 * k) {
+    line -= 7 * k + 2 * k;
+    const pockets = fill(t.pockets, {
+      n: label.pocketDepths.length,
+      d: [...new Set(label.pocketDepths)].map((v) => mm(v)).join(' / '),
+    });
+    text(
+      page,
+      fitText(pockets, fonts.regular, 7 * k, sideW),
+      x + pad,
+      line,
+      fonts.regular,
+      7 * k,
+      MUTED,
+    );
+  }
+
   // Bottom line: project name, then the company (T301) when there is room.
   text(
     page,

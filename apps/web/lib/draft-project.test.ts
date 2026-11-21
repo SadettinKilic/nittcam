@@ -1,6 +1,17 @@
-import { DEFAULT_LIBRARY, defaultMachineProfile, findMaterialParams } from '@nittcam/core';
+import {
+  DEFAULT_LIBRARY,
+  defaultMachineProfile,
+  findMaterialParams,
+  type Project,
+} from '@nittcam/core';
 import { describe, expect, it } from 'vitest';
-import { firstUsableLibraryStock, newProject, stockHasGrain } from './draft-project';
+import {
+  firstUsableLibraryStock,
+  newProject,
+  pocketToolDiameterFor,
+  stockHasGrain,
+  toolDiameterFor,
+} from './draft-project';
 
 const library = DEFAULT_LIBRARY.map((m, i) => ({ ...m, id: `lib-${i}` }));
 const machine = { id: 'm1', version: 3, profile: defaultMachineProfile() };
@@ -111,5 +122,30 @@ describe('newProject with company defaults (T182)', () => {
     const p = newProject();
     expect(p.nesting).toMatchObject({ gap: 0.1, margin: 10 });
     expect(p.cutting).toEqual({ tabs: { auto: true }, leadIn: 'arc', direction: 'climb' });
+  });
+});
+
+describe('pocketToolDiameterFor (T325)', () => {
+  const base = newProject(machine);
+  const inner = [
+    { x: 10, y: 10 },
+    { x: 60, y: 10 },
+    { x: 60, y: 60 },
+    { x: 10, y: 60 },
+  ];
+  const withPocket = (tools?: Record<string, number>): Project =>
+    ({
+      ...base,
+      parts: [{ holes: [], inners: [inner], ops: { inners: [{ kind: 'pocket', depth: 5 }] } }],
+      cutting: { ...base.cutting, ...(tools ? { tools } : {}) },
+    }) as unknown as Project;
+
+  it('uses the pocket tool choice (T308), not the set tool', () => {
+    expect(toolDiameterFor(base, machine.profile)).toBe(8);
+    expect(pocketToolDiameterFor(withPocket({ pocket: 1 }), machine.profile)).toBe(6);
+  });
+
+  it('falls back to the set tool without a choice', () => {
+    expect(pocketToolDiameterFor(withPocket(), machine.profile)).toBe(8);
   });
 });

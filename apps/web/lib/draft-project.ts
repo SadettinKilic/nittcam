@@ -1,7 +1,9 @@
 import {
   BUILT_IN_PROJECT_DEFAULTS,
   applyProjectDefaults,
+  contourPocketTool,
   findMaterialParams,
+  findTool,
   materialHasGrain,
   materialKindOf,
   libraryParamLinks,
@@ -124,6 +126,17 @@ function baseProject(
  */
 export function toolDiameterFor(project: Project, profile: MachineProfile | null): number {
   return (profile && nestingToolDiameter(profile, project.stock)) ?? FALLBACK_TOOL_DIAMETER;
+}
+
+/**
+ * Diameter of the tool that cuts contour pockets (T325): the job's pocket tool choice (T308),
+ * else the stock set's tool, the same tool the toolpath and validation use.
+ */
+export function pocketToolDiameterFor(project: Project, profile: MachineProfile | null): number {
+  const setTool = profile ? findMaterialParams(profile, project.stock)?.tool : undefined;
+  const no = contourPocketTool(project, setTool);
+  const dia = profile && no !== undefined ? findTool(profile, no)?.diameter : undefined;
+  return dia ?? toolDiameterFor(project, profile);
 }
 
 /** Does the machine have confirmed cutting parameters for the project's stock (T265)? */
