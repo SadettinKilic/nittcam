@@ -43,3 +43,22 @@ for (const vp of [
     await snap(page, `b56-dizilim-${vp.name}-${vp.theme}`, { baseline: false, fullPage: false });
   });
 }
+
+test('pay 0,15: the note and the Dizilim help show 0,15 and 8,15 (T313, round 2)', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page, 'parcalar');
+  await pasteAndNest(page);
+  const panel = await openWorkspacePanel(page, 'left');
+  const gap = panel.getByLabel(t.gap);
+  await gap.fill('0,15');
+  await gap.press('Enter');
+  const note = panel.getByTestId('layout-gap-note');
+  await expect(note).toContainText('pay 0,15 = 8,15 mm');
+  await page.getByRole('button', { name: tr.cutList.nesting.about }).click();
+  const help = page.getByRole('dialog').filter({ hasText: '8,15' });
+  await expect(help).toContainText('8,15 mm');
+  await expect(help).toContainText('pay 0,15 mm');
+});
