@@ -4,7 +4,8 @@
  * them to PDF.
  */
 import { z } from 'zod';
-import type { Project } from '../schema/project';
+import type { Part, Project } from '../schema/project';
+import { innerOperation } from '../schema/operations';
 import { partNumber } from '../cutlist/part-number';
 import { projectReport, type BandEdge, type ReportPartRow } from './report';
 
@@ -121,6 +122,17 @@ export interface PartLabel {
   bandedEdges: BandEdge[];
   /** Layout sheet number from 1; null = the copy is not on the layout. */
   sheet: number | null;
+  /** Depths of the part's blind contour pockets, mm (T325), in inner contour order; empty = none. */
+  pocketDepths: number[];
+}
+
+/** Depths of a part's blind contour pockets (T325), in inner contour order. */
+export function pocketDepthsOf(part: Part | undefined): number[] {
+  if (!part) return [];
+  return part.inners.flatMap((_, k) => {
+    const op = innerOperation(part, k);
+    return op.kind === 'pocket' ? [op.depth] : [];
+  });
 }
 
 /**
@@ -148,6 +160,7 @@ export function partLabels(project: Project): PartLabel[] {
         band: row.band,
         bandedEdges: row.bandedEdges,
         sheet: sheetOf.get(`${row.partId}#${copy}`) ?? null,
+        pocketDepths: pocketDepthsOf(project.parts.find((p) => p.id === row.partId)),
       });
     }
   }
@@ -163,5 +176,6 @@ export function partLabels(project: Project): PartLabel[] {
     band: l.band,
     bandedEdges: l.bandedEdges,
     sheet: l.sheet,
+    pocketDepths: l.pocketDepths,
   }));
 }

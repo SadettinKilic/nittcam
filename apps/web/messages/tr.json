@@ -1200,6 +1200,13 @@
       "HOLE_DEPTH_INVALID": "Kör delik derinliği malzeme kalınlığından küçük olmalı.",
       "INNER_OFFSET_FAILED": "İç kesim bu takım için çok küçük; takım boşluğa girmiyor.",
       "INNER_SPLIT": "Takım iç kesimin dar bir boğazından geçemiyor.",
+      "POCKET_TOO_SMALL": "Cep takımdan dar; takım cebe girmiyor. Cebi büyütün ya da daha ince bir takım seçin.",
+      "POCKET_SPLIT": "Cep dar bir boğazla ikiye ayrılıyor; tek girişle boşaltılamıyor. Boğazı genişletin ya da iki ayrı cep çizin.",
+      "POCKET_DEPTH_INVALID": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
+      "POCKET_PLUNGE_ENTRY": "Cep rampaya yetmeyecek kadar küçük; takım düz dalıyor (dalma ilerlemesiyle).",
+      "POCKET_OUTSIDE_BOUNDARY": "Takım cebin dışına (ya da duvarına takım yarıçapından yakın) çıkıyor.",
+      "POCKET_TOO_DEEP": "Takım cebin derinliğinden aşağı iniyor.",
+      "POCKET_NOT_CUT": "Bir cep programda boşaltılmıyor.",
       "ONLINE_DEPTH_INVALID": "Çizgi üzerinden işlem derinliği malzeme kalınlığından az olmalı.",
       "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
       "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor, dış hatla kesişiyor ya da başka bir iç kesime değiyor; parça bu haliyle kesilemez.",
@@ -1282,6 +1289,8 @@
       "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde (plaka dışında, kenar payında ya da başka parçaya çok yakın).",
       "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
       "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
+      "POCKET_DEPTH_NOT_BELOW_THICKNESS": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
+      "POCKET_DEPTH_NEAR_THICKNESS": "Cep derinliği kalınlığa çok yakın: altta 1 mm'den az malzeme kalıyor, delip geçebilir.",
       "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
       "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
       "SMALL_PART_SKIN_OUT_OF_BOUNDS": "İnce tabaka bu küçük parçayı tutamaz (kalınlık 0,2 mm ile kalınlık − 1 mm arası olmalı); parça son pasoda serbest kalır. 1. adımda tabaka kalınlığını düzeltin.",
@@ -2031,6 +2040,9 @@
         "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
         "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
+        "POCKET_DEPTH_NOT_BELOW_THICKNESS": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
+        "POCKET_DEPTH_NEAR_THICKNESS": "Cep derinliği kalınlığa çok yakın: altta 1 mm'den az malzeme kalıyor, delip geçebilir.",
+        "POCKET_TOO_SMALL": "Cep takımdan dar; takım cebe girmiyor. Cebi büyütün ya da daha ince bir takım seçin.",
         "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
         "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
         "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
@@ -2706,10 +2718,14 @@
         "lineN": "Çizgi {n}",
         "depth": "Derinlik",
         "depthError": "Derinlik malzeme kalınlığından az olmalı.",
+        "pocketDepth": "Cep derinliği",
+        "pocketDepthError": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
+        "pocketCorners": "Köşeler R{r} kalır (takım yarıçapı).",
         "kinds": {
           "outside": "Dıştan kesim",
           "inside": "İçten kesim",
           "online": "Çizgi üzerinden",
+          "pocket": "Cep (kör, içini boşalt)",
           "none": "Kesilmez"
         }
       },
@@ -3163,7 +3179,8 @@
     "revision": "Revizyon {revision}",
     "page": "Sayfa {n} / {total}",
     "parts": "{count} parça",
-    "legend": "Parça no: satır.kopya · Ok: damar yönü · Ölçüler mm (kesim ölçüsü)",
+    "legend": "Parça no: satır.kopya · Ok: damar yönü · Ölçüler mm (kesim ölçüsü) · Kesikli çizgi: kör cep",
+    "pocketDepth": "Cep {d}",
     "empty": "Dizilim yok. Önce Dizilim adımında yerleştirme yapın.",
     "listTitle": "Parça listesi",
     "listDetails": "{rows} satır · {pieces} parça",
@@ -3207,7 +3224,8 @@
       "sheet": "Plaka {n}",
       "noSheet": "Dizilmedi",
       "size": "{w} × {h} mm",
-      "cut": "Kesim {w} × {h}"
+      "cut": "Kesim {w} × {h}",
+      "pockets": "Cep ×{n}, {d} mm derin"
     }
   },
   "onboarding": {
@@ -3430,6 +3448,7 @@
         "body": [
           "Parçalar adımında görünümü “Çizim”e alın. Çizgi, yay ve köşe yuvarlatma ile parçayı çizin; ölçüleri paneldeki alanlardan girin.",
           "Delik, cep ve kanal ekleyin. Takımdan küçük bir delik ya da kanal kabul edilmez; uyarı neyin düzeltileceğini söyler.",
+          "Dikdörtgen ya da başka kapalı bir kör cep için şekli parçanın içine çizin ve “İç kesim olarak ekle” deyin; sağ paneldeki “İşlem” bölümünde iç konturu “Cep (kör, içini boşalt)” yapıp cep derinliğini girin. Derinlik malzeme kalınlığından az olmalı; köşeler takım yarıçapında yuvarlak kalır.",
           "DXF dosyası içe aktarabilirsiniz (tabela harfleri, hazır çizimler); kapalı konturlar parça olur.",
           "Sık kullandığınız parçaları şablon olarak saklayın; menteşe ve kulp şablonları Şablonlar sayfasındadır."
         ]

@@ -12,6 +12,7 @@ import { partNumber } from '../cutlist/part-number';
 import { partShape, rotatedBoxSize } from '../nesting/fit';
 import { toCutSizes } from '../schema/cut-size';
 import type { Project } from '../schema/project';
+import { innerOperation } from '../schema/operations';
 import { sheetSizeOf } from '../schema/sheet-size';
 import { placedHoleCentre } from '../toolpath/holes';
 import { placedInners, placedOutline } from '../toolpath/build';
@@ -31,8 +32,10 @@ export interface DrawnSheetPart {
   box: { x: number; y: number; w: number; h: number };
   /** Outer contour, flat [x, y, …] in the sheet frame, arcs sampled. */
   outline: number[];
-  /** Inner contours in the same frame. */
+  /** Inner contours cut through (and engraved or uncut ones) in the same frame. */
   inners: number[][];
+  /** Blind contour pockets (T325) in the same frame, with their depth (mm). */
+  pockets: { ring: number[]; depth: number }[];
   /** Holes (incl. template instances): centre and radius. */
   holes: { x: number; y: number; r: number }[];
   /** Sheet-frame grain line angle, degrees [0, 180); null = free grain. */
@@ -111,7 +114,13 @@ export function layoutDrawing(entered: Project): SheetDrawing[] {
           height: round3(shape.h),
           box: { x: round3(pl.x), y: round3(pl.y), w: round3(foot.w), h: round3(foot.h) },
           outline: flattenRing(placedOutline(part, pl)),
-          inners: placedInners(part, pl).map((c) => flattenRing(c)),
+          inners: placedInners(part, pl).flatMap((c, k) =>
+            innerOperation(part, k).kind === 'pocket' ? [] : [flattenRing(c)],
+          ),
+          pockets: placedInners(part, pl).flatMap((c, k) => {
+            const op = innerOperation(part, k);
+            return op.kind === 'pocket' ? [{ ring: flattenRing(c), depth: op.depth }] : [];
+          }),
           holes: part.holes.map((hole) => {
             const c = placedHoleCentre(part, pl, hole);
             return { x: round3(c.x), y: round3(c.y), r: hole.d / 2 };

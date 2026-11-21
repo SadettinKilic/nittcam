@@ -218,15 +218,34 @@ function drawParts(ctx: Ctx, p: EditorCanvasProps) {
   for (const part of p.parts) {
     const selected = p.selection.has(part.id);
     const d = selected && p.drag ? p.drag : { x: 0, y: 0 };
+    const pockets = new Set(part.pockets ?? []);
     ctx.beginPath();
     traceContour(ctx, part.outline, v, d.x, d.y);
-    for (const inner of part.inners) traceContour(ctx, inner, v, d.x, d.y);
+    part.inners.forEach((inner, k) => {
+      if (!pockets.has(k)) traceContour(ctx, inner, v, d.x, d.y);
+    });
     // B50 (CTO #5, #7): a selected part keeps its wood tone; the 2 px accent outline marks it.
     ctx.fillStyle = colors.part;
     ctx.fill('evenodd');
     ctx.lineWidth = selected ? 2 : part.id === p.hover ? 1.75 : 1;
     ctx.strokeStyle = selected || part.id === p.hover ? colors.selection : colors.partStroke;
     ctx.stroke();
+    // T325: a blind contour pocket is a light recess (like a blind hole), not an opening.
+    for (const k of pockets) {
+      const inner = part.inners[k];
+      if (!inner) continue;
+      ctx.beginPath();
+      traceContour(ctx, inner, v, d.x, d.y);
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = colors.partStroke;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = colors.partStroke;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     if (part.holes.length > 0) {
       // B50 (CTO #7): through = solid disc, blind pocket = light disc, groove = ring only.
       for (const h of part.holes) {

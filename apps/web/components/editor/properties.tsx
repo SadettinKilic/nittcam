@@ -21,6 +21,7 @@ import {
   ALLOWED_OPERATIONS,
   contourOperation,
   defaultOnlineDepth,
+  defaultPocketDepth,
   type ContourRef,
   type OutlineEdit,
   type Part,
@@ -263,8 +264,9 @@ function Picker({
 }
 
 /**
- * Operation of one contour (T142): a picker of the kinds the contour allows and, for `online`,
- * the depth. Both run `setOperation` (DXF layer mapping, T145, writes the same field).
+ * Operation of one contour (T142): a picker of the kinds the contour allows and, for `online` and
+ * `pocket` (T325), the depth. Both run `setOperation` (DXF layer mapping, T145, writes the same
+ * field). A pocket also says which corner radius the tool leaves.
  */
 function OperationRow({
   t,
@@ -274,6 +276,7 @@ function OperationRow({
   contour,
   testId,
   thickness,
+  toolRadius = 0,
 }: {
   t: T;
   part: Part;
@@ -283,6 +286,8 @@ function OperationRow({
   testId: string;
   /** Stock thickness, mm: the default on-line depth stays below it (T277). */
   thickness: number;
+  /** Tool radius, mm: the corner radius a pocket keeps (T325); 0 = not shown. */
+  toolRadius?: number;
 }) {
   const id = useId();
   const current = contourOperation(part, contour);
@@ -303,6 +308,7 @@ function OperationRow({
               contour,
               kind,
               ...(kind === 'online' ? { depth: defaultOnlineDepth(thickness) } : {}),
+              ...(kind === 'pocket' ? { depth: defaultPocketDepth(thickness) } : {}),
             })
           }
         >
@@ -323,19 +329,26 @@ function OperationRow({
           </SelectContent>
         </Select>
       </Row>
-      {current.kind === 'online' ? (
+      {current.kind === 'online' || current.kind === 'pocket' ? (
         <NumberRow
-          label={t.operation.depth}
+          label={current.kind === 'pocket' ? t.operation.pocketDepth : t.operation.depth}
           value={current.depth}
           testId={`${testId}-depth`}
           onCommit={(v) =>
             v === null || v <= 0
               ? t.errors.length
-              : run('setOperation', { id: part.id, contour, kind: 'online', depth: v })
+              : run('setOperation', { id: part.id, contour, kind: current.kind, depth: v })
                 ? null
-                : t.operation.depthError
+                : current.kind === 'pocket'
+                  ? t.operation.pocketDepthError
+                  : t.operation.depthError
           }
         />
+      ) : null}
+      {current.kind === 'pocket' && toolRadius > 0 ? (
+        <p className="px-1 text-xs text-fg-muted" data-testid={`${testId}-corners`}>
+          {fill(t.operation.pocketCorners, { r: formatMm(toolRadius) })}
+        </p>
       ) : null}
     </>
   );
@@ -553,6 +566,7 @@ export function PartProperties({
               contour={{ type: 'inner', index: i }}
               testId={`prop-op-inner-${i}`}
               thickness={thickness}
+              toolRadius={toolRadius}
             />
           ))}
           {(part.lines ?? []).map((_, i) => (

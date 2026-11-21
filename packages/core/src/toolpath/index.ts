@@ -77,14 +77,21 @@ export {
 export {
   OPERATION_TOOL_KINDS,
   OPERATION_TOOL_TYPES,
+  contourPocketTool,
   contourTool,
   effectiveHoleTool,
+  hasContourPocket,
   holeToolKind,
   operationToolChoice,
   operationsInJob,
   recommendedRpm,
   type OperationToolKind,
 } from './op-tools';
+export {
+  CONTOUR_POCKET_DEFAULTS,
+  buildContourPocketOperation,
+  contourPocketRings,
+} from './contour-pocket';
 export {
   operationToolProblem,
   operationToolsOf,
