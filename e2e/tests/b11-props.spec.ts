@@ -101,7 +101,7 @@ test.describe('T130 properties panel', () => {
     await expect(page.getByTestId('prop-seg-angle')).toHaveValue('0');
 
     await setField(page, 'prop-seg-length', '700');
-    // Bottom edge 700, the top edge stays 560: the box is 700 wide, the part became freeform.
+    // Bottom edge 700 (B52: "Dik açıyı koru" slides the right edge along): 700 wide, freeform.
     await expect(page.getByTestId('editor-size')).toHaveText(/700\s*×\s*720/);
     await expect(page.getByTestId('editor-inspector')).toContainText(ins.kind.freeform);
 
@@ -115,21 +115,20 @@ test.describe('T130 properties panel', () => {
     await expect(page.getByTestId('editor-inspector')).toContainText(ins.kind.rect);
   });
 
-  test('vertex X/Y from the keyboard: picker, board coordinates, crossing refused', async ({
+  test('vertex X/Y from the keyboard: picker, part-relative (B52), crossing refused', async ({
     page,
   }) => {
     await openBoard(page);
     await page.getByTestId('editor-part-list').getByRole('button').first().click();
-    const p0 = await position(page);
     await pickOption(page.getByTestId('prop-vertex-pick'), fill(ins.vertexN, { n: 3 }));
     // Vertex 3 = top-right corner (560, 720) in the part frame.
     await expect
       .poll(async () => trNum(await page.getByTestId('prop-vertex-x').inputValue()))
-      .toBeCloseTo(p0.x + 560, 1);
-    await setField(page, 'prop-vertex-y', String(p0.y + 800));
+      .toBeCloseTo(560, 1);
+    await setField(page, 'prop-vertex-y', '800');
     await expect(page.getByTestId('editor-size')).toHaveText(/560\s*×\s*800/);
     // Dragging the corner past the left side makes the outline cross itself.
-    await setField(page, 'prop-vertex-x', String(p0.x - 300));
+    await setField(page, 'prop-vertex-x', '-300');
     await expect(page.getByTestId('prop-vertex-x-error')).toHaveText(ins.errors.crossing);
   });
 });

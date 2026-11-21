@@ -68,9 +68,12 @@ export interface EditorCanvasProps {
   dimPreview?: { a: Pt; b: Pt } | null;
 }
 
-/** Segment or vertex picked for the properties panel, board mm. */
+/** Segment, vertex, hole or cut-out picked for the properties panel, board mm. */
 export type EditorFocus =
-  { kind: 'segment'; p0: Pt; p1: Pt; bulge: number } | { kind: 'vertex'; at: Pt };
+  | { kind: 'segment'; p0: Pt; p1: Pt; bulge: number }
+  | { kind: 'vertex'; at: Pt }
+  | { kind: 'hole'; at: Pt; r: number }
+  | { kind: 'inner'; vertices: readonly Vertex[] };
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -557,6 +560,22 @@ function drawCorners(ctx: Ctx, p: EditorCanvasProps) {
     traceSegment(ctx, f.p0, f.p1, f.bulge, v);
     ctx.strokeStyle = colors.accent;
     ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+  // B52 (D-096): a picked hole (ring) or cut-out (outline), 2 px accent like a selected part.
+  if (f?.kind === 'hole') {
+    const c = toScreen(v, f.at);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, Math.max(f.r * v.scale + 2, 4), 0, Math.PI * 2);
+    ctx.strokeStyle = colors.accent;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else if (f?.kind === 'inner') {
+    ctx.beginPath();
+    traceContour(ctx, f.vertices, v);
+    ctx.closePath();
+    ctx.strokeStyle = colors.accent;
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
   ctx.lineWidth = 1.5;
