@@ -22,6 +22,7 @@ import {
 } from '@nittcam/core';
 import { ShapeUtils, Vector2 } from 'three';
 import { flatten, flattenOpen } from './outlines';
+import { MIN_FLOOR } from './min-floor';
 
 export interface MeshData {
   positions: Float32Array;
@@ -37,8 +38,7 @@ export interface MeshData {
   throughOpenings: number;
 }
 
-/** Smallest blind floor kept below the top (mm): a deeper pocket/groove is drawn as through. */
-export const MIN_FLOOR = 0.05;
+export { MIN_FLOOR };
 /** Adjacent wall facets closer than this turn smoothly (arcs, circles); sharper = hard edge. */
 const SMOOTH_DEG = 35;
 
