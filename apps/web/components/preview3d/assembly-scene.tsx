@@ -14,6 +14,7 @@ import { BufferAttribute, BufferGeometry, Matrix4, NeutralToneMapping } from 'th
 import type { AssemblyBox, Part } from '@nittcam/core';
 import {
   assemblyFaceMatrix,
+  hasFaceOnlyWork,
   hasFaceFeatures,
   type CabinetGroup,
 } from '../../lib/preview3d/assembly';
@@ -221,8 +222,8 @@ function FeaturedBoard({
   const data = useMemo(() => cachedPartMesh(part, thickness), [part, thickness]);
   const geo = useMemo(() => geometryOf(data), [data]);
   const matrix = useMemo(
-    () => new Matrix4().fromArray(assemblyFaceMatrix(box, width)),
-    [box, width],
+    () => new Matrix4().fromArray(assemblyFaceMatrix(box, width, hasFaceOnlyWork(part, thickness))),
+    [box, width, part, thickness],
   );
   const door = box.role === 'door';
   return (
