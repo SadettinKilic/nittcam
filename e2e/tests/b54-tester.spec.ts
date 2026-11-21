@@ -33,8 +33,23 @@ test('B54 tester: slider keeps focus across Home/End/PageUp/PageDown recomputes'
   const thumb = row.getByRole('slider');
   const min = Number(await thumb.getAttribute('aria-valuemin'));
   const max = Number(await thumb.getAttribute('aria-valuemax'));
+  // Record in the page, before any key, whether the summary was marked busy and whether the
+  // loading view ever appeared (a recompute can finish between two Playwright reads).
+  await page.evaluate(() => {
+    const w = window as unknown as { __b54: { busy: boolean; loading: boolean } };
+    w.__b54 = { busy: false, loading: false };
+    new MutationObserver(() => {
+      if (document.querySelector('[data-testid="sim-summary"][aria-busy="true"]'))
+        w.__b54.busy = true;
+      if (document.querySelector('[data-testid="sim-loading"]')) w.__b54.loading = true;
+    }).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['aria-busy'],
+    });
+  });
   await thumb.focus();
-  let seenBusy = false;
   for (const [key, want] of [
     ['Home', min],
     ['PageUp', min + 1000],
@@ -43,17 +58,16 @@ test('B54 tester: slider keeps focus across Home/End/PageUp/PageDown recomputes'
   ] as const) {
     await page.keyboard.press(key);
     await expect(row).toHaveAttribute('data-value', String(want));
-    if ((await page.getByTestId('sim-summary').getAttribute('aria-busy')) === 'true') {
-      seenBusy = true;
-    }
-    await expect(page.getByTestId('sim-loading')).toHaveCount(0);
     await freshRun(page);
     // After the new run arrived the thumb still has focus (no remount).
     await expect(thumb, key).toBeFocused();
     await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true');
   }
-  // The stale marking showed at least once (each change recomputes the run).
-  expect(seenBusy).toBe(true);
+  // Each change recomputes the run: the shown run was marked stale, never the loading view.
+  const seen = await page.evaluate(
+    () => (window as unknown as { __b54: { busy: boolean; loading: boolean } }).__b54,
+  );
+  expect(seen).toEqual({ busy: true, loading: false });
 });
 
 test('B54 tester: a typed value outside the machine range is not stored', async ({ page }) => {
