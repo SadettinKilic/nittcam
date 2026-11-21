@@ -2725,7 +2725,7 @@
           "outside": "Dıştan kesim",
           "inside": "İçten kesim",
           "online": "Çizgi üzerinden",
-          "pocket": "Cep (kör, içini boşalt)",
+          "pocket": "Cep (kör)",
           "none": "Kesilmez"
         }
       },
@@ -3448,7 +3448,7 @@
         "body": [
           "Parçalar adımında görünümü “Çizim”e alın. Çizgi, yay ve köşe yuvarlatma ile parçayı çizin; ölçüleri paneldeki alanlardan girin.",
           "Delik, cep ve kanal ekleyin. Takımdan küçük bir delik ya da kanal kabul edilmez; uyarı neyin düzeltileceğini söyler.",
-          "Dikdörtgen ya da başka kapalı bir kör cep için şekli parçanın içine çizin ve “İç kesim olarak ekle” deyin; sağ paneldeki “İşlem” bölümünde iç konturu “Cep (kör, içini boşalt)” yapıp cep derinliğini girin. Derinlik malzeme kalınlığından az olmalı; köşeler takım yarıçapında yuvarlak kalır.",
+          "Dikdörtgen ya da başka kapalı bir kör cep için şekli parçanın içine çizin ve “İç kesim olarak ekle” deyin; sağ paneldeki “İşlem” bölümünde iç konturu “Cep (kör)” yapıp cep derinliğini girin. Derinlik malzeme kalınlığından az olmalı; köşeler takım yarıçapında yuvarlak kalır.",
           "DXF dosyası içe aktarabilirsiniz (tabela harfleri, hazır çizimler); kapalı konturlar parça olur.",
           "Sık kullandığınız parçaları şablon olarak saklayın; menteşe ve kulp şablonları Şablonlar sayfasındadır."
         ]
