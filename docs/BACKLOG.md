@@ -1668,6 +1668,12 @@ Owner 2026-11-21. Outer / inner contour, pocket, hole: pick a compatible tool fr
 ### T309 Park position for manual tool change   [status: done]
 Owner 2026-11-21 (D-097). Machine profile option `toolChanger.park` (X/Y in machine coordinates, written as `G53 G0 X.. Y..`, on/off, within the machine travel); every manual pause (tool change and first-tool check) goes safe Z → park → message + M0; only for posts with G53 (`motion.machineCoordinates`), otherwise forced off with a form note; the independent reader accepts the G53 move only at the profile's point; field-kit note names the point; park off = same bytes (goldens unchanged).
 
+### T310 Assembly view: door holes where the drawing has them   [status: done]
+Owner test 2026-11-21 (before the field test, D-101; Dev 2). A single door with asymmetric handle holes showed them upside down in "Montaj görünümü" (T285 turned every left/single door over about its horizontal axis). Fix: a door with only through work faces the drawing to the front (looks exactly like the drawing); a door with face-only work (hinge cups, pockets, blind holes, grooves, lines) keeps the drawing's top on top and shows the inside face (left/right turned, physically true); two through-only doors of one row both keep the drawn height (the right one turned about its vertical axis, handles meet in the middle); two doors with hinge cups stay as T285 (hinges at the outer edges; one door is turned 180°, unavoidable for identical boards). Unit tests on the part → assembly transform, e2e screenshots `t310-assembly-holes.spec.ts`. G-code untouched (web preview only).
+
+### T311 Manual tool change stops with M0 only (G-code safety)   [status: done]
+Tester finding 2026-11-21 (before the field test, D-100; Dev 2). The independent check accepted M1 (optional stop) as the pause of a manual tool change; with optional stop off on the controller the machine runs on with the old tool. Fix: in manual mode every pause (tool change and first-tool check) must be M0, M1/M01 is an error `TOOL_CHANGE_OPTIONAL_STOP` (rule TOOLS); the post config allows only `manualStop: "M0"` (shipped posts already write M0). Rejection tests in `gcode-check/manual-stop.t311.test.ts`; goldens byte-identical.
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine
