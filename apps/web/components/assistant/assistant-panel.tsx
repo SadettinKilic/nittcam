@@ -109,7 +109,10 @@ export function AssistantPanel({
         </IconButton>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4" ref={scroller}>
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto p-4"
+        ref={scroller}
+      >
         <p id={introId} className="text-sm text-fg-muted">
           {t.intro}
         </p>
@@ -120,7 +123,7 @@ export function AssistantPanel({
                 key={m.id}
                 data-role={m.role}
                 className={cn(
-                  'max-w-[85%] rounded-lg px-3 py-2 text-sm',
+                  'max-w-[85%] min-w-0 rounded-lg [overflow-wrap:anywhere] whitespace-pre-wrap px-3 py-2 text-sm',
                   m.role === 'user'
                     ? 'self-end bg-accent-subtle text-fg'
                     : 'self-start border border-border-subtle bg-surface text-fg',
