@@ -65,6 +65,8 @@ export {
   SPINDLE_RPM_INPUT_STEP,
   SPINDLE_RPM_PAGE_STEP,
   SPINDLE_RPM_STEP,
+  feedOverride,
+  feedOverridesOf,
   jobToolNumbers,
   rpmBand,
   rpmInRange,
@@ -82,6 +84,7 @@ export {
   holeToolKind,
   operationToolChoice,
   operationsInJob,
+  recommendedFeeds,
   recommendedRpm,
   type OperationToolKind,
 } from './op-tools';

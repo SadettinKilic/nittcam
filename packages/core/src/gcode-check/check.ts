@@ -9,6 +9,7 @@ import { cutLoops, expectedLoopCount, matchLayout, matchModel, type CutLoop } fr
 import { toSheetMoves } from './path';
 import {
   floorRule,
+  rampRule,
   headerRule,
   modalRule,
   motionRules,
@@ -88,6 +89,7 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
   const sm = toSheetMoves(r.moves, d.frame, r.events);
   motionRules(r, sm, d, push);
   floorRule(sm, d, push);
+  rampRule(sm, d, push);
   const m = matchModel(sm, d.ops, d, prefix, push);
   const rawLines = text.split(/\r\n|\r|\n/);
   toolRules(r, rawLines, m.ok ? d.ops.slice(0, m.consumed) : d.ops, d, push);

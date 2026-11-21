@@ -68,6 +68,22 @@ export interface PostCuttingMeta {
    * defaults, and no line is written.
    */
   tools?: { op: 'outer' | 'inner' | 'pocket' | 'hole'; tool: number }[];
+  /**
+   * T323: the tools the project runs at its own cutting or plunge feed (the feeds used and the
+   * recommended ones), mm/min. Absent or empty = recommended feeds, and no line is written.
+   */
+  feeds?: {
+    tool: number;
+    feed: number;
+    plungeFeed: number;
+    recommendedFeed: number;
+    recommendedPlungeFeed: number;
+  }[];
+  /**
+   * T324: ramp entry of the contours (angle, shortest leg; absent length = the tool diameter).
+   * Absent = straight plunge, and no line is written.
+   */
+  entry?: { angleDeg: number; length?: number };
 }
 
 export type PostCode =

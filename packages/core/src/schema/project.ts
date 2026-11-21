@@ -478,6 +478,45 @@ export const layoutSchema = z.strictObject({
 /** Profile-wide spindle bounds (= `PROFILE_BOUNDS.rpm`, kept equal by a test; no machine import here). */
 export const SPINDLE_RPM_BOUNDS = { min: 1_000, max: 60_000 } as const;
 
+/** Profile-wide feed bounds, mm/min (= `PROFILE_BOUNDS.feed` / `.plungeFeed`, kept equal by a test). */
+export const FEED_BOUNDS = { min: 100, max: 60_000 } as const;
+export const PLUNGE_FEED_BOUNDS = { min: 50, max: 30_000 } as const;
+
+/** T324: ramp entry bounds: angle of each zig-zag leg, degrees; minimum leg length, mm. */
+export const RAMP_BOUNDS = {
+  angle: { min: 0.5, max: 45 },
+  length: { min: 1, max: 1_000 },
+} as const;
+
+const toolNumberKey = z.string().regex(/^[1-9]\d?$/, { error: 'tool number key must be 1–99' });
+const feedValue = (b: { min: number; max: number }, what: string) =>
+  z
+    .number({ error: `${what} must be a number` })
+    .min(b.min, { error: `${what} must be at least ${b.min}` })
+    .max(b.max, { error: `${what} must be at most ${b.max}` });
+
+/**
+ * T324: how a contour pass enters the material. `ramp` = zig-zag along the contour down to each
+ * pass depth, each leg at most `angleDeg` steep and at least `length` mm long (absent = the tool
+ * diameter). Absent `cutting.entry` = straight plunge (the default).
+ */
+export const entrySchema = z.strictObject({
+  type: z.literal('ramp', { error: 'entry type must be "ramp"' }),
+  angleDeg: z
+    .number({ error: 'ramp angle must be a number' })
+    .min(RAMP_BOUNDS.angle.min, { error: `ramp angle must be at least ${RAMP_BOUNDS.angle.min}°` })
+    .max(RAMP_BOUNDS.angle.max, { error: `ramp angle must be at most ${RAMP_BOUNDS.angle.max}°` }),
+  length: z
+    .number({ error: 'ramp length must be a number' })
+    .min(RAMP_BOUNDS.length.min, {
+      error: `ramp length must be at least ${RAMP_BOUNDS.length.min} mm`,
+    })
+    .max(RAMP_BOUNDS.length.max, {
+      error: `ramp length must be at most ${RAMP_BOUNDS.length.max} mm`,
+    })
+    .optional(),
+});
+
 export const cuttingSchema = z.strictObject({
   /**
    * Tabs (§6.3, D-022). `auto: true` = tabs on every part, placed automatically; `false` = tabs only
@@ -526,6 +565,24 @@ export const cuttingSchema = z.strictObject({
         .max(SPINDLE_RPM_BOUNDS.max, { error: `rpm must be at most ${SPINDLE_RPM_BOUNDS.max}` }),
     )
     .optional(),
+  /**
+   * T323: cutting feed and plunge feed chosen for this project, per tool number, mm/min ("2" →
+   * `{ feed: 4000 }`). An absent tool or field = the recommended value (the tool's material set,
+   * like the T307 rpm). The machine's limits (`machineFeedLimits`) are checked by `setToolFeed`,
+   * the validation (`FEED_OUT_OF_RANGE`), the toolpath and the post; the schema only holds the
+   * profile-wide bounds. Optional; older projects stay valid.
+   */
+  feeds: z
+    .record(
+      toolNumberKey,
+      z.strictObject({
+        feed: feedValue(FEED_BOUNDS, 'feed').optional(),
+        plungeFeed: feedValue(PLUNGE_FEED_BOUNDS, 'plunge feed').optional(),
+      }),
+    )
+    .optional(),
+  /** T324: contour entry; absent = straight plunge. Optional; older projects stay valid. */
+  entry: entrySchema.optional(),
   /**
    * T308 (D-099): cutting tool chosen for this project, per operation (tool number). Absent = the
    * default: outer and inner contours cut with the material set's tool, pocket and through holes
