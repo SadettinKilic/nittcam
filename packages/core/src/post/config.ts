@@ -84,8 +84,11 @@ export const postConfigSchema = z
     /** auto = `T.. M6`; manual = comment + stop; none = one file per tool. */
     toolChange: z.strictObject({
       mode: z.enum(['auto', 'manual', 'none']),
-      /** Stop code of a manual change (the operator presses cycle start after changing). */
-      manualStop: z.enum(['M0', 'M1']),
+      /**
+       * Stop code of a manual change (the operator presses cycle start after changing). Only M0:
+       * M1 is an optional stop the controller may skip, then the old tool cuts on (T311, D-100).
+       */
+      manualStop: z.literal('M0', { error: 'manual tool change must stop with M0' }),
       /** Write `G43 H<tool>` after a change when the profile has length compensation. */
       lengthOffset: z.boolean(),
       /**

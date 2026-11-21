@@ -774,6 +774,11 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - **Program:** the toolpath, S words and tool changes follow the choice; the header gets one line "TAKIM ELLE: dış kontur T1, delik T3" under KESİM only when something is chosen. The G-code checker reads tools from the operations, so it accepts the chosen tool per operation unchanged.
 - **UI:** Simülasyon "Kesim ayarları", before "Devir": "Takım (işleme göre)", one picker per operation the job has; the default first ("T2 · Ø8 mm düz freze (önerilen)" or "Her delik kendi takımı"), then the other suitable tools; "Önerilene dön".
 
+## D-100 A manual tool change stops with M0, never M1 (2026-11-21, PO task, Dev 2, T311)
+- M1 is an optional stop: whether it stops depends on a switch on the controller. A manual tool change (and the first-tool check) that relies on it can run on with the old tool, so it is a G-code safety rule, not a style choice.
+- Independent check: with a manual changer every M1 / M01 pause is an error `TOOL_CHANGE_OPTIONAL_STOP` (rule TOOLS), besides the existing pause count and prompt checks. Auto and "none" modes are unchanged.
+- Post config: `toolChange.manualStop` accepts only `"M0"` (was M0 | M1); generic and Mach3 already write M0, so the golden files are byte-identical.
+
 ## D-101 Assembly view: a door keeps its drawing's top; through-only doors face the drawing to the front (2026-11-21, PO task, Dev 2, T310)
 - Owner test: handle holes drawn near the top of a single door showed near the bottom in "Montaj görünümü". Cause: T285 turned the left door and a single door over about the horizontal axis (machined face inside, local x kept), so the drawing was upside down.
 - Rule (`assemblyFaceMatrix`, always a rotation, never a mirror): a door whose work is only through holes / cutouts is mounted with the machined face to the front, so seen from the front it is exactly the drawing. A door with work that exists only on the machined face (blind holes, pockets incl. hinge cups, grooves, lines: `hasFaceOnlyWork`) is mounted with that face toward the carcass and the drawing's top on top: seen from the front left and right are swapped (true for a board turned over; a hinge drawn at the left edge is at the right).

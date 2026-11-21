@@ -1248,6 +1248,7 @@
       "TOOL_MISMATCH": "Kesimde beklenenden farklı takım kullanılıyor.",
       "TOOL_ORDER": "Takım değiştirme sırası yanlış.",
       "TOOL_PAUSE_COUNT": "Elle takım değiştirme duraklaması sayısı yanlış.",
+      "TOOL_CHANGE_OPTIONAL_STOP": "Elle takım değişimi M1 (isteğe bağlı durma) ile duruyor; kumandada isteğe bağlı durma kapalıysa makine eski takımla devam eder. M0 kullanılmalı.",
       "TOOL_PROMPT_MISMATCH": "Takım değiştirme mesajı yanlış takımı söylüyor.",
       "STOCK_MISMATCH": "Malzeme kalınlığı takım yolu derinliğiyle uyuşmuyor.",
       "SHEET_MISSING": "Bir plakanın programı yok.",
