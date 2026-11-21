@@ -8,14 +8,21 @@ import { offset } from '../geometry/offset';
 import { bbox, contour, normalize, reverse, signedArea } from '../geometry/polyline';
 import { rotate, translate } from '../geometry/transform';
 import type { BBox, Point, Polyline } from '../geometry/types';
-import { findMaterialParams, findTool, type MachineProfile } from '../machine';
-import { jobToolNumbers, rpmInRange, spindleOverride } from './spindle';
+import {
+  feedInRange,
+  findMaterialParams,
+  findTool,
+  machineFeedLimits,
+  type MachineProfile,
+} from '../machine';
+import { feedOverride, jobToolNumbers, rpmInRange, spindleOverride } from './spindle';
 import {
   OPERATION_TOOL_TYPES,
   contourTool,
   effectiveHoleTool,
   holeToolKind,
   operationToolChoice,
+  recommendedFeeds,
   recommendedRpm,
   type OperationToolKind,
 } from './op-tools';
@@ -311,7 +318,8 @@ function unionBox(a: BBox, b: BBox): BBox {
 function rampLegLength(plunge: Extract<PlungeOption, { type: 'ramp' }>, step: number): number {
   if (plunge.length !== undefined) return plunge.length;
   const angle = ((plunge.angleDeg ?? TOOLPATH_DEFAULTS.rampAngleDeg) * Math.PI) / 180;
-  return step / 2 / Math.tan(angle);
+  // T324: never shorter than `minLength` (a shallower ramp, never a steeper one).
+  return Math.max(step / 2 / Math.tan(angle), plunge.minLength ?? 0);
 }
 
 interface OperationContext {
@@ -938,7 +946,22 @@ export function buildToolpath(
     errors.push(issue('INVALID_OPTION', 'error', null, 'Lead length must be zero or positive.'));
     return fail(clearanceZ);
   }
-  const plunge: PlungeOption = options.plunge ?? { type: 'straight' };
+  // T324: the project's contour entry (absent = straight plunge); a ramp leg is at least the
+  // project's length, else the cutting tool's diameter (set per tool below).
+  const entry = project.cutting.entry;
+  const plunge: PlungeOption =
+    options.plunge ??
+    (entry
+      ? {
+          type: 'ramp',
+          angleDeg: entry.angleDeg,
+          ...(entry.length === undefined ? {} : { minLength: entry.length }),
+        }
+      : { type: 'straight' });
+  const plungeFor = (toolDiameter: number): PlungeOption =>
+    options.plunge === undefined && plunge.type === 'ramp' && plunge.minLength === undefined
+      ? { ...plunge, minLength: toolDiameter }
+      : plunge;
   if (plunge.type === 'ramp') {
     const badAngle =
       plunge.angleDeg !== undefined &&
@@ -1032,6 +1055,39 @@ export function buildToolpath(
   const rpmOf = (toolNumber: number): number =>
     spindleOverride(project, toolNumber) ??
     (o.rpm === undefined && set ? recommendedRpm(project, machine, set, toolNumber) : rpm);
+  // T323: the project's feeds per tool, else the tool's set (the job set unless chosen, T308), or
+  // the option. A feed outside the machine's limits never reaches a program.
+  const feedsOf = (toolNumber: number): { feed: number; plungeFeed: number } => {
+    const own = feedOverride(project, toolNumber);
+    const rec =
+      set && (o.feed === undefined || o.plungeFeed === undefined)
+        ? recommendedFeeds(project, machine, set, toolNumber)
+        : null;
+    return {
+      feed: own.feed ?? (o.feed === undefined && rec ? rec.feed : feed),
+      plungeFeed:
+        own.plungeFeed ?? (o.plungeFeed === undefined && rec ? rec.plungeFeed : plungeFeed),
+    };
+  };
+  const feedLimits = machineFeedLimits();
+  for (const n of jobToolNumbers(project, machine)) {
+    const f = feedsOf(n);
+    for (const [what, v, range] of [
+      ['Feed', f.feed, feedLimits.feed],
+      ['Plunge feed', f.plungeFeed, feedLimits.plungeFeed],
+    ] as const) {
+      if (!feedInRange(range, v)) {
+        errors.push(
+          issue(
+            'FEED_OUT_OF_RANGE',
+            'error',
+            null,
+            `${what} ${v} mm/min for T${n} is outside the machine's range ${range.min}–${range.max}.`,
+          ),
+        );
+      }
+    }
+  }
   for (const n of jobToolNumbers(project, machine)) {
     const own = spindleOverride(project, n);
     if (own !== undefined && !rpmInRange(machine, own)) {
@@ -1050,8 +1106,7 @@ export function buildToolpath(
   const params: Params = {
     tool: tool.number,
     toolDiameter: tool.diameter,
-    feed,
-    plungeFeed,
+    ...feedsOf(tool.number),
     rpm: rpmOf(tool.number),
     passDepths: passDepths(target, passDepth),
     stepDown: passDepth,
@@ -1069,7 +1124,7 @@ export function buildToolpath(
     clearanceZ,
     lead: options.lead ?? project.cutting.leadIn,
     leadLength,
-    plunge,
+    plunge: plungeFor(tool.diameter),
     // CW spindle (M3): climb on an outer contour = CW travel around the part (D-021).
     travel: direction === 'climb' ? 'cw' : 'ccw',
     sheet: defaultSheet(project),
@@ -1101,6 +1156,8 @@ export function buildToolpath(
           ...params,
           tool: innerTool.number,
           toolDiameter: innerTool.diameter,
+          ...feedsOf(innerTool.number),
+          plunge: plungeFor(innerTool.diameter),
           rpm: rpmOf(innerTool.number),
           leadLength: options.leadLength ?? innerTool.diameter / 2,
         };
@@ -1373,8 +1430,7 @@ export function buildToolpath(
           centre: placedHoleCentre(x.part, x.placement, h),
           tool: ht.tool,
           toolDiameter: ht.diameter,
-          feed: params.feed,
-          plungeFeed: params.plungeFeed,
+          ...feedsOf(ht.tool),
           rpm: rpmOf(ht.tool),
           passDepths: ht.depths,
           safeZ,

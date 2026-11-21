@@ -1224,6 +1224,8 @@
       "FEED_FROM_UNKNOWN_POSITION": "Kesim, bilinmeyen bir konumdan başlıyor.",
       "MACHINE_MOVE": "Makine koordinatında (G53) bir hareket var ama makine profilindeki park noktası değil (ya da güvenli Z'de, spindle kapalıyken ve hemen ardından duraklama ile değil).",
       "PLUNGE_TOO_FAST": "Dalma, dalma beslemesinden hızlı.",
+      "FEED_ABOVE_MACHINE": "İlerleme makinenin sınırının üstünde.",
+      "RAMP_OUTSIDE_KERF": "Rampa, girdiği kesim çizgisinin dışına çıkıyor.",
       "CUT_SPINDLE_OFF": "Spindle kapalıyken kesim hareketi var.",
       "WARMUP_MISSING": "Spindle ısınma beklemesi eksik.",
       "VACUUM_NOT_ON": "Kesim sırasında vakum açık değil.",
@@ -1297,6 +1299,7 @@
       "TABS_TOO_SMALL_HIGH": "Köprü çok yüksek: yükseklik en fazla kalınlık − 1 mm olabilir. Kesim ayarlarında köprü yüksekliğini düşürün.",
       "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin.",
       "SPINDLE_RPM_OUT_OF_RANGE": "Bir takımın devri makinenin devir aralığının dışında. Kesim ayarlarında “Önerilene dön” deyin ya da aralık içinde bir değer seçin.",
+      "FEED_OUT_OF_RANGE": "Bir takımın ilerlemesi ya da dalması makinenin sınırlarının dışında. Kesim ayarlarında “İlerlemede önerilene dön” deyin ya da sınır içinde bir değer girin.",
       "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor (türü, boyu ya da çapı). Kesim ayarlarında “Önerilene dön” deyin ya da listeden başka bir takım seçin."
     },
     "codeFallback": "Kontrol {code}",
@@ -1418,6 +1421,21 @@
         "arc": "Yay",
         "line": "Düz"
       },
+      "entry": {
+        "title": "Dalma (konturda)",
+        "straight": "Dik dalma",
+        "ramp": "Rampa",
+        "angle": "Açı",
+        "length": "En az boy",
+        "degree": "°",
+        "hintStraight": "Takım her pasoda konturun başında dik iner.",
+        "hintRamp": "Takım kontur çizgisi üzerinde ileri-geri giderek iner; her bacak en fazla {angle}° eğimli ve en az {length} mm. Dalma ilerlemesiyle iner, kontur dışına çıkmaz.",
+        "bounds": {
+          "angle": "{min}–{max}° arası",
+          "length": "{min}–{max} mm arası"
+        },
+        "lengthTool": "Takım çapı ({value} mm)"
+      },
       "direction": "Kesim yönü",
       "directions": {
         "climb": "Climb (tırmanma)",
@@ -1476,6 +1494,16 @@
         "low": "Önerilenden %{percent} düşük: talaş kalınlaşır, takım kırılma riski artar.",
         "outOfRange": "Bu makinenin devir aralığı {min}–{max}; bu değer kesilmez.",
         "chipLoad": "Talaş yükü {value} mm/diş ({flutes} ağızlı, ilerleme {feed} mm/dk)",
+        "feed": "İlerleme",
+        "plungeFeed": "Dalma",
+        "feedUnit": "mm/dk",
+        "feedBounds": "{min}–{max} mm/dk arası",
+        "plungeFaster": "Dalma ilerlemeden hızlı; çoğu takım için dalma ilerlemenin yarısı ya da daha azıdır.",
+        "feedSource": {
+          "recommended": "İlerleme ve dalma malzeme ayarından ({feed} / {plunge} mm/dk).",
+          "project": "Bu projeye özel ilerleme/dalma (önerilen {feed} / {plunge} mm/dk)."
+        },
+        "feedReset": "İlerlemede önerilene dön",
         "source": {
           "recommended": "Malzeme ayarındaki devir kullanılıyor.",
           "project": "Bu projeye özel devir."
@@ -2048,6 +2076,7 @@
         "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
         "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
         "SPINDLE_RPM_OUT_OF_RANGE": "Takım devri makinenin devir aralığının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
+        "FEED_OUT_OF_RANGE": "Takım ilerlemesi ya da dalması makinenin sınırlarının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
         "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor; Simülasyon → Kesim ayarlarında başka takım seçin."
       },
       "other": "Kontrol {code}"

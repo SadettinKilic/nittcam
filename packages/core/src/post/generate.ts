@@ -6,7 +6,12 @@
  * byte-identical files.
  */
 import { EPS } from '../geometry';
-import { machineProfileSchema, VERIFICATION_STAGES, type MachineProfile } from '../machine';
+import {
+  machineFeedLimits,
+  machineProfileSchema,
+  VERIFICATION_STAGES,
+  type MachineProfile,
+} from '../machine';
 import { operationMoves, type Operation, type Toolpath } from '../toolpath';
 import { arcGeometry, arcPieces, chordSegments, splitArc, type ArcGeometry } from './arcs';
 import { normalizePostVersion, parsePostConfig, type PostConfig } from './config';
@@ -76,6 +81,31 @@ export function spindleHeaders(c: PostCuttingMeta): string[] {
   return (c.spindle ?? []).map(
     (s) => `DEVİR T${s.tool}: ${s.rpm} d/dk elle, önerilen ${s.recommended}`,
   );
+}
+
+/**
+ * T323: one header line per tool the project runs at its own feed, under "KESİM", e.g.
+ * "İLERLEME T2: 4000 mm/dk, dalma 1200 mm/dk elle, önerilen 6000 / 1500". None by default.
+ */
+export function feedHeaders(c: PostCuttingMeta): string[] {
+  const n = (v: number) => formatFixed(v, 0);
+  return (c.feeds ?? []).map(
+    (f) =>
+      `İLERLEME T${f.tool}: ${n(f.feed)} mm/dk, dalma ${n(f.plungeFeed)} mm/dk elle, önerilen ${n(f.recommendedFeed)} / ${n(f.recommendedPlungeFeed)}`,
+  );
+}
+
+/**
+ * T324: "GİRİŞ: rampa 3°, kontur boyunca, en az 8 mm" when the contours ramp in; none with the
+ * default straight plunge.
+ */
+export function entryHeaders(c: PostCuttingMeta): string[] {
+  if (!c.entry) return [];
+  const len =
+    c.entry.length === undefined
+      ? 'en az takım çapı'
+      : `en az ${formatFixed(c.entry.length, 3)} mm`;
+  return [`GİRİŞ: rampa ${formatFixed(c.entry.angleDeg, 3)}°, kontur boyunca, ${len}`];
 }
 
 const OPERATION_HEADER = {
@@ -463,6 +493,20 @@ class Writer {
     ] as const) {
       if (!Number.isFinite(v) || v <= 0) this.fail('FEED_INVALID', `Invalid ${name} ${v}.`, 5);
     }
+    // T323: a feed above the machine's limit never reaches a program.
+    const limits = machineFeedLimits();
+    for (const [name, v, range] of [
+      ['feed', op.feed, limits.feed],
+      ['plunge feed', op.plungeFeed, limits.plungeFeed],
+    ] as const) {
+      if (Number.isFinite(v) && v > range.max) {
+        this.fail(
+          'FEED_INVALID',
+          `The ${name} ${v} mm/min is above the machine's ${range.max}.`,
+          5,
+        );
+      }
+    }
     if (op.tool !== this.tool) this.toolChange(op);
     if (this.spindleRpm !== op.rpm) this.spindleOn(op.rpm);
     if (op.kind === 'drill' && this.c.drillCycles) this.drillCycle(op);
@@ -712,6 +756,8 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
     lines.push(
       cuttingHeader(meta.cutting),
       ...spindleHeaders(meta.cutting),
+      ...feedHeaders(meta.cutting),
+      ...entryHeaders(meta.cutting),
       ...operationToolHeaders(meta.cutting),
     );
   }

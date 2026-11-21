@@ -1712,6 +1712,22 @@ Usta 1 + 2: (a) leads removed ("yer yok") on 7 parts while the summary said gree
 ### T322 NC file name respects the machine's length limit   [status: done]
 Usta 1: `Kemal_Mutfak_alt_dolap_800_r19_S1.tap` (37 chars) on a machine with a 32-char limit. The file name is shortened deterministically to the profile limit (the sheet suffix, revision and extension stay, the project part is cut; names stay unique) and Turkish characters follow the profile; the checker/checklist warns if a name still exceeds. Unit tests.
 
+### Batch B59: T323, T324 (usta 2 / Elif findings, owner-approved before the field test; Dev 1)
+
+### T323 Per-tool cutting feed and plunge feed   [status: test, B59]
+From: `.team/usta2-rapor.md` #4 (Ø6 and Ø8 both at 6 000 mm/min) · D-111
+- [x] each job tool has its own cutting and plunge feed: recommended from the tool's material set (the job set; a tool chosen per operation (T308) takes its own set, like the T307 rpm); per-tool override in Kesim ayarları (`setToolFeed`, undoable, "İlerlemede önerilene dön")
+- [x] validation: feed/plunge > 0 and inside the machine limits (`machineFeedLimits`: the profile-wide bounds 100–60 000 / 50–30 000 mm/min; the profile has no own max yet) in command, validation (`FEED_OUT_OF_RANGE`), toolpath and post; chip load uses the tool's own feed; plunge > feed warns
+- [x] G-code: F per tool, plunges at the tool's plunge feed; "İLERLEME T..: ..." header line only with an override; checker R5 `FEED_ABOVE_MACHINE`
+- [x] goldens byte-identical with defaults
+
+### T324 Ramp entry for contours   [status: test, B59]
+From: `.team/usta2-rapor.md` #3 (dik dalma uç yakar) · D-111 · Spec §6.3 "Dalma düz veya rampalı"
+- [x] per job "Dalma (konturda): Dik dalma | Rampa" with angle (default 3°, 0,5–45°) and shortest leg (default tool Ø, 1–1 000 mm); `setEntry`; default stays straight (goldens identical)
+- [x] zig-zag along the contour (outer and inner) down to each pass depth at the plunge feed; tabs keep clear of the ramp; the ramp stays on the contour line, so never outside the part's allowed region or into a neighbour; "GİRİŞ: rampa ..." header line
+- [x] checker R3 `RAMP_OUTSIDE_KERF`: a ramp is accepted only on a level cut of the same block (independent of the generator); property test over random contours, depths, passes, tabs, inner cut-outs
+- [ ] per-operation ramp setting (not done: one job setting covers outer and inner contours)
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine

@@ -4,7 +4,7 @@
  * place (stock + part, tool table + hole) live here. Pure: same project, same list.
  */
 import { EPS } from '../geometry';
-import { findMaterialParams, findTool, type MachineProfile } from '../machine';
+import { findMaterialParams, findTool, machineFeedLimits, type MachineProfile } from '../machine';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../geometry/grain';
 import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
 import { nestingEngineOf } from '../nesting/nest';
@@ -50,6 +50,7 @@ export type ValidationCode =
   | 'NO_CUTTING_PARAMS'
   | 'CUTTING_PARAMS_UNVERIFIED'
   | 'SPINDLE_RPM_OUT_OF_RANGE'
+  | 'FEED_OUT_OF_RANGE'
   | 'OPERATION_TOOL_UNSUITABLE'
   | 'SHEET_LARGER_THAN_TABLE'
   | 'HOLE_OUTSIDE_PART'
@@ -454,6 +455,37 @@ export const spindleRpmOutOfRange: ValidationRule = (project, context) => {
 };
 
 /**
+ * (e2b) T323: a project feed or plunge feed outside the selected machine's limits (an old project
+ * on another machine, or a hand-edited file). An error: the toolpath and the post refuse it too;
+ * "Önerilene dön" clears it. Only the job's tools count. Skipped without a profile.
+ */
+export const feedOutOfRange: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || !project.cutting.feeds) return [];
+  const limits = machineFeedLimits();
+  const out: ValidationIssue[] = [];
+  for (const s of spindleSettingsOf(project, machine)) {
+    if (s.feedOutOfRange) {
+      out.push({
+        code: 'FEED_OUT_OF_RANGE',
+        severity: 'error',
+        path: `cutting.feeds.${s.tool}.feed`,
+        message: `feed ${s.feed} mm/min for T${s.tool} is outside the machine's range ${limits.feed.min}–${limits.feed.max}`,
+      });
+    }
+    if (s.plungeOutOfRange) {
+      out.push({
+        code: 'FEED_OUT_OF_RANGE',
+        severity: 'error',
+        path: `cutting.feeds.${s.tool}.plungeFeed`,
+        message: `plunge feed ${s.plungeFeed} mm/min for T${s.tool} is outside the machine's range ${limits.plungeFeed.min}–${limits.plungeFeed.max}`,
+      });
+    }
+  }
+  return out;
+};
+
+/**
  * T300 (CTO #12 E1, D-085): the smallest sheet margin that keeps the cutter on the sheet. An
  * outside profile runs the tool centre one radius outside the part, so a part on a margin below
  * the radius sends the tool past the sheet edge (and past the work envelope when the sheet sits
@@ -638,6 +670,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   noCuttingParams,
   unverifiedCuttingParams,
   spindleRpmOutOfRange,
+  feedOutOfRange,
   operationToolUnsuitable,
   marginBelowToolRadius,
   sheetLargerThanTable,
