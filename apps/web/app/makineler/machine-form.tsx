@@ -597,6 +597,23 @@ export function MachineForm({
               u.feed,
               f.rapidFeedHelp,
             )}
+            {/* T330 (D-121): the feed ceiling; empty = from the rapid rate. */}
+            {num(
+              'maxFeed',
+              f.maxFeed,
+              profile.maxFeed ?? Number.NaN,
+              (p, v) => void (p.maxFeed = v),
+              u.feed,
+              f.maxFeedHelp,
+            )}
+            {num(
+              'maxPlungeFeed',
+              f.maxPlungeFeed,
+              profile.maxPlungeFeed ?? Number.NaN,
+              (p, v) => void (p.maxPlungeFeed = v),
+              u.feed,
+              f.maxPlungeFeedHelp,
+            )}
           </Section>
 
           <Section id="origin" title={s.origin} hint={h.origin}>

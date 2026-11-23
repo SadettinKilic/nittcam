@@ -7,7 +7,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   canDownload,
   exportNc,
+  feedAboveRecommendation,
   findMaterialParams,
+  spindleSettingsOf,
   exportBlockingIssues,
   hingeEdgeHandleParts,
   needsUnverifiedAcceptance,
@@ -291,6 +293,15 @@ function checklistOf(
     toolChanges: program?.manualChanges ?? 0,
     rezeroZ: program?.rezeroZ ?? false,
     parkOff: parkOff(p),
+    highFeeds: spindleSettingsOf(data, p)
+      .filter(feedAboveRecommendation)
+      .map((s) => ({
+        tool: s.tool,
+        feed: s.feed,
+        plungeFeed: s.plungeFeed,
+        recommendedFeed: s.recommendedFeed,
+        recommendedPlungeFeed: s.recommendedPlungeFeed,
+      })),
     fileNames: fileNameInfo(files.names, p.constraints.maxFileNameLength, files.latestLimit),
   };
 }

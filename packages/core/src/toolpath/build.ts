@@ -1075,7 +1075,7 @@ export function buildToolpath(
         own.plungeFeed ?? (o.plungeFeed === undefined && rec ? rec.plungeFeed : plungeFeed),
     };
   };
-  const feedLimits = machineFeedLimits();
+  const feedLimits = machineFeedLimits(machine);
   for (const n of jobToolNumbers(project, machine)) {
     const f = feedsOf(n);
     for (const [what, v, range] of [

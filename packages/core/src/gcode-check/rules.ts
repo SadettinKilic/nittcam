@@ -347,8 +347,20 @@ export function motionRules(
     }
   };
 
-  // T323: the machine's feed limits, taken here from the profile bounds (not from the generator).
-  const feedCap = { feed: PROFILE_BOUNDS.feed.max, plunge: PROFILE_BOUNDS.plungeFeed.max };
+  // T323, T330 (D-121): the machine's feed ceiling, derived here from the profile on its own (not
+  // from the generator): the own maximum when set, otherwise the rapid rate (half of it for the
+  // plunge), never below the highest feed of the profile's material sets.
+  const rapid = profile.rapidFeed ?? 10_000;
+  const feedCap = {
+    feed: Math.min(
+      profile.maxFeed ?? Math.max(rapid, ...profile.materials.map((m) => m.feed)),
+      PROFILE_BOUNDS.feed.max,
+    ),
+    plunge: Math.min(
+      profile.maxPlungeFeed ?? Math.max(rapid / 2, ...profile.materials.map((m) => m.plungeFeed)),
+      PROFILE_BOUNDS.plungeFeed.max,
+    ),
+  };
   const plungeLimit = (tool: number | null): number => {
     const ops = d.ops.filter((o) => tool === null || o.tool === tool);
     return Math.max(...(ops.length > 0 ? ops : d.ops).map((o) => o.plungeFeed));

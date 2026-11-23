@@ -48,6 +48,19 @@ export interface ExportChecklistInfo {
   parkOff: boolean;
   /** T322: file-name length against the machine limit (the checker blocks names over it). */
   fileNames?: FileNameInfo;
+  /**
+   * T330 (D-121): tools whose feed, plunge or chip load is far above the recommendation; each
+   * needs the feeds line ticked. Absent or empty = no line.
+   */
+  highFeeds?: HighFeedInfo[];
+}
+
+export interface HighFeedInfo {
+  tool: number;
+  feed: number;
+  plungeFeed: number;
+  recommendedFeed: number;
+  recommendedPlungeFeed: number;
 }
 
 export interface ExportProfileInfo {

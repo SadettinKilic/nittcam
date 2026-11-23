@@ -54,6 +54,7 @@ export type ValidationCode =
   | 'CUTTING_PARAMS_UNVERIFIED'
   | 'SPINDLE_RPM_OUT_OF_RANGE'
   | 'FEED_OUT_OF_RANGE'
+  | 'FEED_ABOVE_RECOMMENDED'
   | 'OPERATION_TOOL_UNSUITABLE'
   | 'SHEET_LARGER_THAN_TABLE'
   | 'HOLE_OUTSIDE_PART'
@@ -468,7 +469,7 @@ export const spindleRpmOutOfRange: ValidationRule = (project, context) => {
 export const feedOutOfRange: ValidationRule = (project, context) => {
   const machine = context?.machine;
   if (!machine || !project.cutting.feeds) return [];
-  const limits = machineFeedLimits();
+  const limits = machineFeedLimits(machine);
   const out: ValidationIssue[] = [];
   for (const s of spindleSettingsOf(project, machine)) {
     if (s.feedOutOfRange) {
@@ -485,6 +486,46 @@ export const feedOutOfRange: ValidationRule = (project, context) => {
         severity: 'error',
         path: `cutting.feeds.${s.tool}.plungeFeed`,
         message: `plunge feed ${s.plungeFeed} mm/min for T${s.tool} is outside the machine's range ${limits.plungeFeed.min}–${limits.plungeFeed.max}`,
+      });
+    }
+  }
+  return out;
+};
+
+/**
+ * (e2c) T330 (D-121, field rehearsal B1): a job feed or plunge feed more than 1,5 × its
+ * recommendation, or a chip load more than 2 × the set's, typically one extra zero typed in
+ * Kesim ayarları. A warning (counted in Uyarılar, a checklist line to tick), not an error: the
+ * machine ceiling is the error (`FEED_OUT_OF_RANGE`). One issue per tool and value.
+ */
+export const feedAboveRecommended: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine) return [];
+  const out: ValidationIssue[] = [];
+  for (const s of spindleSettingsOf(project, machine)) {
+    if (s.feedOutOfRange || s.plungeOutOfRange) continue;
+    if (s.feedHigh) {
+      out.push({
+        code: 'FEED_ABOVE_RECOMMENDED',
+        severity: 'warning',
+        path: `cutting.feeds.${s.tool}.feed`,
+        message: `feed ${s.feed} mm/min for T${s.tool} is more than 1.5 × the recommended ${s.recommendedFeed}`,
+      });
+    }
+    if (s.plungeHigh) {
+      out.push({
+        code: 'FEED_ABOVE_RECOMMENDED',
+        severity: 'warning',
+        path: `cutting.feeds.${s.tool}.plungeFeed`,
+        message: `plunge feed ${s.plungeFeed} mm/min for T${s.tool} is more than 1.5 × the recommended ${s.recommendedPlungeFeed}`,
+      });
+    }
+    if (s.chipLoadHigh && !s.feedHigh) {
+      out.push({
+        code: 'FEED_ABOVE_RECOMMENDED',
+        severity: 'warning',
+        path: `cutting.feeds.${s.tool}.feed`,
+        message: `chip load ${s.chipLoad.toFixed(3)} mm for T${s.tool} is more than 2 × the recommended ${s.recommendedChipLoad.toFixed(3)}`,
       });
     }
   }
@@ -726,6 +767,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   unverifiedCuttingParams,
   spindleRpmOutOfRange,
   feedOutOfRange,
+  feedAboveRecommended,
   operationToolUnsuitable,
   marginBelowToolRadius,
   sheetLargerThanTable,

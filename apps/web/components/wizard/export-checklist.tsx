@@ -105,6 +105,27 @@ export function ExportChecklist({
           label={fill(t.checkTemplates, { names: templateNames.join(', ') })}
         />
       ) : null}
+      {checklist?.highFeeds && checklist.highFeeds.length > 0 ? (
+        // T330 (D-121): a feed far above the recommendation is often one extra zero.
+        <ChecklistItem
+          testId={`${testIdPrefix}-check-feeds`}
+          checked={checks.feeds ?? false}
+          onChange={(v) => set({ feeds: v })}
+          label={fill(t.checkFeeds, {
+            tools: checklist.highFeeds
+              .map((h) =>
+                fill(t.checkFeedsTool, {
+                  tool: h.tool,
+                  feed: h.feed,
+                  plunge: h.plungeFeed,
+                  recFeed: h.recommendedFeed,
+                  recPlunge: h.recommendedPlungeFeed,
+                }),
+              )
+              .join('; '),
+          })}
+        />
+      ) : null}
       {hingeHandleParts.length > 0 ? (
         <p
           className="flex items-start gap-1.5 text-sm text-warning-text"

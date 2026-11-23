@@ -494,7 +494,7 @@ class Writer {
       if (!Number.isFinite(v) || v <= 0) this.fail('FEED_INVALID', `Invalid ${name} ${v}.`, 5);
     }
     // T323: a feed above the machine's limit never reaches a program.
-    const limits = machineFeedLimits();
+    const limits = machineFeedLimits(profile);
     for (const [name, v, range] of [
       ['feed', op.feed, limits.feed],
       ['plunge feed', op.plungeFeed, limits.plungeFeed],

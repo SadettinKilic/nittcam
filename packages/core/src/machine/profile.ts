@@ -286,6 +286,16 @@ export const machineProfileSchema = z
      * stay valid, the toolpath default is used without it).
      */
     rapidFeed: num().min(PROFILE_BOUNDS.rapidFeed.min).max(PROFILE_BOUNDS.rapidFeed.max).optional(),
+    /**
+     * T330 (D-121): the highest cutting feed (G1/G2/G3) the machine may run, mm/min. Optional:
+     * without it the ceiling comes from the rapid rate (see `machineFeedLimits`).
+     */
+    maxFeed: num().min(PROFILE_BOUNDS.feed.min).max(PROFILE_BOUNDS.feed.max).optional(),
+    /** T330: the highest plunge feed (descending into the material), mm/min. Optional. */
+    maxPlungeFeed: num()
+      .min(PROFILE_BOUNDS.plungeFeed.min)
+      .max(PROFILE_BOUNDS.plungeFeed.max)
+      .optional(),
     spindle: spindleSchema,
     toolChanger: toolChangerSchema,
     holdDown: holdDownSchema,
@@ -365,6 +375,22 @@ export const machineProfileSchema = z
           ['materials', i, 'tool'],
           'unknownTool',
           `tool T${m.tool} is not in the tool table`,
+        );
+      }
+      if (p.maxFeed !== undefined && m.feed > p.maxFeed) {
+        crossIssue(
+          ctx,
+          ['materials', i, 'feed'],
+          'feedAboveMachineMax',
+          "feed is above the machine's maximum cutting feed",
+        );
+      }
+      if (p.maxPlungeFeed !== undefined && m.plungeFeed > p.maxPlungeFeed) {
+        crossIssue(
+          ctx,
+          ['materials', i, 'plungeFeed'],
+          'plungeAboveMachineMax',
+          "plunge feed is above the machine's maximum plunge feed",
         );
       }
       if (m.plungeFeed > m.feed) {
@@ -523,20 +549,40 @@ export interface FeedRange {
 }
 
 /**
- * T323: the cutting feed and plunge feed a program may run on this machine, mm/min. The profile
- * has no own cutting-feed limit yet, so these are the profile-wide bounds of a material set (the
- * rapid rate is only an estimate input and is not used: a low typed rapid rate must not block
- * projects that cut today). One place, so a later per-machine limit changes only this function.
- * Used by the command, the validation, the toolpath and the post; the G-code check derives its
- * own limit from the profile.
+ * Rapid rate assumed for the feed ceiling when a profile has no `rapidFeed` (mm/min); the same
+ * value as the toolpath default (`TOOLPATH_DEFAULTS.rapidFeed`, a test keeps them equal).
  */
-export function machineFeedLimits(): {
+export const RAPID_FEED_FALLBACK = 10_000;
+
+/** The profile fields the feed ceiling is derived from. */
+export type FeedLimitProfile = Pick<
+  MachineProfile,
+  'rapidFeed' | 'maxFeed' | 'maxPlungeFeed' | 'materials'
+>;
+
+/**
+ * T323, T330 (D-121): the cutting feed and plunge feed a program may run on this machine, mm/min.
+ * The ceiling is the profile's own `maxFeed` / `maxPlungeFeed` when set. Without them it is the
+ * rapid rate for the feed and half of it for the plunge (never the old fixed 60 000 / 30 000),
+ * but never below the highest feed of the machine's own material sets, so a profile that cuts
+ * today (with a low typed rapid rate) keeps working. One place: the command, the validation, the
+ * toolpath and the post use it; the G-code check derives the same rule from the profile itself.
+ */
+export function machineFeedLimits(profile: FeedLimitProfile): {
   feed: FeedRange;
   plungeFeed: FeedRange;
 } {
+  const rapid = profile.rapidFeed ?? RAPID_FEED_FALLBACK;
+  const setFeed = Math.max(0, ...profile.materials.map((m) => m.feed));
+  const setPlunge = Math.max(0, ...profile.materials.map((m) => m.plungeFeed));
+  const feedMax = profile.maxFeed ?? Math.max(rapid, setFeed);
+  const plungeMax = profile.maxPlungeFeed ?? Math.max(rapid / 2, setPlunge);
   return {
-    feed: { min: PROFILE_BOUNDS.feed.min, max: PROFILE_BOUNDS.feed.max },
-    plungeFeed: { min: PROFILE_BOUNDS.plungeFeed.min, max: PROFILE_BOUNDS.plungeFeed.max },
+    feed: { min: PROFILE_BOUNDS.feed.min, max: Math.min(feedMax, PROFILE_BOUNDS.feed.max) },
+    plungeFeed: {
+      min: PROFILE_BOUNDS.plungeFeed.min,
+      max: Math.min(plungeMax, PROFILE_BOUNDS.plungeFeed.max),
+    },
   };
 }
 
