@@ -85,6 +85,7 @@ import {
   maxTabHeight,
   passMovesWithTabs,
   placeTabs,
+  type Interval,
   tabSizeProblem,
 } from './tabs';
 import type {
@@ -103,6 +104,7 @@ import type {
   ToolpathSeverity,
 } from './types';
 import { toCutSizes } from '../schema/cut-size';
+import { holdingCentres, type CutterIndex } from './tab-hold';
 
 /** Defaults of the toolpath options (D-021). */
 export const TOOLPATH_DEFAULTS = {
@@ -284,6 +286,11 @@ interface Params {
   skin: { thickness: number; stock: number; z: number; depths: number[] } | null;
   /** Maximum depth per pass (material set step-down), mm. */
   stepDown: number;
+  /**
+   * T338 (D-129): the other cutting moves of the sheet; tabs go only where they hold. Absent
+   * while the cut order is chosen (the start edges) and in the first build of the sheet.
+   */
+  hold?: CutterIndex | undefined;
 }
 
 /** Resolved tab settings (D-022). */
@@ -528,7 +535,11 @@ function buildOuterOperation(
   const what = isInner ? `Small slug of inner contour ${(ctx.inner ?? 0) + 1}` : 'Small part';
   let tabs: Tab[] = [];
   // T334 (N1): fewer tabs than asked, and whether the ramp entry took their room.
-  let short: { wanted: number; ramp: boolean } | null = null;
+  // T338: `facing`: tabs were dropped because they would not hold (a neighbour's cut, the edge).
+  let short: { wanted: number; ramp: boolean; facing: boolean } | null = null;
+  const opId = isInner
+    ? `${partId}#${ctx.placement.index}/inner${ctx.inner}`
+    : `${partId}#${ctx.placement.index}`;
   if ((p.tabs.all || small) && !skinned) {
     const warnKey = isInner ? `${partId}/inner${ctx.inner}` : partId;
     if (small && !p.tabs.all && !smallWarned.has(warnKey)) {
@@ -557,20 +568,49 @@ function buildOuterOperation(
       minCount: small ? TAB_DEFAULTS.smallPartMinCount : 1,
       z: p.tabs.top,
     };
-    tabs = placeTabs(segs, { ...tabOpts, onArcs: isInner });
+    // T338 (D-129): only where the tab holds (the loop is CCW unless the travel reversed it).
+    const hold = p.hold;
+    const holding = hold
+      ? (allowed: readonly Interval[]) =>
+          holdingCentres(segs, allowed, {
+            width: p.tabs.width,
+            toolRadius,
+            ccw: p.travel === 'ccw',
+            index: hold,
+            own: opId,
+          })
+      : undefined;
+    const place = (h: typeof holding) => {
+      const first = placeTabs(segs, { ...tabOpts, onArcs: isInner, holding: h });
+      if (first.length > 0 || isInner) return first;
+      return placeTabs(segs, {
+        ...tabOpts,
+        onArcs: true,
+        minArcRadius: toolRadius,
+        noCornerArcs: true,
+        holding: h,
+      });
+    };
+    tabs = place(holding);
+    // Without the holding rule, would more have fit? Then the missing ones face a cut or the edge.
+    const facing = holding !== undefined && place(undefined).length > tabs.length;
     // T272: an outer contour keeps straight-edge tabs; only when none fit there (all-arc outlines
     // such as discs and the sign letter "O") may tabs sit on arcs, each inside one arc segment
     // long enough for the whole raised span (clear of corners and joins), as for slugs (D-049).
     // The arc the tool rolls around a sharp corner (radius = tool radius) is a corner: never used,
     // nor a rounded corner (≤ 90° next to a straight edge, T284 / D-058).
-    if (tabs.length === 0 && !isInner)
-      tabs = placeTabs(segs, {
-        ...tabOpts,
-        onArcs: true,
-        minArcRadius: toolRadius,
-        noCornerArcs: true,
-      });
-    if (tabs.length === 0 && small) {
+    if (tabs.length === 0 && small && facing && !isInner) {
+      // T338: the tabs that fit face a neighbour's kerf or the sheet edge: none would hold.
+      errors.push(
+        issue(
+          'SMALL_PART_NOT_HELD',
+          'error',
+          partId,
+          `Small part: fewer than ${TAB_DEFAULTS.smallPartMinCount} of its tabs would hold; the others face a neighbour's cut or the sheet edge, so it would be cut free. Raise the clearance between parts to at least the tool diameter + ${TAB_BOUNDS.minAnchor} mm, or turn on the thin skin.`,
+          where,
+        ),
+      );
+    } else if (tabs.length === 0 && small) {
       // An unheld small part can fly off the vacuum: refused; thin skin (T143) is the way out.
       errors.push(
         issue(
@@ -581,6 +621,18 @@ function buildOuterOperation(
             ? `${what}: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs; it would be cut free. Make the opening larger or clear it as a pocket.`
             : `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free. Turn on the thin skin option ("son pasoda ince tabaka bırak").`,
           isInner ? { ...where, inner: ctx.inner as number } : where,
+        ),
+      );
+    } else if (facing && tabs.length < count) {
+      // T338: a part that is not small: a warning, the checklist line and the true count.
+      short = { wanted: count, ramp: false, facing: true };
+      warnings.push(
+        issue(
+          'TABS_NOT_HELD',
+          'warning',
+          partId,
+          `Only ${tabs.length} of ${count} tabs hold: the others would face a neighbour's cut or the sheet edge.`,
+          where,
         ),
       );
     } else if (tabs.length === 0) {
@@ -599,7 +651,7 @@ function buildOuterOperation(
         rampLeg > 0 &&
         placeTabs(segs, { ...tabOpts, keepFwd: leadOut + toolRadius, onArcs: isInner }).length >
           tabs.length;
-      short = { wanted: count, ramp: ramped };
+      short = { wanted: count, ramp: ramped, facing: false };
       warnings.push(
         issue(
           'TABS_REDUCED',
@@ -730,7 +782,11 @@ function buildOuterOperation(
     passDepths: [...p.passDepths],
     tabs,
     ...(short
-      ? { tabsWanted: short.wanted, ...(short.ramp ? { tabsRamp: true as const } : {}) }
+      ? {
+          tabsWanted: short.wanted,
+          ...(short.ramp ? { tabsRamp: true as const } : {}),
+          ...(short.facing ? { tabsFacing: true as const } : {}),
+        }
       : {}),
     segments,
   };

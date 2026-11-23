@@ -38,6 +38,11 @@ export const TAB_DEFAULTS = {
  */
 export const TAB_BOUNDS = {
   minWidth: 3,
+  /**
+   * T338 (CTO #13 M1, D-129): material beyond the tab's kerf that no other cut removes, mm; less
+   * (a neighbour's kerf, the sheet edge) and the tab holds nothing (`tab-hold.ts`).
+   */
+  minAnchor: 3,
   minHeight: 1,
   /** Height at most thickness minus this, mm. */
   belowThickness: 1,
@@ -210,6 +215,12 @@ export function placeTabs(
      * next to a straight segment, as the rounded corners of a rectangle.
      */
     noCornerArcs?: boolean;
+    /**
+     * T338 (D-129): keeps only the tab centres where a tab holds (`holdingCentres`), given the
+     * centres the other rules allow. Even spacing is tried first; when the holding positions
+     * do not allow it, the tabs spread over them as evenly as they can.
+     */
+    holding?: ((allowed: readonly Interval[]) => Interval[]) | undefined;
   },
 ): Tab[] {
   const total = segs.reduce((s, x) => s + segLength(x), 0);
@@ -223,10 +234,12 @@ export function placeTabs(
     o.minArcRadius ?? 0,
     o.noCornerArcs ?? false,
   );
+  const held = o.holding ? o.holding(allowed) : allowed;
   for (let n = o.count; n >= Math.max(1, o.minCount); n--) {
     // neighbouring raised spans must not touch (n = 1 has no neighbour)
     if (n > 1 && total / n <= 2 * half + EPS) continue;
-    const centres = evenTabCentres(allowed, total, n);
+    const centres =
+      evenTabCentres(held, total, n) ?? (o.holding ? spreadTabCentres(held, total, n, half) : null);
     if (!centres) continue;
     return centres.map((c) => {
       const start = c - half;
@@ -237,6 +250,48 @@ export function placeTabs(
     });
   }
   return [];
+}
+
+/**
+ * T338 (D-129): `n` tab centres inside `allowed` (sorted, disjoint) when even spacing is not
+ * possible: the first in the middle of the longest interval, each next one the candidate farthest
+ * (around the loop) from those already chosen; raised spans never touch (centres more than
+ * `2 · half` apart). Candidates: interval ends, middles and every 0.5 mm. Null when n do not fit.
+ * Sorted by arc length. Deterministic.
+ */
+export function spreadTabCentres(
+  allowed: readonly Interval[],
+  total: number,
+  n: number,
+  half: number,
+): number[] | null {
+  if (n < 1 || allowed.length === 0 || !(total > 0)) return null;
+  const cand: number[] = [];
+  for (const iv of allowed) {
+    const k = Math.max(1, Math.ceil((iv.hi - iv.lo) / 0.5));
+    for (let i = 0; i <= k; i++) cand.push(iv.lo + ((iv.hi - iv.lo) * i) / k);
+  }
+  let first = allowed[0] as Interval;
+  for (const iv of allowed) if (iv.hi - iv.lo > first.hi - first.lo + EPS) first = iv;
+  const chosen = [(first.lo + first.hi) / 2];
+  const gap = (a: number, b: number) => {
+    const d = Math.abs(a - b) % total;
+    return Math.min(d, total - d);
+  };
+  while (chosen.length < n) {
+    let best: number | null = null;
+    let bestD = 2 * half + EPS;
+    for (const c of cand) {
+      const d = Math.min(...chosen.map((x) => gap(x, c)));
+      if (d > bestD + NOISE) {
+        best = c;
+        bestD = d;
+      }
+    }
+    if (best === null) return null;
+    chosen.push(best);
+  }
+  return chosen.sort((a, b) => a - b);
 }
 
 /** XY point at arc length `s` of a path. */
