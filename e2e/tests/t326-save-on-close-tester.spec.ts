@@ -287,7 +287,12 @@ test.describe('T326 tester: save on close attacks', () => {
     await list.goto('/projeler');
     await expect(list.getByTestId('projects-new')).toBeVisible();
     const banner = list.getByTestId('left-draft');
-    if (await banner.isVisible()) {
+    // The banner renders after hydration reads localStorage: wait for it, do not peek.
+    const offered = await banner
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (offered) {
       await banner.getByTestId('left-draft-open').click();
       await wizardReady(list);
       await saved(list);
