@@ -530,10 +530,37 @@ export function materialTabIssues(
 }
 
 /** `parseMachineProfile` plus the rules that only apply to a profile being saved (T302). */
+/**
+ * B62 fix r1 (D-121 amended): material sets whose feed or plunge is above the machine ceiling
+ * (`machineFeedLimits`: own maximum, else the rapid rate and half of it). Save only: stored
+ * profiles still load, and such a set blocks the export until it is corrected.
+ */
+export function materialFeedIssues(profile: FeedLimitProfile): MachineProfileIssue[] {
+  const limits = machineFeedLimits(profile);
+  const out: MachineProfileIssue[] = [];
+  profile.materials.forEach((m, i) => {
+    if (m.feed > limits.feed.max)
+      out.push({
+        path: `materials[${i}].feed`,
+        code: 'custom',
+        key: 'feedAboveMachineMax',
+        message: `feed ${m.feed} is above the machine's maximum feed ${limits.feed.max} mm/min`,
+      });
+    if (m.plungeFeed > limits.plungeFeed.max)
+      out.push({
+        path: `materials[${i}].plungeFeed`,
+        code: 'custom',
+        key: 'plungeAboveMachineMax',
+        message: `plunge feed ${m.plungeFeed} is above the machine's maximum plunge feed ${limits.plungeFeed.max} mm/min`,
+      });
+  });
+  return out;
+}
+
 export function parseMachineProfileForSave(json: unknown): ParseMachineProfileResult {
   const parsed = parseMachineProfile(json);
   if (!parsed.ok) return parsed;
-  const issues = materialTabIssues(parsed.profile);
+  const issues = [...materialTabIssues(parsed.profile), ...materialFeedIssues(parsed.profile)];
   return issues.length > 0 ? { ok: false, issues } : parsed;
 }
 
@@ -563,9 +590,9 @@ export type FeedLimitProfile = Pick<
 /**
  * T323, T330 (D-121): the cutting feed and plunge feed a program may run on this machine, mm/min.
  * The ceiling is the profile's own `maxFeed` / `maxPlungeFeed` when set. Without them it is the
- * rapid rate for the feed and half of it for the plunge (never the old fixed 60 000 / 30 000),
- * but never below the highest feed of the machine's own material sets, so a profile that cuts
- * today (with a low typed rapid rate) keeps working. One place: the command, the validation, the
+ * rapid rate for the feed and half of it for the plunge (never the old fixed 60 000 / 30 000).
+ * B62 fix r1: no floor at the machine's own material sets; a set above the ceiling is refused
+ * on save (`materialFeedIssues`) and blocks the export (`MACHINE_FEED_ABOVE_MAX`). One place: the command, the validation, the
  * toolpath and the post use it; the G-code check derives the same rule from the profile itself.
  */
 export function machineFeedLimits(profile: FeedLimitProfile): {
@@ -573,10 +600,10 @@ export function machineFeedLimits(profile: FeedLimitProfile): {
   plungeFeed: FeedRange;
 } {
   const rapid = profile.rapidFeed ?? RAPID_FEED_FALLBACK;
-  const setFeed = Math.max(0, ...profile.materials.map((m) => m.feed));
-  const setPlunge = Math.max(0, ...profile.materials.map((m) => m.plungeFeed));
-  const feedMax = profile.maxFeed ?? Math.max(rapid, setFeed);
-  const plungeMax = profile.maxPlungeFeed ?? Math.max(rapid / 2, setPlunge);
+  // B62 fix r1 (D-121 amended): strictly the own maximum, else the rapid rate (half for the
+  // plunge). No floor at the machine's own material sets: a typo there must not raise the ceiling.
+  const feedMax = profile.maxFeed ?? rapid;
+  const plungeMax = profile.maxPlungeFeed ?? rapid / 2;
   return {
     feed: { min: PROFILE_BOUNDS.feed.min, max: Math.min(feedMax, PROFILE_BOUNDS.feed.max) },
     plungeFeed: {

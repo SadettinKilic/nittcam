@@ -49,7 +49,9 @@ test('T330: 59 000 is refused on a rapid-10 000 machine; 9 100 warns and needs a
   await goStep(page, 'export');
   const line = page.getByTestId('export-check-feeds');
   await expect(line).toBeVisible({ timeout: 30_000 });
-  await expect(line).toContainText('9100');
+  // The text is the checkbox's label (its accessible name), not the button's own text.
+  await expect(page.getByRole('checkbox', { name: /9[.\s]?100/ })).toBeVisible();
+  await expect(page.getByText('Sorun bulunmadı')).toHaveCount(0);
   for (const id of ['export-check-origin', 'export-check-tool', 'export-check-aircut']) {
     await page.getByTestId(id).click();
   }

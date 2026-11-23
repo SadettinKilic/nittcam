@@ -28,24 +28,24 @@ describe('marginBelowToolRadius (T300)', () => {
     [7.9995, false],
     [8, false],
     [10, false],
-  ])('margin %s mm with a Ø8 tool → warning %s', (margin, warned) => {
+  ])('margin %s mm with a Ø8 tool → error %s', (margin, warned) => {
     const issues = marginBelowToolRadius(withMargin(margin), { toolDiameter: 8 });
     expect(issues.length > 0).toBe(warned);
     for (const i of issues) {
       expect(i).toMatchObject({
         code: 'MARGIN_BELOW_TOOL_RADIUS',
-        severity: 'warning',
+        // B62 fix r1: an error for every post (blocks the export before the G-code check)
+        severity: 'error',
         path: 'nesting.margin',
       });
     }
   });
 
-  it('is skipped without a tool and never blocks the export', () => {
+  it('blocks the export (B62 fix r1); no tool known = no program to check', () => {
     expect(marginBelowToolRadius(withMargin(0), {})).toEqual([]);
     const all = validateProject(withMargin(0), { toolDiameter: 8 });
-    expect(all.some((i) => i.code === 'MARGIN_BELOW_TOOL_RADIUS')).toBe(true);
     expect(
       all.filter((i) => i.code === 'MARGIN_BELOW_TOOL_RADIUS' && i.severity === 'error'),
-    ).toEqual([]);
+    ).toHaveLength(1);
   });
 });

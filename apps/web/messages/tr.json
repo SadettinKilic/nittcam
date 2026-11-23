@@ -521,8 +521,8 @@
       "duplicateMaterial": "Bu malzeme ve kalınlık zaten var.",
       "unknownTool": "Bu numarada takım yok.",
       "plungeAboveFeed": "Dalma hızı beslemeden büyük olamaz.",
-      "feedAboveMachineMax": "İlerleme makinenin en yüksek kesme ilerlemesinden büyük olamaz.",
-      "plungeAboveMachineMax": "Dalma hızı makinenin en yüksek dalma ilerlemesinden büyük olamaz.",
+      "feedAboveMachineMax": "Bu makinenin en yüksek ilerlemesinin üstünde (girilen en yüksek kesme ilerlemesi, girilmediyse hızlı hareket hızı). Değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
+      "plungeAboveMachineMax": "Bu makinenin en yüksek dalma ilerlemesinin üstünde (girilen en yüksek dalma, girilmediyse hızlı hareket hızının yarısı). Değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
       "rpmOutsideSpindle": "Devir, spindle aralığının dışında.",
       "tabHeightAboveThickness": "Köprü yüksekliği malzeme kalınlığından en az 1 mm az olmalı."
     },
@@ -1276,6 +1276,7 @@
       "TOOL_MISMATCH": "Kesimde beklenenden farklı takım kullanılıyor.",
       "TOOL_ORDER": "Takım değiştirme sırası yanlış.",
       "TOOL_PAUSE_COUNT": "Elle takım değiştirme duraklaması sayısı yanlış.",
+      "TOOL_UNKNOWN": "Bir kesim hareketinin hangi takımla yapıldığı programdan ve işten belirlenemiyor.",
       "TOOL_CHANGE_OPTIONAL_STOP": "Elle takım değişimi M1 (isteğe bağlı durma) ile duruyor; kumandada isteğe bağlı durma kapalıysa makine eski takımla devam eder. M0 kullanılmalı.",
       "TOOL_PROMPT_MISMATCH": "Takım değiştirme mesajı yanlış takımı söylüyor.",
       "STOCK_MISMATCH": "Malzeme kalınlığı takım yolu derinliğiyle uyuşmuyor.",
@@ -1325,6 +1326,7 @@
       "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin.",
       "SPINDLE_RPM_OUT_OF_RANGE": "Bir takımın devri makinenin devir aralığının dışında. Kesim ayarlarında “Önerilene dön” deyin ya da aralık içinde bir değer seçin.",
       "FEED_OUT_OF_RANGE": "Bir takımın ilerlemesi ya da dalması makinenin sınırlarının dışında. Kesim ayarlarında “İlerlemede önerilene dön” deyin ya da sınır içinde bir değer girin.",
+      "MACHINE_FEED_ABOVE_MAX": "Makinenin malzeme ayarındaki ilerleme bu makinenin en yüksek ilerlemesinin üstünde (en yüksek ilerleme girilmediyse hızlı hareket hızı, dalmada yarısı). Makineler'de değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
       "FEED_ABOVE_RECOMMENDED": "Bir takımın ilerlemesi ya da dalması önerilenin 1,5 katından fazla (ya da talaş yükü 2 katından fazla); fazladan bir sıfır yazılmış olabilir. Kesim ayarlarında değeri kontrol edin ya da “İlerlemede önerilene dön” deyin.",
       "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor (türü, boyu ya da çapı). Kesim ayarlarında “Önerilene dön” deyin ya da listeden başka bir takım seçin."
     },
@@ -2122,6 +2124,7 @@
         "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım çapından küçük; takımın kenarı plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
         "SPINDLE_RPM_OUT_OF_RANGE": "Takım devri makinenin devir aralığının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
         "FEED_OUT_OF_RANGE": "Takım ilerlemesi ya da dalması makinenin sınırlarının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
+        "MACHINE_FEED_ABOVE_MAX": "Makinenin malzeme ayarındaki ilerleme bu makinenin en yüksek ilerlemesinin üstünde (en yüksek ilerleme girilmediyse hızlı hareket hızı, dalmada yarısı). Makineler'de değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
         "FEED_ABOVE_RECOMMENDED": "Takım ilerlemesi ya da dalması önerilenin çok üstünde; Simülasyon → Kesim ayarlarında kontrol edin.",
         "PROFILE_VERSION_OUTDATED": "Proje makinenin eski profil sürümüyle kayıtlı; dosya eski takım ve sınır değerleriyle üretilir. Makine ve plaka adımında “Güncel makine sürümüne geç” deyin.",
         "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor; Simülasyon → Kesim ayarlarında başka takım seçin."

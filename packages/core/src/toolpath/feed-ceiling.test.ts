@@ -61,11 +61,21 @@ describe('machineFeedLimits (T330)', () => {
     expect(machineFeedLimits(m).feed.max).toBe(RAPID_FEED_FALLBACK);
   });
 
-  it('a low typed rapid rate never blocks the machine’s own sets (existing profiles keep working)', () => {
+  it('B62 fix r1: the ceiling is strict; a set above a low rapid rate blocks, maxFeed lifts it', () => {
     const m = { ...machine, rapidFeed: 2000 };
-    expect(machineFeedLimits(m).feed.max).toBe(6000);
-    expect(machineFeedLimits(m).plungeFeed.max).toBe(1500);
-    expect(buildToolpath(project(), m).errors).toEqual([]);
+    expect(machineFeedLimits(m).feed.max).toBe(2000);
+    expect(machineFeedLimits(m).plungeFeed.max).toBe(1000);
+    expect(
+      validateProject(project(), { machine: m }).some(
+        (i) => i.code === 'MACHINE_FEED_ABOVE_MAX' && i.severity === 'error',
+      ),
+    ).toBe(true);
+    const own = { ...m, maxFeed: 6000, maxPlungeFeed: 1500 };
+    expect(machineFeedLimits(own).feed.max).toBe(6000);
+    expect(
+      validateProject(project(), { machine: own }).some((i) => i.code === 'MACHINE_FEED_ABOVE_MAX'),
+    ).toBe(false);
+    expect(buildToolpath(project(), own).errors).toEqual([]);
   });
 
   it('the profile refuses a set above its own maximum', () => {
