@@ -432,7 +432,15 @@ function buildOuterOperation(
   const perimeter = pathLength(segs);
 
   // Leads: requested length, then shorter, then none.
-  const sheetBox: BBox = { minX: 0, minY: 0, maxX: p.sheet.width, maxY: p.sheet.height };
+  // T331 (field rehearsal B2): the whole cutter stays on the sheet, so the lead's tool centre
+  // keeps one tool radius from every sheet edge (the contour itself may only come closer when the
+  // margin is below the radius, which MARGIN_BELOW_TOOL_RADIUS reports).
+  const sheetBox: BBox = {
+    minX: toolRadius,
+    minY: toolRadius,
+    maxX: p.sheet.width - toolRadius,
+    maxY: p.sheet.height - toolRadius,
+  };
   const bounds = unionBox(sheetBox, bbox(loop));
   let leads: Leads = { leadIn: null, leadOut: null };
   /** Length of the chosen leads (0 = none). */
@@ -1075,7 +1083,7 @@ export function buildToolpath(
         own.plungeFeed ?? (o.plungeFeed === undefined && rec ? rec.plungeFeed : plungeFeed),
     };
   };
-  const feedLimits = machineFeedLimits();
+  const feedLimits = machineFeedLimits(machine);
   for (const n of jobToolNumbers(project, machine)) {
     const f = feedsOf(n);
     for (const [what, v, range] of [

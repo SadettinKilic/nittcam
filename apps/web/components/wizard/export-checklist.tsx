@@ -25,6 +25,7 @@ export function ExportChecklist({
   hingeHandleParts,
   checks,
   onChange,
+  onUseLatest,
   testIdPrefix = 'export',
 }: {
   t: Text;
@@ -34,6 +35,8 @@ export function ExportChecklist({
   hingeHandleParts: readonly string[];
   checks: ChecklistState;
   onChange: (checks: ChecklistState) => void;
+  /** T332: move the project to the machine's newest profile version (one undoable command). */
+  onUseLatest?: (() => void) | undefined;
   /** `export` on the step (existing test ids), `reexport` in the dialog. */
   testIdPrefix?: string;
 }) {
@@ -42,6 +45,33 @@ export function ExportChecklist({
   return (
     <fieldset className="flex min-w-0 flex-col gap-2" data-testid={`${testIdPrefix}-checklist`}>
       <legend className="mb-2 text-sm font-semibold text-fg">{t.checklistTitle}</legend>
+      {checklist?.staleProfile ? (
+        // T332 (field rehearsal S2): never export stale tool data without a tick.
+        <div className="flex flex-col gap-1.5" data-testid={`${testIdPrefix}-stale-profile`}>
+          <ChecklistItem
+            testId={`${testIdPrefix}-check-stale`}
+            checked={checks.stale ?? false}
+            onChange={(v) => set({ stale: v })}
+            label={fill(t.checkStale, {
+              old: checklist.staleProfile.version,
+              latest: checklist.staleProfile.latest,
+              changes:
+                checklist.staleProfile.changes.map((c) => t.profileChange[c]).join(', ') ||
+                t.profileChange.other,
+            })}
+          />
+          {onUseLatest ? (
+            <button
+              type="button"
+              data-testid={`${testIdPrefix}-use-latest`}
+              onClick={onUseLatest}
+              className="self-start rounded-sm text-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              {t.useLatestVersion}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <ChecklistItem
         testId={`${testIdPrefix}-check-origin`}
         checked={checks.origin}
@@ -84,6 +114,16 @@ export function ExportChecklist({
           {t.parkOff}
         </p>
       ) : null}
+      {checklist?.parkHome ? (
+        // T332 (field rehearsal S1): G53 is machine coordinates; an unhomed machine hits a limit.
+        <p
+          className="flex items-start gap-1.5 text-sm text-warning-text"
+          data-testid={`${testIdPrefix}-park-home`}
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t.parkHome}
+        </p>
+      ) : null}
       {nameLimit !== null ? (
         // T322 (usta 1): a name longer than the machine reads (or than its newest version allows).
         <p
@@ -103,6 +143,27 @@ export function ExportChecklist({
           checked={checks.templates}
           onChange={(v) => set({ templates: v })}
           label={fill(t.checkTemplates, { names: templateNames.join(', ') })}
+        />
+      ) : null}
+      {checklist?.highFeeds && checklist.highFeeds.length > 0 ? (
+        // T330 (D-121): a feed far above the recommendation is often one extra zero.
+        <ChecklistItem
+          testId={`${testIdPrefix}-check-feeds`}
+          checked={checks.feeds ?? false}
+          onChange={(v) => set({ feeds: v })}
+          label={fill(t.checkFeeds, {
+            tools: checklist.highFeeds
+              .map((h) =>
+                fill(t.checkFeedsTool, {
+                  tool: h.tool,
+                  feed: h.feed,
+                  plunge: h.plungeFeed,
+                  recFeed: h.recommendedFeed,
+                  recPlunge: h.recommendedPlungeFeed,
+                }),
+              )
+              .join('; '),
+          })}
         />
       ) : null}
       {hingeHandleParts.length > 0 ? (

@@ -1,6 +1,7 @@
 /** Shapes of the NC export routes (T021, D-030), shared by server and client. */
 import type { OriginCorner, UnverifiedReason, VerificationState } from '@nittcam/core';
 import type { FileNameInfo } from './check-state';
+import type { ProfileChange } from './profile-version';
 
 /** Where the export stopped: the machine profile lookup, then `exportNc`'s stages. */
 export type ExportStage = 'profile' | 'toolpath' | 'post' | 'check' | 'done';
@@ -46,8 +47,28 @@ export interface ExportChecklistInfo {
   rezeroZ: boolean;
   /** T321: a manual tool changer without a park point: the tool stops above the sheet at a change. */
   parkOff: boolean;
+  /** T332 (S1): the program parks with G53 at a manual change: the machine must be homed. */
+  parkHome?: boolean;
   /** T322: file-name length against the machine limit (the checker blocks names over it). */
   fileNames?: FileNameInfo;
+  /**
+   * T330 (D-121): tools whose feed, plunge or chip load is far above the recommendation; each
+   * needs the feeds line ticked. Absent or empty = no line.
+   */
+  highFeeds?: HighFeedInfo[];
+  /**
+   * T332 (S2): the project is bound to an older profile version than the machine's newest; the
+   * file uses the old values until the operator switches or ticks the line.
+   */
+  staleProfile?: { version: number; latest: number; changes: ProfileChange[] };
+}
+
+export interface HighFeedInfo {
+  tool: number;
+  feed: number;
+  plungeFeed: number;
+  recommendedFeed: number;
+  recommendedPlungeFeed: number;
 }
 
 export interface ExportProfileInfo {

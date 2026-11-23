@@ -30,6 +30,8 @@ const expected: ExpectedPart[] = [
 const d = {
   posTol: 0.005,
   ctx: { profile: { tools: [{ number: 1, diameter: 6 }] } },
+  // B62 fix r1: the radius is the active tool's, from the job's operations
+  ops: [{ tool: 1, toolDiameter: 6 }],
 } as unknown as Derived;
 
 function feed(x0: number, y0: number, x1: number, y1: number, z0: number, z1 = z0): SheetMove {
@@ -54,6 +56,7 @@ function run(moves: SheetMove[]) {
     expected,
     d,
     push,
+    moves.map(() => 1),
   );
   pocketNotCutRule(expected, reached, push);
   return found;

@@ -408,6 +408,8 @@ class Writer {
     }
     if (!this.zKnown || Math.abs(this.pos.z - this.c.toolpath.safeZ) > EPS) this.safeZ();
     const d = this.c.cfg.decimals.xy;
+    // T332 (field rehearsal S1): G53 is machine coordinates; an unhomed machine hits a limit.
+    this.comment('PARK ICIN MAKINE HOME EDILMIS OLMALI');
     this.comment('PARK: TAKIM DEĞİŞİM NOKTASI (MAKİNE KOORDİNATI)');
     const rapid = this.c.cfg.motion.rapid;
     this.block([
@@ -494,7 +496,7 @@ class Writer {
       if (!Number.isFinite(v) || v <= 0) this.fail('FEED_INVALID', `Invalid ${name} ${v}.`, 5);
     }
     // T323: a feed above the machine's limit never reaches a program.
-    const limits = machineFeedLimits();
+    const limits = machineFeedLimits(profile);
     for (const [name, v, range] of [
       ['feed', op.feed, limits.feed],
       ['plunge feed', op.plungeFeed, limits.plungeFeed],

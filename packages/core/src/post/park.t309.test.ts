@@ -94,6 +94,8 @@ describe('park point for a manual tool change (T309, G53)', () => {
         .find((l) => /Z-?\d/.test(l));
       expect(zBefore).toMatch(/Z20\.0000/);
       expect(lines[at + 1]).toBe('G53 G0 X50.0000 Y900.0000');
+      // T332 (field rehearsal S1): the machine must be homed for G53; said right before the park.
+      expect(lines[at - 1]).toBe('(PARK ICIN MAKINE HOME EDILMIS OLMALI)');
       expect(lines.slice(at + 2, k).every((l) => l.startsWith('('))).toBe(true);
       expect(lines[k + 1]).toBe('G0 Z20.0000');
     }

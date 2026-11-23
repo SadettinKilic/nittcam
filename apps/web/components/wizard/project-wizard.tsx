@@ -12,7 +12,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { findMaterialParams, findTool, minSheetMargin } from '@nittcam/core';
+import { findMaterialParams, findTool, minSheetMargin, type ValidationIssue } from '@nittcam/core';
 import { fill, newProject, pocketToolDiameterFor, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
@@ -46,6 +46,7 @@ import { fetchProjectDefaults } from '../../lib/settings-api';
 import { AssistantLauncher } from '../assistant/assistant-launcher';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
+import { profileChanges } from '../../lib/profile-version';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
 import { HoleIssuesContext, holeErrors } from '../editor/hole-issues';
 import { ValidationPanel } from './validation-panel';
@@ -797,6 +798,13 @@ function WizardSession({
       <span>{t.machine.archivedNote}</span>
     </p>
   ) : null;
+  // T332 (field rehearsal S2): what the newer version changed, named in the warning.
+  const changeText =
+    gap !== null && pinned && detail
+      ? profileChanges(pinned.profile, detail.profile)
+          .map((c) => t.export.profileChange[c])
+          .join(', ') || t.export.profileChange.other
+      : undefined;
   const profileNotice =
     gap !== null ? (
       <ProfileVersionNotice
@@ -804,6 +812,7 @@ function WizardSession({
         machineId={project.machine.machineId}
         version={project.machine.profileVersion}
         latest={gap}
+        changes={changeText}
         run={session.run}
       />
     ) : null;
@@ -1031,7 +1040,23 @@ function WizardSession({
 
   const index = STEPS.indexOf(step);
   const progress = { partCount: project.parts.length, sheetCount: project.layout.sheets.length };
-  const validation = <ValidationPanel t={t.issues} project={project} issues={session.issues} />;
+  // T332 (S2): an older profile version than the machine's newest counts in Uyarılar.
+  const panelIssues = useMemo<readonly ValidationIssue[]>(
+    () =>
+      gap === null
+        ? session.issues
+        : [
+            ...session.issues,
+            {
+              code: 'PROFILE_VERSION_OUTDATED',
+              severity: 'warning',
+              path: 'machine.profileVersion',
+              message: `project on profile version ${project.machine.profileVersion}, machine at ${gap}`,
+            },
+          ],
+    [gap, session.issues, project.machine.profileVersion],
+  );
+  const validation = <ValidationPanel t={t.issues} project={project} issues={panelIssues} />;
 
   let left: ReactNode = null;
   let right: ReactNode = null;
@@ -1299,6 +1324,15 @@ function WizardSession({
         onOpenPart={openPart}
         onOpenRow={openRow}
         onOpenSkin={openSkin}
+        onUseLatest={
+          gap !== null
+            ? () =>
+                session.run('setMachine', {
+                  machineId: project.machine.machineId,
+                  profileVersion: gap,
+                })
+            : undefined
+        }
         projectId={session.projectId}
         revision={session.revision}
         saved={!session.dirty}

@@ -58,6 +58,15 @@ export interface ToolSpindle {
   plungeOutOfRange: boolean;
   /** Chip load, mm per tooth: feed / (rpm × flutes), with this tool's own feed. */
   chipLoad: number;
+  /** T330: chip load of the recommended feed at the recommended rpm (the set's own). */
+  recommendedChipLoad: number;
+  /**
+   * T330 (D-121): the feed, plunge feed or chip load is far above the recommendation (feed or
+   * plunge > 1,5 ×, chip load > 2 ×): a warning and a checklist line, not an error.
+   */
+  feedHigh: boolean;
+  plungeHigh: boolean;
+  chipLoadHigh: boolean;
   band: RpmBand;
   /** Signed deviation from `recommended`, whole percent (e.g. 30 for 30 % higher). */
   deviation: number;
@@ -124,7 +133,7 @@ export function spindleSettingsOf(project: Project, machine: MachineProfile): To
     const { band, deviation } = rpmBand(rpm, recommended);
     const rec = recommendedFeeds(project, machine, set, n);
     const ownFeed = feedOverride(project, n);
-    const limits = machineFeedLimits();
+    const limits = machineFeedLimits(machine);
     const feed = ownFeed.feed ?? rec.feed;
     const row: ToolSpindle = {
       tool: n,
@@ -143,12 +152,32 @@ export function spindleSettingsOf(project: Project, machine: MachineProfile): To
       plungeOutOfRange:
         ownFeed.plungeFeed !== undefined && !feedInRange(limits.plungeFeed, ownFeed.plungeFeed),
       chipLoad: rpm > 0 && tool.flutes > 0 ? feed / (rpm * tool.flutes) : 0,
+      recommendedChipLoad:
+        recommended > 0 && tool.flutes > 0 ? rec.feed / (recommended * tool.flutes) : 0,
+      feedHigh: feed > FEED_HIGH_FACTOR * rec.feed + 1e-9,
+      plungeHigh: (ownFeed.plungeFeed ?? rec.plungeFeed) > FEED_HIGH_FACTOR * rec.plungeFeed + 1e-9,
+      chipLoadHigh: false,
       band,
       deviation,
       outOfRange: own !== undefined && !rpmInRange(machine, own),
     };
+    row.chipLoadHigh =
+      row.recommendedChipLoad > 0 &&
+      row.chipLoad > CHIP_LOAD_HIGH_FACTOR * row.recommendedChipLoad + 1e-12;
     return [row];
   });
+}
+
+/** T330 (D-121): a job feed or plunge above this multiple of the recommendation warns. */
+export const FEED_HIGH_FACTOR = 1.5;
+/** T330 (D-121): a chip load above this multiple of the set's own chip load warns. */
+export const CHIP_LOAD_HIGH_FACTOR = 2;
+
+/** T330: whether a tool row runs far above its recommendation (any of the three checks). */
+export function feedAboveRecommendation(
+  s: Pick<ToolSpindle, 'feedHigh' | 'plungeHigh' | 'chipLoadHigh'>,
+): boolean {
+  return s.feedHigh || s.plungeHigh || s.chipLoadHigh;
 }
 
 /** Overrides of the job's tools, for the "KESİM" header: `[[2, 20000, 18000]]` (tool, rpm, recommended). */

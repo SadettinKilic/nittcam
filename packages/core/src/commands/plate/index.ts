@@ -391,7 +391,7 @@ export const setToolFeed = defineCommand({
     const machine = env.machine;
     if (!machine) return undefined;
     if (!findTool(machine, p.tool)) return `tool T${p.tool} is not in the machine profile`;
-    const limits = machineFeedLimits();
+    const limits = machineFeedLimits(machine);
     if (typeof p.feed === 'number' && !feedInRange(limits.feed, p.feed)) {
       return `feed ${p.feed} mm/min is outside the machine's range ${limits.feed.min}–${limits.feed.max}`;
     }

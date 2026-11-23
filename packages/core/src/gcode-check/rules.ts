@@ -151,6 +151,40 @@ interface MotionState {
 }
 
 /**
+ * B62 fix round 1 (blocker 1, fail closed): the tool in the spindle at every read move, from the
+ * expected job, never from a default. `auto`: the T word read (the post writes it at each change).
+ * `manual`: the post writes no T word; the job's tool runs advance at each tool-change pause (the
+ * same pause-to-run mapping as `toolRules`; a first-tool pause confirms the first run). `none`:
+ * one tool per file. null = not known (a pause count that does not fit the job, a cut before the
+ * first-tool pause, no T word on an auto post): the caller reports `TOOL_UNKNOWN`.
+ */
+export function activeTools(
+  read: GcodeReadResult,
+  sm: readonly SheetMove[],
+  d: Derived,
+  fileOps: readonly Operation[] = d.ops,
+): (number | null)[] {
+  const runs = toolRuns(fileOps);
+  if (d.toolMode === 'auto') return sm.map((m) => m.raw.tool);
+  if (d.toolMode === 'none') return sm.map(() => (runs.length === 1 ? (runs[0] ?? null) : null));
+  const pauses = read.events.filter((e) => e.kind === 'pause');
+  // The same expected counts as `toolRules`: the post's first-tool pause decides which applies.
+  const first = d.ctx.post?.toolChange?.pauseForFirstTool;
+  const fits = (o: 0 | 1) =>
+    pauses.length === runs.length - o && (first === undefined || first === (o === 0));
+  const offset = fits(0) ? 0 : fits(1) ? 1 : null;
+  let p = 0;
+  let tool: number | null = offset === 1 ? (runs[0] ?? null) : null;
+  return sm.map((_, i) => {
+    while (p < pauses.length && (pauses[p] as GcodeEvent).moveIndex <= i) {
+      tool = offset === null ? null : (runs[p + offset] ?? null);
+      p += 1;
+    }
+    return tool;
+  });
+}
+
+/**
  * R2–R7 in one walk over moves and events (events with `moveIndex = i` happen before move i).
  * Each code is reported once per program (the first occurrence).
  */
@@ -159,6 +193,7 @@ export function motionRules(
   sm: readonly SheetMove[],
   d: Derived,
   push: Push,
+  fileOps: readonly Operation[] = d.ops,
 ): void {
   const { profile, stock } = d.ctx;
   const tol = d.posTol;
@@ -167,6 +202,12 @@ export function motionRules(
   const zLim = Z_FLOAT_NOISE;
   const warmup = profile.spindle.warmupSeconds;
   const toolRadius = Math.max(...d.ops.map((o) => o.toolDiameter / 2));
+  const active = activeTools(read, sm, d, fileOps);
+  // The active tool's own diameter and plunge feed (null = the tool is not known, fail closed).
+  const opOf = (i: number): Operation | null => {
+    const t = active[i];
+    return t === null || t === undefined ? null : (d.ops.find((o) => o.tool === t) ?? null);
+  };
   const st: MotionState = { spindle: 'off', dwell: 0, vacuumOn: false, vacuumEverOn: false };
   const events = read.events;
   let ei = 0;
@@ -347,11 +388,19 @@ export function motionRules(
     }
   };
 
-  // T323: the machine's feed limits, taken here from the profile bounds (not from the generator).
-  const feedCap = { feed: PROFILE_BOUNDS.feed.max, plunge: PROFILE_BOUNDS.plungeFeed.max };
-  const plungeLimit = (tool: number | null): number => {
-    const ops = d.ops.filter((o) => tool === null || o.tool === tool);
-    return Math.max(...(ops.length > 0 ? ops : d.ops).map((o) => o.plungeFeed));
+  // T323, T330 (D-121): the machine's feed ceiling, derived here from the profile on its own (not
+  // from the generator): the own maximum when set, otherwise the rapid rate (half of it for the
+  // plunge), strictly (B62 fix r1: no floor at the profile's material sets).
+  const rapid = profile.rapidFeed ?? 10_000;
+  const feedCap = {
+    feed: Math.min(profile.maxFeed ?? rapid, PROFILE_BOUNDS.feed.max),
+    plunge: Math.min(profile.maxPlungeFeed ?? rapid / 2, PROFILE_BOUNDS.plungeFeed.max),
+  };
+  // Fail closed: an unknown tool gets the lowest plunge feed of the job, never the highest.
+  const plungeLimit = (i: number): number => {
+    const own = opOf(i);
+    if (own) return Math.max(...d.ops.filter((o) => o.tool === own.tool).map((o) => o.plungeFeed));
+    return Math.min(...d.ops.map((o) => o.plungeFeed));
   };
 
   sm.forEach((m, i) => {
@@ -433,7 +482,7 @@ export function motionRules(
       }
       // --- R3: descending into the material at the plunge feed ---
       if (m.to.z < m.from.z - tol && m.to.z < -tol && raw.feed !== null) {
-        const limit = plungeLimit(raw.tool);
+        const limit = plungeLimit(i);
         if (raw.feed > limit + d.feedTol) {
           push(
             'R3',
@@ -516,6 +565,34 @@ export function motionRules(
           m.line,
           `Cutting move to ${fmt(m.to)} leaves the sheet (plus the tool radius).`,
         );
+      } else {
+        // T331 (field rehearsal B2): the whole cutter stays on the sheet below the material top:
+        // the centre keeps the active tool's radius from every sheet edge (a stop, fence or clamp
+        // at the edge is hit otherwise). The radius is the active tool's (`activeTools`); when it
+        // is not known that is an error itself and the largest tool of the job is assumed.
+        const known = opOf(i)?.toolDiameter;
+        if (known === undefined) {
+          push(
+            'TOOLS',
+            'TOOL_UNKNOWN',
+            m.line,
+            'Cutting move whose tool cannot be determined from the program and the job.',
+          );
+        }
+        const own = known ?? toolRadius * 2;
+        const rr = own / 2 - tol;
+        const off = pts.find(
+          (p) =>
+            p.x < rr || p.y < rr || p.x > stock.sheetWidth - rr || p.y > stock.sheetHeight - rr,
+        );
+        if (off) {
+          push(
+            'R6',
+            'CUTTER_OFF_SHEET',
+            m.line,
+            `Cutting move to ${fmt(m.to)}: the Ø${own} cutter reaches past the sheet edge at X${off.x.toFixed(4)} Y${off.y.toFixed(4)}.`,
+          );
+        }
       }
     }
   });

@@ -8,6 +8,7 @@ import { pageContainer, sectionLink } from '../../../../components/page/page-hea
 import { fill } from '../../../../lib/fill';
 import type { Messages } from '../../../../lib/messages';
 import type { VerificationOverview } from '../../../../lib/verification-api';
+import { Mach3PreCheck } from './mach3-precheck';
 import { ProgramFiles } from '../dogrulama/verification-view';
 
 type Text = Messages['fieldKit'];
@@ -213,6 +214,7 @@ function Kit({
       <Section title={t.bring.title} testId="field-kit-bring">
         <Checklist items={f(t.bring.items)} />
       </Section>
+      <Mach3PreCheck t={t.mach3} postId={data.post?.id} />
       <Section title={t.air.title} testId="field-kit-air">
         <Checklist items={f(t.air.steps)} ordered />
       </Section>
