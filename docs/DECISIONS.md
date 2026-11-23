@@ -866,3 +866,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Null brand = the company's own name and logo, so single-brand workshops see no change and existing projects need no backfill. The brand is not part of the project JSON or the G-code; it only changes the header of PDFs, labels and reports and filters the project list.
 - D-113 (one person in several companies) stays, for workshops that really are separate (other machines, other stock, own subscription) and for dealers or freelancers. Open for the owner: can brands be separate legal entities with their own invoice (model question S14)?
 - Nothing is implemented now; additive, planned with M10 (BACKLOG outline).
+
+## D-115 One subscription and one invoice per workshop (2026-11-23, owner decision, backoffice model question S14)
+- Owner: brands are a convenience for the workshop, not a billing dimension. No invoice per brand, no split invoices, no tax number per brand ("atölye kimi söylerse ona keseriz").
+- Model: `billing.billing_profiles` stays 1:1 with the company. The workshop admin may change the invoice identity; the change applies from the next invoice, issued invoices keep their snapshot, the change is audited.
