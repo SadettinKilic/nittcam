@@ -220,10 +220,10 @@ describe('seeded example "Örnek router (Mach3)" (T020, D-028)', () => {
     expect(p.tools).toEqual(defaultMachineProfile().tools);
     // D-046 (T257): MDF 18 as in the generic profile, plus Melamin 18 and Kontrplak 18.
     // T329 (D-120): those two take the starting-value table for the Ø8 two-flute tool (research
-    // §d: melamine without compression 5000 / 1300, plywood 5000 / 1300), not an MDF copy.
+    // §d: melamine without compression 5000, plywood 5000; plunge down to the 100: 1200), not an MDF copy.
     const [mdf] = defaultMachineProfile().materials;
     expect(mdf).toMatchObject({ feed: 6000, plungeFeed: 1500, rpm: 18000, stepDown: 6, tool: 2 });
-    const start = { feed: 5000, plungeFeed: 1300, rpm: 18000, stepDown: 6 };
+    const start = { feed: 5000, plungeFeed: 1200, rpm: 18000, stepDown: 6 };
     expect(p.materials).toEqual([
       mdf,
       { ...mdf, material: 'melamine', ...start },

@@ -86,8 +86,27 @@ function startingFields(s: CuttingSuggestion | undefined): StartingFields {
 }
 
 /**
+ * The tool a new set starts with (PO B61): the first tool of the profile that suits the material
+ * per the table (a row exists and no fit hint, e.g. the single-flute for acrylic and PVC, the
+ * compression for melamine); when none suits, the first tool (the form then shows the hint).
+ */
+export function suitingTool(
+  profile: Pick<MachineProfile, 'spindle' | 'tools'>,
+  material: MaterialKind,
+  thickness: number,
+): number {
+  const fit = profile.tools.find(
+    (t) =>
+      toolFitHint(material, t) === null &&
+      suggestCuttingSet(material, thickness, t, profile.spindle) !== undefined,
+  );
+  return (fit ?? profile.tools[0])?.number ?? 1;
+}
+
+/**
  * A new parameter set as the form's "Ekle" and the "Kesim ayarı ekle" flow add it (T107, T258):
- * the given kind and thickness, the profile's first tool, and the built-in starting values for
+ * the given kind and thickness, the first tool of the profile that suits the material (PO B61;
+ * `suitingTool`), and the built-in starting values for
  * them (T328, D-120): always marked unverified until the user confirms or edits the row. No table
  * row → the value fields start empty (the form asks for them), never fixed numbers.
  */
@@ -96,7 +115,7 @@ export function newParamSet(
   material: MaterialKind = 'mdf',
   thickness = 18,
 ): MaterialParams {
-  const tool = profile.tools[0]?.number ?? 1;
+  const tool = suitingTool(profile, material, thickness);
   return {
     material,
     thickness,

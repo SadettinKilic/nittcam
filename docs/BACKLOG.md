@@ -1558,6 +1558,7 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 - ★ Projeler row 205 px on a 3-sheet project: one line + "3 dosya" / zip button, no mid-word breaks; search / filter / sort in the URL [#11, #12]
 - Ana sayfa: "Bu hafta dışa aktarma" counts NC only (or relabel), deleted projects not counted; "Makine yok" when no active machine [#12]
 - Dışa aktar: the footer hint jumps to the checklist (or the list sits above Dosyalar); file names break at _ / - or are middle-truncated; report card time rounds like Simülasyon [#12]
+- Projeler: hide the "kaydedilmeden kapandı" draft banner when the server already has that save (the keepalive create landed): needs `lastSaveId` in the project list API; match it against the stored unit [tester B60, PO 2026-11-23]
 - Small server fixes: maintenance day in local time; client-log limit in bytes [T B38, T B43] (done in B46 #150, D-086)
 
 ### P5 Output (golden impact: tester gcode-safety review, D-051)   [status: done, B51 #155; float residue → T306]

@@ -265,15 +265,19 @@ export function depthChipLoadFactor(depthOverD: number): number {
   return 1 - 0.25 * (depthOverD - 1);
 }
 
-const round100 = (v: number) => Math.round(v / 100) * 100;
+/** Nearest 100; exactly between goes down (the safe side, PO B61). */
+const round100 = (v: number) => Math.ceil(Math.round(v * 1e6) / 1e6 / 100 - 0.5) * 100;
+/** Down to the 100 (plunge feed, the safe side, PO B61). */
+const floor100 = (v: number) => Math.floor(Math.round(v * 1e6) / 1e6 / 100) * 100;
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
 /**
  * Starting cutting values for `kind` at `thickness` mm with `tool` on a spindle of
  * `spindle.minRpm`–`spindle.maxRpm`, or undefined when the table has no row (never a guess).
  * - rpm: the row's typical speed clamped to the spindle range;
- * - feed: chip load × flutes × rpm, rounded to 100 mm/min (recomputed after the rpm clamp);
- * - plunge feed: the row's plunge share of the feed, rounded to 100 mm/min;
+ * - feed: chip load × flutes × rpm, nearest 100 mm/min, exactly between goes down (recomputed
+ *   after the rpm clamp);
+ * - plunge feed: the row's plunge share of the feed, down to the 100 mm/min (the safe side);
  * - step-down: the row's share of the tool diameter (rounded to 0,5 mm), never above the tool's
  *   flute length or the sheet thickness.
  */
@@ -294,7 +298,7 @@ export function suggestCuttingSet(
     PROFILE_BOUNDS.feed.max,
   );
   const plungeFeed = clamp(
-    round100(row.plungeShare * feed),
+    floor100(row.plungeShare * feed),
     PROFILE_BOUNDS.feed.min,
     Math.min(feed, PROFILE_BOUNDS.plungeFeed.max),
   );

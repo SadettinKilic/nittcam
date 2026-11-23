@@ -41,7 +41,7 @@ test.describe('T328 starting values for a new cutting set', () => {
     const { row, detail } = await addSet(page);
 
     // MDF 18 with tool 1 (Ø6 two-flute): research §d.
-    expect(await values(row)).toEqual([5400, 1400, 18000, 6]);
+    expect(await values(row)).toEqual([5400, 1300, 18000, 6]);
     await expect(detail.getByTestId('material-starting-source')).toHaveAttribute(
       'data-kind',
       'table',

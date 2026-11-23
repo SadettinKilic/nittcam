@@ -10,6 +10,7 @@ import {
   parseParamFix,
   refreshStartingValues,
   startingNote,
+  suitingTool,
   safeReturnPath,
   withParamSet,
 } from './machine-form';
@@ -138,25 +139,25 @@ describe('T328: new cutting sets start from the built-in table (D-120)', () => {
   it('every kind × Ø6 / Ø8: table values or empty fields, always unverified', () => {
     const expected: Record<string, [number[] | null, number[] | null]> = {
       mdf: [
-        [5400, 1400, 18000, 6],
+        [5400, 1300, 18000, 6],
         [6000, 1500, 18000, 6],
       ],
       plywood: [
-        [4700, 1200, 18000, 6],
-        [5000, 1300, 18000, 6],
+        [4700, 1100, 18000, 6],
+        [5000, 1200, 18000, 6],
       ],
       // no two-flute Ø6 spiral row for melamine in the research; Ø8 = "no compression" row
-      melamine: [null, [5000, 1300, 18000, 6]],
+      melamine: [null, [5000, 1200, 18000, 6]],
       solidWood: [
         [3600, 900, 18000, 3],
-        [4300, 1100, 18000, 4],
+        [4300, 1000, 18000, 4],
       ],
       acrylic: [
-        [4300, 2200, 18000, 3],
+        [4300, 2100, 18000, 3],
         [5000, 2500, 18000, 4],
       ],
       pvc: [
-        [4300, 2200, 18000, 3],
+        [4300, 2100, 18000, 3],
         [5000, 2500, 18000, 4],
       ],
     };
@@ -189,7 +190,7 @@ describe('T328: new cutting sets start from the built-in table (D-120)', () => {
     expect(values(set)).toEqual([3600, 900, 18000, 3]);
     set.tool = 2;
     refreshStartingValues(p, set);
-    expect(values(set)).toEqual([4300, 1100, 18000, 4]);
+    expect(values(set)).toEqual([4300, 1000, 18000, 4]);
     set.thickness = 2;
     refreshStartingValues(p, set);
     expect(set.stepDown).toBe(2);
@@ -239,5 +240,36 @@ describe('T328: new cutting sets start from the built-in table (D-120)', () => {
     }
     expect(tr.machines.form.startingValue).toContain('doğrulanmadı, önce deneme kesimi');
     expect(tr.machines.form.startingNone).toContain('Bu malzeme için hazır değer yok');
+  });
+});
+
+describe('PO B61: a new set takes the first tool that suits the material', () => {
+  const p = defaultMachineProfile();
+  const tools = [
+    { number: 1, type: 'flatEndMill', diameter: 8, fluteLength: 25, flutes: 2 },
+    { number: 2, type: 'flatEndMill', diameter: 6, fluteLength: 22, flutes: 1 },
+    { number: 3, type: 'compression', diameter: 8, fluteLength: 25, flutes: 2 },
+  ] as const;
+  const prof = { ...p, tools: tools.map((t) => ({ ...t })) };
+
+  it('single-flute for plastics, compression for melamine, first tool for wood', () => {
+    expect(suitingTool(prof, 'acrylic', 10)).toBe(2);
+    expect(suitingTool(prof, 'pvc', 10)).toBe(2);
+    expect(suitingTool(prof, 'melamine', 18)).toBe(3);
+    expect(suitingTool(prof, 'mdf', 18)).toBe(1);
+    const acr = newParamSet(prof, 'acrylic', 10);
+    expect(acr.tool).toBe(2);
+    expect(startingNote(prof, acr)).toMatchObject({ kind: 'table', hint: null });
+    expect(
+      withParamSet(prof as never, { material: 'melamine', thickness: 16 }).profile.materials.at(-1)
+        ?.tool,
+    ).toBe(3);
+  });
+
+  it('none suits: the first tool, with the hint', () => {
+    // the default profile has only two-flute spirals
+    const acr = newParamSet(p, 'acrylic', 10);
+    expect(acr.tool).toBe(1);
+    expect(startingNote(p, acr)).toMatchObject({ hint: 'plasticSingleFlute' });
   });
 });

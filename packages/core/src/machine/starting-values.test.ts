@@ -45,33 +45,33 @@ describe('suggestCuttingSet', () => {
 
   // Spot checks against research §d (feed, plunge, step-down for 18 mm / 10 mm stock).
   it.each([
-    ['mdf', 18, tool(6), { feed: 5400, plungeFeed: 1400, rpm: 18000, stepDown: 6 }],
-    ['plywood', 18, tool(6), { feed: 4700, plungeFeed: 1200, rpm: 18000, stepDown: 6 }],
-    ['plywood', 18, tool(8), { feed: 5000, plungeFeed: 1300, rpm: 18000, stepDown: 6 }],
+    ['mdf', 18, tool(6), { feed: 5400, plungeFeed: 1300, rpm: 18000, stepDown: 6 }],
+    ['plywood', 18, tool(6), { feed: 4700, plungeFeed: 1100, rpm: 18000, stepDown: 6 }],
+    ['plywood', 18, tool(8), { feed: 5000, plungeFeed: 1200, rpm: 18000, stepDown: 6 }],
     [
       'melamine',
       18,
       tool(6, 2, 'compression'),
-      { feed: 4700, plungeFeed: 1200, rpm: 18000, stepDown: 9 },
+      { feed: 4700, plungeFeed: 1100, rpm: 18000, stepDown: 9 },
     ],
     [
       'melamine',
       18,
       tool(8, 2, 'compression'),
-      { feed: 5400, plungeFeed: 1400, rpm: 18000, stepDown: 9 },
+      { feed: 5400, plungeFeed: 1300, rpm: 18000, stepDown: 9 },
     ],
-    ['melamine', 18, tool(8), { feed: 5000, plungeFeed: 1300, rpm: 18000, stepDown: 6 }],
+    ['melamine', 18, tool(8), { feed: 5000, plungeFeed: 1200, rpm: 18000, stepDown: 6 }],
     ['solidWood', 18, tool(6), { feed: 3600, plungeFeed: 900, rpm: 18000, stepDown: 3 }],
-    ['solidWood', 18, tool(8), { feed: 4300, plungeFeed: 1100, rpm: 18000, stepDown: 4 }],
+    ['solidWood', 18, tool(8), { feed: 4300, plungeFeed: 1000, rpm: 18000, stepDown: 4 }],
     ['acrylic', 10, tool(6, 1), { feed: 3000, plungeFeed: 1500, rpm: 18000, stepDown: 3 }],
     ['acrylic', 10, tool(8, 1), { feed: 3600, plungeFeed: 1800, rpm: 18000, stepDown: 4 }],
     ['acrylic', 10, tool(8, 2), { feed: 5000, plungeFeed: 2500, rpm: 18000, stepDown: 4 }],
     ['pvc', 10, tool(8, 1), { feed: 3200, plungeFeed: 1600, rpm: 18000, stepDown: 4 }],
     ['pvc', 10, tool(8, 2), { feed: 5000, plungeFeed: 2500, rpm: 18000, stepDown: 4 }],
-    // §d rounds these plunge feeds (x50) down; one rule here: share × feed, nearest 100, half up.
-    ['acrylic', 10, tool(6, 2), { feed: 4300, plungeFeed: 2200, rpm: 18000, stepDown: 3 }],
-    ['pvc', 10, tool(6, 1), { feed: 2700, plungeFeed: 1400, rpm: 18000, stepDown: 3 }],
-    ['pvc', 10, tool(6, 2), { feed: 4300, plungeFeed: 2200, rpm: 18000, stepDown: 3 }],
+    // PO B61: plunge = share × feed, down to the 100 (safe side); these three equal §d.
+    ['acrylic', 10, tool(6, 2), { feed: 4300, plungeFeed: 2100, rpm: 18000, stepDown: 3 }],
+    ['pvc', 10, tool(6, 1), { feed: 2700, plungeFeed: 1300, rpm: 18000, stepDown: 3 }],
+    ['pvc', 10, tool(6, 2), { feed: 4300, plungeFeed: 2100, rpm: 18000, stepDown: 3 }],
   ] as const)('%s %d mm with %o', (kind, thickness, t, expected) => {
     expect(pick(suggestCuttingSet(kind, thickness, t, SPINDLE))).toEqual(expected);
   });
