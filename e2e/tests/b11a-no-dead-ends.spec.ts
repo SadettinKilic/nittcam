@@ -76,7 +76,9 @@ test.describe('B11a no dead ends', () => {
     await expect(page.locator('#sec-materials')).toBeInViewport();
     await expect(page.getByTestId('machine-dirty')).toBeVisible();
     // T265: starting values are marked, the pass never exceeds the sheet, Paso / Takım no visible.
-    await expect(last.getByTestId('material-unverified-note')).toContainText(
+    // B53: the notes sit in the row's detail line under the fields.
+    const lastDetail = page.getByTestId('materials-table').locator('tbody tr[data-detail]').last();
+    await expect(lastDetail.getByTestId('material-unverified-note')).toContainText(
       tr.machines.form.unverified,
     );
     const num = async (sel: string) =>
@@ -110,8 +112,9 @@ test.describe('B11a no dead ends', () => {
     await expect(page.getByTestId('machine-form')).toBeVisible({ timeout: 30_000 });
     const row = page.getByTestId('materials-table').locator('tbody tr:not([data-detail])').last();
     await expect(row.locator('[id$="-feed"]')).toBeFocused();
-    await row.getByTestId('material-unverified-confirm').click();
-    await expect(row.getByTestId('material-unverified-note')).toHaveCount(0);
+    const detail = page.getByTestId('materials-table').locator('tbody tr[data-detail]').last();
+    await detail.getByTestId('material-unverified-confirm').click();
+    await expect(detail.getByTestId('material-unverified-note')).toHaveCount(0);
     await save.click();
     await expect(saved).toBeVisible({ timeout: 30_000 });
     await saved.getByTestId('param-fix-return').click();

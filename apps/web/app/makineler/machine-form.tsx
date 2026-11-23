@@ -993,7 +993,28 @@ export function MachineForm({
                       error={e(path('material'))}
                       onChange={(v) => set((x) => void (x.material = v))}
                     />
-                    {m.copiedFrom ? (
+                  </div>,
+                  cell('thickness', f.thickness),
+                  cell('feed', f.feed),
+                  cell('plungeFeed', f.plungeFeed),
+                  cell('rpm', f.rpm),
+                  cell('stepDown', f.stepDown),
+                  cell('tool', f.materialTool),
+                ];
+              }}
+              renderDetail={(i) => {
+                const set = profile.materials[i] as MaterialParams;
+                // B53 (CTO #5 / #7): the copied-set and starting-values notes span the row, under
+                // the fields, instead of stretching the material cell.
+                const clearMarks = () =>
+                  update((p) => {
+                    const x = p.materials[i] as MaterialParams;
+                    delete x.copiedFrom;
+                    delete x.unverified;
+                  });
+                return (
+                  <div className="flex flex-col gap-2">
+                    {set.copiedFrom ? (
                       <p
                         className="flex items-start gap-1 text-xs text-warning-text"
                         data-testid="material-copied-note"
@@ -1002,12 +1023,13 @@ export function MachineForm({
                         {t.form.copiedFrom
                           .replace(
                             '{from}',
-                            (o.material as Record<string, string>)[m.copiedFrom] ?? m.copiedFrom,
+                            (o.material as Record<string, string>)[set.copiedFrom] ??
+                              set.copiedFrom,
                           )
-                          .replace('{thickness}', String(m.thickness).replace('.', ','))}
+                          .replace('{thickness}', String(set.thickness).replace('.', ','))}
                       </p>
                     ) : null}
-                    {m.unverified ? (
+                    {set.unverified ? (
                       <div
                         className="flex flex-col items-start gap-1 text-xs text-warning-text"
                         data-testid="material-unverified-note"
@@ -1021,38 +1043,30 @@ export function MachineForm({
                           variant="outline"
                           size="sm"
                           data-testid="material-unverified-confirm"
-                          onClick={() => set(() => undefined)}
+                          onClick={clearMarks}
                         >
                           {t.form.unverifiedConfirm}
                         </Button>
                       </div>
                     ) : null}
-                  </div>,
-                  cell('thickness', f.thickness),
-                  cell('feed', f.feed),
-                  cell('plungeFeed', f.plungeFeed),
-                  cell('rpm', f.rpm),
-                  cell('stepDown', f.stepDown),
-                  cell('tool', f.materialTool),
-                ];
+                    <MaterialTabsDetail
+                      t={t.form.tabs}
+                      index={i}
+                      set={set}
+                      error={e}
+                      onParseError={onParseError}
+                      onChange={(fn) =>
+                        update((p) => {
+                          const x = p.materials[i] as MaterialParams;
+                          fn(x);
+                          delete x.copiedFrom;
+                          delete x.unverified;
+                        })
+                      }
+                    />
+                  </div>
+                );
               }}
-              renderDetail={(i) => (
-                <MaterialTabsDetail
-                  t={t.form.tabs}
-                  index={i}
-                  set={profile.materials[i] as MaterialParams}
-                  error={e}
-                  onParseError={onParseError}
-                  onChange={(fn) =>
-                    update((p) => {
-                      const x = p.materials[i] as MaterialParams;
-                      fn(x);
-                      delete x.copiedFrom;
-                      delete x.unverified;
-                    })
-                  }
-                />
-              )}
             />
           </Section>
         </div>
@@ -1138,15 +1152,18 @@ function RowTable(props: {
 }) {
   const { headers, addLabel, removeLabel, error, keys, testId, onAdd, onRemove, renderRow } = props;
   const pad = props.dense ? 'px-2' : 'px-3';
-  // Mobile UI pass (CTO #5, D-043): below 640 px the dense table (materials, 7 columns) turns
-  // into one card per row with the column name above each field, instead of a sideways scroll.
+  // Mobile UI pass (CTO #5, D-043) and B53 (CTO #5 / #6 / #7): where the dense table (materials,
+  // 7 columns) does not fit its container (below 52 rem: the 1024 px desktop with the side index,
+  // and phones) it turns into one card per row with the column name above each field, instead of
+  // a sideways scroll. Container query, so the sidebar and the side index count. Cards are two
+  // columns on phones and four from 32 rem.
   const cards = props.dense === true;
   const m = (cls: string) => (cards ? cls : '');
   return (
-    <div className="flex flex-col gap-3">
+    <div className={`flex flex-col gap-3 ${m('@container')}`}>
       <div className="relative max-w-full overflow-x-auto rounded-lg border border-border">
-        <table className={`w-full text-sm ${m('max-sm:block')}`} data-testid={testId}>
-          <thead className={`bg-surface-subtle ${m('max-sm:sr-only')}`}>
+        <table className={`w-full text-sm ${m('@max-[52rem]:block')}`} data-testid={testId}>
+          <thead className={`bg-surface-subtle ${m('@max-[52rem]:sr-only')}`}>
             <tr>
               {headers.map((h) => (
                 <th
@@ -1163,28 +1180,30 @@ function RowTable(props: {
             </tr>
           </thead>
           <tbody
-            className={`divide-y divide-border-subtle ${m('max-sm:flex max-sm:flex-col max-sm:gap-2 max-sm:divide-y-0 max-sm:p-2')}`}
+            className={`divide-y divide-border-subtle ${m('@max-[52rem]:flex @max-[52rem]:flex-col @max-[52rem]:gap-2 @max-[52rem]:divide-y-0 @max-[52rem]:p-2')}`}
           >
             {keys.map((key, i) => (
               <Fragment key={key}>
                 <tr
-                  className={`${props.renderDetail ? 'border-b-0! ' : ''}align-top ${m('max-sm:grid max-sm:grid-cols-2 max-sm:gap-x-3 max-sm:gap-y-2 max-sm:rounded-lg max-sm:border max-sm:border-border-subtle max-sm:p-2')}`}
+                  className={`${props.renderDetail ? 'border-b-0! ' : ''}align-top ${m('@max-[52rem]:grid @max-[52rem]:grid-cols-2 @min-[32rem]:@max-[52rem]:grid-cols-4 @max-[52rem]:gap-x-3 @max-[52rem]:gap-y-2 @max-[52rem]:rounded-lg @max-[52rem]:border @max-[52rem]:border-border-subtle @max-[52rem]:p-2')}`}
                   data-testid={cards ? `${testId}-row` : undefined}
                 >
                   {renderRow(i).map((cell, c) => (
                     <td
                       key={c}
-                      className={`${pad} py-2 ${m('max-sm:flex max-sm:min-w-0 max-sm:flex-col max-sm:gap-1 max-sm:p-0')}`}
+                      className={`${pad} py-2 ${m('@max-[52rem]:flex @max-[52rem]:min-w-0 @max-[52rem]:flex-col @max-[52rem]:gap-1 @max-[52rem]:p-0')} ${c === 0 ? m('@max-[52rem]:col-span-2') : ''}`}
                     >
                       {cards ? (
-                        <span aria-hidden className="text-2xs text-fg-subtle sm:hidden">
+                        <span aria-hidden className="text-2xs text-fg-subtle @min-[52rem]:hidden">
                           {headers[c]}
                         </span>
                       ) : null}
                       {cell}
                     </td>
                   ))}
-                  <td className={`px-2 py-2 text-right ${m('max-sm:col-span-2 max-sm:p-0')}`}>
+                  <td
+                    className={`px-2 py-2 text-right ${m('@max-[52rem]:col-span-full @max-[52rem]:p-0')}`}
+                  >
                     <IconButton
                       type="button"
                       size="sm"
@@ -1197,10 +1216,10 @@ function RowTable(props: {
                   </td>
                 </tr>
                 {props.renderDetail ? (
-                  <tr data-detail="" className={m('max-sm:block')}>
+                  <tr data-detail="" className={m('@max-[52rem]:block')}>
                     <td
                       colSpan={headers.length + 1}
-                      className={`${pad} pt-0 pb-3 ${m('max-sm:block max-sm:p-0')}`}
+                      className={`${pad} pt-0 pb-3 ${m('@max-[52rem]:block @max-[52rem]:p-0')}`}
                     >
                       {props.renderDetail(i)}
                     </td>
