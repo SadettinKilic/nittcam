@@ -19,7 +19,7 @@ import {
 } from './exports';
 import { currentCompanyMark } from './company-mark';
 import { documentKind, exportFileName } from '../file-names';
-import { estimateCutSeconds, pdfMachine, pdfOffcuts } from './pdf/cut-time';
+import { estimateCutSeconds, pdfMachine, pdfNc, pdfOffcuts } from './pdf/cut-time';
 import { renderLabelsPdf } from './pdf/labels-pdf';
 import { renderProjectPdf } from './pdf/project-pdf';
 
@@ -36,9 +36,9 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 export const DOCUMENT_GENERATORS: Readonly<Record<DocumentType, string>> = {
   'dxf-dizilim': 'dxf-r12-1',
   'dxf-parcalar': 'dxf-r12-1',
-  // T301: company name and logo in the header / label foot.
-  'pdf-a4': 'pdf-2',
-  'pdf-a3': 'pdf-2',
+  // T301: company name and logo in the header / label foot. T333: NC file and tool order.
+  'pdf-a4': 'pdf-3',
+  'pdf-a3': 'pdf-3',
   etiket: 'labels-2',
 };
 
@@ -95,6 +95,7 @@ export async function buildDocument(
       company: await currentCompanyMark(scope),
       machine: await pdfMachine(scope, project.data),
       offcuts: await pdfOffcuts(scope, project.data),
+      nc: await pdfNc(scope, project),
     }),
   };
 }

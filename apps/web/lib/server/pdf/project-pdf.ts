@@ -28,6 +28,7 @@ import {
   mm,
   type PageHeader,
   type PdfMachine,
+  type PdfNc,
   type PdfOffcut,
 } from './layout-pages';
 
@@ -47,6 +48,8 @@ export interface ProjectPdfInput {
   machine?: PdfMachine | undefined;
   /** B51: the stock offcuts the layout cuts from, by id. */
   offcuts?: Readonly<Record<string, PdfOffcut>> | undefined;
+  /** T333: the NC export of this revision the sheet pages name; null/absent = none yet. */
+  nc?: PdfNc | null | undefined;
 }
 
 /** Turkish material label and thickness for the page header. */
@@ -93,6 +96,7 @@ export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Arr
       pageCount,
       input.machine ?? null,
       input.offcuts ?? {},
+      input.nc ?? null,
     );
   }
   addReportPages(doc, fonts, head, report, paper, layoutPages, pageCount);

@@ -1784,6 +1784,28 @@ Spec: §6.6, §7.3, §12.3 · Depends: – · From: field rehearsal S1–S3 · D
 - [x] (S3) the air-cut Z-zero step of the field kit is unambiguous (zero on the spoilboard / table plus the stated safe offset); the other kit steps checked for the same ambiguity
 - [x] (rider, PO) "Mach3 ön kontrol" block in the field kit for the `mach3` post: 7 settings from `docs/machines/controllers/mach3-saha-kontrol.md` with their menu paths; every manual change after the first writes `M5` before `M0` (checked over all goldens)
 
+### Batch B63: T333–T335 (field rehearsal 2026-11-23, notes N1–N4; Dev 2)
+
+Source: `docs/reviews/2026-11-23-field-rehearsal.md` section "NOTE" (N1–N4). On top of B62 (#197).
+
+### T333 The sheet PDF names the NC file and the tool order (N3)   [status: done]
+Spec: §6.6 · Depends: T322, T274 · From: field rehearsal N3 · Decision: D-125
+- [x] each sheet page names the NC file(s) of the sheet exactly as exported (stored names of the newest NC export of the revision; split files all, in order)
+- [x] the tool order of the sheet ("1. T1 Ø6 düz freze → 2. T2 Ø8 düz freze"), with "elle değişim" when the changer is manual; labels page unchanged
+- [x] no NC export of the revision → the page says so, never a guessed name; unit test on the page text
+
+### T334 The NC header tells the real tab count (N1)   [status: todo]
+Spec: §7.2 · Depends: T324, T288 · From: field rehearsal N1 · Decision: D-126
+- [ ] when ramp entry leaves a part fewer tabs than the setting, a second ASCII header line names how many parts and the minimum; otherwise no new line (goldens identical)
+- [ ] Simülasyon / Uyarılar shows the same warning naming the parts
+- [ ] new fixture + golden for ramp + small part (`needs-human`); the independent checker still accepts the file
+
+### T335 End at the park point; time estimate at machine speed (N2, N4; rider)   [status: todo]
+Spec: §7.2, §6.6 · Depends: T309, T330 · From: field rehearsal N2, N4 · Decision: D-127
+- [ ] park on: program end = safe Z → spindle off → park move → vacuum off → M30; the checker accepts the end G53 only at the profile's point; park off byte-identical
+- [ ] machine form hint and field kit say the program ends at park
+- [ ] the time estimate clamps every move at the machine's feed ceiling and the rapid rate
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine
