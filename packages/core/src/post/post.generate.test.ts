@@ -524,6 +524,9 @@ describe('machine profile rapid feed (deferred from T014)', () => {
     });
     const slow = profileFor();
     slow.rapidFeed = 2000;
+    // B62 fix r1: the ceiling is the rapid rate strictly; this machine declares its own maximum.
+    slow.maxFeed = 10000;
+    slow.maxPlungeFeed = 5000;
     const fast = profileFor();
     fast.rapidFeed = 20000;
     const a = buildToolpath(project, slow).summary;

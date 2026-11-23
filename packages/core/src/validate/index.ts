@@ -54,6 +54,7 @@ export type ValidationCode =
   | 'CUTTING_PARAMS_UNVERIFIED'
   | 'SPINDLE_RPM_OUT_OF_RANGE'
   | 'FEED_OUT_OF_RANGE'
+  | 'MACHINE_FEED_ABOVE_MAX'
   | 'FEED_ABOVE_RECOMMENDED'
   /** T332: raised by the app (validation does not know the newest profile version). */
   | 'PROFILE_VERSION_OUTDATED'
@@ -495,6 +496,35 @@ export const feedOutOfRange: ValidationRule = (project, context) => {
 };
 
 /**
+ * (e2b2) B62 fix r1 (D-121 amended): the feed the job takes from the machine's own material set
+ * (no project override) is above the machine ceiling: a typo in Makineler. An error: the export
+ * is blocked until the machine's set or its maximum feed is corrected.
+ */
+export const machineFeedAboveMax: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine) return [];
+  const limits = machineFeedLimits(machine);
+  const out: ValidationIssue[] = [];
+  for (const s of spindleSettingsOf(project, machine)) {
+    if (!s.feedOverride && s.recommendedFeed > limits.feed.max)
+      out.push({
+        code: 'MACHINE_FEED_ABOVE_MAX',
+        severity: 'error',
+        path: 'machine',
+        message: `the machine's material set feeds T${s.tool} at ${s.recommendedFeed} mm/min, above the machine's maximum ${limits.feed.max} mm/min`,
+      });
+    if (!s.plungeOverride && s.recommendedPlungeFeed > limits.plungeFeed.max)
+      out.push({
+        code: 'MACHINE_FEED_ABOVE_MAX',
+        severity: 'error',
+        path: 'machine',
+        message: `the machine's material set plunges T${s.tool} at ${s.recommendedPlungeFeed} mm/min, above the machine's maximum ${limits.plungeFeed.max} mm/min`,
+      });
+  }
+  return out;
+};
+
+/**
  * (e2c) T330 (D-121, field rehearsal B1): a job feed or plunge feed more than 1,5 × its
  * recommendation, or a chip load more than 2 × the set's, typically one extra zero typed in
  * Kesim ayarları. A warning (counted in Uyarılar, a checklist line to tick), not an error: the
@@ -547,18 +577,22 @@ export function minSheetMargin(toolDiameter: number): number {
 }
 
 /**
- * (e2) T300 (D-045, D-085), T331 (D-123): the sheet margin is below the tool diameter. A warning
- * on the Dizilim step, before the G-code check stops the export with a machine error. Skipped
- * without a tool.
+ * (e2) T300 (D-045, D-085), T331 (D-123): the sheet margin is below the tool diameter. B62 fix r1
+ * (D-123): an **error** for every post (it blocks the export before the G-code check, the same
+ * on generic and Mach3). The tool is the larger of the material set's and the project's own
+ * outer-contour tool (T308). Without a machine and a tool the export has no program anyway.
  */
 export const marginBelowToolRadius: ValidationRule = (project, context) => {
-  const tool = validationToolDiameter(project, context);
+  const outer = operationToolChoice(project, 'outer');
+  const own =
+    outer !== undefined && context?.machine ? (findTool(context.machine, outer)?.diameter ?? 0) : 0;
+  const tool = Math.max(validationToolDiameter(project, context), own);
   const min = minSheetMargin(tool);
   if (min <= 0 || project.nesting.margin >= min - EPS) return [];
   return [
     {
       code: 'MARGIN_BELOW_TOOL_RADIUS',
-      severity: 'warning',
+      severity: 'error',
       path: 'nesting.margin',
       message: `the ${mm(project.nesting.margin)} mm sheet margin is below the ${mm(min)} mm diameter of the Ø${mm(tool)} mm tool; the cutter leaves the sheet`,
     },
@@ -772,6 +806,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   unverifiedCuttingParams,
   spindleRpmOutOfRange,
   feedOutOfRange,
+  machineFeedAboveMax,
   feedAboveRecommended,
   operationToolUnsuitable,
   marginBelowToolRadius,

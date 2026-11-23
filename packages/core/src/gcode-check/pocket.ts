@@ -11,7 +11,6 @@
  * Pure.
  */
 import type { GcodeEvent } from '../gcode-reader';
-import type { MachineProfile } from '../machine';
 import type { Derived } from './derive';
 import { angleTravelled, type SheetMove } from './path';
 import type { Push } from './rules';
@@ -84,25 +83,16 @@ function samples(m: SheetMove): (XY & { z: number })[] {
   return out;
 }
 
-/** Tool radius of each read move: the last tool change before it, else the smallest tool. */
-function radii(
-  sm: readonly SheetMove[],
-  events: readonly GcodeEvent[],
-  profile: Pick<MachineProfile, 'tools'>,
-): number[] {
-  const min = Math.min(...profile.tools.map((t) => t.diameter)) / 2;
-  const changes = new Map<number, number | null>();
-  for (const e of events) {
-    if (e.kind === 'toolChange') changes.set(e.moveIndex, e.tool);
-  }
-  let r = Number.isFinite(min) ? min : 0;
-  return sm.map((m) => {
-    if (changes.has(m.index)) {
-      const n = changes.get(m.index);
-      const t = profile.tools.find((x) => x.number === n);
-      r = t ? t.diameter / 2 : Number.isFinite(min) ? min : 0;
-    }
-    return r;
+/**
+ * Tool radius of each read move: the active tool of the job (`activeTools`, B62 fix r1: Mach3
+ * writes no T word). An unknown tool takes the largest radius of the job, never the smallest
+ * (the strictest for "the cutter stays inside the pocket"); `motionRules` reports TOOL_UNKNOWN.
+ */
+function radii(tools: readonly (number | null)[], d: Derived): number[] {
+  const largest = Math.max(0, ...d.ops.map((o) => o.toolDiameter / 2));
+  return tools.map((t) => {
+    const op = t === null ? undefined : d.ops.find((o) => o.tool === t);
+    return op ? op.toolDiameter / 2 : largest;
   });
 }
 
@@ -122,12 +112,13 @@ export function pocketMoveRule(
   expected: readonly ExpectedPart[],
   d: Derived,
   push: Push,
+  tools: readonly (number | null)[],
 ): Set<string> {
   const pockets = pocketsOf(expected);
   const reachedKeys = new Set<string>();
   if (pockets.length === 0) return reachedKeys;
   const tol = d.posTol + CHORD_SLACK;
-  const r = radii(sm, events, d.ctx.profile);
+  const r = radii(tools, d);
   const reached = new Set<number>();
   const reported = new Set<number>();
   sm.forEach((m, i) => {
