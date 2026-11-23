@@ -859,3 +859,10 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - The auth session belongs to the person and carries the active company; the role is read from the membership on every request. Switching company closes the work session and opens a new one, so usage time and events land on the right company.
 - A seat is counted per company (a person in two workshops takes a seat in each); a dealer exception is a pricing question (S2, human gate).
 - Nothing is implemented now; the migration is part of M10 and is cheap because only the default company and user exist. Spec §9.1 `users` row and the BACKLOG M10 outline carry the note.
+
+## D-114 Brands inside one company (2026-11-23, owner use case behind D-113)
+- Owner's case: a furniture maker with two brands (sofas, chairs) in the same workshop wants to use NittCam for both from one account.
+- A brand is not a tenant. The workshop stays one company; `company_brands` (name, logo, colour, archive) and a nullable `projects.brand_id` carry the brand. Machines, profile versions, validations, tools, materials, sheet stock, offcuts, templates, users and the subscription stay shared, so nothing is verified, stocked or paid twice and an offcut of one brand can be used in the other's job.
+- Null brand = the company's own name and logo, so single-brand workshops see no change and existing projects need no backfill. The brand is not part of the project JSON or the G-code; it only changes the header of PDFs, labels and reports and filters the project list.
+- D-113 (one person in several companies) stays, for workshops that really are separate (other machines, other stock, own subscription) and for dealers or freelancers. Open for the owner: can brands be separate legal entities with their own invoice (model question S14)?
+- Nothing is implemented now; additive, planned with M10 (BACKLOG outline).
