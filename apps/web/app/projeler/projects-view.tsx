@@ -25,7 +25,6 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  CircleAlert,
   Copy,
   FolderPlus,
   Plus,
@@ -39,8 +38,8 @@ import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
 import { fill } from '../../lib/fill';
 import { OffcutStock } from './offcut-stock';
-import { Callout } from '../../components/wizard/panels';
-import { leftDrafts, queueKey, type LeftDraft } from '../../lib/autosave';
+import { discardLeftDraft, leftDrafts, type LeftDraft } from '../../lib/autosave';
+import { LeftDraftNotice } from './left-draft-notice';
 import { DRAFT_PARAM } from '../../lib/project-session';
 import type { Messages } from '../../lib/messages';
 import {
@@ -253,38 +252,22 @@ export function ProjectsView({
           ? `/projeler/${d.draftId}`
           : `/projeler/yeni?${DRAFT_PARAM}=${encodeURIComponent(d.draftId)}`;
         return (
-          <Callout
+          <LeftDraftNotice
             key={d.draftId}
-            tone="warning"
-            role="status"
-            icon={<CircleAlert aria-hidden />}
-            data-testid="left-draft"
-            className="items-center"
-          >
-            <p className="min-w-0 flex-1">
-              {fill(t.leftDraft.text, { name: d.name, count: d.changes })}
-            </p>
-            <Button asChild size="sm" variant="outline">
-              <Link href={href} data-testid="left-draft-open" className={focusRing}>
-                {t.leftDraft.open}
-              </Link>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              data-testid="left-draft-discard"
-              onClick={() => {
-                try {
-                  window.localStorage.removeItem(queueKey(null, d.draftId));
-                } catch {
-                  // Blocked storage: nothing stored either.
-                }
-                setDrafts((all) => all.filter((x) => x.draftId !== d.draftId));
-              }}
-            >
-              {t.leftDraft.discard}
-            </Button>
-          </Callout>
+            draft={d}
+            href={href}
+            t={t.leftDraft}
+            onDiscard={(id) => {
+              let store: Storage | null = null;
+              try {
+                store = window.localStorage;
+              } catch {
+                // Blocked storage: nothing stored either.
+              }
+              discardLeftDraft(store, id);
+              setDrafts((all) => all.filter((x) => x.draftId !== id));
+            }}
+          />
         );
       })}
 

@@ -1537,7 +1537,10 @@
     "leftDraft": {
       "text": "“{name}” kaydedilmeden kapandı ({count} değişiklik bu bilgisayarda duruyor). Açınca kaydedilir.",
       "open": "Taslağı aç",
-      "discard": "Taslağı sil"
+      "discard": "Taslağı sil",
+      "discardTitle": "“{name}” taslağı silinsin mi?",
+      "discardBody": "Bu taslaktaki kaydedilmemiş değişiklikler silinecek. Geri alınamaz.",
+      "discardCancel": "Vazgeç"
     },
     "search": "Projelerde ara",
     "searchPlaceholder": "Ad, makine veya malzeme",

@@ -125,6 +125,51 @@ test.describe('T326 nothing drawn is lost when the tab closes', () => {
     await expect(list.getByTestId('left-draft')).toHaveCount(0);
   });
 
+  test('"Taslağı sil" asks first: Esc and Vazgeç keep the draft, focus goes back', async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(120_000);
+    await page.route('**/api/projects', (route) =>
+      route.request().method() === 'POST' ? route.abort('internetdisconnected') : route.continue(),
+    );
+    await openNewProject(page, 'parcalar');
+    await paste(page, 'Ad\tEn\tBoy\tAdet\nSilinecek\t400\t300\t1', 1);
+    await page.close();
+
+    const list = await context.newPage();
+    await list.goto('/projeler');
+    const banner = list.getByTestId('left-draft');
+    await expect(banner).toBeVisible();
+    const discard = banner.getByTestId('left-draft-discard');
+    const dialog = list.getByRole('alertdialog');
+
+    // Esc keeps it; focus returns to "Taslağı sil".
+    await discard.click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Geri alınamaz');
+    await list.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(discard).toBeFocused();
+    await expect(banner).toBeVisible();
+
+    // Vazgeç keeps it too.
+    await discard.click();
+    await list.getByTestId('left-draft-discard-cancel').click();
+    await expect(dialog).toBeHidden();
+    await expect(discard).toBeFocused();
+    await list.reload();
+    await expect(list.getByTestId('left-draft')).toBeVisible();
+
+    // Confirmed: gone, also after a reload.
+    await list.getByTestId('left-draft-discard').click();
+    await list.getByTestId('left-draft-discard-confirm').click();
+    await expect(list.getByTestId('left-draft')).toHaveCount(0);
+    await list.reload();
+    await expect(list.getByTestId('projects-new')).toBeVisible();
+    await expect(list.getByTestId('left-draft')).toHaveCount(0);
+  });
+
   test('the browser asks before closing while a change is not saved', async ({ page }) => {
     test.setTimeout(120_000);
     const { canvas } = await savedBoard(page);

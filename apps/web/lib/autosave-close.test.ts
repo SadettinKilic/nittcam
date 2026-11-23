@@ -8,6 +8,7 @@ import {
   AutosaveQueue,
   defaultRetryMs,
   queueKey,
+  discardLeftDraft,
   leftDrafts,
   STALE_MS,
   takeUnsentQueue,
@@ -446,5 +447,37 @@ describe('T326: Projeler offers a draft left before the server had it', () => {
       { draftId: A, name: 'Taslak', changes: 1 },
     ]);
     expect(leftDrafts(storage, keys, NOW + STALE_MS).map((d) => d.draftId)).toEqual([A, B]);
+  });
+
+  it('"Taslağı sil" (after the confirm) removes only that draft; blocked storage is ignored', () => {
+    const storage = memoryStorage();
+    const A = '11111111-1111-4111-8111-111111111111';
+    const B = '22222222-2222-4222-8222-222222222222';
+    for (const id of [A, B]) {
+      storage.setItem(
+        queueKey(null, id),
+        JSON.stringify({
+          baseRevision: 0,
+          entries: [e('a')],
+          name: 'Taslak',
+          newId: id,
+          closed: true,
+        }),
+      );
+    }
+    storage.setItem(queueKey('p1'), '{}');
+    discardLeftDraft(storage, A);
+    expect(storage.getItem(queueKey(null, A))).toBeNull();
+    expect(storage.getItem(queueKey(null, B))).not.toBeNull();
+    expect(storage.getItem(queueKey('p1'))).toBe('{}');
+    const blocked: KeyValueStorage = {
+      getItem: () => null,
+      setItem: () => undefined,
+      removeItem: () => {
+        throw new Error('SecurityError');
+      },
+    };
+    expect(() => discardLeftDraft(blocked, A)).not.toThrow();
+    expect(() => discardLeftDraft(null, A)).not.toThrow();
   });
 });

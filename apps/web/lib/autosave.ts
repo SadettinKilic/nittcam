@@ -622,3 +622,18 @@ export function leftDrafts(
   }
   return out.sort((a, b) => a.draftId.localeCompare(b.draftId));
 }
+
+/**
+ * Drops a left draft's stored queue after the user confirmed "Taslağı sil" (T326 rider). Only that
+ * draft's key goes; blocked storage is ignored (nothing is stored there either).
+ */
+export function discardLeftDraft(
+  storage: KeyValueStorage | null | undefined,
+  draftId: string,
+): void {
+  try {
+    storage?.removeItem(queueKey(null, draftId));
+  } catch {
+    // Blocked storage: nothing stored either.
+  }
+}
