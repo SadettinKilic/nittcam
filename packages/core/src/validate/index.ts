@@ -535,7 +535,7 @@ export const feedAboveRecommended: ValidationRule = (project, context) => {
 };
 
 /**
- * T300 (D-085), T331 (D-122, field rehearsal B2): the smallest sheet margin that keeps the whole
+ * T300 (D-085), T331 (D-123, field rehearsal B2): the smallest sheet margin that keeps the whole
  * cutter on the sheet. An outside profile runs the tool centre one radius outside the part, so
  * the cutter's far edge lies one diameter outside the part: a margin below the tool diameter
  * sends the cutter past the sheet edge (into a stop, fence or clamp there). Leads are clipped so
@@ -547,7 +547,7 @@ export function minSheetMargin(toolDiameter: number): number {
 }
 
 /**
- * (e2) T300 (D-045, D-085), T331 (D-122): the sheet margin is below the tool diameter. A warning
+ * (e2) T300 (D-045, D-085), T331 (D-123): the sheet margin is below the tool diameter. A warning
  * on the Dizilim step, before the G-code check stops the export with a machine error. Skipped
  * without a tool.
  */

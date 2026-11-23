@@ -3,7 +3,7 @@ import cabinetDoors from '../schema/__fixtures__/cabinet-doors.json';
 import { parseProject, type Project } from '../schema';
 import { marginBelowToolRadius, minSheetMargin, validateProject } from './index';
 
-// T300 (CTO #12 E1, D-085), T331 (D-122): a sheet margin below the tool diameter is a warning on
+// T300 (CTO #12 E1, D-085), T331 (D-123): a sheet margin below the tool diameter is a warning on
 // Dizilim (the cutter's far edge lies one diameter outside the part).
 
 function withMargin(margin: number): Project {

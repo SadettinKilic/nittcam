@@ -8,6 +8,7 @@ import { EPS, JOIN_TOL } from '../geometry/constants';
 import { reverse } from '../geometry/polyline';
 import { isArc } from '../geometry/segment';
 import type { Point, Polyline, Vertex } from '../geometry/types';
+import { distToSegment } from './curves';
 import type { DxfPath } from './types';
 
 /** A closed contour after joining. */
@@ -108,6 +109,51 @@ function canClose(vs: readonly Vertex[]): boolean {
   return isArc(a, b, a.bulge) || isArc(b, a, b.bulge);
 }
 
+/** True when a single straight piece lies on a straight edge of one of the closed polylines. */
+function onClosedEdge(line: Polyline, closed: readonly Polyline[], tol: number): boolean {
+  const [p, q] = line.vertices;
+  if (line.vertices.length !== 2 || !p || !q || Math.abs(p.bulge) > 1e-12) return false;
+  return closed.some((c) =>
+    c.vertices.some((a, i) => {
+      const b = c.vertices[(i + 1) % c.vertices.length] as Vertex;
+      return (
+        Math.abs(a.bulge) <= 1e-12 && distToSegment(p, a, b) <= tol && distToSegment(q, a, b) <= tol
+      );
+    }),
+  );
+}
+
+/**
+ * B53 (tester B16): a LINE drawn over an edge of a closed polyline on the same layer is a
+ * duplicate too (a dirty file that outlines a part twice), not a flagged open chain. Only when it
+ * stands alone: a piece whose end meets another open piece (not itself such a line) is kept, so a
+ * part drawn from LINEs that shares an edge with a closed neighbour still closes.
+ */
+function dropEdgeLines(
+  pieces: readonly Polyline[],
+  closed: readonly Polyline[],
+  tol: number,
+): { kept: Polyline[]; dropped: number } {
+  if (closed.length === 0) return { kept: [...pieces], dropped: 0 };
+  const onEdge = pieces.map((p) => onClosedEdge(p, closed, tol));
+  const ends: Point[] = [];
+  pieces.forEach((p, i) => {
+    if (onEdge[i] || p.vertices.length === 0) return;
+    ends.push(p.vertices[0] as Point, p.vertices[p.vertices.length - 1] as Point);
+  });
+  const touches = (pt: Point) => ends.some((e) => dist(e, pt) <= tol);
+  const kept: Polyline[] = [];
+  let dropped = 0;
+  pieces.forEach((p, i) => {
+    // onEdge pieces are two-vertex lines; others keep their place whatever they are.
+    const a = p.vertices[0];
+    const b = p.vertices[p.vertices.length - 1];
+    if (onEdge[i] && a && b && !touches(a) && !touches(b)) dropped += 1;
+    else kept.push(p);
+  });
+  return { kept, dropped };
+}
+
 /**
  * Joins open pieces into closed contours. Closed pieces pass through; duplicates are dropped.
  * `tol` is the join tolerance in mm (default JOIN_TOL, spec §4.6).
@@ -134,7 +180,10 @@ export function joinPaths(paths: readonly DxfPath[], tol: number = JOIN_TOL): Dx
     if (list) list.push(p.poly);
     else byLayer.set(p.layer, [p.poly]);
   }
-  for (const [layer, pieces] of byLayer) {
+  for (const [layer, all] of byLayer) {
+    const closed = contours.filter((c) => c.layer === layer).map((c) => c.poly);
+    const { kept: pieces, dropped } = dropEdgeLines(all, closed, tol);
+    duplicates += dropped;
     const result = joinLayer(pieces, tol);
     for (const c of result.closed) {
       const circle = circleOf(c.poly);

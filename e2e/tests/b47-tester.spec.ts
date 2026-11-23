@@ -241,7 +241,7 @@ test.describe('B47 tester: T299 locked Simülasyon scroll', () => {
 });
 
 test.describe('B47 tester: T300 margin rule', () => {
-  // T331 (D-122): the minimum margin is the tool diameter (8), no longer the radius (4).
+  // T331 (D-123): the minimum margin is the tool diameter (8), no longer the radius (4).
   test('margin 0 / 3 / 4 / 8 / 10 and gap 0 / 2 / 8 with Ø8', async ({ page }) => {
     test.setTimeout(240_000);
     await page.setViewportSize({ width: 1440, height: 900 });

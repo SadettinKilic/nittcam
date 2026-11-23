@@ -5,7 +5,7 @@ import { buildToolpath } from './build';
 import { clone, machineOf, projectOf, sampleMove } from './toolpath.testing';
 import type { Project } from '../schema';
 
-// T331 (D-122, field rehearsal B2): below the material top the whole cutter (centre ± radius)
+// T331 (D-123, field rehearsal B2): below the material top the whole cutter (centre ± radius)
 // stays on the sheet, for every tool diameter, lead type, entry and corner of the sheet. A lead
 // that does not fit is shortened or removed with its warning.
 

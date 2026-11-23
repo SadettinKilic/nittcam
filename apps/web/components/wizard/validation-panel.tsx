@@ -2,7 +2,7 @@
 
 import type { Project, ValidationIssue } from '@nittcam/core';
 import { ChevronDown, CircleAlert, CircleCheck, RefreshCw, TriangleAlert } from 'lucide-react';
-import { useContext, useId, useState } from 'react';
+import { createContext, useContext, useId, useState } from 'react';
 import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { summarizeIssues } from '../../lib/check-state';
@@ -12,6 +12,18 @@ type Text = Messages['wizard']['issues'];
 type Group = keyof Text['groups'];
 
 const GROUPS: readonly Group[] = ['stock', 'parts', 'layout', 'other'];
+
+/**
+ * B53 (CTO #5 / #6): where the panel sits next to the cut list, a part issue's place is a button
+ * that scrolls to its row and focuses it. The cut list provides the jump; elsewhere it is plain text.
+ */
+export const IssueJumpContext = createContext<((partIndex: number) => void) | null>(null);
+
+/** Index of the part an issue path points at, or null. */
+export function issuePartIndex(path: string): number | null {
+  const m = /^parts\[(\d+)\]/.exec(path);
+  return m ? Number(m[1]) : null;
+}
 
 function groupOf(path: string): Group {
   if (path.startsWith('stock') || path.startsWith('machine')) return 'stock';
@@ -61,6 +73,7 @@ export function ValidationPanel({
   project: Project;
   issues: readonly ValidationIssue[];
 }) {
+  const jump = useContext(IssueJumpContext);
   const [open, setOpen] = useState(true);
   // T321: the Simülasyon step's toolpath warnings count here too (one source of truth).
   const simWarnings = useContext(SimFindingsContext)?.warnings ?? 0;
@@ -170,6 +183,7 @@ export function ValidationPanel({
                         <ul className="flex flex-col gap-1.5">
                           {inGroup.map((i) => {
                             const place = placeOf(t, project, i.path);
+                            const partIndex = issuePartIndex(i.path);
                             return (
                               <li
                                 key={`${i.code}-${i.path}`}
@@ -178,7 +192,22 @@ export function ValidationPanel({
                               >
                                 {s.icon}
                                 <span className="min-w-0">
-                                  {place ? <span className="font-medium">{place}: </span> : null}
+                                  {place && jump && partIndex !== null ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        data-testid="issue-jump"
+                                        data-part={partIndex}
+                                        onClick={() => jump(partIndex)}
+                                        className="rounded-sm font-medium underline decoration-dotted underline-offset-2 outline-none hover:decoration-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
+                                      >
+                                        {place}
+                                      </button>
+                                      {': '}
+                                    </>
+                                  ) : place ? (
+                                    <span className="font-medium">{place}: </span>
+                                  ) : null}
                                   {issueText(t, i.code)}
                                 </span>
                               </li>
