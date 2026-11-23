@@ -5,6 +5,7 @@ import {
   SPINDLE_RPM_INPUT_STEP,
   SPINDLE_RPM_PAGE_STEP,
   SPINDLE_RPM_STEP,
+  feedAboveRecommendation,
   machineFeedLimits,
   rpmBand,
   spindleSettingsOf,
@@ -53,7 +54,7 @@ export function SpindleSettings({
 }) {
   if (!machine) return null;
   const rows = spindleSettingsOf(project, machine);
-  const limits = machineFeedLimits();
+  const limits = machineFeedLimits(machine);
   return (
     <fieldset className="flex min-w-0 flex-col gap-3" data-testid="sim-cutting-spindle">
       <legend className="mb-1 text-xs font-medium text-fg">{t.title}</legend>
@@ -296,6 +297,12 @@ function FeedFields({
       {row.plungeFeed > row.feed ? (
         <p className="text-xs text-warning-text" data-testid={`${testId}-plunge-warn`}>
           {t.plungeFaster}
+        </p>
+      ) : null}
+      {feedAboveRecommendation(row) ? (
+        // T330 (D-121): far above the recommendation; often one extra zero (field rehearsal B1).
+        <p className="text-xs text-warning-text" data-testid={`${testId}-feed-high`}>
+          {row.chipLoadHigh && !row.feedHigh && !row.plungeHigh ? t.chipLoadHigh : t.feedHigh}
         </p>
       ) : null}
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-muted">

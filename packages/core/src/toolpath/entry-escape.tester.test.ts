@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../commands';
 import { exportNc } from '../export';
 import { checkGcode } from '../gcode-check';
+import { machineFeedLimits } from '../machine';
 import { postConfig } from '../gcode-check/check.testing';
 import { goldenProfile } from '../post/golden.testing';
 import type { Project } from '../schema';
@@ -197,10 +198,17 @@ describe('T323 tester: feed bounds and the ramp feed', () => {
     applyCommand(base, 'setToolFeed', { tool: 1, ...params }, { machine }).ok;
 
   it('setToolFeed accepts exactly the bounds and refuses one step outside', () => {
-    expect([ok({ feed: 100 }), ok({ feed: 60_000 })]).toEqual([true, true]);
-    expect([ok({ feed: 99.9 }), ok({ feed: 60_000.1 })]).toEqual([false, false]);
-    expect([ok({ plungeFeed: 50 }), ok({ plungeFeed: 30_000 })]).toEqual([true, true]);
-    expect([ok({ plungeFeed: 49 }), ok({ plungeFeed: 30_001 })]).toEqual([false, false]);
+    // T330 (D-121): the ceiling is the machine's own (rapid 10 000 → 10 000 / 5 000), not 60 000.
+    const lim = machineFeedLimits(machine);
+    expect(lim.feed.max).toBeLessThan(60_000);
+    expect([ok({ feed: 100 }), ok({ feed: lim.feed.max })]).toEqual([true, true]);
+    expect([ok({ feed: 99.9 }), ok({ feed: lim.feed.max + 0.1 })]).toEqual([false, false]);
+    expect([ok({ plungeFeed: 50 }), ok({ plungeFeed: lim.plungeFeed.max })]).toEqual([true, true]);
+    expect([ok({ plungeFeed: 49 }), ok({ plungeFeed: lim.plungeFeed.max + 1 })]).toEqual([
+      false,
+      false,
+    ]);
+    expect([ok({ feed: 59_000 }), ok({ plungeFeed: 29_000 })]).toEqual([false, false]);
     expect(ok({ feed: Number.NaN })).toBe(false);
     expect(ok({ feed: -3000 })).toBe(false);
   });

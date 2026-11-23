@@ -61,10 +61,13 @@ export { buildOnlineOperation, openSegments, type OnlineInput } from './online';
 export { cuttingSettingsOf, inheritedTabs, tabModeOf } from './cutting-settings';
 export type { CuttingSettings, TabMode, TabSource } from './cutting-settings';
 export {
+  CHIP_LOAD_HIGH_FACTOR,
+  FEED_HIGH_FACTOR,
   SPINDLE_RPM_BAND,
   SPINDLE_RPM_INPUT_STEP,
   SPINDLE_RPM_PAGE_STEP,
   SPINDLE_RPM_STEP,
+  feedAboveRecommendation,
   feedOverride,
   feedOverridesOf,
   jobToolNumbers,

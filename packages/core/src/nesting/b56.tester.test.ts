@@ -166,7 +166,8 @@ describe('B56 G-code safety: tight clearance + lead-room start edges', () => {
           sheet: scenario.sheet,
           thickness: scenario.thickness,
           gap: DEFAULT_PART_CLEARANCE,
-          margin: 10,
+          // T331 (D-123): a margin below the tool Ø now fails the checker (cutter past the edge).
+          margin: Math.max(10, scenario.toolDia),
           leadIn: scenario.lead === 'line' ? 'line' : 'arc',
           direction: scenario.direction,
         });

@@ -198,7 +198,12 @@ describe('T307 + T308 property (tester)', () => {
             own.set(i + 1, v);
           }
         });
-        expect(codes(p).filter((c) => c !== 'CUTTING_PARAMS_UNVERIFIED')).toEqual([]);
+        // T330 (D-121): a low rpm raises the chip load; > 2 × the set's is a warning, not an error.
+        expect(
+          codes(p).filter(
+            (c) => c !== 'CUTTING_PARAMS_UNVERIFIED' && c !== 'FEED_ABOVE_RECOMMENDED',
+          ),
+        ).toEqual([]);
         const r = exportOf(p);
         expect(r.ok, JSON.stringify(r.ok ? [] : r).slice(0, 400)).toBe(true);
         if (!r.ok) return;

@@ -1760,6 +1760,30 @@ Spec: §7.1 · Depends: T327 · From: D-046 (the two sets are copies of MDF 18)
 - [ ] existing companies' machines are not touched (no migration); the frozen `defaultMachineProfile()` and every golden stay byte-identical; e2e that export from the example machine with melamine or plywood are checked for stale expectations
 Tester focus: fresh company gets the three sets; an old company's machine is unchanged; goldens identical.
 
+### Batch B62: T330–T332 (field rehearsal 2026-11-23, blockers before the machine; Dev 2)
+
+Source: `docs/reviews/2026-11-23-field-rehearsal.md` (tester, branch `test/field-rehearsal`), findings B1, B2, S1–S3.
+
+### T330 Feed limits come from the machine (B1, blocker)   [status: done]
+Spec: §7.1, §7.2 rule 5 · Depends: T323 · From: field rehearsal B1 · Decision: D-121
+- [x] profile: optional `maxFeed` / `maxPlungeFeed` (form fields with units); without them the ceiling is the rapid rate (feed) and half of it (plunge), never below the machine's own set feeds; never the old fixed 60 000 / 30 000
+- [x] command, validation, toolpath, post and checker R5 (`FEED_ABOVE_MACHINE`, derived from the profile on its own) use that ceiling as a hard error
+- [x] warning `FEED_ABOVE_RECOMMENDED` when a job feed or plunge is > 1,5 × the recommendation or the chip load > 2 × the set's: Kesim ayarları line, Uyarılar count, export checklist line to tick
+- [x] goldens byte-identical; unit tests with the tester's numbers (59 000 / 29 000) and checker rejection tests
+
+### T331 The cutter never leaves the sheet (B2, blocker)   [status: done]
+Spec: §6.3, §7.2 rule 6 · Depends: – · From: field rehearsal B2 · Decision: D-123
+- [x] every cutting and lead move keeps the whole cutter (centre ± radius) on the sheet, for all tool diameters, leads, ramps and pocket entries; a lead that does not fit is shortened or removed with the existing lead warning
+- [x] validation says so before export; the independent checker judges the cutter edge on the read path with its own geometry (new error code) with rejection tests; the tester's `lead-sheet-edge.field.tester.test.ts` passes
+- [x] changed goldens listed with the reason (label `needs-human`, D-051)
+
+### T332 Field-kit and checklist truth (S1, S2, S3; rider)   [status: done]
+Spec: §6.6, §7.3, §12.3 · Depends: – · From: field rehearsal S1–S3 · Decision: D-124
+- [x] (S1) park on (G53): checklist and field kit say the machine must be homed; a short ASCII note in the pause comment before the park move; goldens with park off identical
+- [x] (S2) a project on an older machine profile version: a warning counted in Uyarılar and a checklist line naming what changed, with "Güncel makine sürümüne geç"; the binding model (§7.3) unchanged
+- [x] (S3) the air-cut Z-zero step of the field kit is unambiguous (zero on the spoilboard / table plus the stated safe offset); the other kit steps checked for the same ambiguity
+- [x] (rider, PO) "Mach3 ön kontrol" block in the field kit for the `mach3` post: 7 settings from `docs/machines/controllers/mach3-saha-kontrol.md` with their menu paths; every manual change after the first writes `M5` before `M0` (checked over all goldens)
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine
