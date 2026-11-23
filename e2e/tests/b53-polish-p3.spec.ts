@@ -212,10 +212,11 @@ test('quantity change after nesting: the Parçalar issue chip and filter stay ne
   );
   await goStep(page, 'parcalar');
   const chip = page.getByTestId('cut-list-issue-chip');
-  await expect(chip).not.toHaveAttribute('data-count', /\d/);
+  // No issue yet: the chip reads "Sorun yok" with count 0.
+  await expect(chip).toHaveAttribute('data-count', '0');
   await cell(page, 2, cl.columns.qty).fill('5');
   await cell(page, 2, cl.columns.qty).press('Tab');
-  await expect(chip).toHaveAttribute('data-count', /\d/);
+  await expect(chip).toHaveAttribute('data-count', /^[1-9]\d*$/);
   await expect(chip).toHaveAttribute('data-neutral', '');
   await expect(chip).toHaveClass(/text-fg-muted/);
   await expect(chip).not.toHaveClass(/warning/);
