@@ -73,6 +73,8 @@ export interface GcodeCheckPostExpectations {
   vacuum?: { enabled: boolean };
   /** Decimals of the written numbers: they set the comparison tolerances. */
   decimals?: { xy: number; z: number; arc: number; feed: number };
+  /** The controller takes G53 (T309, D-097): only then may a park move appear. */
+  motion?: { machineCoordinates?: boolean | undefined };
 }
 
 /** Where one placed part is expected (sheet frame): the centre of its outline's bounding box. */
@@ -96,6 +98,16 @@ export interface ExpectedPart {
    * cleared through pocket (its wall ring). Omitted = none.
    */
   holes?: readonly { cx: number; cy: number }[];
+  /**
+   * Its blind contour pockets (T325): inner contour index, the pocket boundary in the sheet frame
+   * (a closed polygon, arcs sampled) and the declared depth (mm, positive). Every cutting move
+   * inside must keep the tool inside the boundary and stay above the depth. Omitted = none.
+   */
+  pockets?: readonly {
+    inner: number;
+    boundary: readonly { x: number; y: number }[];
+    depth: number;
+  }[];
 }
 
 export interface GcodeCheckTolerance {

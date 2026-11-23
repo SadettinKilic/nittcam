@@ -74,6 +74,13 @@ export const contourSchema = z
 // Holes (spec §4.5)
 // ---------------------------------------------------------------------------
 
+/** T308: a tool number chosen for an operation (1–99, the profile's tool numbers). */
+const operationToolNumber = z
+  .number({ error: 'tool must be a number' })
+  .int({ error: 'tool must be a whole number' })
+  .min(1, { error: 'tool must be 1–99' })
+  .max(99, { error: 'tool must be 1–99' });
+
 const holeBase = {
   /** Unique within the part (commands address holes by id). */
   id: nonEmptyId,
@@ -136,7 +143,8 @@ export const edgeBandSchema = z.strictObject({
 
 /**
  * Operation of a template contour (T147). Same shape as the per-contour operation of T142
- * (`inside` | `online` with depth | `none`); kept separate so templates do not depend on it.
+ * (`inside` | `online` with depth | `pocket` with depth (T325, inner contours) | `none`); kept
+ * separate so templates do not depend on it.
  */
 export const templateContourOpSchema = z.discriminatedUnion(
   'kind',
@@ -144,8 +152,9 @@ export const templateContourOpSchema = z.discriminatedUnion(
     z.strictObject({ kind: z.literal('inside') }),
     z.strictObject({ kind: z.literal('none') }),
     z.strictObject({ kind: z.literal('online'), depth: positiveMm }),
+    z.strictObject({ kind: z.literal('pocket'), depth: positiveMm }),
   ],
-  { error: 'operation must be "inside", "online" (with depth) or "none"' },
+  { error: 'operation must be "inside", "online" (with depth), "pocket" (with depth) or "none"' },
 );
 
 /**
@@ -261,8 +270,10 @@ export const dimensionLineSchema = z.strictObject({
  * line (the default of an outline). `inside`: through cut with the tool inside the line (the
  * default of an inner contour). `online`: the tool centre follows the line at `depth` mm
  * (engraving; open lines allowed; never a through cut: depth < thickness). `none`: not cut.
- * Allowed kinds per contour: outline outside | online | none; inner inside | online | none;
- * open line online | none (`allowedOperations`). DXF layer mapping (T145) writes this same value.
+ * `pocket` (T325): a closed inner contour cleared to `depth` mm (blind pocket, depth < thickness).
+ * Allowed kinds per contour: outline outside | online | none; inner inside | online | pocket |
+ * none; open line online | none (`allowedOperations`). DXF layer mapping (T145) writes this same
+ * value.
  */
 export const contourOperationSchema = z.discriminatedUnion(
   'kind',
@@ -271,8 +282,12 @@ export const contourOperationSchema = z.discriminatedUnion(
     z.strictObject({ kind: z.literal('inside') }),
     z.strictObject({ kind: z.literal('none') }),
     z.strictObject({ kind: z.literal('online'), depth: positiveMm }),
+    z.strictObject({ kind: z.literal('pocket'), depth: positiveMm }),
   ],
-  { error: 'operation must be "outside", "inside", "online" (with depth) or "none"' },
+  {
+    error:
+      'operation must be "outside", "inside", "online" (with depth), "pocket" (with depth) or "none"',
+  },
 );
 
 /** An open polyline in the part frame (T142); `bulge` on the last vertex is ignored. */
@@ -468,6 +483,48 @@ export const layoutSchema = z.strictObject({
   ),
 });
 
+/** Profile-wide spindle bounds (= `PROFILE_BOUNDS.rpm`, kept equal by a test; no machine import here). */
+export const SPINDLE_RPM_BOUNDS = { min: 1_000, max: 60_000 } as const;
+
+/** Profile-wide feed bounds, mm/min (= `PROFILE_BOUNDS.feed` / `.plungeFeed`, kept equal by a test). */
+export const FEED_BOUNDS = { min: 100, max: 60_000 } as const;
+export const PLUNGE_FEED_BOUNDS = { min: 50, max: 30_000 } as const;
+
+/** T324: ramp entry bounds: angle of each zig-zag leg, degrees; minimum leg length, mm. */
+export const RAMP_BOUNDS = {
+  angle: { min: 0.5, max: 45 },
+  length: { min: 1, max: 1_000 },
+} as const;
+
+const toolNumberKey = z.string().regex(/^[1-9]\d?$/, { error: 'tool number key must be 1–99' });
+const feedValue = (b: { min: number; max: number }, what: string) =>
+  z
+    .number({ error: `${what} must be a number` })
+    .min(b.min, { error: `${what} must be at least ${b.min}` })
+    .max(b.max, { error: `${what} must be at most ${b.max}` });
+
+/**
+ * T324: how a contour pass enters the material. `ramp` = zig-zag along the contour down to each
+ * pass depth, each leg at most `angleDeg` steep and at least `length` mm long (absent = the tool
+ * diameter). Absent `cutting.entry` = straight plunge (the default).
+ */
+export const entrySchema = z.strictObject({
+  type: z.literal('ramp', { error: 'entry type must be "ramp"' }),
+  angleDeg: z
+    .number({ error: 'ramp angle must be a number' })
+    .min(RAMP_BOUNDS.angle.min, { error: `ramp angle must be at least ${RAMP_BOUNDS.angle.min}°` })
+    .max(RAMP_BOUNDS.angle.max, { error: `ramp angle must be at most ${RAMP_BOUNDS.angle.max}°` }),
+  length: z
+    .number({ error: 'ramp length must be a number' })
+    .min(RAMP_BOUNDS.length.min, {
+      error: `ramp length must be at least ${RAMP_BOUNDS.length.min} mm`,
+    })
+    .max(RAMP_BOUNDS.length.max, {
+      error: `ramp length must be at most ${RAMP_BOUNDS.length.max} mm`,
+    })
+    .optional(),
+});
+
 export const cuttingSchema = z.strictObject({
   /**
    * Tabs (§6.3, D-022). `auto: true` = tabs on every part, placed automatically; `false` = tabs only
@@ -499,6 +556,56 @@ export const cuttingSchema = z.strictObject({
   direction: z.enum(['climb', 'conventional'], {
     error: 'direction must be "climb" or "conventional"',
   }),
+  /**
+   * T307 (D-098): spindle speed chosen for this project, per tool number ("2" → 20000 rpm).
+   * Absent tool = the recommended value (the material parameter set's rpm). The machine's own
+   * min/max is checked by `setSpindleRpm`, the validation (`SPINDLE_RPM_OUT_OF_RANGE`), the
+   * toolpath and the post; the schema only holds the profile-wide bounds. Optional; older projects
+   * stay valid.
+   */
+  spindleRpm: z
+    .record(
+      z.string().regex(/^[1-9]\d?$/, { error: 'tool number key must be 1–99' }),
+      z
+        .number({ error: 'rpm must be a number' })
+        .int({ error: 'rpm must be a whole number' })
+        .min(SPINDLE_RPM_BOUNDS.min, { error: `rpm must be at least ${SPINDLE_RPM_BOUNDS.min}` })
+        .max(SPINDLE_RPM_BOUNDS.max, { error: `rpm must be at most ${SPINDLE_RPM_BOUNDS.max}` }),
+    )
+    .optional(),
+  /**
+   * T323: cutting feed and plunge feed chosen for this project, per tool number, mm/min ("2" →
+   * `{ feed: 4000 }`). An absent tool or field = the recommended value (the tool's material set,
+   * like the T307 rpm). The machine's limits (`machineFeedLimits`) are checked by `setToolFeed`,
+   * the validation (`FEED_OUT_OF_RANGE`), the toolpath and the post; the schema only holds the
+   * profile-wide bounds. Optional; older projects stay valid.
+   */
+  feeds: z
+    .record(
+      toolNumberKey,
+      z.strictObject({
+        feed: feedValue(FEED_BOUNDS, 'feed').optional(),
+        plungeFeed: feedValue(PLUNGE_FEED_BOUNDS, 'plunge feed').optional(),
+      }),
+    )
+    .optional(),
+  /** T324: contour entry; absent = straight plunge. Optional; older projects stay valid. */
+  entry: entrySchema.optional(),
+  /**
+   * T308 (D-099): cutting tool chosen for this project, per operation (tool number). Absent = the
+   * default: outer and inner contours cut with the material set's tool, pocket and through holes
+   * with each hole's own tool. Suitability (type, diameter, flute length) is checked against the
+   * machine by `setOperationTool`, the validation and the toolpath. Optional; older projects stay
+   * valid.
+   */
+  tools: z
+    .strictObject({
+      outer: operationToolNumber.optional(),
+      inner: operationToolNumber.optional(),
+      pocket: operationToolNumber.optional(),
+      hole: operationToolNumber.optional(),
+    })
+    .optional(),
 });
 
 /**

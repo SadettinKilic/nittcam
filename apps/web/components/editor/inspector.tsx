@@ -2,6 +2,7 @@
 
 import type { BoardPart, Project } from '@nittcam/core';
 import {
+  Button,
   IconButton,
   InspectorRow as Row,
   InspectorRows,
@@ -9,8 +10,11 @@ import {
   Tooltip,
   cn,
   formatMeasure,
+  notify,
 } from '@nittcam/ui';
 import { Copy, FlipHorizontal2, FlipVertical2, RotateCw, Trash2 } from 'lucide-react';
+import { fill } from '../../lib/fill';
+import { newPartId } from '../../lib/part-id';
 import type { BoardSummary } from '../../lib/editor/summary';
 import type { Messages } from '../../lib/messages';
 import { ariaKeyShortcuts, shortcutById, shortcutText, type ShortcutId } from '../../lib/shortcuts';
@@ -106,6 +110,7 @@ export function EditorInspector({
   sub = null,
   onSub,
   toolRadius,
+  pocketToolRadius,
   pendingTemplate = null,
   onPendingTemplate,
 }: {
@@ -120,6 +125,8 @@ export function EditorInspector({
   onSub?: (sub: SubSelection) => void;
   /** Tool radius of the selected machine, mm (T131/T132). */
   toolRadius?: number;
+  /** Radius of the tool that cuts pockets (T308 choice, else the set's tool), mm (T325). */
+  pocketToolRadius?: number;
   /** With nothing selected: counts, total area and extents of the board (T242). */
   summary?: BoardSummary;
   /** The template being placed (T148), with its setter; without the setter no template group. */
@@ -147,6 +154,7 @@ export function EditorInspector({
           run={run}
           thickness={project.stock.thickness}
           toolDiameter={(toolRadius ?? 0) * 2}
+          picked={sub?.kind === 'hole' ? sub.index : null}
         />
         {onPendingTemplate ? (
           <TemplateProperties
@@ -223,6 +231,9 @@ export function EditorInspector({
               <BoardActionBar t={t} label={t.actions} actions={actions} className="-ml-1" />
             </div>
           ) : null}
+          {selected.length === 1 && part && run && part.qty >= 2 ? (
+            <MirrorPair t={t.mirrorPair} part={part} run={run} />
+          ) : null}
           {selected.length === 1 && part && first && run && onSub ? (
             <PartProperties
               t={t}
@@ -232,6 +243,7 @@ export function EditorInspector({
               sub={sub}
               onSub={onSub}
               toolRadius={toolRadius ?? 0}
+              pocketToolRadius={pocketToolRadius ?? toolRadius ?? 0}
               thickness={project.stock.thickness}
               afterPart={partExtras}
             />
@@ -241,5 +253,44 @@ export function EditorInspector({
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * Left / right pair (T317, D-106; spec §4.7 "Aynalama (sol/sağ açılan kapak)"): a part with
+ * quantity ≥ 2 becomes two rows, the second mirrored left ↔ right with its holes and templates
+ * (`splitMirrorPair`, one undo step). Nesting, G-code, labels and the assembly view then show
+ * a left and a right door.
+ */
+function MirrorPair({
+  t,
+  part,
+  run,
+}: {
+  t: Messages['editor']['inspector']['mirrorPair'];
+  part: Project['parts'][number];
+  run: Run;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="editor-mirror-pair">
+      <h3 className="text-xs font-medium text-fg-muted">{t.title}</h3>
+      <p className="text-xs text-fg-subtle">
+        {fill(t.hint, { right: Math.floor(part.qty / 2), left: Math.ceil(part.qty / 2) })}
+      </p>
+      <Button
+        size="sm"
+        variant="outline"
+        className="self-start"
+        data-testid="editor-mirror-pair-make"
+        onClick={() => {
+          if (run('splitMirrorPair', { id: part.id, newId: newPartId(), note: t.note })) {
+            notify.success(t.done, { id: 'editor-mirror-pair' });
+          }
+        }}
+      >
+        <FlipHorizontal2 aria-hidden />
+        {t.action}
+      </Button>
+    </div>
   );
 }

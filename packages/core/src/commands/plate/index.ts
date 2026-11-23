@@ -4,8 +4,16 @@ import {
   dimensionModeSchema,
   machineRefSchema,
   projectSheetSizeSchema,
+  FEED_BOUNDS,
+  PLUNGE_FEED_BOUNDS,
+  SPINDLE_RPM_BOUNDS,
+  entrySchema,
   stockSchema,
 } from '../../schema';
+import { feedInRange, findTool, machineFeedLimits } from '../../machine/profile';
+import { rpmInRange } from '../../toolpath/spindle';
+import { OPERATION_TOOL_KINDS } from '../../toolpath/op-tools';
+import { operationToolProblem } from '../../toolpath/op-tool-choice';
 import { SKIN_BOUNDS, TAB_BOUNDS, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
 
@@ -287,5 +295,200 @@ export const setCutDirection = defineCommand({
   }),
   apply: (draft, p) => {
     draft.cutting.direction = p.direction;
+  },
+});
+
+/**
+ * T307 (D-098): spindle speed (devir) for one tool of this project, rpm; `null` = back to the
+ * recommended value (the material set's). With the selected machine the value must lie inside its
+ * spindle range and the tool must be in its tool table; the validation, the toolpath and the post
+ * check the range again. A machine setting the user chooses: not an AI tool.
+ */
+export const setSpindleRpm = defineCommand({
+  name: 'setSpindleRpm',
+  area: 'plate',
+  description:
+    'Set the spindle speed (rpm) of one tool for this project, inside the machine spindle range; null = the recommended value of the material set.',
+  aiTool: false,
+  params: z.strictObject({
+    tool: z
+      .number({ error: 'tool must be a number' })
+      .int({ error: 'tool must be a whole number' })
+      .min(1, { error: 'tool must be 1–99' })
+      .max(99, { error: 'tool must be 1–99' }),
+    rpm: z
+      .number({ error: 'rpm must be a number' })
+      .int({ error: 'rpm must be a whole number' })
+      .min(SPINDLE_RPM_BOUNDS.min, { error: `rpm must be at least ${SPINDLE_RPM_BOUNDS.min}` })
+      .max(SPINDLE_RPM_BOUNDS.max, { error: `rpm must be at most ${SPINDLE_RPM_BOUNDS.max}` })
+      .nullable(),
+  }),
+  check: (_project, p, env) => {
+    const machine = env.machine;
+    if (!machine) return undefined;
+    if (!findTool(machine, p.tool)) return `tool T${p.tool} is not in the machine profile`;
+    if (p.rpm !== null && !rpmInRange(machine, p.rpm)) {
+      return `spindle speed ${p.rpm} rpm is outside the machine's range ${machine.spindle.minRpm}–${machine.spindle.maxRpm}`;
+    }
+    return undefined;
+  },
+  apply: (draft, p) => {
+    const key = String(p.tool);
+    if (p.rpm === null) {
+      const own = draft.cutting.spindleRpm;
+      if (!own || !(key in own)) return;
+      const rest = Object.fromEntries(Object.entries(own).filter(([k]) => k !== key));
+      if (Object.keys(rest).length === 0) delete draft.cutting.spindleRpm;
+      else draft.cutting.spindleRpm = rest;
+      return;
+    }
+    draft.cutting.spindleRpm ??= {};
+    draft.cutting.spindleRpm[key] = p.rpm;
+  },
+});
+
+/**
+ * T323: cutting feed and/or plunge feed (mm/min) of one tool for this project; a field set to
+ * `null` = back to the recommended value (the tool's material set), an absent field is left as is.
+ * With the selected machine the values must lie inside `machineFeedLimits` and the tool must be in
+ * its tool table; the validation, the toolpath and the post check the range again. A machine
+ * setting the user chooses: not an AI tool.
+ */
+export const setToolFeed = defineCommand({
+  name: 'setToolFeed',
+  area: 'plate',
+  description:
+    'Set the cutting feed and/or plunge feed (mm/min) of one tool for this project, inside the machine limits; null = the recommended value of the material set.',
+  aiTool: false,
+  params: z
+    .strictObject({
+      tool: z
+        .number({ error: 'tool must be a number' })
+        .int({ error: 'tool must be a whole number' })
+        .min(1, { error: 'tool must be 1–99' })
+        .max(99, { error: 'tool must be 1–99' }),
+      feed: z
+        .number({ error: 'feed must be a number' })
+        .min(FEED_BOUNDS.min, { error: `feed must be at least ${FEED_BOUNDS.min}` })
+        .max(FEED_BOUNDS.max, { error: `feed must be at most ${FEED_BOUNDS.max}` })
+        .nullable()
+        .optional(),
+      plungeFeed: z
+        .number({ error: 'plunge feed must be a number' })
+        .min(PLUNGE_FEED_BOUNDS.min, {
+          error: `plunge feed must be at least ${PLUNGE_FEED_BOUNDS.min}`,
+        })
+        .max(PLUNGE_FEED_BOUNDS.max, {
+          error: `plunge feed must be at most ${PLUNGE_FEED_BOUNDS.max}`,
+        })
+        .nullable()
+        .optional(),
+    })
+    .refine((p) => p.feed !== undefined || p.plungeFeed !== undefined, {
+      error: 'give feed or plungeFeed',
+    }),
+  check: (_project, p, env) => {
+    const machine = env.machine;
+    if (!machine) return undefined;
+    if (!findTool(machine, p.tool)) return `tool T${p.tool} is not in the machine profile`;
+    const limits = machineFeedLimits();
+    if (typeof p.feed === 'number' && !feedInRange(limits.feed, p.feed)) {
+      return `feed ${p.feed} mm/min is outside the machine's range ${limits.feed.min}–${limits.feed.max}`;
+    }
+    if (typeof p.plungeFeed === 'number' && !feedInRange(limits.plungeFeed, p.plungeFeed)) {
+      return `plunge feed ${p.plungeFeed} mm/min is outside the machine's range ${limits.plungeFeed.min}–${limits.plungeFeed.max}`;
+    }
+    return undefined;
+  },
+  apply: (draft, p) => {
+    const key = String(p.tool);
+    const row: { feed?: number | undefined; plungeFeed?: number | undefined } = {
+      ...(draft.cutting.feeds?.[key] ?? {}),
+    };
+    if (p.feed === null) delete row.feed;
+    else if (p.feed !== undefined) row.feed = p.feed;
+    if (p.plungeFeed === null) delete row.plungeFeed;
+    else if (p.plungeFeed !== undefined) row.plungeFeed = p.plungeFeed;
+    const rest = Object.fromEntries(
+      Object.entries(draft.cutting.feeds ?? {}).filter(([k]) => k !== key),
+    );
+    if (row.feed !== undefined || row.plungeFeed !== undefined) rest[key] = row;
+    if (Object.keys(rest).length === 0) delete draft.cutting.feeds;
+    else draft.cutting.feeds = rest;
+  },
+});
+
+/**
+ * T324: how contour passes enter the material: `straight` = vertical plunge (the default),
+ * `ramp` = zig-zag along the contour, each leg at most `angleDeg` steep and at least `length` mm
+ * long (`null` = the tool diameter). A project setting: not an AI tool.
+ */
+export const setEntry = defineCommand({
+  name: 'setEntry',
+  area: 'plate',
+  description:
+    'Set how contour passes enter the material: straight plunge, or a ramp along the contour with an angle (degrees) and a minimum length (mm).',
+  aiTool: false,
+  params: z.discriminatedUnion('type', [
+    z.strictObject({ type: z.literal('straight') }),
+    z.strictObject({
+      type: z.literal('ramp'),
+      angleDeg: entrySchema.shape.angleDeg,
+      length: entrySchema.shape.length.unwrap().nullable(),
+    }),
+  ]),
+  apply: (draft, p) => {
+    if (p.type === 'straight') {
+      delete draft.cutting.entry;
+      return;
+    }
+    draft.cutting.entry =
+      p.length === null
+        ? { type: 'ramp', angleDeg: p.angleDeg }
+        : { type: 'ramp', angleDeg: p.angleDeg, length: p.length };
+  },
+});
+
+/**
+ * T308 (D-099): the cutting tool of one operation of this job (`outer` / `inner` contour,
+ * `pocket` = blind pockets and grooves, `hole` = through holes); `null` = back to the default
+ * (the material set's tool for contours, each hole's own tool for holes). With the selected
+ * machine the tool must suit the operation on this job (`operationToolProblem`: type, flute
+ * length, diameter rules); the validation and the toolpath check again. Not an AI tool.
+ */
+export const setOperationTool = defineCommand({
+  name: 'setOperationTool',
+  area: 'plate',
+  description:
+    'Choose the cutting tool of one operation (outer, inner, pocket, hole) for this project; null = the default tool.',
+  aiTool: false,
+  params: z.strictObject({
+    op: z.enum(OPERATION_TOOL_KINDS, { error: 'op must be "outer", "inner", "pocket" or "hole"' }),
+    tool: z
+      .number({ error: 'tool must be a number' })
+      .int({ error: 'tool must be a whole number' })
+      .min(1, { error: 'tool must be 1–99' })
+      .max(99, { error: 'tool must be 1–99' })
+      .nullable(),
+  }),
+  check: (project, p, env) => {
+    const machine = env.machine;
+    if (!machine || p.tool === null) return undefined;
+    const problem = operationToolProblem(project, machine, p.op, p.tool);
+    return problem === null
+      ? undefined
+      : `tool T${p.tool} does not suit the ${p.op} operation of this job (${problem})`;
+  },
+  apply: (draft, p) => {
+    if (p.tool === null) {
+      const own = draft.cutting.tools;
+      if (!own || own[p.op] === undefined) return;
+      const rest = Object.fromEntries(Object.entries(own).filter(([k]) => k !== p.op));
+      if (Object.keys(rest).length === 0) delete draft.cutting.tools;
+      else draft.cutting.tools = rest;
+      return;
+    }
+    draft.cutting.tools ??= {};
+    draft.cutting.tools[p.op] = p.tool;
   },
 });

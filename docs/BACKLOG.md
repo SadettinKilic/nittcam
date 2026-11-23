@@ -1440,9 +1440,34 @@ CTO #12 on T295 / T296. Acceptance: the NC file name respects the machine file-n
 ### T304 2 000-row paste without a frozen page (rider)   [status: done]
 B42 perf budget (D-079): pasting / applying 2 000 cut-list rows blocks the main thread ~8–9 s, while core import + validation take < 50 ms, so the cost is in the React render path. Acceptance: batch / defer / virtualise so that no single main-thread task exceeds 200 ms and the whole apply takes < 2 s locally; the 20 s guard in the perf spec is tightened to these numbers.
 
+### T306 Nesting positions without nudge residue   [status: todo]
+Spec: §6.2 · From: CTO #8, B51 (D-091)
+The true-shape placer starts candidates 1e-4 mm off a neighbour (`nesting/trueshape.ts`, `NUDGE`), so positions such as 522.0001 reach the 4-decimal Mach3 output (`X522.0001`, `Y117.9999`). Acceptance:
+- [ ] placements carry no residue near the 0.001 mm grid (e.g. a clean candidate grid, or a final tidy pass over finished sheets that never creates an overlap)
+- [ ] interlock results (sheet counts) and determinism unchanged; real 4th decimals of rotated shapes untouched
+- [ ] goldens regenerated with the per-file reason; no post-side rounding change
+Tester focus: true-shape and arc-tabs goldens read back clean; nesting property tests.
+
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
 
 Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.
+
+
+### T307 Spindle speed (devir) editable per project   [status: done, B54]
+Spec: §4.x / §7 "Malzeme = parametre seti", "Kesim parametreleri … varsayılanlar malzeme parametre setinden" · From: owner request 2026-11-21, before the field test (M9) · D-098
+Acceptance:
+- [x] default = the material set rpm of the job; per-tool override as an undoable command stored in the project; "Önerilene dön"
+- [x] S word + "DEVİR" header line use the override; server export the same; out-of-range refused by command, validation, toolpath, post
+- [x] Simülasyon "Kesim ayarları": slider + typed field, recommended tick, ±20 % band, warning line, chip load, keyboard + screen reader
+- [x] goldens unchanged without an override
+Tester focus: gcode-safety (S within range, M3 + dwell before cutting), keyboard on the slider, undo, old project with an out-of-range value.
+
+### T308 Cutting tool per operation, per job   [status: done, B54]
+From: PO 2026-11-21 (after T307) · D-099
+Today the outer/inner contour tool comes from the material set (`set.tool`), hole/pocket tools from the operation; the user cannot change them per job. Acceptance:
+- [x] in "Kesim ayarları" next to the T307 rows: one tool picker per operation (dış kontur, iç kontur, cep, delik); only suitable types (contour/pocket: flat end mill + compression; hole: drill + flat end mill) and diameters that pass the existing rules (inner corner / slot width)
+- [x] default = today's choice; "Önerilene dön"; an undoable command; the server export uses it; goldens unchanged by default
+- [x] a changed tool takes its spindle recommendation (T307) from that tool's set
 
 ### T248 Phone cut list: compact cards, one-row toolbar (moved here; text above in B8a)   [status: done]
 
@@ -1462,24 +1487,26 @@ Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
 
 Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by screen. Source in brackets (#5 = CTO review 5, T = tester). The M9 polish phase takes **one group per batch** (P1–P5), not item by item; inside a group the dev may skip an item that costs more than an hour and note it. Items marked ★ were seen in 2+ reviews: do them first.
 
-### P1 Çizim tahtası   [status: partial, B50 #153]
-Done in B50 (#153, D-090) or already on main; the rest stays open.
+### P1 Çizim tahtası   [status: partial, B50 #153, B52 #156]
+Done in B50 (#153, D-090), B52 (#156, D-096) or already on main; the rest stays open.
 - Add a corner / split an edge on a shape (L or notch without redrawing) [#5] (done in B50)
 - Zoom to selection; picked corner shown on canvas [#5] (done in B50; picked corner already on main)
-- Corner X/Y part-relative or whole mm; stable corner numbers (needs a decision) [#5]
-- Line tool: take the direction from arrow keys / mouse when only a length is typed; "keep right angles" when editing an edge of an orthogonal shape [#5]
+- Corner X/Y part-relative or whole mm; stable corner numbers (needs a decision) [#5] (done in B52)
+- Line tool: take the direction from arrow keys / mouse when only a length is typed; "keep right angles" when editing an edge of an orthogonal shape [#5] (done in B52)
 - ★ Labels: part label inside the shape (L parts), edge-length labels do not overlap on small parts [#5, #6] (done in B50)
 - Selection keeps the wood tone (outline only); small part: corner handle wins over the edge handle [#5, #7] (done in B50)
 - Tool rail keeps a canvas inset at 1024 (not reproduced in B50) [#5, #7]
 - "İç kesim olarak ekle?" dialog fits, Enter works [#6] (done in B50)
-- Inner cut: select, move, resize after it is added; asked once (needs a product rule) [#6]
+- Inner cut: select, move, resize after it is added; asked once (needs a product rule) [#6] (done in B52)
 - Holes: number on the canvas; blind vs through look different; hole tool takes a diameter like the circle (one convention) [#7] (done in B50; typed diameter already on main)
-- Holes: select and drag on the canvas; "continue with the same values" [#7]
+- Holes: select and drag on the canvas; "continue with the same values" [#7] (done in B52)
 - Hole snapping: finer snap near hinge positions (22,5 mm) [T B14a] (already on main, B14a)
-- Hole snapping: no centre snap when zoomed out [T B14]
+- Hole snapping: no centre snap when zoomed out [T B14] (done in B52)
 - ★ Properties panel: holes and template instances as collapsed summary rows (panel is 1.500–2.500 px today) [#7, #8] (done in B50)
-- Right-click menu: duplicate, delete, rotate, add template [#10]
+- Right-click menu: duplicate, delete, rotate, add template [#10] (done in B52)
 - Hints and tour: hint texts not cut (Delik, Seç, Kaydır), shortcut sheet lists Alt, tour explains hole properties and does not cover the board/toolbar [#7, T B13] (done in B50; tour position already on main)
+- Contour pocket (T325): a hole placed on the pocket floor gives a misleading `HOLE_OUTSIDE_PART` message [T325 tester]
+- Contour pocket (T325): a pocket the tool would split in two is reported as too narrow (`POCKET_TOO_SMALL`) instead of split [T325 tester]
 
 ### P2 Dizilim, Simülasyon, 3D   [status: partial, B44 #145]
 Done in B44 (#145) except the two items left open below.
@@ -1495,6 +1522,7 @@ Done in B44 (#145) except the two items left open below.
 - Kesim ayarları card: tab options as one segmented row, three fields in one row; a field with a refused value shows the value in use ("kullanılan: 4") [#11] (done in B44)
 - Özet cutting-settings line wraps to two lines at 232 px and also names the thin skin; Özet warning count equals the Uyarılar panel; Dizilim says the part gap is added to the tool diameter [#12] (done in B44)
 - Phone: Simülasyon 3rd sheet tab cut at 390 (scrollable) [T B43] (done in B44)
+- Dizilim canvas: a rotated part's label shows the part's own En × Boy, like the right panel (PO decision, usta 2 test 2026-11-21) [usta]
 
 ### P3 Kesim listesi, adım 1, makine formu, DXF   [status: partial, B46 #150]
 Partly done in B46 (#150): items marked "done in B46"; the rest stays open.
@@ -1513,6 +1541,9 @@ Partly done in B46 (#150): items marked "done in B46"; the rest stays open.
 - Out-of-range fields say the limit (Ayarlar defaults, offcut dialog) instead of a silent disabled Kaydet [#12] (done in B46)
 - ★ One vocabulary across Ayarlar / Simülasyon / step 1: Köprü, Kapalı, ince tabaka, Climb (tırmanma) [#11, #12] (done in B46)
 - "Ayrı plaka parçalarını yeni projeye aktar" also on an unsaved new project (saves first); a project on an archived machine shows "bu makine arşivlendi" on step 1 and Dışa aktar [#12] (done in B46)
+- Machine form park fields: the unit sits against the number ("0mm"), needs a space like the other fields [T B55 tester]
+- Flaky e2e seen in CI round 24 (green on rerun): `b07-cutlist-tester-r3.spec.ts:247` 390 touch tap after scroll (scrollIntoViewIfNeeded timeout), `b21-preview3d-perf.spec.ts:69` fps read 0 on the CPU runner [T CI]
+- Parçalar header: after a quantity change "1 sorun" and "Hatalı satırlar" stay yellow; they should be neutral (usta test 2026-11-21) [usta]
 
 ### P4 Kabuk, bildirimler, ana sayfa   [status: done, B39]
 Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is already the box.
@@ -1528,15 +1559,16 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 - Dışa aktar: the footer hint jumps to the checklist (or the list sits above Dosyalar); file names break at _ / - or are middle-truncated; report card time rounds like Simülasyon [#12]
 - Small server fixes: maintenance day in local time; client-log limit in bytes [T B38, T B43] (done in B46 #150, D-086)
 
-### P5 Output (golden impact: tester gcode-safety review, D-051)
-- Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi") [#7]
-- Float residue in G-code (`Y117.9999`): clean before rounding [#8]
-- Lead-in arc / ramp on inner contours, plunge mark off the visible edge (check what T288 already covers) [#6]
-- Passes above tab height do not lift over tab gaps [#6]
-- PDF sheet page: mark the origin corner (X0 / Y0, front left); grain arrow not over the name on small parts [#11]
-- Labels: "first free label" start position for a half-used sheet [#11]
-- Consider writing the `KESIM` header line in every file before the field test (golden impact) [#11]
-- Thin-skin cleanup pass enters with a straight plunge; consider a ramp (golden impact) [T B43]
+### P5 Output (golden impact: tester gcode-safety review, D-051)   [status: done, B51 #155; float residue → T306]
+Done in B51 (#155, D-091); goldens approved per D-051.
+- Tool order makes one manual change too many (T2 → T3 → T2, also in "En az takım değişimi") [#7] (done in B51)
+- Float residue in G-code (`Y117.9999`): clean before rounding [#8] → T306 (nesting side, open)
+- Lead-in arc / ramp on inner contours, plunge mark off the visible edge (check what T288 already covers) [#6] (checked in B51: already covered by T141/T288, no change)
+- Passes above tab height do not lift over tab gaps [#6] (checked in B51: already so, no change)
+- PDF sheet page: mark the origin corner (X0 / Y0, front left); grain arrow not over the name on small parts [#11] (done in B51)
+- Labels: "first free label" start position for a half-used sheet [#11] (done in B51)
+- Consider writing the `KESIM` header line in every file before the field test (golden impact) [#11] (done in B51)
+- Thin-skin cleanup pass enters with a straight plunge; consider a ramp (golden impact) [T B43] (checked in B51: straight plunge kept)
 
 ### Not polish (moved)
 - Mode-card click long task 225–375 ms → T186 performance sweep.
@@ -1590,24 +1622,34 @@ Tester focus: full safety review; golden list prepared for the owner's approval.
 
 ### Batch B31: T190–T193 (final e2e and field-test readiness)
 
-### T190 Full regression e2e scenarios   [status: todo]
+### T190 Full regression e2e scenarios   [status: done]
 Spec: §11 · Depends: T189
 Acceptance:
 - [ ] 5 scenarios in CI: cabinet + hinge doors, DXF sign letters, grain-rotated panels, mixed holes/pockets, offcut reuse; each: input → nest → 3D → simulation → NC + PDF + DXF + labels; all checks pass
 Tester focus: run the suite; review every NC with the safety checklist.
 
-### T191 Field-test kit   [status: todo]
+### T191 Field-test kit   [status: done]
 Spec: §7.3, §12.3 · Depends: T190
 Acceptance:
 - [ ] extended test program (holes, pocket, groove, arcs, inner contour) + measurement form fields; printable field checklist PDF (origin, Z zero, tool, air cut first); `docs/machines/_template/` for the info collection; air-cut/test exports recorded
 Tester focus: safety review of the extended test program; air-cut floor (D-031) holds for the new operations.
 
-### T192 In-app help and "Yenilikler"   [status: todo]
+### T192 In-app help and "Yenilikler"   [status: done]
 > CTO #12: add a search in the help.
 Spec: §8.2 · Depends: T190
 Acceptance:
 - [ ] Turkish help pages (getting started, cut list, drawing, grain, 3D, export, air cut) linked from the palette; "Yenilikler" dialog per release
 Tester focus: links work; text in `tr.json`; axe.
+
+### T305 A new project never receives another project's parts (unsent queue per draft)   [status: done]
+Must-fix (data loss / wrong project), found in the T190 offcut scenario; rider in B49. Spec: §8.2 · D-094
+Cause: the unsent queue of a project not created yet lived under one shared `sessionStorage` key `nittcam.unsent.new`. Leaving a new project before its first save came back (e.g. Projeler → + Yeni proje) left that key, and the next new project replayed it: the first project's parts **and its client id**, so the repeated create returned the first project and later saves went into it.
+Acceptance:
+- [ ] the queue key is per draft (`nittcam.unsent.new.<draft id>`); the address of a project not saved yet carries `?taslak=<draft id>`; a new project replays only the queue of its own draft (and only when this tab holds it); the old shared key is dropped, never replayed
+- [ ] "+ Yeni proje" (menu, list, home) while a draft is not saved yet opens an empty project with a new draft id
+- [ ] a reload (or the way back from the machine form) before the first save still restores the draft's own edits (§8.2, T187, T264)
+- [ ] unit tests (`autosave.test.ts`) + e2e `t305-new-project-queue.spec.ts` (leave without waiting for the save; menu Yeni proje; reload)
+Tester focus: try to get one project's parts into another (leave fast, offline, two tabs, Back/forward, machine form round trip).
 
 ### T193 Field-test readiness review   [status: todo]
 Spec: §12.1 · Depends: T191, T192 · Owner: PO + tester · **Human gate: owner sign-off**
@@ -1616,6 +1658,80 @@ Acceptance:
 Tester focus: final full run (unit, property, golden, e2e, visual, axe, perf) with one summary report.
 
 ---
+
+### Batch B54: T307–T308 (owner requests 2026-11-21, before the field test; Dev 1, PR #161)
+
+### T307 Spindle speed per project (slider)   [status: done, B54 #161; details above]
+Owner 2026-11-21. Default = rpm of the job material set; per-tool override in Simülasyon "Kesim ayarları" (slider + field, recommended tick, ±20 % band, chip load), within the machine min/max (command + validator), NC `S` and header show it; no override = same bytes.
+
+### T308 Per-job tool choice per operation   [status: done, B54 #161; details above]
+Owner 2026-11-21. Outer / inner contour, pocket, hole: pick a compatible tool from the machine profile (default = today), "Önerilene dön", rpm suggestion follows the tool.
+
+### Batch B55: T309 (owner request 2026-11-21; Dev 2, PR #162)
+
+### T309 Park position for manual tool change   [status: done]
+Owner 2026-11-21 (D-097). Machine profile option `toolChanger.park` (X/Y in machine coordinates, written as `G53 G0 X.. Y..`, on/off, within the machine travel); every manual pause (tool change and first-tool check) goes safe Z → park → message + M0; only for posts with G53 (`motion.machineCoordinates`), otherwise forced off with a form note; the independent reader accepts the G53 move only at the profile's point; field-kit note names the point; park off = same bytes (goldens unchanged).
+
+### T310 Assembly view: door holes where the drawing has them   [status: done]
+Owner test 2026-11-21 (before the field test, D-101; Dev 2). A single door with asymmetric handle holes showed them upside down in "Montaj görünümü" (T285 turned every left/single door over about its horizontal axis). Fix: a door with only through work faces the drawing to the front (looks exactly like the drawing); a door with face-only work (hinge cups, pockets, blind holes, grooves, lines) keeps the drawing's top on top and shows the inside face (left/right turned, physically true); two through-only doors of one row both keep the drawn height (the right one turned about its vertical axis, handles meet in the middle); two doors with hinge cups stay as T285 (hinges at the outer edges; one door is turned 180°, unavoidable for identical boards). Unit tests on the part → assembly transform, e2e screenshots `t310-assembly-holes.spec.ts`. G-code untouched (web preview only).
+
+### T311 Manual tool change stops with M0 only (G-code safety)   [status: done]
+Tester finding 2026-11-21 (before the field test, D-100; Dev 2). The independent check accepted M1 (optional stop) as the pause of a manual tool change; with optional stop off on the controller the machine runs on with the old tool. Fix: in manual mode every pause (tool change and first-tool check) must be M0, M1/M01 is an error `TOOL_CHANGE_OPTIONAL_STOP` (rule TOOLS); the post config allows only `manualStop: "M0"` (shipped posts already write M0). Rejection tests in `gcode-check/manual-stop.t311.test.ts`; goldens byte-identical.
+
+### T314 AI chat shell with a fixed "yakında" reply   [status: done]
+Owner request 2026-11-21 (before the field test, D-102; Dev 2). "AI botu ekle ama AI olarak ekleme": the chat UI is visible, the answer is always one fixed Turkish text (`wizard.assistant.reply`). "Asistan" button in the wizard step bar (bottom right, spec §5.2), panel floating above it bottom right (non-modal dialog, "Yakında" badge, message list, input, Enter sends, focus to the input on open, Esc / ✕ closes and returns focus, reply in a polite live region, reduced motion via tokens); the panel is lazy-loaded (T186 budget, wizard 436 kB ≤ 450). Session-only history (component state; nothing stored, nothing sent, no project change, `packages/core` untouched). One `AssistantResponder` slot (`apps/web/lib/assistant/chat.ts`) for the real M11 responder; dragging the panel, per-project history and the warning badge come with M11 (real AI still behind Q001). Unit `lib/assistant/chat.test.ts`, e2e `t314-assistant.spec.ts` (open, type, Enter, reply, Esc; axe + captures 1440/390 light/dark).
+
+### Batch B56: T312, T313 (owner requests 2026-11-21, before the field test; Dev 1)
+
+### T312 Cabinet doors on the sheet that has room   [status: done]
+Owner 2026-11-21 (D-103): "Dolap eklediğimde 2 kapağı da plakada görmüyorum ... fire vermeden diğer kapakları sıkıştırsak?" Root cause: with several stock sizes (library seed 2800 × 2070 + 2440 × 1220) every candidate chose each new sheet's size greedily (smallest waste share of that sheet), so the 800 mm two-door cabinet went onto two 2440 × 1220 sheets with one door alone on the second (91 % waste) although one 2800 × 2070 sheet takes it all (5.80 m² < 5.95 m²). Fix: size policies per candidate (greedy, smallest size that takes every remaining part, each stock size first); the rank picks: fewer unplaced, then total sheet area when it differs by 2 % or more, else fewer sheets, then area, then the objective (PO, round 1: 13 more sheets for 0.7 % less board is a bad trade). With several sizes guillotine heuristics also ask an exact MaxRects shadow of each open sheet before opening a new one. One size: byte-identical to before (regression test: 300 seeded jobs fingerprinted on main). Unit tests with the cabinet case, the ranking rule + property "no part on a later sheet fits the free space of an earlier one" (several sizes). Help text shows mm with up to 2 decimals (0,15 stays 0,15).
+
+### T313 Clear distance between parts = tool Ø + clearance (default 0.1 mm)   [status: done]
+Owner 2026-11-21 (D-104): "8'lik takım kullanıyorsak arada offset 8 değil 8,1 mm olmamalı mı?" The rule was already tool Ø + `nesting.gap` (D-019) but the built-in gap was 8, so neighbours stood 16 mm apart. New projects start with gap 0.1 (Ø8 → 8.1 mm clear); per project in step 3, company default in Ayarlar. UI says "Parça arası pay" and "Parça arası boşluk: takım Ø8 + pay 0,1 = 8,1 mm". Rectangle and true-shape placers share `partSpacing`; leads keep their neighbour check (shortened / removed with a warning), tabs stay on the contour. Unit tests: measured clear distance ≥ Ø + clearance for both engines.
+
+### Batch B57: T316–T318 (usta 1 user test, before the field test; Dev 2)
+
+### T316 Dolap ekle keeps finished sizes in cut mode (edge band)   [status: done]
+Usta 1 (Kemal) 2026-11-21, D-105. With "Bitmiş ölçü" off (cut mode) the "Dolap ekle" rows were entered at the generator's finished sizes, so the band was added on top (door 395,5 × 714 cut, 397,1 × 715,6 finished; a 3 mm door gap became 1,4 mm). Fix: the generator's sizes are finished sizes; in cut mode each row is entered minus its band (`enteredSize`, door 393,9 × 712,4), in finished mode as generated, so both modes cut the same parts. The assembly view reads finished sizes (`finishedSize`), so the box and the door gap stay as designed. Cut list, PDF, labels and G-code all read `toCutSizes` (unchanged). Help text states both rules. Unit: `cut-size.test.ts` (+ property), `cabinet-rows.test.ts`; cabinet e2e expectations updated (cut rows).
+
+### T317 "Aynala" gives a real left / right door pair   [status: done]
+Usta 1 (Kemal) 2026-11-21, D-106. The template option "Aynala (sol / sağ kapak)" only flipped the template along its edge; a door row of 2 stayed two identical boards (two left doors in nesting and G-code), and the assembly view turned one door 180° (handles at different heights). Fix: the drawing-board inspector shows "Sol / sağ kapak" for a part with qty ≥ 2; "Sol / sağ kapak yap" runs the new command `splitMirrorPair` (one undo step): the part keeps ⌈qty/2⌉, a left ↔ right mirrored copy (holes, pockets, templates, lines, band, grain) gets ⌊qty/2⌋ as its own row right after it (note "Aynalı eş"). Nesting, toolpath, G-code and labels need no special case (two real parts; goldens unchanged). The assembly view places two door rows of one door each side by side (`cabinetAssembly` door slots), marks them `pair`, mounts both with the drawing's top on top and puts the row whose handle faces the middle on the left (`doorSide`). The template checkbox is renamed "Kenar boyunca ters çevir" (what it does). Unit: core `split-mirror-pair.test.ts` (incl. nesting → toolpath), web `assembly-pair.test.ts`; e2e `b57-usta1.spec.ts`.
+
+### T318 Pasted grain "Var" runs along Boy; bulk edit grain directions   [status: done]
+Usta 1 (Kemal) 2026-11-21, D-107. A pasted "Damar: Var / evet" row became fixed at the sheet grain angle (0° = along En), so doors and sides lay across the grain and Baza 2400 × 100 did not fit. Fix: a yes/no grain column without an angle column gives fixed 90° in the part frame (along Boy = h), the same as "Dolap ekle"; an angle column still wins. Bulk edit grain choices: Değiştirme, Serbest, Boy boyunca (90°), En boyunca (0°), Açı seç… (dial, starts at 90°). Unit: core `parse.test.ts`, `part.commands.test.ts`; web `cut-list-grid.test.ts`; e2e `b57-usta1.spec.ts`.
+
+### Batch B58: T319–T322 (usta reports 2026-11-21, must-fix before the field test; Dev 1)
+
+### T319 Canvas part label shows the part size, not the label room   [status: done]
+Usta 2 (Elif): a 600 × 400 panel (R20 corners, cut-out, circle, holes) read "276 × 172,5" on the Dizilim and Simülasyon canvases while the inspector said 600 × 400. Root cause: since B44 the label sits at a spot inside the material and both canvases passed that spot's free room as the part's W × H to `partLabel()`. Fix: `spotLabel()` (`apps/web/lib/label-spot.ts`) prints the footprint W × H and uses the spot only as room (the drawing board already did). Unit test with Elif's panel.
+
+### T320 Hole tool: a drill must match the hole; default the best compatible tool   [status: done]
+Usta 1 (Kemal): a Ø35 hinge cup with a Ø5 drill was accepted silently; template holes always came with T1 (Ø6 mill). Rule (D-099, D-108): a drill only drills a hole of its own Ø (through or blind); a bigger hole needs a mill (helical / pocket) and is rejected with a clear message in validation and the export checklist. New holes default to the best compatible tool (a drill of the hole's Ø if the machine has one, else the mill). Unit tests.
+
+### T321 One warning state across the summary, the checks box and the cut list   [status: done]
+Usta 1 + 2: (a) leads removed ("yer yok") on 7 parts while the summary said green "Tüm kontroller geçti" → the summary shows a warning state with the count; (b) "1 uyarı" next to "Sorun bulunmadı" → one source of truth; (c) after a quantity change every row showed red "Hata" → neutral "Yeniden diz" state; (d) a manual tool changer with park off → checklist warning "takım değişiminde takım plakanın üstünde kalır; park noktası ayarlayın", mentioned in the field kit too.
+
+### T322 NC file name respects the machine's length limit   [status: done]
+Usta 1: `Kemal_Mutfak_alt_dolap_800_r19_S1.tap` (37 chars) on a machine with a 32-char limit. The file name is shortened deterministically to the profile limit (the sheet suffix, revision and extension stay, the project part is cut; names stay unique) and Turkish characters follow the profile; the checker/checklist warns if a name still exceeds. Unit tests.
+
+### Batch B59: T323, T324 (usta 2 / Elif findings, owner-approved before the field test; Dev 1)
+
+### T323 Per-tool cutting feed and plunge feed   [status: done]
+From: `.team/usta2-rapor.md` #4 (Ø6 and Ø8 both at 6 000 mm/min) · D-111
+- [x] each job tool has its own cutting and plunge feed: recommended from the tool's material set (the job set; a tool chosen per operation (T308) takes its own set, like the T307 rpm); per-tool override in Kesim ayarları (`setToolFeed`, undoable, "İlerlemede önerilene dön")
+- [x] validation: feed/plunge > 0 and inside the machine limits (`machineFeedLimits`: the profile-wide bounds 100–60 000 / 50–30 000 mm/min; the profile has no own max yet) in command, validation (`FEED_OUT_OF_RANGE`), toolpath and post; chip load uses the tool's own feed; plunge > feed warns
+- [x] G-code: F per tool, plunges at the tool's plunge feed; "İLERLEME T..: ..." header line only with an override; checker R5 `FEED_ABOVE_MACHINE`
+- [x] goldens byte-identical with defaults
+
+### T324 Ramp entry for contours   [status: done]
+From: `.team/usta2-rapor.md` #3 (dik dalma uç yakar) · D-111 · Spec §6.3 "Dalma düz veya rampalı"
+- [x] per job "Dalma (konturda): Dik dalma | Rampa" with angle (default 3°, 0,5–45°) and shortest leg (default tool Ø, 1–1 000 mm); `setEntry`; default stays straight (goldens identical)
+- [x] zig-zag along the contour (outer and inner) down to each pass depth at the plunge feed; tabs keep clear of the ramp; the ramp stays on the contour line, so never outside the part's allowed region or into a neighbour; "GİRİŞ: rampa ..." header line
+- [x] checker R3 `RAMP_OUTSIDE_KERF`: a ramp is accepted only on a level cut of the same block (independent of the generator); property test over random contours, depths, passes, tabs, inner cut-outs
+- [ ] per-operation ramp setting (not done: one job setting covers outer and inner contours)
+
+### T325 Rectangular (closed-shape) blind pocket   [status: done]
+Owner 2026-11-21, before the field test (D-112; usta raporu 2 "Elif": "depth exists only for round holes, while the help says 'cep ekleyin'"). An inner contour drawn inside a part (rectangle, rounded rectangle, any closed shape whose clearing stays one connected area) gets the operation "Cep (kör)" with a depth in the part inspector (`setOperation` kind `pocket`, one undo step; depth > 0 and < thickness, a pocket as deep as the stock is an inner cut). Toolpath `contour-pocket.ts`: offset rings (step-over 40 % Ø, ≤ 50 %), wall ring last at tool radius (finishing), step-down per pass from the cutting set, ramp entry along the innermost ring (≤ 3°, more laps when needed; straight plunge only when the ring is shorter than Ø, warning `POCKET_PLUNGE_ENTRY`), between passes up to safe Z and back down to the cleared floor; climb = CCW like hole pockets; tool = T308 `pocket` choice, else the set's tool. Refused (toolpath + validation where drawn): too narrow for the tool (`POCKET_TOO_SMALL`), rings splitting into islands (`POCKET_SPLIT`), depth ≥ thickness; < 1 mm skin = warning. Concave corners keep the tool radius: the inspector says "Köşeler R3 kalır". Independent check (LAYOUT, own geometry): every cutting move inside a pocket keeps the tool inside the boundary minus its radius and above the declared depth, and every pocket is cleared (`POCKET_OUTSIDE_BOUNDARY`, `POCKET_TOO_DEEP`, `POCKET_NOT_CUT`). Part-in-hole nesting uses only through cut-outs (a pocket, an engraved or uncut inner contour keeps its material). Shown in the editor canvas (light recess, dashed), 3D preview (recess + floor), layout/simulation (not an opening), PDF layout (dashed, "Cep 6"), labels ("Cep ×1, 6 mm derin"), DXF export on layer CEP; help text updated. Goldens byte-identical. Tests: `toolpath/contour-pocket.test.ts` (unit + property: random rectangles, depths, rotations through the export check), `gcode-check/pocket.test.ts`, 3D mesh, e2e `t325-rect-pocket.spec.ts` (draw → Cep → depth → simulate → download passes `verifyDownloaded`; 1440/390 captures + axe). Not in scope: DXF import of non-circular pocket layers (still "yakında"), islands inside a pocket, zigzag clearing.
 
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
@@ -1629,7 +1745,7 @@ Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 ## After the field test (outline; detailed tasks written before each milestone starts)
 
 ### M10: Hesap ve çok şirket (T200+)
-Better Auth verification; login screen with the intro animation (§3.2); companies, users, roles (Yönetici / Operatör) checked on the server; replace the default company/user; Postgres RLS on company_id and triggers on version tables; quick user switch for shared workshop PCs; hosting decision (§8.5).
+Better Auth verification (with the organization plugin); login screen with the intro animation (§3.2); companies, users, **memberships** (one person in several companies, role per company, D-113: `company_members`, `company_invitations`; M10 ships with one membership per person enforced in the app and no company switcher, D-116; model in `docs/backoffice/veri-modeli.md` §6.3), **brands inside one company** (D-114: `company_brands` + `projects.brand_id`, brand name/logo on PDFs and labels, project list filter; machines, stock and subscription stay shared; model §6.2), roles (Yönetici / Operatör) checked on the server; replace the default company/user; Postgres RLS on company_id and triggers on version tables; quick user switch for shared workshop PCs; hosting decision (§8.5).
 
 ### M11: AI sohbet (T220+), behind Q001
 Chat panel, command proposals with Uygula/İptal, warning badge, template update question, messy order reading, quota (§5). Not part of the ~90 % line (D-035).

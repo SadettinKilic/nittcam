@@ -3,12 +3,14 @@
  * a generated file may be downloaded (rule 9). The text is read by the independent reader (T018,
  * strict mode) and the read program is judged; nothing from the post processor is used. Pure.
  */
-import { readGcode, type GcodeReadResult } from '../gcode-reader';
+import { readGcode, type GcodeEvent, type GcodeReadResult } from '../gcode-reader';
 import { derive, type Derived } from './derive';
 import { cutLoops, expectedLoopCount, matchLayout, matchModel, type CutLoop } from './match';
-import { toSheetMoves } from './path';
+import { toSheetMoves, type SheetMove } from './path';
+import { pocketMoveRule, pocketNotCutRule } from './pocket';
 import {
   floorRule,
+  rampRule,
   headerRule,
   modalRule,
   motionRules,
@@ -65,6 +67,9 @@ interface Analysis {
   matched: boolean;
   loops: CutLoop[];
   moves: number;
+  /** The read path and events (sheet frame), for the layout-level pocket rule (T325). */
+  sm: SheetMove[];
+  events: readonly GcodeEvent[];
 }
 
 function read(text: string, d: Derived): GcodeReadResult {
@@ -85,9 +90,10 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
   readerFindings(r, push);
   headerRule(text, d, push);
   modalRule(r, d, push);
-  const sm = toSheetMoves(r.moves, d.frame);
+  const sm = toSheetMoves(r.moves, d.frame, r.events);
   motionRules(r, sm, d, push);
   floorRule(sm, d, push);
+  rampRule(sm, d, push);
   const m = matchModel(sm, d.ops, d, prefix, push);
   const rawLines = text.split(/\r\n|\r|\n/);
   toolRules(r, rawLines, m.ok ? d.ops.slice(0, m.consumed) : d.ops, d, push);
@@ -99,6 +105,8 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
     matched: m.ok,
     loops,
     moves: r.moves.length,
+    sm,
+    events: r.events,
   };
 }
 
@@ -120,7 +128,10 @@ function finish(
   layout: readonly ExpectedPart[] | null | undefined,
   d: Derived,
 ): GcodeCheckResult {
-  if (layout) matchLayout(a.loops, layout, d, a.push);
+  if (layout) {
+    matchLayout(a.loops, layout, d, a.push);
+    pocketNotCutRule(layout, pocketMoveRule(a.sm, a.events, layout, d, a.push), a.push);
+  }
   const ok = !a.violations.some((v) => v.severity === 'error');
   return {
     ok,
@@ -194,6 +205,8 @@ export function checkGcodeFiles(
     const sheetOps = context.toolpath?.operations.filter((o) => o.sheet === sheet) ?? [];
     let cursor = 0;
     const loops: CutLoop[] = [];
+    const sheetLayout = context.layout?.get(sheet);
+    const pocketsReached = new Set<string>();
     let lastResult: { analysis: Analysis; d: Derived; index: number } | null = null;
     group.forEach((file, gi) => {
       const isLast = gi === group.length - 1;
@@ -220,6 +233,11 @@ export function checkGcodeFiles(
         return;
       }
       const a = analyse(file.content, dr.d, !isLast);
+      if (sheetLayout) {
+        for (const k of pocketMoveRule(a.sm, a.events, sheetLayout, dr.d, a.push)) {
+          pocketsReached.add(k);
+        }
+      }
       cursor += a.consumed;
       loops.push(...a.loops);
       out.push({ name: file.name, sheet, result: finish(a, null, dr.d) });
@@ -230,6 +248,7 @@ export function checkGcodeFiles(
     if (layout && lr) {
       const before = lr.analysis.violations.length;
       matchLayout(loops, layout, lr.d, lr.analysis.push);
+      pocketNotCutRule(layout, pocketsReached, lr.analysis.push);
       const entry = out[lr.index];
       if (entry && lr.analysis.violations.length > before) {
         entry.result = finish(lr.analysis, null, lr.d);
@@ -241,10 +260,65 @@ export function checkGcodeFiles(
     }
   }
   for (const f of out) for (const v of f.result.violations) all.push({ ...v, file: f.name });
+  all.push(...fileNameViolations(files, context.profile.constraints.maxFileNameLength));
   return { ok: !all.some((v) => v.severity === 'error'), violations: all, files: out };
 }
 
 /** T021 gate (§7.2 rule 9): a file set may be downloaded only when every check passed. */
 export function canDownload(result: GcodeCheckResult | GcodeCheckFilesResult): boolean {
   return result.ok && !result.violations.some((v) => v.severity === 'error');
+}
+
+/** Characters every controller reads in a file name (D-025: ASCII only). */
+const SAFE_FILE_NAME = /^[A-Za-z0-9_.-]+$/;
+
+/**
+ * T322 (usta 1: a 37-character name for a 32-character controller): every file name fits the
+ * machine profile's `maxFileNameLength` and uses only ASCII letters, digits, `_`, `-` and `.`;
+ * a name the controller cannot open (or opens truncated, colliding with another sheet) blocks the
+ * download. Checked here independently of how the generator builds the names.
+ */
+export function fileNameViolations(
+  files: readonly { name: string }[],
+  maxLength: number,
+): GcodeCheckViolation[] {
+  const out: GcodeCheckViolation[] = [];
+  for (const f of files) {
+    if (f.name.length > maxLength) {
+      out.push({
+        rule: 'INPUT',
+        code: 'FILE_NAME_TOO_LONG',
+        severity: 'error',
+        line: 0,
+        file: f.name,
+        message: `File name "${f.name}" has ${f.name.length} characters; the machine reads at most ${maxLength}.`,
+      });
+    }
+    if (!SAFE_FILE_NAME.test(f.name)) {
+      out.push({
+        rule: 'INPUT',
+        code: 'FILE_NAME_CHARS',
+        severity: 'error',
+        line: 0,
+        file: f.name,
+        message: `File name "${f.name}" has characters other than A-Z, a-z, 0-9, "_", "-" and ".".`,
+      });
+    }
+  }
+  const seen = new Set<string>();
+  for (const f of files) {
+    const key = f.name.toLowerCase();
+    if (seen.has(key)) {
+      out.push({
+        rule: 'INPUT',
+        code: 'FILE_NAME_DUPLICATE',
+        severity: 'error',
+        line: 0,
+        file: f.name,
+        message: `File name "${f.name}" is used twice.`,
+      });
+    }
+    seen.add(key);
+  }
+  return out;
 }

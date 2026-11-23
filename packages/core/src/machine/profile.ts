@@ -148,6 +148,19 @@ export const toolChangerSchema = z.strictObject({
   capacity: int().min(PROFILE_BOUNDS.toolCapacity.min).max(PROFILE_BOUNDS.toolCapacity.max),
   /** Tool length compensation (G43) available. */
   lengthCompensation: z.boolean({ error: 'must be true or false' }),
+  /**
+   * Park point for a manual tool change (T309, D-097): when `enabled` and the post supports G53,
+   * the program goes up to safe Z and rapids to X/Y in MACHINE coordinates (`G53 G0 X.. Y..`,
+   * independent of the work zero) before the pause. Optional so older profiles stay valid;
+   * absent = off.
+   */
+  park: z
+    .strictObject({
+      enabled: z.boolean({ error: 'must be true or false' }),
+      x: num().min(-PROFILE_BOUNDS.axisXY.max).max(PROFILE_BOUNDS.axisXY.max),
+      y: num().min(-PROFILE_BOUNDS.axisXY.max).max(PROFILE_BOUNDS.axisXY.max),
+    })
+    .optional(),
 });
 
 /** Tutma: vacuum, clamp or T-slot; vacuum on/off M codes ('' = none). */
@@ -284,6 +297,27 @@ export const machineProfileSchema = z
   .superRefine((p, ctx) => {
     if (p.safeZ > p.workEnvelope.z) {
       crossIssue(ctx, ['safeZ'], 'safeZAboveTravel', 'safe Z must be within the Z travel');
+    }
+    const park = p.toolChanger.park;
+    if (park?.enabled) {
+      // T309 (D-097): machine coordinates (G53) within the travel. Machine zero is the home
+      // position; depending on the controller the travel runs to + or −, so |value| ≤ travel.
+      if (Math.abs(park.x) > p.workEnvelope.x) {
+        crossIssue(
+          ctx,
+          ['toolChanger', 'park', 'x'],
+          'parkOutOfTravel',
+          'park X is outside the X travel',
+        );
+      }
+      if (Math.abs(park.y) > p.workEnvelope.y) {
+        crossIssue(
+          ctx,
+          ['toolChanger', 'park', 'y'],
+          'parkOutOfTravel',
+          'park Y is outside the Y travel',
+        );
+      }
     }
     if (p.holdDown.type === 'vacuum' && p.holdDown.vacuumOn === '' && p.holdDown.vacuumOff !== '') {
       crossIssue(
@@ -480,4 +514,33 @@ export function parseMachineProfileForSave(json: unknown): ParseMachineProfileRe
 /** Tool by number, or `undefined`. */
 export function findTool(profile: Pick<MachineProfile, 'tools'>, number: number): Tool | undefined {
   return profile.tools.find((t) => t.number === number);
+}
+
+/** A feed range in mm/min, both ends inclusive. */
+export interface FeedRange {
+  min: number;
+  max: number;
+}
+
+/**
+ * T323: the cutting feed and plunge feed a program may run on this machine, mm/min. The profile
+ * has no own cutting-feed limit yet, so these are the profile-wide bounds of a material set (the
+ * rapid rate is only an estimate input and is not used: a low typed rapid rate must not block
+ * projects that cut today). One place, so a later per-machine limit changes only this function.
+ * Used by the command, the validation, the toolpath and the post; the G-code check derives its
+ * own limit from the profile.
+ */
+export function machineFeedLimits(): {
+  feed: FeedRange;
+  plungeFeed: FeedRange;
+} {
+  return {
+    feed: { min: PROFILE_BOUNDS.feed.min, max: PROFILE_BOUNDS.feed.max },
+    plungeFeed: { min: PROFILE_BOUNDS.plungeFeed.min, max: PROFILE_BOUNDS.plungeFeed.max },
+  };
+}
+
+/** Whether `v` is a finite feed inside `range`. */
+export function feedInRange(range: FeedRange, v: number): boolean {
+  return Number.isFinite(v) && v >= range.min && v <= range.max;
 }

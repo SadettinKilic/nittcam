@@ -32,6 +32,8 @@ export interface Derived {
   limitTol: number;
   layoutTol: number;
   toolMode: 'auto' | 'manual' | 'none';
+  /** T309 (D-097): machine-coordinate (G53) park point of a manual tool change, or null. */
+  park: { x: number; y: number } | null;
   /** Vacuum codes as numbers, null when the program is not expected to switch vacuum. */
   vacuum: { on: number; off: number } | null;
   /** Rule 10: the unverified header line is required. */
@@ -105,11 +107,18 @@ export function derive(
   const toolMode =
     ctx.post?.toolChange?.mode ?? (profile.toolChanger.type === 'auto' ? 'auto' : 'manual');
 
+  const frame = checkFrame(profile, stock);
+  const parkCfg = profile.toolChanger.park;
+  const park =
+    toolMode === 'manual' && parkCfg?.enabled && ctx.post?.motion?.machineCoordinates === true
+      ? { x: parkCfg.x, y: parkCfg.y }
+      : null;
+
   return {
     ok: true,
     d: {
       ctx,
-      frame: checkFrame(profile, stock),
+      frame,
       ops,
       safeZ: Math.max(profile.safeZ, toolpath.safeZ),
       clearanceZ: toolpath.clearanceZ,
@@ -119,6 +128,7 @@ export function derive(
       limitTol: minDec === null ? CHECK_TOLERANCE.limit : 0.5 * 10 ** -minDec + 1e-9,
       layoutTol: ctx.tolerance?.layout ?? CHECK_TOLERANCE.layout,
       toolMode,
+      park,
       vacuum,
       unverified:
         ctx.verification !== 'verified' || profile.example || ctx.post?.status !== 'verified',

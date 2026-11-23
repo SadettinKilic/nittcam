@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   useCallback,
@@ -13,12 +13,13 @@ import {
   type RefObject,
 } from 'react';
 import { findMaterialParams, findTool, minSheetMargin } from '@nittcam/core';
-import { fill, newProject, toolDiameterFor } from '../../lib/draft-project';
+import { fill, newProject, pocketToolDiameterFor, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { MessagesContext } from '../../lib/messages-context';
-import { useProjectSession, type SessionInit } from '../../lib/project-session';
+import { DRAFT_PARAM, useProjectSession, type SessionInit } from '../../lib/project-session';
 import { STEP_REQUEST_EVENT } from '../../lib/step-request';
+import { leavingLinkHref, onNavigationStart } from '../../lib/navigation-guard';
 import { nextFailing, saveBannerKind } from '../../lib/save-banner';
 import { useOnline } from '../../lib/use-online';
 import { SaveBanner } from './save-banner';
@@ -42,6 +43,7 @@ import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
 import { IssuesOkChip } from './issues-ok-chip';
 import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
 import { fetchProjectDefaults } from '../../lib/settings-api';
+import { AssistantLauncher } from '../assistant/assistant-launcher';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
@@ -110,13 +112,16 @@ import { ShellStatus, useShellTitle } from '../shell/shell-context';
 
 const mmText = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
 const NEW_PATH = '/projeler/yeni';
+/** B49: how long the first save's address swap waits for a navigation the user started. */ const LEAVE_GRACE_MS = 4000;
 
 /** `?profil=son`: move the project to the machine's latest profile version on entry (T258). */
 const LATEST_PARAM = 'profil';
 const LATEST_VALUE = 'son';
 
-function stepUrl(id: string | null, step: StepKey): string {
-  return `${id ? `/projeler/${id}` : NEW_PATH}?adim=${step}`;
+/** A step's address; a project not created yet carries its draft id (T305, D-094). */
+function stepUrl(id: string | null, step: StepKey, draft?: string): string {
+  if (id) return `/projeler/${id}?adim=${step}`;
+  return `${NEW_PATH}?adim=${step}${draft ? `&${DRAFT_PARAM}=${draft}` : ''}`;
 }
 
 /**
@@ -281,6 +286,18 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
       setAttempt((a) => a + 1);
     }
   }
+  // T305: "+ Yeni proje" while a draft (not saved yet) is open keeps the path but drops the draft
+  // from the address: that is another new project too, not the same draft.
+  const draftParam = useSearchParams().get(DRAFT_PARAM);
+  const [lastDraft, setLastDraft] = useState(draftParam);
+  if (draftParam !== lastDraft) {
+    setLastDraft(draftParam);
+    const back = typeof window !== 'undefined' && cameBackToStep(pathname);
+    if (pathname === NEW_PATH && lastDraft !== null && draftParam === null && !back) {
+      setCreated(null);
+      setAttempt((a) => a + 1);
+    }
+  }
 
   // T186: the other steps' chunks come after the page has loaded.
   useEffect(() => preloadWizardSteps(), []);
@@ -402,6 +419,7 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
       firstDetail={loaded.firstDetail}
       onReload={reload}
       onCreated={setCreated}
+      draft={draftParam}
     />
   );
 }
@@ -446,6 +464,7 @@ function WizardSession({
   firstDetail,
   onReload,
   onCreated,
+  draft,
 }: {
   messages: Messages;
   initialStep: StepKey;
@@ -454,6 +473,9 @@ function WizardSession({
   firstDetail: MachineDetail | null;
   onReload: () => void;
   onCreated: (id: string) => void;
+  /** T305: the draft id in the address (router state, not `window.location`, which a link
+   * navigation updates only after this render). */
+  draft: string | null;
 }) {
   const t = messages.wizard;
   const router = useRouter();
@@ -554,19 +576,51 @@ function WizardSession({
   );
   const [detailError, setDetailError] = useState(false);
 
+  // B49: a navigation the user started (palette, a link) while the first save is in flight must
+  // not be lost. A `history.replaceState` without Next's state makes the router drop a pending
+  // navigation, so the address swaps below wait while one may be on its way.
+  const leaving = useRef(false);
+  const swapTimer = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const mark = () => {
+      leaving.current = true;
+    };
+    const off = onNavigationStart(mark);
+    const onClick = (e: MouseEvent) => {
+      if (leavingLinkHref(e, window.location)) mark();
+    };
+    document.addEventListener('click', onClick, true);
+    return () => {
+      off();
+      document.removeEventListener('click', onClick, true);
+      window.clearTimeout(swapTimer.current);
+    };
+  }, []);
+
   const created = useCallback(
     (id: string) => {
-      // T264: a save that lands after the user left the wizard (e.g. for the machine form) must
-      // not rewrite that page's address.
-      if (window.location.pathname === NEW_PATH) {
+      const swap = () => {
+        // T264: a save that lands after the user left the wizard (e.g. for the machine form) must
+        // not rewrite that page's address.
+        if (window.location.pathname !== NEW_PATH) return;
         // Keep the step's other query params (e.g. `?gorunum=cizim`, T124) across the first save.
         const url = new URL(stepUrl(id, stepRef.current), window.location.origin);
         new URLSearchParams(window.location.search).forEach((value, key) => {
-          if (key !== 'adim') url.searchParams.set(key, value);
+          if (key !== 'adim' && key !== DRAFT_PARAM) url.searchParams.set(key, value);
         });
         const next = url.pathname + url.search;
         window.history.replaceState({ [STEP_STATE]: stepRef.current }, '', next);
-      }
+      };
+      if (leaving.current) {
+        // A navigation may still be loading: leaving unmounts the wizard (and clears the timer);
+        // one that did not happen (or stayed on this address) gets the project's address late.
+        leaving.current = false;
+        const at = window.location.pathname + window.location.search;
+        window.clearTimeout(swapTimer.current);
+        swapTimer.current = window.setTimeout(() => {
+          if (window.location.pathname + window.location.search === at) swap();
+        }, LEAVE_GRACE_MS);
+      } else swap();
       onCreated(id);
     },
     [onCreated],
@@ -600,6 +654,7 @@ function WizardSession({
     initial: init,
     machine: pinned?.profile ?? null,
     onCreated: created,
+    draft,
   });
   // T290: remember the Parçalar view per saved project.
   useEffect(() => {
@@ -769,11 +824,15 @@ function WizardSession({
       setStep(next);
       focusHeading.current = true;
       if (next !== stepRef.current || !isStepEntry()) {
-        window.history.pushState({ [STEP_STATE]: next }, '', stepUrl(session.projectId, next));
+        window.history.pushState(
+          { [STEP_STATE]: next },
+          '',
+          stepUrl(session.projectId, next, session.draftId),
+        );
       }
       stepRef.current = next;
     },
-    [session.projectId],
+    [session.projectId, session.draftId],
   );
   // T298: "Tabaka kalınlığına git" opens step 1 on the thin-skin field.
   // T300: "Kenar payına git" from a Simülasyon finding back to the Dizilim field.
@@ -835,7 +894,7 @@ function WizardSession({
     () => ({
       byPart: holeErrors(project, session.issues),
       tools: profileTools
-        ? profileTools.map((x) => ({ number: x.number, diameter: x.diameter }))
+        ? profileTools.map((x) => ({ number: x.number, diameter: x.diameter, type: x.type }))
         : null,
       focus: holeFocus,
     }),
@@ -853,11 +912,11 @@ function WizardSession({
       window.history.pushState(
         { [STEP_STATE]: 'parcalar' },
         '',
-        `${stepUrl(session.projectId, 'parcalar')}&gorunum=cizim`,
+        `${stepUrl(session.projectId, 'parcalar', session.draftId)}&gorunum=cizim`,
       );
       stepRef.current = 'parcalar';
     },
-    [session.projectId],
+    [session.projectId, session.draftId],
   );
 
   // Only the opening it was asked for: the grid reports it once it has focused the row.
@@ -872,11 +931,11 @@ function WizardSession({
       window.history.pushState(
         { [STEP_STATE]: 'parcalar' },
         '',
-        stepUrl(session.projectId, 'parcalar'),
+        stepUrl(session.projectId, 'parcalar', session.draftId),
       );
       stepRef.current = 'parcalar';
     },
-    [session.projectId],
+    [session.projectId, session.draftId],
   );
 
   // The entry the wizard opened on is a step entry too, so Back from step 2 returns to it.
@@ -890,13 +949,27 @@ function WizardSession({
     }
   }, []);
 
+  // T305 (D-094): until the first save the address names this draft, so a reload (or the way back
+  // from the machine form) restores exactly its unsent queue and no other new project does.
+  const createdYet = session.projectId !== null;
+  const draftId = session.draftId;
+  useEffect(() => {
+    if (createdYet || !draftId || window.location.pathname !== NEW_PATH || leaving.current) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(DRAFT_PARAM) === draftId) return;
+    url.searchParams.set(DRAFT_PARAM, draftId);
+    // A state without Next's own keys, so the router takes the new address over (it would put
+    // its own one back otherwise).
+    window.history.replaceState({ [STEP_STATE]: stepRef.current }, '', url.pathname + url.search);
+  }, [createdYet, draftId]);
+
   // T264: "Kesim ayarı ekle" leaves only after the project is saved, so the way back always names
   // this project (also when clicked before the first autosave of a new project finished).
   const settle = session.settle;
   const resolveFixReturn = useCallback(async () => {
     const id = await settle();
-    return `${stepUrl(id, 'makine')}&${LATEST_PARAM}=${LATEST_VALUE}`;
-  }, [settle]);
+    return `${stepUrl(id, 'makine', draftId)}&${LATEST_PARAM}=${LATEST_VALUE}`;
+  }, [settle, draftId]);
 
   // P4: "Adım n" commands of the palette (the shell's command menu) open a step here.
   useEffect(() => {
@@ -1018,7 +1091,7 @@ function WizardSession({
             <MachineFields
               t={t.machine}
               materials={messages.materials}
-              returnTo={`${stepUrl(session.projectId, 'makine')}&${LATEST_PARAM}=${LATEST_VALUE}`}
+              returnTo={`${stepUrl(session.projectId, 'makine', session.draftId)}&${LATEST_PARAM}=${LATEST_VALUE}`}
               resolveReturnTo={resolveFixReturn}
               project={project}
               machines={machines}
@@ -1062,6 +1135,7 @@ function WizardSession({
             onToList={() => setPartsView('list')}
             viewSwitch={switchInCanvas ? viewSwitch : undefined}
             toolDiameter={toolDiameter}
+            pocketToolDiameter={pocketToolDiameterFor(project, profile)}
             holeTool={{
               number: holeToolNo,
               diameter: (profile && findTool(profile, holeToolNo)?.diameter) ?? toolDiameter,
@@ -1471,6 +1545,8 @@ function WizardSession({
             </span>
             <span aria-hidden className="hidden h-4 w-px bg-border sm:inline-block" />
             <AutosaveIndicator t={t.save.short} state={indicator} />
+            {/* T314 (D-102): AI chat shell (spec §5.2, bottom right); fixed "yakında" reply until M11. */}
+            <AssistantLauncher t={t.assistant} />
           </div>
           {nextKey ? (
             <Button

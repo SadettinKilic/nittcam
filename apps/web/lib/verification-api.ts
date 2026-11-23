@@ -1,5 +1,6 @@
 /** Shapes of the machine verification routes (T022, D-031), shared by server and client. */
 import type {
+  ExtendedPartInfo,
   MeasurementIssue,
   MeasurementItem,
   TestCutMeasurements,
@@ -12,9 +13,15 @@ import type {
 } from '@nittcam/core';
 import type { ExportFileInfo, ExportPostInfo, ExportViolation } from './exports-api';
 
+/**
+ * A downloadable program: the §7.3 air cut / test cut, or the extended field-test part (T191,
+ * D-092) as `extAirCut` / `extTestCut`.
+ */
+export type ProgramKind = TestProgramKind | 'extAirCut' | 'extTestCut';
+
 /** One generated test program (dry run): files only when every check passed. */
 export interface TestProgramPreview {
-  kind: TestProgramKind;
+  kind: ProgramKind;
   ok: boolean;
   files: (ExportFileInfo & { downloadUrl: string })[];
   violations: ExportViolation[];
@@ -48,8 +55,31 @@ export interface VerificationOverview {
   /** The test part the programs cut (null when the profile cannot make it). */
   testPart: TestPartInfo | null;
   origin: { corner: string; sheetOffset: { x: number; y: number } };
+  /** T309: machine-coordinate (G53) park point of a manual tool change; null when not used. */
+  park: { x: number; y: number } | null;
+  /** T321: a manual tool changer without a usable park point (the tool stops over the sheet). */
+  parkOff: boolean;
   programs: { airCut: TestProgramPreview; testCut: TestProgramPreview };
+  /** T191: the extended field-test part (holes, pocket, groove, arcs, inner contour). */
+  extended: {
+    info: ExtendedPartInfo | null;
+    airCut: TestProgramPreview;
+    testCut: TestProgramPreview;
+  };
+  /** T191: test program downloads, newest first (what went to the machine, and when). */
+  downloads: TestDownloadItem[];
   history: VerificationHistoryItem[];
+}
+
+/** One recorded test-program download (T191, D-093). */
+export interface TestDownloadItem {
+  kind: ProgramKind;
+  name: string;
+  sha256: string;
+  /** Profile version the file was generated for. */
+  version: number;
+  /** ISO 8601. */
+  at: string;
 }
 
 /** POST /api/machines/:id/verification */
@@ -93,6 +123,6 @@ export type VerificationApiError =
   | { error: 'server_error' };
 
 /** Download URL of a test program file (`accept=1`: the unverified warning was accepted). */
-export function testProgramUrl(machineId: string, kind: TestProgramKind, name: string): string {
+export function testProgramUrl(machineId: string, kind: ProgramKind, name: string): string {
   return `/api/machines/${encodeURIComponent(machineId)}/verification/${kind}/${encodeURIComponent(name)}`;
 }

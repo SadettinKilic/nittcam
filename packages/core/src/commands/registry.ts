@@ -25,12 +25,14 @@ import {
   removeDimension,
   addInnerContour,
   removeInnerContour,
+  updateInnerContour,
   setOperation,
   duplicatePart,
   duplicateParts,
   importCutList,
   importDxf,
   mirrorPart,
+  splitMirrorPair,
   movePart,
   pasteParts,
   removePart,
@@ -67,12 +69,17 @@ import {
   setTabs,
   setLeadIn,
   setCutDirection,
+  setSpindleRpm,
+  setToolFeed,
+  setEntry,
+  setOperationTool,
   setDimensionMode,
 } from './plate';
 import {
   commandContextSchema,
   type CommandContext,
   type CommandDefinition,
+  type CommandEnv,
   type CommandError,
   type CommandLogEntry,
 } from './types';
@@ -87,6 +94,10 @@ export const COMMANDS = {
   setTabs,
   setLeadIn,
   setCutDirection,
+  setSpindleRpm,
+  setToolFeed,
+  setEntry,
+  setOperationTool,
   setSheetSize,
   setStockSheets,
   setGrain,
@@ -108,6 +119,7 @@ export const COMMANDS = {
   removeDimension,
   addInnerContour,
   removeInnerContour,
+  updateInnerContour,
   setOperation,
   updatePart,
   setPartGrain,
@@ -118,6 +130,7 @@ export const COMMANDS = {
   importDxf,
   movePart,
   mirrorPart,
+  splitMirrorPair,
   rotatePart,
   pasteParts,
   removeParts,
@@ -166,7 +179,12 @@ function zodIssues(error: z.ZodError, prefix: PropertyKey[]): CommandError['issu
  * with forward and inverse patches. The input project is never mutated. A command whose result
  * would not pass the project schema is rejected, so commands cannot produce an invalid project.
  */
-export function applyCommand(project: Project, name: string, rawParams: unknown): ApplyResult {
+export function applyCommand(
+  project: Project,
+  name: string,
+  rawParams: unknown,
+  env: CommandEnv = {},
+): ApplyResult {
   if (!isCommandName(name)) {
     return {
       ok: false,
@@ -186,7 +204,7 @@ export function applyCommand(project: Project, name: string, rawParams: unknown)
     };
   }
   const params = parsed.data;
-  const problem = def.check?.(project, params);
+  const problem = def.check?.(project, params, env);
   if (problem !== undefined) {
     return {
       ok: false,
@@ -316,7 +334,7 @@ export class CommandStack {
         };
       }
     }
-    const result = applyCommand(this.current, name, params);
+    const result = applyCommand(this.current, name, params, { machine: this.validation.machine });
     if (!result.ok) return result;
     const entry: CommandLogEntry = {
       command: name,

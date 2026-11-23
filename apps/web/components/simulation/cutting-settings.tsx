@@ -1,8 +1,11 @@
 'use client';
 
 import {
+  RAMP_BOUNDS,
   TAB_BOUNDS,
   cuttingSettingsOf,
+  findMaterialParams,
+  findTool,
   inheritedTabs,
   materialKindOf,
   maxTabHeight,
@@ -17,6 +20,8 @@ import { fill } from '../../lib/fill';
 import { paramFixHref } from '../../lib/machine-form';
 import type { Messages } from '../../lib/messages';
 import { NumberField } from '../wizard/number-field';
+import { OperationTools } from './operation-tools';
+import { SpindleSettings } from './spindle-settings';
 
 type Text = Messages['simulation']['cutting'];
 type Run = (name: string, params: unknown) => boolean;
@@ -221,6 +226,7 @@ export function CuttingSettings({
         options={(['arc', 'line'] as const).map((v) => [v, t.leadIns[v]])}
         onChange={(leadIn) => run('setLeadIn', { leadIn })}
       />
+      <EntrySettings t={t.entry} errors={errors} project={project} machine={machine} run={run} />
       <Choice
         legend={t.direction}
         name="direction"
@@ -232,6 +238,14 @@ export function CuttingSettings({
       <p className="text-xs text-fg-muted" data-testid="sim-cutting-direction-hint">
         {t.directionHint}
       </p>
+      <OperationTools t={t.tools} project={project} machine={machine} run={run} />
+      <SpindleSettings
+        t={t.spindle}
+        errors={errors}
+        project={project}
+        machine={machine}
+        run={run}
+      />
       <p className="text-xs text-fg-muted">{t.note}</p>
     </section>
   );
@@ -259,6 +273,106 @@ function heightBounds(t: Text, thickness: number) {
     highMessage: fill(t.bounds.heightHigh, { max: f(max) }),
   };
 }
+
+/**
+ * T324: how contour passes enter the material: straight plunge (default) or a ramp along the
+ * contour with its angle and shortest leg (absent = the cutting tool's diameter). Each change is
+ * one `setEntry` command (undoable).
+ */
+function EntrySettings({
+  t,
+  errors,
+  project,
+  machine,
+  run,
+}: {
+  t: Text['entry'];
+  errors: { number: string; positive: string; rejected: string };
+  project: Project;
+  machine: MachineProfile | null;
+  run: Run;
+}) {
+  const entry = project.cutting.entry;
+  const set = machine ? findMaterialParams(machine, project.stock) : undefined;
+  const toolNo = project.cutting.tools?.outer ?? set?.tool;
+  const toolD = machine && toolNo !== undefined ? findTool(machine, toolNo)?.diameter : undefined;
+  const f = (v: number) => mmFormat.format(v);
+  const length = entry?.length ?? toolD ?? 0;
+  const A = RAMP_BOUNDS.angle;
+  const L = RAMP_BOUNDS.length;
+  return (
+    <div className="flex flex-col gap-2" data-testid="sim-cutting-entry-block">
+      <Choice
+        legend={t.title}
+        name="entry"
+        testId="sim-cutting-entry"
+        value={entry ? 'ramp' : 'straight'}
+        options={[
+          ['straight', t.straight],
+          ['ramp', t.ramp],
+        ]}
+        onChange={(v) =>
+          run(
+            'setEntry',
+            v === 'straight'
+              ? { type: 'straight' }
+              : { type: 'ramp', angleDeg: RAMP_DEFAULT_ANGLE, length: null },
+          )
+        }
+        segmented
+      />
+      {entry ? (
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+          <NumberField
+            label={`${t.angle} (${t.degree})`}
+            value={entry.angleDeg}
+            testId="sim-cutting-ramp-angle"
+            inRow
+            errors={errors}
+            bounds={{
+              min: A.min,
+              max: A.max,
+              message: fill(t.bounds.angle, { min: f(A.min), max: f(A.max) }),
+            }}
+            onCommit={(angleDeg) =>
+              run('setEntry', { type: 'ramp', angleDeg, length: entry.length ?? null })
+            }
+          />
+          <NumberField
+            label={`${t.length} (mm)`}
+            value={length}
+            testId="sim-cutting-ramp-length"
+            inRow
+            errors={errors}
+            bounds={{
+              min: L.min,
+              max: L.max,
+              message: fill(t.bounds.length, { min: f(L.min), max: f(L.max) }),
+            }}
+            note={
+              entry.length === undefined && toolD !== undefined
+                ? { text: fill(t.lengthTool, { value: f(toolD) }), tone: 'muted' }
+                : undefined
+            }
+            onCommit={(v) =>
+              run('setEntry', {
+                type: 'ramp',
+                angleDeg: entry.angleDeg,
+                length: toolD !== undefined && v === toolD ? null : v,
+              })
+            }
+          />
+        </div>
+      ) : null}
+      <p className="text-xs text-fg-muted" data-testid="sim-cutting-entry-hint">
+        {entry ? fill(t.hintRamp, { angle: f(entry.angleDeg), length: f(length) }) : t.hintStraight}
+      </p>
+    </div>
+  );
+}
+
+/** T324: the ramp angle offered when the user switches to "Rampa" (a common MDF value). */
+const RAMP_DEFAULT_ANGLE = 3;
 
 /** A small radio row (the same pattern as the sheet size choice on step 1). */
 function Choice<V extends string>({

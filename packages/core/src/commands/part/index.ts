@@ -307,13 +307,21 @@ export const duplicatePart = defineCommand({
   },
 });
 
-export { mirrorPart, movePart, pasteParts, removeParts, rotatePart, setPartsGrain } from './board';
+export {
+  mirrorPart,
+  movePart,
+  pasteParts,
+  removeParts,
+  rotatePart,
+  setPartsGrain,
+  splitMirrorPair,
+} from './board';
 export { drawPart, setSegmentBulge } from './draw';
 export { moveVertex, setOutline, setSegmentAngle, setSegmentLength, splitSegment } from './edit';
 export { addDogbone, convertToFreeform, filletCorners } from './corners';
 export { duplicateParts, reorderParts, updateParts } from './list';
 export { addHole, removeHole, updateHole } from './holes';
 export { addDimension, removeDimension } from './annotate';
-export { addInnerContour, removeInnerContour } from './inners';
+export { addInnerContour, removeInnerContour, updateInnerContour } from './inners';
 export { importDxf, importDxfParamsSchema, dxfImportOrigin, MAX_DXF_PARTS } from './dxf';
 export { setOperation } from './operation';

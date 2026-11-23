@@ -9,7 +9,8 @@
  * move with the copy.
  */
 import { offset } from '../geometry/offset';
-import { bbox, normalize } from '../geometry/polyline';
+import { bbox, forEachSegment, normalize } from '../geometry/polyline';
+import { sampleSegment } from '../geometry/segment';
 import type { Polyline } from '../geometry/types';
 import { innerOperation, outlineOperation, type Project } from '../schema';
 import { placedHoleCentre, placedInners, placedOutline } from '../toolpath';
@@ -29,6 +30,16 @@ function innerCentre(inner: Polyline, toolRadius: number): { cx: number; cy: num
     if (only) return centre(only);
   }
   return centre(inner);
+}
+
+/** A closed contour as a polygon: arcs sampled every ≤ 0.01 rad (chord error ≤ 1.25e-5 · radius). */
+function polygonOf(pl: Polyline): { x: number; y: number }[] {
+  const out: { x: number; y: number }[] = [];
+  forEachSegment(pl, (a, b, bulge) => {
+    const steps = Math.min(4000, Math.max(1, Math.ceil(Math.abs(4 * Math.atan(bulge)) / 0.01)));
+    out.push(...sampleSegment(a, b, bulge, steps).slice(0, -1));
+  });
+  return out;
 }
 
 /**
@@ -52,6 +63,11 @@ export function expectedLayout(entered: Project, sheet: number, toolDiameter = 0
         .map((c, k) => ({ c, k }))
         .filter(({ k }) => innerOperation(part, k).kind === 'inside')
         .map(({ c }) => innerCentre(c, toolDiameter / 2)),
+      // T325: blind contour pockets, with their boundary and declared depth.
+      pockets: placedInners(part, pl).flatMap((c, k) => {
+        const op = innerOperation(part, k);
+        return op.kind === 'pocket' ? [{ inner: k, boundary: polygonOf(c), depth: op.depth }] : [];
+      }),
       holes: part.holes
         .filter((h) => h.type === 'through')
         .map((h) => {

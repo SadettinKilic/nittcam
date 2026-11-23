@@ -54,3 +54,14 @@ export function defaultOnlineDepth(thickness: number): number {
   if (thickness > ONLINE_DEPTH + EPS) return ONLINE_DEPTH;
   return Math.round((thickness / 2) * 1000) / 1000;
 }
+
+/** Default depth of a new blind contour pocket, mm (T325). */
+export const POCKET_DEPTH = 5;
+
+/**
+ * Default pocket depth for a stock (T325): 5 mm, but never more than half the thickness, so the
+ * default is never refused (a pocket must stay below the thickness).
+ */
+export function defaultPocketDepth(thickness: number): number {
+  return Math.min(POCKET_DEPTH, Math.round((thickness / 2) * 1000) / 1000);
+}

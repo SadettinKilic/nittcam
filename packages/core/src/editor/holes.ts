@@ -94,32 +94,75 @@ export function checkHolePlacement(
 }
 
 /**
- * A hole's tool problem (T275, spec §4.5, D-050): the one rule the validation (where the hole is
- * drawn) and the toolpath (backstop) share, checked in this order:
+ * A hole's tool problem (T275, T320, spec §4.5, D-050, D-099, D-108): the one rule the validation
+ * (where the hole is drawn) and the toolpath (backstop) share, checked in this order:
  * - the tool number is not in the machine's tool table;
  * - pocket / through: the diameter is smaller than the tool (equal is a single plunge);
- * - groove: the groove is narrower than the tool.
- * EPS slack: within 0.001 mm counts as equal.
+ * - groove: the groove is narrower than the tool;
+ * - a drill only drills a hole of its own diameter (through or blind): a bigger hole or a groove
+ *   needs a mill (helical / pocket), else the drill would be run sideways (D-108).
+ * EPS slack: within 0.001 mm counts as equal. A tool without `type` is treated as a mill.
  */
 export type HoleToolProblem =
   | { code: 'TOOL_NOT_IN_PROFILE' }
   | { code: 'HOLE_SMALLER_THAN_TOOL'; toolDiameter: number }
-  | { code: 'GROOVE_NARROWER_THAN_TOOL'; toolDiameter: number };
+  | { code: 'GROOVE_NARROWER_THAN_TOOL'; toolDiameter: number }
+  | { code: 'DRILL_SIZE_MISMATCH'; toolDiameter: number };
+
+/** The tool fields the hole rule reads. */
+export interface HoleRuleTool {
+  number: number;
+  diameter: number;
+  type?: string;
+}
 
 export function holeToolProblem(
   hole: Hole,
-  tools: readonly { number: number; diameter: number }[],
+  tools: readonly HoleRuleTool[],
 ): HoleToolProblem | null {
   const tool = tools.find((t) => t.number === hole.tool);
   if (!tool) return { code: 'TOOL_NOT_IN_PROFILE' };
   if (hole.type === 'groove') {
-    return hole.grooveWidth < tool.diameter - EPS
-      ? { code: 'GROOVE_NARROWER_THAN_TOOL', toolDiameter: tool.diameter }
+    if (hole.grooveWidth < tool.diameter - EPS) {
+      return { code: 'GROOVE_NARROWER_THAN_TOOL', toolDiameter: tool.diameter };
+    }
+    return tool.type === 'drill'
+      ? { code: 'DRILL_SIZE_MISMATCH', toolDiameter: tool.diameter }
       : null;
   }
-  return hole.d < tool.diameter - EPS
-    ? { code: 'HOLE_SMALLER_THAN_TOOL', toolDiameter: tool.diameter }
-    : null;
+  if (hole.d < tool.diameter - EPS) {
+    return { code: 'HOLE_SMALLER_THAN_TOOL', toolDiameter: tool.diameter };
+  }
+  if (tool.type === 'drill' && Math.abs(hole.d - tool.diameter) > EPS) {
+    return { code: 'DRILL_SIZE_MISMATCH', toolDiameter: tool.diameter };
+  }
+  return null;
+}
+
+/** Tool types that may cut a hole at all (a V bit or a ball end mill never gets one by default). */
+const HOLE_TOOL_TYPES: ReadonlySet<string> = new Set(['drill', 'flatEndMill', 'compression']);
+
+/**
+ * Default tool of a new hole (T320, D-108): a drill of exactly the hole's diameter when the machine
+ * has one (the hole's own `tool` is ignored); else `fallback` (the material set's tool) when it suits the hole; else the widest mill
+ * that suits it (fewest rings); else `fallback` (the validation then names the problem).
+ * Deterministic: ties go to the lower tool number.
+ */
+export function bestHoleTool(hole: Hole, tools: readonly HoleRuleTool[], fallback: number): number {
+  const fits = (t: HoleRuleTool) =>
+    (t.type === undefined || HOLE_TOOL_TYPES.has(t.type)) &&
+    holeToolProblem({ ...hole, tool: t.number }, [t]) === null;
+  const sorted = [...tools].sort((a, b) => a.number - b.number);
+  const drill = sorted.find((t) => t.type === 'drill' && fits(t));
+  if (drill) return drill.number;
+  const own = sorted.find((t) => t.number === fallback);
+  if (own && fits(own)) return fallback;
+  const mills = sorted.filter((t) => t.type !== 'drill' && fits(t));
+  const widest = mills.reduce<HoleRuleTool | undefined>(
+    (best, t) => (best === undefined || t.diameter > best.diameter + EPS ? t : best),
+    undefined,
+  );
+  return widest?.number ?? fallback;
 }
 
 /** A blind hole (pocket, groove) must stay above the sheet bottom: depth < thickness (EPS). */

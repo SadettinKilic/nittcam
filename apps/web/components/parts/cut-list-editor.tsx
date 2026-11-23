@@ -56,6 +56,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   Rows3,
   Search,
   Shapes,
@@ -93,6 +94,7 @@ import {
   type EdgeKey,
   type NavDirection,
 } from '../../lib/cut-list-grid';
+import { renestOnly } from '../../lib/check-state';
 import { downloadText } from '../../lib/cut-list-file';
 import {
   SORT_KEYS,
@@ -188,6 +190,8 @@ function NameCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: numbe
   const { t } = ctx;
   const issues = ctx.issuesOf(row);
   const machining = machiningText(t, part);
+  // T321: a row only missing from the layout (quantity changed) gets a neutral "yeniden diz" mark.
+  const neutral = renestOnly(issues);
   return (
     <div className="flex items-center gap-1">
       <div className="min-w-0 flex-1">
@@ -229,9 +233,13 @@ function NameCell({ ctx, part, row }: { ctx: GridContext; part: Part; row: numbe
             })}
             data-testid={`row-issue-${row + 1}`}
             data-codes={issues.map((i) => i.code).join(' ')}
-            className="flex size-6 shrink-0 items-center justify-center text-warning-text"
+            className={`flex size-6 shrink-0 items-center justify-center ${neutral ? 'text-fg-muted' : 'text-warning-text'}`}
           >
-            <TriangleAlert aria-hidden className="size-3.5" />
+            {neutral ? (
+              <RefreshCw aria-hidden className="size-3.5" />
+            ) : (
+              <TriangleAlert aria-hidden className="size-3.5" />
+            )}
           </span>
         </Tooltip>
       ) : null}
@@ -1710,7 +1718,10 @@ export function CutListEditor({
 
   /** T122: the generated rows in one importCutList = one undo step (D-041). */
   function addCabinet(generated: Parameters<typeof cabinetRows>[0], group: string): boolean {
-    const rows = cabinetRows(generated, t.cabinet.roles, group, newPartId, project.stock.thickness);
+    const rows = cabinetRows(generated, t.cabinet.roles, group, newPartId, {
+      mode: project.settings.dimensionMode,
+      stockThickness: project.stock.thickness,
+    });
     const ok = run('importCutList', { parts: rows });
     if (ok) {
       notify.success(
@@ -2158,7 +2169,9 @@ export function CutListEditor({
                         splitOff.onSplit(
                           // B53 (tester B36): no thickness note; the moved parts are the new
                           // project's board even when the chosen thickness differs from theirs.
-                          cabinetRows(generated, t.cabinet.roles, group, newPartId),
+                          cabinetRows(generated, t.cabinet.roles, group, newPartId, {
+                            mode: project.settings.dimensionMode,
+                          }),
                           target,
                           group,
                         ),

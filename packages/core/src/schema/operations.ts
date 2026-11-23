@@ -13,7 +13,7 @@ export const ALLOWED_OPERATIONS: Readonly<
   Record<ContourRef['type'], readonly ContourOperationKind[]>
 > = {
   outline: ['outside', 'online', 'none'],
-  inner: ['inside', 'online', 'none'],
+  inner: ['inside', 'online', 'pocket', 'none'],
   line: ['online', 'none'],
 };
 

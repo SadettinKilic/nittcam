@@ -2,12 +2,19 @@
 
 import type { ProgramTools, SimSummary } from '@nittcam/core';
 import { focusCuttingSettings } from './cutting-settings';
+import { checkState, type CheckState } from '../../lib/check-state';
 import { fill } from '../../lib/fill';
 import { Measure } from '@nittcam/ui';
 import { SlidersHorizontal, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { formatDuration, formatInt, type SimText } from './model';
 import { ErrorList, WarningList, type Finding, type PartLinks } from './violations';
+
+const CHIP_TONE: Record<CheckState, string> = {
+  ok: 'border-success-border bg-success-subtle text-success-text',
+  warn: 'border-warning-border bg-warning-subtle text-warning-text',
+  fail: 'border-danger-border bg-danger-subtle text-danger-text',
+};
 
 /** Summary card (§6.5): estimated time, lengths, tool changes, passes, tabs, check status. */
 export function SummaryCard({
@@ -21,6 +28,7 @@ export function SummaryCard({
   program = null,
   templateNames = [],
   cutting = null,
+  stale = false,
 }: {
   t: SimText;
   summary: SimSummary;
@@ -36,8 +44,11 @@ export function SummaryCard({
   links?: PartLinks;
   /** T294: one line with the cutting settings and a way to the panel ("Kesim ayarları"). */
   cutting?: { line: string; edit: string } | null;
+  /** T307: the shown run is for the previous project state; the new one is on its way. */
+  stale?: boolean;
 }) {
   const s = t.summary;
+  const state = checkState(checksOk ? 0 : Math.max(1, errorCount), warnings.length);
   // Measure (T195): Turkish digits, tabular figures, the unit quieter than the number.
   const meters = (mm: number) => <Measure value={mm / 1000} unit={t.meterUnit} maxDecimals={1} />;
   const count = (n: number) => <Measure value={n} maxDecimals={0} />;
@@ -59,19 +70,27 @@ export function SummaryCard({
     <section
       aria-labelledby="sim-summary-title"
       data-testid="sim-summary"
+      aria-busy={stale || undefined}
       className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-xs"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="sim-summary-title" className="text-base font-semibold tracking-tight text-fg">
           {s.title}
         </h2>
+        {/* T321 (usta 1): no errors but warnings → an amber chip with the count, never the green
+            "Tüm kontroller geçti". data-ok keeps meaning "nothing blocks the export". */}
         <p
           data-testid="sim-check-status"
-          data-ok={checksOk}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${checksOk ? 'border-success-border bg-success-subtle text-success-text' : 'border-danger-border bg-danger-subtle text-danger-text'}`}
+          data-ok={stale ? 'pending' : checksOk}
+          data-state={stale ? 'pending' : state}
+          className={`inline-flex transition-opacity duration-(--duration-fast) ${stale ? 'opacity-60' : ''} items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${CHIP_TONE[state]}`}
         >
-          <span aria-hidden="true">{checksOk ? '✓' : '✕'}</span>
-          {checksOk ? s.checksOk : fill(s.checksFail, { count: errorCount })}
+          <span aria-hidden="true">{state === 'ok' ? '✓' : state === 'warn' ? '!' : '✕'}</span>
+          {state === 'ok'
+            ? s.checksOk
+            : state === 'warn'
+              ? fill(s.checksWarn, { count: warnings.length })
+              : fill(s.checksFail, { count: errorCount })}
         </p>
       </div>
       {errors.length > 0 ? (
@@ -157,7 +176,7 @@ export function SummaryCard({
         · {s.noDownloadHere}
       </p>
       {warnings.length > 0 ? (
-        <details className="text-sm">
+        <details className="text-sm" open data-testid="sim-warnings">
           <summary className="cursor-pointer rounded-sm font-medium text-warning-text">
             {fill(s.warnings, { count: warnings.length })}
           </summary>

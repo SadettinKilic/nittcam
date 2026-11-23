@@ -43,6 +43,7 @@ describe('downloadBlocker (§6.6 checklist, §7.2 rules 9–10)', () => {
       zReference: 'materialTop' as const,
       tools: [],
       rezeroZ: true,
+      parkOff: false,
     };
     const two = {
       ok: true,

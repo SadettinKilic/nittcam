@@ -131,7 +131,9 @@
       "notFound": "Sayfa bulunamadı",
       "materials": "Malzemeler",
       "dxfLayers": "DXF katmanları",
-      "appearance": "Görünüm"
+      "appearance": "Görünüm",
+      "fieldKit": "Saha testi kiti",
+      "help": "Yardım"
     },
     "theme": {
       "label": "Tema",
@@ -153,7 +155,8 @@
       "actions": "Eylemler",
       "recent": "Son projeler",
       "theme": "Tema",
-      "project": "Bu proje"
+      "project": "Bu proje",
+      "help": "Yardım"
     },
     "templates": "Şablonlar",
     "settings": "Ayarlar",
@@ -180,8 +183,13 @@
       "settings": "ayar tercih şirket",
       "materials": "malzeme plaka mdf sunta kalınlık stok",
       "verify": "doğrula air cut test kesimi makine onay",
-      "step": "adım sihirbaz git"
-    }
+      "step": "adım sihirbaz git",
+      "helpCenter": "yardım kılavuz rehber nasıl soru destek",
+      "whatsNew": "yenilikler yeni sürüm değişiklik güncelleme"
+    },
+    "helpCenter": "Yardım sayfası",
+    "helpTopic": "Yardım: {title}",
+    "whatsNew": "Yenilikler"
   },
   "shortcuts": {
     "title": "Klavye kısayolları",
@@ -355,6 +363,12 @@
         "changerType": "Takım değiştirme",
         "capacity": "Takım kapasitesi",
         "g43": "Takım boyu telafisi var (G43)",
+        "park": "Takım değişiminde park noktasına git",
+        "parkHelp": "Takım değiştirirken makine buraya gelsin: önce güvenli Z'ye çıkar, sonra makine koordinatındaki bu X/Y'ye (G53) gider ve durur. İş sıfırından bağımsızdır.",
+        "parkX": "Park X (mm)",
+        "parkY": "Park Y (mm)",
+        "parkXYHelp": "Makine koordinatı (G53): kumandanın makine/mutlak ekranındaki değer, makine sıfırına (home) göre. Eksen hareket alanının içinde olmalı.",
+        "parkUnavailable": "Seçili post makine koordinatını (G53) desteklemiyor; takım değişiminde park noktası kullanılamaz.",
         "holdDownType": "Tutma şekli",
         "vacuumOn": "Vakum aç kodu",
         "vacuumOff": "Vakum kapat kodu",
@@ -499,6 +513,7 @@
       "vacuumOnMissing": "Vakum kapat kodu varsa aç kodu da girin.",
       "duplicateTool": "Bu takım numarası zaten var.",
       "toolAboveCapacity": "Takım numarası takım kapasitesini aşıyor.",
+      "parkOutOfTravel": "Park noktası makinenin eksen hareket alanının içinde olmalı (makine koordinatı).",
       "duplicateMaterial": "Bu malzeme ve kalınlık zaten var.",
       "unknownTool": "Bu numarada takım yok.",
       "plungeAboveFeed": "Dalma hızı beslemeden büyük olamaz.",
@@ -611,6 +626,7 @@
       "INNER_SLUG_UNSECURED": "Bir iç kesimin göbeğine 2 köprü sığmıyor; açıklığı büyütün ya da delik aracıyla çizin.",
       "HOLE_SMALLER_THAN_TOOL": "Delik, takımdan küçük.",
       "GROOVE_NARROWER_THAN_TOOL": "Kanal, takımdan dar.",
+      "DRILL_SIZE_MISMATCH": "Matkap ucu, delikle aynı çapta değil.",
       "TOOL_NOT_IN_PROFILE": "Deliğin takımı bu makinede yok.",
       "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Kör delik derinliği plaka kalınlığından az olmalı.",
       "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
@@ -736,7 +752,7 @@
       "progress": "Dizilim ilerlemesi",
       "progressText": "{done} / {total} deneme",
       "cancelled": "Dizilim iptal edildi; önceki dizilim aynen duruyor.",
-      "help": "Parçaları seçilen hedefe göre plakalara yerleştirir. Parça arası boşluk {gap} mm, kenar payı {margin} mm, takım çapı {tool} mm.",
+      "help": "Parçaları seçilen hedefe göre plakalara yerleştirir. Parça arası boşluk {clear} mm (takım Ø{tool} + pay {gap} mm), kenar payı {margin} mm.",
       "toolNote": "Takım çapı, seçilen makinenin bu malzeme ve kalınlık için önerdiği takımdan gelir.",
       "about": "Dizilim hakkında",
       "toolChip": "Takım Ø{value}",
@@ -807,7 +823,9 @@
       "grain": "Damar",
       "grainKeep": "Değiştirme",
       "grainFree": "Serbest",
-      "grainFixed": "Sabit",
+      "grainAlongH": "Boy boyunca (90°)",
+      "grainAlongW": "En boyunca (0°)",
+      "grainFixed": "Açı seç…",
       "edges": "Kenar bandı (mm)",
       "edgeKeep": "değişmez",
       "prefix": "Ad öneki",
@@ -1190,9 +1208,17 @@
       "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç kesime değiyor.",
       "HOLE_SMALLER_THAN_TOOL": "Delik çapı takım çapından küçük.",
       "GROOVE_NARROWER_THAN_TOOL": "Kanal genişliği takım çapından dar; takım bu kanalı açamaz.",
+      "DRILL_SIZE_MISMATCH": "Matkap ucu yalnız kendi çapında delik deler; daha büyük delik ya da kanal için freze seçin.",
       "HOLE_DEPTH_INVALID": "Kör delik derinliği malzeme kalınlığından küçük olmalı.",
       "INNER_OFFSET_FAILED": "İç kesim bu takım için çok küçük; takım boşluğa girmiyor.",
       "INNER_SPLIT": "Takım iç kesimin dar bir boğazından geçemiyor.",
+      "POCKET_TOO_SMALL": "Cep takımdan dar; takım cebe girmiyor. Cebi büyütün ya da daha ince bir takım seçin.",
+      "POCKET_SPLIT": "Cep dar bir boğazla ikiye ayrılıyor; tek girişle boşaltılamıyor. Boğazı genişletin ya da iki ayrı cep çizin.",
+      "POCKET_DEPTH_INVALID": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
+      "POCKET_PLUNGE_ENTRY": "Cep rampaya yetmeyecek kadar küçük; takım düz dalıyor (dalma ilerlemesiyle).",
+      "POCKET_OUTSIDE_BOUNDARY": "Takım cebin dışına (ya da duvarına takım yarıçapından yakın) çıkıyor.",
+      "POCKET_TOO_DEEP": "Takım cebin derinliğinden aşağı iniyor.",
+      "POCKET_NOT_CUT": "Bir cep programda boşaltılmıyor.",
       "ONLINE_DEPTH_INVALID": "Çizgi üzerinden işlem derinliği malzeme kalınlığından az olmalı.",
       "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
       "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor, dış hatla kesişiyor ya da başka bir iç kesime değiyor; parça bu haliyle kesilemez.",
@@ -1211,7 +1237,10 @@
       "TOOL_CHANGE_BELOW_SAFE_Z": "Takım değişimi güvenli Z'nin altında.",
       "NO_SAFE_Z_AFTER_TOOL_CHANGE": "Takım değişiminden sonra önce güvenli Z'ye kalkılmıyor.",
       "FEED_FROM_UNKNOWN_POSITION": "Kesim, bilinmeyen bir konumdan başlıyor.",
+      "MACHINE_MOVE": "Makine koordinatında (G53) bir hareket var ama makine profilindeki park noktası değil (ya da güvenli Z'de, spindle kapalıyken ve hemen ardından duraklama ile değil).",
       "PLUNGE_TOO_FAST": "Dalma, dalma beslemesinden hızlı.",
+      "FEED_ABOVE_MACHINE": "İlerleme makinenin sınırının üstünde.",
+      "RAMP_OUTSIDE_KERF": "Rampa, girdiği kesim çizgisinin dışına çıkıyor.",
       "CUT_SPINDLE_OFF": "Spindle kapalıyken kesim hareketi var.",
       "WARMUP_MISSING": "Spindle ısınma beklemesi eksik.",
       "VACUUM_NOT_ON": "Kesim sırasında vakum açık değil.",
@@ -1240,17 +1269,20 @@
       "TOOL_MISMATCH": "Kesimde beklenenden farklı takım kullanılıyor.",
       "TOOL_ORDER": "Takım değiştirme sırası yanlış.",
       "TOOL_PAUSE_COUNT": "Elle takım değiştirme duraklaması sayısı yanlış.",
+      "TOOL_CHANGE_OPTIONAL_STOP": "Elle takım değişimi M1 (isteğe bağlı durma) ile duruyor; kumandada isteğe bağlı durma kapalıysa makine eski takımla devam eder. M0 kullanılmalı.",
       "TOOL_PROMPT_MISMATCH": "Takım değiştirme mesajı yanlış takımı söylüyor.",
       "STOCK_MISMATCH": "Malzeme kalınlığı takım yolu derinliğiyle uyuşmuyor.",
       "SHEET_MISSING": "Bir plakanın programı yok.",
       "FILE_TOO_LARGE": "Dosya makinenin kabul ettiği boyuttan büyük.",
-      "FILE_NAME_TOO_LONG": "Dosya adı makine için çok uzun.",
+      "FILE_NAME_TOO_LONG": "Dosya adı makinenin okuyabildiğinden uzun (makine profilindeki dosya adı sınırı).",
+      "FILE_NAME_CHARS": "Dosya adında makinenin okuyamayacağı karakter var (yalnız A-Z, 0-9, _ - . olmalı).",
+      "FILE_NAME_DUPLICATE": "İki dosya aynı adı taşıyor.",
       "ARC_INVALID": "Yay hareketi tutarsız.",
       "NO_WARMUP": "Isınma beklemesi 0 saniye: spindle beklemeden kesime başlar.",
       "AXIS_AWAY_FROM_TABLE": "Bir eksen tabladan dışarı bakıyor: koordinatlar negatif olur.",
       "FILE_SPLIT": "Program boyut sınırı yüzünden birden çok dosyaya bölündü.",
       "LEAD_SHORTENED": "Giriş/çıkış hareketi kısaltıldı.",
-      "LEAD_REMOVED": "Giriş/çıkış hareketi yer olmadığı için kaldırıldı.",
+      "LEAD_REMOVED": "Giriş/çıkış hareketi yer olmadığı için kaldırıldı; takım parçaya dik dalar ve iz bırakabilir. Dizilim adımında parça arası payı artırıp yeniden dizin.",
       "SMALL_PART_AUTO_TABS": "Küçük parçaya otomatik köprü eklendi.",
       "SMALL_PART_SKIN": "Küçük parçanın altında ince tabaka bırakıldı; plakanın sonunda temizleme pasosuyla kesilir.",
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
@@ -1273,6 +1305,8 @@
       "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde (plaka dışında, kenar payında ya da başka parçaya çok yakın).",
       "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
       "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
+      "POCKET_DEPTH_NOT_BELOW_THICKNESS": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
+      "POCKET_DEPTH_NEAR_THICKNESS": "Cep derinliği kalınlığa çok yakın: altta 1 mm'den az malzeme kalıyor, delip geçebilir.",
       "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
       "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
       "SMALL_PART_SKIN_OUT_OF_BOUNDS": "İnce tabaka bu küçük parçayı tutamaz (kalınlık 0,2 mm ile kalınlık − 1 mm arası olmalı); parça son pasoda serbest kalır. 1. adımda tabaka kalınlığını düzeltin.",
@@ -1280,7 +1314,10 @@
       "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası).",
       "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
       "TABS_TOO_SMALL_HIGH": "Köprü çok yüksek: yükseklik en fazla kalınlık − 1 mm olabilir. Kesim ayarlarında köprü yüksekliğini düşürün.",
-      "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin."
+      "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin.",
+      "SPINDLE_RPM_OUT_OF_RANGE": "Bir takımın devri makinenin devir aralığının dışında. Kesim ayarlarında “Önerilene dön” deyin ya da aralık içinde bir değer seçin.",
+      "FEED_OUT_OF_RANGE": "Bir takımın ilerlemesi ya da dalması makinenin sınırlarının dışında. Kesim ayarlarında “İlerlemede önerilene dön” deyin ya da sınır içinde bir değer girin.",
+      "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor (türü, boyu ya da çapı). Kesim ayarlarında “Önerilene dön” deyin ya da listeden başka bir takım seçin."
     },
     "codeFallback": "Kontrol {code}",
     "summary": {
@@ -1295,6 +1332,7 @@
       "files": "{files} dosya · {sheets} plaka · {moves} hareket",
       "checksOk": "Tüm kontroller geçti",
       "checksFail": "{count} kontrol geçmedi",
+      "checksWarn": "Kontroller geçti · {count} uyarı",
       "warnings": "{count} uyarı",
       "noDownloadHere": "İndirme, kontrol listesiyle birlikte Dışa aktar adımında yapılır.",
       "toolOrder": "Takımlar: {tools}",
@@ -1400,6 +1438,21 @@
         "arc": "Yay",
         "line": "Düz"
       },
+      "entry": {
+        "title": "Dalma (konturda)",
+        "straight": "Dik dalma",
+        "ramp": "Rampa",
+        "angle": "Açı",
+        "length": "En az boy",
+        "degree": "°",
+        "hintStraight": "Takım her pasoda konturun başında dik iner.",
+        "hintRamp": "Takım kontur çizgisi üzerinde ileri-geri giderek iner; her bacak en fazla {angle}° eğimli ve en az {length} mm. Dalma ilerlemesiyle iner, kontur dışına çıkmaz.",
+        "bounds": {
+          "angle": "{min}–{max}° arası",
+          "length": "{min}–{max} mm arası"
+        },
+        "lengthTool": "Takım çapı ({value} mm)"
+      },
       "direction": "Kesim yönü",
       "directions": {
         "climb": "Climb (tırmanma)",
@@ -1419,6 +1472,62 @@
       "skinOn": "Küçük parçalarda {skin} mm ince tabaka da açık (1. adımdaki ayar).",
       "skinOff": "Kapat",
       "directionHint": "Climb çoğu router'da daha temiz kenar verir; boşluklu ya da hafif makinede veya kenar yırtılırsa conventional seçin.",
+      "tools": {
+        "title": "Takım (işleme göre)",
+        "ops": {
+          "outer": "Dış kontur",
+          "inner": "İç kontur",
+          "pocket": "Cep",
+          "hole": "Delik"
+        },
+        "option": "T{tool} · Ø{diameter} mm {type}",
+        "recommendedSuffix": "(önerilen)",
+        "perHole": "Her delik kendi takımı",
+        "types": {
+          "flatEndMill": "düz freze",
+          "ballEndMill": "küresel freze",
+          "compression": "kompresyon",
+          "vBit": "V uç",
+          "drill": "matkap"
+        },
+        "source": {
+          "recommended": "Önerilen takım.",
+          "project": "Bu projeye özel takım."
+        },
+        "reset": "Önerilene dön",
+        "only": "Bu işe uyan başka takım yok.",
+        "problem": "Seçilen takım bu işe artık uymuyor (ölçü, boy ya da tür); önerilene dönün ya da başka takım seçin.",
+        "hint": "Listede yalnız bu işe uyan takımlar var: tür, boy ve çap (iç köşe, kanal, delik) kontrol edilir. Devir, seçilen takıma göre önerilir."
+      },
+      "spindle": {
+        "title": "Devir (iş mili hızı)",
+        "tool": "T{tool} · Ø{diameter} mm",
+        "label": "T{tool} devri",
+        "unit": "d/dk",
+        "valueText": "{value} devir/dk",
+        "recommended": "Önerilen {value}",
+        "band": "Uygun aralık {min}–{max}",
+        "high": "Önerilenden %{percent} yüksek: takım ısınabilir, yanma izi kalabilir.",
+        "low": "Önerilenden %{percent} düşük: talaş kalınlaşır, takım kırılma riski artar.",
+        "outOfRange": "Bu makinenin devir aralığı {min}–{max}; bu değer kesilmez.",
+        "chipLoad": "Talaş yükü {value} mm/diş ({flutes} ağızlı, ilerleme {feed} mm/dk)",
+        "feed": "İlerleme",
+        "plungeFeed": "Dalma",
+        "feedUnit": "mm/dk",
+        "feedBounds": "{min}–{max} mm/dk arası",
+        "plungeFaster": "Dalma ilerlemeden hızlı; çoğu takım için dalma ilerlemenin yarısı ya da daha azıdır.",
+        "feedSource": {
+          "recommended": "İlerleme ve dalma malzeme ayarından ({feed} / {plunge} mm/dk).",
+          "project": "Bu projeye özel ilerleme/dalma (önerilen {feed} / {plunge} mm/dk)."
+        },
+        "feedReset": "İlerlemede önerilene dön",
+        "source": {
+          "recommended": "Malzeme ayarındaki devir kullanılıyor.",
+          "project": "Bu projeye özel devir."
+        },
+        "reset": "Önerilene dön",
+        "none": "Bu iş için malzeme ayarı yok; devir malzeme ayarı eklenince gelir."
+      },
       "summaryLine": "Köprü: {tabs} · Giriş: {lead} · Yön: {direction}",
       "summaryTabs": {
         "all": "her parçada {count} × {width} × {height} mm",
@@ -1591,6 +1700,21 @@
     "unknown": "{id} (tanınmayan malzeme)"
   },
   "wizard": {
+    "assistant": {
+      "open": "Asistan",
+      "openLabel": "Asistanı aç",
+      "title": "Asistan",
+      "soon": "Yakında",
+      "close": "Asistanı kapat",
+      "intro": "Yapay zekâ asistanı hazırlanıyor. Şimdilik yazdıklarına sabit bir yanıt verir; projende hiçbir şeyi değiştirmez.",
+      "log": "Sohbet",
+      "inputLabel": "Mesaj",
+      "placeholder": "Bir şey yaz…",
+      "send": "Gönder",
+      "you": "Sen",
+      "bot": "Asistan",
+      "reply": "Yapay zekâ asistanı yakında geliyor. Şimdilik parçaları kesim listesinden veya çizimden ekleyebilirsin."
+    },
     "links": {
       "source": "Kaynak proje",
       "derived": "Ayrı plaka projeleri"
@@ -1796,12 +1920,12 @@
         "saved": "{count} artık parça stoğa kaydedildi.",
         "failed": "Artık parçalar kaydedilemedi. Tekrar deneyin."
       },
-      "gap": "Parça arası boşluk (mm)",
+      "gap": "Parça arası pay (mm)",
       "margin": "Kenar payı (mm)",
       "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
       "noParts": "Önce Parçalar adımında parça ekleyin.",
       "marginWarning": "Kenar payı Ø{tool} takım için en az {min} mm olmalı; yoksa takım plakanın dışına çıkar.",
-      "gapNote": "Takım çapına (Ø{tool} mm) ek boşluk."
+      "gapNote": "Parça arası boşluk: takım Ø{tool} + pay {gap} = {clear} mm."
     },
     "simulation": {
       "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında “Diz” ile parçaları yerleştirin.",
@@ -1857,6 +1981,8 @@
       "checkToolNone": "Takım doğru mu?",
       "checkToolChange": "Program içinde {count} kez durup takım ister.",
       "checkToolChangeZ": "Program içinde {count} kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayacağım.",
+      "parkOff": "Park noktası kapalı: takım değişiminde takım plakanın üstünde kalır. Makineler › makine › Takım değiştirici bölümünden park noktası ayarlayın.",
+      "fileNameLong": "Dosya adı {longest} karakter; makine en fazla {limit} karakter okuyor. Makinenin son sürümüne geçin ya da proje adını kısaltın.",
       "checkAirCut": "Air cut yapılacak mı?",
       "checkTemplates": "Hazır şablon ölçüleri doğrulanmadı: {names}. Ölçüleri kendi menteşe / kulp verinizle karşılaştırdım.",
       "hingeHandle": "Kulp delikleri menteşe ile aynı kenarda ({names}). Kulp menteşe tarafında olamaz; kenarı kontrol edin.",
@@ -1928,6 +2054,8 @@
     "issues": {
       "title": "Uyarılar",
       "none": "Sorun bulunmadı.",
+      "simWarnings": "Kesimde {count} uyarı var; ayrıntısı Özet'te.",
+      "renest": "{count} parça dizilimde yok (adet ya da parça değişti). Dizilim adımında yeniden dizin.",
       "errors": "Hata ({count})",
       "warnings": "Uyarı ({count})",
       "groups": {
@@ -1949,6 +2077,7 @@
         "TOOL_NOT_IN_PROFILE": "Seçilen takım bu makinede yok.",
         "HOLE_SMALLER_THAN_TOOL": "Delik, takımdan küçük.",
         "GROOVE_NARROWER_THAN_TOOL": "Kanal, takımdan dar.",
+        "DRILL_SIZE_MISMATCH": "Matkap ucu, delikle aynı çapta değil.",
         "LOCKED_PLACEMENT_INVALID": "Kilitli parça geçersiz bir yerde (plaka dışında, kenar payında ya da başka parçaya çok yakın).",
         "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
         "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
@@ -1958,10 +2087,16 @@
         "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
         "INNER_CONTOUR_TOO_SMALL": "İç kesim takımdan küçük ya da takımın geçemeyeceği kadar dar.",
+        "POCKET_DEPTH_NOT_BELOW_THICKNESS": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
+        "POCKET_DEPTH_NEAR_THICKNESS": "Cep derinliği kalınlığa çok yakın: altta 1 mm'den az malzeme kalıyor, delip geçebilir.",
+        "POCKET_TOO_SMALL": "Cep takımdan dar; takım cebe girmiyor. Cebi büyütün ya da daha ince bir takım seçin.",
         "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
         "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
         "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
-        "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün."
+        "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
+        "SPINDLE_RPM_OUT_OF_RANGE": "Takım devri makinenin devir aralığının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
+        "FEED_OUT_OF_RANGE": "Takım ilerlemesi ya da dalması makinenin sınırlarının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
+        "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor; Simülasyon → Kesim ayarlarında başka takım seçin."
       },
       "other": "Kontrol {code}"
     },
@@ -2001,6 +2136,8 @@
         "offsetHint": "Deneme baskısında etiketler kayıyorsa ölçüp girin. Bu bilgisayarda saklanır.",
         "offsetX": "Sağa (mm)",
         "offsetY": "Aşağı (mm)",
+        "start": "İlk boş etiket",
+        "startHint": "Yarım kullanılmış kağıt için: soldan sağa, yukarıdan aşağı sayılır (1–{max}). Her baskıda 1'e döner.",
         "open": "Etiketleri aç (PDF)",
         "count": "{count} etiket, {pages} sayfa",
         "invalid": "Izgara A4 sayfaya sığmıyor veya bir değer aralık dışında.",
@@ -2145,6 +2282,129 @@
       "done": "tamamlandı",
       "current": "sıradaki adım",
       "upcoming": "bekliyor"
+    },
+    "fieldKitLink": "Saha testi kiti"
+  },
+  "fieldKit": {
+    "title": "Saha testi kiti",
+    "subtitle": "{machine} · profil v{version} · post {post}",
+    "metaTitle": "Saha testi kiti",
+    "print": "Yazdır / PDF olarak kaydet",
+    "back": "Doğrulamaya dön",
+    "loading": "Saha kiti yükleniyor",
+    "notFound": "Makine bulunamadı.",
+    "loadError": "Saha kiti yüklenemedi.",
+    "retry": "Tekrar dene",
+    "printedOn": "Tarih: ............  Operatör: ............................",
+    "intro": "Makine gününden önce yazdırın. Air cut her zaman ilk iştir: malzemesiz, takım malzemenin {gap} mm üstünde.",
+    "before": {
+      "title": "Makineye gitmeden",
+      "items": [
+        "Makinede bugün sorunsuz çalışan 2–3 NC dosyasını USB’den kopyalayın; post ayarı bunlara bakılarak düzeltilir.",
+        "Controller ekranının ve etiketinin fotoğrafını çekin: marka, model, yazılım sürümü.",
+        "Dosya uzantısını ve dosya adı sınırını (karakter) öğrenin.",
+        "Takım değişimi: otomatik mi, elle mi; takımların çapı, tipi, ağız sayısı, devir ve besleme değerleri.",
+        "Z sıfırlama yöntemi: tablaya mı, malzeme üstüne mi; takım boyu ölçer var mı.",
+        "Program sıfırı hangi köşe; tabla ölçüsü ve eksen sınırları. Makine profili bunlarla aynı mı?",
+        "Tabla tutma tipi: vakum, mengene, T-slot.",
+        "Bu sayfadaki dört dosyayı USB’ye kopyalayın: air cut, test parçası, genişletilmiş air cut, genişletilmiş test parçası."
+      ]
+    },
+    "bring": {
+      "title": "Yanınızda götürün",
+      "items": [
+        "USB bellek (dosyalar yüklü) ve bu sayfanın baskısı",
+        "Kumpas (0,02 mm) ve derinlik ölçümü için kumpasın derinlik ucu; metre",
+        "Fire plaka: en az {small} mm (test parçası) ve {large} mm (genişletilmiş parça), {thickness} mm {material}",
+        "Profildeki takım: T{tool}, Ø{diameter} mm, bir de yedeği",
+        "Telefon (fotoğraf ve video), kalem",
+        "Koruyucu gözlük, kulaklık; toz emme çalışır durumda"
+      ]
+    },
+    "air": {
+      "title": "Makine günü 1: air cut (malzemesiz)",
+      "steps": [
+        "Takımı takın: T{tool}, Ø{diameter} mm. Profildeki takımla aynı olmalı.",
+        "X/Y program sıfırını {corner} köşeye alın.",
+        "Z sıfırını profildeki yönteme göre alın: {zref}.",
+        "Air cut dosyasını yükleyin; ilk satırda “DOGRULANMADI, once air cut” yazdığını görün.",
+        "Besleme hızını %25–50’ye indirin; acil stop elinizin altında olsun.",
+        "Çalıştırın: takım malzemenin {gap} mm üstünde kalır, spindle döner, hiçbir yere değmez.",
+        "Eksen yönlerini, takım değişimini, güvenli Z’yi ve program sonunu izleyin; video çekin.",
+        "Sorun yoksa uygulamada “Air cut onaylandı” adımını işaretleyin. Sonra genişletilmiş air cut dosyasını da aynı şekilde çalıştırın."
+      ]
+    },
+    "cut": {
+      "title": "Makine günü 2: test kesimi",
+      "steps": [
+        "Fire plakayı tablaya sabitleyin; plakanın köşesi program sıfırında olsun.",
+        "Z sıfırını yeniden alın ve takımın değişmediğini kontrol edin.",
+        "Önce 200 × 200 test parçasını kesin; ölçüleri uygulamadaki ölçü formuna girin (uygulama toleransa bakar, düzeltme önerir).",
+        "Sonra genişletilmiş test parçasını kesin ({width} × {height} mm). Parçayı çıkarın, tozunu alın.",
+        "Aşağıdaki formu kumpasla doldurun; farkı 0,2 mm’yi geçen ölçüyü işaretleyin."
+      ]
+    },
+    "park": {
+      "title": "Not: takım değişimi ve park konumu",
+      "text": "Elle takım değişiminde makine malzemenin 20 mm üstünde durur; ayrı bir park konumu yok. Takımı değiştirmeden önce spindle’ın durduğunu görün, gerekirse Z’yi elle kaldırın. Bu yükseklik sizin makinenizde yeterli mi, not alın.",
+      "on": "Elle takım değişiminde makine önce güvenli Z'ye (malzemenin 20 mm üstü) çıkar, sonra makine koordinatında X {x} / Y {y} park noktasına gider (G53) ve durur. Takımı değiştirmeden önce spindle'ın durduğunu görün; park noktasının sizin makinenizde rahat bir yer olduğunu not alın.",
+      "off": "Uyarı: park noktası kapalı. Takım değişiminde takım plakanın üstünde kalır; park noktası ayarlayın.",
+      "hint": "Park noktası makine profilinde açılabilir: Makineler › makine › Takım değiştirici › “Takım değişiminde park noktasına git” (makine koordinatı, G53)."
+    },
+    "extended": {
+      "title": "Genişletilmiş test parçası",
+      "text": "Tek parçada üretimdeki bütün işlemler: yay köşeli dış kontur, iç pencere, iki delik, kör cep ve halka kanal. Normal işlerle aynı takım yolu, post ve kontrollerden geçer.",
+      "blocked": "Test kesimi dosyası air cut onaylandıktan sonra açılır.",
+      "airCut": "Genişletilmiş air cut",
+      "testCut": "Genişletilmiş test parçası",
+      "unavailable": "Bu profil genişletilmiş parçayı üretemiyor (takım Ø{max} mm’den küçük olmalı, malzeme en az 5 mm)."
+    },
+    "form": {
+      "title": "Ölçü formu (genişletilmiş parça)",
+      "caption": "Hedef ölçüler ve kumpasla ölçülenler, mm",
+      "measure": "Ölçü",
+      "target": "Hedef",
+      "measured": "Ölçülen",
+      "diff": "Fark",
+      "rows": {
+        "width": "Dış en",
+        "height": "Dış boy",
+        "cornerRadius": "Köşe yarıçapı",
+        "innerWidth": "İç pencere eni",
+        "innerHeight": "İç pencere boyu",
+        "holeDiameter1": "Sol delik çapı",
+        "holeDiameter2": "Sağ delik çapı",
+        "holePitch": "Delik aralığı (merkezden merkeze)",
+        "pocketDiameter": "Cep çapı",
+        "pocketDepth": "Cep derinliği",
+        "grooveWidth": "Kanal genişliği",
+        "grooveDepth": "Kanal derinliği"
+      }
+    },
+    "record": {
+      "title": "Kaydedin",
+      "items": [
+        "Her dosyanın adı ve çalıştırıldığı saat (indirilen dosyalar aşağıda listelenir)",
+        "Gerçek kesim süresi; uygulamanın tahminiyle karşılaştırın",
+        "Kullanılan takım, devir ve besleme; profilden farklıysa",
+        "Ses, titreşim, yanık, parça kayması, köprülerin durumu",
+        "Controller hata mesajları ve ekran fotoğrafları",
+        "Ölçü formu ve parçanın fotoğrafı"
+      ]
+    },
+    "downloads": {
+      "title": "İndirilen test dosyaları",
+      "empty": "Henüz test dosyası indirilmedi.",
+      "file": "Dosya",
+      "kind": "Program",
+      "version": "Profil",
+      "at": "Zaman",
+      "kinds": {
+        "airCut": "Air cut",
+        "testCut": "Test parçası",
+        "extAirCut": "Genişletilmiş air cut",
+        "extTestCut": "Genişletilmiş test parçası"
+      }
     }
   },
   "devUi": {
@@ -2272,7 +2532,9 @@
         "fast": "Hızlı",
         "balanced": "Dengeli",
         "tight": "Sıkı"
-      }
+      },
+      "slider": "Devir",
+      "sliderMark": "Önerilen 18.000"
     },
     "overlays": {
       "tooltipTrigger": "İpucu",
@@ -2387,6 +2649,7 @@
       "asInner": "İç kesim olarak ekle",
       "asPart": "Ayrı parça olarak ekle",
       "cancel": "Vazgeç",
+      "always": "Hep böyle yap (bu oturumda bir daha sorma)",
       "errors": {
         "degenerate": "İç kesimin alanı yok.",
         "crossing": "İç kesim kendini kesiyor.",
@@ -2437,6 +2700,13 @@
       "noMatch": "Eşleşen parça yok."
     },
     "inspector": {
+      "mirrorPair": {
+        "title": "Sol / sağ kapak",
+        "hint": "{left} adet çizildiği gibi kalır, {right} adet sol ↔ sağ aynalı ayrı satır olur (delikler ve şablonlar da). Dizilim, G-code, etiket ve montaj görünümü sol ve sağ kapağı ayrı gösterir.",
+        "action": "Sol / sağ kapak yap",
+        "note": "Aynalı eş",
+        "done": "Aynalı eş ayrı satır olarak eklendi."
+      },
       "title": "Özellikler",
       "none": "Bir parça seçin: tıklayın, Shift ile ekleyin ya da boş alanda sürükleyin.",
       "many": "{count} parça seçili",
@@ -2483,10 +2753,17 @@
       "innerN": "İç kesim {n}",
       "innerSlugUnsecured": "İç kesim {n}: göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün ya da delik aracıyla çizin.",
       "innerRemove": "İç kesim {n} sil",
+      "innerEdit": "İç kesim {n}: konum ve ölçü",
+      "relX": "X (parçaya göre)",
+      "relY": "Y (parçaya göre)",
+      "innerW": "Genişlik",
+      "innerH": "Yükseklik",
+      "innerRefused": "İç kesim buraya sığmıyor: parçanın içinde, diğer kesimlerden ayrı ve takıma yetecek kadar büyük olmalı.",
       "dimRemove": "Ölçü {n} sil",
       "vertexN": "Köşe {n}",
       "length": "Uzunluk",
       "angle": "Açı",
+      "keepRight": "Dik açıyı koru",
       "arcRadius": "Yay yarıçapı",
       "straight": "Düz",
       "pickHint": "Tuvalde bir kenarın ortasına ya da bir köşeye tıklayın.",
@@ -2497,10 +2774,14 @@
         "lineN": "Çizgi {n}",
         "depth": "Derinlik",
         "depthError": "Derinlik malzeme kalınlığından az olmalı.",
+        "pocketDepth": "Cep derinliği",
+        "pocketDepthError": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
+        "pocketCorners": "Köşeler R{r} kalır (takım yarıçapı).",
         "kinds": {
           "outside": "Dıştan kesim",
           "inside": "İçten kesim",
           "online": "Çizgi üzerinden",
+          "pocket": "Cep (kör)",
           "none": "Kesilmez"
         }
       },
@@ -2562,6 +2843,7 @@
           "HOLE_SMALLER_THAN_TOOL": "Delik {n}: Ø{d}, T{tool} takımından (Ø{td}) küçük. Daha ince bir takım seçin ya da çapı büyütün.",
           "TOOL_NOT_IN_PROFILE": "Delik {n}: T{tool} bu makinede yok.",
           "GROOVE_NARROWER_THAN_TOOL": "Delik {n}: kanal genişliği {w} mm, T{tool} takımından (Ø{td}) dar. Daha ince bir takım seçin ya da kanalı genişletin.",
+          "DRILL_SIZE_MISMATCH": "Delik {n}: T{tool} Ø{td} bir matkap ucu; matkap yalnız kendi çapında (Ø{td}) delik deler. Ø{d} için bir freze (helis/cep) ya da Ø{d} matkap seçin.",
           "HOLE_DEPTH_NOT_BELOW_THICKNESS": "Delik {n}: kör derinlik {depth} mm, plaka kalınlığından ({t} mm) az olmalı. Derinliği azaltın ya da Boydan boya açın.",
           "HOLE_OUTSIDE_PART": "Delik {n}: parçanın içinde kalmıyor ya da bir iç kesime değiyor. Merkezi içeri alın ya da çapı küçültün.",
           "other": "Delik {n}: bu delik G-code'a yazılamıyor."
@@ -2595,7 +2877,7 @@
         "x": "Konum X",
         "y": "Konum Y",
         "rotate": "90° döndür",
-        "mirror": "Aynala (sol / sağ kapak)",
+        "mirror": "Kenar boyunca ters çevir",
         "diameter": "Çap · {hole}",
         "place": "Yerleştir",
         "cancel": "Vazgeç",
@@ -2628,6 +2910,17 @@
       }
     },
     "copied": "{count} parça kopyalandı",
+    "menu": {
+      "label": "Parça menüsü",
+      "duplicate": "Çoğalt",
+      "remove": "Sil",
+      "rotate": "90° döndür",
+      "template": "Şablon ekle…",
+      "back": "Geri",
+      "loading": "Şablonlar yükleniyor…",
+      "loadError": "Şablonlar yüklenemedi.",
+      "empty": "Kayıtlı şablon yok."
+    },
     "copyName": "{name} kopya",
     "defaultName": "Parça {n}",
     "draw": {
@@ -2932,10 +3225,20 @@
     "grain": "Damar {angle}°",
     "noGrain": "Damarsız plaka",
     "offcut": "Artık parçadan",
+    "offcutInfo": "Artık parçadan: {w} × {h} · {material} · {source} · kayıt {ref}",
+    "offcutNoSource": "kaynak proje yok",
+    "origin": "X{x} Y{y} · {corner}",
+    "corners": {
+      "frontLeft": "ön sol",
+      "frontRight": "ön sağ",
+      "backLeft": "arka sol",
+      "backRight": "arka sağ"
+    },
     "revision": "Revizyon {revision}",
     "page": "Sayfa {n} / {total}",
     "parts": "{count} parça",
-    "legend": "Parça no: satır.kopya · Ok: damar yönü · Ölçüler mm (kesim ölçüsü)",
+    "legend": "Parça no: satır.kopya · Ok: damar yönü · Ölçüler mm (kesim ölçüsü) · Kesikli çizgi: kör cep",
+    "pocketDepth": "Cep {d}",
     "empty": "Dizilim yok. Önce Dizilim adımında yerleştirme yapın.",
     "listTitle": "Parça listesi",
     "listDetails": "{rows} satır · {pieces} parça",
@@ -2979,7 +3282,8 @@
       "sheet": "Plaka {n}",
       "noSheet": "Dizilmedi",
       "size": "{w} × {h} mm",
-      "cut": "Kesim {w} × {h}"
+      "cut": "Kesim {w} × {h}",
+      "pockets": "Cep ×{n}, {d} mm derin"
     }
   },
   "onboarding": {
@@ -3070,7 +3374,7 @@
       "defaults": {
         "title": "Yeni proje varsayılanları",
         "hint": "Yeni açılan projeler bu değerlerle başlar; mevcut projeler değişmez. Köprü adedi, genişliği ve yüksekliği makinenin malzeme ayarından gelir (Makineler → Malzeme parametreleri).",
-        "gap": "Parça arası boşluk",
+        "gap": "Parça arası pay (takım Ø'ına ek)",
         "margin": "Plaka kenar payı",
         "tabs": "Köprü (tab)",
         "tabModes": {
@@ -3157,5 +3461,148 @@
     "sheetLine": "Plaka {n}: {name}  (sha256 {hash})",
     "fileLine": "{name}  (sha256 {hash})",
     "note": "Dosyalar NittCAM dışa aktarma geçmişindeki dosyaların aynısıdır; sha256 değerleri geçmişteki özetlerle karşılaştırılabilir."
+  },
+  "help": {
+    "metaTitle": "Yardım",
+    "title": "Yardım",
+    "description": "NittCam ile bir işi baştan sona nasıl çıkaracağınız, kısa konular hâlinde.",
+    "searchLabel": "Yardımda ara",
+    "searchPlaceholder": "Örneğin: air cut, köprü, damar…",
+    "results": "{count} konu",
+    "empty": "“{query}” için konu bulunamadı. Başka bir kelime deneyin ya da aramayı temizleyin.",
+    "clear": "Aramayı temizle",
+    "topicsLabel": "Konular",
+    "whatsNew": "Yenilikler",
+    "whatsNewUnseen": "yeni",
+    "palette": "Komut paletinde (Ctrl+K) “yardım” yazarak da konulara ulaşabilirsiniz.",
+    "topics": {
+      "baslangic": {
+        "title": "Başlangıç: ilk projeniz",
+        "keywords": "başlangıç ilk proje nasıl başlarım sihirbaz adım kılavuz rehber",
+        "summary": "Bir proje beş adımda G-code olur: Makine ve plaka, Parçalar, Dizilim, Önizleme / simülasyon, Dışa aktar.",
+        "body": [
+          "Sol menüde ya da Projeler sayfasında “Yeni proje”ye basın. Proje ilk değişiklikte kendiliğinden kaydedilir; ayrıca kaydetmeniz gerekmez.",
+          "Makine ve plaka: makineyi, malzemeyi ve plaka ölçüsünü seçin. Makine yoksa önce Makineler sayfasında ekleyin ve doğrulayın (bkz. Air cut).",
+          "Parçalar: kesim listesini yazın, Excel’den yapıştırın ya da çizim tahtasında çizin.",
+          "Dizilim: “Diz” parçaları plakalara yerleştirir. Önizleme adımında 3D görünümü ve kesim simülasyonunu izleyin; kontroller geçmeden dışa aktarım açılmaz.",
+          "Dışa aktar: kontrol listesini onaylayın; NC dosyalarını, DXF, PDF ve etiketleri indirin. Çıktılar proje geçmişinde kalır."
+        ]
+      },
+      "kesim-listesi": {
+        "title": "Kesim listesi",
+        "keywords": "kesim listesi parça liste excel yapıştır tablo adet en boy kenar bandı satır",
+        "summary": "Parçaları tablo olarak girin: ad, en, boy, adet ve damar.",
+        "body": [
+          "Parçalar adımında “Yapıştır” ile Excel ya da Google E-Tablolar’dan kopyaladığınız satırları ekleyin. İlk satır başlıksa sütunlar adından tanınır (Parça adı, En, Boy, Adet, Damar).",
+          "Ölçüler milimetredir. Hücreleri tabloda doğrudan düzeltebilirsiniz.",
+          "Her değişiklik bir adımdır: Ctrl+Z geri alır, Ctrl+Y yineler.",
+          "Kenar bandı: “Bitmiş ölçü” açıksa girilen en ve boy bantlı (bitmiş) ölçüdür, bant kalınlığı kesimden düşülür. Kapalıysa girilen ölçü kesim ölçüsüdür, bant üstüne eklenir. “Dolap ekle” iki durumda da bitmiş ölçüyü tutar: kapalıyken bandı satırlardan kendisi düşer."
+        ]
+      },
+      "cizim": {
+        "title": "Çizim tahtası",
+        "keywords": "çizim tahta editör çiz çizgi yay köşe yuvarlatma delik cep kanal dxf içe aktar şablon serbest parça",
+        "summary": "Serbest biçimli parçaları çizin; delik, cep ve kanal ekleyin, DXF içe aktarın.",
+        "body": [
+          "Parçalar adımında görünümü “Çizim”e alın. Çizgi, yay ve köşe yuvarlatma ile parçayı çizin; ölçüleri paneldeki alanlardan girin.",
+          "Delik, cep ve kanal ekleyin. Takımdan küçük bir delik ya da kanal kabul edilmez; uyarı neyin düzeltileceğini söyler.",
+          "Dikdörtgen ya da başka kapalı bir kör cep için şekli parçanın içine çizin ve “İç kesim olarak ekle” deyin; sağ paneldeki “İşlem” bölümünde iç konturu “Cep (kör)” yapıp cep derinliğini girin. Derinlik malzeme kalınlığından az olmalı; köşeler takım yarıçapında yuvarlak kalır.",
+          "DXF dosyası içe aktarabilirsiniz (tabela harfleri, hazır çizimler); kapalı konturlar parça olur.",
+          "Sık kullandığınız parçaları şablon olarak saklayın; menteşe ve kulp şablonları Şablonlar sayfasındadır."
+        ]
+      },
+      "damar": {
+        "title": "Damar yönü",
+        "keywords": "damar yön desen ahşap kaplama açı döndürme kadran",
+        "summary": "Damarlı plakada parçanın damarı plakanın damarıyla aynı yönde kesilir.",
+        "body": [
+          "Plakanın damar açısını Makine ve plaka adımında, parçanınkini Parçalar adımında damar kadranıyla verin.",
+          "Damarın yönü yoktur: 30° ile 210° aynı damardır.",
+          "Dizilim, damarı olan parçaları yalnızca damara uyan açılarla yerleştirir; damarsız parçaları serbestçe döndürebilir.",
+          "Varsayılan MDF 18’in damarı yoktur; kaplamalı ya da desenli plakada damarı siz verin."
+        ]
+      },
+      "3d": {
+        "title": "3D önizleme ve simülasyon",
+        "keywords": "3d önizleme simülasyon görünüm döndür kesim izle oynat kontrol",
+        "summary": "Kesimi makineye göndermeden önce 3D olarak izleyin ve kontrolleri görün.",
+        "body": [
+          "Önizleme / simülasyon adımı plakayı 3D gösterir: fareyle döndürün, tekerlekle yakınlaştırın.",
+          "Oynat ile takımın yolunu baştan sona izleyin; kesimler sırayla oluşur.",
+          "Otomatik kontroller (plaka sınırı, derinlik, köprüler) geçmeden dışa aktarım açılmaz. Her bulgu ilgili ayara götürür.",
+          "Zayıf cihazlarda 2D görünüm kullanılır."
+        ]
+      },
+      "disa-aktar": {
+        "title": "Dışa aktar: NC, DXF, PDF, etiket",
+        "keywords": "dışa aktar nc gcode g-code dosya indir dxf pdf etiket zip geçmiş kontrol listesi",
+        "summary": "Her plaka için bir NC dosyası; DXF, A4 PDF ve etiketler aynı yerden.",
+        "body": [
+          "Dışa aktar adımında önce kontrol listesini onaylayın (sıfır noktası, takım, plaka); onaysız NC dosyası üretilmez.",
+          "Her plaka için bir NC dosyası üretilir; hepsini tek zip olarak da indirebilirsiniz.",
+          "DXF (yerleşim ve parçalar), A4 PDF kesim raporu ve parça etiketleri de buradadır.",
+          "Proje sonradan değişirse dosyaları yeniden üretin; eski dosyalar geçmişte kalır.",
+          "Makine doğrulanmadıysa dosyalar “DOĞRULANMADI, önce air cut” uyarısı taşır."
+        ]
+      },
+      "kopru": {
+        "title": "Köprü ve ince tabaka",
+        "keywords": "köprü tab tutucu ince tabaka parça düşmesin sabitleme göbek iç kesim",
+        "summary": "Kesilen parça yerinden oynamasın diye konturda küçük köprüler bırakılır.",
+        "body": [
+          "Köprüler parçayı kesim bitene kadar plakaya bağlı tutar; parça sonra elle ayrılır.",
+          "Köprü sayısı, genişliği ve yüksekliği malzemenin kesim ayarlarındadır.",
+          "Küçük parçalarda “Köprü: Kapalı” seçilip ince tabaka kullanılabilir: son pasoda altta ince bir katman kalır. İnce tabakanın en az ve en çok kalınlığı vardır.",
+          "Bir iç kesimin göbeğine 2 köprü sığmazsa G-code üretilmez; açıklığı büyütün ya da delik aracıyla çizin."
+        ]
+      },
+      "air-cut": {
+        "title": "Air cut ve makine doğrulama",
+        "keywords": "air cut havada kesim doğrulama test kesimi makine onay ilk kesim saha testi güvenlik",
+        "summary": "Yeni ya da değişmiş bir makine profili, gerçek kesimden önce malzemesiz denenir.",
+        "body": [
+          "Makineler sayfasında makineyi açın, Doğrulama’ya geçin.",
+          "Adım 1 · Air cut: plakasız çalıştırın. Takımın en derin noktası malzeme üstünden 20 mm yukarıda kalır; hareketleri, sıfır noktasını ve hızları güvenle izlersiniz.",
+          "Adım 2 · Test kesimi: test parçasını fire bir plakada kesin, ölçün ve ölçüleri girin.",
+          "Doğrulanmamış makinenin dosyaları “DOĞRULANMADI, önce air cut” uyarısı taşır. Profil, takım seti ya da post değişirse doğrulama air cut’tan yeniden başlar.",
+          "Doğrulama sayfasındaki Saha testi kiti, yazdırılabilir kontrol listesini ve genişletilmiş test programını verir."
+        ]
+      }
+    }
+  },
+  "whatsNew": {
+    "title": "Yenilikler",
+    "description": "Son sürümlerde gelenler.",
+    "close": "Kapat",
+    "version": "Sürüm {version}",
+    "releases": [
+      {
+        "version": "0.9",
+        "date": "Kasım 2026",
+        "items": [
+          "Yardım sayfaları: başlangıç, kesim listesi, çizim, damar, 3D, dışa aktar, köprü ve air cut; komut paletinden ve sayfadaki aramadan bulunur.",
+          "Saha testi kiti: makine başına yazdırılabilir kontrol listesi ve genişletilmiş test programı.",
+          "Kaydedilmeden bırakılan yeni bir proje artık sonraki yeni projeye karışmaz."
+        ]
+      },
+      {
+        "version": "0.8",
+        "date": "Kasım 2026",
+        "items": [
+          "NC, DXF, PDF ve etiketler sunucuda üretilir; zip ve dışa aktarım geçmişi.",
+          "Proje durumu, ana sayfa, şirket ayarları ve malzeme kütüphanesi.",
+          "Köprü ve ince tabaka sınırları; makine arşivi ve bakım kaydı."
+        ]
+      },
+      {
+        "version": "0.7",
+        "date": "Kasım 2026",
+        "items": [
+          "Dizilim: üç mod, gerçek biçimli dizilim ve döndürme.",
+          "Artık plakalar (fire) saklanır ve sonraki işlerde önce kullanılır; kenar bandı düşümü.",
+          "3D önizleme ve kesim simülasyonu."
+        ]
+      }
+    ]
   }
 }

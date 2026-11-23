@@ -30,6 +30,8 @@ import {
 import { programTools, type ProgramTools } from './program-tools';
 import { unverifiedTemplateNames } from '../template';
 import { cuttingSettingsOf } from '../toolpath/cutting-settings';
+import { feedOverridesOf, spindleOverridesOf } from '../toolpath/spindle';
+import { operationToolChoice, operationsInJob } from '../toolpath/op-tools';
 
 export interface ExportNcOptions {
   /** Header and file name; default "NittCam". */
@@ -102,19 +104,15 @@ export function exportNc(
 }
 
 /**
- * T288 (K3): the tabs, lead-in and direction the toolpath used, for the "KESİM" header line, when
- * any of them differs from the defaults (tabs on every part with the material set's values, as a
- * new project starts: no skin, arc lead-in, climb): a default project keeps its byte-identical output (golden files).
+ * T288 (K3): the tabs, lead-in and direction the toolpath used, for the "KESİM" header line.
+ * D-091 (B51): written in every file, default settings too, so the operator sees the setup in any
+ * program before the field test.
  */
 export function cuttingMeta(
   project: Project,
   profile: PostProfileVersion['profile'],
-): { cutting?: PostCuttingMeta } {
+): { cutting: PostCuttingMeta } {
   const c = cuttingSettingsOf(project, profile);
-  const own = Object.values(c.tabs.source).includes('project');
-  const isDefault =
-    c.tabMode === 'all' && !own && c.skin === null && c.leadIn === 'arc' && c.direction === 'climb';
-  if (isDefault) return {};
   const cutting: PostCuttingMeta = {
     tabMode: c.tabMode,
     tabCount: c.tabs.count,
@@ -125,6 +123,25 @@ export function cuttingMeta(
     leadIn: c.leadIn,
     direction: c.direction,
   };
+  // T307: only when the project has its own spindle speed, so default programs stay byte-identical.
+  const spindle = spindleOverridesOf(project, profile);
+  if (spindle.length > 0) cutting.spindle = spindle;
+  // T308: the same for the tools chosen per operation.
+  const tools = operationsInJob(project).flatMap((op) => {
+    const tool = operationToolChoice(project, op);
+    return tool === undefined ? [] : [{ op, tool }];
+  });
+  if (tools.length > 0) cutting.tools = tools;
+  // T323 / T324: per-tool feeds and the ramp entry, again only when set.
+  const feeds = feedOverridesOf(project, profile);
+  if (feeds.length > 0) cutting.feeds = feeds;
+  const entry = project.cutting.entry;
+  if (entry) {
+    cutting.entry =
+      entry.length === undefined
+        ? { angleDeg: entry.angleDeg }
+        : { angleDeg: entry.angleDeg, length: entry.length };
+  }
   return { cutting };
 }
 

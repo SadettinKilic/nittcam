@@ -31,7 +31,8 @@ import {
   SelectValue,
 } from '@nittcam/ui';
 import { FileUp, TriangleAlert } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useContext, useEffect, useId, useMemo, useRef, useState, type DragEvent } from 'react';
+import { HoleIssuesContext } from '../editor/hole-issues';
 import { fill } from '../../lib/fill';
 import {
   baseName,
@@ -159,6 +160,9 @@ export function DxfImportDialog({
     void pick(e.dataTransfer.files[0]);
   }
 
+  // T320: drill-layer holes take this machine's best compatible tool (when the wizard provides it).
+  const machineTools = useContext(HoleIssuesContext).tools;
+
   function confirm() {
     if (!drawing || !picked || needsUnit) return;
     const base = baseName(picked.name);
@@ -169,6 +173,7 @@ export function DxfImportDialog({
       newId,
       holeTool,
       defaultOnlineDepth(thickness ?? 18),
+      machineTools,
     );
     if (parts.length === 0) return;
     if (onImport({ parts }, picked.name, parts.length)) {

@@ -250,7 +250,7 @@ test.describe('B47 tester: T300 margin rule', () => {
     const warn = page.getByTestId('layout-margin-warning');
     const text = fill(tr.wizard.layout.marginWarning, { tool: '8', min: '4' });
     await expect(page.getByTestId('layout-gap-note')).toHaveText(
-      fill(tr.wizard.layout.gapNote, { tool: '8' }),
+      fill(tr.wizard.layout.gapNote, { tool: '8', gap: '0,1', clear: '8,1' }),
     );
     for (const [m, low] of [
       ['0', true],

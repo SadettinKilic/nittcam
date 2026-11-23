@@ -132,7 +132,7 @@ test.describe('T023 wizard', () => {
     await wizardReady(page, 'dizilim');
     await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
     await saved(page);
     await shot(page, 't023-adim3-dizilim');
 
@@ -391,10 +391,10 @@ test.describe('T023 wizard', () => {
 
   test('old URLs redirect into the wizard', async ({ page }) => {
     await page.goto('/projeler/yeni/parcalar');
-    await expect(page).toHaveURL(/\/projeler\/yeni\?adim=parcalar$/);
+    await expect(page).toHaveURL(/\/projeler\/yeni\?adim=parcalar(&taslak=[0-9a-f-]{36})?$/);
     await wizardReady(page, 'parcalar');
     await page.goto('/projeler/yeni/simulasyon');
-    await expect(page).toHaveURL(/\/projeler\/yeni\?adim=simulasyon$/);
+    await expect(page).toHaveURL(/\/projeler\/yeni\?adim=simulasyon(&taslak=[0-9a-f-]{36})?$/);
     await wizardReady(page, 'simulasyon');
     await expect(page.getByTestId('sim-empty')).toBeVisible();
   });

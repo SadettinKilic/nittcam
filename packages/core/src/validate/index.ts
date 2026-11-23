@@ -4,7 +4,7 @@
  * place (stock + part, tool table + hole) live here. Pure: same project, same list.
  */
 import { EPS } from '../geometry';
-import { findMaterialParams, findTool, type MachineProfile } from '../machine';
+import { findMaterialParams, findTool, machineFeedLimits, type MachineProfile } from '../machine';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../geometry/grain';
 import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
 import { nestingEngineOf } from '../nesting/nest';
@@ -22,7 +22,19 @@ import {
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
 import { lineLeavesPart } from '../editor/lines';
+import { contour } from '../geometry/polyline';
+import { contourPocketRings } from '../toolpath/contour-pocket';
 import { unsecuredSlugs } from '../toolpath/slug-check';
+import { spindleSettingsOf } from '../toolpath/spindle';
+import {
+  contourPocketTool,
+  contourTool,
+  effectiveHoleTool,
+  holeToolKind,
+  operationToolChoice,
+  operationsInJob,
+} from '../toolpath/op-tools';
+import { operationToolProblem } from '../toolpath/op-tool-choice';
 import { toCutSizes } from '../schema/cut-size';
 
 export type ValidationSeverity = 'error' | 'warning';
@@ -34,11 +46,15 @@ export type ValidationCode =
   | 'TOOL_NOT_IN_PROFILE'
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
+  | 'DRILL_SIZE_MISMATCH'
   | 'LOCKED_PLACEMENT_INVALID'
   | 'LOCKED_PLACEMENT_GRAIN'
   | 'PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
   | 'CUTTING_PARAMS_UNVERIFIED'
+  | 'SPINDLE_RPM_OUT_OF_RANGE'
+  | 'FEED_OUT_OF_RANGE'
+  | 'OPERATION_TOOL_UNSUITABLE'
   | 'SHEET_LARGER_THAN_TABLE'
   | 'HOLE_OUTSIDE_PART'
   | 'INNER_CONTOUR_INVALID'
@@ -46,7 +62,10 @@ export type ValidationCode =
   | 'INNER_SLUG_UNSECURED'
   | 'LINE_OUTSIDE_PART'
   | 'PART_NOT_IN_LAYOUT'
-  | 'MARGIN_BELOW_TOOL_RADIUS';
+  | 'MARGIN_BELOW_TOOL_RADIUS'
+  | 'POCKET_DEPTH_NOT_BELOW_THICKNESS'
+  | 'POCKET_DEPTH_NEAR_THICKNESS'
+  | 'POCKET_TOO_SMALL';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -222,15 +241,17 @@ export const holeVsTool: ValidationRule = (project, context) => {
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     part.holes.forEach((hole, h) => {
-      const problem = holeToolProblem(hole, machine.tools);
+      // T308: the project's tool for the hole's operation, else the hole's own.
+      const toolNo = effectiveHoleTool(project, hole);
+      const problem = holeToolProblem({ ...hole, tool: toolNo }, machine.tools);
       if (!problem) return;
-      const tool = findTool(machine, hole.tool);
+      const tool = findTool(machine, toolNo);
       if (!tool || problem.code === 'TOOL_NOT_IN_PROFILE') {
         issues.push({
           code: 'TOOL_NOT_IN_PROFILE',
           severity: 'error',
           path: formatPath(['parts', i, 'holes', h, 'tool']),
-          message: `${hole.type} "${hole.id}" in part "${part.id}" uses tool T${hole.tool}, which is not in the machine's tool table`,
+          message: `${hole.type} "${hole.id}" in part "${part.id}" uses tool T${toolNo}, which is not in the machine's tool table`,
         });
         return;
       }
@@ -251,6 +272,19 @@ export const holeVsTool: ValidationRule = (project, context) => {
           severity: 'error',
           path: formatPath(['parts', i, 'holes', h, 'd']),
           message: `${hole.type} "${hole.id}" in part "${part.id}" is ${mm(hole.d)} mm, smaller than the ${mm(tool.diameter)} mm tool T${tool.number}`,
+        });
+      }
+      // T320 (D-108): a drill drills only its own size. A chosen operation tool is reported once,
+      // as OPERATION_TOOL_UNSUITABLE (D-099), not twice.
+      if (
+        problem.code === 'DRILL_SIZE_MISMATCH' &&
+        operationToolChoice(project, holeToolKind(hole)) === undefined
+      ) {
+        issues.push({
+          code: 'DRILL_SIZE_MISMATCH',
+          severity: 'error',
+          path: formatPath(['parts', i, 'holes', h, 'tool']),
+          message: `${hole.type} "${hole.id}" in part "${part.id}" (Ø${mm(hole.d)} mm) uses the Ø${mm(tool.diameter)} mm drill T${tool.number}; a drill only drills a hole of its own size, a bigger hole or a groove needs a mill`,
         });
       }
     });
@@ -382,6 +416,82 @@ export const unverifiedCuttingParams: ValidationRule = (project, context) => {
 };
 
 /**
+ * (e3) T308 (D-099): a tool chosen per operation that no longer suits the job (wrong type, too
+ * short, wider than the layout spacing, a drill for holes of another size). An error; the
+ * toolpath refuses it too; "Önerilene dön" clears it. Skipped without a profile.
+ */
+export const operationToolUnsuitable: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || !project.cutting.tools) return [];
+  return operationsInJob(project).flatMap((op) => {
+    const tool = operationToolChoice(project, op);
+    if (tool === undefined) return [];
+    const problem = operationToolProblem(project, machine, op, tool);
+    // Hole sizes and inner openings are reported where they are drawn (rules above).
+    if (problem === null || problem === 'HOLE_SMALLER' || (op === 'inner' && problem === 'CONTOUR'))
+      return [];
+    return [
+      {
+        code: 'OPERATION_TOOL_UNSUITABLE' as const,
+        severity: 'error' as const,
+        path: `cutting.tools.${op}`,
+        message: `tool T${tool} chosen for the ${op} operation does not suit this job (${problem})`,
+      },
+    ];
+  });
+};
+
+/**
+ * (e2) T307 (D-098): a project spindle speed outside the selected machine's spindle range (an old
+ * project on another machine, or a hand-edited file). An error: the toolpath and the post refuse it
+ * too; "Önerilene dön" clears it. Only the job's tools count (a stale value of an unused tool is
+ * never cut). Skipped without a profile.
+ */
+export const spindleRpmOutOfRange: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || !project.cutting.spindleRpm) return [];
+  return spindleSettingsOf(project, machine)
+    .filter((s) => s.outOfRange)
+    .map(({ tool, rpm }) => ({
+      code: 'SPINDLE_RPM_OUT_OF_RANGE' as const,
+      severity: 'error' as const,
+      path: `cutting.spindleRpm.${tool}`,
+      message: `spindle speed ${rpm} rpm for T${tool} is outside the machine's range ${machine.spindle.minRpm}–${machine.spindle.maxRpm}`,
+    }));
+};
+
+/**
+ * (e2b) T323: a project feed or plunge feed outside the selected machine's limits (an old project
+ * on another machine, or a hand-edited file). An error: the toolpath and the post refuse it too;
+ * "Önerilene dön" clears it. Only the job's tools count. Skipped without a profile.
+ */
+export const feedOutOfRange: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || !project.cutting.feeds) return [];
+  const limits = machineFeedLimits();
+  const out: ValidationIssue[] = [];
+  for (const s of spindleSettingsOf(project, machine)) {
+    if (s.feedOutOfRange) {
+      out.push({
+        code: 'FEED_OUT_OF_RANGE',
+        severity: 'error',
+        path: `cutting.feeds.${s.tool}.feed`,
+        message: `feed ${s.feed} mm/min for T${s.tool} is outside the machine's range ${limits.feed.min}–${limits.feed.max}`,
+      });
+    }
+    if (s.plungeOutOfRange) {
+      out.push({
+        code: 'FEED_OUT_OF_RANGE',
+        severity: 'error',
+        path: `cutting.feeds.${s.tool}.plungeFeed`,
+        message: `plunge feed ${s.plungeFeed} mm/min for T${s.tool} is outside the machine's range ${limits.plungeFeed.min}–${limits.plungeFeed.max}`,
+      });
+    }
+  }
+  return out;
+};
+
+/**
  * T300 (CTO #12 E1, D-085): the smallest sheet margin that keeps the cutter on the sheet. An
  * outside profile runs the tool centre one radius outside the part, so a part on a margin below
  * the radius sends the tool past the sheet edge (and past the work envelope when the sheet sits
@@ -479,7 +589,8 @@ export const holeInsidePart: ValidationRule = (project) => {
 export const innerContourRules: ValidationRule = (project, context) => {
   const machine = context?.machine;
   const params = machine ? findMaterialParams(machine, project.stock) : undefined;
-  const tool = machine && params ? findTool(machine, params.tool) : undefined;
+  const tool =
+    machine && params ? findTool(machine, contourTool(project, 'inner', params.tool)) : undefined;
   const issues: ValidationIssue[] = [];
   project.parts.forEach((part, i) => {
     if (part.inners.length === 0) return;
@@ -505,6 +616,55 @@ export const innerContourRules: ValidationRule = (project, context) => {
           severity: 'error',
           path,
           message: `inner contour ${k + 1} of part "${part.name}" is too small or too narrow for the ${mm(tool.diameter)} mm tool`,
+        });
+      }
+    });
+  });
+  return issues;
+};
+
+/**
+ * (g1) Contour pockets (T325, D-112): the depth must stay below the stock thickness (error; the
+ * same rule as the toolpath), less than HOLE_MIN_SKIN mm left under it is a warning (as for blind
+ * holes), and the `pocket` operation's tool must fit (`contourPocketRings`, the toolpath's own
+ * rings: the pocket at least as wide as the tool and one connected area). Skipped without a
+ * profile for the tool rule.
+ */
+export const innerPocketRules: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  const params = machine ? findMaterialParams(machine, project.stock) : undefined;
+  const tool =
+    machine && params ? findTool(machine, contourPocketTool(project, params.tool)) : undefined;
+  const { thickness } = project.stock;
+  const issues: ValidationIssue[] = [];
+  project.parts.forEach((part, i) => {
+    part.inners.forEach((inner, k) => {
+      const op = innerOperation(part, k);
+      if (op.kind !== 'pocket') return;
+      const name = `pocket ${k + 1} of part "${part.name}"`;
+      if (!(op.depth < thickness - EPS)) {
+        issues.push({
+          code: 'POCKET_DEPTH_NOT_BELOW_THICKNESS',
+          severity: 'error',
+          path: formatPath(['parts', i, 'inners', k]),
+          message: `${name} is ${mm(op.depth)} mm deep; a pocket must be less deep than the ${thickness} mm stock`,
+        });
+        return;
+      }
+      if (thickness - op.depth < HOLE_MIN_SKIN - EPS) {
+        issues.push({
+          code: 'POCKET_DEPTH_NEAR_THICKNESS',
+          severity: 'warning',
+          path: formatPath(['parts', i, 'inners', k]),
+          message: `${name} leaves ${mm(thickness - op.depth)} mm under it (less than ${HOLE_MIN_SKIN} mm of the ${thickness} mm stock)`,
+        });
+      }
+      if (tool && !contourPocketRings(contour(inner), tool.diameter).ok) {
+        issues.push({
+          code: 'POCKET_TOO_SMALL',
+          severity: 'error',
+          path: formatPath(['parts', i, 'inners', k]),
+          message: `${name} is too small or too narrow for the ${mm(tool.diameter)} mm tool`,
         });
       }
     });
@@ -564,10 +724,14 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   placementGrain,
   noCuttingParams,
   unverifiedCuttingParams,
+  spindleRpmOutOfRange,
+  feedOutOfRange,
+  operationToolUnsuitable,
   marginBelowToolRadius,
   sheetLargerThanTable,
   holeInsidePart,
   innerContourRules,
+  innerPocketRules,
   innerSlugTabs,
   lineInsidePart,
 ];

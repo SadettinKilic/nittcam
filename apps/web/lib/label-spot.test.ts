@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clearance, labelSpot } from './label-spot';
+import { clearance, labelSpot, spotLabel } from './label-spot';
 
 const rect = (x0: number, y0: number, x1: number, y1: number) => [x0, y0, x1, y0, x1, y1, x0, y1];
 
@@ -42,5 +42,26 @@ describe('labelSpot (B44)', () => {
     const spot = labelSpot(shape);
     expect(clearance(shape, spot.cx, spot.cy)).toBeGreaterThan(30);
     expect(spot.cx < 100 || spot.cy > 300).toBe(true);
+  });
+});
+
+describe('spotLabel (T319)', () => {
+  it('a 600 × 400 panel with a cut-out, circle and holes prints its own size, not the spot room', () => {
+    const shape = {
+      w: 600,
+      h: 400,
+      outline: null,
+      inners: [rect(330, 80, 470, 320)],
+      holes: [
+        { x: 150, y: 200, r: 30 },
+        { x: 60, y: 60, r: 4 },
+        { x: 60, y: 340, r: 4 },
+      ],
+    };
+    const spot = labelSpot(shape);
+    expect(spot.w).toBeLessThan(600);
+    const label = spotLabel({ label: '4.1', name: 'Elif panel', w: 600, h: 400 }, spot, 2);
+    expect(label.level).toBe('full');
+    expect(label.lines[1]).toBe('600 × 400');
   });
 });

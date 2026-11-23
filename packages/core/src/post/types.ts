@@ -58,6 +58,32 @@ export interface PostCuttingMeta {
   skin: number | null;
   leadIn: 'arc' | 'line';
   direction: 'climb' | 'conventional';
+  /**
+   * T307 (D-098): the project's own spindle speeds (tool, rpm, the recommended rpm). Absent or
+   * empty = every tool at its recommended value, and the line is unchanged.
+   */
+  spindle?: { tool: number; rpm: number; recommended: number }[];
+  /**
+   * T308 (D-099): the tools the project chose per operation of the job. Absent or empty = the
+   * defaults, and no line is written.
+   */
+  tools?: { op: 'outer' | 'inner' | 'pocket' | 'hole'; tool: number }[];
+  /**
+   * T323: the tools the project runs at its own cutting or plunge feed (the feeds used and the
+   * recommended ones), mm/min. Absent or empty = recommended feeds, and no line is written.
+   */
+  feeds?: {
+    tool: number;
+    feed: number;
+    plungeFeed: number;
+    recommendedFeed: number;
+    recommendedPlungeFeed: number;
+  }[];
+  /**
+   * T324: ramp entry of the contours (angle, shortest leg; absent length = the tool diameter).
+   * Absent = straight plunge, and no line is written.
+   */
+  entry?: { angleDeg: number; length?: number };
 }
 
 export type PostCode =

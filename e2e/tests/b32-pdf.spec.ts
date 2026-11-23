@@ -90,3 +90,35 @@ test('T174: label sheet: presets, custom grid check, remembered print offset, PD
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toBe('application/pdf');
 });
+
+test('B51: first free label on a half-used sheet, page count, link, not remembered', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('b51-init')) {
+      localStorage.removeItem('nittcam-label-settings');
+      sessionStorage.setItem('b51-init', '1');
+    }
+  });
+  await toExport(page);
+  const box = page.getByTestId('export-labels');
+  const start = box.getByTestId('labels-start');
+  await expect(start).toHaveValue('1');
+  // 30 pieces from label 20 of 24: 5 on page 1, then 24 + 1 → 3 pages.
+  await start.fill('20');
+  await start.blur();
+  await expect(box.getByTestId('labels-count')).toHaveText('30 etiket, 3 sayfa');
+  const href = await box.getByTestId('export-labels-open').getAttribute('href');
+  expect(href).toMatch(/&start=20$/);
+  const res = await page.request.get(href ?? '');
+  expect(res.status()).toBe(200);
+  // Past the last label of the sheet → error, no link.
+  await start.fill('25');
+  await start.blur();
+  await expect(box.getByTestId('labels-invalid')).toBeVisible();
+  await expect(box.getByTestId('export-labels-open')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId('labels-start')).toHaveValue('1', { timeout: 30_000 });
+});

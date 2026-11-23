@@ -1,10 +1,12 @@
 'use client';
 
 import type { Project, ValidationIssue } from '@nittcam/core';
-import { ChevronDown, CircleAlert, CircleCheck, TriangleAlert } from 'lucide-react';
+import { ChevronDown, CircleAlert, CircleCheck, RefreshCw, TriangleAlert } from 'lucide-react';
 import { createContext, useContext, useId, useState } from 'react';
 import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
+import { summarizeIssues } from '../../lib/check-state';
+import { SimFindingsContext } from '../simulation/sim-findings-context';
 
 type Text = Messages['wizard']['issues'];
 type Group = keyof Text['groups'];
@@ -72,16 +74,39 @@ export function ValidationPanel({
   issues: readonly ValidationIssue[];
 }) {
   const jump = useContext(IssueJumpContext);
-  const errors = issues.filter((i) => i.severity === 'error');
-  const warnings = issues.filter((i) => i.severity === 'warning');
   const [open, setOpen] = useState(true);
+  // T321: the Simülasyon step's toolpath warnings count here too (one source of truth).
+  const simWarnings = useContext(SimFindingsContext)?.warnings ?? 0;
+  // T321 (usta 2): parts missing from the layout after a quantity change are not a fault of the
+  // part: one neutral "yeniden diz" line instead of a red error per row (the export still waits).
+  const { listed, errors, warnings, renest, warningCount, clean } = summarizeIssues(
+    issues,
+    simWarnings,
+  );
+  const renestNote =
+    renest.length > 0 ? (
+      <p data-testid="validation-renest" className="flex items-start gap-2 text-sm text-fg-muted">
+        <RefreshCw aria-hidden className="mt-0.5 size-4 shrink-0" />
+        {fill(t.renest, { count: renest.length })}
+      </p>
+    ) : null;
+  const simNote =
+    simWarnings > 0 ? (
+      <p
+        data-testid="validation-sim-warnings"
+        className="flex items-start gap-2 text-sm text-warning-text"
+      >
+        <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+        {fill(t.simWarnings, { count: simWarnings })}
+      </p>
+    ) : null;
   const bodyId = useId();
   return (
     <section
       aria-labelledby="validation-title"
       data-testid="validation-panel"
       data-errors={errors.length}
-      data-warnings={warnings.length}
+      data-warnings={warningCount}
       className="flex min-w-0 flex-col rounded-xl border border-border bg-surface shadow-xs"
     >
       <h2 id="validation-title" className="text-sm font-semibold">
@@ -99,15 +124,20 @@ export function ValidationPanel({
               {errors.length}
             </span>
           ) : null}
-          {warnings.length > 0 ? (
+          {warningCount > 0 ? (
             <span className="flex items-center gap-1 text-xs font-medium text-warning-text tabular-nums">
               <TriangleAlert aria-hidden className="size-3.5" />
-              {warnings.length}
+              {warningCount}
             </span>
           ) : null}
-          {issues.length === 0 ? (
-            <CircleCheck aria-hidden className="size-4 text-success-text" />
+          {renest.length > 0 ? (
+            <RefreshCw
+              aria-hidden
+              className="size-3.5 text-fg-muted"
+              data-testid="validation-renest-icon"
+            />
           ) : null}
+          {clean ? <CircleCheck aria-hidden className="size-4 text-success-text" /> : null}
           <ChevronDown
             aria-hidden
             className={`size-4 text-fg-subtle transition-transform duration-(--duration-fast) ${open ? 'rotate-180' : ''}`}
@@ -115,8 +145,13 @@ export function ValidationPanel({
         </button>
       </h2>
       <div id={bodyId} hidden={!open} className="border-t border-border-subtle px-4 pt-3 pb-4">
-        {issues.length === 0 ? (
+        {clean ? (
           <p className="text-sm text-success-text">{t.none}</p>
+        ) : listed.length === 0 ? (
+          <div className="flex flex-col gap-2">
+            {renestNote}
+            {simNote}
+          </div>
         ) : (
           <div className="flex flex-col gap-4">
             {[
@@ -184,6 +219,8 @@ export function ValidationPanel({
                   })}
                 </div>
               ))}
+            {renestNote}
+            {simNote}
           </div>
         )}
       </div>

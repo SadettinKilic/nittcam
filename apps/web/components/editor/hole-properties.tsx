@@ -60,6 +60,7 @@ export function HoleProperties({
   run,
   thickness,
   toolDiameter,
+  picked = null,
 }: {
   t: T;
   part: Part;
@@ -68,11 +69,25 @@ export function HoleProperties({
   thickness: number;
   /** Diameter of the hole's default tool, mm (default groove width). */
   toolDiameter: number;
+  /** B52 (D-096): hole picked on the canvas (0-based): its row opens and scrolls into view. */
+  picked?: number | null;
 }) {
   const issues = useHoleIssues(part.id);
   const group = useRef<HTMLDivElement>(null);
   // B50: the person's own open / closed choice per hole id (default: newest and failing open).
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const pickedId = picked === null ? undefined : part.holes[picked]?.id;
+  const [shownPick, setShownPick] = useState<string | undefined>(undefined);
+  if (pickedId !== shownPick) {
+    setShownPick(pickedId);
+    if (pickedId) setOpen((o) => ({ ...o, [pickedId]: true }));
+  }
+  useEffect(() => {
+    if (picked === null) return;
+    group.current
+      ?.querySelector(`[data-testid="prop-hole-${picked}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [picked]);
   // T275: "Çizimde aç" on a hole error brings that hole's rows into view.
   useEffect(() => {
     if (issues.focus === null) return;

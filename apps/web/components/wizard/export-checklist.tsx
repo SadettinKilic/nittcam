@@ -4,6 +4,7 @@ import { Checkbox } from '@nittcam/ui';
 import { CircleCheck, TriangleAlert } from 'lucide-react';
 import { useId } from 'react';
 import { fill } from '../../lib/fill';
+import { fileNameWarning } from '../../lib/check-state';
 import type { ChecklistState } from '../../lib/export-gate';
 import type { ExportChecklistInfo } from '../../lib/exports-api';
 import type { Messages } from '../../lib/messages';
@@ -37,6 +38,7 @@ export function ExportChecklist({
   testIdPrefix?: string;
 }) {
   const set = (patch: Partial<ChecklistState>) => onChange({ ...checks, ...patch });
+  const nameLimit = fileNameWarning(checklist?.fileNames);
   return (
     <fieldset className="flex min-w-0 flex-col gap-2" data-testid={`${testIdPrefix}-checklist`}>
       <legend className="mb-2 text-sm font-semibold text-fg">{t.checklistTitle}</legend>
@@ -71,6 +73,29 @@ export function ExportChecklist({
             count: checklist.toolChanges,
           })}
         />
+      ) : null}
+      {checklist?.parkOff ? (
+        // T321 (usta 2): a manual change without a park point stops with the tool over the sheet.
+        <p
+          className="flex items-start gap-1.5 text-sm text-warning-text"
+          data-testid={`${testIdPrefix}-park-off`}
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t.parkOff}
+        </p>
+      ) : null}
+      {nameLimit !== null ? (
+        // T322 (usta 1): a name longer than the machine reads (or than its newest version allows).
+        <p
+          className="flex items-start gap-1.5 text-sm text-warning-text"
+          data-testid={`${testIdPrefix}-file-name`}
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {fill(t.fileNameLong, {
+            longest: checklist?.fileNames?.longest ?? 0,
+            limit: nameLimit,
+          })}
+        </p>
       ) : null}
       {templateNames.length > 0 ? (
         <ChecklistItem

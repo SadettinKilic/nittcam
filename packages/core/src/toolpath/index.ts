@@ -60,3 +60,44 @@ export {
 export { buildOnlineOperation, openSegments, type OnlineInput } from './online';
 export { cuttingSettingsOf, inheritedTabs, tabModeOf } from './cutting-settings';
 export type { CuttingSettings, TabMode, TabSource } from './cutting-settings';
+export {
+  SPINDLE_RPM_BAND,
+  SPINDLE_RPM_INPUT_STEP,
+  SPINDLE_RPM_PAGE_STEP,
+  SPINDLE_RPM_STEP,
+  feedOverride,
+  feedOverridesOf,
+  jobToolNumbers,
+  rpmBand,
+  rpmInRange,
+  spindleOverride,
+  spindleOverridesOf,
+  spindleSettingsOf,
+  type RpmBand,
+  type ToolSpindle,
+} from './spindle';
+export {
+  OPERATION_TOOL_KINDS,
+  OPERATION_TOOL_TYPES,
+  contourPocketTool,
+  contourTool,
+  effectiveHoleTool,
+  hasContourPocket,
+  holeToolKind,
+  operationToolChoice,
+  operationsInJob,
+  recommendedFeeds,
+  recommendedRpm,
+  type OperationToolKind,
+} from './op-tools';
+export {
+  CONTOUR_POCKET_DEFAULTS,
+  buildContourPocketOperation,
+  contourPocketRings,
+} from './contour-pocket';
+export {
+  operationToolProblem,
+  operationToolsOf,
+  type OperationToolProblem,
+  type OperationToolRow,
+} from './op-tool-choice';

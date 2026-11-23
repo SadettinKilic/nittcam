@@ -4,14 +4,18 @@
  * board keeps the in-progress centre as UI state.
  */
 import {
+  bestHoleTool,
   boardPositions,
   checkHolePlacement,
   contourDistance,
   deriveOutline,
+  holeSchema,
+  holeToolProblem,
   insideContour,
   type BoardPart,
   type Hole,
   type HolePlacementError,
+  type HoleRuleTool,
   type Part,
   type Project,
 } from '@nittcam/core';
@@ -42,28 +46,55 @@ const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
 /**
  * `addHole` params for a hole drawn on the board: a through hole (the simplest valid type; the
- * properties panel turns it into a pocket or a groove) in the part frame.
+ * properties panel turns it into a pocket or a groove) in the part frame. B52 (D-096, "aynı
+ * değerlerle devam"): with `like` (the last hole added), the new hole copies its type, depth,
+ * groove width and tool; a copy that does not fit the new diameter falls back to a through hole.
+ * T320 (D-108): with the machine's `tools`, a new hole takes the best compatible tool (a drill of
+ * its size, else `tool` when it suits, else a mill that suits); a copied tool that no longer suits
+ * the new diameter is replaced the same way.
  */
 export function addHoleParams(
   project: Project,
   draft: HoleDraft,
   d: number,
   tool: number,
+  like?: Hole,
+  tools?: readonly HoleRuleTool[] | null,
 ): { id: string; hole: Hole } | null {
   const part = project.parts.find((p) => p.id === draft.partId);
   const at = boardPositions(project).get(draft.partId);
   if (!part || !at || !(d > 0)) return null;
+  const base = {
+    id: nextHoleId(part),
+    d: r3(d),
+    cx: r3(draft.c.x - at.x),
+    cy: r3(draft.c.y - at.y),
+  };
+  const fitTool = (hole: Hole): Hole =>
+    tools && holeToolProblem(hole, tools) !== null
+      ? { ...hole, tool: bestHoleTool(hole, tools, tool) }
+      : hole;
+  if (like) {
+    const copy = holeSchema.safeParse({ ...like, ...base });
+    if (copy.success) return { id: part.id, hole: fitTool(copy.data) };
+  }
+  const fresh: Hole = { ...base, type: 'through', tool };
   return {
     id: part.id,
-    hole: {
-      id: nextHoleId(part),
-      type: 'through',
-      d: r3(d),
-      cx: r3(draft.c.x - at.x),
-      cy: r3(draft.c.y - at.y),
-      tool,
-    },
+    hole: tools ? { ...fresh, tool: bestHoleTool(fresh, tools, tool) } : fresh,
   };
+}
+
+/** The last hole added in this session, as it is now (edited since), or the remembered copy. */
+export function lastHoleNow(
+  project: Project,
+  last: { partId: string; hole: Hole } | null,
+): Hole | undefined {
+  if (!last) return undefined;
+  const now = project.parts
+    .find((p) => p.id === last.partId)
+    ?.holes.find((h) => h.id === last.hole.id);
+  return now ?? last.hole;
 }
 
 /**
@@ -142,4 +173,15 @@ export function holeRefusal(
 export function typedDiameter(text: string): number | null {
   const v = Number(text.replace(',', '.'));
   return text !== '' && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/** Below this zoom (px per mm) the hole tool does not snap onto centres (B52, D-096). */
+export const HOLE_CENTRE_SNAP_SCALE = 2;
+
+/**
+ * True when the hole tool may snap its centre onto hole / contour centres (B52, D-096): only at a
+ * usable zoom, where the snap reach (`snapPx` screen px) stays within a few millimetres.
+ */
+export function holeCentreSnap(scale: number): boolean {
+  return scale >= HOLE_CENTRE_SNAP_SCALE;
 }

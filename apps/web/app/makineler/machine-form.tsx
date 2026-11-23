@@ -1,6 +1,7 @@
 'use client';
 
 import { setNavigationGuard } from '../../lib/navigation-guard';
+import { usePageBarClearance } from '../../lib/use-page-bar';
 import {
   defaultTabHeight,
   KNOWN_POSTS,
@@ -44,7 +45,11 @@ import { CircleAlert, Info, Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { focusRing } from '../../components/page/page-header';
-import { CONTROLLER_LIBRARY, controllerProfile } from '../../lib/controller-library';
+import {
+  CONTROLLER_LIBRARY,
+  controllerProfile,
+  postSupportsMachineCoordinates,
+} from '../../lib/controller-library';
 import { fill } from '../../lib/fill';
 import type { ApiError, MachineDetail } from '../../lib/machines-api';
 import {
@@ -189,6 +194,9 @@ export function MachineForm({
   const materialRows = useRowKeys((start?.profile ?? initial).materials.length);
   const active = useActiveSection();
   const formRef = useRef<HTMLFormElement>(null);
+  // B49: toasts stack above the sticky save bar (bottom-4 = 16 px) instead of covering "Kaydet".
+  const saveBar = useRef<HTMLDivElement>(null);
+  usePageBarClearance(saveBar, 16);
 
   // T258: opened to add a parameter set: show "Malzeme parametreleri" and focus the set's feed.
   // After the page's own scroll-to-top (MachinesView), hence the next frame.
@@ -296,6 +304,8 @@ export function MachineForm({
   if (!(profile.post.id in postOptions)) {
     postOptions[profile.post.id] = `${f.postUnknown}: ${profile.post.id} ${profile.post.version}`;
   }
+  // T309 (D-097): the park point needs G53 (machine coordinates) in the post.
+  const parkPossible = postSupportsMachineCoordinates(profile.post.id);
 
   function update(mutate: (draft: MachineProfile) => void) {
     setServerIssues([]);
@@ -705,6 +715,63 @@ export function MachineForm({
                 onChange={(v) => update((p) => void (p.toolChanger.lengthCompensation = v))}
               />
             </div>
+            {profile.toolChanger.type === 'manual' && !parkPossible ? (
+              <p className="text-xs text-fg-muted sm:col-span-2" data-testid="park-unavailable">
+                {f.parkUnavailable}
+              </p>
+            ) : null}
+            {profile.toolChanger.type === 'manual' && parkPossible ? (
+              <>
+                <div className="sm:col-span-2">
+                  <CheckField
+                    path="toolChanger.park.enabled"
+                    label={f.park}
+                    help={f.parkHelp}
+                    checked={profile.toolChanger.park?.enabled ?? false}
+                    onChange={(v) =>
+                      update(
+                        (p) =>
+                          void (p.toolChanger.park = {
+                            ...(p.toolChanger.park ?? { x: 0, y: 0 }),
+                            enabled: v,
+                          }),
+                      )
+                    }
+                  />
+                </div>
+                {profile.toolChanger.park?.enabled ? (
+                  <>
+                    {num(
+                      'toolChanger.park.x',
+                      f.parkX,
+                      profile.toolChanger.park.x,
+                      (p, v) =>
+                        void (p.toolChanger.park = {
+                          enabled: true,
+                          y: 0,
+                          ...p.toolChanger.park,
+                          x: v,
+                        }),
+                      u.mm,
+                      f.parkXYHelp,
+                    )}
+                    {num(
+                      'toolChanger.park.y',
+                      f.parkY,
+                      profile.toolChanger.park.y,
+                      (p, v) =>
+                        void (p.toolChanger.park = {
+                          enabled: true,
+                          x: 0,
+                          ...p.toolChanger.park,
+                          y: v,
+                        }),
+                      u.mm,
+                    )}
+                  </>
+                ) : null}
+              </>
+            ) : null}
           </Section>
 
           <Section id="holdDown" title={s.holdDown} hint={h.holdDown}>
@@ -747,6 +814,10 @@ export function MachineForm({
                 update((p) => {
                   const known = KNOWN_POSTS.find((k) => k.id === v);
                   if (known) p.post = { id: known.id, version: known.version };
+                  // T309: a post without G53 cannot park; the park is forced off.
+                  if (p.toolChanger.park?.enabled && !postSupportsMachineCoordinates(p.post.id)) {
+                    p.toolChanger.park = { ...p.toolChanger.park, enabled: false };
+                  }
                 })
               }
             />
@@ -1003,6 +1074,7 @@ export function MachineForm({
 
       {/* Sticky save bar: unsaved-changes state, errors and the actions, always in reach. */}
       <div
+        ref={saveBar}
         data-testid="machine-save-bar"
         className="sticky bottom-4 z-10 rounded-xl border border-border bg-surface/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:px-5"
       >

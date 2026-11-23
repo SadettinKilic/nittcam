@@ -1,4 +1,5 @@
 import {
+  innerOperation,
   placedInners,
   placedHoleCentre,
   placedOutline,
@@ -31,7 +32,10 @@ export function footprintOutline(part: Part, rot: number, h: number): number[] |
  * they turn and move with the part. Empty for a part without cut-outs.
  */
 export function footprintInners(part: Part, rot: number, h: number): number[][] {
-  return placedInners(part, { x: 0, y: 0, rot }).map((p) => flat(p, h));
+  // T325: a blind contour pocket is not an opening (the toolpath view shows its clearing).
+  return placedInners(part, { x: 0, y: 0, rot }).flatMap((p, k) =>
+    innerOperation(part, k).kind === 'pocket' ? [] : [flat(p, h)],
+  );
 }
 
 /**

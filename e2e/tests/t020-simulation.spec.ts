@@ -7,6 +7,7 @@ import {
   nest,
   openWorkspacePanel,
   wizardReady,
+  KITCHEN_3,
 } from './wizard-helpers';
 
 /**
@@ -119,11 +120,13 @@ test.describe('T020 simulation', () => {
     page,
   }) => {
     const problems = watchConsole(page);
-    await openSimulation(page);
+    // Several plates (KITCHEN_3, T313): the tab strip and the other plates' simulation.
+    await openSimulation(page, undefined, KITCHEN_3);
     await readyCanvas(page);
     const summary = page.getByTestId('sim-summary');
     await expect(summary).toBeVisible();
-    await expect(page.getByTestId('sim-check-status')).toHaveText(new RegExp(s.summary.checksOk));
+    // T321 (D-109): KITCHEN_3 passes with warnings (yellow chip); no blocking error is what counts here.
+    await expect(page.getByTestId('sim-check-status')).toHaveText(/kontroller geçti/i);
     await expect(page.getByTestId('sim-check-status')).toHaveAttribute('data-ok', 'true');
     await expect(page.getByTestId('sim-summary-time')).toContainText('≈');
     // one tool: the first tool is set-up, no in-program change (T274)
@@ -317,7 +320,7 @@ test.describe('T020 simulation', () => {
     await page.getByTestId('wizard-back').click();
     await wizardReady(page, 'dizilim');
     await expect(page.getByTestId('layout-canvas')).toBeVisible();
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
   });
 
   test('390 px: canvas first, G-code panel in a sheet, no horizontal page scroll', async ({

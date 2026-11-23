@@ -4,9 +4,11 @@ import { boardParts } from '@nittcam/core';
 import {
   addHoleParams,
   holeCentre,
+  holeCentreSnap,
   holeDefaults,
   holeOnCentre,
   holeRefusal,
+  lastHoleNow,
   liveDiameter,
   nextHoleId,
   typedDiameter,
@@ -107,5 +109,52 @@ describe('T276: the hole lands where it is clicked', () => {
     expect(edge && holeRefusal(p, edge)).toBe('outside');
     const fine = addHoleParams(p, { partId: 'a', c: { x: 1200, y: 650 } }, 35, 2);
     expect(fine && holeRefusal(p, fine)).toBeNull();
+  });
+});
+
+describe('holeCentreSnap (B52, D-096)', () => {
+  it('snaps onto centres only at a usable zoom', () => {
+    expect(holeCentreSnap(0.4)).toBe(false); // whole sheet in view: 10 px = 25 mm
+    expect(holeCentreSnap(1.99)).toBe(false);
+    expect(holeCentreSnap(2)).toBe(true); // 10 px = 5 mm
+    expect(holeCentreSnap(8)).toBe(true);
+  });
+});
+
+describe('aynı değerlerle devam (B52, D-096)', () => {
+  const pocket: Hole = { id: 'h1', type: 'pocket', d: 35, cx: 22.5, cy: 100, depth: 13, tool: 3 };
+  it('a new hole copies the last hole type, depth and tool; a misfit copy falls back', () => {
+    const r = addHoleParams(project(), { partId: 'a', c: { x: 1100, y: 600 } }, 35, 1, pocket);
+    expect(r?.hole).toMatchObject({ type: 'pocket', depth: 13, tool: 3, d: 35 });
+    expect(r?.hole.id).not.toBe('h1');
+    const groove: Hole = { ...pocket, type: 'groove', grooveWidth: 6 };
+    // a 4 mm hole cannot hold a 6 mm groove: plain through hole with the board tool
+    const small = addHoleParams(project(), { partId: 'a', c: { x: 1100, y: 600 } }, 4, 1, groove);
+    expect(small?.hole).toMatchObject({ type: 'through', d: 4, tool: 1 });
+  });
+  it('reads the last hole as it is now, else the remembered copy', () => {
+    const p = project();
+    expect(lastHoleNow(p, null)).toBeUndefined();
+    expect(lastHoleNow(p, { partId: 'gone', hole: pocket })).toBe(pocket);
+    const part = p.parts.find((x) => x.id === 'a');
+    if (part) part.holes = [{ ...pocket, depth: 10 }];
+    expect(lastHoleNow(p, { partId: 'a', hole: pocket })).toMatchObject({ depth: 10 });
+  });
+});
+
+describe('addHoleParams tool (T320)', () => {
+  const tools = [
+    { number: 1, type: 'flatEndMill', diameter: 6 },
+    { number: 3, type: 'drill', diameter: 5 },
+  ];
+  const at = { partId: 'a', c: { x: 1100, y: 600 } };
+  it('a new Ø5 hole takes the Ø5 drill; a Ø35 hole keeps the mill', () => {
+    expect(addHoleParams(project(), at, 5, 1, undefined, tools)?.hole.tool).toBe(3);
+    expect(addHoleParams(project(), at, 35, 1, undefined, tools)?.hole.tool).toBe(1);
+  });
+  it('a copied drill that no longer fits the new size is replaced by a mill', () => {
+    const like: Hole = { id: 'h', type: 'through', d: 5, cx: 0, cy: 0, tool: 3 };
+    expect(addHoleParams(project(), at, 35, 1, like, tools)?.hole.tool).toBe(1);
+    expect(addHoleParams(project(), at, 5, 1, like, tools)?.hole.tool).toBe(3);
   });
 });

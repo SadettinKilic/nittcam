@@ -3,6 +3,7 @@
  * `importDxf` params. Pure helpers; the dialog keeps the file text and choices as UI state.
  */
 import {
+  bestHoleTool,
   detectDxfFormat,
   dxfImportParts,
   planDxfImport,
@@ -13,6 +14,7 @@ import {
   type DxfLayerOp,
   type DxfPlan,
   type DxfUnit,
+  type HoleRuleTool,
   type Polyline,
 } from '@nittcam/core';
 
@@ -175,6 +177,8 @@ export function importParams(
   holeTool?: number,
   /** Depth of the "Çizgi üzerinden" lines, mm (T277, `defaultOnlineDepth`). */
   onlineDepth?: number,
+  /** T320 (D-108): the machine's tools; each drill-layer hole then takes its best compatible tool. */
+  tools?: readonly HoleRuleTool[] | null,
 ): { plan: DxfPlan; parts: ReturnType<typeof dxfImportParts> } {
   const plan = planDxfImport(drawing, map);
   const parts = dxfImportParts(
@@ -184,7 +188,12 @@ export function importParams(
     holeTool,
     onlineDepth,
   );
-  return { plan, parts };
+  if (!tools || holeTool === undefined) return { plan, parts };
+  const fitted = parts.map((p) => ({
+    ...p,
+    holes: p.holes.map((h) => ({ ...h, tool: bestHoleTool(h, tools, holeTool) })),
+  }));
+  return { plan, parts: fitted };
 }
 
 /** File name without the extension, for part names. */

@@ -93,7 +93,8 @@ export interface Tab {
 
 /**
  * `outerContour`: a part's outer contour (T014). `innerContour`: a cut-out (T134), cut before it.
- * `pocket`: a circular pocket cleared from its centre
+ * `pocket`: a circular pocket cleared from its centre (with `inner` set: a closed inner contour
+ * cleared with offset rings, the contour pocket of T325; else the following)
  * with concentric rings (the test part of T022, D-031, and the holes of §4.5: through and blind,
  * T139–T140); down to the target depth it is a through hole. `drill`: a hole as wide as the tool,
  * one plunge per pass (peck, D-050). `groove`: a ring groove around the hole's centreline (T140).
@@ -116,6 +117,8 @@ export interface Operation {
   skinCleanup?: true;
   /** The part's hole this operation cuts (hole operations only). */
   holeId?: string;
+  /** The part's inner contour this operation clears (contour pockets only, T325). */
+  inner?: number;
   tool: number;
   toolDiameter: number;
   rpm: number;
@@ -157,6 +160,9 @@ export type ToolpathCode =
   // errors (block export)
   | 'NO_CUTTING_PARAMS'
   | 'CUTTING_PARAMS_UNVERIFIED'
+  | 'SPINDLE_RPM_OUT_OF_RANGE'
+  | 'FEED_OUT_OF_RANGE'
+  | 'OPERATION_TOOL_UNSUITABLE'
   | 'TOOL_NOT_IN_PROFILE'
   | 'INVALID_OPTION'
   | 'DEPTH_EXCEEDS_FLUTE_LENGTH'
@@ -171,7 +177,11 @@ export type ToolpathCode =
   | 'HOLE_OUTSIDE_PART'
   | 'HOLE_SMALLER_THAN_TOOL'
   | 'GROOVE_NARROWER_THAN_TOOL'
+  | 'DRILL_SIZE_MISMATCH'
   | 'HOLE_DEPTH_INVALID'
+  | 'POCKET_TOO_SMALL'
+  | 'POCKET_SPLIT'
+  | 'POCKET_DEPTH_INVALID'
   | 'NO_PLACEMENTS'
   | 'SAFETY_VIOLATION'
   | 'INVALID_TAB'
@@ -190,7 +200,8 @@ export type ToolpathCode =
   | 'SMALL_SLUG_AUTO_TABS'
   | 'TABS_REDUCED'
   | 'TABS_NOT_PLACED'
-  | 'TABS_TOO_SMALL';
+  | 'TABS_TOO_SMALL'
+  | 'POCKET_PLUNGE_ENTRY';
 
 export interface ToolpathIssue {
   code: ToolpathCode;
@@ -217,7 +228,13 @@ export type PlungeOption =
    * Zig-zag ramp along the contour: forward over `length` mm, back to the start point, reaching
    * the pass depth there. `length` wins over `angleDeg` (angle of each leg against the XY plane).
    */
-  | { type: 'ramp'; angleDeg?: number; length?: number };
+  | {
+      type: 'ramp';
+      angleDeg?: number;
+      length?: number;
+      /** T324: shortest leg, mm, when the angle gives a shorter one (project ramps: tool Ø). */
+      minLength?: number;
+    };
 
 /** Overrides of the material parameter set (spec §7.1 "Kesim parametreleri"). */
 export interface CuttingParamsOverride {

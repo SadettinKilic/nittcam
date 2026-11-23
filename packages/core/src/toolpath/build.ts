@@ -8,7 +8,26 @@ import { offset } from '../geometry/offset';
 import { bbox, contour, normalize, reverse, signedArea } from '../geometry/polyline';
 import { rotate, translate } from '../geometry/transform';
 import type { BBox, Point, Polyline } from '../geometry/types';
-import { findMaterialParams, findTool, type MachineProfile } from '../machine';
+import {
+  feedInRange,
+  findMaterialParams,
+  findTool,
+  machineFeedLimits,
+  type MachineProfile,
+} from '../machine';
+import { feedOverride, jobToolNumbers, rpmInRange, spindleOverride } from './spindle';
+import {
+  OPERATION_TOOL_TYPES,
+  contourPocketTool,
+  contourTool,
+  effectiveHoleTool,
+  holeToolKind,
+  operationToolChoice,
+  recommendedFeeds,
+  recommendedRpm,
+  type OperationToolKind,
+} from './op-tools';
+import { nestingToolDiameter } from '../nesting/tool';
 import {
   innerOperation,
   outlineOperation,
@@ -47,6 +66,11 @@ import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../edito
 import { lineLeavesPart } from '../editor/lines';
 import { summarizeToolpath } from './stats';
 import { buildOnlineOperation, onlineStart } from './online';
+import {
+  buildContourPocketOperation,
+  contourPocketRings,
+  contourPocketStart,
+} from './contour-pocket';
 import { partInHoleHosts } from './enclose';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
 
@@ -300,7 +324,8 @@ function unionBox(a: BBox, b: BBox): BBox {
 function rampLegLength(plunge: Extract<PlungeOption, { type: 'ramp' }>, step: number): number {
   if (plunge.length !== undefined) return plunge.length;
   const angle = ((plunge.angleDeg ?? TOOLPATH_DEFAULTS.rampAngleDeg) * Math.PI) / 180;
-  return step / 2 / Math.tan(angle);
+  // T324: never shorter than `minLength` (a shallower ramp, never a steeper one).
+  return Math.max(step / 2 / Math.tan(angle), plunge.minLength ?? 0);
 }
 
 interface OperationContext {
@@ -343,6 +368,29 @@ function holdableStarts(ctx: OperationContext, cand: number[], p: Params): numbe
     return !errors.some((e) => e.code === 'SMALL_SLUG_UNSECURED');
   });
   return held.length > 0 ? held : cand;
+}
+
+/**
+ * T313 (D-104): with a tight clearance between parts (tool Ø + 0.1 mm) an edge facing a neighbour
+ * leaves no room for the full lead. Keep the start edges whose leads fit unshortened, so the cut
+ * order starts on an edge facing the waste or the sheet margin; when none fits, all stay (the
+ * lead is shortened or removed there with its warning, as before). The preferred (long) edges
+ * first, then any other straight edge with room.
+ */
+function leadRoomStarts(ctx: OperationContext, fraction: number, p: Params): number[] {
+  const cand = startEdgeCandidates(ctx.raw, fraction);
+  if (cand.length === 0 || p.lead === 'none' || !(p.leadLength > 0)) return cand;
+  const roomy = (edges: number[]) =>
+    edges.filter((edge) => {
+      const warnings: ToolpathIssue[] = [];
+      buildOuterOperation({ ...ctx, startEdge: edge }, p, warnings, [], new Set(), []);
+      return !warnings.some((w) => w.code === 'LEAD_SHORTENED' || w.code === 'LEAD_REMOVED');
+    });
+  const first = roomy(cand);
+  if (first.length > 0) return first;
+  // No preferred edge has room: any other straight edge that has (a short side facing the waste).
+  const rest = roomy(startEdgeCandidates(ctx.raw, 0).filter((e) => !cand.includes(e)));
+  return rest.length > 0 ? rest : cand;
 }
 
 function buildOuterOperation(
@@ -825,24 +873,61 @@ export function buildToolpath(
     );
     return fail();
   }
-  const tool = findTool(machine, toolNo);
-  if (!tool) {
-    errors.push(
-      issue('TOOL_NOT_IN_PROFILE', 'error', null, `Tool T${toolNo} is not in the machine profile.`),
-    );
-    return fail();
+  // T308 (D-099): the project may choose the tool per operation; the set's tool is the default.
+  const outerNo = contourTool(project, 'outer', toolNo);
+  const innerNo = contourTool(project, 'inner', toolNo);
+  const tool = findTool(machine, outerNo);
+  const innerTool = findTool(machine, innerNo);
+  for (const [n, t] of [
+    [outerNo, tool],
+    [innerNo, innerTool],
+  ] as const) {
+    if (!t) {
+      errors.push(
+        issue('TOOL_NOT_IN_PROFILE', 'error', null, `Tool T${n} is not in the machine profile.`),
+      );
+      return fail();
+    }
   }
-  if (-target > tool.fluteLength + EPS) {
+  if (!tool || !innerTool) return fail();
+  for (const t of innerNo === outerNo ? [tool] : [tool, innerTool]) {
+    if (-target > t.fluteLength + EPS) {
+      errors.push(
+        issue(
+          'DEPTH_EXCEEDS_FLUTE_LENGTH',
+          'error',
+          null,
+          `Cut depth ${(-target).toFixed(3)} mm exceeds the flute length ${t.fluteLength} mm of T${t.number}.`,
+        ),
+      );
+      return fail();
+    }
+  }
+  // A chosen tool must be of a type the operation cuts with, and the outer one no wider than the
+  // tool the layout was spaced for (D-019); hole sizes are checked per hole below.
+  const unsuitable = (op: OperationToolKind, n: number, why: string) =>
     errors.push(
       issue(
-        'DEPTH_EXCEEDS_FLUTE_LENGTH',
+        'OPERATION_TOOL_UNSUITABLE',
         'error',
         null,
-        `Cut depth ${(-target).toFixed(3)} mm exceeds the flute length ${tool.fluteLength} mm of T${tool.number}.`,
+        `The tool chosen for the ${op} operation (T${n}) ${why}.`,
       ),
     );
-    return fail();
+  for (const op of ['outer', 'inner', 'pocket', 'hole'] as const) {
+    const n = operationToolChoice(project, op);
+    const t = n === undefined ? undefined : findTool(machine, n);
+    if (n === undefined || !t) continue;
+    if (!OPERATION_TOOL_TYPES[op].includes(t.type)) unsuitable(op, n, `is a ${t.type}`);
   }
+  {
+    const n = operationToolChoice(project, 'outer');
+    const spaced = nestingToolDiameter(machine, project.stock);
+    if (n !== undefined && spaced !== undefined && tool.diameter > spaced + EPS) {
+      unsuitable('outer', n, `is wider than the Ø${spaced} mm tool the layout is spaced for`);
+    }
+  }
+  if (errors.length > 0) return fail();
 
   let clearanceZ = options.clearance ?? TOOLPATH_DEFAULTS.clearance;
   if (!positive(clearanceZ)) {
@@ -867,7 +952,22 @@ export function buildToolpath(
     errors.push(issue('INVALID_OPTION', 'error', null, 'Lead length must be zero or positive.'));
     return fail(clearanceZ);
   }
-  const plunge: PlungeOption = options.plunge ?? { type: 'straight' };
+  // T324: the project's contour entry (absent = straight plunge); a ramp leg is at least the
+  // project's length, else the cutting tool's diameter (set per tool below).
+  const entry = project.cutting.entry;
+  const plunge: PlungeOption =
+    options.plunge ??
+    (entry
+      ? {
+          type: 'ramp',
+          angleDeg: entry.angleDeg,
+          ...(entry.length === undefined ? {} : { minLength: entry.length }),
+        }
+      : { type: 'straight' });
+  const plungeFor = (toolDiameter: number): PlungeOption =>
+    options.plunge === undefined && plunge.type === 'ramp' && plunge.minLength === undefined
+      ? { ...plunge, minLength: toolDiameter }
+      : plunge;
   if (plunge.type === 'ramp') {
     const badAngle =
       plunge.angleDeg !== undefined &&
@@ -955,12 +1055,65 @@ export function buildToolpath(
     return fail(clearanceZ);
   }
 
+  // T307 (D-098): the project's spindle speed per tool, else the material set's (or the option).
+  // A value outside the machine's spindle range never reaches a program.
+  // T308: a tool the project chose takes the rpm of its own material set (else the job set's).
+  const rpmOf = (toolNumber: number): number =>
+    spindleOverride(project, toolNumber) ??
+    (o.rpm === undefined && set ? recommendedRpm(project, machine, set, toolNumber) : rpm);
+  // T323: the project's feeds per tool, else the tool's set (the job set unless chosen, T308), or
+  // the option. A feed outside the machine's limits never reaches a program.
+  const feedsOf = (toolNumber: number): { feed: number; plungeFeed: number } => {
+    const own = feedOverride(project, toolNumber);
+    const rec =
+      set && (o.feed === undefined || o.plungeFeed === undefined)
+        ? recommendedFeeds(project, machine, set, toolNumber)
+        : null;
+    return {
+      feed: own.feed ?? (o.feed === undefined && rec ? rec.feed : feed),
+      plungeFeed:
+        own.plungeFeed ?? (o.plungeFeed === undefined && rec ? rec.plungeFeed : plungeFeed),
+    };
+  };
+  const feedLimits = machineFeedLimits();
+  for (const n of jobToolNumbers(project, machine)) {
+    const f = feedsOf(n);
+    for (const [what, v, range] of [
+      ['Feed', f.feed, feedLimits.feed],
+      ['Plunge feed', f.plungeFeed, feedLimits.plungeFeed],
+    ] as const) {
+      if (!feedInRange(range, v)) {
+        errors.push(
+          issue(
+            'FEED_OUT_OF_RANGE',
+            'error',
+            null,
+            `${what} ${v} mm/min for T${n} is outside the machine's range ${range.min}–${range.max}.`,
+          ),
+        );
+      }
+    }
+  }
+  for (const n of jobToolNumbers(project, machine)) {
+    const own = spindleOverride(project, n);
+    if (own !== undefined && !rpmInRange(machine, own)) {
+      errors.push(
+        issue(
+          'SPINDLE_RPM_OUT_OF_RANGE',
+          'error',
+          null,
+          `Spindle speed ${own} rpm for T${n} is outside the machine's range ${machine.spindle.minRpm}–${machine.spindle.maxRpm}.`,
+        ),
+      );
+    }
+  }
+  if (errors.length > 0) return fail(clearanceZ);
+
   const params: Params = {
     tool: tool.number,
     toolDiameter: tool.diameter,
-    feed,
-    plungeFeed,
-    rpm,
+    ...feedsOf(tool.number),
+    rpm: rpmOf(tool.number),
     passDepths: passDepths(target, passDepth),
     stepDown: passDepth,
     skin:
@@ -977,7 +1130,7 @@ export function buildToolpath(
     clearanceZ,
     lead: options.lead ?? project.cutting.leadIn,
     leadLength,
-    plunge,
+    plunge: plungeFor(tool.diameter),
     // CW spindle (M3): climb on an outer contour = CW travel around the part (D-021).
     travel: direction === 'climb' ? 'cw' : 'ccw',
     sheet: defaultSheet(project),
@@ -1001,9 +1154,26 @@ export function buildToolpath(
     },
   };
 
+  // T308: inner contours cut with their own tool (the same as the outer one by default).
+  const innerParams: Params =
+    innerTool.number === tool.number
+      ? params
+      : {
+          ...params,
+          tool: innerTool.number,
+          toolDiameter: innerTool.diameter,
+          ...feedsOf(innerTool.number),
+          plunge: plungeFor(innerTool.diameter),
+          rpm: rpmOf(innerTool.number),
+          leadLength: options.leadLength ?? innerTool.diameter / 2,
+        };
+  const paramsOf = (ctx: { inner?: number | undefined }): Params =>
+    ctx.inner === undefined ? params : innerParams;
+
   // Inner contours (T134): an opening the tool cannot cut blocks export (once per part; the
   // copies only turn it). Features not cut yet: block export instead of silently leaving them out.
   const toolRadius = tool.diameter / 2;
+  const innerRadius = innerTool.diameter / 2;
   // The geometry rules of validation `INNER_CONTOUR_INVALID` (§7.2): a cut-out crossing the outline,
   // outside it or overlapping an earlier one would cut into the part edge, the sheet or a
   // neighbour, so it stops the toolpath here too (the server export never relies on the panel).
@@ -1025,7 +1195,7 @@ export function buildToolpath(
         }
         // Only a through cut inside the line needs the tool to fit (T142: online / none do not).
         if (innerOperation(part, k).kind !== 'inside') continue;
-        for (const it of innerContourPath(contour(inner), toolRadius).issues) {
+        for (const it of innerContourPath(contour(inner), innerRadius).issues) {
           (it.severity === 'error' ? errors : warnings).push(
             issue(it.code, it.severity, part.id, it.message),
           );
@@ -1088,6 +1258,59 @@ export function buildToolpath(
     }
   }
 
+  // Contour pockets (T325, D-112): an inner contour cleared flat to a blind depth with the
+  // `pocket` operation's tool (the set's tool by default). Checked once per part; cut per copy.
+  const pocketNo = contourPocketTool(project, toolNo);
+  const pocketTool = findTool(machine, pocketNo);
+  const pocketDepths = new Map<string, number[]>();
+  for (const part of project.parts) {
+    part.inners.forEach((inner, k) => {
+      const op = innerOperation(part, k);
+      if (op.kind !== 'pocket') return;
+      const bad = (code: ToolpathCode, message: string) =>
+        errors.push(
+          issue(code, 'error', part.id, `Inner contour ${k + 1} (pocket): ${message}`, {
+            inner: k,
+          }),
+        );
+      if (!pocketTool) {
+        bad('TOOL_NOT_IN_PROFILE', `tool T${pocketNo} is not in the machine profile.`);
+        return;
+      }
+      if (!(op.depth < thickness - EPS)) {
+        bad(
+          'POCKET_DEPTH_INVALID',
+          `depth ${op.depth} mm must be less than the thickness (${thickness} mm).`,
+        );
+        return;
+      }
+      if (op.depth > pocketTool.fluteLength + EPS) {
+        bad(
+          'DEPTH_EXCEEDS_FLUTE_LENGTH',
+          `depth ${op.depth} mm exceeds the flute length ${pocketTool.fluteLength} mm of T${pocketTool.number}.`,
+        );
+        return;
+      }
+      const rings = contourPocketRings(contour(inner), pocketTool.diameter);
+      if (!rings.ok) {
+        bad(rings.code, rings.message);
+        return;
+      }
+      if (rings.arcCollapsed) {
+        warnings.push(
+          issue(
+            'ARC_COLLAPSED',
+            'warning',
+            part.id,
+            `Inner contour ${k + 1} (pocket): a corner radius is smaller than the tool radius; the corner stays rounded (R${pocketTool.diameter / 2} mm).`,
+            { inner: k },
+          ),
+        );
+      }
+      pocketDepths.set(`${part.id}/${k}`, passDepths(0 - op.depth, passDepth));
+    });
+  }
+
   // Holes (T139–T140, D-050): each hole uses its own tool's diameter and flute length with the
   // stock's material set feeds, rpm and step-down. Checked once per part; cut per placed copy.
   const holeTools = new Map<string, { tool: number; diameter: number; depths: number[] }>();
@@ -1098,10 +1321,23 @@ export function buildToolpath(
       const bad = (code: ToolpathCode, message: string) =>
         errors.push(issue(code, 'error', part.id, `Hole ${h.id}: ${message}`, { hole: hi }));
       // Same rule as the validation where the hole is drawn (T275, holeToolProblem).
-      const problem = holeToolProblem(h, machine.tools);
-      const ht = findTool(machine, h.tool);
+      // T308: the project's tool for this hole's operation, else the hole's own.
+      const htNo = effectiveHoleTool(project, h);
+      const problem = holeToolProblem({ ...h, tool: htNo }, machine.tools);
+      const ht = findTool(machine, htNo);
       if (!ht || problem?.code === 'TOOL_NOT_IN_PROFILE') {
-        bad('TOOL_NOT_IN_PROFILE', `tool T${h.tool} is not in the machine profile.`);
+        bad('TOOL_NOT_IN_PROFILE', `tool T${htNo} is not in the machine profile.`);
+        continue;
+      }
+      if (
+        ht.type === 'drill' &&
+        operationToolChoice(project, holeToolKind(h)) !== undefined &&
+        Math.abs(h.d - ht.diameter) > EPS
+      ) {
+        bad(
+          'OPERATION_TOOL_UNSUITABLE',
+          `the chosen drill T${ht.number} (Ø${ht.diameter} mm) only drills holes of its own size, not Ø${h.d} mm.`,
+        );
         continue;
       }
       if (checkHolePlacement(outline, part.inners, h)) {
@@ -1116,6 +1352,14 @@ export function buildToolpath(
         bad(
           'GROOVE_NARROWER_THAN_TOOL',
           `groove width ${h.grooveWidth} mm is narrower than the tool Ø${ht.diameter} mm.`,
+        );
+        continue;
+      }
+      // T320 (D-108): a drill only drills a hole of its own size; never run it sideways.
+      if (problem?.code === 'DRILL_SIZE_MISMATCH') {
+        bad(
+          'DRILL_SIZE_MISMATCH',
+          `the drill T${ht.number} (Ø${ht.diameter} mm) only drills holes of its own size, ${h.type === 'groove' ? 'not a groove' : `not Ø${h.d} mm`}.`,
         );
         continue;
       }
@@ -1227,6 +1471,54 @@ export function buildToolpath(
         itemCtx.push(-1);
         itemHole.push(op);
       };
+      // Contour pockets (T325): prebuilt like holes (one start point), cut with the holes.
+      const addPocket = (inner: Polyline, k: number) => {
+        const depths = pocketDepths.get(`${x.part.id}/${k}`);
+        if (!depths || !pocketTool) return;
+        const res = buildContourPocketOperation({
+          id: `${copyKey}/pocket${k}`,
+          sheet: sheetIndex,
+          partId: x.part.id,
+          copy: x.placement.index,
+          inner: k,
+          contour: inner,
+          tool: pocketTool.number,
+          toolDiameter: pocketTool.diameter,
+          // T323: the pocket tool's own feeds, like its rpm.
+          ...feedsOf(pocketTool.number),
+          rpm: rpmOf(pocketTool.number),
+          passDepths: depths,
+          safeZ,
+          clearanceZ,
+          // Climb inside a pocket (CW spindle) = CCW travel (D-021), like the hole pockets.
+          travel: direction === 'climb' ? 'ccw' : 'cw',
+        });
+        if (!res.ok) {
+          opErrors.push(issue(res.code, 'error', x.part.id, res.message, { ...where, inner: k }));
+          return;
+        }
+        if (res.plungeEntry) {
+          opWarnings.push(
+            issue(
+              'POCKET_PLUNGE_ENTRY',
+              'warning',
+              x.part.id,
+              `Inner contour ${k + 1} (pocket): too small for a ramp; the tool plunges straight in.`,
+              { ...where, inner: k },
+            ),
+          );
+        }
+        items.push({
+          sheet: sheetIndex,
+          part: copyKey,
+          cls: 'pocket',
+          tool: pocketTool.number,
+          area: 0,
+          starts: [contourPocketStart(res.operation)],
+        });
+        itemCtx.push(-1);
+        itemHole.push(res.operation);
+      };
       for (const it of contourRes.issues) {
         (it.severity === 'error' ? opErrors : opWarnings).push(
           issue(it.code, it.severity, x.part.id, it.message, where),
@@ -1245,9 +1537,8 @@ export function buildToolpath(
           centre: placedHoleCentre(x.part, x.placement, h),
           tool: ht.tool,
           toolDiameter: ht.diameter,
-          feed: params.feed,
-          plungeFeed: params.plungeFeed,
-          rpm: params.rpm,
+          ...feedsOf(ht.tool),
+          rpm: rpmOf(ht.tool),
           passDepths: ht.depths,
           safeZ,
           clearanceZ,
@@ -1282,8 +1573,9 @@ export function buildToolpath(
       placedInners(x.part, x.placement).forEach((innerPoly, k) => {
         const innerOp = innerOperation(x.part, k);
         if (innerOp.kind === 'online') addOnline(innerPoly, `inner${k}`, innerOp.depth);
+        if (innerOp.kind === 'pocket') addPocket(innerPoly, k);
         if (innerOp.kind !== 'inside') return;
-        const res = innerContourPath(innerPoly, toolRadius);
+        const res = innerContourPath(innerPoly, innerRadius);
         const loop = res.paths[0];
         if (!res.ok || !loop) return;
         const innerRaw = normalize(loop, 'outer');
@@ -1302,14 +1594,14 @@ export function buildToolpath(
         const cand = holdableStarts(
           prepared[prepared.length - 1] as OperationContext,
           startEdgeCandidates(innerRaw, startFraction),
-          params,
+          innerParams,
         );
         edges.push(cand);
         items.push({
           sheet: sheetIndex,
           part: `${x.part.id}#${x.placement.index}`,
           cls: 'inner',
-          tool: params.tool,
+          tool: innerParams.tool,
           area: partArea.get(x.part.id) ?? 0,
           starts:
             cand.length > 0
@@ -1328,7 +1620,10 @@ export function buildToolpath(
         edges.push([]);
         return;
       }
-      const cand = startEdgeCandidates(raw, startFraction);
+      const cand = leadRoomStarts(ctx as OperationContext, startFraction, {
+        ...paramsOf(ctx as OperationContext),
+        sheet: sheetSizeOf(project, sheetIndex),
+      });
       edges.push(cand);
       itemHole.push(null);
       items.push({
@@ -1394,7 +1689,7 @@ export function buildToolpath(
       buildOuterOperation(
         ctx,
         // each sheet's own size bounds its leads (T164, several stock sizes)
-        { ...params, sheet: sheetSizeOf(project, ctx.sheetIndex) },
+        { ...paramsOf(ctx), sheet: sheetSizeOf(project, ctx.sheetIndex) },
         ctx.warnings,
         ctx.errors,
         smallWarned,

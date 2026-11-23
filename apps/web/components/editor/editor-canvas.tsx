@@ -68,9 +68,12 @@ export interface EditorCanvasProps {
   dimPreview?: { a: Pt; b: Pt } | null;
 }
 
-/** Segment or vertex picked for the properties panel, board mm. */
+/** Segment, vertex, hole or cut-out picked for the properties panel, board mm. */
 export type EditorFocus =
-  { kind: 'segment'; p0: Pt; p1: Pt; bulge: number } | { kind: 'vertex'; at: Pt };
+  | { kind: 'segment'; p0: Pt; p1: Pt; bulge: number }
+  | { kind: 'vertex'; at: Pt }
+  | { kind: 'hole'; at: Pt; r: number }
+  | { kind: 'inner'; vertices: readonly Vertex[] };
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -215,15 +218,34 @@ function drawParts(ctx: Ctx, p: EditorCanvasProps) {
   for (const part of p.parts) {
     const selected = p.selection.has(part.id);
     const d = selected && p.drag ? p.drag : { x: 0, y: 0 };
+    const pockets = new Set(part.pockets ?? []);
     ctx.beginPath();
     traceContour(ctx, part.outline, v, d.x, d.y);
-    for (const inner of part.inners) traceContour(ctx, inner, v, d.x, d.y);
+    part.inners.forEach((inner, k) => {
+      if (!pockets.has(k)) traceContour(ctx, inner, v, d.x, d.y);
+    });
     // B50 (CTO #5, #7): a selected part keeps its wood tone; the 2 px accent outline marks it.
     ctx.fillStyle = colors.part;
     ctx.fill('evenodd');
     ctx.lineWidth = selected ? 2 : part.id === p.hover ? 1.75 : 1;
     ctx.strokeStyle = selected || part.id === p.hover ? colors.selection : colors.partStroke;
     ctx.stroke();
+    // T325: a blind contour pocket is a light recess (like a blind hole), not an opening.
+    for (const k of pockets) {
+      const inner = part.inners[k];
+      if (!inner) continue;
+      ctx.beginPath();
+      traceContour(ctx, inner, v, d.x, d.y);
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = colors.partStroke;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = colors.partStroke;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     if (part.holes.length > 0) {
       // B50 (CTO #7): through = solid disc, blind pocket = light disc, groove = ring only.
       for (const h of part.holes) {
@@ -557,6 +579,22 @@ function drawCorners(ctx: Ctx, p: EditorCanvasProps) {
     traceSegment(ctx, f.p0, f.p1, f.bulge, v);
     ctx.strokeStyle = colors.accent;
     ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+  // B52 (D-096): a picked hole (ring) or cut-out (outline), 2 px accent like a selected part.
+  if (f?.kind === 'hole') {
+    const c = toScreen(v, f.at);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, Math.max(f.r * v.scale + 2, 4), 0, Math.PI * 2);
+    ctx.strokeStyle = colors.accent;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else if (f?.kind === 'inner') {
+    ctx.beginPath();
+    traceContour(ctx, f.vertices, v);
+    ctx.closePath();
+    ctx.strokeStyle = colors.accent;
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
   ctx.lineWidth = 1.5;

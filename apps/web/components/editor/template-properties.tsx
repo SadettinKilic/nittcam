@@ -45,7 +45,7 @@ import {
   notify,
 } from '@nittcam/ui';
 import { LayoutTemplate, Plus, RotateCcw, Save, Trash2, TriangleAlert } from 'lucide-react';
-import { memo, useId, useState } from 'react';
+import { memo, useContext, useId, useState } from 'react';
 import { rowOpen } from '../../lib/editor/collapse';
 import { fill } from '../../lib/fill';
 import {
@@ -56,6 +56,7 @@ import {
 } from '../../lib/editor/template-place';
 import type { Messages } from '../../lib/messages';
 import { createTemplate, fetchTemplates, type TemplateItem } from '../../lib/templates-api';
+import { HoleIssuesContext } from './hole-issues';
 import { NumberRow, type Run } from './properties';
 import { SummaryRow } from './summary-row';
 
@@ -387,6 +388,8 @@ export const TemplateProperties = memo(function TemplateProperties({
   const [saving, setSaving] = useState(false);
   const [menuMounted, setMenuMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // T320: a placed template's holes take this machine's best compatible tool.
+  const machineTools = useContext(HoleIssuesContext).tools;
   // B50: open / closed per instance id (default: the newest and a warned one open).
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const addButton = (props: { onClick?: () => void }) => (
@@ -453,7 +456,9 @@ export const TemplateProperties = memo(function TemplateProperties({
                     key={item.id}
                     data-testid="template-menu-item"
                     onSelect={() =>
-                      onPending(startPlacement(part.id, item, localBox(part), part.templates))
+                      onPending(
+                        startPlacement(part.id, item, localBox(part), part.templates, machineTools),
+                      )
                     }
                   >
                     <LayoutTemplate aria-hidden />

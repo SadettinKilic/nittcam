@@ -284,8 +284,8 @@ describe('B14 hole goldens read back independently (tester, D-051)', () => {
       // Blind holes never go below their own depth (checked per block above); only contours reach 18.5.
       expect(rest.every(({ b }) => b.cuts.some((m) => m.to.z < -18.4))).toBe(true);
     }
-    // Tool changes: through = T2, T1, T2; blind = T2 only.
-    expect(run.toolChanges).toEqual(through ? [2, 1, 2] : [2]);
+    // Tool changes: through = T1, T2 (B51 fewest changes); blind = T2 only.
+    expect(run.toolChanges).toEqual(through ? [1, 2] : [2]);
   });
 });
 
@@ -307,7 +307,7 @@ describe('the tester interpreter is not blind (mutations of holes-through generi
     ],
     ['rapid plunge into the material', 'G1 Z-4.625 F1500', 'G0 Z-4.625'],
     ['XY rapid at clearance height', 'G0 Z20.000\r\nG0 X303.200', 'G0 Z2.000\r\nG0 X303.200'],
-    ['spindle never started', 'M3 S18000\r\nG4 P5.0\r\nG0 X160', 'G0 X160'],
+    ['spindle never started', 'M3 S18000\r\nG4 P5.0\r\nG0 X442', 'G0 X442'],
     ['no M30', 'M30', ''],
     ['exponent number', 'G1 Z-9.250', 'G1 Z-9.25e0'],
   ])('%s', (_what, from, to) => {

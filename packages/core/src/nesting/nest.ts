@@ -53,6 +53,7 @@ import {
   type UnplacedPart,
 } from './types';
 import { toCutSizes } from '../schema/cut-size';
+import { innerOperation } from '../schema/operations';
 import type { OffcutSheet } from './offcuts';
 
 /** Orderings tried, in this order (earlier wins ties). */
@@ -200,16 +201,50 @@ function inflate(r: Rect, s: number): Rect {
   return { x: r.x - s, y: r.y - s, w: r.w + 2 * s, h: r.h + 2 * s };
 }
 
-/** Packs the items in the given order with one heuristic. Always terminates: one pass per item. */
-function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic): Packed {
+/**
+ * How a new sheet's size is chosen when the stock lists several sizes (T312). `greedy`: the size
+ * whose greedy fill of the remaining items wastes the smallest share (T164). `fitAll`: the smallest
+ * size that takes every remaining item, else greedy (one big sheet can beat two small ones).
+ * `prefer`: stock size `k` whenever it takes the item, else greedy. One size: nothing to choose.
+ */
+export type SizePolicy = { kind: 'greedy' } | { kind: 'fitAll' } | { kind: 'prefer'; k: number };
+
+const GREEDY: SizePolicy = { kind: 'greedy' };
+
+/** Size policies tried for a job (T312): greedy first (it wins ties), then the alternatives. */
+export function sizePolicies(dims: readonly { offcutId?: string | undefined }[]): SizePolicy[] {
+  if (dims.length <= 1) return [GREEDY];
+  const out: SizePolicy[] = [GREEDY, { kind: 'fitAll' }];
+  dims.forEach((d, k) => {
+    if (!d.offcutId) out.push({ kind: 'prefer', k });
+  });
+  return out;
+}
+
+/**
+ * Packs the items in the given order with one heuristic. Always terminates: one pass per item.
+ * Open sheets come first (T312): every open sheet and every allowed rotation is tried before a new
+ * sheet is opened. A guillotine bin keeps only part of its free space, so with several stock sizes
+ * an exact MaxRects shadow of each sheet is asked too before a new sheet is opened. One stock size
+ * keeps the old path byte for byte (PO, B56 round 1).
+ */
+function pack(
+  ctx: Context,
+  items: readonly Item[],
+  heuristic: PlacerHeuristic,
+  policy: SizePolicy = GREEDY,
+): Packed {
   const { input, s } = ctx;
   const bins: Bin[] = [];
+  const exact = ctx.dims.length > 1 && heuristic.startsWith('guillotine');
+  const shadows: MaxRectsBin[] = [];
   const sheets: Placement[][] = [];
   const sizeOf: number[] = [];
   const used = ctx.dims.map(() => 0);
   const openSheet = (k: number): Bin => {
     const bin = makeBin(heuristic, ctx.areas[k] ?? ctx.area);
     bins.push(bin);
+    if (exact) shadows.push(new MaxRectsBin(ctx.areas[k] ?? ctx.area, 'bl'));
     sheets.push([]);
     sizeOf.push(k);
     used[k] = (used[k] ?? 0) + 1;
@@ -221,7 +256,10 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
     const bin = openSheet(sizeIndex(input.lockedSizes?.[li]));
     for (const pl of locked) {
       const r = placementRect(pl, ctx.sizes);
-      if (r) bin.occupy(inflate(r, s));
+      if (r) {
+        bin.occupy(inflate(r, s));
+        shadows[shadows.length - 1]?.occupy(inflate(r, s));
+      }
     }
   }
 
@@ -238,7 +276,9 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
   };
   const place = (sheet: number, item: Item, fit: Fit, opt: RotationOption): void => {
     const { rot } = opt;
-    bins[sheet]?.occupy({ x: fit.x, y: fit.y, w: opt.w + 2 * s, h: opt.h + 2 * s });
+    const taken = { x: fit.x, y: fit.y, w: opt.w + 2 * s, h: opt.h + 2 * s };
+    bins[sheet]?.occupy(taken);
+    shadows[sheet]?.occupy(taken);
     sheets[sheet]?.push({
       partId: item.partId,
       index: item.index,
@@ -269,32 +309,47 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
       ? open.filter((k) => ctx.dims[k]?.offcutId)
       : open;
     if (pool.length <= 1) return pool[0] ?? null;
+    if (policy.kind === 'prefer' && pool.includes(policy.k)) return policy.k;
     let best: number | null = null;
     let bestWaste = Infinity;
+    let all: number | null = null;
+    let allArea = Infinity;
     for (const k of pool) {
       const d = ctx.dims[k] as SheetDim;
       const trial = makeBin(heuristic, ctx.areas[k] ?? ctx.area);
       let partArea = 0;
+      let missed = 0;
       for (let j = from; j < items.length; j++) {
         const it = items[j] as Item;
         const hit = tryBin(trial, it);
-        if (!hit) continue;
+        if (!hit) {
+          missed++;
+          continue;
+        }
         trial.occupy({ x: hit.fit.x, y: hit.fit.y, w: hit.opt.w + 2 * s, h: hit.opt.h + 2 * s });
         partArea += hit.opt.w * hit.opt.h;
       }
-      const waste = 1 - partArea / (d.width * d.height);
+      const area = d.width * d.height;
+      const waste = 1 - partArea / area;
       if (waste < bestWaste - 1e-12) {
         bestWaste = waste;
         best = k;
       }
+      if (missed === 0 && area < allArea - 1e-9) {
+        allArea = area;
+        all = k;
+      }
     }
-    return best;
+    return policy.kind === 'fitAll' && all !== null ? all : best;
   };
 
   for (const [at, item] of items.entries()) {
     let done = false;
     for (const [i, bin] of bins.entries()) {
-      const hit = tryBin(bin, item);
+      // T312: a guillotine bin may have lost room its sheet still has: ask the exact shadow of
+      // the same sheet before moving on, so an earlier sheet is always filled first.
+      const shadow = shadows[i];
+      const hit = tryBin(bin, item) ?? (shadow ? tryBin(shadow, item) : null);
       if (hit) {
         place(i, item, hit.fit, hit.opt);
         done = true;
@@ -314,6 +369,7 @@ function pack(ctx: Context, items: readonly Item[], heuristic: PlacerHeuristic):
     } else {
       // Defensive (items too large are filtered before packing): never leave an empty sheet.
       bins.pop();
+      if (exact) shadows.pop();
       sheets.pop();
       sizeOf.pop();
       used[k] = (used[k] ?? 1) - 1;
@@ -491,17 +547,29 @@ export interface Candidate {
 const sheetArea = (c: Candidate) => c.dims.reduce((s, d) => s + d.width * d.height, 0);
 
 /**
+ * Total sheet areas closer than this share count as equal (D-103): then fewer sheets win, since
+ * handling 13 more sheets for 0.7 % less board is a bad trade.
+ */
+export const SHEET_AREA_TOLERANCE = 0.02;
+
+/**
  * Candidate ranking: fewer unplaced copies, then fewer sheets, then the objective. With several
- * stock sizes (`mixed`, D-056) the total sheet area replaces the sheet count (two small sheets
- * can beat one big one), then the objective. One size: the area is the count times one size, but
- * the count is compared as before so single-size results stay byte-identical.
+ * stock sizes (`mixed`, D-056, D-103) the total sheet area decides when it differs by
+ * `SHEET_AREA_TOLERANCE` or more (two small sheets can beat one big one); within it fewer sheets
+ * win, then less area, then the objective. One size: the count is compared as before, so
+ * single-size results stay byte-identical.
  */
 export function better(a: Candidate, b: Candidate, mixed: boolean): boolean {
-  return (
-    (a.unplaced.length - b.unplaced.length ||
-      (mixed ? sheetArea(a) - sheetArea(b) : a.layout.length - b.layout.length) ||
-      a.cost.total - b.cost.total) < 0
-  );
+  const unplaced = a.unplaced.length - b.unplaced.length;
+  if (unplaced !== 0) return unplaced < 0;
+  if (!mixed) {
+    return (a.layout.length - b.layout.length || a.cost.total - b.cost.total) < 0;
+  }
+  const areaA = sheetArea(a);
+  const areaB = sheetArea(b);
+  const close = Math.abs(areaA - areaB) < SHEET_AREA_TOLERANCE * Math.min(areaA, areaB);
+  if (!close) return areaA < areaB;
+  return (a.layout.length - b.layout.length || areaA - areaB || a.cost.total - b.cost.total) < 0;
 }
 
 /** Optional callbacks of a placer run (T163). They never change the result. */
@@ -605,38 +673,41 @@ export function nest(input: NestingInput, hooks: NestHooks = {}): NestingResult 
       : PART_ORDERINGS;
   const heuristics: readonly PlacerHeuristic[] = trueShape ? ['trueshape-bl'] : PLACER_HEURISTICS;
   const shapes = trueShape ? trueShapeSetup(ctx) : null;
-  const total = orderings.length * heuristics.length;
+  // T312: with several stock sizes each ordering × heuristic also runs every size policy.
+  const policies = trueShape ? [GREEDY] : sizePolicies(dims);
+  const total = orderings.length * heuristics.length * policies.length;
   for (const ordering of orderings) {
     const list = ordered(items, ordering);
-    for (const heuristic of heuristics) {
-      count++;
-      if (count > 1) hooks.onProgress?.(count - 1, total);
-      const packed = shapes
-        ? packTrueShape(
-            shapes.input,
-            list.map((it) => shapes.item(it)),
-          )
-        : pack(ctx, list, heuristic);
-      const layout = packed.sheets.map((added, i) => [
-        ...(input.locked[i] ?? []).map((pl) => ({ ...pl })),
-        ...added,
-      ]);
-      const sheetDims = layout.map((_, i) => dims[packed.sizeOf[i] ?? 0] ?? input.sheet);
-      const stats = layout.map((pls, i) =>
-        sheetStats(i, pls, sheetDims[i] ?? input.sheet, sizes, trueShape),
-      );
-      const cost = objective(ctx, layout, stats, sheetDims, weights, false);
-      const cand: Candidate = {
-        ordering,
-        heuristic,
-        layout,
-        dims: sheetDims,
-        unplaced: [...tooLarge, ...packed.unplaced],
-        stats,
-        cost,
-      };
-      if (best === null || better(cand, best, dims.length > 1)) best = cand;
-    }
+    for (const heuristic of heuristics)
+      for (const policy of policies) {
+        count++;
+        if (count > 1) hooks.onProgress?.(count - 1, total);
+        const packed = shapes
+          ? packTrueShape(
+              shapes.input,
+              list.map((it) => shapes.item(it)),
+            )
+          : pack(ctx, list, heuristic, policy);
+        const layout = packed.sheets.map((added, i) => [
+          ...(input.locked[i] ?? []).map((pl) => ({ ...pl })),
+          ...added,
+        ]);
+        const sheetDims = layout.map((_, i) => dims[packed.sizeOf[i] ?? 0] ?? input.sheet);
+        const stats = layout.map((pls, i) =>
+          sheetStats(i, pls, sheetDims[i] ?? input.sheet, sizes, trueShape),
+        );
+        const cost = objective(ctx, layout, stats, sheetDims, weights, false);
+        const cand: Candidate = {
+          ordering,
+          heuristic,
+          layout,
+          dims: sheetDims,
+          unplaced: [...tooLarge, ...packed.unplaced],
+          stats,
+          cost,
+        };
+        if (best === null || better(cand, best, dims.length > 1)) best = cand;
+      }
   }
   hooks.onProgress?.(count, total);
   // At least one ordering × heuristic always runs, so `best` is set.
@@ -835,7 +906,11 @@ export function nestingInputFromProject(
       rotations: allowedRotations(part, defaultSheet(project), rotationPolicyOf(project.nesting)),
       outline: contour(deriveOutline(part)),
       holeTools: part.holes.map((h) => h.tool),
-      inners: part.inners.map((c) => contour(c)),
+      // Only cut-outs (through cuts) leave room for part-in-hole: a blind pocket (T325), an engraved
+      // or an uncut inner contour keeps its material.
+      inners: part.inners
+        .filter((_, k) => innerOperation(part, k).kind === 'inside')
+        .map((c) => contour(c)),
     })),
     gap: project.nesting.gap,
     margin: project.nesting.margin,
@@ -870,7 +945,12 @@ export function nestingEngineOf(project: Project): NestingEngine {
   for (const part of project.parts) {
     if (part.kind !== 'rect' && !isAxisRect(deriveOutline(part))) return 'trueShape';
     if (allowedRotations(part, sheet, policy).some((r) => !isQuarterTurn(r))) return 'trueShape';
-    if (project.nesting.partInHole === true && part.inners.length > 0) return 'trueShape';
+    if (
+      project.nesting.partInHole === true &&
+      part.inners.some((_, k) => innerOperation(part, k).kind === 'inside')
+    ) {
+      return 'trueShape';
+    }
   }
   return 'maxrects';
 }

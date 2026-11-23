@@ -6,7 +6,12 @@
  * byte-identical files.
  */
 import { EPS } from '../geometry';
-import { machineProfileSchema, VERIFICATION_STAGES, type MachineProfile } from '../machine';
+import {
+  machineFeedLimits,
+  machineProfileSchema,
+  VERIFICATION_STAGES,
+  type MachineProfile,
+} from '../machine';
 import { operationMoves, type Operation, type Toolpath } from '../toolpath';
 import { arcGeometry, arcPieces, chordSegments, splitArc, type ArcGeometry } from './arcs';
 import { normalizePostVersion, parsePostConfig, type PostConfig } from './config';
@@ -65,6 +70,59 @@ export function cuttingHeader(c: PostCuttingMeta): string {
         : [`köprü yalnız küçük parçada ${small} adet ${dims}`];
   const lead = `giriş ${c.leadIn === 'arc' ? 'yay' : 'düz'}`;
   return `KESİM: ${[...tabs, lead, `yön ${c.direction}`].join(', ')}`;
+}
+
+/**
+ * T307 (D-098): one header line per tool the project runs at its own spindle speed, right under
+ * "KESİM" (its own line: the KESİM line is near the 120-character comment limit), e.g.
+ * "DEVİR T2: 20000 d/dk elle, önerilen 18000". None when every tool runs at the recommended value.
+ */
+export function spindleHeaders(c: PostCuttingMeta): string[] {
+  return (c.spindle ?? []).map(
+    (s) => `DEVİR T${s.tool}: ${s.rpm} d/dk elle, önerilen ${s.recommended}`,
+  );
+}
+
+/**
+ * T323: one header line per tool the project runs at its own feed, under "KESİM", e.g.
+ * "İLERLEME T2: 4000 mm/dk, dalma 1200 mm/dk elle, önerilen 6000 / 1500". None by default.
+ */
+export function feedHeaders(c: PostCuttingMeta): string[] {
+  const n = (v: number) => formatFixed(v, 0);
+  return (c.feeds ?? []).map(
+    (f) =>
+      `İLERLEME T${f.tool}: ${n(f.feed)} mm/dk, dalma ${n(f.plungeFeed)} mm/dk elle, önerilen ${n(f.recommendedFeed)} / ${n(f.recommendedPlungeFeed)}`,
+  );
+}
+
+/**
+ * T324: "GİRİŞ: rampa 3°, kontur boyunca, en az 8 mm" when the contours ramp in; none with the
+ * default straight plunge.
+ */
+export function entryHeaders(c: PostCuttingMeta): string[] {
+  if (!c.entry) return [];
+  const len =
+    c.entry.length === undefined
+      ? 'en az takım çapı'
+      : `en az ${formatFixed(c.entry.length, 3)} mm`;
+  return [`GİRİŞ: rampa ${formatFixed(c.entry.angleDeg, 3)}°, kontur boyunca, ${len}`];
+}
+
+const OPERATION_HEADER = {
+  outer: 'dış kontur',
+  inner: 'iç kontur',
+  pocket: 'cep',
+  hole: 'delik',
+} as const;
+
+/**
+ * T308 (D-099): one header line with the tools the project chose per operation, under "KESİM",
+ * e.g. "TAKIM ELLE: dış kontur T3, delik T5". None with the default tools.
+ */
+export function operationToolHeaders(c: PostCuttingMeta): string[] {
+  const tools = c.tools ?? [];
+  if (tools.length === 0) return [];
+  return [`TAKIM ELLE: ${tools.map((t) => `${OPERATION_HEADER[t.op]} T${t.tool}`).join(', ')}`];
 }
 
 /**
@@ -331,6 +389,40 @@ class Writer {
     this.ready = false;
   }
 
+  /**
+   * T309 (D-097): before a manual tool change pause, go to the profile's park point: up to safe Z,
+   * then `G53 G0 X.. Y..` (machine coordinates, independent of the work zero) at safe Z. Nothing
+   * when the park is off or the post has no G53. XY in the work frame is unknown afterwards.
+   */
+  private park(): void {
+    const park = this.c.profile.toolChanger.park;
+    if (!park?.enabled || this.c.cfg.motion.machineCoordinates !== true) return;
+    const env = this.c.profile.workEnvelope;
+    if (
+      !Number.isFinite(park.x) ||
+      !Number.isFinite(park.y) ||
+      Math.abs(park.x) > env.x + EPS ||
+      Math.abs(park.y) > env.y + EPS
+    ) {
+      this.fail('OUT_OF_ENVELOPE', 'Park point outside the machine travel.', 6);
+    }
+    if (!this.zKnown || Math.abs(this.pos.z - this.c.toolpath.safeZ) > EPS) this.safeZ();
+    const d = this.c.cfg.decimals.xy;
+    this.comment('PARK: TAKIM DEĞİŞİM NOKTASI (MAKİNE KOORDİNATI)');
+    const rapid = this.c.cfg.motion.rapid;
+    this.block([
+      'G53',
+      rapid,
+      `X${this.num(park.x, d, 'Park X')}`,
+      `Y${this.num(park.y, d, 'Park Y')}`,
+    ]);
+    this.motion = rapid;
+    this.xyKnown = false;
+    this.wx = null;
+    this.wy = null;
+    this.atSafeZOnly = false;
+  }
+
   private toolChange(op: Operation): void {
     const cfg = this.c.cfg;
     const first = this.tool === null;
@@ -347,6 +439,7 @@ class Writer {
         this.block(['G43', `H${op.tool}`]);
       }
     } else if (mode === 'manual' && !first) {
+      this.park();
       // No tool length offset: the new tool sticks out a different length, so Z must be re-zeroed (T274, K2).
       const offset = cfg.toolChange.lengthOffset && this.c.profile.toolChanger.lengthCompensation;
       this.comment(
@@ -356,6 +449,7 @@ class Writer {
       );
       this.block([cfg.toolChange.manualStop]);
     } else if (mode === 'manual' && cfg.toolChange.pauseForFirstTool) {
+      this.park();
       this.comment(`TAKIM ${label} TAKILI MI? DEVAM İÇİN CYCLE START`);
       this.block([cfg.toolChange.manualStop]);
     } else {
@@ -398,6 +492,20 @@ class Writer {
       ['plunge feed', op.plungeFeed],
     ] as const) {
       if (!Number.isFinite(v) || v <= 0) this.fail('FEED_INVALID', `Invalid ${name} ${v}.`, 5);
+    }
+    // T323: a feed above the machine's limit never reaches a program.
+    const limits = machineFeedLimits();
+    for (const [name, v, range] of [
+      ['feed', op.feed, limits.feed],
+      ['plunge feed', op.plungeFeed, limits.plungeFeed],
+    ] as const) {
+      if (Number.isFinite(v) && v > range.max) {
+        this.fail(
+          'FEED_INVALID',
+          `The ${name} ${v} mm/min is above the machine's ${range.max}.`,
+          5,
+        );
+      }
     }
     if (op.tool !== this.tool) this.toolChange(op);
     if (this.spindleRpm !== op.rpm) this.spindleOn(op.rpm);
@@ -644,7 +752,15 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
     `ORİJİN: ${CORNER_LABEL[profile.origin.corner] ?? profile.origin.corner}, X+ ${profile.origin.xPositive === 'right' ? 'sağ' : 'sol'}, Y+ ${profile.origin.yPositive === 'back' ? 'arka' : 'ön'}, plaka ofseti ${f3(profile.origin.sheetOffset.x)} / ${f3(profile.origin.sheetOffset.y)}`,
   );
   lines.push(`Z SIFIR: ${profile.zZero.reference === 'table' ? 'tabla yüzeyi' : 'malzeme üstü'}`);
-  if (meta.cutting) lines.push(cuttingHeader(meta.cutting));
+  if (meta.cutting) {
+    lines.push(
+      cuttingHeader(meta.cutting),
+      ...spindleHeaders(meta.cutting),
+      ...feedHeaders(meta.cutting),
+      ...entryHeaders(meta.cutting),
+      ...operationToolHeaders(meta.cutting),
+    );
+  }
   const tools = [...new Set(plan.ops.map((o) => o.tool))];
   lines.push(
     `TAKIMLAR: ${tools
@@ -935,20 +1051,21 @@ export function generateGcode(
           sheet: plan.sheet,
         });
       }
-      let suffix = `${meta.revisionInFileName ? `_r${meta.revision}` : ''}_S${plan.sheetIndex}`;
+      // T322 (D-110): the revision is the first marker dropped when even a one-character project
+      // part does not fit; sheet / tool / part markers always stay, so names stay unique.
+      const revision = meta.revisionInFileName ? `_r${meta.revision}` : '';
+      let marks = `_S${plan.sheetIndex}`;
       if (plan.tool !== null) {
         const key = `${plan.sheet}/${plan.tool}`;
         const k = (toolRuns.get(key) ?? 0) + 1;
         toolRuns.set(key, k);
-        suffix += `_T${plan.tool}${k > 1 ? `_${k}` : ''}`;
+        marks += `_T${plan.tool}${k > 1 ? `_${k}` : ''}`;
       }
       chunks.forEach((content, i) => {
-        const name = buildFileName(
-          stem,
-          chunks.length > 1 ? `${suffix}_P${i + 1}` : suffix,
-          cfg.file.extension,
-          maxName,
-        );
+        const own = chunks.length > 1 ? `${marks}_P${i + 1}` : marks;
+        const name =
+          buildFileName(stem, `${revision}${own}`, cfg.file.extension, maxName) ??
+          buildFileName(stem, own, cfg.file.extension, maxName);
         if (name === null) {
           err('FILE_NAME_TOO_LONG', `No file name fits in ${maxName} characters.`);
           return;
