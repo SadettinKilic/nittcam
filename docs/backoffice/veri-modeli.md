@@ -380,7 +380,7 @@ Sahibin örneği (2026-11-23, D-114): aynı mobilyacının **koltuk** ve **sanda
 
 `public.projects` değişikliği: **`brand_id uuid NULL`**, bileşik FK `(company_id, brand_id) → company_brands (company_id, id)`, indeks `(company_id, brand_id, updated_at)`. **Boş = markasız**: çıktılar firma adı ve logosuyla çıkar. Tek markalı atölye hiçbir şey görmez (marka seçici ancak en az bir marka tanımlıysa çıkar); bugünkü projeler olduğu gibi kalır, geri doldurma gerekmez. Marka `projects.data` JSON'una girmez (çekirdek saf kalır, G-code markaya bağlı değildir); marka değişimi export hash'ini değiştirmez, yalnızca PDF/etiket başlığını.
 
-Backoffice: firma kartı markaları listeler; `bo.v_company_projects` marka adını taşır; kullanım süresi `daily_project_usage` → `projects.brand_id` ile marka kırılımında okunur (hangi marka ne kadar iş çıkarıyor). Marka CRM hesabı ya da abonelik **değildir**; fatura firmaya kesilir (ayrı tüzel kişilik sorusu S14).
+Backoffice: firma kartı markaları listeler; `bo.v_company_projects` marka adını taşır; kullanım süresi `daily_project_usage` → `projects.brand_id` ile marka kırılımında okunur (hangi marka ne kadar iş çıkarıyor). Marka CRM hesabı ya da abonelik **değildir**; fatura atölyeye tek kesilir, markaya göre bölünmez (S14 kararı, D-115).
 
 ```json
 {"id":"b-01","company_id":"c-001","name":"Kılıç Koltuk","logo_key":"c-001/brands/b-01/logo.png","color":"#0E7C66","sort_order":1,"archived_at":null}
@@ -548,6 +548,8 @@ Günler arası bölünmeyi doğru yapmak ve "atölyeler günün hangi saatinde �
 ### 6.4 Abonelik ve faturalama (`billing`)
 
 #### `billing.billing_profiles`: fatura kimliği (1:1 firma)
+
+Atölye başına **tek** fatura kimliği (D-115): fatura, atölyenin bildirdiği kişi ya da şirkete kesilir; kaç markası olursa olsun ikinci bir fatura kimliği tutulmaz. Atölye yöneticisi bu bilgiyi değiştirebilir (ör. şahıs firmasından limitede geçti); değişiklik **sonraki** faturadan geçerlidir, kesilmiş faturalar kendi `buyer_snapshot`'ında eski bilgiyle kalır, değişiklik denetim günlüğüne yazılır.
 
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
@@ -1646,5 +1648,5 @@ Riskler: (1) Better Auth tablo adlandırması/alanları sürüm değişikliğind
 | S10 | Backoffice ayrı bir uygulama mı (ayrı repo/alt alan adı) yoksa `apps/backoffice`? | Öneri: aynı monorepo'da `apps/backoffice`, ayrı dağıtım ve ayrı DB rolü |
 | S11 | İl/ilçe kodları ve koordinat kaynağı (NVİ/AKS, TÜİK, açık veri) ve firma konumu nasıl alınır (elle pin, adres geocoding)? | Öneri: il = plaka kodu; ilçe resmi kodu `official_code`; konum yönetici ayarında haritada pin, yoksa ilçe merkezi |
 | S12 | Pazarlama izni (İYS) toplanacak mı, kanal bazında mı? | Model kanal bazında (`marketing_email/sms/call`) |
-| S14 | Aynı atölyenin markaları ayrı tüzel kişilik olabilir mi (ayrı vergi no, ayrı fatura)? | **Öneri:** hayır, fatura firmaya tek kesilir (`billing_profiles` 1:1 firma). "Evet" ise iki yol: markaya isteğe bağlı fatura kimliği, ya da o markayı ayrı firma yapmak (R13 sayesinde aynı hesapla girilir, ama makine ve stok ayrılır) |
+| S14 | ~~Aynı atölyenin markaları ayrı tüzel kişilik olabilir mi (ayrı vergi no, ayrı fatura)?~~ | **Karar (sahip, 2026-11-23, D-115): hayır.** Atölye başına tek abonelik ve tek fatura; fatura atölyenin bildirdiği tek fatura kimliğine kesilir (`billing_profiles` 1:1 firma). Marka başına fatura, fatura bölme ya da markaya ayrı vergi no yoktur |
 | S13 | Ürün analitiği için çerez/izleme onayı: oturum ve kullanım ölçümü meşru menfaat mi, açık rıza mı? | Hukuki görüş; model ikisini de destekler (`analytics_cookies`) |
