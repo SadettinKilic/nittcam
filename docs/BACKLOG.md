@@ -36,6 +36,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M10 Hesap ve çok şirket | T200+ (outline) | – | after field test |
 | M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
 | M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
+| M-Metal Metal ve kompozit (proposal, D-xxx) | T340–T372 (33) | MB1–MB11 | after field test 1 (only T340–T342 may start before); ACM tray and aluminium test part cut on a real machine; existing goldens byte-identical |
 
 **Before the field test: 139 tasks in 39 batches** (counted from the task headings with a status, deferred T248 not counted; the mobile UI pass T248 + T255 comes on top. 2026-11-19: + 3 from CTO review #7 (T274–T276, batch B14a), + 3 from CTO review #6 (T269–T271, batch B13a), + T267/T268 (B13) and T272/T273 (B18) from tester/CI findings, T255/T256 now counted. Before that 127 tasks in 37 batches: + 3 from CTO review #5, `docs/reviews/2026-11-19-cto-design-review-5.md`: T264–T266, one new batch B12a; before that 124 tasks in 36 batches: + 7 from CTO review #4, `docs/reviews/2026-11-19-cto-design-review-4.md`: T257–T263, one new batch B11a; T255 and T256 were added on 2026-11-19 and are not in this count; before that: 117 tasks in 35 batches = 94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11; + 7 from review #3, `docs/reviews/2026-11-19-fable-design-review-3.md`: T248–T254). The "~90 % / field-test ready" line is the end of M9 (T193).
 
@@ -1752,3 +1753,321 @@ Chat panel, command proposals with Uygula/İptal, warning badge, template update
 
 ### M12–M14: Pilot, Ticari, Büyüme
 As spec §12.1.
+
+---
+
+## M-Metal: Metal ve kompozit (exit: an ACM tray part with V-grooves and an aluminium test part are cut on a real machine within tolerance; goldens of every existing material byte-identical)   [status: todo, proposal 2026-11-23]
+
+Owner decision 2026-11-23: metal is added to the product (D-xxx, text in `docs/metal/metal-analizi.md` §11). Analysis, scope tiers, setting table, screens and safety rules: `docs/metal/metal-analizi.md`. Scope: tier A1 ACM cut, A2 ACM V-groove, B aluminium sheet/plate, C brass (outline); steel and stainless are permanently out.
+
+**Rules for every task in this milestone**
+- Golden files of the existing materials stay byte-identical (acceptance of every task, not repeated below). Metal fixtures get new golden files with the PR label `needs-human`.
+- New kinds are `release: 'flagged'`: invisible without the flag `NITTCAM_METAL`. NC for a tier is released to users only after that tier's machine test (human gate tasks T357, T369, T372).
+- No `if metal` branches: behaviour comes from `MaterialTraits` (T341). Numbers in the table are aligned with `docs/materials/kesim-degerleri-arastirma.md` before they are coded.
+- Batches are named MB1…MB11 here; the PO maps them onto the running B numbers.
+
+**When may it start?**
+
+| Mark | Meaning | Tasks |
+| --- | --- | --- |
+| pre-FT | may start before field test 1: docs, or a pure refactor with identical output and no visible change | T340, T341, T342 |
+| post-FT | touches toolpath, post, checker, schema or visible UI: waits for field test 1 | T343–T356, T358–T368, T370, T371 |
+| gate | owner's machine test; nothing of that tier ships before it | T357, T369, T372 |
+
+| Batch | Tasks | Tier | Ships |
+| --- | --- | --- | --- |
+| MB1 | T340–T342 | foundation (pre-FT) | spec and decision updated; traits table; consumers read it; no visible change |
+| MB2 | T343–T345 | foundation | tab/skin/tool-type limits from traits; profile can declare coolant and metal cutting |
+| MB3 | T346–T348 | A1 | ACM kind behind the flag with its direction and machined face |
+| MB4 | T349–T351 | A1 | material rules in validation, library props, machine parameter table per family: ACM cut jobs end to end (flag) |
+| MB5 | T352–T354 | A2 | V-groove operation, toolpath and checker rule |
+| MB6 | T355–T357 | A2 | ACM labels/PDF/DXF, field kit and verification per family, **ACM machine test** |
+| MB7 | T358–T360 | B | ramp-only entry, step-down and chip-load limits, coolant in toolpath and post |
+| MB8 | T364, T365, T361 | B | finishing pass, metal tabs and hold-down, checker rule R11 |
+| MB9 | T362, T363, T366 | B | checker rules R12–R16 and R18, aluminium screens (flag) |
+| MB10 | T367–T369 | B | look, labels/PDF, aluminium field kit, **aluminium machine test** |
+| MB11 | T370–T372 | C (outline) | brass kind, V-engrave, machine test |
+
+### T340 Spec and decision update for metal   [status: todo]   (pre-FT, docs only)
+Spec: §2.2, §2.5, §3.6, §4.1, §4.8, §6.2, §6.3, §6.4, §7.1, §7.2, §7.3, §9.1, §9.2, §11, §12.1, §14  ·  Depends: owner approval of the tier scope  ·  Owner: PO
+Acceptance:
+- [ ] spec edited with the texts of `docs/metal/metal-analizi.md` §10; steel/stainless listed as permanently out
+- [ ] decision entry written from §11 with a real number; BACKLOG summary table has the M-Metal row
+- [ ] the numbers of the setting table (§4.2) and the safety rules (§7) are compared with `docs/materials/kesim-degerleri-arastirma.md`; every difference is settled in the analysis and marked "doğrulanacak" where no source agrees
+- [ ] `docs/machines/_template/README.md` asks: vacuum M code as wired, coolant output and code, clamp height, spindle collet
+Tester focus: none (docs).
+
+### T341 Material traits table for the six existing kinds   [status: todo]   (pre-FT)
+Spec: §3.6 "Malzeme davranışı" (new)  ·  Depends: –  ·  Owner: dev
+Acceptance:
+- [ ] `packages/core/src/machine/material-traits.ts`: `MaterialFamily`, `MaterialTraits`, `MATERIAL_TRAITS` for `mdf`, `plywood`, `melamine`, `solidWood`, `acrylic`, `pvc`, and `traitsOf(kind | null)` (null = today's behaviour); pure data, no zod
+- [ ] the rows carry today's constants (`TAB_DEFAULTS`, `TAB_BOUNDS`, `SKIN_BOUNDS`, `OPERATION_TOOL_TYPES`, grain yes/no, look); a test asserts equality with those constants, and a snapshot test locks the six rows
+- [ ] `materialHasGrain` delegates to `traitsOf(kind).direction.kind !== 'none'`; nothing else in core changes behaviour
+- [ ] full core test suite and goldens unchanged
+Tester focus: the equality test really compares against the live constants (change one constant locally and the test fails).
+
+### T342 Screens and API read the traits (no visible change)   [status: todo]   (pre-FT)
+Spec: §3.6  ·  Depends: T341  ·  Owner: dev
+Acceptance:
+- [ ] the 11 `materialHasGrain` call sites and the kind switches in `lib/preview3d/textures.ts`, `components/wizard/machine-step.tsx` (groups, sheet presets), `lib/material-form.ts`, `lib/offcut-form.ts`, `app/api/offcuts/[id]/route.ts`, `lib/server/pdf/project-pdf.ts` read `traitsOf` (direction, look, group, presets)
+- [ ] the material picker builds its groups from the families present in the table (today: Ahşap, Plastik); the "yakında" row stays
+- [ ] no visual baseline changes; e2e of steps 1–5 unchanged
+Tester focus: visual diff of step 1, Parçalar, Dizilim, Ayarlar → Malzemeler, offcut dialog is empty.
+
+### T343 Tab, skin and small-part limits come from the traits   [status: todo]   (post-FT)
+Spec: §6.3  ·  Depends: T341  ·  Owner: dev
+Acceptance:
+- [ ] `tabSizeProblem`, `maxTabHeight`, `defaultTabHeight`, `skinThicknessOk`, the small-part thresholds, `materialTabIssues` and the tab help texts of the machine form take the stock's traits instead of module constants
+- [ ] wood and plastic rows give exactly today's results (property test: old function = new function over random thickness/kind for the six kinds)
+- [ ] a traits row with other bounds (test-only kind) changes the limits end to end: profile save, validation, toolpath, Kesim ayarları texts
+Tester focus: 1,5 mm stock with a test-only metal row accepts a 0,5 mm tab; MDF 18 behaves as before.
+
+### T344 Tool types per material; V-bit geometry   [status: todo]   (post-FT)
+Spec: §7.1 "Takım profili", §6.3  ·  Depends: T341  ·  Owner: dev
+Acceptance:
+- [ ] `OPERATION_TOOL_TYPES` becomes a function of the material traits; the six kinds return today's lists
+- [ ] tool schema: optional `angleDeg` (10–179) and `tipDiameter` (≥ 0, < diameter), only for `vBit`; machine form shows "Uç açısı (°)" and "Uç düzlüğü (mm)" for a V-bit; older profiles stay valid
+- [ ] `OPERATION_TOOL_UNSUITABLE` names the material when the type is not allowed for it
+Tester focus: saving a profile with a V-bit without angle still works; an existing profile round-trips unchanged.
+
+### T345 Machine profile: coolant, metal declaration, M-code conflict   [status: todo]   (post-FT)
+Spec: §7.1 (new rows "Soğutma", "Metal kesim")  ·  Depends: –  ·  Owner: dev
+Acceptance:
+- [ ] optional `coolant { type: none|mist|flood|air, control: program|manual, on, off }`, `metal { enabled, rigidity: light|standard|heavy }`, `holdDown.clampHeight`; schema version stays 1; absent = today
+- [ ] cross-field rules (only when coolant is program-controlled): coolant and vacuum share no code (`mCodeConflict`); vacuum must not use M7/M8/M9 (`vacuumUsesCoolantCode`); `safeZ ≥ clampHeight + 5` for clamp/T-slot (`safeZBelowClamps`)
+- [ ] machine form section "Metal kesim" (behind the flag) with the Turkish error texts of the analysis §5.7; profile versioning and "yeniden doğrulama gerekli" behave as for any profile edit
+- [ ] the example profiles and their goldens are untouched
+Tester focus: example profile (vacuum M7) + coolant M8/M9 is refused with the fix text; without coolant it saves as today.
+
+### T346 Kinds `acm` and `aluminium` behind the flag   [status: todo]   (post-FT)
+Spec: §3.6  ·  Depends: T342, T343, T344  ·  Owner: dev
+Acceptance:
+- [ ] `MATERIAL_KIND_IDS` gains `acm` and `aluminium` with aliases (kompozit, alüminyum kompozit, dibond, alucobond; aluminyum, alüminyum, alu) and traits rows (`release: 'flagged'`); families `composite`, `nonFerrous`
+- [ ] flag `NITTCAM_METAL` off: the kinds appear in no menu, API validation refuses them for new library entries, an old project that names them opens read-only with a notice
+- [ ] flag on: picker groups "Kompozit" and "Metal", thickness and sheet presets from the traits, canvas tone tokens and 3D look (ACM flat colour; aluminium metallic), names in `tr.json`; "Çelik (desteklenmez)" row disabled
+- [ ] aluminium stays without NC: validation `MATERIAL_NOT_RELEASED` until T366
+Tester focus: flag off = no visual diff anywhere; flag on = step 1 with ACM 4 mm 1500×3200 fits or warns against the table.
+
+### T347 Direction: axial or directed, labelled per material   [status: todo]   (post-FT)
+Spec: §3.6 "Yön", §6.2  ·  Depends: T346  ·  Owner: dev
+Acceptance:
+- [ ] labels from the traits: "Damar yönü" / "Yüzey yönü" / "Film oku yönü" on the dial, the cut-list header, bulk edit, layout legend, label arrow; aluminium default off, ACM on when the library entry is metallic
+- [ ] directed material: optional part `grain.flip`; a fixed part is placed only at g (not g + 180°) in MaxRects and true-shape; `PLACEMENT_GRAIN` / `LOCKED_PLACEMENT_GRAIN` judge directed placements
+- [ ] axial materials: nesting results identical to today (existing nesting tests and benches unchanged)
+- [ ] property test: with a directed sheet no fixed part is ever placed 180° off
+Tester focus: ACM metallic job with an asymmetric part: all copies point the same way; the same job on MDF still uses both rotations.
+
+### T348 Machined face: "Arka yüzden işle"   [status: todo]   (post-FT)
+Spec: §3.6 "İşlenen yüz"  ·  Depends: T346  ·  Owner: dev
+Acceptance:
+- [ ] optional `stock.machinedFace` (absent = front); command `setMachinedFace`, undoable; default from the traits (ACM back)
+- [ ] back: parts are mirrored once, in the layout stage, so toolpath, G-code, simulation, DXF and PDF agree; the drawing board keeps the front view with the badge "Ön yüzden çiziyorsunuz · makinede aynalanır"
+- [ ] Dizilim and Simülasyon show "Arka yüz görünümü"; labels and PDF say which face was up
+- [ ] checker LAYOUT compares against the mirrored expectation built independently from the project
+Tester focus: an "L" part on ACM: G-code path is the mirror image; on MDF nothing changes; mirrored + rotated grain part still passes the checker.
+
+### T349 Material rules in validation and the parts screens   [status: todo]   (post-FT)
+Spec: §4.1, §4.8, §7.1  ·  Depends: T346  ·  Owner: dev
+Acceptance:
+- [ ] `TOOL_TYPE_UNSUITABLE_FOR_MATERIAL` (compression or ball-nose on ACM/aluminium), `MATERIAL_NOT_ALLOWED_ON_MACHINE` (non-ferrous without `metal.enabled`), each with a fix link, shown at step 1
+- [ ] edge band columns, band deduction, "Dolap ekle" follow `traits.edgeBand` / `traits.cabinet`; existing band values are kept but ignored with the notice of the analysis §5.2 (`EDGE_BAND_IGNORED`, info)
+- [ ] "Kesim ayarı ekle" starts a set from the family's cautious values, always `unverified`; never the wood values for a non-wood family
+- [ ] wood and plastic screens unchanged
+Tester focus: switch a banded MDF job to ACM and back: sizes return exactly; no band value is lost.
+
+### T350 Library and offcut properties for ACM and aluminium   [status: todo]   (post-FT)
+Spec: §3.4, §9.1  ·  Depends: T346  ·  Owner: dev
+Acceptance:
+- [ ] migration: `materials.props jsonb not null default '{}'`, `offcuts.props jsonb not null default '{}'`; core schema per family (aluminium: alloy, temper, finish, film; ACM: colorCode, metallic, skin)
+- [ ] Ayarlar → Malzemeler dialog shows the fields of the chosen kind, direction label per kind, tones `aluminium`, `silver`, `brass`; no metal entry in the new-company seed
+- [ ] offcuts match on kind + thickness + alloy or colour code when both sides have one; offcut dialog shows them
+- [ ] PDF header and project cards print "Alüminyum 5754, 3 mm" / "Kompozit panel, 4 mm"
+Tester focus: tenant isolation of the new columns; an MDF entry saves with empty props as before.
+
+### T351 Machine parameter table per material family   [status: todo]   (post-FT)
+Spec: §3.6 "Malzeme = parametre seti", §7.1  ·  Depends: T345, T346  ·  Owner: dev
+Acceptance:
+- [ ] optional set fields `coolant`, `finishAllowance`, `rampDeg`; shown only for families whose traits use them
+- [ ] the row shows the chip load (feed / rpm × flutes) and marks it against the traits band; outside the band the profile cannot be saved for that row
+- [ ] step-down above the traits ceiling × rigidity is refused with the limit in the text
+- [ ] example ACM 3 and 4 mm sets can be added with one action, marked `unverified`
+Tester focus: wood rows have no new cells and save unchanged; an aluminium row at 5 000 mm/min, 18 000 rpm, 2 flutes is refused.
+
+### T352 V-groove operation in the model and on the board   [status: todo]   (post-FT)
+Spec: §6.3 "V-kanal", §4.6  ·  Depends: T344, T348  ·  Owner: dev
+Acceptance:
+- [ ] operation kind `vgroove { remaining? }` on open lines and inner contours, only where `traits.vGroove` exists; `setOperation` accepts it; `cutting.tools.vgroove`
+- [ ] inspector "V-kanal (büküm)": tool (V-bits only), "Kalan kalınlık" (default and bounds from traits), computed groove width; canvas draws the groove width and a dashed centre line
+- [ ] DXF import: layer mapping offers "V-kanal"; DXF export writes layer `VKANAL`
+- [ ] validation where drawn: `VGROOVE_TOOL_MISSING`, `VGROOVE_DEPTH_INVALID`, groove outside the part
+Tester focus: the operation is not offered on MDF or aluminium; undo restores the previous operation.
+
+### T353 V-groove toolpath and simulation   [status: todo]   (post-FT)
+Spec: §6.3  ·  Depends: T352  ·  Owner: dev
+Acceptance:
+- [ ] centre-line path at depth = thickness − remaining, corrected for the tip flat; one pass (two when deeper than the traits step); grooves run before any contour of the same part; plunge at the plunge feed, never a rapid into material
+- [ ] the toolpath refuses a groove whose depth would leave less than `traits.vGroove.minRemaining`, whatever the user typed
+- [ ] simulation and 3D draw a V section; time estimate includes the grooves
+- [ ] new fixture "ACM tray 200×200, 25 mm folds" with golden files (`needs-human`)
+Tester focus: remaining 0,8 on 3 mm and 4 mm; groove crossing another groove; groove to the sheet edge.
+
+### T354 Checker rule R17: V-groove   [status: todo]   (post-FT)
+Spec: §7.2 (R17)  ·  Depends: T353  ·  Owner: dev
+Acceptance:
+- [ ] `VGROOVE_TOO_DEEP`: with a V-bit active no move goes below −(thickness − traits minimum), derived from stock and traits in the check context, not from the toolpath
+- [ ] `VGROOVE_WRONG_TOOL`: a through cut with a V-bit, or a groove path cut with another tool type; `VGROOVE_MISSING`: every expected groove line (sampled from the project) is covered by a cut within tolerance
+- [ ] mutation tests: deepen one groove by 0,4 mm, drop one groove, swap the tool; each is caught
+- [ ] rules are silent for jobs without `traits.vGroove`
+Tester focus: G-code safety review of the tray golden; hand-edited NC with a deeper Z is refused for download.
+
+### T355 ACM on labels, PDF and export checklist   [status: todo]   (post-FT)
+Spec: §6.6  ·  Depends: T353  ·  Owner: dev
+Acceptance:
+- [ ] label: film arrow, "YÜZ AŞAĞI KESİLDİ", "Büküm: n"; no band marks
+- [ ] PDF layout pages: grooves dashed with a legend; header material text; face-up note
+- [ ] step 5 checklist items for ACM (analysis §5.6); G-code header line `MALZEME: ...`
+Tester focus: PDF of the tray fixture at A4 and A3; wood PDFs byte-identical.
+
+### T356 Verification per material family; ACM field kit   [status: todo]   (post-FT)
+Spec: §7.3  ·  Depends: T353  ·  Owner: dev
+Acceptance:
+- [ ] migration `validations.material_family` (null = wood board); verification page shows a state per family; a family without a test cut gives the "DOĞRULANMADI" header and the extra acceptance at download (R10)
+- [ ] field kit offers the family's test part; ACM: tray part, measurements: remaining thickness, folded outer size
+- [ ] `docs/machines/_template/saha-testi-acm.md` with the protocol
+- [ ] existing verifications keep their state for wood jobs
+Tester focus: a machine verified with MDF downloads MDF NC as before and ACM NC only with the warning.
+
+### T357 Machine test: ACM (owner)   [status: todo]   (gate)
+Spec: §7.3, §12.1  ·  Depends: T355, T356, Field test 1  ·  Owner: owner
+Acceptance:
+- [ ] air cut, then 3 and 4 mm panel: square, disc, inner cut, small tabbed part; sizes within ±0,2 mm
+- [ ] V-groove on scrap: remaining thickness 0,8 ± 0,1 mm measured; 90° fold without a mark on the face; the tray part folds to size
+- [ ] every field bug first becomes a failing test; values in the traits table corrected from the measurements
+- [ ] owner releases tier A to users (flag per company)
+Tester focus: none (human gate).
+
+### T358 Entry rule from the traits: ramp or helix only in metal   [status: todo]   (post-FT)
+Spec: §6.3 "Giriş/çıkış"  ·  Depends: T346  ·  Owner: dev
+Acceptance:
+- [ ] `traits.entry.straightPlunge = false`: contours always ramp (default and maximum angle from traits); "Dalma (konturda)" shows "Rampa" locked with the reason; `ENTRY_RAMP_REQUIRED` when a ramp does not fit (part too short) instead of falling back to a plunge
+- [ ] hole pockets, grooves and contour pockets use the traits helix angle; a ring too small for a helix is refused (`HOLE_SMALLER_THAN_ENTRY`), never plunged
+- [ ] drilling with a drill tool: peck ≤ 1 × Ø with a retract that clears chips
+- [ ] wood and plastic: unchanged entries
+Tester focus: property test over random aluminium jobs: no descent into material steeper than the limit except drill moves.
+
+### T359 Step-down and chip-load limits as errors   [status: todo]   (post-FT)
+Spec: §7.2 (R13, R14), §6.3  ·  Depends: T345, T346  ·  Owner: dev
+Acceptance:
+- [ ] validation and toolpath: `STEP_DOWN_ABOVE_MATERIAL_LIMIT` (traits × rigidity × tool Ø) and `CHIP_LOAD_OUT_OF_RANGE` (upper and lower bound per tool Ø band) for every job tool, with the allowed range in the message
+- [ ] Kesim ayarları: the chip-load line leads for metal, with the band and the fix ("İlerlemeyi 900 mm/dk yapın"); `setToolFeed` and `setSpindleRpm` refuse values that leave the band
+- [ ] `SLOT_TOO_DEEP` warning (depth > 3 × Ø)
+- [ ] materials whose traits have no limit are untouched
+Tester focus: boundary values exactly on the limits; per-operation tool choice (T308) is judged with its own diameter and flutes.
+
+### T360 Coolant in the toolpath model and the post   [status: todo]   (post-FT)
+Spec: §6.3 "Soğutma", §6.4  ·  Depends: T345  ·  Owner: dev
+Acceptance:
+- [ ] toolpath events coolant on/off; job setting `cutting.coolant` (default from set, then traits); required and none available: `COOLANT_REQUIRED`
+- [ ] post config optional `coolant { enabled }`; new versions `mach3` 1.1.0 and `generic` 1.1 with it enabled and their own goldens; order: spindle on, dwell, coolant on, first plunge; off before every tool change, pause and at the end before vacuum off
+- [ ] manual control: `M0` + "SOGUTMAYI ACIN" before the first cut, message at the end
+- [ ] the 1.0.0 post files and their golden sets are not edited; machines bound to them produce identical files
+Tester focus: G-code safety review of the new goldens; a profile on post 1.0.0 with an aluminium job is refused with "post sürümünü yükseltin".
+
+### T361 Checker rule R11: coolant   [status: todo]   (post-FT)
+Spec: §7.2 (R11)  ·  Depends: T360  ·  Owner: dev
+Acceptance:
+- [ ] `COOLANT_NOT_ON` (required and program-controlled: on after each spindle start and before the first cutting move), `COOLANT_ON_AT_PAUSE`, `END_COOLANT_ON`, `COOLANT_PROMPT_MISSING` (manual)
+- [ ] `VACUUM_OFF_MID_PROGRAM` for every material (no current golden violates it)
+- [ ] the requirement is derived from stock, traits and profile in the check context; mutation tests remove or move each M code
+Tester focus: multi-tool and split-file programs; coolant state across a manual tool change.
+
+### T362 Checker rules R12–R14: plunge, step-down, chip load   [status: todo]   (post-FT)
+Spec: §7.2 (R12–R14)  ·  Depends: T358, T359  ·  Owner: dev
+Acceptance:
+- [ ] `STRAIGHT_PLUNGE_IN_METAL`: descent angle of every feed move that enters material, measured on the read path against already-cut levels; drill tools excepted; `PECK_MISSING`
+- [ ] `STEP_DOWN_ABOVE_LIMIT`: level differences per operation from the read path; `CHIP_LOAD_ABOVE_LIMIT` / `CHIP_LOAD_BELOW_LIMIT` from read F, S and the profile's flute count
+- [ ] R4 extended: dwell after every spindle start and every S change in metal (≥ 3 s)
+- [ ] mutation tests per rule; all silent for wood and plastic goldens
+Tester focus: the rules do not import toolpath code; a hand-edited F or Z in the NC is caught.
+
+### T363 Checker rules R15, R16, R18: hold-down, tool type, clamps   [status: todo]   (post-FT)
+Spec: §7.2 (R15, R16, R18)  ·  Depends: T365  ·  Owner: dev
+Acceptance:
+- [ ] `PART_NOT_HELD`: every through-cut outer contour and inner slug of a non-ferrous job shows tab lifts on its last level (≥ 2; ≥ 3 above 600 mm perimeter) or stops at the skin level; `PART_TOO_SMALL`
+- [ ] `TOOL_TYPE_FORBIDDEN` from the traits and the profile tool table
+- [ ] `SAFE_Z_BELOW_CLAMPS` (XY rapids ≥ clamp height + 5 mm); `CUT_IN_CLAMP_ZONE` as a warning
+- [ ] mutation tests: remove the tabs of one part, swap in a compression tool, lower safe Z
+Tester focus: skin jobs with the cleanup pass; part-in-hole placements.
+
+### T364 Finishing pass   [status: todo]   (post-FT)
+Spec: §6.3 "Finiş pasosu"  ·  Depends: T358  ·  Owner: dev
+Acceptance:
+- [ ] optional `cutting.finish { allowance, feedFactor? }`; default from the traits (aluminium 0,2 mm on, others off); `setFinishPass`, undoable
+- [ ] rough passes run `allowance` away from the line, the last pass takes it at full depth (tabs kept), climb; inner contours and pocket walls included; nesting spacing accounts for the allowance
+- [ ] Kesim ayarları section "Finiş pasosu"; header line `FINIS: 0.2`; simulation shows it in its own colour
+- [ ] absent field = identical toolpath for every existing job
+Tester focus: finished size of the fixture part equals the drawn size within tolerance; tabs survive the finishing pass.
+
+### T365 Tabs, skin, spacing and order for metal   [status: todo]   (post-FT)
+Spec: §6.2, §6.3  ·  Depends: T343, T346  ·  Owner: dev
+Acceptance:
+- [ ] `traits.tabs.everyPart`: "Köprü: her parçada" locked; defaults and bounds from the traits; skin as the alternative with its own bounds; inner slugs are held too
+- [ ] parts with a side below `traits.minPartSide`: `PART_TOO_SMALL_FOR_HOLD_DOWN` at the row and on the board
+- [ ] Dizilim defaults: gap from `traits.spacing`, margin 25 mm with clamp hold-down (warning below); cutting order inside-out, the small-first rule off
+- [ ] wood and plastic defaults and order unchanged
+Tester focus: 1,5 mm sheet job gets valid tabs; a 15 mm part is refused with a clear text.
+
+### T366 Aluminium screens and release behind the flag   [status: todo]   (post-FT)
+Spec: §3.6, §6.5  ·  Depends: T358–T365  ·  Owner: dev
+Acceptance:
+- [ ] `MATERIAL_NOT_RELEASED` removed for aluminium when the flag is on; step 1 hints and the error box "Bu makine alüminyum için tanımlı değil" with the fix link
+- [ ] Kesim ayarları sections "Soğutma", locked "Dalma", "Finiş pasosu", pass summary with the ceiling
+- [ ] step 5 checklist items for aluminium (analysis §5.6), all required; header lines `MALZEME`, `SOGUTMA`, `GIRIS`, `FINIS`
+- [ ] new fixture "aluminium 3 mm test part" end to end with golden files (`needs-human`)
+Tester focus: full G-code safety review of the aluminium golden; the flow from an unprepared machine to a downloadable file has no dead end.
+
+### T367 Look, labels and PDF for aluminium   [status: todo]   (post-FT)
+Spec: §3.8, §6.6  ·  Depends: T366  ·  Owner: dev
+Acceptance:
+- [ ] 3D: metallic material (roughness, metalness from traits), brushed lines along the direction when it is on; simple mode flat grey; perf budget kept
+- [ ] label: direction arrow when on, "Çapak alınacak"; PDF cut summary rows "Soğutma", "Giriş", "Finiş" and the safety box
+- [ ] help page "Metal kesimi" (which machine, tools, coolant, clamping, what to watch, why no steel)
+Tester focus: light and dark; wood PDFs and labels byte-identical.
+
+### T368 Aluminium field kit and release gate   [status: todo]   (post-FT)
+Spec: §7.3  ·  Depends: T356, T366  ·  Owner: dev
+Acceptance:
+- [ ] field kit test part for the non-ferrous family: 80×80, Ø20 hole, 2 mm blind pocket, tabs; air cut first; tolerance ±0,1 mm; measurement form
+- [ ] without a recorded test cut for the family: "DOĞRULANMADI" header and the extra acceptance; without `metal.enabled`: no NC
+- [ ] `docs/machines/_template/saha-testi-aluminyum.md`: protocol, what to stop for (sound, chip colour, built-up edge), coolant code check
+- [ ] company-level switch replaces the env flag for released tiers
+Tester focus: the gate cannot be bypassed by a direct API call.
+
+### T369 Machine test: aluminium (owner)   [status: todo]   (gate)
+Spec: §7.3, §12.1  ·  Depends: T367, T368, T357  ·  Owner: owner
+Acceptance:
+- [ ] machine declared for metal with real coolant and clamp data; air cut; coolant and vacuum outputs switch as written
+- [ ] test part in 3 mm 5754 and 6 mm 6082: ramp, pocket, hole, tabs, finishing pass; sizes within ±0,1 mm; no built-up edge, no broken tool
+- [ ] traits numbers (chip-load band, step-down ceilings, tab sizes) corrected from the test; every field bug first becomes a failing test
+- [ ] owner releases tier B to users
+Tester focus: none (human gate).
+
+### T370 Brass kind (outline)   [status: todo]   (post-FT, after T369)
+Spec: §14.3  ·  Depends: T369  ·  Owner: dev
+Acceptance:
+- [ ] kind `brass` in the non-ferrous family with its own numbers (dry cutting allowed); copper listed as "yakında"
+- [ ] detailed tasks written before the tier starts
+Tester focus: to be written.
+
+### T371 V-engraving on the line operation (outline)   [status: todo]   (post-FT, after T354)
+Spec: §14.3  ·  Depends: T354  ·  Owner: dev
+Acceptance:
+- [ ] "Oyma" with a V-bit: line width from depth and angle shown on the board and in the simulation; depth bound per material
+- [ ] text tool stays out of scope
+Tester focus: to be written.
+
+### T372 Machine test: brass (owner, outline)   [status: todo]   (gate)
+Spec: §7.3  ·  Depends: T370, T371  ·  Owner: owner
+Acceptance:
+- [ ] test cut and engraving on brass sheet; release decision
+Tester focus: none (human gate).
