@@ -28,24 +28,26 @@ type Case = [
 ];
 
 // §d "Uygulamadaki malzemeler" (solidWood = hardwood, pvc = rigid PVC; PO decision).
+// PO decisions B61 (after the tester review): plastics plunge 0,25 × feed (down to the 100)
+// instead of §d's 0,5 × feed; melamine compression Ø6 steps down 6 (1 × D) instead of 9.
 const DOC_D: Case[] = [
   ['mdf', 6, 2, 'flatEndMill', 5400, 1400, 6],
   ['mdf', 8, 2, 'flatEndMill', 6000, 1500, 6],
   ['plywood', 6, 2, 'flatEndMill', 4700, 1200, 6],
   ['plywood', 8, 2, 'flatEndMill', 5000, 1300, 6],
-  ['melamine', 6, 2, 'compression', 4700, 1200, 9],
+  ['melamine', 6, 2, 'compression', 4700, 1200, 6],
   ['melamine', 8, 2, 'compression', 5400, 1400, 9],
   ['melamine', 8, 2, 'flatEndMill', 5000, 1300, 6],
   ['solidWood', 6, 2, 'flatEndMill', 3600, 900, 3],
   ['solidWood', 8, 2, 'flatEndMill', 4300, 1100, 4],
-  ['acrylic', 6, 1, 'flatEndMill', 3000, 1500, 3],
-  ['acrylic', 8, 1, 'flatEndMill', 3600, 1800, 4],
-  ['acrylic', 6, 2, 'flatEndMill', 4300, 2100, 3],
-  ['acrylic', 8, 2, 'flatEndMill', 5000, 2500, 4],
-  ['pvc', 6, 1, 'flatEndMill', 2700, 1300, 3],
-  ['pvc', 8, 1, 'flatEndMill', 3200, 1600, 4],
-  ['pvc', 6, 2, 'flatEndMill', 4300, 2100, 3],
-  ['pvc', 8, 2, 'flatEndMill', 5000, 2500, 4],
+  ['acrylic', 6, 1, 'flatEndMill', 3000, 700, 3],
+  ['acrylic', 8, 1, 'flatEndMill', 3600, 900, 4],
+  ['acrylic', 6, 2, 'flatEndMill', 4300, 1000, 3],
+  ['acrylic', 8, 2, 'flatEndMill', 5000, 1200, 4],
+  ['pvc', 6, 1, 'flatEndMill', 2700, 600, 3],
+  ['pvc', 8, 1, 'flatEndMill', 3200, 800, 4],
+  ['pvc', 6, 2, 'flatEndMill', 4300, 1000, 3],
+  ['pvc', 8, 2, 'flatEndMill', 5000, 1200, 4],
 ];
 
 describe('B61 tester: §d Ø6 / Ø8 rows', () => {
@@ -91,10 +93,11 @@ describe('B61 tester: §d Ø6 / Ø8 rows', () => {
       rpm: 18000,
       stepDown: 3,
     });
-    // Acrylic Ø12 O-flute: rpm 16000, 0,25 × 16000 = 4000; plunge 2000; 0,5 × 12 = 6.
+    // Acrylic Ø12 O-flute: rpm 16000, 0,25 × 16000 = 4000; plunge 1000 (PO B61: 0,25 × feed);
+    // 0,5 × 12 = 6.
     expect(pick(suggestCuttingSet('acrylic', 18, tool(12, 1), SPINDLE))).toEqual({
       feed: 4000,
-      plungeFeed: 2000,
+      plungeFeed: 1000,
       rpm: 16000,
       stepDown: 6,
     });

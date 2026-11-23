@@ -152,13 +152,14 @@ describe('T328: new cutting sets start from the built-in table (D-120)', () => {
         [3600, 900, 18000, 3],
         [4300, 1000, 18000, 4],
       ],
+      // PO B61: plastics plunge 0,25 × feed (down to the 100).
       acrylic: [
-        [4300, 2100, 18000, 3],
-        [5000, 2500, 18000, 4],
+        [4300, 1000, 18000, 3],
+        [5000, 1200, 18000, 4],
       ],
       pvc: [
-        [4300, 2100, 18000, 3],
-        [5000, 2500, 18000, 4],
+        [4300, 1000, 18000, 3],
+        [5000, 1200, 18000, 4],
       ],
     };
     for (const [kind, [six, eight]] of Object.entries(expected)) {
@@ -264,6 +265,38 @@ describe('PO B61: a new set takes the first tool that suits the material', () =>
       withParamSet(prof as never, { material: 'melamine', thickness: 16 }).profile.materials.at(-1)
         ?.tool,
     ).toBe(3);
+  });
+
+  it('none suits: the first tool with a table row (filled, with the hint)', () => {
+    // The example machine (T1 Ø6, T2 Ø8 two-flute spirals): melamine has a row only for Ø8.
+    expect(p.tools.map((t) => [t.number, t.diameter, t.flutes])).toEqual([
+      [1, 6, 2],
+      [2, 8, 2],
+    ]);
+    expect(suitingTool(p, 'melamine', 18)).toBe(2);
+    const mel = newParamSet(p, 'melamine', 18);
+    expect(mel).toMatchObject({ tool: 2, feed: 5000, plungeFeed: 1200, rpm: 18000, stepDown: 6 });
+    expect(startingNote(p, mel)).toMatchObject({ kind: 'table', hint: 'melamineCompression' });
+    // A ballEndMill first, a spiral later: the spiral with the row comes first.
+    const ball = {
+      ...p,
+      tools: [
+        { number: 5, type: 'ballEndMill', diameter: 6, fluteLength: 20, flutes: 2 },
+        ...p.tools,
+      ],
+    };
+    expect(suitingTool(ball as never, 'mdf', 18)).toBe(1);
+  });
+
+  it('no tool has a row: the first tool, empty fields', () => {
+    const only = {
+      ...p,
+      tools: [{ number: 4, type: 'vBit', diameter: 6, fluteLength: 10, flutes: 2 }],
+    };
+    expect(suitingTool(only as never, 'mdf', 18)).toBe(4);
+    const set = newParamSet(only as never, 'mdf', 18);
+    expect(set.tool).toBe(4);
+    expect(Number.isNaN(set.feed)).toBe(true);
   });
 
   it('none suits: the first tool, with the hint', () => {

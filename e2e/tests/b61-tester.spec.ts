@@ -57,8 +57,8 @@ test('fix flow: acrylic 10 on the example machine starts from the table, stays b
   const row = table.locator('tbody tr:not([data-detail])').last();
   const detail = table.locator('tbody tr[data-detail]').last();
   // No single-flute on the example machine: the first tool (Ø6 two-flute) with the hint;
-  // §d acrylic Ø6 z2: 4300 / 2100 / 18 000 / 3.
-  expect(await values(row)).toEqual([4300, 2100, 18000, 3]);
+  // §d acrylic Ø6 z2: 4300 / 18 000 / 3; plunge 0,25 × feed = 1000 (PO B61 decision).
+  expect(await values(row)).toEqual([4300, 1000, 18000, 3]);
   expect(await row.locator('[id$="-tool"]').inputValue()).toBe('1');
   const source = detail.getByTestId('material-starting-source');
   await expect(source).toHaveAttribute('data-kind', 'table');
@@ -72,19 +72,19 @@ test('fix flow: acrylic 10 on the example machine starts from the table, stays b
   );
   await expect(detail.getByTestId('material-unverified-confirm')).toBeVisible();
 
-  // Tool 2 (Ø8 z2) before any edit refreshes: 5000 / 2500 / 18 000 / 4.
+  // Tool 2 (Ø8 z2) before any edit refreshes: 5000 / 1200 / 18 000 / 4 (PO B61 plunge).
   const tool = row.locator('[id$="-tool"]');
   await tool.fill('2');
   await tool.press('Tab');
-  expect(await values(row)).toEqual([5000, 2500, 18000, 4]);
+  expect(await values(row)).toEqual([5000, 1200, 18000, 4]);
   // Thickness 3 → the step-down never exceeds the sheet.
   const t = row.locator('[id$="-thickness"]');
   await t.fill('3');
   await t.press('Tab');
-  expect(await values(row)).toEqual([5000, 2500, 18000, 3]);
+  expect(await values(row)).toEqual([5000, 1200, 18000, 3]);
   await t.fill('10');
   await t.press('Tab');
-  expect(await values(row)).toEqual([5000, 2500, 18000, 4]);
+  expect(await values(row)).toEqual([5000, 1200, 18000, 4]);
 
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
@@ -140,8 +140,9 @@ test('machine form "Ekle": melamine on Ø6 / Ø8 two-flute tools; plywood; solid
     [tr.machines.form.options.material.plywood, '2', [5000, 1200, 18000, 6]],
     [tr.machines.form.options.material.solidWood, '2', [4300, 1000, 18000, 4]],
     [tr.machines.form.options.material.solidWood, '1', [3600, 900, 18000, 3]],
-    [tr.machines.form.options.material.pvc, '1', [4300, 2100, 18000, 3]],
-    [tr.machines.form.options.material.pvc, '2', [5000, 2500, 18000, 4]],
+    // PO B61 decision: plastics plunge 0,25 × feed.
+    [tr.machines.form.options.material.pvc, '1', [4300, 1000, 18000, 3]],
+    [tr.machines.form.options.material.pvc, '2', [5000, 1200, 18000, 4]],
     [tr.machines.form.options.material.mdf, '2', [6000, 1500, 18000, 6]],
     [tr.machines.form.options.material.mdf, '1', [5400, 1300, 18000, 6]],
   ];

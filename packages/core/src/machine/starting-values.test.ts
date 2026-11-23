@@ -52,7 +52,8 @@ describe('suggestCuttingSet', () => {
       'melamine',
       18,
       tool(6, 2, 'compression'),
-      { feed: 4700, plungeFeed: 1100, rpm: 18000, stepDown: 9 },
+      // PO B61: Ø6 compression steps down 1 × D (6), not 1,5 × D.
+      { feed: 4700, plungeFeed: 1100, rpm: 18000, stepDown: 6 },
     ],
     [
       'melamine',
@@ -63,15 +64,16 @@ describe('suggestCuttingSet', () => {
     ['melamine', 18, tool(8), { feed: 5000, plungeFeed: 1200, rpm: 18000, stepDown: 6 }],
     ['solidWood', 18, tool(6), { feed: 3600, plungeFeed: 900, rpm: 18000, stepDown: 3 }],
     ['solidWood', 18, tool(8), { feed: 4300, plungeFeed: 1000, rpm: 18000, stepDown: 4 }],
-    ['acrylic', 10, tool(6, 1), { feed: 3000, plungeFeed: 1500, rpm: 18000, stepDown: 3 }],
-    ['acrylic', 10, tool(8, 1), { feed: 3600, plungeFeed: 1800, rpm: 18000, stepDown: 4 }],
-    ['acrylic', 10, tool(8, 2), { feed: 5000, plungeFeed: 2500, rpm: 18000, stepDown: 4 }],
-    ['pvc', 10, tool(8, 1), { feed: 3200, plungeFeed: 1600, rpm: 18000, stepDown: 4 }],
-    ['pvc', 10, tool(8, 2), { feed: 5000, plungeFeed: 2500, rpm: 18000, stepDown: 4 }],
+    // PO B61: plastics plunge at 0,25 × feed (straight entry by default), down to the 100.
+    ['acrylic', 10, tool(6, 1), { feed: 3000, plungeFeed: 700, rpm: 18000, stepDown: 3 }],
+    ['acrylic', 10, tool(8, 1), { feed: 3600, plungeFeed: 900, rpm: 18000, stepDown: 4 }],
+    ['acrylic', 10, tool(8, 2), { feed: 5000, plungeFeed: 1200, rpm: 18000, stepDown: 4 }],
+    ['pvc', 10, tool(8, 1), { feed: 3200, plungeFeed: 800, rpm: 18000, stepDown: 4 }],
+    ['pvc', 10, tool(8, 2), { feed: 5000, plungeFeed: 1200, rpm: 18000, stepDown: 4 }],
     // PO B61: plunge = share × feed, down to the 100 (safe side); these three equal §d.
-    ['acrylic', 10, tool(6, 2), { feed: 4300, plungeFeed: 2100, rpm: 18000, stepDown: 3 }],
-    ['pvc', 10, tool(6, 1), { feed: 2700, plungeFeed: 1300, rpm: 18000, stepDown: 3 }],
-    ['pvc', 10, tool(6, 2), { feed: 4300, plungeFeed: 2100, rpm: 18000, stepDown: 3 }],
+    ['acrylic', 10, tool(6, 2), { feed: 4300, plungeFeed: 1000, rpm: 18000, stepDown: 3 }],
+    ['pvc', 10, tool(6, 1), { feed: 2700, plungeFeed: 600, rpm: 18000, stepDown: 3 }],
+    ['pvc', 10, tool(6, 2), { feed: 4300, plungeFeed: 1000, rpm: 18000, stepDown: 3 }],
   ] as const)('%s %d mm with %o', (kind, thickness, t, expected) => {
     expect(pick(suggestCuttingSet(kind, thickness, t, SPINDLE))).toEqual(expected);
   });
@@ -194,10 +196,8 @@ describe('depthChipLoadFactor (research §c depth correction)', () => {
 
   it('rows deeper than 1 × D already carry it: typ ≤ corrected source minimum (+ rounding)', () => {
     const deep = STARTING_VALUE_ROWS.filter((r) => r.stepDownFactor > 1);
-    expect(deep.map((r) => r.id).sort()).toEqual([
-      'melamine-compression-2-6',
-      'melamine-compression-2-8',
-    ]);
+    // PO B61: the Ø6 compression row steps down 1 × D now; only Ø8 goes deeper.
+    expect(deep.map((r) => r.id).sort()).toEqual(['melamine-compression-2-8']);
     for (const r of deep) {
       expect(r.chipLoad.typ).toBeLessThanOrEqual(
         r.chipLoad.min * depthChipLoadFactor(r.stepDownFactor) + 0.005,

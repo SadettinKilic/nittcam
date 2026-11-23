@@ -59,7 +59,8 @@ test.describe('T328 starting values for a new cutting set', () => {
 
     // Acrylic with a two-flute tool: refreshed, with the material note and a hint (not a block).
     await pickOption(row.locator('[id$="-material"]'), tr.machines.form.options.material.acrylic);
-    expect(await values(row)).toEqual([5000, 2500, 18000, 4]);
+    // PO B61 decision: plastics plunge 0,25 × feed.
+    expect(await values(row)).toEqual([5000, 1200, 18000, 4]);
     await expect(detail.getByTestId('material-starting-note')).toContainText('O-flute');
     await expect(detail.getByTestId('material-tool-hint')).toBeVisible();
 

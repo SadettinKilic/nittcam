@@ -88,7 +88,8 @@ function startingFields(s: CuttingSuggestion | undefined): StartingFields {
 /**
  * The tool a new set starts with (PO B61): the first tool of the profile that suits the material
  * per the table (a row exists and no fit hint, e.g. the single-flute for acrylic and PVC, the
- * compression for melamine); when none suits, the first tool (the form then shows the hint).
+ * compression for melamine); else the first tool that has a table row for the material (filled,
+ * with the fit hint; e.g. melamine on a two-flute spiral); only then the first tool (empty fields).
  */
 export function suitingTool(
   profile: Pick<MachineProfile, 'spindle' | 'tools'>,
@@ -100,7 +101,12 @@ export function suitingTool(
       toolFitHint(material, t) === null &&
       suggestCuttingSet(material, thickness, t, profile.spindle) !== undefined,
   );
-  return (fit ?? profile.tools[0])?.number ?? 1;
+  const withRow =
+    fit ??
+    profile.tools.find(
+      (t) => suggestCuttingSet(material, thickness, t, profile.spindle) !== undefined,
+    );
+  return (withRow ?? profile.tools[0])?.number ?? 1;
 }
 
 /**

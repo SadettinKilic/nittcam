@@ -119,7 +119,12 @@ function rows(
 }
 
 const WOOD = { rpm: WOOD_RPM, plungeShare: 0.25, coolant: 'none' } as const;
-const PLASTIC = { rpm: PLASTIC_RPM, plungeShare: 0.5, coolant: 'air' } as const;
+/**
+ * Plastics plunge at 0,25 × feed (PO B61 decision, D-120), not the research's 0,5: that share
+ * assumes a ramp entry, but a project enters with a straight plunge by default. The material note
+ * still says a ramp entry is recommended.
+ */
+const PLASTIC = { rpm: PLASTIC_RPM, plungeShare: 0.25, coolant: 'air' } as const;
 
 /** The table (research §c; §d where §c has no row). */
 export const STARTING_VALUE_ROWS: readonly StartingValueRow[] = [
@@ -141,9 +146,11 @@ export const STARTING_VALUE_ROWS: readonly StartingValueRow[] = [
     [10, 0.16, 0.16, 0.52, 0.75, ['S1', 'S2', 'S3']],
     [12, 0.145, 0.16, 0.56, 0.5, ['S1', 'S2', 'S3']],
   ]),
-  // Melamine, two-flute compression (§c melamine): first pass ≥ the down-cut length (S16).
+  // Melamine, two-flute compression (§c melamine): first pass ≥ the down-cut length (S16). Ø6:
+  // 1 × D (6 mm), not the research's 1,5 × D (PO B61 decision: the most breakable tool in the
+  // table, too heavy for a first cut on a light router); Ø8 and larger keep their rows.
   ...rows('melamine', 'compression', 2, { ...WOOD, entry: 'rampPreferred', note: 'melamineFace' }, [
-    [6, 0.155, 0.13, 0.38, 1.5, ['S1', 'S4', 'S16']],
+    [6, 0.155, 0.13, 0.38, 1, ['S1', 'S4', 'S16']],
     [8, 0.155, 0.15, 0.5, 1.1, ['S2', 'S4', 'S16']],
     [10, 0.28, 0.2, 0.59, 0.9, ['S1', 'S2', 'S4']],
     [12, 0.28, 0.22, 0.69, 0.75, ['S1', 'S2', 'S4']],
