@@ -218,14 +218,18 @@ describe('seeded example "Örnek router (Mach3)" (T020, D-028)', () => {
     expect(p.zZero.reference).toBe('materialTop');
     expect(p.rapidFeed).toBe(10000);
     expect(p.tools).toEqual(defaultMachineProfile().tools);
-    // D-046 (T257): MDF 18 as in the generic profile, plus Melamin 18 and Kontrplak 18 copied
-    // from it and marked as copied.
+    // D-046 (T257): MDF 18 as in the generic profile, plus Melamin 18 and Kontrplak 18.
+    // T329 (D-120): those two take the starting-value table for the Ø8 two-flute tool (research
+    // §d: melamine without compression 5000 / 1300, plywood 5000 / 1300), not an MDF copy.
     const [mdf] = defaultMachineProfile().materials;
+    expect(mdf).toMatchObject({ feed: 6000, plungeFeed: 1500, rpm: 18000, stepDown: 6, tool: 2 });
+    const start = { feed: 5000, plungeFeed: 1300, rpm: 18000, stepDown: 6 };
     expect(p.materials).toEqual([
       mdf,
-      { ...mdf, material: 'melamine', copiedFrom: 'mdf' },
-      { ...mdf, material: 'plywood', copiedFrom: 'mdf' },
+      { ...mdf, material: 'melamine', ...start },
+      { ...mdf, material: 'plywood', ...start },
     ]);
+    expect(p.materials.some((m) => m.copiedFrom !== undefined || m.unverified)).toBe(false);
     expect(p.materials.some((m) => m.material === 'acrylic')).toBe(false);
   });
 

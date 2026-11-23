@@ -1754,10 +1754,10 @@ Spec: §3.6 · Depends: T327 · From: owner 2026-11-23, CTO metal analysis (a ne
 - [x] no table row → the fields start empty with "Bu malzeme için hazır değer yok", never the old fixed numbers
 Tester focus: every kind × Ø6 / Ø8; edit-then-change-kind keeps the edit; unverified export warning still shown.
 
-### T329 Example machine: real melamine and plywood sets   [status: todo]
+### T329 Example machine: real melamine and plywood sets   [status: done]
 Spec: §7.1 · Depends: T327 · From: D-046 (the two sets are copies of MDF 18)
-- [ ] `exampleMachineProfile()` (new companies only) takes its Melamin 18 and Kontrplak 18 sets from the table for its own tools instead of the MDF copy; `copiedFrom` is dropped for them; MDF 18 unchanged
-- [ ] existing companies' machines are not touched (no migration); the frozen `defaultMachineProfile()` and every golden stay byte-identical; e2e that export from the example machine with melamine or plywood are checked for stale expectations
+- [x] `exampleMachineProfile()` (new companies only) takes its Melamin 18 and Kontrplak 18 sets from the table for its own tools instead of the MDF copy; `copiedFrom` is dropped for them; MDF 18 unchanged
+- [x] existing companies' machines are not touched (no migration); the frozen `defaultMachineProfile()` and every golden stay byte-identical; e2e that export from the example machine with melamine or plywood are checked for stale expectations
 Tester focus: fresh company gets the three sets; an old company's machine is unchanged; goldens identical.
 
 ## Field test 1 (owner)   [status: todo]
