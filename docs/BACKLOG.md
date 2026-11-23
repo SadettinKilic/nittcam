@@ -1441,12 +1441,12 @@ CTO #12 on T295 / T296. Acceptance: the NC file name respects the machine file-n
 ### T304 2 000-row paste without a frozen page (rider)   [status: done]
 B42 perf budget (D-079): pasting / applying 2 000 cut-list rows blocks the main thread ~8–9 s, while core import + validation take < 50 ms, so the cost is in the React render path. Acceptance: batch / defer / virtualise so that no single main-thread task exceeds 200 ms and the whole apply takes < 2 s locally; the 20 s guard in the perf spec is tightened to these numbers.
 
-### T306 Nesting positions without nudge residue   [status: todo]
+### T306 Nesting positions without nudge residue   [status: in-review]
 Spec: §6.2 · From: CTO #8, B51 (D-091)
 The true-shape placer starts candidates 1e-4 mm off a neighbour (`nesting/trueshape.ts`, `NUDGE`), so positions such as 522.0001 reach the 4-decimal Mach3 output (`X522.0001`, `Y117.9999`). Acceptance:
-- [ ] placements carry no residue near the 0.001 mm grid (e.g. a clean candidate grid, or a final tidy pass over finished sheets that never creates an overlap)
-- [ ] interlock results (sheet counts) and determinism unchanged; real 4th decimals of rotated shapes untouched
-- [ ] goldens regenerated with the per-file reason; no post-side rounding change
+- [x] placements carry no residue near the 0.001 mm grid (e.g. a clean candidate grid, or a final tidy pass over finished sheets that never creates an overlap): B60 tidy pass in `packTrueShape` puts every new position on the 0.001 mm grid (nearest, else the other side) where the moved footprint stays on the sheet and overlaps nothing
+- [x] interlock results (sheet counts) and determinism unchanged; real 4th decimals of rotated shapes untouched (positions move < 0.001 mm; part geometry untouched; property test `trueshape.t306.test.ts`)
+- [x] goldens regenerated with the per-file reason; no post-side rounding change (mach3 true-shape, arc-tabs, thin-skin; generic true-shape, arc-tabs: see PR #192)
 Tester focus: true-shape and arc-tabs goldens read back clean; nesting property tests.
 
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
