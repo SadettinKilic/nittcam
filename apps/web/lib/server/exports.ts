@@ -306,7 +306,9 @@ function checklistOf(
     toolChanges: program?.manualChanges ?? 0,
     rezeroZ: program?.rezeroZ ?? false,
     parkOff: parkOff(p),
-    parkHome: (program?.manualChanges ?? 0) > 0 && parkNeedsHome(p),
+    // Park on = a G53 move at every manual pause, the first-tool pause included (one-tool jobs
+    // too), so the homing line never depends on the number of tool changes (B62 r2).
+    parkHome: parkNeedsHome(p),
     highFeeds: spindleSettingsOf(data, p)
       .filter(feedAboveRecommendation)
       .map((s) => ({
