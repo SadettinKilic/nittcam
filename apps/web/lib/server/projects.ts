@@ -30,6 +30,16 @@ export function toDetail(row: ProjectRow): ProjectDetail {
   };
 }
 
+/**
+ * The optional client save id (T326, D-117): `undefined` when absent, `null` when malformed
+ * (the caller answers 400), else the lower-case UUID.
+ */
+export function readSaveId(body: Record<string, unknown>): string | undefined | null {
+  const v = body['saveId'];
+  if (v === undefined) return undefined;
+  return typeof v === 'string' && UUID.test(v) ? v.toLowerCase() : null;
+}
+
 export function toListItem(
   row: ProjectRow,
   machineNames: ReadonlyMap<string, string>,

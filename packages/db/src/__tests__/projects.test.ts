@@ -1,4 +1,4 @@
-import { CommandStack, parseProject, type Project } from '@nittcam/core';
+import { CommandStack, parseProject, type CommandLogEntry, type Project } from '@nittcam/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { DbHandle } from '../client';
@@ -98,6 +98,57 @@ describe('revision lock', () => {
 
     const s2 = await scope.projects.save(p.id, { revision: 2, data: s1.data });
     expect(s2.revision).toBe(3);
+  });
+
+  it('T326: a repeated save (same saveId) answers again and writes nothing twice', async () => {
+    const p = await scope.projects.create({ name: 'repeat', data: loadFixture('mixed') });
+    const data = parsed(loadFixture('mixed'));
+    const S1 = '11111111-1111-4111-8111-111111111111';
+    const S2 = '22222222-2222-4222-8222-222222222222';
+    const cmd: CommandLogEntry[] = [
+      { command: 'setThickness', params: { thickness: 16 }, actor: 'user', at: AT },
+    ];
+    const req = {
+      revision: 1,
+      data: { ...data, stock: { ...data.stock, thickness: 16 } },
+      commands: cmd,
+      saveId: S1,
+    };
+    const first = await scope.projects.save(p.id, req);
+    expect(first.revision).toBe(2);
+    expect(first.lastSaveId).toBe(S1);
+    // The same request again (its answer was lost): the stored row, no second command row.
+    const again = await scope.projects.save(p.id, req);
+    expect(again.revision).toBe(2);
+    expect(await scope.projects.listCommands(p.id)).toHaveLength(1);
+    // Another save id on the same base is a real conflict.
+    await expect(scope.projects.save(p.id, { ...req, saveId: S2 })).rejects.toBeInstanceOf(
+      RevisionConflict,
+    );
+    // So is a save without an id (older client).
+    const { saveId: _omit, ...noId } = req;
+    void _omit;
+    await expect(scope.projects.save(p.id, noId)).rejects.toBeInstanceOf(RevisionConflict);
+    // Once a later save moved the revision on, the old id is a conflict again.
+    await scope.projects.save(p.id, { revision: 2, data: first.data, saveId: S2 });
+    await expect(scope.projects.save(p.id, req)).rejects.toBeInstanceOf(RevisionConflict);
+    expect(await scope.projects.listCommands(p.id)).toHaveLength(1);
+  });
+
+  it('T326: createOnce keeps the save id of the create', async () => {
+    const id = '33333333-3333-4333-8333-333333333333';
+    const S1 = '44444444-4444-4444-8444-444444444444';
+    const r = await scope.projects.createOnce({
+      id,
+      name: 'new',
+      data: loadFixture('mixed'),
+      saveId: S1,
+    });
+    expect(r.created).toBe(true);
+    expect(r.row.lastSaveId).toBe(S1);
+    const again = await scope.projects.createOnce({ id, name: 'new', data: loadFixture('mixed') });
+    expect(again.created).toBe(false);
+    expect(again.row.lastSaveId).toBe(S1);
   });
 
   it('rejects an invalid project on save without touching the revision', async () => {

@@ -204,7 +204,7 @@ describe('AutosaveQueue: conflict', () => {
   });
 });
 
-describe('AutosaveQueue: unsent queue in sessionStorage (§8.2)', () => {
+describe('AutosaveQueue: unsent queue in storage (§8.2)', () => {
   it('mirrors the unsent commands with their base revision and clears them after the save', async () => {
     const { q, c, storage } = setup(okRev);
     q.push({ entries: [e('a')], project: P(1) });
@@ -272,6 +272,7 @@ describe('AutosaveQueue: unsent queue in sessionStorage (§8.2)', () => {
     await c.advance(1000);
     expect(sent[0]).toMatchObject({ id: null, newId: NEW });
     // "Reload": the stored queue still carries the id, so the next page creates the same project.
+    first.closing(); // pagehide of the reload (T326: the queue is free for the next page)
     first.dispose();
     const stored = takeUnsentQueue(storage, null, 0, NEW);
     expect(stored?.newId).toBe(NEW);
@@ -382,6 +383,7 @@ describe('T305: a new project replays only its own draft queue (D-094)', () => {
     );
     q.push({ entries: [e('addPart')], project: P(1) });
     await c.advance(1000);
+    q.closing();
     q.dispose();
   }
 

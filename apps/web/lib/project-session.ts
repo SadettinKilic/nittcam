@@ -14,8 +14,10 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AutosaveQueue,
+  queueKey,
   takeUnsentQueue,
   type KeyValueStorage,
+  type RestoredUnit,
   type SaveRequest,
   type SaveState,
   type SendResult,
@@ -23,13 +25,36 @@ import {
 import { FALLBACK_TOOL_DIAMETER } from './draft-project';
 import type { ProjectDetail, SaveResponse } from './projects-api';
 
-/** `sessionStorage`, or null where the browser blocks it. */
-function sessionStore(): KeyValueStorage | null {
+/**
+ * `localStorage`, or null where the browser blocks it. T326 (D-117): the unsent queue lives here so
+ * a closed tab, a crash or a new tab finds it again (`sessionStorage` ends with the tab).
+ */
+function queueStore(): KeyValueStorage | null {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Where versions before T326 kept the queue; read once, then cleared. */
+function legacyStore(): KeyValueStorage | null {
   try {
     return globalThis.sessionStorage ?? null;
   } catch {
     return null;
   }
+}
+
+/**
+ * T326: a close-time save body up to this size goes with `keepalive`, so it is delivered after
+ * the page is gone (the browser allows 64 KiB of keepalive bodies per page). A bigger project is
+ * sent normally (it may be cut off with the page); its unsent queue stays stored for the next page.
+ */
+export const KEEPALIVE_MAX_BYTES = 60_000;
+
+function byteLength(body: string): number {
+  return new TextEncoder().encode(body).length;
 }
 
 /** The address parameter that names a new project's draft (T305, D-094). */
@@ -43,44 +68,57 @@ function validDraft(v: string | null | undefined): string | undefined {
 
 /** Sends one autosave request: POST for a new project, PUT with the revision lock otherwise. */
 export async function sendSave(req: SaveRequest): Promise<SendResult> {
+  const body = JSON.stringify(
+    req.id === null
+      ? {
+          ...(req.newId ? { id: req.newId } : {}),
+          name: req.name,
+          project: req.project,
+          commands: req.commands,
+          saveId: req.saveId,
+        }
+      : {
+          project: req.project,
+          baseRevision: req.baseRevision,
+          commands: req.commands,
+          name: req.name,
+          saveId: req.saveId,
+        },
+  );
+  const url = req.id === null ? '/api/projects' : `/api/projects/${encodeURIComponent(req.id)}`;
+  const init: RequestInit = {
+    method: req.id === null ? 'POST' : 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body,
+  };
   let res: Response;
   try {
-    res =
-      req.id === null
-        ? await fetch('/api/projects', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              ...(req.newId ? { id: req.newId } : {}),
-              name: req.name,
-              project: req.project,
-              commands: req.commands,
-            }),
-          })
-        : await fetch(`/api/projects/${encodeURIComponent(req.id)}`, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              project: req.project,
-              baseRevision: req.baseRevision,
-              commands: req.commands,
-              name: req.name,
-            }),
-          });
+    // T326: a save sent while the page closes outlives the page when it is small enough.
+    const keepalive = req.keepalive === true && byteLength(body) <= KEEPALIVE_MAX_BYTES;
+    try {
+      res = await fetch(url, { ...init, keepalive });
+    } catch (err) {
+      // A browser that refuses the keepalive (its quota is shared with other requests) sends it
+      // normally; the same save id makes a repeat harmless.
+      if (!keepalive) throw err;
+      res = await fetch(url, init);
+    }
   } catch {
     return { ok: false, kind: 'network' };
   }
   if (res.status === 409) return { ok: false, kind: 'conflict' };
   if (res.status >= 400 && res.status < 500) return { ok: false, kind: 'invalid' };
   if (!res.ok) return { ok: false, kind: 'server' };
-  const body = (await res.json()) as ProjectDetail | SaveResponse;
-  return { ok: true, id: body.id, revision: body.revision };
+  const saved = (await res.json()) as ProjectDetail | SaveResponse;
+  return { ok: true, id: saved.id, revision: saved.revision };
 }
 
 export interface SessionInit {
   id: string | null;
   /** Server revision (0 for a project that is not created yet). */
   revision: number;
+  /** Id of the save that produced that revision (T326: did the last close-time save arrive?). */
+  lastSaveId?: string | null;
   name: string;
   project: Project;
 }
@@ -117,12 +155,27 @@ export function useProjectSession({
     // (`?taslak=`) until the first save; only that draft's own queue is replayed. Another
     // "Yeni proje" (no draft in the address, or one this tab has no queue for) starts empty.
     const draftId = initial.id === null ? validDraft(draft) : undefined;
-    const stored = takeUnsentQueue(sessionStore(), initial.id, initial.revision, draftId);
-    const replayed = stored ? stored.entries.slice(0, replayLog(stack, stored.entries)) : [];
+    const server = { revision: initial.revision, lastSaveId: initial.lastSaveId ?? null };
+    const stored =
+      takeUnsentQueue(queueStore(), initial.id, server, draftId) ??
+      takeUnsentQueue(legacyStore(), initial.id, server, draftId);
+    // T326: a unit the earlier page had on the way is resent as it was: the project after its
+    // own entries, then the rest is replayed on top.
+    let unit: RestoredUnit | undefined;
+    let replayed: CommandLogEntry[] = [];
+    if (stored) {
+      const count = stored.unit?.count ?? 0;
+      const first = replayLog(stack, stored.entries.slice(0, count));
+      if (stored.unit && first > 0) {
+        unit = { saveId: stored.unit.saveId, count: first, project: stack.project };
+      }
+      const rest = first === count ? replayLog(stack, stored.entries.slice(count)) : 0;
+      replayed = stored.entries.slice(0, first + rest);
+    }
     // A new project gets its id here (D-030); after a reload during the first save the stored
     // queue keeps it, so the repeated create returns the same project instead of a duplicate.
     const newId = initial.id === null ? (stored?.newId ?? crypto.randomUUID()) : undefined;
-    return { stack, replayed, name: stored?.name ?? initial.name, newId };
+    return { stack, replayed, unit, name: stored?.name ?? initial.name, newId };
   });
   const stack = boot.stack;
   const [, setVersion] = useState(0);
@@ -139,7 +192,7 @@ export function useProjectSession({
             if (r.ok) setRevision(r.revision);
             return r;
           },
-          storage: sessionStore(),
+          storage: queueStore(),
           setTimer: (fn, ms) => setTimeout(fn, ms),
           clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
           onState: setSaveState,
@@ -163,10 +216,21 @@ export function useProjectSession({
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
-    if (boot.replayed.length > 0 || boot.name !== initial.name) {
-      queue.push({ entries: boot.replayed, project: stack.project, name: boot.name });
+    // Versions before T326 kept the queue per tab; it is in the queue now (or was stale).
+    try {
+      legacyStore()?.removeItem(queueKey(initial.id, boot.newId));
+    } catch {
+      // Storage is a convenience.
     }
-  }, [boot, initial.name, queue, stack]);
+    if (boot.replayed.length > 0 || boot.name !== initial.name) {
+      queue.restore({
+        entries: boot.replayed,
+        project: stack.project,
+        name: boot.name,
+        ...(boot.unit ? { unit: boot.unit } : {}),
+      });
+    }
+  }, [boot, initial.id, initial.name, queue, stack]);
 
   // T187: the connection is back, send the unsent queue now instead of waiting for the backoff.
   useEffect(() => {
@@ -176,13 +240,32 @@ export function useProjectSession({
   }, [queue]);
 
   // Leaving the wizard (or the tab going to the background) saves what is pending right away.
+  // T326 (D-117): closing the tab or the browser (`pagehide`) sends what is pending with
+  // `keepalive` and marks the stored queue as left, so the next page takes it at once; while
+  // anything is unsaved the browser asks before the page is closed or reloaded.
   useEffect(() => {
     const onHide = () => {
       if (document.visibilityState === 'hidden') void queue.flush();
     };
+    const onPageHide = () => queue.closing();
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) queue.reopened();
+    };
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!queue.dirty) return;
+      e.preventDefault();
+      // Older browsers show the prompt only when returnValue is set.
+      e.returnValue = '';
+    };
     document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('beforeunload', onBeforeUnload);
     return () => {
       document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('beforeunload', onBeforeUnload);
       void queue.flush();
     };
   }, [queue]);

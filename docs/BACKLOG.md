@@ -1760,6 +1760,16 @@ Spec: §7.1 · Depends: T327 · From: D-046 (the two sets are copies of MDF 18)
 - [ ] existing companies' machines are not touched (no migration); the frozen `defaultMachineProfile()` and every golden stay byte-identical; e2e that export from the example machine with melamine or plywood are checked for stale expectations
 Tester focus: fresh company gets the three sets; an old company's machine is unchanged; goldens identical.
 
+### Batch B60: T326, T306 (before the field test; Dev 1)
+
+### T326 Nothing drawn is lost when the tab closes   [status: in-review]
+From: `.team/usta2-rapor.md` (a rectangle drawn ~1 s before closing, "Kaydediliyor", was gone) · D-117 · related T305 / D-094
+- [x] facts: queue in sessionStorage (gone with the tab), close-time save a plain fetch, a save on the way not resent, no close warning → reproducible by design for edits in the debounce window or after a save on the way
+- [x] unsent queue in localStorage with page owner / closed / age; taken by the next page in any tab; another live page's queue left alone
+- [x] save units with a client `saveId`; `projects.last_save_id` (migration 0014); a repeated save/create is answered, never applied twice; revision lock unchanged
+- [x] pagehide: keepalive send (≤ 60 000 bytes), the unit on the way resent with the same id; beforeunload prompt while unsaved; Projeler offers a draft closed before the server had it
+- [x] tests: db `projects.test.ts`, route `projects.route.test.ts`, web `autosave-close.test.ts`, `send-save.test.ts`; e2e `t326-save-on-close.spec.ts` (written, not run locally yet: PC memory, PO hold)
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine

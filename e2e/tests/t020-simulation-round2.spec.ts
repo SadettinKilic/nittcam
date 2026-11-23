@@ -13,7 +13,7 @@ import {
 /**
  * T020 tester, round 2: persistence under reloads, cursor-anchored zoom, pan clamp, 320 px
  * label/banner layout and tab markers (D-028). Since T023 the project lives on the server and the
- * simulation is step 4 of the wizard; only unsent commands stay in sessionStorage (D-029).
+ * simulation is step 4 of the wizard; only unsent commands stay in localStorage (D-029, T326).
  */
 const t = tr.cutList;
 const s = tr.simulation;
@@ -165,7 +165,7 @@ test.describe('T020 round 2: persistence (server since T023)', () => {
       await page.goto(PARTS);
       await wizardReady(page, 'parcalar');
       const KEY = await draftKey(page);
-      await page.evaluate(([k, v]) => sessionStorage.setItem(k as string, v as string), [KEY, bad]);
+      await page.evaluate(([k, v]) => localStorage.setItem(k as string, v as string), [KEY, bad]);
       await page.reload();
       await wizardReady(page, 'parcalar');
       await expect(page.getByRole('button', { name: t.pasteOpen })).toBeVisible();
@@ -175,7 +175,7 @@ test.describe('T020 round 2: persistence (server since T023)', () => {
       await paste(page);
       await saved(page);
       // The corrupt value must not survive (T020 intent: the bad value is replaced or removed).
-      const stored = await page.evaluate((k) => sessionStorage.getItem(k), KEY);
+      const stored = await page.evaluate((k) => localStorage.getItem(k), KEY);
       expect(stored).not.toBe(bad);
       await page.reload();
       await expect.poll(() => hasValue(page, 'Çekmece önü')).toBe(true);

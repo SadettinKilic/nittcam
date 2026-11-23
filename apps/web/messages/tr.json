@@ -1534,6 +1534,11 @@
     "title": "Projeler",
     "subtitle": "Kayıtlı projeleriniz. Bir projeyi açıp kaldığınız yerden devam edin.",
     "newProject": "Yeni proje",
+    "leftDraft": {
+      "text": "“{name}” kaydedilmeden kapandı ({count} değişiklik bu bilgisayarda duruyor). Açınca kaydedilir.",
+      "open": "Taslağı aç",
+      "discard": "Taslağı sil"
+    },
     "search": "Projelerde ara",
     "searchPlaceholder": "Ad, makine veya malzeme",
     "loading": "Projeler yükleniyor…",

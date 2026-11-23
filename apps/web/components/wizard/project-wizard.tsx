@@ -328,6 +328,7 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
           init = {
             id: p.body.id,
             revision: p.body.revision,
+            lastSaveId: p.body.lastSaveId ?? null,
             name: p.body.name,
             project: p.body.project,
           };
