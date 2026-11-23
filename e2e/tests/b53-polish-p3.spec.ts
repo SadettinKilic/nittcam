@@ -1,6 +1,15 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { chooseMachine, fill, openNewProject, paste, pickOption, saved } from './wizard-helpers';
+import {
+  chooseMachine,
+  fill,
+  goStep,
+  openNewProject,
+  paste,
+  pasteAndNest,
+  pickOption,
+  saved,
+} from './wizard-helpers';
 
 // B53 (polish P3 leftovers, CTO #5 / #6 / #12, tester B16 / B36).
 
@@ -188,4 +197,61 @@ test('1 mm sheet with a cutting set: the thin-skin switch cannot turn on and say
   const why = page.getByTestId('thin-skin-none');
   await expect(why).toHaveText(fill(tr.wizard.machine.skin.none, { t: '1', min: '0,2' }));
   await expect(sw).toHaveAttribute('aria-describedby', (await why.getAttribute('id')) ?? 'x');
+});
+
+test('quantity change after nesting: the Parçalar issue chip and filter stay neutral (usta test)', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page, 'parcalar');
+  await pasteAndNest(
+    page,
+    ['Ad\tEn\tBoy\tAdet', 'Yan\t560\t720\t2', 'Raf\t528\t540\t3'].join('\n'),
+    2,
+  );
+  await goStep(page, 'parcalar');
+  const chip = page.getByTestId('cut-list-issue-chip');
+  await expect(chip).not.toHaveAttribute('data-count', /\d/);
+  await cell(page, 2, cl.columns.qty).fill('5');
+  await cell(page, 2, cl.columns.qty).press('Tab');
+  await expect(chip).toHaveAttribute('data-count', /\d/);
+  await expect(chip).toHaveAttribute('data-neutral', '');
+  await expect(chip).toHaveClass(/text-fg-muted/);
+  await expect(chip).not.toHaveClass(/warning/);
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.screenshot({ path: `__screenshots__/b53-renest-chip-1440-${scheme}.png` });
+  }
+  // A real fault turns it amber again.
+  await cell(page, 1, cl.columns.w).fill('9000');
+  await cell(page, 1, cl.columns.w).press('Tab');
+  await expect(chip).not.toHaveAttribute('data-neutral', '');
+  await expect(chip).toHaveClass(/text-warning-text/);
+});
+
+test('machine form: a unit never touches the number ("0 mm", same component as park X/Y)', async ({
+  page,
+}) => {
+  for (const width of [1440, 1024, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/makineler');
+    await page.getByRole('button', { name: t.add }).click();
+    const form = page.getByTestId('machine-form');
+    await expect(form).toBeVisible();
+    // Gap between the input's text box (right padding edge) and the unit text, every unit field.
+    const gaps = await form.locator('[data-unit]').evaluateAll((spans) =>
+      spans
+        .map((s) => {
+          const input = s.parentElement?.querySelector('input');
+          if (!input || s.getBoundingClientRect().width === 0) return null;
+          const r = input.getBoundingClientRect();
+          const pad = parseFloat(getComputedStyle(input).paddingRight);
+          return s.getBoundingClientRect().left - (r.right - pad);
+        })
+        .filter((g): g is number => g !== null),
+    );
+    expect(gaps.length).toBeGreaterThan(5);
+    for (const g of gaps) expect(g).toBeGreaterThanOrEqual(4);
+  }
 });

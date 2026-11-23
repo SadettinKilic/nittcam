@@ -1774,6 +1774,9 @@ export function CutListEditor({
   }
 
   const problemCount = issues.length;
+  // Usta test (2026-11-21, D-109): issues that only say "not in the layout" after a quantity
+  // change are not a fault of the rows; the header chip and filter stay neutral then.
+  const renestOnlyIssues = renestOnly(issues);
   const s = t.select;
   const v = t.view;
   const filtering = query.trim() !== '' || issuesOnly;
@@ -1877,6 +1880,7 @@ export function CutListEditor({
                     type="button"
                     data-testid="cut-list-issue-chip"
                     data-count={problemCount}
+                    data-neutral={renestOnlyIssues ? '' : undefined}
                     aria-expanded={issuesPanel ? issuesOpen : undefined}
                     aria-controls={issuesPanel && issuesOpen ? 'cut-list-issues' : undefined}
                     onClick={() => {
@@ -1890,9 +1894,18 @@ export function CutListEditor({
                         issuesContent.current?.querySelector<HTMLElement>('h2 button')?.focus(),
                       );
                     }}
-                    className="inline-flex h-6 items-center gap-1 rounded-sm border border-warning-border bg-warning-subtle px-2 text-xs font-medium text-warning-text outline-none hover:bg-warning-subtle/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                    className={cn(
+                      'inline-flex h-6 items-center gap-1 rounded-sm border px-2 text-xs font-medium outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+                      renestOnlyIssues
+                        ? 'border-border bg-surface text-fg-muted hover:bg-surface-hover'
+                        : 'border-warning-border bg-warning-subtle text-warning-text hover:bg-warning-subtle/70',
+                    )}
                   >
-                    <TriangleAlert aria-hidden className="size-3.5" />
+                    {renestOnlyIssues ? (
+                      <RefreshCw aria-hidden className="size-3.5" />
+                    ) : (
+                      <TriangleAlert aria-hidden className="size-3.5" />
+                    )}
                     {fill(t.issueChip.count, { count: problemCount })}
                   </button>
                 )}
@@ -2047,7 +2060,7 @@ export function CutListEditor({
                   className={cn(issuesOnly && PRESSED)}
                   data-testid="cut-list-issues-only"
                 >
-                  <TriangleAlert aria-hidden />
+                  {renestOnlyIssues ? <RefreshCw aria-hidden /> : <TriangleAlert aria-hidden />}
                   <span className="max-sm:sr-only">{v.issuesOnly}</span>
                   {issueSet.size > 0 ? (
                     <span className="text-xs text-fg-muted tabular-nums">{issueSet.size}</span>
