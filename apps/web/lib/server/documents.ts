@@ -58,6 +58,8 @@ export async function buildDocument(
   project: ExportSource,
   type: DocumentType,
   labels?: { grid: LabelGrid; offset: LabelOffset; start?: number },
+  /** Re-export of a stored document (T179): the time it was made, so it names the same NC files. */
+  asOf?: Date,
 ): Promise<BuiltDocument> {
   const { name, revision, data } = project;
   if (type === 'dxf-dizilim' || type === 'dxf-parcalar') {
@@ -95,7 +97,7 @@ export async function buildDocument(
       company: await currentCompanyMark(scope),
       machine: await pdfMachine(scope, project.data),
       offcuts: await pdfOffcuts(scope, project.data),
-      nc: await pdfNc(scope, project),
+      nc: await pdfNc(scope, project, asOf),
     }),
   };
 }

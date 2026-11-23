@@ -83,14 +83,21 @@ export async function pdfOffcuts(
  * T333 (N3): what the sheet pages say about the NC program: the newest NC export of this revision
  * (its stored file names, exactly as downloaded) and the tool order of each sheet, from the
  * toolpath of the profile version that export used (same revision + version = same program).
- * null when this revision has no NC export yet.
+ * null when this revision has no NC export yet. `asOf` (re-export of a stored PDF, T179): only NC
+ * exports that existed when that PDF was made, so the re-export is the same bytes.
  */
 export async function pdfNc(
   scope: CompanyScope,
   project: Pick<ProjectRow, 'id' | 'data' | 'revision'>,
+  asOf?: Date,
 ): Promise<PdfNc | null> {
   const rows = await scope.exports.listForProject(project.id);
-  const row = rows.find((r) => r.kind === 'nc' && r.projectRevision === project.revision);
+  const row = rows.find(
+    (r) =>
+      r.kind === 'nc' &&
+      r.projectRevision === project.revision &&
+      (asOf === undefined || r.createdAt.getTime() <= asOf.getTime()),
+  );
   if (!row) return null;
   const files = new Map<number, string[]>();
   for (const f of row.files) files.set(f.sheet, [...(files.get(f.sheet) ?? []), f.name]);
