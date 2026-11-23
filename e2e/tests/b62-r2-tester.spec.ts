@@ -141,12 +141,30 @@ test('T332 park on: homing in the checklist, the NC and the field kit; mach3 blo
   if (!hasPark) return;
   expect(nc).toContain('(PARK ICIN MAKINE HOME EDILMIS OLMALI)');
   const lines = nc.split(/\r?\n/);
-  const g53 = lines.findIndex((l) => l.startsWith('G53'));
-  expect(g53).toBeGreaterThan(0);
-  // The note comes before the park move, and the park move is at safe Z with the spindle off.
-  expect(lines.slice(0, g53).some((l) => l.includes('HOME EDILMIS'))).toBe(true);
-  const before = lines.slice(0, g53).reverse();
-  expect(before.find((l) => /^M[35]\b/.test(l))).toBe('M5');
+  // Park safety, walked top to bottom: the spindle is off (never started, or the last spindle
+  // command is M5) and the tool is at or above safe Z at every G53 line; one park per manual pause.
+  const safeZ = Number(/^G0 Z(-?[\d.]+)/m.exec(nc)?.[1]);
+  expect(safeZ).toBeGreaterThan(0);
+  let spindleOn = false;
+  let z = Number.NaN;
+  let parks = 0;
+  for (const [i, l] of lines.entries()) {
+    const code = l.replace(/\([^)]*\)/g, '').trim();
+    if (code.startsWith('G53')) {
+      parks++;
+      expect(spindleOn, `spindle on at park line ${i + 1}`).toBe(false);
+      expect(z, `Z below safe Z at park line ${i + 1}`).toBeGreaterThanOrEqual(safeZ - 1e-6);
+      expect(lines.slice(Math.max(0, i - 4), i).join('\n')).toContain('HOME EDILMIS');
+      continue;
+    }
+    if (/\bM0?[34]\b/.test(code)) spindleOn = true;
+    if (/\bM0?5\b/.test(code)) spindleOn = false;
+    const zm = /\bZ(-?[\d.]+)/.exec(code);
+    if (zm) z = Number(zm[1]);
+  }
+  const pauses = lines.filter((l) => /^M0?0\b/.test(l.trim())).length;
+  expect(pauses).toBeGreaterThan(0);
+  expect(parks).toBe(pauses);
 
   // A generic-post machine: no Mach3 block in its field kit.
   const g = structuredClone(profile);
