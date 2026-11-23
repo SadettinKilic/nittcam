@@ -729,7 +729,9 @@ function buildOuterOperation(
     travel: p.travel,
     passDepths: [...p.passDepths],
     tabs,
-    ...(short ? { tabsWanted: short.wanted, ...(short.ramp ? { tabsRamp: true as const } : {}) } : {}),
+    ...(short
+      ? { tabsWanted: short.wanted, ...(short.ramp ? { tabsRamp: true as const } : {}) }
+      : {}),
     segments,
   };
 }

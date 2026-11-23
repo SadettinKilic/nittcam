@@ -2011,6 +2011,7 @@
         "materials": "kesim ayarları",
         "other": "diğer ayarlar"
       },
+      "checkVacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
       "checkFeeds": "İlerleme önerilenin çok üstünde: {tools}. Fazladan sıfır olmadığını kontrol ettim; bu değerler bilerek girildi.",
       "checkFeedsTool": "T{tool} ilerleme {feed} (önerilen {recFeed}), dalma {plunge} (önerilen {recPlunge}) mm/dk",
       "hingeHandle": "Kulp delikleri menteşe ile aynı kenarda ({names}). Kulp menteşe tarafında olamaz; kenarı kontrol edin.",
@@ -2317,6 +2318,7 @@
     "fieldKitLink": "Saha testi kiti"
   },
   "fieldKit": {
+    "vacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
     "title": "Saha testi kiti",
     "subtitle": "{machine} · profil v{version} · post {post}",
     "metaTitle": "Saha testi kiti",

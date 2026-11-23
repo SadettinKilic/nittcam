@@ -16,6 +16,8 @@ export interface ChecklistState {
   feeds?: boolean;
   /** The file uses an older machine profile version on purpose (T332); only asked then. */
   stale?: boolean;
+  /** The vacuum is switched on by hand (T336); only asked when the program writes no code. */
+  vacuum?: boolean;
 }
 
 export const EMPTY_CHECKLIST: ChecklistState = {
@@ -46,6 +48,7 @@ export function downloadBlocker(
   if (unverifiedTemplates > 0 && !checklist.templates) return 'checklist';
   if ((preview.checklist?.highFeeds?.length ?? 0) > 0 && !checklist.feeds) return 'checklist';
   if (preview.checklist?.staleProfile && !checklist.stale) return 'checklist';
+  if (preview.checklist?.vacuumByHand && !checklist.vacuum) return 'checklist';
   if (preview.needsAcceptance && !accepted) return 'accept';
   return null;
 }

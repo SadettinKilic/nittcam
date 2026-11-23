@@ -104,6 +104,15 @@ export function ExportChecklist({
           })}
         />
       ) : null}
+      {checklist?.vacuumByHand ? (
+        // T336 (D-128): vacuum hold-down, but the program does not switch it.
+        <ChecklistItem
+          testId={`${testIdPrefix}-check-vacuum`}
+          checked={checks.vacuum ?? false}
+          onChange={(v) => set({ vacuum: v })}
+          label={t.checkVacuumByHand}
+        />
+      ) : null}
       {checklist?.parkOff ? (
         // T321 (usta 2): a manual change without a park point stops with the tool over the sheet.
         <p

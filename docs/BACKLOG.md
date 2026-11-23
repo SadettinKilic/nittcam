@@ -1524,6 +1524,7 @@ Done in B44 (#145) except the two items left open below.
 - Özet cutting-settings line wraps to two lines at 232 px and also names the thin skin; Özet warning count equals the Uyarılar panel; Dizilim says the part gap is added to the tool diameter [#12] (done in B44)
 - Phone: Simülasyon 3rd sheet tab cut at 390 (scrollable) [T B43] (done in B44)
 - Dizilim canvas: a rotated part's label shows the part's own En × Boy, like the right panel (PO decision, usta 2 test 2026-11-21) [usta] (done in B53)
+- Simülasyon: while the machine profile loads the blocking-issues list shows empty (reads as "nothing blocks"); show a loading state instead [B62 audit]
 
 ### P3 Kesim listesi, adım 1, makine formu, DXF   [status: done, B46 #150, B53 #160]
 Done in B46 (#150) and B53 (#160), except the flaky-e2e note (watch item).
@@ -1784,7 +1785,7 @@ Spec: §6.6, §7.3, §12.3 · Depends: – · From: field rehearsal S1–S3 · D
 - [x] (S3) the air-cut Z-zero step of the field kit is unambiguous (zero on the spoilboard / table plus the stated safe offset); the other kit steps checked for the same ambiguity
 - [x] (rider, PO) "Mach3 ön kontrol" block in the field kit for the `mach3` post: 7 settings from `docs/machines/controllers/mach3-saha-kontrol.md` with their menu paths; every manual change after the first writes `M5` before `M0` (checked over all goldens)
 
-### Batch B63: T333–T335 (field rehearsal 2026-11-23, notes N1–N4; Dev 2)
+### Batch B63: T333–T336 (field rehearsal 2026-11-23, notes N1–N4; Dev 2)
 
 Source: `docs/reviews/2026-11-23-field-rehearsal.md` section "NOTE" (N1–N4). On top of B62 (#197).
 
@@ -1805,6 +1806,12 @@ Spec: §7.2, §6.6 · Depends: T309, T330 · From: field rehearsal N2, N4 · Dec
 - [x] park on: program end = safe Z → spindle off → park move → vacuum off → M30; the checker accepts the end G53 only at the profile's point; park off byte-identical
 - [x] machine form hint and field kit say the program ends at park
 - [x] the time estimate clamps every move at the machine's feed ceiling and the rapid rate
+
+### T336 Vacuum switched by hand is never silent; the export check always has the post (B62 audit; rider)   [status: done]
+Spec: §7.2, §6.6 · Depends: T330 · From: B62 audit · Decision: D-128
+- [x] vacuum hold-down and no vacuum code written (post vacuum off or no on-code): the export checklist has a line that must be ticked ("Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın"), the NC header an ASCII note, the field kit the same text; with a code nothing changes (goldens identical)
+- [x] the production export path always passes the post to the checker (asserted), so TOOL_PAUSE_COUNT never runs in its lenient "no post given" mode there; test contexts unchanged
+- [x] the third audit item (Simülasyon shows an empty blocking list while the profile loads) is in the polish queue P2
 
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)

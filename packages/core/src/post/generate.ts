@@ -72,6 +72,24 @@ export function cuttingHeader(c: PostCuttingMeta): string {
   return `KESİM: ${[...tabs, lead, `yön ${c.direction}`].join(', ')}`;
 }
 
+/** T336 (B62 audit): the NC header note when the vacuum is not switched by the program. */
+export const VACUUM_BY_HAND_HEADER = 'VAKUM PROGRAMDAN ACILMIYOR: KESIMDEN ONCE ELLE ACIN';
+
+/**
+ * T336 (B62 audit, D-128): the machine holds the sheet by vacuum but the program writes no vacuum
+ * code (the post has vacuum off, or the profile has no on-code). Not an error (the vacuum may be
+ * switched by hand), but never silent: the NC header, the export checklist and the field kit say
+ * it. Same condition as the generator's own vacuum codes, so a program with codes never gets it.
+ */
+export function vacuumByHand(
+  profile: { holdDown: { type: string; vacuumOn: string } },
+  post: { vacuum: { enabled: boolean } },
+): boolean {
+  return (
+    profile.holdDown.type === 'vacuum' && (!post.vacuum.enabled || profile.holdDown.vacuumOn === '')
+  );
+}
+
 /**
  * T334 (N1): "KÖPRÜ AZ: 4 parçada 3 köprü, rampa nedeniyle" when parts of this file got fewer tabs than the
  * setting ("en az 2" when the counts differ; the ramp named when it took the room of any; no
@@ -777,6 +795,7 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
     `ORİJİN: ${CORNER_LABEL[profile.origin.corner] ?? profile.origin.corner}, X+ ${profile.origin.xPositive === 'right' ? 'sağ' : 'sol'}, Y+ ${profile.origin.yPositive === 'back' ? 'arka' : 'ön'}, plaka ofseti ${f3(profile.origin.sheetOffset.x)} / ${f3(profile.origin.sheetOffset.y)}`,
   );
   lines.push(`Z SIFIR: ${profile.zZero.reference === 'table' ? 'tabla yüzeyi' : 'malzeme üstü'}`);
+  if (vacuumByHand(profile, cfg)) lines.push(VACUUM_BY_HAND_HEADER);
   if (meta.cutting) {
     lines.push(
       cuttingHeader(meta.cutting),

@@ -167,6 +167,17 @@ function ownSheetSizes(project: Project): Pick<PostMeta['stock'], 'sheets'> {
   return any ? { sheets } : {};
 }
 
+/**
+ * T336 (B62 audit): the production check always carries the post's declarations, so the checker
+ * never runs its lenient "no post given" modes (TOOL_PAUSE_COUNT accepting either pause count).
+ * The generator refuses an invalid config before any file is checked; this keeps it so.
+ */
+export function assertPostGiven(context: { post?: unknown }): void {
+  if (context.post === undefined || context.post === null) {
+    throw new Error('postAndCheck: the G-code check needs the post config (T336)');
+  }
+}
+
 /** What `postAndCheck` needs besides the toolpath: the post meta plus the expected layout. */
 export interface PostAndCheckMeta extends PostMeta {
   /** Expected parts per sheet; null = the layout check is skipped (no through cuts expected). */
@@ -217,6 +228,7 @@ export function postAndCheck(
   };
   let checked: { files: readonly PostFile[]; result: GcodeCheckFilesResult } | null = null;
   const run = (files: readonly PostFile[]) => {
+    assertPostGiven(context);
     const result = checkGcodeFiles(files, context);
     checked = { files: files.map((f) => ({ ...f })), result };
     return result;
@@ -250,7 +262,7 @@ export function postAndCheck(
     prev.files.every(
       (f, i) => f.name === gen.files[i]?.name && f.content === gen.files[i]?.content,
     );
-  const result = same && prev ? prev.result : checkGcodeFiles(gen.files, context);
+  const result = same && prev ? prev.result : run(gen.files);
   if (!result.ok) {
     return {
       ok: false,

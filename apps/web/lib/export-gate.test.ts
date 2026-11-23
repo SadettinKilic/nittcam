@@ -62,6 +62,34 @@ describe('downloadBlocker (§6.6 checklist, §7.2 rules 9–10)', () => {
     ).toBeNull();
   });
 
+  it('a vacuum the program does not switch adds a line that must be ticked (T336)', () => {
+    const base = {
+      origin: {
+        corner: 'frontLeft' as const,
+        xPositive: 'right' as const,
+        yPositive: 'back' as const,
+        sheetOffset: { x: 0, y: 0 },
+      },
+      zReference: 'materialTop' as const,
+      tools: [],
+      toolChanges: 0,
+      rezeroZ: false,
+      parkOff: false,
+    };
+    const p = (checklist: typeof base & { vacuumByHand?: true }) => ({
+      ok: true,
+      files: [FILE],
+      needsAcceptance: false,
+      checklist,
+    });
+    expect(downloadBlocker(p({ ...base, vacuumByHand: true }), ALL, false)).toBe('checklist');
+    expect(
+      downloadBlocker(p({ ...base, vacuumByHand: true }), { ...ALL, vacuum: true }, false),
+    ).toBeNull();
+    // a program that switches the vacuum: no line, nothing to tick
+    expect(downloadBlocker(p(base), ALL, false)).toBeNull();
+  });
+
   it('manual tool changes need their own confirmation (T274)', () => {
     const checklist = {
       origin: {

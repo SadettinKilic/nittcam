@@ -11,6 +11,7 @@ import {
   testCutStage,
   testProgram,
   unverifiedReasons,
+  vacuumByHand,
   type ExtendedProgramResult,
   type PostConfig,
   type TestCutMeasurements,
@@ -202,6 +203,8 @@ export async function overview(
     origin: { corner: m.profile.origin.corner, sheetOffset: { ...m.profile.origin.sheetOffset } },
     park: parkPoint(m.profile, ctx.post),
     parkOff: ctx.post?.toolChange.mode === 'manual' && parkPoint(m.profile, ctx.post) === null,
+    // T336: a vacuum machine whose programs write no vacuum code.
+    ...(ctx.post && vacuumByHand(m.profile, ctx.post) ? { vacuumByHand: true as const } : {}),
     programs: { airCut: air, testCut: cut },
     extended: {
       info: extendedTestProgram('testCut', profileVersionOf(ctx), ctx.rawPost).info,

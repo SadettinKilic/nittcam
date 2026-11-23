@@ -49,6 +49,11 @@ export interface ExportChecklistInfo {
   parkOff: boolean;
   /** T332 (S1): the program parks with G53 at a manual change: the machine must be homed. */
   parkHome?: boolean;
+  /**
+   * T336 (D-128): vacuum hold-down but the program writes no vacuum code; the line must be ticked.
+   * Absent = the program switches the vacuum (or the machine does not use one).
+   */
+  vacuumByHand?: true;
   /** T322: file-name length against the machine limit (the checker blocks names over it). */
   fileNames?: FileNameInfo;
   /**
