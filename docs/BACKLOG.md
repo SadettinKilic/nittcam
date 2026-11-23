@@ -1787,7 +1787,7 @@ Spec: §6.6, §7.3, §12.3 · Depends: – · From: field rehearsal S1–S3 · D
 
 ### Batch B63: T333–T336 (field rehearsal 2026-11-23, notes N1–N4; Dev 2)
 
-Source: `docs/reviews/2026-11-23-field-rehearsal.md` section "NOTE" (N1–N4). On top of B62 (#197).
+Source: `docs/reviews/2026-11-23-field-rehearsal.md` section "NOTE" (N1–N4). Based on main (B62 landed).
 
 ### T333 The sheet PDF names the NC file and the tool order (N3)   [status: done]
 Spec: §6.6 · Depends: T322, T274 · From: field rehearsal N3 · Decision: D-125
