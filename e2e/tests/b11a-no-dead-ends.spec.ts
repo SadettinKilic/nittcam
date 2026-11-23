@@ -78,8 +78,13 @@ test.describe('B11a no dead ends', () => {
     // T265: starting values are marked, the pass never exceeds the sheet, Paso / Takım no visible.
     // B53: the notes sit in the row's detail line under the fields.
     const lastDetail = page.getByTestId('materials-table').locator('tbody tr[data-detail]').last();
+    // T328 (D-120): the values come from the built-in table (PVC, Ø6 two-flute) and say so.
+    await expect(lastDetail.getByTestId('material-starting-source')).toHaveAttribute(
+      'data-kind',
+      'table',
+    );
     await expect(lastDetail.getByTestId('material-unverified-note')).toContainText(
-      tr.machines.form.unverified,
+      'doğrulanmadı, önce deneme kesimi',
     );
     const num = async (sel: string) =>
       Number((await last.locator(sel).inputValue()).replace(/\./g, '').replace(',', '.'));

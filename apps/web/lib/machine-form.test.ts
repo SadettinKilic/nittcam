@@ -8,6 +8,8 @@ import {
   paramFixHref,
   parseErrorText,
   parseParamFix,
+  refreshStartingValues,
+  startingNote,
   safeReturnPath,
   withParamSet,
 } from './machine-form';
@@ -111,14 +113,131 @@ describe('"Kesim ayarı ekle" link (T258, D-045)', () => {
     const p = exampleMachineProfile();
     const acrylic = withParamSet(p, { material: 'acrylic', thickness: 5 });
     const row = acrylic.profile.materials[acrylic.index];
-    expect(row).toMatchObject({ material: 'acrylic', thickness: 5, stepDown: 5, unverified: true });
+    // T328: acrylic with the first tool (Ø6 two-flute): the table's 0,5 × D = 3 mm start.
+    expect(row).toMatchObject({ material: 'acrylic', thickness: 5, stepDown: 3, unverified: true });
     expect(machineProfileSchema.safeParse(acrylic.profile).success).toBe(true);
-    // thick sheets keep the generic 6 mm start; thin ones never get a pass deeper than the sheet
+    // never a pass deeper than the sheet
     expect(newParamSet(p, 'mdf', 18).stepDown).toBe(6);
-    expect(newParamSet(p, 'pvc', 3).stepDown).toBe(3);
-    // the form's own "Satır ekle" is not the fix flow: no mark
-    expect(newParamSet(p).unverified).toBeUndefined();
+    expect(newParamSet(p, 'mdf', 3).stepDown).toBe(3);
+    // T328: the form's own "Ekle" starts from the table too, and is marked the same way
+    expect(newParamSet(p).unverified).toBe(true);
     // seeded sets (and D-046 copied ones) are untouched
     expect(acrylic.profile.materials.slice(0, acrylic.index)).toEqual(p.materials);
+  });
+});
+
+describe('T328: new cutting sets start from the built-in table (D-120)', () => {
+  const p = defaultMachineProfile(); // tools: 1 = Ø6 two-flute, 2 = Ø8 two-flute
+  const values = (m: { feed: number; plungeFeed: number; rpm: number; stepDown: number }) => [
+    m.feed,
+    m.plungeFeed,
+    m.rpm,
+    m.stepDown,
+  ];
+
+  it('every kind × Ø6 / Ø8: table values or empty fields, always unverified', () => {
+    const expected: Record<string, [number[] | null, number[] | null]> = {
+      mdf: [
+        [5400, 1400, 18000, 6],
+        [6000, 1500, 18000, 6],
+      ],
+      plywood: [
+        [4700, 1200, 18000, 6],
+        [5000, 1300, 18000, 6],
+      ],
+      // no two-flute Ø6 spiral row for melamine in the research; Ø8 = "no compression" row
+      melamine: [null, [5000, 1300, 18000, 6]],
+      solidWood: [
+        [3600, 900, 18000, 3],
+        [4300, 1100, 18000, 4],
+      ],
+      acrylic: [
+        [4300, 2200, 18000, 3],
+        [5000, 2500, 18000, 4],
+      ],
+      pvc: [
+        [4300, 2200, 18000, 3],
+        [5000, 2500, 18000, 4],
+      ],
+    };
+    for (const [kind, [six, eight]] of Object.entries(expected)) {
+      for (const [tool, want] of [
+        [1, six],
+        [2, eight],
+      ] as const) {
+        const prof = { ...p, tools: p.tools.filter((t) => t.number === tool) };
+        const set = newParamSet(prof, kind as never, 18);
+        expect(set.unverified).toBe(true);
+        expect(set.tool).toBe(tool);
+        if (want) expect(values(set)).toEqual(want);
+        else expect(values(set).every((v) => Number.isNaN(v))).toBe(true);
+        const note = startingNote(prof, set);
+        expect(note.kind).toBe(want ? 'table' : 'none');
+      }
+    }
+  });
+
+  it('MDF 18 with the Ø8 tool equals the frozen default set', () => {
+    const set = newParamSet({ ...p, tools: [p.tools[1] as never] }, 'mdf', 18);
+    expect(values(set)).toEqual(values(p.materials[0] as never));
+  });
+
+  it('kind, thickness or tool changes refresh an untouched row; an edited row keeps its numbers', () => {
+    const set = newParamSet(p, 'mdf', 18);
+    set.material = 'solidWood';
+    refreshStartingValues(p, set);
+    expect(values(set)).toEqual([3600, 900, 18000, 3]);
+    set.tool = 2;
+    refreshStartingValues(p, set);
+    expect(values(set)).toEqual([4300, 1100, 18000, 4]);
+    set.thickness = 2;
+    refreshStartingValues(p, set);
+    expect(set.stepDown).toBe(2);
+    expect(set.unverified).toBe(true);
+    // a manual edit drops the mark (the form does that); later choices do not overwrite
+    set.feed = 3333;
+    delete set.unverified;
+    set.material = 'mdf';
+    refreshStartingValues(p, set);
+    expect(set.feed).toBe(3333);
+  });
+
+  it('no table row: empty fields that the schema rejects until filled, never old fixed numbers', () => {
+    const odd = {
+      ...p,
+      tools: [{ number: 1, type: 'vBit', diameter: 8, fluteLength: 10, flutes: 2 }],
+    };
+    const set = newParamSet(odd as never, 'mdf', 18);
+    expect(values(set).every((v) => Number.isNaN(v))).toBe(true);
+    expect(startingNote(odd as never, set)).toEqual({ kind: 'none', hint: null });
+    const prof = { ...p, materials: [...p.materials, set] };
+    expect(machineProfileSchema.safeParse(prof).success).toBe(false);
+  });
+
+  it('notes and tool hints: a hint, never a block; source names come from the row', () => {
+    const mel = newParamSet({ ...p, tools: [p.tools[1] as never] }, 'melamine', 18);
+    const n = startingNote({ ...p, tools: [p.tools[1] as never] }, mel);
+    expect(n).toEqual({
+      kind: 'table',
+      sources: 'Freud, Rennie Tool',
+      note: 'melamineNoCompression',
+      hint: 'melamineCompression',
+    });
+    const acr = newParamSet(p, 'acrylic', 10);
+    expect(startingNote(p, acr)).toMatchObject({
+      note: 'acrylicPlastic',
+      hint: 'plasticSingleFlute',
+    });
+    expect(machineProfileSchema.safeParse({ ...p, materials: [...p.materials, acr] }).success).toBe(
+      true,
+    );
+    // edited numbers: the note no longer claims the table as the source
+    acr.feed = 4000;
+    expect(startingNote(p, acr).kind).toBe('other');
+    for (const key of ['startingValue', 'startingNone'] as const) {
+      expect(tr.machines.form[key].length).toBeGreaterThan(0);
+    }
+    expect(tr.machines.form.startingValue).toContain('doğrulanmadı, önce deneme kesimi');
+    expect(tr.machines.form.startingNone).toContain('Bu malzeme için hazır değer yok');
   });
 });

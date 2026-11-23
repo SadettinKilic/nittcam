@@ -1746,12 +1746,12 @@ Spec: §3.6, §7.1 · Depends: – · From: owner 2026-11-23
 - [x] no change to existing profiles, projects or goldens
 Tester focus: table rows against the research doc for 6 spot checks; clamping at 6 000 and 24 000 rpm; missing row → no suggestion.
 
-### T328 "Kesim ayarı ekle" starts from the material's values   [status: todo]
+### T328 "Kesim ayarı ekle" starts from the material's values   [status: done]
 Spec: §3.6 · Depends: T327 · From: owner 2026-11-23, CTO metal analysis (a new set starts at 5 000 mm/min, 18 000 rpm for every material today)
-- [ ] a new cutting set in the machine form, Ayarlar → Malzemeler and the "kesim ayarı yok" fix flow is prefilled from `suggestCuttingSet` for the chosen kind, thickness and tool; changing kind or tool before the first manual edit refreshes the values; a manual edit is never overwritten
-- [ ] the set shows "Başlangıç değeri: <kaynak kısa adı> · doğrulanmadı, önce deneme kesimi" and stays unverified; the existing "Değerleri doğruladım" gate (T265) is unchanged
-- [ ] a material note where the research has one: melamine (alt yüz / üst yüz kırılması, compression takım), acrylic and PVC (tek ağız, rampa, hava üfleme), plywood (yüz kırılması); a tool that does not fit the material (e.g. two-flute in acrylic) gives a hint, not a block
-- [ ] no table row → the fields start empty with "Bu malzeme için hazır değer yok", never the old fixed numbers
+- [x] a new cutting set in the machine form, Ayarlar → Malzemeler and the "kesim ayarı yok" fix flow is prefilled from `suggestCuttingSet` for the chosen kind, thickness and tool; changing kind or tool before the first manual edit refreshes the values; a manual edit is never overwritten
+- [x] the set shows "Başlangıç değeri: <kaynak kısa adı> · doğrulanmadı, önce deneme kesimi" and stays unverified; the existing "Değerleri doğruladım" gate (T265) is unchanged
+- [x] a material note where the research has one: melamine (alt yüz / üst yüz kırılması, compression takım), acrylic and PVC (tek ağız, rampa, hava üfleme), plywood (yüz kırılması); a tool that does not fit the material (e.g. two-flute in acrylic) gives a hint, not a block
+- [x] no table row → the fields start empty with "Bu malzeme için hazır değer yok", never the old fixed numbers
 Tester focus: every kind × Ø6 / Ø8; edit-then-change-kind keeps the edit; unverified export warning still shown.
 
 ### T329 Example machine: real melamine and plywood sets   [status: todo]

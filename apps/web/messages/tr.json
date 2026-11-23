@@ -306,6 +306,20 @@
       "copiedFrom": "{from} {thickness} mm ayarından kopyalandı; kendi makinenizde doğrulayın.",
       "unverified": "Başlangıç değerleri; bu malzeme için doğrulanmadı. Kendi makinenizde doğrulayın.",
       "unverifiedConfirm": "Değerleri doğruladım",
+      "startingValue": "Başlangıç değeri: {source} · doğrulanmadı, önce deneme kesimi",
+      "startingNone": "Bu malzeme için hazır değer yok. Değerleri girin ve deneme kesimiyle doğrulayın.",
+      "startingNotes": {
+        "plywoodFace": "Kontrplak: yüz kaplaması kırılabilir; temiz kenar için aşağı helisli ya da compression takım.",
+        "melamineFace": "Melamin: alt ve üst yüzde kırılma olabilir; ilk paso en az takımın aşağı helis boyu kadar olmalı.",
+        "melamineNoCompression": "Melamin: compression takım yok; üst yüz temiz kalır, alt yüz kırılabilir.",
+        "solidWoodHard": "Masif: sert ağaç değerleri. Çam gibi yumuşak ağaçta ilerleme deneme kesiminden sonra artırılabilir.",
+        "acrylicPlastic": "Akrilik: tek ağızlı (O-flute) takım, rampayla giriş ve hava üfleme; ilerlemeyi düşürmek erimeyi artırır.",
+        "pvcRigid": "PVC: sert PVC değerleri. Köpük PVC (dekota, foreks) daha hızlı kesilebilir; tek ağızlı takım, rampa ve hava üfleme."
+      },
+      "toolFit": {
+        "melamineCompression": "İpucu: melaminde iki yüzün de temiz kalması için compression takım önerilir.",
+        "plasticSingleFlute": "İpucu: plastikte tek ağızlı (O-flute) takım önerilir; çok ağızlı takım ısınıp eritebilir."
+      },
       "editTitle": "Makineyi düzenle",
       "exampleNote": "Bu bir örnek profildir. Değerleri kendi makinenize göre kontrol edin; üretimden önce air cut ve test kesimi yapın.",
       "versionNote": "Her kayıt yeni bir profil sürümü oluşturur. Makine, takım veya post sürümü değişirse doğrulama yeniden gerekir.",
