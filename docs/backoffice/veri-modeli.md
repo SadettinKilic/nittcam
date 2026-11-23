@@ -1,6 +1,6 @@
 # NittCam backoffice veri modeli (öneri)
 
-> Durum: **öneri (v2.2)**, uygulama kodu, şema ve migration değişmedi. Hazırlayan: Data Engineer, 2026-11-22; v2 gözden geçirme: PO, 2026-11-23 (değişiklikler §0); v2.1: sahibin S1 kararı (R13); v2.2: marka (R14).
+> Durum: **öneri (v2.3)**, uygulama kodu, şema ve migration değişmedi. Hazırlayan: Data Engineer, 2026-11-22; v2 gözden geçirme: PO, 2026-11-23 (değişiklikler §0); v2.1: sahibin S1 kararı (R13); v2.2: marka (R14).
 > Kaynaklar: `docs/SPEC.md` §2, §3, §8.2, §8.5, §8.6, §9, §13, §14.2; `packages/db/src/schema.ts`, `tenant.ts`, `migrations/0000…0013`; `docs/DECISIONS.md` D-014, D-016; `docs/BACKLOG.md` M10.
 > Bütün fiyatlar, firmalar, kişiler, telefonlar ve e-postalar **uydurmadır**. Fiyatlar insan kapısıdır (§14.2), burada yalnızca veri biçimini gösterir.
 
@@ -39,6 +39,7 @@ v1 üzerinde yapılan tasarım düzeltmeleri. Her madde ilgili bölümde uygulan
 | R10 | Abonelik çekirdeği (`plans`, `plan_prices`, `subscriptions`, `subscription_events`) Faz 4'ten **Faz 3**'e alındı | Faz 3'teki görünümler, yaşam döngüsü ve harita abonelik durumuna dayanıyor; pilot firmaların deneme/aktif durumu ödeme entegrasyonu beklemeden elle yönetilebilmeli | §10 |
 | R11 | Sorgu düzeltmeleri: İstanbul günü (`current_date` yerine), 8.6 ikinci sorgu kendi CTE'leriyle, haritada konumsuz firma sayısı | Taslak sorgular olduğu gibi çalışmalı | §8 |
 | R12 | `ref.districts.id` kalıcı kod (yeniden numaralanmaz), `is_active` | Yeni ilçe kurulunca ya da ilçe kapanınca eski adres satırları bozulmamalı | §6.1 |
+| R15 | **Makine kataloğu (D-119):** müşterilerin girdiği makinelerden beslenen platform düzeyi katalog: `catalog.controllers`, `catalog.machine_models`, `public.machines.catalog_model_id` | Sahip (2026-11-23): anlaşılan atölyelerin makinelerini backoffice'ten görüp kendi makine verimizi büyütmek istiyor. Katalog yeni müşteride makine kurulumunu "modelini seç, değerler hazır gelsin"e indirir ve hangi post'un önce yazılacağını veriyle söyler | §6.11 |
 | R14 | **Marka (D-114):** aynı atölyenin birden çok markası firmanın içinde `public.company_brands` + `projects.brand_id` ile tutulur; ayrı kiracı açılmaz | Sahibin asıl senaryosu buydu (koltuk + sandalye markası, tek atölye, tek hesap). Ayrı firma yapmak makine doğrulamasını, stoğu ve aboneliği ikiye böler. R13 (çoklu firma üyeliği) yerinde kalır, ama gerçekten ayrı atölyeler içindir | §6.2 |
 | R13 | **Sahip kararı S1 (D-113): bir kişi birden çok firmada olabilir.** `users` küresel kimlik olur (`company_id`, `role` kalkar); üyelik ve rol `public.company_members`, bekleyen davet `public.company_invitations`; oturum **etkin firma** taşır; kullanıcı × zaman özetlerinin anahtarına `company_id` girer | v1 "bir kullanıcı = bir firma" varsayıyordu. Karar M10'dan önce verildiği için göç ucuz: bugün tek varsayılan firma ve kullanıcı var | §6.3, §6.5, §7, §10 |
 
@@ -125,6 +126,7 @@ Güçlü yanlar: her kiracı tablosunda `company_id` (NOT NULL, FK, indeksin ilk
 | `audit` | Platform | Uygulama + backoffice (yalnızca INSERT) | Backoffice | Denetim günlüğü |
 | `privacy` | Platform | Uygulama + backoffice | Backoffice | KVKK rıza, metin sürümleri, başvurular, saklama |
 | `bo` | Backoffice okuma katmanı | Yalnızca görünümler + `staff_users` | Backoffice | Kiracılar arası güvenli okuma |
+| `catalog` | Platform referansı | Backoffice (personel onayıyla) | Herkes (salt okunur; uygulama yalnızca `published` satırları) | Kontrol üniteleri, makine modelleri ve hazır profil şablonları |
 
 ```
            tarayıcı (yönetici / operatör)                 backoffice paneli (sahip, personel)
@@ -1244,6 +1246,61 @@ Saklama kurallarını kodda değil veride tutar; temizlik işi buradan okur.
 
 Önerilen değerler §9'da.
 
+### 6.11 Makine kataloğu (`catalog`, R15)
+
+Müşteri makineleri kiracı verisidir (`public.machines`, profil sürümleri). Katalog bunların **kimliksiz teknik özeti**dir: hangi marka/model, hangi kontrol ünitesi, tabla ve mil değerleri, hangi post. Firma adı, proje ya da dosya kataloğa girmez. Akış: atölye makinesini girer → backoffice `bo.v_company_machines`'te görür → personel "kataloğa ekle / var olan modelle eşle" der → model `draft` olur → en az bir atölyede test kesimi geçmiş profil varsa `published` yapılabilir → yeni müşteri makine eklerken modeli seçer, profil o değerlerle (her zaman **doğrulanmadı** olarak) dolar.
+
+#### `catalog.controllers`
+
+| Sütun | Tip | Null | Anahtar | Açıklama |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | H | PK | |
+| `family` | `text` | H | UQ (`family`, `model`) | "Mach3", "NcStudio", "Syntec", "RichAuto" |
+| `model` | `text` | H | | "V5 PCIMC-53C", "6MB", "A11"; bilinmiyorsa `''` |
+| `post_id` | `text` | E | | Bu üniteyi yazan post (`mach3`, `generic`); boş = post yok (talep sinyali) |
+| `file_extension` | `text` | E | | ".tap", ".nc" |
+| `doc_path` | `text` | E | | `docs/machines/controllers/<ad>.md` |
+| `status` | `text` | H | | `researched` (yalnızca belge), `post_unverified`, `post_machine_tested` |
+| `created_at`, `updated_at` | `timestamptz` | H | | |
+
+#### `catalog.machine_models`
+
+| Sütun | Tip | Null | Anahtar | Açıklama |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | H | PK | |
+| `brand` | `text` | H | UQ (`lower(brand)`, `lower(model)`) | Üretici |
+| `model` | `text` | H | | |
+| `controller_id` | `uuid` | E | FK → `catalog.controllers` | Fabrika çıkışı ünite |
+| `machine_type` | `text` | H | | `router_3axis`, `nesting_atc`, `sign_router` |
+| `profile_template` | `jsonb` | H | | Makine profili şablonu (`machineProfileSchema` ile doğrulanır): tabla, eksen sınırları, mil, takım değiştirici, tutma, kısıtlar. Kesim setleri ve takımlar **girmez** (atölyeye özgü) |
+| `source` | `text` | H | | `customer_machine` (müşteri makinesinden), `manufacturer_catalog` (üretici belgesi), `nittcam_test` |
+| `source_note` | `text` | E | | Katalog adı/URL; müşteri kaynağında firma **yazılmaz** |
+| `status` | `text` | H | | `draft`, `published`, `retired` |
+| `confidence` | `text` | H | | `reported` (tek atölye beyanı), `confirmed` (2+ atölye ya da üretici belgesi), `machine_tested` (bu modelde test kesimi geçti) |
+| `created_by_staff_id` | `uuid` | H | FK → `bo.staff_users` | |
+| `created_at`, `updated_at` | `timestamptz` | H | | |
+
+`public.machines` değişikliği: **`catalog_model_id uuid NULL`** (FK → `catalog.machine_models`; kiracı sütunu değildir, bileşik FK gerekmez). Atölye katalogdan seçtiyse ya da personel eşlediyse dolar. Katalog şablonu sonradan değişirse müşterinin profili **değişmez** (profil sürümleri değişmezdir); yalnızca "katalogda güncel değer var" notu çıkar.
+
+Backoffice sorusu "hangi post'u önce yazalım": kontrol ünitesi başına müşteri makinesi ve firma sayısı, post'u olmayanlar üstte:
+
+```sql
+SELECT c.family, c.model, c.status,
+       count(DISTINCT m.id)         AS machines,
+       count(DISTINCT m.company_id) AS companies
+FROM catalog.controllers c
+LEFT JOIN catalog.machine_models mm ON mm.controller_id = c.id
+LEFT JOIN public.machines m ON m.catalog_model_id = mm.id AND m.archived_at IS NULL
+GROUP BY c.id, c.family, c.model, c.status
+ORDER BY (c.post_id IS NULL) DESC, machines DESC;
+```
+
+Hukuk notu: müşterinin makine teknik değerlerinin kimliksiz olarak katalogda kullanılması kullanım şartlarında yer almalı (kişisel veri değildir, ama müşteri verisidir).
+
+```json
+{"id":"cm-07","brand":"Örnek Makine","model":"R-2130 ATC","controller_id":"cc-syntec-6mb","machine_type":"nesting_atc","source":"customer_machine","status":"draft","confidence":"reported"}
+```
+
 ---
 
 ## 7. Analitik görünümler (`bo`, `analytics`)
@@ -1252,7 +1309,7 @@ Saklama kurallarını kodda değil veride tutar; temizlik işi buradan okur.
 | --- | --- | --- | --- |
 | `bo.v_company_overview` | görünüm | Firma satırı: ad, segment, durum, il/ilçe/koordinat (atölye adresi, yoksa ilçe merkezi), paket, abonelik durumu, MRR, aktif kullanıcı sayısı (yönetici/operatör), makine sayısı, proje sayısı, son etkinlik, sorumlu personel, etiketler | canlı |
 | `bo.v_company_users` | görünüm | Firmanın üyeleri (`company_members` + `users`): ad, e-posta, rol, durum, son etkinlik, son 30 gün dakika, kişinin **başka kaç firmada** üyeliği olduğu (bayi/serbest operatör işareti) | canlı |
-| `bo.v_company_machines` | görünüm | Makine adı, marka, model, controller (son profil sürümünden), doğrulama aşaması, arşiv | canlı |
+| `bo.v_company_machines` | görünüm | Makine adı, marka, model, controller (son profil sürümünden), doğrulama aşaması, arşiv, **katalog modeli (eşlenmiş mi)** ve profilin teknik özeti (tabla, mil, takım değiştirici; kesim setleri hariç) | canlı |
 | `bo.v_company_projects` | görünüm | Proje **metaverisi**: ad, **marka**, durum, revizyon, parça/plaka sayısı (JSON'dan yalnızca sayılar), export sayısı, tarih. `data` yok | canlı |
 | `bo.v_map_provinces` | görünüm | İl başına: müşteri, deneme, risk altındaki, potansiyel sayısı, MRR | canlı |
 | `bo.v_map_districts` | görünüm | İl içinde ilçe başına aynı sayılar | canlı |
@@ -1624,7 +1681,7 @@ Kural: her faz ayrı migration dosyaları (`0014`'ten devam; `0011` boşluğu bi
 | **0. Referans** | Şimdi (küçük, risksiz) | `ref.provinces` (81), `ref.districts` seed; bu dokümanın onayı; olay sözlüğü taslağı | Yok |
 | **1. Kimlik ve kiracı** | M10 (T200+) | Better Auth (+ organization eklentisi) → `users` + `auth_*`; **`company_members`, `company_invitations`** (R13: mevcut `users.company_id`/`role` üyeliğe kopyalanır, dört kullanıcı FK'si üyeliğe çevrilir, sonra iki sütun düşer; **firma seçici yok**, kişi başına tek üyelik uygulamada zorlanır, D-116); **`company_brands` + `projects.brand_id`** (R14; eklemeli, istenirse M10'dan bağımsız daha erken de alınabilir); `users` yeni sütunlar; `companies` yeni sütunlar; `company_addresses`; Postgres RLS + `nittcam_app` rolü; `audit.audit_log`; `privacy.legal_documents`, `consents` (kayıt formunda aydınlatma + şartlar) | `users`: `company_id` ve `role` **düşer**, `last_login_at`, `last_company_id`, `deleted_at` … eklenir; `users_email_uq` kısmi; `project_commands`, `exports` (2 sütun), `validations`, `chat_messages` kullanıcı FK'leri `company_members`'a; `tenantTables`'tan `users` çıkar, `company_members` ve `company_invitations` girer; `companies`: `slug`, `status`, `segment`, `timezone`, `locale`, `deleted_at`; `tenantTables` listesine yeni kiracı tabloları |
 | **2. Kullanım ölçümü** | M10 sonu / M12 pilot öncesi | `analytics.user_sessions`, `user_activity_hourly`, `daily_project_usage`, heartbeat uç noktası; `analytics.events` (bölümlü) + `event_types`; sunucu olayları; istemci olay toplayıcı; günlük özet işleri; **geri doldurma**: `exports` → `nc/dxf/pdf.exported`, `projects.created_at` → `project.created`, `project_commands` → günlük etkin gün (dakika geri doldurulamaz) | Yok (yalnızca INSERT eklenir) |
-| **3. Backoffice, CRM ve abonelik çekirdeği** | M12 pilot | `bo` şeması, `staff_users`, `nittcam_bo` rolü, görünümler; `crm.*`; `support.*` (uygulama içi "Destek" formu); **`billing.plans`, `plan_prices`, `subscriptions`, `subscription_events`** (R10: ödeme entegrasyonu yok, deneme/aktif durumu personel panelden yönetir, pilot fiyatı `price_kind = 'custom'`); `analytics.company_health_daily`; panel v1 (liste, firma kartı, harita) | `companies.plan` önbellek olur (abonelikten yazılır) |
+| **3. Backoffice, CRM ve abonelik çekirdeği** | M12 pilot | `bo` şeması, `staff_users`, `nittcam_bo` rolü, görünümler; `crm.*`; `support.*` (uygulama içi "Destek" formu); **`billing.plans`, `plan_prices`, `subscriptions`, `subscription_events`** (R10: ödeme entegrasyonu yok, deneme/aktif durumu personel panelden yönetir, pilot fiyatı `price_kind = 'custom'`); **`catalog.controllers`, `catalog.machine_models`, `machines.catalog_model_id`** (R15; ilk satırlar `docs/machines/controllers/` araştırmasından ve pilot atölyelerin makinelerinden); `analytics.company_health_daily`; panel v1 (liste, firma kartı, harita) | `companies.plan` önbellek olur (abonelikten yazılır) |
 | **4. Faturalama ve tahsilat** | M13 ticari (fiyat kararı sonrası) | `billing.billing_profiles`, `invoices`, `invoice_lines`, `invoice_counters`, `payments`, `dunning_steps`; ödeme sağlayıcı + e-Fatura/e-Arşiv entegratörü; dunning işleri; `ai_quota_monthly` → paket hakları; `mv_mrr_monthly`, kohortlar | `companies.plan` düşer, `ai_quota_monthly` → `ai_quota_bonus` |
 | **5. Ölçek** | İhtiyaç olunca | Okuma kopyası, analitik depo, `audit_log` soğuk arşiv | Yok |
 

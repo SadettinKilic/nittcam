@@ -885,3 +885,9 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - V-groove depth is entered as remaining thickness and measured from the table side (panel thickness varies ±0.2 mm), per the material research (`docs/materials/kesim-degerleri-arastirma.md`); cutting numbers in the metal plan follow that research where they differ.
 - Edge-band columns are hidden for plastics too, after the field test.
 - Before field test 1 only T340–T342 may start (no visible change, goldens identical). No metal NC leaves the app until that tier's own machine test passed (human gate: the owner runs it); pricing and the legal clause stay with the owner.
+
+## D-119 Machine catalogue fed by customer machines (2026-11-23, owner idea, model by the PO)
+- Owner: once 2–3 workshops are signed, see the machines they enter in the backoffice and grow our own machine data from them.
+- Model (`docs/backoffice/veri-modeli.md` §6.11, R15): schema `catalog` with `controllers` and `machine_models` (profile template without cutting sets or tools, source, status draft/published, confidence reported/confirmed/machine_tested) and a nullable `machines.catalog_model_id`. Staff promote a customer machine to the catalogue from the backoffice; no company identity is copied.
+- A catalogue template only prefills a new machine profile, always as unverified; it never changes an existing profile and never replaces the air cut / test cut.
+- First rows come from the controller research (`docs/machines/controllers/`) and the pilot workshops. Part of backoffice phase 3. The terms of use need a line that anonymised machine specs may be reused (legal gate, owner).
