@@ -5,3 +5,4 @@ export * from './material';
 export * from './library';
 export * from './controller-library';
 export * from './maintenance';
+export * from './starting-values';

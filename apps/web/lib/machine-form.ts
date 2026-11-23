@@ -1,6 +1,12 @@
 /** Pure helpers of the machine profile form (spec §7.1, T107). */
 import {
   MATERIAL_KINDS,
+  startingValueSourceNames,
+  suggestCuttingSet,
+  toolFitHint,
+  type CuttingSuggestion,
+  type StartingNoteKey,
+  type ToolFitHint,
   type MachineProfile,
   type MaterialKind,
   type MaterialParams,
@@ -49,27 +55,126 @@ export function parseErrorText(
 }
 
 /**
- * A new parameter set as the form's "Ekle" adds it (T107): the given kind and thickness, the
- * form's starting values for feed, plunge, rpm (clamped to the spindle) and step-down, and the
- * profile's first tool. The user reviews and saves it; nothing is written without the form.
- * T265: the step-down never exceeds the sheet thickness (5 mm acrylic starts at 5, not 6).
+ * T265: the step-down never exceeds the sheet thickness. Kept for callers; the starting values now
+ * come from the built-in table (T327, D-120).
  */
 export const START_STEP_DOWN = 6;
 
+type StartingFields = Pick<MaterialParams, 'feed' | 'plungeFeed' | 'rpm' | 'stepDown'>;
+
+/**
+ * The built-in starting values (T327, D-120) for `material` at `thickness` with the profile's
+ * tool `toolNumber` on its spindle, or undefined when the table has no row (or the tool is not in
+ * the profile). Never a guess.
+ */
+export function startingSuggestion(
+  profile: Pick<MachineProfile, 'spindle' | 'tools'>,
+  material: MaterialKind,
+  thickness: number,
+  toolNumber: number,
+): CuttingSuggestion | undefined {
+  const tool = profile.tools.find((x) => x.number === toolNumber);
+  if (!tool) return undefined;
+  return suggestCuttingSet(material, thickness, tool, profile.spindle);
+}
+
+/** The four value fields of a suggestion, or empty fields (NaN) when there is none (T328). */
+function startingFields(s: CuttingSuggestion | undefined): StartingFields {
+  return s
+    ? { feed: s.feed, plungeFeed: s.plungeFeed, rpm: s.rpm, stepDown: s.stepDown }
+    : { feed: NaN, plungeFeed: NaN, rpm: NaN, stepDown: NaN };
+}
+
+/**
+ * The tool a new set starts with (PO B61): the first tool of the profile that suits the material
+ * per the table (a row exists and no fit hint, e.g. the single-flute for acrylic and PVC, the
+ * compression for melamine); else the first tool that has a table row for the material (filled,
+ * with the fit hint; e.g. melamine on a two-flute spiral); only then the first tool (empty fields).
+ */
+export function suitingTool(
+  profile: Pick<MachineProfile, 'spindle' | 'tools'>,
+  material: MaterialKind,
+  thickness: number,
+): number {
+  const fit = profile.tools.find(
+    (t) =>
+      toolFitHint(material, t) === null &&
+      suggestCuttingSet(material, thickness, t, profile.spindle) !== undefined,
+  );
+  const withRow =
+    fit ??
+    profile.tools.find(
+      (t) => suggestCuttingSet(material, thickness, t, profile.spindle) !== undefined,
+    );
+  return (withRow ?? profile.tools[0])?.number ?? 1;
+}
+
+/**
+ * A new parameter set as the form's "Ekle" and the "Kesim ayarı ekle" flow add it (T107, T258):
+ * the given kind and thickness, the first tool of the profile that suits the material (PO B61;
+ * `suitingTool`), and the built-in starting values for
+ * them (T328, D-120): always marked unverified until the user confirms or edits the row. No table
+ * row → the value fields start empty (the form asks for them), never fixed numbers.
+ */
 export function newParamSet(
   profile: Pick<MachineProfile, 'spindle' | 'tools'>,
   material: MaterialKind = 'mdf',
   thickness = 18,
 ): MaterialParams {
+  const tool = suitingTool(profile, material, thickness);
   return {
     material,
     thickness,
-    feed: 5000,
-    plungeFeed: 1500,
-    rpm: Math.min(Math.max(18000, profile.spindle.minRpm), profile.spindle.maxRpm),
-    stepDown: thickness > 0 ? Math.min(START_STEP_DOWN, thickness) : START_STEP_DOWN,
-    tool: profile.tools[0]?.number ?? 1,
+    ...startingFields(startingSuggestion(profile, material, thickness, tool)),
+    tool,
+    unverified: true,
   };
+}
+
+/**
+ * T328: a starting-value row (unverified, not yet edited by hand) after its kind, thickness or tool
+ * changed: the values follow the new choice. A row the user edited (no `unverified` mark) is never
+ * overwritten; the caller only changes the chosen field then.
+ */
+export function refreshStartingValues(
+  profile: Pick<MachineProfile, 'spindle' | 'tools'>,
+  set: MaterialParams,
+): void {
+  if (!set.unverified) return;
+  Object.assign(
+    set,
+    startingFields(startingSuggestion(profile, set.material, set.thickness, set.tool)),
+  );
+  delete set.copiedFrom;
+}
+
+/** What the form says under a starting-value row (T328). */
+export type StartingNote =
+  | { kind: 'table'; sources: string; note: StartingNoteKey | null; hint: ToolFitHint | null }
+  | { kind: 'none'; hint: ToolFitHint | null }
+  | { kind: 'other'; note: StartingNoteKey | null; hint: ToolFitHint | null };
+
+/**
+ * The note of an unverified row: "table" when its values are exactly the built-in suggestion,
+ * "none" when the table has no row for it, "other" for older starting values (T265) or a copy.
+ */
+export function startingNote(
+  profile: Pick<MachineProfile, 'spindle' | 'tools'>,
+  set: MaterialParams,
+): StartingNote {
+  const tool = profile.tools.find((x) => x.number === set.tool);
+  const hint = tool ? toolFitHint(set.material, tool) : null;
+  const s = startingSuggestion(profile, set.material, set.thickness, set.tool);
+  if (!s) return { kind: 'none', hint };
+  const same =
+    s.feed === set.feed &&
+    s.plungeFeed === set.plungeFeed &&
+    s.rpm === set.rpm &&
+    s.stepDown === set.stepDown;
+  const note = s.row.note ?? null;
+  return same
+    ? { kind: 'table', sources: startingValueSourceNames(s.row).join(', '), note, hint }
+    : { kind: 'other', note, hint };
 }
 
 /**
@@ -135,11 +240,8 @@ export function withParamSet(
   return {
     profile: {
       ...profile,
-      // T265: generic starting values, marked until the user confirms or edits the row.
-      materials: [
-        ...profile.materials,
-        { ...newParamSet(profile, set.material, set.thickness), unverified: true },
-      ],
+      // T265 / T328: starting values from the table, marked until the user confirms or edits.
+      materials: [...profile.materials, newParamSet(profile, set.material, set.thickness)],
     },
     index: profile.materials.length,
     added: true,
