@@ -56,6 +56,8 @@ import {
   FORM_SECTIONS,
   isDirty,
   newParamSet,
+  refreshStartingValues,
+  startingNote,
   parseErrorText,
   withParamSet,
   type FormSection,
@@ -980,6 +982,15 @@ export function MachineForm({
                     delete x.copiedFrom;
                     delete x.unverified;
                   });
+                // T328 (D-120): kind, thickness or tool of a starting-value row not yet edited by
+                // hand: the values follow the table. An edited row keeps its numbers.
+                const choose = (fn: (x: MaterialParams) => void) =>
+                  update((p) => {
+                    const x = p.materials[i] as MaterialParams;
+                    fn(x);
+                    if (x.unverified) refreshStartingValues(p, x);
+                    else delete x.copiedFrom;
+                  });
                 // T265: the headers carry the units, so the cells stay narrow and the whole row
                 // (Paso, Takım no) fits without sideways scrolling at 1440.
                 const cell = (
@@ -995,7 +1006,11 @@ export function MachineForm({
                     value={m[k]}
                     error={e(path(k))}
                     onParseError={onParseError}
-                    onChange={(v) => set((x) => void (x[k] = v))}
+                    onChange={(v) =>
+                      k === 'thickness' || k === 'tool'
+                        ? choose((x) => void (x[k] = v))
+                        : set((x) => void (x[k] = v))
+                    }
                   />
                 );
                 return [
@@ -1008,7 +1023,7 @@ export function MachineForm({
                       value={m.material}
                       options={o.material}
                       error={e(path('material'))}
-                      onChange={(v) => set((x) => void (x.material = v))}
+                      onChange={(v) => choose((x) => void (x.material = v))}
                     />
                   </div>,
                   cell('thickness', f.thickness),
@@ -1051,10 +1066,38 @@ export function MachineForm({
                         className="flex flex-col items-start gap-1 text-xs text-warning-text"
                         data-testid="material-unverified-note"
                       >
-                        <p className="flex items-start gap-1">
-                          <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                          {t.form.unverified}
-                        </p>
+                        {(() => {
+                          // T328 (D-120): where the numbers come from, the material note and a
+                          // tool hint (never a block).
+                          const n = startingNote(profile, set);
+                          const lines = [
+                            n.kind === 'table'
+                              ? fill(t.form.startingValue, { source: n.sources })
+                              : n.kind === 'none'
+                                ? t.form.startingNone
+                                : t.form.unverified,
+                            n.kind === 'none' || !n.note ? null : t.form.startingNotes[n.note],
+                            n.hint ? t.form.toolFit[n.hint] : null,
+                          ];
+                          const ids = [
+                            'material-starting-source',
+                            'material-starting-note',
+                            'material-tool-hint',
+                          ];
+                          return lines.map((text, k) =>
+                            text ? (
+                              <p
+                                key={ids[k]}
+                                className="flex items-start gap-1"
+                                data-testid={ids[k]}
+                                data-kind={k === 0 ? n.kind : undefined}
+                              >
+                                <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                                {text}
+                              </p>
+                            ) : null,
+                          );
+                        })()}
                         <Button
                           type="button"
                           variant="outline"

@@ -1558,6 +1558,7 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 - ★ Projeler row 205 px on a 3-sheet project: one line + "3 dosya" / zip button, no mid-word breaks; search / filter / sort in the URL [#11, #12]
 - Ana sayfa: "Bu hafta dışa aktarma" counts NC only (or relabel), deleted projects not counted; "Makine yok" when no active machine [#12]
 - Dışa aktar: the footer hint jumps to the checklist (or the list sits above Dosyalar); file names break at _ / - or are middle-truncated; report card time rounds like Simülasyon [#12]
+- Projeler: hide the "kaydedilmeden kapandı" draft banner when the server already has that save (the keepalive create landed): needs `lastSaveId` in the project list API; match it against the stored unit [tester B60, PO 2026-11-23]
 - Small server fixes: maintenance day in local time; client-log limit in bytes [T B38, T B43] (done in B46 #150, D-086)
 
 ### P5 Output (golden impact: tester gcode-safety review, D-051)   [status: done, B51 #155; float residue → T306]
@@ -1738,26 +1739,26 @@ Owner 2026-11-21, before the field test (D-112; usta raporu 2 "Elif": "depth exi
 
 Source for every number: `docs/materials/kesim-degerleri-arastirma.md` (PR #190; section d "starting values" and the consolidated table c). PO decisions: (1) values are **starting points, always unverified**: they never mark a set or a profile as verified; (2) MDF 18 / Ø8 stays exactly as today (6000 / 1500 / 18 000 / 6): goldens and the frozen default profile do not change; (3) the kinds stay as they are: `solidWood` starts from the **hardwood** row and `pvc` from the **rigid PVC** row (the safe side), with a note naming the softer variant; splitting the kinds is not part of this batch; (4) no metal here (M-Metal).
 
-### T327 Starting-value table in core   [status: todo]
+### T327 Starting-value table in core   [status: done]
 Spec: §3.6, §7.1 · Depends: – · From: owner 2026-11-23
-- [ ] `packages/core` gets a pure data table: material kind × tool type × flute count × diameter band → chip load (min / typ / max), rpm (typ, within the usual 6 000–24 000), step-down rule, plunge share, entry (straight / ramp), notes key; each row carries the source id from the research doc
-- [ ] `suggestCuttingSet(kind, thickness, tool, spindleRange)` returns feed, plunge feed, rpm, step-down (feed = chip load × flutes × rpm, rounded to 100 mm/min; rpm clamped to the machine range and the feed recomputed; step-down never above the tool's flute length and reduced by the research rule when the cut is deeper than 1 × Ø) or `undefined` when the table has no row (never a guess)
-- [ ] for MDF 18 with the Ø8 two-flute end mill the result equals today's built-in set exactly (test); property test: every suggestion is inside its row's chip-load band and the machine limits
-- [ ] no change to existing profiles, projects or goldens
+- [x] `packages/core` gets a pure data table: material kind × tool type × flute count × diameter band → chip load (min / typ / max), rpm (typ, within the usual 6 000–24 000), step-down rule, plunge share, entry (straight / ramp), notes key; each row carries the source id from the research doc
+- [x] `suggestCuttingSet(kind, thickness, tool, spindleRange)` returns feed, plunge feed, rpm, step-down (feed = chip load × flutes × rpm, rounded to 100 mm/min; rpm clamped to the machine range and the feed recomputed; step-down never above the tool's flute length and reduced by the research rule when the cut is deeper than 1 × Ø) or `undefined` when the table has no row (never a guess)
+- [x] for MDF 18 with the Ø8 two-flute end mill the result equals today's built-in set exactly (test); property test: every suggestion is inside its row's chip-load band and the machine limits
+- [x] no change to existing profiles, projects or goldens
 Tester focus: table rows against the research doc for 6 spot checks; clamping at 6 000 and 24 000 rpm; missing row → no suggestion.
 
-### T328 "Kesim ayarı ekle" starts from the material's values   [status: todo]
+### T328 "Kesim ayarı ekle" starts from the material's values   [status: done]
 Spec: §3.6 · Depends: T327 · From: owner 2026-11-23, CTO metal analysis (a new set starts at 5 000 mm/min, 18 000 rpm for every material today)
-- [ ] a new cutting set in the machine form, Ayarlar → Malzemeler and the "kesim ayarı yok" fix flow is prefilled from `suggestCuttingSet` for the chosen kind, thickness and tool; changing kind or tool before the first manual edit refreshes the values; a manual edit is never overwritten
-- [ ] the set shows "Başlangıç değeri: <kaynak kısa adı> · doğrulanmadı, önce deneme kesimi" and stays unverified; the existing "Değerleri doğruladım" gate (T265) is unchanged
-- [ ] a material note where the research has one: melamine (alt yüz / üst yüz kırılması, compression takım), acrylic and PVC (tek ağız, rampa, hava üfleme), plywood (yüz kırılması); a tool that does not fit the material (e.g. two-flute in acrylic) gives a hint, not a block
-- [ ] no table row → the fields start empty with "Bu malzeme için hazır değer yok", never the old fixed numbers
+- [x] a new cutting set in the machine form, Ayarlar → Malzemeler and the "kesim ayarı yok" fix flow is prefilled from `suggestCuttingSet` for the chosen kind, thickness and tool; changing kind or tool before the first manual edit refreshes the values; a manual edit is never overwritten
+- [x] the set shows "Başlangıç değeri: <kaynak kısa adı> · doğrulanmadı, önce deneme kesimi" and stays unverified; the existing "Değerleri doğruladım" gate (T265) is unchanged
+- [x] a material note where the research has one: melamine (alt yüz / üst yüz kırılması, compression takım), acrylic and PVC (tek ağız, rampa, hava üfleme), plywood (yüz kırılması); a tool that does not fit the material (e.g. two-flute in acrylic) gives a hint, not a block
+- [x] no table row → the fields start empty with "Bu malzeme için hazır değer yok", never the old fixed numbers
 Tester focus: every kind × Ø6 / Ø8; edit-then-change-kind keeps the edit; unverified export warning still shown.
 
-### T329 Example machine: real melamine and plywood sets   [status: todo]
+### T329 Example machine: real melamine and plywood sets   [status: done]
 Spec: §7.1 · Depends: T327 · From: D-046 (the two sets are copies of MDF 18)
-- [ ] `exampleMachineProfile()` (new companies only) takes its Melamin 18 and Kontrplak 18 sets from the table for its own tools instead of the MDF copy; `copiedFrom` is dropped for them; MDF 18 unchanged
-- [ ] existing companies' machines are not touched (no migration); the frozen `defaultMachineProfile()` and every golden stay byte-identical; e2e that export from the example machine with melamine or plywood are checked for stale expectations
+- [x] `exampleMachineProfile()` (new companies only) takes its Melamin 18 and Kontrplak 18 sets from the table for its own tools instead of the MDF copy; `copiedFrom` is dropped for them; MDF 18 unchanged
+- [x] existing companies' machines are not touched (no migration); the frozen `defaultMachineProfile()` and every golden stay byte-identical; e2e that export from the example machine with melamine or plywood are checked for stale expectations
 Tester focus: fresh company gets the three sets; an old company's machine is unchanged; goldens identical.
 
 ### Batch B62: T330–T332 (field rehearsal 2026-11-23, blockers before the machine; Dev 2)
