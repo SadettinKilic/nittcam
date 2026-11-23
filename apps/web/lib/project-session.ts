@@ -27,6 +27,7 @@ import {
   type SaveState,
   type SendResult,
 } from './autosave';
+import { holdQueueLocks, type LockApi } from './queue-lock';
 import { FALLBACK_TOOL_DIAMETER } from './draft-project';
 import type { ProjectDetail, SaveResponse } from './projects-api';
 
@@ -131,17 +132,14 @@ export interface SessionInit {
 const now = () => new Date().toISOString();
 
 /** The Web Locks API where the browser has it (B60: a lock dies with its page, crash included). */
-function webLocks(): LockManager | null {
+function webLocks(): LockApi | null {
   try {
-    return typeof navigator !== 'undefined' && navigator.locks ? navigator.locks : null;
+    return typeof navigator !== 'undefined' && navigator.locks
+      ? (navigator.locks as unknown as LockApi)
+      : null;
   } catch {
     return null;
   }
-}
-
-/** Lock name of a stored queue (B60): held by the page that writes it, for as long as it lives. */
-export function queueLockName(id: string | null, newId?: string): string {
-  return 'nittcam-queue:' + queueKey(id, newId);
 }
 
 /**
@@ -255,8 +253,14 @@ export function useProjectSession({
     return q;
   });
 
+  // B60 r2: the page's queue locks (set by the lock effect below).
+  const lockHolder = useRef<{ created(id: string): void } | null>(null);
   useEffect(() => {
-    queue.setOnCreated(onCreated);
+    queue.setOnCreated((id) => {
+      // B60 r2: the queue's lock moves to the project key (then the queue moves, see above).
+      lockHolder.current?.created(id);
+      onCreated(id);
+    });
   }, [queue, onCreated]);
 
   // Hand the replayed commands (or a renamed draft) to the queue once, after mount.
@@ -284,63 +288,66 @@ export function useProjectSession({
   // for as long as it lives; the browser frees it when the page dies (crash included). Granted at
   // once: whoever wrote a stored queue is gone, so it is taken over and replayed now. Held by a
   // live tab: that tab keeps it (two-tab rule unchanged) and this page waits for the lock.
+  // Fix round 2: the lock always follows the key the queue is stored under (`queue-lock.ts`): a
+  // created draft takes the project key's lock before its queue moves there.
   useEffect(() => {
     const locks = webLocks();
     if (!locks) return;
     const store = queueStore();
-    let release: () => void = () => {};
-    const held = new Promise<void>((r) => (release = r));
-    const abort = new AbortController();
-    let gone = false;
     const done = () => {
       recovering.current = false;
       setRecovered(true);
     };
-    const grant = (): Promise<void> => {
-      if (gone) return Promise.resolve();
-      const clean =
-        !queue.dirty && queue.projectId === initial.id && queue.baseRevision === initial.revision;
-      const stored = takeOverQueue(store, {
-        id: queue.projectId,
-        ...(boot.newId ? { newId: boot.newId } : {}),
-        server: { revision: initial.revision, lastSaveId: initial.lastSaveId ?? null },
-        clean,
-        pageId: queue.ownerId,
-      });
-      if (stored) {
-        const { replayed, unit } = replayStored(stack, stored);
-        setRestoredCount((n) => n + replayed.length);
-        if (replayed.length > 0 || stored.name !== initial.name) {
-          if (stored.name !== initial.name) setName(stored.name);
-          queue.restore({
-            entries: replayed,
-            project: stack.project,
-            name: stored.name,
-            ...(unit ? { unit } : {}),
+    const holder = holdQueueLocks(
+      locks,
+      { id: initial.id, ...(boot.newId ? { newId: boot.newId } : {}) },
+      {
+        onGrant: (draft) => {
+          const clean =
+            !queue.dirty &&
+            queue.projectId === initial.id &&
+            queue.baseRevision === initial.revision;
+          const stored = takeOverQueue(store, {
+            id: queue.projectId,
+            ...(boot.newId ? { newId: boot.newId } : {}),
+            server: { revision: initial.revision, lastSaveId: initial.lastSaveId ?? null },
+            clean,
+            pageId: queue.ownerId,
+            draft,
           });
-        }
-      }
-      const id = queue.projectId;
-      if (id) setParked(parkedQueue(store, id));
-      queue.claim();
-      done();
-      return held;
-    };
-    const name = queueLockName(initial.id, boot.newId);
-    locks
-      .request(name, { ifAvailable: true }, (lock) => {
-        if (lock) return grant();
-        done();
-        void locks.request(name, { signal: abort.signal }, () => grant()).catch(() => undefined);
-        return undefined;
-      })
-      .catch(() => done());
+          if (stored) {
+            const { replayed, unit } = replayStored(stack, stored);
+            setRestoredCount((n) => n + replayed.length);
+            if (replayed.length > 0 || stored.name !== initial.name) {
+              if (stored.name !== initial.name) setName(stored.name);
+              queue.restore({
+                entries: replayed,
+                project: stack.project,
+                name: stored.name,
+                ...(unit ? { unit } : {}),
+              });
+            }
+          }
+          const id = queue.projectId;
+          if (id) setParked(parkedQueue(store, id));
+          queue.claim();
+          done();
+        },
+        onWait: done,
+        onMoved: () => {
+          queue.adopt();
+          const id = queue.projectId;
+          if (id) setParked(parkedQueue(store, id));
+        },
+        onError: done,
+      },
+    );
+    lockHolder.current = holder;
     return () => {
-      gone = true;
-      abort.abort();
-      release();
+      lockHolder.current = null;
+      holder.dispose();
     };
-    // Once per page: the lock follows the queue the page was opened with.
+    // Once per page: the lock follows the queue the page was opened with (and its project).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue]);
 

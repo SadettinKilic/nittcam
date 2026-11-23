@@ -20,6 +20,7 @@ import {
   type SendResult,
   type StoredQueue,
 } from './autosave';
+import { holdQueueLocks, queueLockName, type LockApi } from './queue-lock';
 
 const AT = '2026-11-23T10:00:00.000+03:00';
 const NOW = 1_000_000;
@@ -72,6 +73,8 @@ function fakeServer() {
     lose: false,
     /** The request never reaches the server (offline, or cancelled with the page). */
     drop: false,
+    /** The request fails at once (offline), the page retries later. */
+    fail: false,
     apply(req: SaveRequest): SendResult {
       const id = req.id ?? req.newId ?? 'x';
       if (req.id === null) {
@@ -95,6 +98,7 @@ function fakeServer() {
     },
     send(req: SaveRequest): Promise<SendResult> {
       if (srv.drop) return new Promise<SendResult>(() => {});
+      if (srv.fail) return Promise.resolve({ ok: false, kind: 'network' });
       const r = srv.apply(req);
       return srv.lose ? new Promise<SendResult>(() => {}) : Promise.resolve(r);
     },
@@ -612,5 +616,313 @@ describe('B60: crash, then reopen (Web Locks)', () => {
     expect(takeUnsentQueue(storage, 'p1', { revision: 3 }, undefined, NOW)).toBeNull();
     expect(storage.getItem(queueKey('p1'))).toBeNull();
     expect(parkedQueue(storage, 'p1')?.entries.map((x) => x.command)).toEqual(['old']);
+  });
+});
+
+/**
+ * B60 fix round 2: the page holds the lock of the key its queue is stored under at every moment.
+ * A draft that becomes a project takes the project key's lock first, then moves the queue, then
+ * lets the draft key's lock go; a live tab that owns the project key keeps its queue.
+ */
+describe('B60 r2: the queue lock follows the queue key', () => {
+  /** A fake `navigator.locks`: exclusive locks, `ifAvailable`, waiters in order, `signal`. */
+  function fakeLocks() {
+    const holders = new Set<string>();
+    const waiters = new Map<string, Array<() => void>>();
+    const grant = (name: string, cb: (lock: unknown) => unknown): Promise<unknown> => {
+      holders.add(name);
+      return Promise.resolve(cb({ name })).finally(() => {
+        holders.delete(name);
+        waiters.get(name)?.shift()?.();
+      });
+    };
+    const api: LockApi = {
+      request(name, options, cb) {
+        if (!holders.has(name)) return grant(name, cb);
+        if (options.ifAvailable) return Promise.resolve(cb(null));
+        return new Promise((resolve, reject) => {
+          const go = () => void grant(name, cb).then(resolve, reject);
+          const list = waiters.get(name) ?? [];
+          list.push(go);
+          waiters.set(name, list);
+          options.signal?.addEventListener('abort', () => {
+            const i = list.indexOf(go);
+            if (i >= 0) list.splice(i, 1);
+            reject(new Error('aborted'));
+          });
+        });
+      },
+    };
+    /** Another live page holding `name` until the returned function is called. */
+    const holdElsewhere = (name: string) => {
+      let letGo: () => void = () => {};
+      void api.request(name, {}, () => new Promise<void>((r) => (letGo = r)));
+      return () => letGo();
+    };
+    return { api, held: (name: string) => holders.has(name), holdElsewhere };
+  }
+
+  const flush = async () => {
+    for (let i = 0; i < 6; i += 1) await settle();
+  };
+
+  /** What `useProjectSession` wires with locks: grant → take over + claim; moved → adopt. */
+  function session(
+    locks: LockApi,
+    storage: KeyValueStorage,
+    srv: Server,
+    init: { id: string | null; revision: number; newId?: string },
+  ) {
+    const p = page(storage, srv, init);
+    p.q.useLocks();
+    const events: string[] = [];
+    const holder = holdQueueLocks(
+      locks,
+      { id: init.id, ...(init.newId ? { newId: init.newId } : {}) },
+      {
+        onGrant: (draft) => {
+          events.push(draft ? 'grant' : 'grant-no-draft');
+          const left = takeOverQueue(storage, {
+            id: p.q.projectId,
+            ...(init.newId ? { newId: init.newId } : {}),
+            server: { revision: srv.revision, lastSaveId: srv.lastSaveId },
+            clean: !p.q.dirty && p.q.projectId === init.id && p.q.baseRevision === init.revision,
+            pageId: p.q.ownerId,
+            draft,
+          });
+          if (left && left.entries.length > 0) {
+            p.q.restore({
+              entries: left.entries,
+              project: P(left.entries.length),
+              name: left.name,
+              ...(left.unit ? { unit: { ...left.unit, project: P(left.unit.count) } } : {}),
+            });
+          }
+          p.q.claim();
+        },
+        onWait: () => events.push('wait'),
+        onMoved: () => {
+          events.push('moved');
+          p.q.adopt();
+        },
+        onError: () => events.push('error'),
+      },
+    );
+    p.q.setOnCreated((id) => holder.created(id));
+    /** Tab crash or navigation away: the queue stays as stored, every lock goes. */
+    const leave = () => {
+      p.q.dispose();
+      holder.dispose();
+    };
+    return { ...p, events, leave };
+  }
+
+  const stored = (storage: KeyValueStorage, key: string) => {
+    const raw = storage.getItem(key);
+    return raw ? (JSON.parse(raw) as StoredQueue) : null;
+  };
+  const commands = (q: StoredQueue | null) => q?.entries.map((x) => x.command);
+  const draftLock = queueLockName(null, D);
+  const projectLock = queueLockName(D);
+
+  /** Tab A: Yeni proje, its first save creates `D`. */
+  async function createdInA() {
+    const locks = fakeLocks();
+    const storage = memoryStorage();
+    const srv = fakeServer();
+    const a = session(locks.api, storage, srv, { id: null, revision: 0, newId: D });
+    await flush();
+    a.q.push({ entries: [e('parts')], project: P(1) });
+    await a.c.advance(1000);
+    await flush();
+    return { locks, storage, srv, a };
+  }
+
+  /** A draws "rect" that does not reach the server. */
+  async function unsentRect(
+    srv: Server,
+    a: { q: AutosaveQueue; c: { advance(ms: number): Promise<void> } },
+  ) {
+    srv.fail = true;
+    a.q.push({ entries: [e('rect')], project: P(2) });
+    await a.c.advance(1000);
+    srv.fail = false;
+  }
+
+  it('created in this tab: the project key lock is held before the draft lock goes', async () => {
+    const { locks, storage, srv, a } = await createdInA();
+    expect(srv.log).toEqual(['parts']);
+    expect(a.events).toEqual(['grant', 'moved']);
+    expect(a.q.storageKey).toBe(queueKey(D));
+    expect(locks.held(projectLock)).toBe(true);
+    expect(locks.held(draftLock)).toBe(false);
+    await unsentRect(srv, a);
+    expect(stored(storage, queueKey(D))?.owner).toBe(a.q.ownerId);
+    expect(stored(storage, queueKey(null, D))).toBeNull();
+  });
+
+  it('created in tab A, opened in tab B while A lives: B waits, A keeps its queue and saves', async () => {
+    const { locks, storage, srv, a } = await createdInA();
+    await unsentRect(srv, a);
+    const b = session(locks.api, storage, srv, { id: D, revision: srv.revision });
+    await flush();
+    expect(b.events).toEqual(['wait']);
+    expect(b.q.pending).toEqual([]);
+    expect(srv.log).toEqual(['parts']);
+    expect(commands(stored(storage, queueKey(D)))).toEqual(['rect']);
+    // A is still the base: its next save goes through without a conflict.
+    await a.q.flush();
+    expect(a.q.state).toBe('saved');
+    expect(srv.log).toEqual(['parts', 'rect']);
+    a.leave();
+    await flush();
+    expect(b.events).toEqual(['wait', 'grant']);
+    expect(b.q.pending).toEqual([]);
+  });
+
+  it('created in tab A, which then crashes: B takes the queue over once', async () => {
+    const { locks, storage, srv, a } = await createdInA();
+    await unsentRect(srv, a);
+    const b = session(locks.api, storage, srv, { id: D, revision: srv.revision });
+    await flush();
+    a.leave();
+    await flush();
+    expect(b.q.pending.map((x) => x.command)).toEqual(['rect']);
+    await b.c.advance(1000);
+    expect(srv.log).toEqual(['parts', 'rect']);
+  });
+
+  it('a live tab already owns the project key: no move, no overwrite; the move follows later', async () => {
+    const locks = fakeLocks();
+    const storage = memoryStorage();
+    const srv = fakeServer();
+    const a = session(locks.api, storage, srv, { id: null, revision: 0, newId: D });
+    await flush();
+    const letGo = locks.holdElsewhere(projectLock);
+    storage.setItem(
+      queueKey(D),
+      JSON.stringify({
+        baseRevision: 1,
+        entries: [e('theirs')],
+        name: 'Proje',
+        owner: 'x',
+        at: NOW,
+      }),
+    );
+    a.q.push({ entries: [e('parts')], project: P(1) });
+    await a.c.advance(1000);
+    await flush();
+    expect(srv.log).toEqual(['parts']);
+    expect(a.events).toEqual(['grant']);
+    expect(locks.held(draftLock)).toBe(true);
+    expect(a.q.storageKey).toBe(queueKey(null, D));
+    await unsentRect(srv, a);
+    expect(commands(stored(storage, queueKey(D)))).toEqual(['theirs']);
+    const mine = stored(storage, queueKey(null, D));
+    expect(commands(mine)).toEqual(['rect']);
+    expect(mine?.newId).toBe(D);
+    // The other tab is gone: A takes the project key, its left queue is parked, A's moves there.
+    letGo();
+    await flush();
+    expect(a.events).toEqual(['grant', 'moved']);
+    expect(locks.held(draftLock)).toBe(false);
+    expect(commands(parkedQueue(storage, D))).toEqual(['theirs']);
+    expect(commands(stored(storage, queueKey(D)))).toEqual(['rect']);
+    expect(stored(storage, queueKey(null, D))).toBeNull();
+  });
+
+  it('a saved project takes its draft queue only when the draft lock is free too', async () => {
+    const locks = fakeLocks();
+    const storage = memoryStorage();
+    const srv = fakeServer();
+    // Tab A is a draft of D; tab B has D open before A's create lands (it holds D's lock).
+    const a = session(locks.api, storage, srv, { id: null, revision: 0, newId: D });
+    await flush();
+    const b = session(locks.api, storage, srv, { id: D, revision: 1 });
+    await flush();
+    expect(b.events).toEqual(['grant-no-draft']);
+    // A creates D but cannot get the project key: its unsent "rect" stays under the draft key.
+    a.q.push({ entries: [e('parts')], project: P(1) });
+    await a.c.advance(1000);
+    await unsentRect(srv, a);
+    await flush();
+    expect(a.events).toEqual(['grant']);
+    expect(commands(stored(storage, queueKey(null, D)))).toEqual(['rect']);
+    expect(b.q.pending).toEqual([]);
+    expect(stored(storage, queueKey(D))).toBeNull();
+    // A crashes, then B leaves: the next opener holds both locks and takes it once.
+    a.leave();
+    b.leave();
+    await flush();
+    const c = session(locks.api, storage, srv, { id: D, revision: srv.revision });
+    await flush();
+    expect(c.events).toEqual(['grant']);
+    expect(c.q.pending.map((x) => x.command)).toEqual(['rect']);
+    expect(stored(storage, queueKey(null, D))).toBeNull();
+    await c.c.advance(1000);
+    expect(srv.log).toEqual(['parts', 'rect']);
+  });
+
+  it('settle on a fresh project (T292 split-off): the lock moves with the created id', async () => {
+    const locks = fakeLocks();
+    const storage = memoryStorage();
+    const srv = fakeServer();
+    const a = session(locks.api, storage, srv, { id: null, revision: 0, newId: D });
+    await flush();
+    a.q.push({ entries: [e('parts')], project: P(1) });
+    expect(await a.q.settle()).toBe(D);
+    await flush();
+    expect(locks.held(projectLock)).toBe(true);
+    expect(locks.held(draftLock)).toBe(false);
+    expect(a.q.storageKey).toBe(queueKey(D));
+  });
+
+  it('navigation to another project in the same tab lets the left project lock go', async () => {
+    const locks = fakeLocks();
+    const storage = memoryStorage();
+    const srv = savedProject();
+    const one = session(locks.api, storage, srv, { id: D, revision: 1 });
+    await flush();
+    expect(locks.held(projectLock)).toBe(true);
+    one.leave();
+    const two = session(locks.api, storage, srv, { id: 'p2', revision: 1 });
+    await flush();
+    expect(locks.held(projectLock)).toBe(false);
+    expect(locks.held(queueLockName('p2'))).toBe(true);
+    two.leave();
+    const back = session(locks.api, storage, srv, { id: D, revision: 1 });
+    await flush();
+    expect(back.events).toEqual(['grant']);
+  });
+
+  it('a page left while waiting for the project key lets every lock go', async () => {
+    const locks = fakeLocks();
+    const storage = memoryStorage();
+    const srv = fakeServer();
+    const letGo = locks.holdElsewhere(projectLock);
+    const a = session(locks.api, storage, srv, { id: null, revision: 0, newId: D });
+    await flush();
+    a.q.push({ entries: [e('parts')], project: P(1) });
+    await a.c.advance(1000);
+    await flush();
+    a.leave();
+    await flush();
+    expect(locks.held(draftLock)).toBe(false);
+    letGo();
+    await flush();
+    expect(locks.held(projectLock)).toBe(false);
+  });
+
+  it('without locks the queue moves to the project key at the create (age rule, T326)', async () => {
+    const storage = memoryStorage();
+    const srv = fakeServer();
+    const a = page(storage, srv, { id: null, revision: 0, newId: D });
+    a.q.push({ entries: [e('parts')], project: P(1) });
+    expect(a.q.storageKey).toBe(queueKey(null, D));
+    await a.c.advance(1000);
+    expect(a.q.storageKey).toBe(queueKey(D));
+    await unsentRect(srv, a);
+    expect(commands(stored(storage, queueKey(D)))).toEqual(['rect']);
+    expect(stored(storage, queueKey(null, D))).toBeNull();
   });
 });

@@ -265,6 +265,12 @@ export function takeUnsentQueue(
     owned?: boolean;
     /** This page's own id: its own queue is never "taken". */
     pageId?: string;
+    /**
+     * B60 fix round 2: whether the queue of the draft a saved project came from may be looked at.
+     * With locks only when this page also holds the draft's lock (its page is gone); a live page
+     * that created the project still owns that queue until it moves it.
+     */
+    draft?: boolean;
   } = {},
 ): StoredQueue | null {
   const state: ServerState = typeof server === 'number' ? { revision: server } : server;
@@ -273,7 +279,12 @@ export function takeUnsentQueue(
     forget(storage, queueKey(null));
     if (!newId) return null;
   }
-  const keys = id === null ? [queueKey(null, newId)] : [queueKey(id), queueKey(null, id)];
+  const keys =
+    id === null
+      ? [queueKey(null, newId)]
+      : opts.draft === false
+        ? [queueKey(id)]
+        : [queueKey(id), queueKey(null, id)];
   for (const key of keys) {
     const q = readQueue(storage, key);
     if (!q) {
@@ -292,8 +303,9 @@ export function takeUnsentQueue(
       forget(storage, key);
       continue;
     }
-    if (left !== q && left.entries.length === 0) {
-      // Everything went through; only a name might still differ (the page compares it).
+    if ((left !== q && left.entries.length === 0) || (opts.owned && draftKey)) {
+      // Everything went through; only a name might still differ (the page compares it). B60 r2: a
+      // draft's queue taken under its lock is this page's now (it stores it under its own key).
       forget(storage, key);
     }
     return left;
@@ -309,17 +321,27 @@ export function takeUnsentQueue(
  */
 export function takeOverQueue(
   storage: KeyValueStorage | null | undefined,
-  s: { id: string | null; newId?: string; server: ServerState; clean: boolean; pageId: string },
+  s: {
+    id: string | null;
+    newId?: string;
+    server: ServerState;
+    clean: boolean;
+    pageId: string;
+    /** B60 r2: this page holds the lock of the draft the project came from too (default true). */
+    draft?: boolean;
+  },
   now: number = Date.now(),
 ): StoredQueue | null {
   if (s.clean) {
     return takeUnsentQueue(storage, s.id, s.server, s.newId, now, {
       owned: true,
       pageId: s.pageId,
+      ...(s.draft === false ? { draft: false } : {}),
     });
   }
   if (s.id === null) return null;
-  for (const key of [queueKey(s.id), queueKey(null, s.id)]) {
+  const keys = s.draft === false ? [queueKey(s.id)] : [queueKey(s.id), queueKey(null, s.id)];
+  for (const key of keys) {
     const q = readQueue(storage, key);
     if (!q || q.owner === s.pageId) continue;
     if (key !== queueKey(s.id) && q.newId !== s.id) continue;
@@ -368,6 +390,12 @@ export class AutosaveQueue {
    */
   private locked = false;
   private claimed = false;
+  /**
+   * B60 fix round 2: the key the queue is stored under. With locks it is the key whose lock the
+   * page holds: a created project keeps its draft key until the page holds the project key's lock
+   * (`adopt`); without locks it follows the id at once.
+   */
+  private key: string;
   private readonly deps: AutosaveDeps;
   private createdListener: ((id: string) => void) | undefined;
 
@@ -390,6 +418,7 @@ export class AutosaveQueue {
     this.revision = init.revision;
     this.name = init.name;
     this.project = init.project;
+    this.key = queueKey(init.id, init.newId);
   }
 
   get state(): SaveState {
@@ -408,6 +437,10 @@ export class AutosaveQueue {
   get dirty(): boolean {
     return this.generation !== this.savedGeneration;
   }
+  /** B60 r2: the key the queue is stored under (the page holds that key's lock). */
+  get storageKey(): string {
+    return this.key;
+  }
   /** Id of this page (owner of the stored queue it writes). */
   get ownerId(): string {
     return this.pageId;
@@ -425,6 +458,27 @@ export class AutosaveQueue {
   claim(): void {
     this.claimed = true;
     this.persist();
+  }
+
+  /**
+   * B60 fix round 2: the page created its project under a draft key and now holds the lock of the
+   * project key too: the queue moves there (the caller releases the draft key's lock after this).
+   * A queue a gone page left under the project key is parked, never overwritten or dropped.
+   */
+  adopt(): void {
+    if (this.disposed || this.id === null) return;
+    const to = queueKey(this.id);
+    if (this.key === to) return;
+    const from = this.key;
+    const left = readQueue(this.deps.storage, to);
+    if (left && left.owner !== this.pageId) {
+      parkQueue(this.deps.storage, this.id, left);
+      forget(this.deps.storage, to);
+    }
+    this.key = to;
+    this.claimed = true;
+    this.persist();
+    this.removeStored(from);
   }
 
   /** Records changes (new log entries and/or the resulting project, a new name). */
@@ -533,7 +587,7 @@ export class AutosaveQueue {
     this.entries = [];
     this.unit = null;
     this.savedGeneration = this.generation;
-    this.removeStored(queueKey(this.id, this.newId));
+    this.removeStored(this.key);
     this.setState('idle');
   }
 
@@ -608,7 +662,7 @@ export class AutosaveQueue {
     if (this.disposed) return;
 
     if (result.ok) {
-      const oldKey = queueKey(this.id, this.newId);
+      const oldKey = this.key;
       this.id = result.id;
       this.revision = result.revision;
       this.entries.splice(0, unit.count);
@@ -616,7 +670,16 @@ export class AutosaveQueue {
       this.savedGeneration = unit.generation;
       this.attempt = 0;
       if (wasNew) {
-        this.removeStored(oldKey);
+        // B60 r2: with locks the queue stays under the draft key (whose lock this page holds)
+        // until the page holds the project key's lock too (`adopt`); a live tab that opened the
+        // project meanwhile keeps its own queue. Without locks it moves at once (T326 age rule).
+        if (!this.locked) {
+          this.removeStored(oldKey);
+          this.key = queueKey(result.id);
+        }
+        // The stored queue reflects the create before the page reacts to it (a page being closed
+        // may not get further than this).
+        this.persist();
         this.createdListener?.(result.id);
       }
       this.persist();
@@ -658,7 +721,8 @@ export class AutosaveQueue {
 
   /** T326: whether this page may write the stored queue (not another live page's). */
   private mayWrite(key: string): boolean {
-    if (this.claimed) return true;
+    // B60 r2: the lock this page holds is the one of its own key, not of any other.
+    if (this.claimed && key === this.key) return true;
     const q = readQueue(this.deps.storage, key);
     if (!q || q.owner === this.pageId) return true;
     if (this.locked) return false;
@@ -666,7 +730,8 @@ export class AutosaveQueue {
   }
 
   private persist(): void {
-    const key = queueKey(this.id, this.newId);
+    const key = this.key;
+    const draft = this.newId !== undefined && key === queueKey(null, this.newId);
     if (!this.dirty) {
       this.removeStored(key);
       return;
@@ -676,7 +741,8 @@ export class AutosaveQueue {
       baseRevision: this.revision,
       entries: this.entries,
       name: this.name,
-      ...(this.id === null && this.newId ? { newId: this.newId } : {}),
+      // A draft key names its draft (also after the create, until the queue moves: D-094).
+      ...(draft ? { newId: this.newId } : {}),
       ...(this.unit ? { unit: { saveId: this.unit.saveId, count: this.unit.count } } : {}),
       owner: this.pageId,
       at: this.now(),
