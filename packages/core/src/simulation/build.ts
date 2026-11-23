@@ -7,6 +7,7 @@
  */
 import { checkSheetPoint, type CheckFrame } from '../gcode-check';
 import { gcodeMoveLength, sampleGcodeMove, type GcodeReadResult } from '../gcode-reader';
+import { effectiveFeed } from '../toolpath/stats';
 import type { SimContour, SimFile, SimSheet, SimStep } from './types';
 
 /** Chord tolerance of the drawn arcs, mm (far below a screen pixel at any useful zoom). */
@@ -28,6 +29,11 @@ export interface SimSheetInput {
   frame: CheckFrame;
   /** mm/min, > 0. */
   rapidFeed: number;
+  /**
+   * T335 (N4): the machine's feed ceiling (`machineFeedLimits`); a feed move is timed at most at
+   * it (the plunge ceiling for a move down into the material) and at the rapid rate.
+   */
+  feedCap?: { feed: number; plunge: number };
   /** Tool diameters of the machine profile by tool number. */
   toolDiameters: Readonly<Record<number, number>>;
 }
@@ -149,10 +155,11 @@ export function buildSimSheet(input: SimSheetInput): SimSheet {
       const length = gcodeMoveLength(m);
       const rapid = m.type === 'rapid';
       const feed = rapid ? null : (m.feed ?? FALLBACK_FEED);
-      const seconds = Math.max(
-        SIM_MIN_STEP_SECONDS,
-        (length / (rapid ? rapidFeed : (feed ?? FALLBACK_FEED))) * 60,
-      );
+      const timed =
+        feed === null
+          ? rapidFeed
+          : effectiveFeed(feed, from.z, checkSheetPoint(frame, m.to).z, rapidFeed, input.feedCap);
+      const seconds = Math.max(SIM_MIN_STEP_SECONDS, (length / timed) * 60);
       const t0 = t + dwell;
       t = t0 + seconds;
       const known = xyKnown;

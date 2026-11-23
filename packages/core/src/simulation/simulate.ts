@@ -6,7 +6,7 @@
 import { exportNc, type ExportNcOptions, type ExportNcResult } from '../export';
 import { checkFrame, type CheckFrame } from '../gcode-check';
 import { readGcode, type GcodeReadResult } from '../gcode-reader';
-import type { MachineProfile } from '../machine';
+import { machineFeedLimits, type MachineProfile } from '../machine';
 import { parsePostConfig, type PostProfileVersion } from '../post';
 import type { Project } from '../schema';
 import { defaultSheet, sheetSizeOf } from '../schema';
@@ -105,6 +105,7 @@ export function simulateProject(
   };
   const opts = readerOptions(profile, post);
   const rapidFeed = profile.rapidFeed ?? SIM_DEFAULT_RAPID_FEED;
+  const limits = machineFeedLimits(profile);
   const toolDiameters: Record<number, number> = {};
   for (const tool of profile.tools) toolDiameters[tool.number] = tool.diameter;
 
@@ -131,6 +132,7 @@ export function simulateProject(
         files: bySheet.get(sheet) ?? [],
         frame: own,
         rapidFeed,
+        feedCap: { feed: limits.feed.max, plunge: limits.plungeFeed.max },
         toolDiameters,
       });
       return own === frame ? sim : { ...sim, machine: simMachineFrame(profile, own) };

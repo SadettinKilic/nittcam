@@ -1800,11 +1800,11 @@ Spec: §7.2 · Depends: T324, T288 · From: field rehearsal N1 · Decision: D-12
 - [x] Simülasyon / Uyarılar shows the same warning naming the parts
 - [x] new fixture + golden for ramp + small part (`needs-human`); the independent checker still accepts the file
 
-### T335 End at the park point; time estimate at machine speed (N2, N4; rider)   [status: todo]
+### T335 End at the park point; time estimate at machine speed (N2, N4; rider)   [status: done]
 Spec: §7.2, §6.6 · Depends: T309, T330 · From: field rehearsal N2, N4 · Decision: D-127
-- [ ] park on: program end = safe Z → spindle off → park move → vacuum off → M30; the checker accepts the end G53 only at the profile's point; park off byte-identical
-- [ ] machine form hint and field kit say the program ends at park
-- [ ] the time estimate clamps every move at the machine's feed ceiling and the rapid rate
+- [x] park on: program end = safe Z → spindle off → park move → vacuum off → M30; the checker accepts the end G53 only at the profile's point; park off byte-identical
+- [x] machine form hint and field kit say the program ends at park
+- [x] the time estimate clamps every move at the machine's feed ceiling and the rapid rate
 
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)

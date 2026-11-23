@@ -409,10 +409,13 @@ class Writer {
    * T309 (D-097): before a manual tool change pause, go to the profile's park point: up to safe Z,
    * then `G53 G0 X.. Y..` (machine coordinates, independent of the work zero) at safe Z. Nothing
    * when the park is off or the post has no G53. XY in the work frame is unknown afterwards.
+   * T335 (N2): also at the program end (`atEnd`), after the spindle is off, when the tool change
+   * is manual (the checker knows the park point only then).
    */
-  private park(): void {
+  park(atEnd = false): void {
     const park = this.c.profile.toolChanger.park;
     if (!park?.enabled || this.c.cfg.motion.machineCoordinates !== true) return;
+    if (atEnd && this.c.cfg.toolChange.mode !== 'manual') return;
     const env = this.c.profile.workEnvelope;
     if (
       !Number.isFinite(park.x) ||
@@ -426,7 +429,11 @@ class Writer {
     const d = this.c.cfg.decimals.xy;
     // T332 (field rehearsal S1): G53 is machine coordinates; an unhomed machine hits a limit.
     this.comment('PARK ICIN MAKINE HOME EDILMIS OLMALI');
-    this.comment('PARK: TAKIM DEĞİŞİM NOKTASI (MAKİNE KOORDİNATI)');
+    this.comment(
+      atEnd
+        ? 'PARK: PROGRAM SONU, PLAKA BOSALTMA (MAKİNE KOORDİNATI)'
+        : 'PARK: TAKIM DEĞİŞİM NOKTASI (MAKİNE KOORDİNATI)',
+    );
     const rapid = this.c.cfg.motion.rapid;
     this.block([
       'G53',
@@ -811,9 +818,10 @@ function renderProgram(
   w.safeZ();
   if (c.vacuum) w.block([c.vacuum.on]);
   for (const op of ops) w.operation(op);
-  // Rule 7: safe Z (once), spindle off, vacuum off, end code.
+  // Rule 7: safe Z (once), spindle off, [park, T335], vacuum off, end code.
   w.endSafeZ();
   w.spindleOff();
+  w.park(true);
   if (c.vacuum) w.block([c.vacuum.off]);
   for (const l of cfg.program.end) w.block([l]);
   for (const l of cfg.program.suffix) w.raw(l);

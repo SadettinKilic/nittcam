@@ -1756,7 +1756,10 @@ export function buildToolpath(
     toolpath,
     warnings,
     errors,
-    summary: summarizeToolpath(toolpath, rapidFeed),
+    summary: summarizeToolpath(toolpath, rapidFeed, {
+      feed: feedLimits.feed.max,
+      plunge: feedLimits.plungeFeed.max,
+    }),
     order: orderSummary(order),
   };
 }

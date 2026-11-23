@@ -368,7 +368,7 @@
         "capacity": "Takım kapasitesi",
         "g43": "Takım boyu telafisi var (G43)",
         "park": "Takım değişiminde park noktasına git",
-        "parkHelp": "Takım değiştirirken makine buraya gelsin: önce güvenli Z'ye çıkar, sonra makine koordinatındaki bu X/Y'ye (G53) gider ve durur. İş sıfırından bağımsızdır.",
+        "parkHelp": "Takım değiştirirken makine buraya gelsin: önce güvenli Z'ye çıkar, sonra makine koordinatındaki bu X/Y'ye (G53) gider ve durur. Program bitince de spindle durduktan sonra buraya gider, plaka boşaltmaya hazır olur. İş sıfırından bağımsızdır.",
         "parkX": "Park X (mm)",
         "parkY": "Park Y (mm)",
         "parkXYHelp": "Makine koordinatı (G53): kumandanın makine/mutlak ekranındaki değer, makine sıfırına (home) göre. Eksen hareket alanının içinde olmalı.",
@@ -1244,7 +1244,7 @@
       "TOOL_CHANGE_BELOW_SAFE_Z": "Takım değişimi güvenli Z'nin altında.",
       "NO_SAFE_Z_AFTER_TOOL_CHANGE": "Takım değişiminden sonra önce güvenli Z'ye kalkılmıyor.",
       "FEED_FROM_UNKNOWN_POSITION": "Kesim, bilinmeyen bir konumdan başlıyor.",
-      "MACHINE_MOVE": "Makine koordinatında (G53) bir hareket var ama makine profilindeki park noktası değil (ya da güvenli Z'de, spindle kapalıyken ve hemen ardından duraklama ile değil).",
+      "MACHINE_MOVE": "Makine koordinatında (G53) bir hareket var ama makine profilindeki park noktası değil (ya da güvenli Z'de, spindle kapalıyken ve hemen ardından duraklama veya program sonu ile değil).",
       "PLUNGE_TOO_FAST": "Dalma, dalma beslemesinden hızlı.",
       "FEED_ABOVE_MACHINE": "İlerleme makinenin sınırının üstünde.",
       "RAMP_OUTSIDE_KERF": "Rampa, girdiği kesim çizgisinin dışına çıkıyor.",
@@ -2391,7 +2391,7 @@
     "park": {
       "title": "Not: takım değişimi ve park konumu",
       "text": "Elle takım değişiminde makine malzemenin 20 mm üstünde durur; ayrı bir park konumu yok. Takımı değiştirmeden önce spindle’ın durduğunu görün, gerekirse Z’yi elle kaldırın. Bu yükseklik sizin makinenizde yeterli mi, not alın.",
-      "on": "Elle takım değişiminde makine önce güvenli Z'ye (malzemenin 20 mm üstü) çıkar, sonra makine koordinatında X {x} / Y {y} park noktasına gider (G53) ve durur. Park noktası makine koordinatıdır: makine açıldıktan sonra referanslanmış (home) olmalı; değilse park hareketi sınır anahtarına gidebilir. Makinenizde home anahtarı yoksa ilk air cut için park noktasını kapatın. Takımı değiştirmeden önce spindle'ın durduğunu görün; park noktasının sizin makinenizde rahat bir yer olduğunu not alın.",
+      "on": "Elle takım değişiminde makine önce güvenli Z'ye (malzemenin 20 mm üstü) çıkar, sonra makine koordinatında X {x} / Y {y} park noktasına gider (G53) ve durur. Program bitince de makine spindle durduktan sonra park noktasına gider; plaka boşaltmaya hazır olur. Park noktası makine koordinatıdır: makine açıldıktan sonra referanslanmış (home) olmalı; değilse park hareketi sınır anahtarına gidebilir. Makinenizde home anahtarı yoksa ilk air cut için park noktasını kapatın. Takımı değiştirmeden önce spindle'ın durduğunu görün; park noktasının sizin makinenizde rahat bir yer olduğunu not alın.",
       "off": "Uyarı: park noktası kapalı. Takım değişiminde takım plakanın üstünde kalır; park noktası ayarlayın.",
       "hint": "Park noktası makine profilinde açılabilir: Makineler › makine › Takım değiştirici › “Takım değişiminde park noktasına git” (makine koordinatı, G53)."
     },
