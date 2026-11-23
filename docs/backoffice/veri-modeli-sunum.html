@@ -63,7 +63,7 @@
   <div class="brand">Nitt<b>CAM</b></div>
   <h1>Backoffice veri modeli</h1>
   <p class="sub">Firma ve konum, kullanıcı ve oturum, abonelik, kullanım analitiği, CRM, destek, denetim ve KVKK</p>
-  <p style="margin-top:70px;color:#9fb3bf;font-size:16px">Öneri dokümanı · Data Engineer · 22 Kasım 2026 · Ayrıntılar: <span class="mono">docs/backoffice/veri-modeli.md</span><br>Tüm firma, kişi ve fiyat örnekleri uydurmadır; fiyatlar sahibin kararıdır.</p>
+  <p style="margin-top:70px;color:#9fb3bf;font-size:16px">Öneri dokümanı v2 · Data Engineer · 22 Kasım 2026, gözden geçirme 23 Kasım 2026 · Ayrıntılar: <span class="mono">docs/backoffice/veri-modeli.md</span><br>Tüm firma, kişi ve fiyat örnekleri uydurmadır; fiyatlar sahibin kararıdır.</p>
 </section>
 
 <!-- 2 Problem -->
@@ -134,8 +134,8 @@
     <div style="display:flex;flex-direction:column;gap:10px">
       <div class="small" style="font-weight:700">Backoffice · <code>nittcam_bo</code> (MFA, görünümler) · İşler · <code>nittcam_jobs</code></div>
       <div class="schema s-bo"><b>bo</b>staff_users + v_company_overview, v_company_users / machines / projects (metaveri), v_map_provinces / districts / pins</div>
-      <div class="schema s-bo"><b>crm</b>accounts (1:1 firma), leads, contacts, activities (+ notlar), tasks, tags, entity_tags</div>
-      <div class="schema s-an"><b>analytics</b>user_sessions, user_activity_hourly, event_types, events (aylık bölüm), daily_company_usage, daily_user_usage, mv_company_health, mv_mrr_monthly</div>
+      <div class="schema s-bo"><b>crm</b>accounts (aday + müşteri tek tablo), contacts, activities (+ notlar), tasks, tags, account_tags</div>
+      <div class="schema s-an"><b>analytics</b>user_sessions, user_activity_hourly, event_types, events (aylık bölüm), daily_company_usage, daily_user_usage, daily_project_usage, company_health_daily, mv_mrr_monthly</div>
       <div class="schema s-bo"><b>audit · privacy</b>audit_log (yalnız INSERT, yıllık bölüm) · legal_documents, consents, data_subject_requests, retention_policies</div>
     </div>
   </div>
@@ -176,7 +176,7 @@
         <text x="34" y="386" font-weight="700" font-size="15">Kullanım ve olaylar</text>
         <text x="34" y="410">event_types ─ events (aylık bölüm)</text>
         <text x="34" y="430">daily_company_usage, daily_user_usage</text>
-        <text x="34" y="450">mv_company_health, mv_mrr_monthly</text>
+        <text x="34" y="450">company_health_daily, mv_mrr_monthly</text>
         <text x="34" y="470">kaynak: exports, project_commands</text></g>
       <g><rect x="836" y="30" width="280" height="120" rx="10" fill="#e6eef8" stroke="#bcd0ea"/>
         <text x="850" y="56" font-weight="700" font-size="15">Abonelik ve faturalama</text>
@@ -186,8 +186,8 @@
         <text x="850" y="140">dunning_steps</text></g>
       <g><rect x="836" y="190" width="280" height="120" rx="10" fill="#e3f2ee" stroke="#b4dccf"/>
         <text x="850" y="216" font-weight="700" font-size="15">CRM</text>
-        <text x="850" y="240">accounts (1:1), leads → companies</text>
-        <text x="850" y="260">contacts (firma veya lead)</text>
+        <text x="850" y="240">accounts (aday + müşteri)</text>
+        <text x="850" y="260">contacts (hesaba bağlı)</text>
         <text x="850" y="280">activities (+ not), tasks</text>
         <text x="850" y="300">tags ─ entity_tags · bo.staff_users</text></g>
       <g><rect x="836" y="360" width="280" height="120" rx="10" fill="#e3f2ee" stroke="#b4dccf"/>
@@ -228,24 +228,25 @@
 <section class="slide">
   <div class="kicker">Alan 2 · Kullanıcı ve oturum</div>
   <h2>Yönetici ve operatör oturumları, gerçek etkin süre</h2>
-  <p class="sub">Better Auth tabloları kısa ömürlü; analiz için kalıcı oturum kaydı ayrı tutulur.</p>
+  <p class="sub">Kimlik oturumu (çerez) kısa ömürlü teknik kayıt; iş oturumu ayrı ve kalıcı. Süre proje bazında da tutulur.</p>
   <div class="grid2">
     <div class="card"><h3>Tablolar</h3><ul>
       <li><code>users</code> + <code>status</code> (invited / active / disabled), <code>last_login_at</code>, <code>deleted_at</code>; e-posta tekilliği kısmi indeks</li>
       <li><code>auth_sessions</code>: token, süre, cihaz, <code>role_at_login</code>, <code>company_id</code> (RLS)</li>
-      <li><code>analytics.user_sessions</code>: <b>giriş anındaki rol</b>, başlangıç, son görülme, bitiş nedeni (logout, idle_timeout, user_switch…), <code>active_seconds</code>, <code>device_id</code>, IP öneki (/24)</li>
-      <li><code>analytics.user_activity_hourly</code>: kullanıcı × saat etkin saniye → gün bölünmesi doğru, saat ısı haritası</li></ul></div>
+      <li><code>analytics.user_sessions</code>: <b>iş oturumu</b> (kendi id'si + <code>auth_session_id</code>), <b>giriş anındaki rol</b>, başlangıç, son görülme, bitiş nedeni (logout, idle_timeout, user_switch…), <code>active_seconds</code>, <code>device_id</code>, IP öneki (/24)</li>
+      <li><code>analytics.user_activity_hourly</code>: kullanıcı × saat etkin saniye → gün bölünmesi doğru, saat ısı haritası</li>
+      <li><code>analytics.daily_project_usage</code>: proje × kullanıcı × gün etkin süre → "hangi projede ne kadar çalışıldı"</li></ul></div>
     <div class="card"><h3>Etkin süre nasıl ölçülür</h3>
       <svg viewBox="0 0 520 170" width="100%" height="170">
         <g font-family="Segoe UI, Arial" font-size="12">
           <rect x="0" y="20" width="120" height="44" rx="8" fill="#e6eef8" stroke="#bcd0ea"/><text x="60" y="38" text-anchor="middle">Tarayıcı</text><text x="60" y="54" text-anchor="middle" fill="#5b6673">sekme açık, girdi var</text>
-          <rect x="190" y="20" width="140" height="44" rx="8" fill="#e3f2ee" stroke="#b4dccf"/><text x="260" y="38" text-anchor="middle">POST /api/heartbeat</text><text x="260" y="54" text-anchor="middle" fill="#5b6673">her 60 sn</text>
+          <rect x="190" y="20" width="140" height="44" rx="8" fill="#e3f2ee" stroke="#b4dccf"/><text x="260" y="38" text-anchor="middle">POST /api/heartbeat</text><text x="260" y="54" text-anchor="middle" fill="#5b6673">her 60 sn + project_id</text>
           <rect x="400" y="0" width="120" height="40" rx="8" fill="#fbefe2" stroke="#edcfae"/><text x="460" y="24" text-anchor="middle">user_sessions</text>
           <rect x="400" y="50" width="120" height="40" rx="8" fill="#fbefe2" stroke="#edcfae"/><text x="460" y="74" text-anchor="middle">activity_hourly</text>
           <path d="M120 42 H188 M330 42 L398 20 M330 42 L398 70" stroke="#8a96a3" stroke-width="1.6" fill="none"/>
           <text x="0" y="118">active_seconds += min(şimdi − son heartbeat, 90 sn)</text>
           <text x="0" y="138">Son 2 dk girdi yoksa heartbeat yok → boşta sayılmaz</text>
-          <text x="0" y="158">30 dk sessizlik → oturum idle_timeout ile kapanır</text>
+          <text x="0" y="158">30 dk sessizlik → iş oturumu kapanır; dönüşte yeni satır açılır</text>
         </g>
       </svg>
       <p class="small" style="margin-top:6px">Rol değişirse kullanıcının oturumları kapanır: bir oturum = tek rol. Ortak atölye PC'si: aynı <code>device_id</code>, birden çok kullanıcı.</p></div>
@@ -300,12 +301,12 @@
   <h2>Potansiyel atölyeden ödeyen müşteriye tek zaman çizelgesi</h2>
   <p class="sub">Kiracının asla görmediği alanlar <code>crm</code> şemasında; uygulama tablolarına satış sütunu eklenmez.</p>
   <div class="grid3">
-    <div class="card"><h3><code>crm.leads</code></h3><p>Henüz müşteri olmayan atölye: durum (new → contacted → demo → trial → won / lost), kaynak (makine bayisi, fuar, web, referans, ücretsiz fire hesaplayıcı), il / ilçe / konum, controller ipucu, tahmini MRR, sonraki adım, <code>converted_company_id</code></p></div>
-    <div class="card"><h3><code>crm.accounts</code> (1:1 firma)</h3><p>Hesap sorumlusu, kaynak, kurucu üye, çalışan bandı, beyan edilen makine sayısı, aylık plaka tahmini (§13.2 değer hesabı), elle risk işareti</p></div>
-    <div class="card"><h3><code>crm.contacts</code></h3><p>Firma <b>veya</b> lead'e bağlı kişi (CHECK tam biri): patron, usta, muhasebe; telefon E.164, tercih edilen kanal (WhatsApp!), uygulama kullanıcısıyla eşleşme</p></div>
+    <div class="card"><h3><code>crm.accounts</code>: aday</h3><p><code>company_id</code> boş = henüz müşteri olmayan atölye: satış hattı (new → contacted → demo → signed_up / lost), kaynak (makine bayisi, fuar, web, referans, ücretsiz fire hesaplayıcı), il / ilçe / konum, controller ipucu, tahmini MRR, sonraki adım</p></div>
+    <div class="card"><h3><code>crm.accounts</code>: müşteri</h3><p><b>Aynı satır</b>, <code>company_id</code> dolar; kişi, görüşme, görev, etiket taşınmaz. Hesap sorumlusu, kaynak, kurucu üye, çalışan bandı, beyan edilen makine sayısı, aylık plaka tahmini (§13.2 değer hesabı), elle risk işareti</p></div>
+    <div class="card"><h3><code>crm.contacts</code></h3><p>Hesaba bağlı kişi (<code>account_id</code>): patron, usta, muhasebe; telefon E.164, tercih edilen kanal (WhatsApp!), uygulama kullanıcısıyla eşleşme</p></div>
     <div class="card"><h3><code>crm.activities</code></h3><p>Arama, ziyaret, demo, e-posta, WhatsApp ve <b>not</b> tek tabloda; sonuç, süre, sabitlenmiş not</p></div>
-    <div class="card"><h3><code>crm.tasks</code></h3><p>Atanan personel, öncelik, vade; firma, lead veya destek talebine bağlı</p></div>
-    <div class="card"><h3><code>crm.tags</code> + <code>entity_tags</code></h3><p>"pilot", "kurucu-üye", "syntec", "bayi-yönlendirmesi"</p></div>
+    <div class="card"><h3><code>crm.tasks</code></h3><p>Atanan personel, öncelik, vade; hesaba veya destek talebine bağlı</p></div>
+    <div class="card"><h3><code>crm.tags</code> + <code>account_tags</code></h3><p>"pilot", "kurucu-üye", "syntec", "bayi-yönlendirmesi"</p></div>
   </div>
   <div class="foot"><span class="brand">Nitt<b>CAM</b></span><span>10</span></div>
 </section>
@@ -382,7 +383,7 @@
     <div class="card"><div class="small">MRR (KDV hariç)</div><div class="big">₺—</div><p class="small"><code>sum(mrr_kurus)</code> active + past_due</p></div>
     <div class="card"><div class="small">Deneme → ücretli</div><div class="big">%—</div><p class="small">trial_started → converted, ay kohortu</p></div>
     <div class="card"><div class="small">Aktif kullanıcı 30g</div><div class="big">— / —</div><p class="small">yönetici / operatör, user_sessions</p></div>
-    <div class="card"><div class="small">Risk altında</div><div class="big">—</div><p class="small">mv_company_health.lifecycle</p></div>
+    <div class="card"><div class="small">Risk altında</div><div class="big">—</div><p class="small">company_health_daily.lifecycle</p></div>
   </div>
   <div class="grid2" style="margin-top:16px">
 <pre class="sql"><span class="k">-- Harita: il başına firma</span>
@@ -425,7 +426,7 @@ GROUP BY role;</pre>
     <tr><td><code>daily_company_usage</code></td><td>2027-03-02 · 3 aktif (1 yön., 2 op.) · 341 dk · 14 nesting · 4 NC export</td></tr>
     <tr><td><code>subscriptions</code></td><td>Pro · founder fiyat 149900 kuruş · 4 koltuk · active · dönem 18 Şub – 17 Mar</td></tr>
     <tr><td><code>invoices</code></td><td>NTC2027000031 · 149.900 + KDV 29.980 = 179.880 kuruş · paid · e_fatura</td></tr>
-    <tr><td><code>crm.leads</code></td><td>Yıldırım Kapı ve Panel · Bursa / İnegöl · fuar · Syntec · demo_scheduled · tahmini ₺2.499</td></tr>
+    <tr><td><code>crm.accounts</code> (aday)</td><td>Yıldırım Kapı ve Panel · Bursa / İnegöl · fuar · Syntec · demo_scheduled · tahmini ₺2.499</td></tr>
     <tr><td><code>support.tickets</code></td><td>#1042 · gcode_machine · urgent · "Mach3 G2 yayında radius hatası" · çözüldü · CSAT 5</td></tr>
     <tr><td><code>audit_log</code></td><td>u-101 · user.role_changed · u-103 operator → admin</td></tr>
   </table>
@@ -489,8 +490,8 @@ GROUP BY role;</pre>
     <div class="card" style="border-top:4px solid #6b4fa0"><h3>0 · Referans</h3><p class="small">Şimdi</p><p>81 il + ilçe seed, olay sözlüğü taslağı, doküman onayı</p></div>
     <div class="card" style="border-top:4px solid var(--acc2)"><h3>1 · Kimlik</h3><p class="small">M10</p><p>Better Auth, <code>users</code> / <code>companies</code> sütunları, adresler, RLS, audit_log, aydınlatma + şartlar</p></div>
     <div class="card" style="border-top:4px solid var(--warn)"><h3>2 · Ölçüm</h3><p class="small">M10 sonu</p><p>Oturum, heartbeat, olaylar (bölümlü), günlük özetler, <code>exports</code>'tan geri doldurma</p></div>
-    <div class="card" style="border-top:4px solid var(--acc)"><h3>3 · Backoffice</h3><p class="small">M12 pilot</p><p><code>bo</code> görünümleri, staff, CRM, destek, sağlık skoru; panel v1: liste, kart, harita</p></div>
-    <div class="card" style="border-top:4px solid #1b2430"><h3>4 · Faturalama</h3><p class="small">M13 ticari</p><p>Paket/fiyat/abonelik, ödeme + e-Fatura, dunning, MRR ve kohortlar; <code>companies.plan</code> emekli</p></div>
+    <div class="card" style="border-top:4px solid var(--acc)"><h3>3 · Backoffice</h3><p class="small">M12 pilot</p><p><code>bo</code> görünümleri, staff, CRM, destek, <b>paket + abonelik (elle)</b>, sağlık skoru; panel v1: liste, kart, harita</p></div>
+    <div class="card" style="border-top:4px solid #1b2430"><h3>4 · Faturalama</h3><p class="small">M13 ticari</p><p>Fatura, ödeme + e-Fatura, dunning, MRR ve kohortlar; <code>companies.plan</code> emekli</p></div>
   </div>
   <div class="card" style="margin-top:18px"><h3>Mevcut uygulama şemasına etkisi (yalnız öneri)</h3><p>Migration'lar <code>0014</code>'ten devam (journal'da <code>0011</code> boşluğu var) · <code>users</code>: status, last_login_at, deleted_at, kısmi e-posta indeksi · <code>companies</code>: slug, status, segment, timezone, locale, deleted_at; <code>plan</code> ve <code>ai_quota_monthly</code> anlam değiştirir · yeni şemalar Drizzle <code>pgSchema</code> ile, PGlite'ta çalışır; <code>pg_partman</code> / <code>pg_cron</code> yok, işler uygulamada · Faz 5: okuma kopyası, analitik depo.</p></div>
   <div class="foot"><span class="brand">Nitt<b>CAM</b></span><span>18</span></div>
