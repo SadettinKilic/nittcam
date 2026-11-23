@@ -32,6 +32,8 @@ async function savedBoard(page: Page): Promise<{ id: string; canvas: Locator }> 
 async function drawRect(page: Page, canvas: Locator, at: number, w: number, h: number) {
   const b = await canvas.boundingBox();
   if (!b) throw new Error('no canvas box');
+  const parts = page.getByTestId('editor-part-list').getByRole('button');
+  const n = await parts.count();
   await page.getByTestId('editor-tool-rect').click();
   await page.mouse.click(b.x + b.width * 0.7, b.y + b.height * at);
   await expect(page.getByTestId('editor-dynamic-input')).toBeVisible();
@@ -39,6 +41,10 @@ async function drawRect(page: Page, canvas: Locator, at: number, w: number, h: n
   await page.keyboard.press('Tab');
   await page.keyboard.type(String(h));
   await page.keyboard.press('Enter');
+  // Drawn over a kitchen part: the editor asks 'İç kesim olarak ekle?'; keep it a separate part.
+  const asPart = page.getByRole('button', { name: 'Ayrı parça olarak ekle' });
+  await expect(parts.nth(n).or(asPart)).toBeVisible();
+  if (await asPart.isVisible()) await asPart.click();
 }
 
 /** Opens the project in a new page of the same browser and waits until it is saved. */
