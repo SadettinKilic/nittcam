@@ -1657,6 +1657,15 @@ Tester focus: try to get one project's parts into another (leave fast, offline, 
 Spec: §12.1 · Depends: T191, T192 · Owner: PO + tester · **Human gate: owner sign-off**
 Acceptance:
 - [ ] checklist: all M2–M9 exits met, known issues list, open spec items (§14.2) that affect the test, machine info (§12.3) collected; question to the owner via the dashboard
+  - CTO review #13 (2026-11-23, `docs/reviews/2026-11-23-cto-design-review-13.md`, main `42258a0`, B63 and B60 counted as landing):
+  - [x] M2–M8 exits met
+  - [ ] M9 exit: open until M1 (tabs facing a neighbour hold nothing at the default clearance) and M2 (extended test part cut free) of review #13 land or the owner accepts the runbook workaround, B63 lands, and the owner signs off
+  - [x] known issues list written (review #13 §4), each with "matters at the field test"
+  - [x] open spec items (§14.2) that affect the test listed (review #13 §4)
+  - [ ] machine info (§12.3) collected: not collected; the owner's bring-list and day runbook are in `docs/machines/saha-gunu.md`
+  - [ ] question to the owner via the dashboard (PO)
+  - [ ] tester: final full run with one summary report
+  - [ ] owner sign-off
 Tester focus: final full run (unit, property, golden, e2e, visual, axe, perf) with one summary report.
 
 ---
