@@ -1,11 +1,12 @@
 # NittCam backoffice veri modeli (öneri)
 
-> Durum: **öneri**, uygulama kodu, şema ve migration değişmedi. Hazırlayan: Data Engineer, 2026-11-22.
+> Durum: **öneri (v2)**, uygulama kodu, şema ve migration değişmedi. Hazırlayan: Data Engineer, 2026-11-22; v2 gözden geçirme: PO, 2026-11-23 (değişiklikler §0).
 > Kaynaklar: `docs/SPEC.md` §2, §3, §8.2, §8.5, §8.6, §9, §13, §14.2; `packages/db/src/schema.ts`, `tenant.ts`, `migrations/0000…0013`; `docs/DECISIONS.md` D-014, D-016; `docs/BACKLOG.md` M10.
 > Bütün fiyatlar, firmalar, kişiler, telefonlar ve e-postalar **uydurmadır**. Fiyatlar insan kapısıdır (§14.2), burada yalnızca veri biçimini gösterir.
 
 ## İçindekiler
 
+0. v2 revizyon notları
 1. Problem ve hedefler
 2. Mevcut şemanın analizi
 3. Hedef mimari: şemalar, katmanlar, roller
@@ -20,6 +21,27 @@
 
 ---
 
+## 0. v2 revizyon notları (2026-11-23)
+
+v1 üzerinde yapılan tasarım düzeltmeleri. Her madde ilgili bölümde uygulanmıştır.
+
+| # | Değişiklik | Neden | Bölüm |
+| --- | --- | --- | --- |
+| R1 | `crm.leads` kalktı; aday ve müşteri **tek** `crm.accounts` satırıdır (`company_id` boş = aday). Kişi, aktivite, görev, etiket hep `account_id`'ye bağlanır | v1'de beş tabloda "ya `company_id` ya `lead_id`" çifti ve dönüşümde satır taşıma vardı; zaman çizelgesi dönüşümde ikiye bölünüyordu | §6.7 |
+| R2 | İş oturumu (`analytics.user_sessions`) kimlik oturumundan ayrıldı: kendi `id`'si + `auth_session_id` | v1'de `id` = `auth_sessions.id` idi; 30 dk boşta kapanan oturumdan sonra aynı çerezle dönen kullanıcı için ikinci satır açılamıyordu (PK çakışması) | §6.3 |
+| R3 | Proje bazlı kullanım süresi eklendi: heartbeat `project_id` taşır, `analytics.daily_project_usage` | Sahibin istediği "projeler ve kullanım süresi" v1'de yalnızca kullanıcı düzeyinde ölçülüyordu | §6.3, §6.5 |
+| R4 | `analytics.events.occurred_at` sunucuda **değiştirilmez** (yalnızca pencere dışı olay reddedilir) | v1'deki "±5 dk düzeltme" tekrar gönderimde farklı `occurred_at` üretir, `(id, occurred_at)` anahtarı çift kaydı yakalayamaz | §6.5 |
+| R5 | Fatura numarası taslakta boş, kesimde boşluksuz sayaçtan; iade faturası ayrı belge; satır bazında KDV | Taslak yasal sıra numarası tüketmemeli; sequence boşluk bırakır; kesilmiş e-Fatura `void` edilemez, iade faturası kesilir | §6.4 |
+| R6 | Paketler sürümlü (`plans.version`), `subscriptions` → `(plan_price_id, plan_id)` bileşik FK, MRR formülü yazıldı | v1'de `plans.entitlements` güncellenince mevcut abonelerin hakları sessizce değişiyordu; `plan_id` ile `plan_price_id` çelişebiliyordu | §6.4 |
+| R7 | Sağlık skoru materialized view değil, günlük anlık görüntü tablosu (`analytics.company_health_daily`) | MV geçmiş tutmaz: skor trendi gösterilemez, "risk altında" kuralının churn'ü ne kadar bildiği ölçülemez (S8 ayarı için şart) | §7 |
+| R8 | RLS kuralları netleşti: `FORCE ROW LEVEL SECURITY`, işlem başına `set_config(..., true)`, ayar yoksa sıfır satır, `bo` görünüm sahibine ayrı politika, INSERT'te `WITH CHECK` | v1 yalnızca ifadeyi veriyordu; bağlantı havuzunda ayar sızması ve uygulama rolünün başka firma adına denetim satırı yazması açıktı | §3.2 |
+| R9 | Kiracı bağlam sütunlarında bileşik FK (`support.tickets` proje/makine/export, `crm.contacts.user_id`, `billing_profiles.billing_address_id`); `audit.entity_id` `text` | Belgenin kendi §4 kuralı bu sütunlarda uygulanmamıştı; `uuid` olmayan anahtarlar (il kodu, bileşik PK) denetlenemiyordu | §6.4, §6.7, §6.8, §6.9 |
+| R10 | Abonelik çekirdeği (`plans`, `plan_prices`, `subscriptions`, `subscription_events`) Faz 4'ten **Faz 3**'e alındı | Faz 3'teki görünümler, yaşam döngüsü ve harita abonelik durumuna dayanıyor; pilot firmaların deneme/aktif durumu ödeme entegrasyonu beklemeden elle yönetilebilmeli | §10 |
+| R11 | Sorgu düzeltmeleri: İstanbul günü (`current_date` yerine), 8.6 ikinci sorgu kendi CTE'leriyle, haritada konumsuz firma sayısı | Taslak sorgular olduğu gibi çalışmalı | §8 |
+| R12 | `ref.districts.id` kalıcı kod (yeniden numaralanmaz), `is_active` | Yeni ilçe kurulunca ya da ilçe kapanınca eski adres satırları bozulmamalı | §6.1 |
+
+---
+
 ## 1. Problem ve hedefler
 
 NittCam çok kiracılı (multi-tenant) bir SaaS: her **atölye firması** bir kiracıdır (`companies`), firmanın birden çok **kullanıcısı** vardır, roller **yönetici** (`admin`) ve **operatör** (`operator`). Gelir modeli firma başına **aylık abonelik** (§13.1).
@@ -31,10 +53,11 @@ Sahip kendi **backoffice panelini** kuracak. Panel şunları cevaplamalı:
 | Hangi ilde kaç firma var, ilçeye inince hangileri? (Türkiye haritası) | `ref.provinces`, `ref.districts`, `public.company_addresses`, `bo.v_map_*` |
 | Firma kartı: adres, yetkililer, abonelik geçmişi, makineler, projeler, notlar, destek | `crm.accounts`, `crm.contacts`, `billing.*`, `bo.v_company_*`, `crm.activities`, `support.tickets` |
 | Kaç hesap var, yönetici/operatör oturumları, kullanım süresi | `public.users`, `analytics.user_sessions`, `analytics.user_activity_hourly` |
+| Hangi projede ne kadar çalışıldı | `analytics.daily_project_usage` |
 | Ürün nasıl kullanılıyor (proje, nesting, NC export) | `analytics.events` → `analytics.daily_company_usage` |
 | MRR/ARR, paket dağılımı, deneme→ücretli dönüşüm, churn | `billing.subscriptions`, `billing.subscription_events`, `analytics.mv_mrr_monthly` |
-| Hangi firma risk altında? | `analytics.mv_company_health` |
-| Henüz müşteri olmayan atölyeler (potansiyel) | `crm.leads` |
+| Hangi firma risk altında? | `analytics.company_health_daily`, `analytics.v_company_health` |
+| Henüz müşteri olmayan atölyeler (potansiyel) | `crm.accounts` (`company_id` boş) |
 | Kim neyi değiştirdi, personel hangi firmaya baktı? | `audit.audit_log` |
 | KVKK: açık rıza, aydınlatma, başvurular, saklama süreleri | `privacy.*` |
 
@@ -93,8 +116,8 @@ Güçlü yanlar: her kiracı tablosunda `company_id` (NOT NULL, FK, indeksin ilk
 | `public` | Operasyonel (kiracı) | Uygulama (`nittcam_app`) | Uygulama, RLS ile; backoffice yalnızca `bo` görünümleri üzerinden | Mevcut 15 tablo + `company_addresses`, `auth_*` |
 | `ref` | Referans | Migration/seed | Herkes (salt okunur) | 81 il, ilçeler |
 | `billing` | Operasyonel (kiracı + platform) | Faturalama servisi, ödeme webhook'ları | Uygulama (kendi firması, yalnızca yönetici), backoffice | Paket, fiyat, abonelik, fatura, ödeme |
-| `analytics` | Analitik | Olay alıcı + zamanlanmış işler | Backoffice | Oturumlar, olaylar, saatlik/günlük özetler, MV'ler |
-| `crm` | Backoffice | Backoffice (`nittcam_bo`) | Backoffice | Firma hesap kartı, potansiyel müşteri, kişi, aktivite, görev, etiket |
+| `analytics` | Analitik | Olay alıcı + zamanlanmış işler | Backoffice | Oturumlar, olaylar, saatlik/günlük özetler, sağlık anlık görüntüleri, MV'ler |
+| `crm` | Backoffice | Backoffice (`nittcam_bo`) | Backoffice | Hesap kartı (aday + müşteri tek tablo), kişi, aktivite, görev, etiket |
 | `support` | Backoffice + kiracı | İkisi de (kiracı kendi taleplerini) | İkisi de (kiracı yalnızca kendi, iç notlar hariç) | Destek talepleri, mesajlar, erişim izinleri |
 | `audit` | Platform | Uygulama + backoffice (yalnızca INSERT) | Backoffice | Denetim günlüğü |
 | `privacy` | Platform | Uygulama + backoffice | Backoffice | KVKK rıza, metin sürümleri, başvurular, saklama |
@@ -118,9 +141,18 @@ Güçlü yanlar: her kiracı tablosunda `company_id` (NOT NULL, FK, indeksin ilk
 | Rol | Hak | Not |
 | --- | --- | --- |
 | `nittcam_migrator` | Sahip (DDL) | Yalnızca migration |
-| `nittcam_app` | `public`, `billing` (kendi firması), `support` (kendi firması), `analytics.events` INSERT, `audit.audit_log` INSERT, `privacy.consents` INSERT | **RLS zorunlu**: `company_id = current_setting('app.company_id')::uuid`. `BYPASSRLS` yok. `crm`, `bo` şemalarına erişim yok |
-| `nittcam_bo` | `bo.*` görünümleri SELECT; `crm`, `support` CRUD; `analytics`, `billing` SELECT; `audit` INSERT/SELECT | `public` ham tablolarına doğrudan hak yok; görünümler `security_barrier` ve sahibi `nittcam_bo_reader` (definer) ile çalışır. `projects.data`, `chat_messages.content` görünüme konmaz |
-| `nittcam_jobs` | `analytics` yazar, `billing` yenileme/dunning | Zamanlanmış işler (özetleme, MV yenileme, bölüm açma/silme) |
+| `nittcam_app` | `public`, `billing` (kendi firması), `support` (kendi firması), `analytics.events` INSERT, `audit.audit_log` INSERT, `privacy.consents` INSERT | **RLS zorunlu** (aşağıdaki kurallar). `BYPASSRLS` yok. `crm`, `bo` şemalarına erişim yok |
+| `nittcam_bo` | `bo.*` görünümleri SELECT; `crm`, `support` CRUD; `analytics`, `billing` SELECT; `audit` INSERT/SELECT | `public` ham tablolarına doğrudan hak yok. `projects.data`, `chat_messages.content` görünüme konmaz |
+| `nittcam_bo_reader` | `bo.v_*` görünümlerinin **sahibi**; `public` tablolarında yalnızca görünümlerin okuduğu sütunlarda SELECT | Giriş yapamaz (`NOLOGIN`). Görünümler sahibinin haklarıyla çalışır; RLS'i bu rol için açan ayrı politika vardır (aşağıda) |
+| `nittcam_jobs` | `analytics` yazar, `billing` yenileme/dunning, `crm.accounts` INSERT (kayıt olan firmaya hesap kartı) | Zamanlanmış işler (özetleme, sağlık anlık görüntüsü, MV yenileme, bölüm açma/silme) |
+
+RLS kuralları (R8):
+
+1. Her kiracı tablosunda `ENABLE` **ve** `FORCE ROW LEVEL SECURITY`. `FORCE` olmadan tablo sahibi (migration rolü) politikalardan muaf kalır.
+2. Politika ifadesi: `company_id = nullif(current_setting('app.company_id', true), '')::uuid`. Ayar yapılmamışsa ifade NULL olur ve **sıfır satır** döner (hata değil, sızıntı da değil). `USING` ve `WITH CHECK` aynı ifadedir; böylece uygulama başka firma adına satır da **yazamaz** (`analytics.events`, `audit.audit_log`, `privacy.consents` INSERT'leri dahil).
+3. Ayar yalnızca işlem içinde yapılır: `SELECT set_config('app.company_id', $1, true)` (`SET LOCAL` eşdeğeri). Oturum düzeyinde `SET` yasaktır: bağlantı havuzunda (PgBouncer transaction modu) bir sonraki isteğe sızar. `forCompany` her sorguyu bu işlem sarmalayıcısından geçirir.
+4. `nittcam_bo_reader` için tablolarda ayrı politika: `FOR SELECT TO nittcam_bo_reader USING (true)`. `BYPASSRLS` verilmez (o hak bütün tabloları açar). Görünümler `security_barrier`; sütun düzeyinde GRANT ile `projects.data` ve `chat_messages.content` bu role hiç açılmaz, görünüme yanlışlıkla eklenirse sorgu hata verir.
+5. Kiracı testleri (mevcut `tenantTables` testi) RLS için genişler: her tabloda "ayar yok → 0 satır" ve "A firması ayarıyla B satırı okunmaz/yazılmaz" denetimi.
 
 Backoffice'in kiracı verisine bakışı:
 
@@ -130,7 +162,7 @@ Backoffice'in kiracı verisine bakışı:
 
 ### 3.3 Uygulama ile backoffice ayrımı (kural)
 
-- `public` tablolarına backoffice'e özgü sütun **eklenmez** (ör. "satış sorumlusu", "churn riski"). Bunlar `crm.accounts` (1:1, `company_id`) içinde durur.
+- `public` tablolarına backoffice'e özgü sütun **eklenmez** (ör. "satış sorumlusu", "churn riski"). Bunlar `crm.accounts` içinde durur (firma başına en çok bir hesap, `company_id` tekil).
 - Kiracının kendisinin girdiği ve gördüğü bilgiler (atölye adresi, fatura unvanı, vergi no) uygulama tarafında (`public.company_addresses`, `billing.billing_profiles`) durur; backoffice bunları okur, gerekirse destek amaçlı düzeltir (denetim günlüğüyle).
 
 ---
@@ -160,7 +192,7 @@ erDiagram
     ref_provinces ||--o{ ref_districts : "il → ilçe"
     ref_provinces ||--o{ company_addresses : "il"
     ref_districts ||--o{ company_addresses : "ilçe"
-    ref_provinces ||--o{ crm_leads : "il"
+    ref_provinces ||--o{ crm_accounts : "aday konumu"
 
     companies ||--o{ company_addresses : "adres"
     companies ||--o{ users : "hesap"
@@ -170,7 +202,9 @@ erDiagram
     users ||--o{ auth_sessions : "aktif token"
     users ||--o{ auth_accounts : "giriş yöntemi"
 
-    users ||--o{ analytics_user_sessions : "oturum"
+    users ||--o{ analytics_user_sessions : "iş oturumu"
+    projects ||--o{ analytics_daily_project_usage : "proje süresi"
+    companies ||--o{ analytics_company_health_daily : "sağlık (gün)"
     analytics_user_sessions ||--o{ analytics_events : "olay"
     users ||--o{ analytics_user_activity_hourly : "aktif saniye"
     companies ||--o{ analytics_daily_company_usage : "günlük özet"
@@ -186,13 +220,13 @@ erDiagram
     billing_invoices ||--o{ billing_payments : "ödeme"
     billing_invoices ||--o{ billing_dunning_steps : "tahsilat adımı"
 
-    companies ||--|| crm_accounts : "CRM kartı"
-    crm_leads |o--o| companies : "dönüştü"
-    companies ||--o{ crm_contacts : "yetkili"
-    crm_leads ||--o{ crm_contacts : "yetkili"
-    crm_contacts ||--o{ crm_activities : "görüşme"
-    companies ||--o{ crm_tasks : "görev"
-    crm_tags ||--o{ crm_entity_tags : "etiket"
+    companies |o--o| crm_accounts : "kiracı olduysa"
+    crm_accounts ||--o{ crm_contacts : "yetkili"
+    crm_accounts ||--o{ crm_activities : "görüşme, not"
+    crm_contacts ||--o{ crm_activities : "kiminle"
+    crm_accounts ||--o{ crm_tasks : "görev"
+    crm_accounts ||--o{ crm_account_tags : "etiket"
+    crm_tags ||--o{ crm_account_tags : "etiket"
     bo_staff_users ||--o{ crm_activities : "yapan"
     bo_staff_users ||--o{ crm_tasks : "atanan"
 
@@ -204,7 +238,7 @@ erDiagram
     companies ||--o{ audit_audit_log : "denetim"
     privacy_legal_documents ||--o{ privacy_consents : "metin sürümü"
     users ||--o{ privacy_consents : "rıza"
-    crm_contacts ||--o{ privacy_consents : "rıza"
+    crm_contacts ||--o{ privacy_consents : "rıza (subject_id, FK yok)"
 ```
 
 ---
@@ -240,15 +274,16 @@ Haritanın birincil kırılımı. Kod olarak **plaka kodu** (1–81) kullanılı
 
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
-| `id` | `integer` | H | PK | İç kod (seed sırası) |
+| `id` | `integer` | H | PK | Kalıcı iç kod (`plaka × 100 + sıra`). **Yeniden numaralanmaz**: yeni ilçe sona eklenir, kapanan ilçe silinmez (`is_active = false`) |
 | `province_code` | `smallint` | H | FK → `ref.provinces` | |
 | `name` | `text` | H | UQ (`province_code`, `name`) | "Melikgazi" |
 | `name_ascii` | `text` | H | | "melikgazi" |
 | `official_code` | `text` | E | UQ | Seçilecek resmi kaynağın ilçe kodu (NVİ/AKS veya TÜİK; S11) |
 | `is_central` | `boolean` | H | | Merkez ilçe mi (büyükşehirde merkez ilçeler) |
+| `is_active` | `boolean` | H | | `false` = kapanmış/birleşmiş ilçe: eski adreslerde kalır, yeni adres formunda görünmez |
 | `lat`, `lng` | `numeric(9,6)` | E | | İlçe merkezi; firmanın kesin konumu yoksa pin buraya düşer |
 
-İndeks: `(province_code)`.
+İndeks: `(province_code)`; `unique(province_code, id)` (adres tablolarındaki bileşik FK için).
 
 ```json
 {"id":3801,"province_code":38,"name":"Melikgazi","name_ascii":"melikgazi","official_code":null,"is_central":true,"lat":38.734000,"lng":35.476000}
@@ -349,13 +384,14 @@ Better Auth'un kendi tabloları (`session`, `account`, `verification`) `modelNam
 
 #### `analytics.user_sessions` (yeni): kalıcı oturum kaydı
 
-Her giriş bir satır. "Yönetici mi operatör mü, ne kadar kaldı, hangi cihaz" sorusunun cevabı. Better Auth oturumu silinse de bu satır kalır.
+Her **iş oturumu** bir satır: kullanıcının kesintisiz çalıştığı aralık. "Yönetici mi operatör mü, ne kadar kaldı, hangi cihaz" sorusunun cevabı. Kimlik oturumu (`auth_sessions`, çerez, 7 gün) ile aynı şey **değildir** (R2): bir çerez ömründe birçok iş oturumu olur (sabah 3 saat, öğleden sonra 2 saat = 2 satır). Better Auth oturumu silinse de bu satırlar kalır.
 
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
-| `id` | `uuid` | H | PK | `auth_sessions.id` ile aynı değer |
+| `id` | `uuid` | H | PK | Kendi kimliği (UUIDv7, sunucu üretir) |
+| `auth_session_id` | `uuid` | H | | Hangi kimlik oturumunda açıldı. FK **yok**: `auth_sessions` satırı süresi dolunca silinir, bu satır kalır |
 | `company_id` | `uuid` | H | FK | |
-| `user_id` | `uuid` | H | FK | |
+| `user_id` | `uuid` | H | FK (`company_id`, `user_id`) | |
 | `role` | `text` | H | | **Giriş anındaki rol** (`admin`/`operator`) |
 | `started_at` | `timestamptz` | H | | |
 | `last_seen_at` | `timestamptz` | H | | Son heartbeat |
@@ -370,13 +406,19 @@ Her giriş bir satır. "Yönetici mi operatör mü, ne kadar kaldı, hangi cihaz
 | `geo_province_code` | `smallint` | E | | IP'den kaba il (isteğe bağlı) |
 | `app_version` | `text` | E | | |
 
-**Etkin süre tanımı:** sekme görünür ve son 2 dakikada klavye/fare/dokunma olduysa istemci her 60 sn `POST /api/heartbeat` gönderir. Sunucu `active_seconds += least(now() - last_seen_at, 90 sn)` yapar ve aynı anda `analytics.user_activity_hourly`'yi artırır. 30 dk heartbeat yoksa iş oturumu `idle_timeout` ile kapatır (`ended_at = last_seen_at`).
+**Etkin süre tanımı:** sekme görünür ve son 2 dakikada klavye/fare/dokunma olduysa istemci her 60 sn `POST /api/heartbeat` gönderir; gövdede açık projenin `project_id`'si (proje dışı ekranda boş) bulunur. Sunucu tek işlemde:
 
-İndeksler: `(company_id, started_at DESC)`, `(user_id, started_at DESC)`, `(started_at) WHERE ended_at IS NULL` (açık oturum taraması), BRIN `(started_at)`.
+1. Kullanıcının bu `auth_session_id` için **açık** iş oturumunu bulur (`ended_at IS NULL`). Yoksa ya da `now() - last_seen_at > 30 dk` ise eskisini `idle_timeout` ile kapatır (`ended_at = last_seen_at`) ve **yeni satır** açar.
+2. `delta = least(now() - last_seen_at, 90 sn)` (yeni oturumda 0); `active_seconds += delta`, `last_seen_at = now()`.
+3. Aynı `delta`'yı `analytics.user_activity_hourly`'ye (saat kovası) ve `project_id` doluysa `analytics.daily_project_usage`'a ekler.
+
+`delta` son heartbeat'ten ölçüldüğü için aynı kullanıcının iki sekmesi süreyi iki kez saymaz. Heartbeat gelmeden kapanan sekmeler için bir iş 30 dk'dan eski açık oturumları kapatır.
+
+İndeksler: `(company_id, started_at DESC)`, `(user_id, started_at DESC)`, tekil `(auth_session_id) WHERE ended_at IS NULL` (kimlik oturumu başına en çok bir açık iş oturumu; eşzamanlı heartbeat'lerde çift satırı önler), BRIN `(started_at)`.
 
 ```json
-{"id":"as-9f1","company_id":"c-001","user_id":"u-102","role":"operator","started_at":"2027-03-02T06:12:44Z","last_seen_at":"2027-03-02T09:41:02Z","ended_at":"2027-03-02T09:41:02Z","end_reason":"idle_timeout","active_seconds":9180,"heartbeat_count":151,"device_id":"d-7c2e","device_type":"desktop","os":"Windows 10","browser":"Chrome 131","ip_prefix":"85.105.12.0/24","app_version":"0.14.2"}
-{"id":"as-a03","company_id":"c-001","user_id":"u-101","role":"admin","started_at":"2027-03-02T05:58:10Z","last_seen_at":"2027-03-02T06:24:30Z","ended_at":"2027-03-02T06:24:51Z","end_reason":"logout","active_seconds":1260,"heartbeat_count":22,"device_id":"d-11ab","device_type":"desktop","os":"Windows 11","browser":"Edge 131","ip_prefix":"85.105.12.0/24"}
+{"id":"ws-41c","auth_session_id":"as-9f1","company_id":"c-001","user_id":"u-102","role":"operator","started_at":"2027-03-02T06:12:44Z","last_seen_at":"2027-03-02T09:41:02Z","ended_at":"2027-03-02T09:41:02Z","end_reason":"idle_timeout","active_seconds":9180,"heartbeat_count":151,"device_id":"d-7c2e","device_type":"desktop","os":"Windows 10","browser":"Chrome 131","ip_prefix":"85.105.12.0/24","app_version":"0.14.2"}
+{"id":"ws-41a","auth_session_id":"as-a03","company_id":"c-001","user_id":"u-101","role":"admin","started_at":"2027-03-02T05:58:10Z","last_seen_at":"2027-03-02T06:24:30Z","ended_at":"2027-03-02T06:24:51Z","end_reason":"logout","active_seconds":1260,"heartbeat_count":22,"device_id":"d-11ab","device_type":"desktop","os":"Windows 11","browser":"Edge 131","ip_prefix":"85.105.12.0/24"}
 ```
 
 #### `analytics.user_activity_hourly` (yeni): saatlik etkin süre
@@ -411,19 +453,22 @@ Günler arası bölünmeyi doğru yapmak ve "atölyeler günün hangi saatinde �
 | `mersis_no` | `text` | E | | |
 | `is_e_invoice_user` | `boolean` | H | | GİB e-Fatura mükellefi mi → e-Fatura, değilse e-Arşiv |
 | `billing_email` | `text` | H | | Faturanın gideceği adres |
-| `billing_address_id` | `uuid` | H | FK → `company_addresses` | |
+| `billing_address_id` | `uuid` | H | FK (`company_id`, `billing_address_id`) → `company_addresses (company_id, id)` | Bileşik FK: başka firmanın adresi bağlanamaz (R9) |
 | `updated_at` | `timestamptz` | H | | |
 
 ```json
 {"company_id":"c-001","legal_name":"Kılıç Mobilya Sanayi ve Ticaret Ltd. Şti.","taxpayer_type":"corporate","tax_number":"1234567890","tax_office":"Erciyes VD","is_e_invoice_user":true,"billing_email":"muhasebe@kilicmobilya.example","billing_address_id":"a-002"}
 ```
 
-#### `billing.plans`: paketler
+#### `billing.plans`: paketler (sürümlü)
+
+Bir paketin **hakları** (`included_seats`, `max_machines`, `entitlements`) yayınlandıktan sonra **güncellenmez** (R6): içerik değişecekse aynı `code` ile `version + 1` satırı açılır, eski sürüm `is_active = false` olur. Mevcut aboneler bağlı oldukları sürümde kalır; yeni sürüme geçiş bilinçli bir işlemdir (`plan_changed` olayı). Yalnızca `name`, `description`, `is_public`, `is_active` yerinde değişebilir (tetikleyici diğerlerini reddeder).
 
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | H | PK | |
-| `code` | `text` | H | UQ | `baslangic`, `pro`, `sirket` (§13.1) |
+| `code` | `text` | H | UQ (`code`, `version`) | `baslangic`, `pro`, `sirket` (§13.1) |
+| `version` | `integer` | H | | 1'den başlar; tekil `(code) WHERE is_active` (kod başına satışta tek sürüm) |
 | `name` | `text` | H | | "Pro" |
 | `description` | `text` | E | | |
 | `tier` | `smallint` | H | | Sıralama (yükseltme/düşürme tespiti) |
@@ -435,8 +480,8 @@ Günler arası bölünmeyi doğru yapmak ve "atölyeler günün hangi saatinde �
 | `created_at` | `timestamptz` | H | | |
 
 ```json
-{"id":"p-1","code":"baslangic","name":"Başlangıç","tier":1,"is_public":true,"included_seats":2,"max_machines":0,"entitlements":{"gcode_export":false,"dxf_pdf":true,"nesting":true,"ai_quota_monthly":0},"is_active":true}
-{"id":"p-2","code":"pro","name":"Pro","tier":2,"is_public":true,"included_seats":3,"max_machines":2,"entitlements":{"gcode_export":true,"dxf_pdf":true,"nesting":true,"offcuts":true,"ai_quota_monthly":100},"is_active":true}
+{"id":"p-1","code":"baslangic","version":1,"name":"Başlangıç","tier":1,"is_public":true,"included_seats":2,"max_machines":0,"entitlements":{"gcode_export":false,"dxf_pdf":true,"nesting":true,"ai_quota_monthly":0},"is_active":true}
+{"id":"p-2","code":"pro","version":1,"name":"Pro","tier":2,"is_public":true,"included_seats":3,"max_machines":2,"entitlements":{"gcode_export":true,"dxf_pdf":true,"nesting":true,"offcuts":true,"ai_quota_monthly":100},"is_active":true}
 ```
 
 #### `billing.plan_prices`: sürümlü fiyatlar
@@ -456,7 +501,7 @@ Fiyat değişince eski satır güncellenmez; `valid_to` kapatılır, yeni satır
 | `valid_from`, `valid_to` | `timestamptz` | H / E | | Satışta geçerli aralık |
 | `created_at` | `timestamptz` | H | | |
 
-İndeks: `(plan_id, billing_period, price_kind) WHERE valid_to IS NULL` tekil.
+İndeks: `(plan_id, billing_period, price_kind) WHERE valid_to IS NULL` tekil; `unique(id, plan_id)` (abonelikteki bileşik FK için).
 
 ```json
 {"id":"pp-21","plan_id":"p-2","billing_period":"monthly","currency":"TRY","amount_kurus":199900,"extra_seat_kurus":29900,"vat_rate_bp":2000,"price_kind":"list","valid_from":"2027-01-01T00:00:00+03:00","valid_to":null}
@@ -472,12 +517,12 @@ Firma başına en çok bir **canlı** abonelik; geçmiş abonelikler satır olar
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | H | PK | |
 | `company_id` | `uuid` | H | FK | |
-| `plan_id` | `uuid` | H | FK | |
-| `plan_price_id` | `uuid` | H | FK | Kilitlenen fiyat |
+| `plan_id` | `uuid` | H | FK | Paket **sürümü** |
+| `plan_price_id` | `uuid` | H | FK (`plan_price_id`, `plan_id`) → `plan_prices (id, plan_id)` | Kilitlenen fiyat. Bileşik FK: fiyat satırı başka bir pakete ait olamaz (R6) |
 | `status` | `text` | H | | `trialing`, `active`, `past_due`, `paused`, `canceled`, `expired` |
 | `seats` | `integer` | H | | Faturalanan koltuk (≥ `included_seats`) |
 | `discount_bp` | `integer` | H | | 0–10000 (yıllık ödeme, kampanya) |
-| `mrr_kurus` | `bigint` | H | | Normalleştirilmiş aylık gelir (KDV hariç, indirim sonrası; deneme = 0). Her değişiklikte yeniden hesaplanır |
+| `mrr_kurus` | `bigint` | H | | Normalleştirilmiş aylık gelir (KDV hariç, indirim sonrası). Formül aşağıda; her değişiklikte aynı işlemde yeniden hesaplanır ve `subscription_events`'e yazılır |
 | `trial_started_at`, `trial_ends_at` | `timestamptz` | E | | |
 | `current_period_start`, `current_period_end` | `timestamptz` | E | | Dönem sınırları İstanbul gece yarısı |
 | `cancel_at_period_end` | `boolean` | H | | |
@@ -489,6 +534,29 @@ Firma başına en çok bir **canlı** abonelik; geçmiş abonelikler satır olar
 | `created_at`, `updated_at` | `timestamptz` | H | | |
 
 İndeksler: tekil `(company_id) WHERE status IN ('trialing','active','past_due','paused')`; `(status, current_period_end)` (yenileme işi); `(plan_id) WHERE status IN ('active','past_due')`.
+
+**MRR formülü** (tek yerde, veritabanı fonksiyonu `billing.calc_mrr`):
+
+```
+status IN ('active','past_due'):
+  dönem   = amount_kurus + greatest(seats - included_seats, 0) * extra_seat_kurus
+  mrr     = round(dönem * (10000 - discount_bp) / 10000.0 / ay)      -- ay: monthly = 1, yearly = 12
+diğer durumlar (trialing, paused, canceled, expired): mrr = 0
+```
+
+`past_due` MRR'da kalır (tahsilat sürüyor); `expired`/`canceled` olduğu anda `churn` hareketi yazılır. `CHECK (seats >= 1)`, `CHECK (discount_bp BETWEEN 0 AND 10000)`, `CHECK (mrr_kurus >= 0)`.
+
+**Durum geçişleri** (başka geçiş tetikleyiciyle reddedilir; her geçiş bir `subscription_events` satırıdır):
+
+| Durumdan | Geçebileceği | Olay |
+| --- | --- | --- |
+| `trialing` | `active`, `expired` (deneme bitti, ödeme yok), `canceled` | `converted`, `expired`, `canceled` |
+| `active` | `past_due`, `paused`, `canceled` | `payment_failed` + `past_due`, `paused`, `canceled` |
+| `past_due` | `active`, `expired` (dunning bitti), `canceled` | `recovered`, `expired`, `canceled` |
+| `paused` | `active`, `canceled` | `resumed`, `canceled` |
+| `canceled`, `expired` | – (son durum; geri dönüş **yeni** abonelik satırıdır, olayı `reactivated`) | |
+
+`canceled` = müşterinin ya da personelin kararı; `expired` = ödeme gelmediği için sistemin kapatması. Churn nedeni analizinde ikisi ayrı okunur (gönüllü / gönülsüz churn).
 
 ```json
 {"id":"sub-001","company_id":"c-001","plan_id":"p-2","plan_price_id":"pp-22","status":"active","seats":4,"discount_bp":0,"mrr_kurus":149900,"trial_started_at":"2026-12-03T07:41:12Z","trial_ends_at":"2026-12-17T20:59:59Z","current_period_start":"2027-02-17T21:00:00Z","current_period_end":"2027-03-17T21:00:00Z","cancel_at_period_end":false,"psp":"psp_tbd","psp_subscription_ref":"SUB-88412"}
@@ -525,14 +593,20 @@ MRR hareketleri (yeni, genişleme, daralma, churn, geri kazanım) ve deneme→ü
 
 #### `billing.invoices`
 
-Fatura yasal belgedir: alıcı bilgileri **kesim anındaki anlık görüntü** olarak saklanır, sonradan değişmez.
+Fatura yasal belgedir: alıcı bilgileri **kesim anındaki anlık görüntü** olarak saklanır, sonradan değişmez. Kurallar (R5):
+
+- **Numara kesimde verilir.** Taslakta `invoice_no` boştur; `draft → issued` geçişiyle **aynı işlemde** `billing.invoice_counters` satırı kilitlenip artırılır. Postgres `sequence` kullanılmaz: geri alınan işlemde boşluk bırakır, yasal seri boşluksuz olmalıdır.
+- **Kesilmiş fatura değişmez.** `issued` sonrası yalnızca `status`, `paid_at`, `voided_at`, `e_document_*`, `pdf_key` güncellenebilir (tetikleyici); tutar ve alıcı alanları kilitlidir.
+- **İptal ve iade ayrıdır.** `void` yalnızca e-belge GİB'e gitmeden (`e_document_uuid IS NULL`) yapılabilir. Gitmiş faturanın düzeltmesi **iade faturasıdır**: `invoice_type = 'refund'`, `related_invoice_id` asıl faturayı gösterir, tutarlar pozitif yazılır, raporlar işareti `invoice_type`'tan alır.
 
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | H | PK | |
 | `company_id` | `uuid` | H | FK | |
 | `subscription_id` | `uuid` | E | FK | Kurulum/ek hizmet faturası aboneliksiz olabilir |
-| `invoice_no` | `text` | H | UQ | Seri + yıl + sıra ("NTC2027000031"), GİB biçimi |
+| `invoice_no` | `text` | E | UQ | Seri + yıl + sıra ("NTC2027000031"), GİB biçimi. `CHECK (status = 'draft' OR invoice_no IS NOT NULL)` |
+| `invoice_type` | `text` | H | | `sale`, `refund` (iade faturası) |
+| `related_invoice_id` | `uuid` | E | FK → `invoices` | İadenin ait olduğu fatura. `CHECK ((invoice_type = 'refund') = (related_invoice_id IS NOT NULL))` |
 | `status` | `text` | H | | `draft`, `issued`, `paid`, `void`, `uncollectible` |
 | `period_start`, `period_end` | `date` | E | | İstanbul takvimi |
 | `issued_at`, `due_at`, `paid_at`, `voided_at` | `timestamptz` | E | | |
@@ -546,10 +620,12 @@ Fatura yasal belgedir: alıcı bilgileri **kesim anındaki anlık görüntü** o
 | `pdf_key` | `text` | E | | Depodaki PDF |
 | `created_at` | `timestamptz` | H | | |
 
-İndeksler: `(company_id, issued_at DESC)`, `(status, due_at) WHERE status = 'issued'` (vadesi geçenler).
+İndeksler: `(company_id, issued_at DESC)`, `(status, due_at) WHERE status = 'issued'` (vadesi geçenler), `(related_invoice_id) WHERE related_invoice_id IS NOT NULL`.
+
+`billing.invoice_counters`: `series text`, `year smallint`, `last_no integer`; PK (`series`, `year`). Kesimde `UPDATE … SET last_no = last_no + 1 … RETURNING last_no` (satır kilidi sırayı tekilleştirir).
 
 ```json
-{"id":"inv-031","company_id":"c-001","subscription_id":"sub-001","invoice_no":"NTC2027000031","status":"paid","period_start":"2027-02-18","period_end":"2027-03-17","issued_at":"2027-02-17T21:00:05Z","due_at":"2027-02-24T20:59:59Z","paid_at":"2027-02-17T21:00:41Z","currency":"TRY","subtotal_kurus":149900,"discount_kurus":0,"vat_kurus":29980,"total_kurus":179880,"e_document_type":"e_fatura","buyer_snapshot":{"legal_name":"Kılıç Mobilya Sanayi ve Ticaret Ltd. Şti.","tax_office":"Erciyes VD","tax_number":"enc:…","address":"Ahmet Paşa Cad. No: 41/3 Melikgazi/Kayseri"}}
+{"id":"inv-031","company_id":"c-001","subscription_id":"sub-001","invoice_no":"NTC2027000031","invoice_type":"sale","related_invoice_id":null,"status":"paid","period_start":"2027-02-18","period_end":"2027-03-17","issued_at":"2027-02-17T21:00:05Z","due_at":"2027-02-24T20:59:59Z","paid_at":"2027-02-17T21:00:41Z","currency":"TRY","subtotal_kurus":149900,"discount_kurus":0,"vat_kurus":29980,"total_kurus":179880,"e_document_type":"e_fatura","buyer_snapshot":{"legal_name":"Kılıç Mobilya Sanayi ve Ticaret Ltd. Şti.","tax_office":"Erciyes VD","tax_number":"enc:…","address":"Ahmet Paşa Cad. No: 41/3 Melikgazi/Kayseri"}}
 ```
 
 #### `billing.invoice_lines`
@@ -564,11 +640,12 @@ Fatura yasal belgedir: alıcı bilgileri **kesim anındaki anlık görüntü** o
 | `quantity` | `numeric(10,3)` | H | | |
 | `unit_price_kurus` | `bigint` | H | | |
 | `vat_rate_bp` | `integer` | H | | |
-| `amount_kurus` | `bigint` | H | | KDV hariç satır tutarı |
+| `amount_kurus` | `bigint` | H | | KDV hariç satır tutarı = `round(quantity × unit_price_kurus)` |
+| `vat_kurus` | `bigint` | H | | Satırın KDV'si = `round(amount_kurus × vat_rate_bp / 10000)`. KDV **satırda** hesaplanır (e-Fatura kalem yapısı; farklı oranlı kalemler olabilir); fatura başlığındaki `vat_kurus` satırların toplamıdır (kesimde denetlenir) |
 | `plan_price_id` | `uuid` | E | FK | |
 
 ```json
-{"id":"il-1","invoice_id":"inv-031","line_no":1,"kind":"subscription","description":"NittCAM Pro aylık abonelik (18.02–17.03.2027)","quantity":1,"unit_price_kurus":149900,"vat_rate_bp":2000,"amount_kurus":149900,"plan_price_id":"pp-22"}
+{"id":"il-1","invoice_id":"inv-031","line_no":1,"kind":"subscription","description":"NittCAM Pro aylık abonelik (18.02–17.03.2027)","quantity":1,"unit_price_kurus":149900,"vat_rate_bp":2000,"amount_kurus":149900,"vat_kurus":29980,"plan_price_id":"pp-22"}
 ```
 
 #### `billing.payments`
@@ -652,7 +729,7 @@ Sunucu olayları iş işlemiyle **aynı transaction'da** yazılır (export kayde
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | H | PK (`id`, `occurred_at`) | UUIDv7, istemci üretir: tekrar gönderimde çift kayıt olmaz |
-| `occurred_at` | `timestamptz` | H | PK, bölüm anahtarı | Olay zamanı (istemci saati ±5 dk düzeltilir) |
+| `occurred_at` | `timestamptz` | H | PK, bölüm anahtarı | Olay zamanı, istemcinin gönderdiği değer **olduğu gibi** (R4). Sunucu değiştirmez; `received_at - 7 gün … received_at + 5 dk` penceresi dışındaki olay reddedilir (bozuk saat, eski kuyruk) |
 | `received_at` | `timestamptz` | H | | Sunucu zamanı |
 | `company_id` | `uuid` | H | | FK konmaz (bölümlü tabloda maliyet); bütünlük alıcıda |
 | `user_id` | `uuid` | E | | Sistem olaylarında NULL |
@@ -666,9 +743,11 @@ Sunucu olayları iş işlemiyle **aynı transaction'da** yazılır (export kayde
 Bölümleme: `PARTITION BY RANGE (occurred_at)`, aylık (`analytics.events_2027_03`). Bir iş her ayın 20'sinde sonraki 2 ayın bölümünü açar ve saklama süresi dolanı `DETACH` + `DROP` eder (PGlite'ta `pg_partman` yok; iş uygulama kodunda).
 İndeksler (bölüm başına): `(company_id, occurred_at)`, `(event_name, occurred_at)`, BRIN `(occurred_at)`.
 
+Tekrar gönderim: istemci kuyruğu aynı olayı aynı `id` **ve** aynı `occurred_at` ile yollar; `INSERT … ON CONFLICT (id, occurred_at) DO NOTHING` çift kaydı önler. Bölümlü tabloda tekil anahtar bölüm anahtarını içermek zorunda olduğu için `occurred_at`'in sunucuda değişmemesi bu garantinin şartıdır. Saat sapması analizde gerekirse `received_at - occurred_at` farkından okunur. Günlük özet işi son 3 günü yeniden hesapladığı için geç gelen olaylar özetlere girer; 3 günden eski gelen olay ham tabloda kalır, özet haftalık tam yeniden hesapla düzelir.
+
 ```json
-{"id":"0195f1c2-…","occurred_at":"2027-03-02T07:14:03Z","received_at":"2027-03-02T07:14:04Z","company_id":"c-001","user_id":"u-102","session_id":"as-9f1","role":"operator","event_name":"nesting.run","project_id":"pr-4410","machine_id":"m-01","props":{"mode":"min_waste","part_count":46,"sheet_count":3,"waste_pct":11.8,"duration_ms":1840},"app_version":"0.14.2"}
-{"id":"0195f1c9-…","occurred_at":"2027-03-02T07:31:40Z","received_at":"2027-03-02T07:31:40Z","company_id":"c-001","user_id":"u-102","session_id":"as-9f1","role":"operator","event_name":"nc.exported","project_id":"pr-4410","machine_id":"m-01","props":{"export_id":"ex-9021","files":3,"unverified":false}}
+{"id":"0195f1c2-…","occurred_at":"2027-03-02T07:14:03Z","received_at":"2027-03-02T07:14:04Z","company_id":"c-001","user_id":"u-102","session_id":"ws-41c","role":"operator","event_name":"nesting.run","project_id":"pr-4410","machine_id":"m-01","props":{"mode":"min_waste","part_count":46,"sheet_count":3,"waste_pct":11.8,"duration_ms":1840},"app_version":"0.14.2"}
+{"id":"0195f1c9-…","occurred_at":"2027-03-02T07:31:40Z","received_at":"2027-03-02T07:31:40Z","company_id":"c-001","user_id":"u-102","session_id":"ws-41c","role":"operator","event_name":"nc.exported","project_id":"pr-4410","machine_id":"m-01","props":{"export_id":"ex-9021","files":3,"unverified":false}}
 ```
 
 #### `analytics.daily_company_usage`: firma × gün özeti
@@ -704,6 +783,29 @@ Aynı ölçütler kullanıcı düzeyinde (`user_id`, `day` PK; `company_id`, `ro
 {"user_id":"u-102","day":"2027-03-02","company_id":"c-001","role":"operator","sessions":3,"active_minutes":214,"projects_opened":5,"nesting_runs":11,"nc_exports":4}
 ```
 
+Aylık/haftalık aktif kullanıcı (MAU/WAU) **bu tablodan** `count(DISTINCT user_id)` ile hesaplanır; `daily_company_usage.active_users` toplanamaz (aynı kullanıcı her gün yeniden sayılır).
+
+#### `analytics.daily_project_usage` (yeni, R3): proje × kullanıcı × gün
+
+"Hangi projede ne kadar çalışıldı" sorusunun kaynağı. Etkin süreyi heartbeat doğrudan artırır (açık proje varken), sayaçları günlük özet işi `analytics.events.project_id`'den doldurur.
+
+| Sütun | Tip | Null | Anahtar | Açıklama |
+| --- | --- | --- | --- | --- |
+| `project_id` | `uuid` | H | PK (1) | FK konmaz (proje kalıcı silinirse satır anonim sayı olarak kalır) |
+| `user_id` | `uuid` | H | PK (2) | |
+| `day` | `date` | H | PK (3) | İstanbul günü |
+| `company_id` | `uuid` | H | | |
+| `active_seconds` | `integer` | H | | Proje açıkken geçen etkin süre |
+| `nesting_runs`, `nc_exports`, `dxf_exports`, `pdf_exports` | `integer` | H | | O gün bu projede |
+| `computed_at` | `timestamptz` | E | | Sayaçların son hesaplandığı an |
+
+İndeks: `(company_id, day)`. Hacim: ≈ 3 proje/kullanıcı/gün → 4.500 satır/gün. Saklama: 25 ay. Proje dışı süre (listeler, ayarlar, makine formu) = kullanıcının günlük toplamı − bu tablodaki toplamı. Proje toplamı: `sum(active_seconds) GROUP BY project_id` (firma kartında proje başına toplam saat, kişi sayısı, ilk/son çalışma günü). Backoffice proje **adını** `bo.v_company_projects` metaverisinden alır; içerik yine görünmez.
+
+```json
+{"project_id":"pr-4410","user_id":"u-102","day":"2027-03-02","company_id":"c-001","active_seconds":6840,"nesting_runs":9,"nc_exports":3,"dxf_exports":0,"pdf_exports":2}
+{"project_id":"pr-4410","user_id":"u-101","day":"2027-03-02","company_id":"c-001","active_seconds":540,"nesting_runs":0,"nc_exports":0,"dxf_exports":0,"pdf_exports":1}
+```
+
 ### 6.6 Backoffice personeli (`bo`)
 
 #### `bo.staff_users`
@@ -728,70 +830,62 @@ Backoffice kullanıcıları **kiracı kullanıcılarından tamamen ayrıdır** (
 
 ### 6.7 CRM (`crm`)
 
-#### `crm.accounts`: firma CRM kartı (1:1 `companies`)
+#### `crm.accounts`: hesap kartı (aday **ve** müşteri, R1)
 
-Kiracının görmediği backoffice alanları.
-
-| Sütun | Tip | Null | Anahtar | Açıklama |
-| --- | --- | --- | --- | --- |
-| `company_id` | `uuid` | H | PK, FK | |
-| `owner_staff_id` | `uuid` | E | FK → `bo.staff_users` | Hesap sorumlusu |
-| `source` | `text` | E | | `machine_dealer`, `trade_fair`, `web`, `referral`, `content`, `free_waste_calculator`, `outbound` (§13.2 kanallar) |
-| `source_detail` | `text` | E | | "MOSDER fuarı 2026", "XYZ CNC bayi" |
-| `lead_id` | `uuid` | E | FK → `crm.leads`, UQ | Hangi potansiyel kayıttan geldi |
-| `is_founder_member` | `boolean` | H | | Kurucu üye (§13.1) |
-| `employee_band` | `text` | E | | `1-5`, `6-20`, `21-50`, `50+` |
-| `machine_count_reported` | `integer` | E | | Görüşmede söylenen CNC sayısı (sistemdeki makine sayısından farklı olabilir) |
-| `monthly_sheets_est` | `integer` | E | | Aylık plaka tahmini (değer hesabı §13.2) |
-| `lifecycle_override` | `text` | E | | Elle işaret (`at_risk`, `vip`); otomatik skor `mv_company_health`'te |
-| `health_note` | `text` | E | | |
-| `created_at`, `updated_at` | `timestamptz` | H | | |
-
-```json
-{"company_id":"c-001","owner_staff_id":"s-01","source":"machine_dealer","source_detail":"Anadolu CNC Makine (bayi)","lead_id":"l-014","is_founder_member":true,"employee_band":"6-20","machine_count_reported":2,"monthly_sheets_est":180,"lifecycle_override":null}
-```
-
-#### `crm.leads`: potansiyel müşteriler (henüz kiracı olmayan atölyeler)
+Backoffice'in tek "atölye" varlığı. Henüz kiracı olmayan atölye de (aday), ödeyen müşteri de aynı tabloda birer satırdır; fark `company_id`'dir: **boş = aday, dolu = kiracı oldu**. Kişiler, görüşmeler, görevler ve etiketler `account_id`'ye bağlanır; atölye müşteriye dönüştüğünde hiçbir satır taşınmaz, zaman çizelgesi ilk telefondan bugüne tek parça kalır. Kiracı bu tabloyu asla görmez.
 
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | H | PK | |
-| `name` | `text` | H | | Atölye adı |
-| `status` | `text` | H | | `new`, `contacted`, `demo_scheduled`, `demo_done`, `trial`, `won`, `lost`, `nurture` |
-| `segment` | `text` | E | | `companies.segment` ile aynı liste |
-| `source`, `source_detail` | `text` | E | | |
-| `province_code` | `smallint` | E | FK → `ref.provinces` | Haritada "potansiyel" katmanı |
-| `district_id` | `integer` | E | FK → `ref.districts` | |
+| `company_id` | `uuid` | E | FK → `companies`, UQ | Kiracı olduysa. Firma başına en çok bir hesap |
+| `name` | `text` | H | | Atölye adı. Müşteride görünen ad `companies.name`'dir; bu alan aday dönemi ve arama içindir |
+| `pipeline_status` | `text` | H | | Satış hattı: `new`, `contacted`, `demo_scheduled`, `demo_done`, `signed_up`, `lost`, `nurture`. `CHECK ((pipeline_status = 'signed_up') = (company_id IS NOT NULL))`. Kayıttan **sonraki** durum (deneme, aktif, risk, churn) burada tutulmaz; abonelikten ve sağlık tablosundan okunur (tek doğru kaynak) |
+| `segment` | `text` | E | | `companies.segment` ile aynı liste; kayıtta firmaya kopyalanır |
+| `source` | `text` | E | | `machine_dealer`, `trade_fair`, `web`, `referral`, `content`, `free_waste_calculator`, `outbound`, `self_signup` (§13.2 kanallar) |
+| `source_detail` | `text` | E | | "MOSDER fuarı 2026", "XYZ CNC bayi" |
+| `owner_staff_id` | `uuid` | E | FK → `bo.staff_users` | Hesap sorumlusu |
+| `province_code` | `smallint` | E | FK → `ref.provinces` | **Aday** konumu (haritada "potansiyel" katmanı). Müşteride konum `company_addresses`'ten okunur |
+| `district_id` | `integer` | E | FK (`province_code`, `district_id`) → `ref.districts` | |
 | `address_line` | `text` | E | | |
 | `lat`, `lng` | `numeric(9,6)` | E | | |
 | `phone_e164`, `email`, `website` | `text` | E | | Genel firma iletişimi (kişiler `crm.contacts`) |
-| `machine_count_est` | `integer` | E | | |
+| `employee_band` | `text` | E | | `1-5`, `6-20`, `21-50`, `50+` |
+| `machine_count_reported` | `integer` | E | | Görüşmede söylenen CNC sayısı (sistemdeki makine sayısından farklı olabilir) |
 | `controller_hint` | `text` | E | | "Mach3", "Syntec", "NcStudio" (§2.2 makine segmenti) |
-| `estimated_mrr_kurus` | `bigint` | E | | Pipeline değeri |
-| `owner_staff_id` | `uuid` | E | FK | |
+| `monthly_sheets_est` | `integer` | E | | Aylık plaka tahmini (değer hesabı §13.2) |
+| `estimated_mrr_kurus` | `bigint` | E | | Pipeline değeri (aday için) |
 | `next_step_at` | `timestamptz` | E | | |
-| `lost_reason` | `text` | E | | |
-| `converted_company_id` | `uuid` | E | FK → `companies`, UQ | Dönüştüğünde |
-| `converted_at` | `timestamptz` | E | | |
+| `lost_reason` | `text` | E | | `pipeline_status = 'lost'` iken |
+| `signed_up_at` | `timestamptz` | E | | Kiracı olduğu an |
+| `is_founder_member` | `boolean` | H | | Kurucu üye (§13.1) |
+| `lifecycle_override` | `text` | E | | Elle işaret (`at_risk`, `vip`); otomatik skor `analytics.company_health_daily`'de |
+| `health_note` | `text` | E | | |
+| `merged_into_account_id` | `uuid` | E | FK → `crm.accounts` | Çift kayıt birleştirildi: bu satır pasif, çocukları hedef hesaba taşındı |
 | `created_at`, `updated_at`, `deleted_at` | `timestamptz` | | | |
 
-İndeksler: `(status, next_step_at) WHERE deleted_at IS NULL`, `(province_code, district_id)`, `(owner_staff_id, status)`; tekrar kaydı önlemek için `lower(phone_e164)` ve `lower(email)` üzerinde tekil olmayan arama indeksleri.
+İndeksler: tekil `(company_id) WHERE company_id IS NOT NULL`; `(pipeline_status, next_step_at) WHERE deleted_at IS NULL AND company_id IS NULL` (satış listesi); `(province_code, district_id) WHERE company_id IS NULL AND deleted_at IS NULL` (aday haritası); `(owner_staff_id, pipeline_status)`; çift kaydı bulmak için `lower(email)` ve `phone_e164` üzerinde tekil olmayan arama indeksleri.
+
+**Kiracı olma akışı:**
+
+1. Personel bir adayı müşteriye çevirirse (davet gönderir): firma oluşur, aynı işlemde `company_id`, `pipeline_status = 'signed_up'`, `signed_up_at` yazılır.
+2. Atölye kendi kendine kayıt olursa uygulama `crm` şemasına erişemez; `nittcam_jobs` birkaç dakika içinde hesabı açar (`source = 'self_signup'`). E-posta ya da telefon açık bir adayla eşleşiyorsa yeni satır açılmaz, panelde "olası eşleşme" olarak gösterilir ve personel onaylayınca bağlanır (yanlış otomatik birleştirme geri alınamaz).
+3. `bo.v_company_overview` hesaba `LEFT JOIN` yapar: hesap kartı gecikse de firma panelde görünür.
 
 ```json
-{"id":"l-014","name":"Kılıç Mobilya","status":"won","segment":"furniture","source":"machine_dealer","province_code":38,"district_id":3801,"controller_hint":"Mach3","machine_count_est":2,"owner_staff_id":"s-01","converted_company_id":"c-001","converted_at":"2026-12-03T07:41:12Z"}
-{"id":"l-027","name":"Yıldırım Kapı ve Panel","status":"demo_scheduled","segment":"panel","source":"trade_fair","source_detail":"Bursa Modef 2026","province_code":16,"district_id":1606,"address_line":"İnegöl OSB 4. Cad. No: 18","lat":40.081300,"lng":29.553400,"phone_e164":"+902247140055","controller_hint":"Syntec","machine_count_est":3,"estimated_mrr_kurus":249900,"owner_staff_id":"s-01","next_step_at":"2027-03-05T08:00:00Z"}
+{"id":"acc-014","company_id":"c-001","name":"Kılıç Mobilya","pipeline_status":"signed_up","segment":"furniture","source":"machine_dealer","source_detail":"Anadolu CNC Makine (bayi)","owner_staff_id":"s-01","province_code":38,"district_id":3801,"employee_band":"6-20","machine_count_reported":2,"controller_hint":"Mach3","monthly_sheets_est":180,"signed_up_at":"2026-12-03T07:41:12Z","is_founder_member":true,"lifecycle_override":null}
+{"id":"acc-027","company_id":null,"name":"Yıldırım Kapı ve Panel","pipeline_status":"demo_scheduled","segment":"panel","source":"trade_fair","source_detail":"Bursa Modef 2026","owner_staff_id":"s-01","province_code":16,"district_id":1606,"address_line":"İnegöl OSB 4. Cad. No: 18","lat":40.081300,"lng":29.553400,"phone_e164":"+902247140055","controller_hint":"Syntec","machine_count_reported":3,"estimated_mrr_kurus":249900,"next_step_at":"2027-03-05T08:00:00Z","is_founder_member":false}
 ```
 
 #### `crm.contacts`: yetkili kişiler
 
-Firma ya da potansiyel kayda bağlı kişi (patron, usta, muhasebe). Uygulama kullanıcısı olabilir de olmayabilir de.
+Hesaba bağlı kişi (patron, usta, muhasebe). Uygulama kullanıcısı olabilir de olmayabilir de.
 
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | H | PK | |
-| `company_id` | `uuid` | E | FK | `CHECK (num_nonnulls(company_id, lead_id) = 1)` |
-| `lead_id` | `uuid` | E | FK | |
-| `user_id` | `uuid` | E | FK → `users` | Aynı kişinin uygulama hesabı |
+| `account_id` | `uuid` | H | FK → `crm.accounts` | |
+| `company_id` | `uuid` | E | | Yalnızca `user_id` doluyken dolu (bileşik FK'nin parçası) |
+| `user_id` | `uuid` | E | FK (`company_id`, `user_id`) → `users (company_id, id)` | Aynı kişinin uygulama hesabı (R9). Kullanıcı KVKK ile anonimleşirse bağ koparılır |
 | `full_name` | `text` | H | | |
 | `title` | `text` | E | | "Firma sahibi", "CNC ustası", "Muhasebe" |
 | `contact_role` | `text` | E | | `decision_maker`, `operator`, `billing`, `technical` |
@@ -801,11 +895,11 @@ Firma ya da potansiyel kayda bağlı kişi (patron, usta, muhasebe). Uygulama ku
 | `notes` | `text` | E | | |
 | `created_at`, `updated_at`, `deleted_at` | `timestamptz` | | | |
 
-İndeksler: `(company_id) WHERE deleted_at IS NULL`, `(lead_id) WHERE deleted_at IS NULL`.
+İndeksler: `(account_id) WHERE deleted_at IS NULL`; tekil `(account_id) WHERE is_primary AND deleted_at IS NULL`.
 
 ```json
-{"id":"ct-01","company_id":"c-001","user_id":"u-101","full_name":"Sadettin Kılıç","title":"Firma sahibi","contact_role":"decision_maker","phone_e164":"+905321112233","email":"sadettin@kilicmobilya.example","preferred_channel":"whatsapp","is_primary":true}
-{"id":"ct-02","company_id":"c-001","full_name":"Ayşe Demir","title":"Muhasebe","contact_role":"billing","phone_e164":"+903524445566","email":"muhasebe@kilicmobilya.example","preferred_channel":"email","is_primary":false}
+{"id":"ct-01","account_id":"acc-014","company_id":"c-001","user_id":"u-101","full_name":"Sadettin Kılıç","title":"Firma sahibi","contact_role":"decision_maker","phone_e164":"+905321112233","email":"sadettin@kilicmobilya.example","preferred_channel":"whatsapp","is_primary":true}
+{"id":"ct-02","account_id":"acc-014","full_name":"Ayşe Demir","title":"Muhasebe","contact_role":"billing","phone_e164":"+903524445566","email":"muhasebe@kilicmobilya.example","preferred_channel":"email","is_primary":false}
 ```
 
 #### `crm.activities`: görüşmeler ve notlar
@@ -815,7 +909,7 @@ Telefon, ziyaret, demo, e-posta, WhatsApp ve **not** (`kind = 'note'`) tek zaman
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | H | PK | |
-| `company_id`, `lead_id` | `uuid` | E | FK | Biri dolu |
+| `account_id` | `uuid` | H | FK → `crm.accounts` | |
 | `contact_id` | `uuid` | E | FK | |
 | `staff_id` | `uuid` | H | FK | Yapan personel |
 | `kind` | `text` | H | | `call`, `visit`, `demo`, `email`, `whatsapp`, `meeting`, `note` |
@@ -823,16 +917,16 @@ Telefon, ziyaret, demo, e-posta, WhatsApp ve **not** (`kind = 'note'`) tek zaman
 | `subject` | `text` | H | | |
 | `body` | `text` | E | | |
 | `outcome` | `text` | E | | `positive`, `neutral`, `negative`, `no_answer` |
-| `is_pinned` | `boolean` | H | | Firma kartında üstte |
+| `is_pinned` | `boolean` | H | | Hesap kartında üstte |
 | `occurred_at` | `timestamptz` | H | | |
 | `duration_min` | `integer` | E | | |
 | `created_at`, `updated_at`, `deleted_at` | `timestamptz` | | | |
 
-İndeksler: `(company_id, occurred_at DESC)`, `(lead_id, occurred_at DESC)`, `(staff_id, occurred_at DESC)`.
+İndeksler: `(account_id, occurred_at DESC)`, `(staff_id, occurred_at DESC)`.
 
 ```json
-{"id":"ac-301","company_id":"c-001","contact_id":"ct-01","staff_id":"s-01","kind":"visit","direction":"outbound","subject":"Atölye ziyareti, ikinci makine kurulumu","body":"Syntec controller'lı ikinci router için post kurulumu istiyor. Air cut 5 Mart.","outcome":"positive","is_pinned":true,"occurred_at":"2027-02-26T08:30:00Z","duration_min":90}
-{"id":"ac-302","lead_id":"l-027","staff_id":"s-01","kind":"call","direction":"outbound","subject":"Demo randevusu","outcome":"positive","occurred_at":"2027-02-27T10:15:00Z","duration_min":12}
+{"id":"ac-301","account_id":"acc-014","contact_id":"ct-01","staff_id":"s-01","kind":"visit","direction":"outbound","subject":"Atölye ziyareti, ikinci makine kurulumu","body":"Syntec controller'lı ikinci router için post kurulumu istiyor. Air cut 5 Mart.","outcome":"positive","is_pinned":true,"occurred_at":"2027-02-26T08:30:00Z","duration_min":90}
+{"id":"ac-302","account_id":"acc-027","staff_id":"s-01","kind":"call","direction":"outbound","subject":"Demo randevusu","outcome":"positive","occurred_at":"2027-02-27T10:15:00Z","duration_min":12}
 ```
 
 #### `crm.tasks`
@@ -840,7 +934,7 @@ Telefon, ziyaret, demo, e-posta, WhatsApp ve **not** (`kind = 'note'`) tek zaman
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | H | PK | |
-| `company_id`, `lead_id` | `uuid` | E | FK | İkisi de boş olabilir (genel görev) |
+| `account_id` | `uuid` | E | FK → `crm.accounts` | Boş olabilir (genel görev) |
 | `ticket_id` | `uuid` | E | FK → `support.tickets` | |
 | `assignee_staff_id` | `uuid` | H | FK | |
 | `title` | `text` | H | | |
@@ -850,22 +944,22 @@ Telefon, ziyaret, demo, e-posta, WhatsApp ve **not** (`kind = 'note'`) tek zaman
 | `created_by_staff_id` | `uuid` | H | FK | |
 | `created_at`, `updated_at` | `timestamptz` | H | | |
 
-İndeks: `(assignee_staff_id, status, due_at)`.
+İndeks: `(assignee_staff_id, status, due_at)`, `(account_id) WHERE status = 'open'`.
 
 ```json
-{"id":"tk-55","company_id":"c-001","assignee_staff_id":"s-01","title":"Syntec post'u için air cut sonucu sor","status":"open","priority":"high","due_at":"2027-03-05T15:00:00Z","created_by_staff_id":"s-01"}
+{"id":"tk-55","account_id":"acc-014","assignee_staff_id":"s-01","title":"Syntec post'u için air cut sonucu sor","status":"open","priority":"high","due_at":"2027-03-05T15:00:00Z","created_by_staff_id":"s-01"}
 ```
 
-#### `crm.tags`, `crm.entity_tags`
+#### `crm.tags`, `crm.account_tags`
 
 | Tablo | Sütunlar | Açıklama |
 | --- | --- | --- |
 | `crm.tags` | `id` PK, `name` UQ, `color`, `created_at` | "kurucu-üye", "pilot", "bayi-yönlendirmesi", "syntec" |
-| `crm.entity_tags` | `tag_id` FK, `company_id` E, `lead_id` E, `created_by_staff_id`, `created_at`; `CHECK num_nonnulls(company_id, lead_id)=1`; tekil `(tag_id, company_id)`, `(tag_id, lead_id)` | Çoktan çoğa |
+| `crm.account_tags` | `account_id` FK, `tag_id` FK, `created_by_staff_id`, `created_at`; PK (`account_id`, `tag_id`) | Çoktan çoğa |
 
 ```json
 {"id":"tg-1","name":"pilot","color":"#0E7C66"}
-{"tag_id":"tg-1","company_id":"c-001","created_by_staff_id":"s-01"}
+{"account_id":"acc-014","tag_id":"tg-1","created_by_staff_id":"s-01"}
 ```
 
 ### 6.8 Destek (`support`)
@@ -878,14 +972,14 @@ Telefon, ziyaret, demo, e-posta, WhatsApp ve **not** (`kind = 'note'`) tek zaman
 | `ticket_no` | `bigint` | H | UQ | Okunur numara (identity, "#1042") |
 | `company_id` | `uuid` | H | FK | |
 | `requester_user_id` | `uuid` | E | FK | Uygulamadan açan |
-| `contact_id` | `uuid` | E | FK | Telefonla gelen |
+| `contact_id` | `uuid` | E | FK → `crm.contacts` | Telefonla gelen. Kiracıya açılan görünümde bu sütun yoktur (`crm` kiracıya kapalı) |
 | `channel` | `text` | H | | `in_app`, `email`, `phone`, `whatsapp` |
 | `category` | `text` | H | | `gcode_machine`, `nesting`, `dxf_import`, `billing`, `account`, `feature_request`, `other` |
 | `priority` | `text` | H | | `low`, `normal`, `high`, `urgent` (makine duruyor) |
 | `status` | `text` | H | | `open`, `pending_customer`, `pending_internal`, `resolved`, `closed` |
 | `subject` | `text` | H | | |
 | `assignee_staff_id` | `uuid` | E | FK | |
-| `project_id`, `machine_id`, `export_id` | `uuid` | E | | Kanıt bağlamı (aynı firma) |
+| `project_id`, `machine_id`, `export_id` | `uuid` | E | FK (`company_id`, `x_id`) → ilgili tablo (`company_id`, `id`) | Kanıt bağlamı. Bileşik FK: talep başka firmanın projesine bağlanamaz (R9). `exports` için `unique(company_id, id)` eklenir (`projects` ve `machines`'te var) |
 | `first_response_at`, `resolved_at`, `closed_at` | `timestamptz` | E | | SLA ölçümü |
 | `sla_due_at` | `timestamptz` | E | | |
 | `csat_score` | `smallint` | E | | 1–5 |
@@ -947,8 +1041,8 @@ Kim, ne zaman, neyi, öncesi/sonrası. Yalnızca INSERT (`REVOKE UPDATE, DELETE`
 | `actor_id` | `uuid` | E | | |
 | `company_id` | `uuid` | E | | Platform olaylarında NULL |
 | `action` | `text` | H | | `user.role_changed`, `user.disabled`, `subscription.plan_changed`, `machine.profile_saved`, `export.unverified_accepted`, `staff.viewed_company`, `staff.viewed_project`, `staff.exported_csv`, `privacy.erasure_executed` |
-| `entity_type` | `text` | H | | `users`, `subscriptions`, … |
-| `entity_id` | `uuid` | E | | |
+| `entity_type` | `text` | H | | Şema dahil tablo adı: `public.users`, `billing.subscriptions`, … |
+| `entity_id` | `text` | E | | Satırın anahtarı metin olarak (R9): `uuid`, il kodu ya da bileşik anahtar (`"u-102|2027-03-02"`) |
 | `before`, `after` | `jsonb` | E | | Yalnızca değişen alanlar; şifre/token asla |
 | `request_id` | `text` | E | | Log korelasyonu |
 | `ip_prefix` | `cidr` | E | | |
@@ -956,11 +1050,13 @@ Kim, ne zaman, neyi, öncesi/sonrası. Yalnızca INSERT (`REVOKE UPDATE, DELETE`
 
 İndeksler: `(company_id, occurred_at DESC)`, `(actor_kind, actor_id, occurred_at DESC)`, `(entity_type, entity_id)`.
 
+Yazma yolu: uygulama rolü yalnızca kendi firması için satır ekleyebilir (RLS `WITH CHECK`, §3.2) ve `actor_kind IN ('user','ai','system')` yazabilir; `staff` satırlarını yalnızca `nittcam_bo` ekler. Böylece kiracı tarafı "personel şuna baktı" kaydı uyduramaz.
+
 Not: `project_commands` proje içi ayrıntılı geçmiş olarak kalır, buraya kopyalanmaz.
 
 ```json
-{"id":"0195e8…","occurred_at":"2027-02-20T12:04:11Z","actor_kind":"user","actor_id":"u-101","company_id":"c-001","action":"user.role_changed","entity_type":"users","entity_id":"u-103","before":{"role":"operator"},"after":{"role":"admin"},"request_id":"req_7Hk2","ip_prefix":"85.105.12.0/24"}
-{"id":"0195f2…","occurred_at":"2027-03-02T08:01:30Z","actor_kind":"staff","actor_id":"s-02","company_id":"c-001","action":"staff.viewed_project","entity_type":"projects","entity_id":"pr-4410","after":{"grant_id":"ag-9","ticket_id":"t-1042"}}
+{"id":"0195e8…","occurred_at":"2027-02-20T12:04:11Z","actor_kind":"user","actor_id":"u-101","company_id":"c-001","action":"user.role_changed","entity_type":"public.users","entity_id":"u-103","before":{"role":"operator"},"after":{"role":"admin"},"request_id":"req_7Hk2","ip_prefix":"85.105.12.0/24"}
+{"id":"0195f2…","occurred_at":"2027-03-02T08:01:30Z","actor_kind":"staff","actor_id":"s-02","company_id":"c-001","action":"staff.viewed_project","entity_type":"public.projects","entity_id":"pr-4410","after":{"grant_id":"ag-9","ticket_id":"t-1042"}}
 ```
 
 ### 6.10 KVKK (`privacy`)
@@ -987,7 +1083,7 @@ KVKK ayrımı: **aydınlatma** bir bildirimdir (okundu kaydı tutulur, rıza de�
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | H | PK | |
-| `subject_kind` | `text` | H | | `user`, `contact`, `lead` |
+| `subject_kind` | `text` | H | | `user`, `contact` (rıza gerçek kişiye aittir; aday atölyenin kişisi de `crm.contacts` satırıdır) |
 | `subject_id` | `uuid` | H | | |
 | `company_id` | `uuid` | E | | |
 | `purpose` | `text` | H | | `kvkk_notice_ack`, `terms_accept`, `marketing_email`, `marketing_sms`, `marketing_call`, `analytics_cookies`, `cross_border_transfer` |
@@ -1051,11 +1147,26 @@ Saklama kurallarını kodda değil veride tutar; temizlik işi buradan okur.
 | `bo.v_map_provinces` | görünüm | İl başına: müşteri, deneme, risk altındaki, potansiyel sayısı, MRR | canlı |
 | `bo.v_map_districts` | görünüm | İl içinde ilçe başına aynı sayılar | canlı |
 | `bo.v_map_pins` | görünüm | Firma ve potansiyel pinleri (lat/lng, tür, durum) | canlı |
-| `analytics.mv_company_health` | materialized view | Firma başına sağlık skoru ve yaşam döngüsü (aşağıda) | saatlik, `REFRESH … CONCURRENTLY` |
+| `analytics.company_health_daily` | **tablo** (R7) | Firma × gün: yaşam döngüsü, skor, skor bileşenleri, risk nedenleri (aşağıda) | gece işi + gün içinde saatlik (bugünün satırı `ON CONFLICT DO UPDATE`) |
+| `analytics.v_company_health` | görünüm | Her firmanın **en güncel** sağlık satırı; panel ve diğer görünümler bunu okur | canlı |
 | `analytics.mv_mrr_monthly` | materialized view | Ay × paket: başlangıç MRR, yeni, genişleme, daralma, churn, geri kazanım, bitiş MRR | gece |
 | `analytics.mv_cohort_retention` | materialized view | İlk ödeme ayı kohortu × ay: hâlâ ödeyen firma oranı | gece |
 
-**Yaşam döngüsü (`mv_company_health.lifecycle`)**, kurallar ilk eşleşen:
+`analytics.company_health_daily` (PK `company_id`, `day`):
+
+| Sütun | Tip | Açıklama |
+| --- | --- | --- |
+| `company_id`, `day` | `uuid`, `date` | İstanbul günü |
+| `lifecycle` | `text` | Aşağıdaki kurallardan |
+| `health_score` | `smallint` | 0–100 |
+| `score_parts` | `jsonb` | `{"usage":31,"exports":20,"seats":10,"payment":10,"support":10}`: skorun neden değiştiği okunur |
+| `risk_reasons` | `text[]` | `usage_drop`, `no_export_21d`, `urgent_ticket`, `cancel_requested` |
+| `last_active_day` | `date` | |
+| `rules_version` | `smallint` | Kural/ağırlık seti; ayar değişince artar, eski günlerle karıştırılmaz |
+
+Neden tablo: materialized view yalnızca bugünü gösterir. Günlük satırlarla (1) firma kartında skor trendi çizilir, (2) "30 gün önce `at_risk` denenlerin kaçı churn etti" sorusu sorulabilir; S8'deki ağırlık ayarı ancak bu ölçümle yapılır. Hacim: 500 firma × 365 gün ≈ 183 bin satır/yıl, süresiz saklanır.
+
+**Yaşam döngüsü (`lifecycle`)**, kurallar ilk eşleşen:
 
 | Değer | Kural |
 | --- | --- |
@@ -1066,7 +1177,7 @@ Saklama kurallarını kodda değil veride tutar; temizlik işi buradan okur.
 | `at_risk` | `active` ve (son 30 gün etkin dakika < önceki 30 günün %50'si **veya** 21 gündür export yok **veya** açık `urgent` talep **veya** `cancel_at_period_end`) |
 | `healthy` | `active`, diğerleri değil |
 
-Skor (0–100): kullanım trendi 40, export sıklığı 25, koltuk doluluğu 15, ödeme durumu 10, destek 10. Ağırlıklar ilk 3 ay gözlemle ayarlanır (S8).
+Skor (0–100): kullanım trendi 40, export sıklığı 25, koltuk doluluğu 15, ödeme durumu 10, destek 10. Ağırlıklar ilk 3 ay gözlemle ayarlanır (S8); her ayar `rules_version`'ı artırır.
 
 Örnek tanım:
 
@@ -1101,9 +1212,14 @@ LEFT JOIN LATERAL (
   SELECT count(*) AS machine_count FROM public.machines
   WHERE company_id = c.id AND archived_at IS NULL
 ) m ON true
-LEFT JOIN analytics.mv_company_health h ON h.company_id = c.id
-LEFT JOIN crm.accounts acc ON acc.company_id = c.id
+LEFT JOIN analytics.v_company_health h ON h.company_id = c.id
+LEFT JOIN crm.accounts acc ON acc.company_id = c.id AND acc.deleted_at IS NULL
 WHERE c.deleted_at IS NULL;
+
+CREATE VIEW analytics.v_company_health AS
+SELECT DISTINCT ON (company_id) *
+FROM analytics.company_health_daily
+ORDER BY company_id, day DESC;
 ```
 
 ---
@@ -1118,9 +1234,9 @@ SELECT p.plate_code, p.name,
        count(o.company_id) FILTER (WHERE o.subscription_status = 'trialing')            AS trial,
        count(o.company_id) FILTER (WHERE o.lifecycle = 'at_risk')                       AS at_risk,
        coalesce(sum(o.mrr_kurus), 0)                                                    AS mrr_kurus,
-       (SELECT count(*) FROM crm.leads l
+       (SELECT count(*) FROM crm.accounts l
          WHERE l.province_code = p.plate_code AND l.deleted_at IS NULL
-           AND l.status NOT IN ('won','lost'))                                          AS open_leads
+           AND l.company_id IS NULL AND l.pipeline_status <> 'lost')                    AS open_leads
 FROM ref.provinces p
 LEFT JOIN bo.v_company_overview o ON o.province_code = p.plate_code
 GROUP BY p.plate_code, p.name
@@ -1128,6 +1244,13 @@ ORDER BY paying DESC, trial DESC;
 ```
 
 Ön yüz: il GeoJSON'u (statik dosya, özellik `plate_code`) bu sonuçla renklendirilir (koroplet: ödeyen firma sayısı).
+
+Atölye adresi girmemiş firmalar hiçbir ile düşmez; harita başlığında ayrıca gösterilir ("konumu eksik: 7 firma", tıklayınca liste), yoksa harita toplamı ile firma listesi toplamı tutmaz:
+
+```sql
+SELECT count(*) AS companies_without_location
+FROM bo.v_company_overview WHERE province_code IS NULL;
+```
 
 ### 8.2 İlçe kırılımı ve pinler (il tıklandığında)
 
@@ -1147,9 +1270,10 @@ ORDER BY companies DESC;
 SELECT 'company' AS kind, company_id AS id, name, lat, lng, lifecycle AS state, is_approx_location
 FROM bo.v_company_overview WHERE province_code = :plate_code
 UNION ALL
-SELECT 'lead', id, name, coalesce(l.lat, d.lat), coalesce(l.lng, d.lng), status, l.lat IS NULL
-FROM crm.leads l LEFT JOIN ref.districts d ON d.id = l.district_id
-WHERE l.province_code = :plate_code AND l.deleted_at IS NULL AND l.status NOT IN ('won','lost');
+SELECT 'lead', l.id, l.name, coalesce(l.lat, d.lat), coalesce(l.lng, d.lng), l.pipeline_status, l.lat IS NULL
+FROM crm.accounts l LEFT JOIN ref.districts d ON d.id = l.district_id
+WHERE l.province_code = :plate_code AND l.deleted_at IS NULL
+  AND l.company_id IS NULL AND l.pipeline_status <> 'lost';
 ```
 
 ### 8.3 Son 30 gün: role göre aktif kullanıcı ve oturum
@@ -1243,9 +1367,16 @@ FROM trials t LEFT JOIN conv c USING (company_id)
 GROUP BY 1 ORDER BY 1;
 ```
 
-Aktivasyonun dönüşüme etkisi (denemede NC export alan/almayan):
+Aktivasyonun dönüşüme etkisi (denemede NC export alan/almayan). Deneme bitişi sabit 14 gün varsayılmaz, aboneliğin kendi `trial_ends_at` değeri kullanılır:
 
 ```sql
+WITH trials AS (
+  SELECT s.company_id, min(s.trial_started_at) AS started_at, min(s.trial_ends_at) AS ends_at
+  FROM billing.subscriptions s WHERE s.trial_started_at IS NOT NULL GROUP BY s.company_id
+), conv AS (
+  SELECT company_id, min(occurred_at) AS converted_at
+  FROM billing.subscription_events WHERE event_type = 'converted' GROUP BY company_id
+)
 SELECT (x.first_export IS NOT NULL) AS exported_in_trial, count(*) AS trials,
        round(100.0 * count(c.company_id) / count(*), 1) AS conversion_pct
 FROM trials t
@@ -1253,7 +1384,8 @@ LEFT JOIN conv c USING (company_id)
 LEFT JOIN LATERAL (
   SELECT min(day) AS first_export FROM analytics.daily_company_usage u
   WHERE u.company_id = t.company_id AND u.nc_exports > 0
-    AND u.day < (t.started_at AT TIME ZONE 'Europe/Istanbul')::date + 14
+    AND u.day BETWEEN (t.started_at AT TIME ZONE 'Europe/Istanbul')::date
+                  AND (t.ends_at    AT TIME ZONE 'Europe/Istanbul')::date
 ) x ON true
 GROUP BY 1;
 ```
@@ -1268,7 +1400,7 @@ SELECT o.name, p.name AS province, s.canceled_at, s.ended_at, s.cancel_reason, s
 FROM billing.subscriptions s
 JOIN bo.v_company_overview o ON o.company_id = s.company_id
 LEFT JOIN ref.provinces p ON p.plate_code = o.province_code
-LEFT JOIN analytics.mv_company_health h ON h.company_id = s.company_id
+LEFT JOIN analytics.v_company_health h ON h.company_id = s.company_id
 LEFT JOIN LATERAL (
   SELECT mrr_before_kurus FROM billing.subscription_events
   WHERE subscription_id = s.id AND mrr_movement = 'churn' ORDER BY occurred_at DESC LIMIT 1
@@ -1279,11 +1411,22 @@ ORDER BY s.ended_at DESC;
 -- risk altındakiler (aksiyon listesi)
 SELECT o.name, o.plan_code, o.mrr_kurus / 100.0 AS mrr_try, h.health_score, h.risk_reasons,
        h.last_active_day, acc.owner_staff_id
-FROM analytics.mv_company_health h
+FROM analytics.v_company_health h
 JOIN bo.v_company_overview o USING (company_id)
 LEFT JOIN crm.accounts acc USING (company_id)
 WHERE h.lifecycle IN ('at_risk','past_due','trial_inactive')
 ORDER BY o.mrr_kurus DESC, h.health_score;
+
+-- risk kuralı ne kadar isabetli? (S8 ayarı için; R7 sayesinde sorulabilir)
+SELECT h.rules_version,
+       count(*)                                                    AS flagged_at_risk,
+       count(*) FILTER (WHERE now_h.lifecycle = 'churned')         AS churned_within_60d,
+       round(100.0 * count(*) FILTER (WHERE now_h.lifecycle = 'churned') / count(*), 1) AS precision_pct
+FROM analytics.company_health_daily h
+JOIN analytics.company_health_daily now_h
+  ON now_h.company_id = h.company_id AND now_h.day = h.day + 60
+WHERE h.lifecycle = 'at_risk' AND h.day = (now() AT TIME ZONE 'Europe/Istanbul')::date - 60
+GROUP BY h.rules_version;
 ```
 
 ### 8.8 Firma kartı: 12 haftalık kullanım trendi
@@ -1292,9 +1435,31 @@ ORDER BY o.mrr_kurus DESC, h.health_score;
 SELECT date_trunc('week', day)::date AS week,
        sum(active_minutes) AS minutes, sum(nc_exports) AS nc_exports, max(active_users) AS peak_users
 FROM analytics.daily_company_usage
-WHERE company_id = :company_id AND day >= current_date - 84
+WHERE company_id = :company_id
+  AND day >= (now() AT TIME ZONE 'Europe/Istanbul')::date - 84   -- current_date sunucu saat dilimine bağlıdır
 GROUP BY 1 ORDER BY 1;
 ```
+
+`peak_users` haftanın en kalabalık günüdür; haftalık **tekil** kullanıcı `daily_user_usage`'dan `count(DISTINCT user_id)` ile alınır.
+
+### 8.9 Firma kartı: projeler ve çalışma süresi (R3)
+
+```sql
+SELECT p.project_id, p.name, p.status,
+       round(sum(u.active_seconds) / 3600.0, 1) AS hours,
+       count(DISTINCT u.user_id)                AS people,
+       min(u.day) AS first_day, max(u.day) AS last_day,
+       sum(u.nesting_runs) AS nesting_runs, sum(u.nc_exports) AS nc_exports
+FROM bo.v_company_projects p
+JOIN analytics.daily_project_usage u ON u.project_id = p.project_id
+WHERE p.company_id = :company_id
+  AND u.day >= (now() AT TIME ZONE 'Europe/Istanbul')::date - 90
+GROUP BY p.project_id, p.name, p.status
+ORDER BY hours DESC
+LIMIT 50;
+```
+
+Platform ölçütü: "bir projenin ilk açılıştan ilk NC export'a kadar etkin süresi" (ürünün işi ne kadar hızlandırdığı) aynı tablodan, `nc_exports > 0` olan ilk güne kadar olan `active_seconds` toplamıyla çıkar.
 
 ---
 
@@ -1308,10 +1473,12 @@ Varsayım (büyüme hedefi): 500 firma × 3 aktif kullanıcı.
 | `analytics.user_activity_hourly` | ≈ 10 satır/kullanıcı/gün → 15 bin/gün | Yok (gerekirse yıllık) | 25 ay | Silinir |
 | `analytics.user_sessions` | ≈ 3 bin/gün | Yok | 24 ay; `ip_prefix` 6 ay sonra NULL | Silinir |
 | `analytics.daily_*_usage` | ≈ 500 + 1.500 satır/gün | Yok | Süresiz | |
+| `analytics.daily_project_usage` | ≈ 4.500 satır/gün | Yok | 25 ay | Proje başına tek toplam satıra indirgenir |
+| `analytics.company_health_daily` | ≈ 500 satır/gün | Yok | Süresiz | |
 | `auth_sessions` | Aktif oturum kadar | Yok | Süre dolunca silinir | |
 | `audit.audit_log` | ≈ 2–5 bin/gün | Yıllık RANGE | **10 yıl** (finans/erişim kanıtı; TTK md. 82 ile uyumlu) | Soğuk depoya aktarım |
 | `billing.invoices`, `payments`, `subscription_events` | Küçük | Yok | **10 yıl** (VUK 5 yıl, TTK 10 yıl; uzun olan) | Silinmez |
-| `crm.*` | Küçük | Yok | Müşteri ilişkisi + 2 yıl; kaybedilen potansiyel 2 yıl sonra anonim | |
+| `crm.*` | Küçük | Yok | Müşteri ilişkisi + 2 yıl; kaybedilen aday (`pipeline_status = 'lost'`) 2 yıl sonra anonim | |
 | `support.*` | Küçük | Yok | 3 yıl, sonra ekler silinir | |
 | `privacy.consents` | Küçük | Yok | Rıza geri alındıktan sonra 10 yıl (ispat yükü) | |
 
@@ -1329,12 +1496,14 @@ Kural: her faz ayrı migration dosyaları (`0014`'ten devam; `0011` boşluğu bi
 | --- | --- | --- | --- |
 | **0. Referans** | Şimdi (küçük, risksiz) | `ref.provinces` (81), `ref.districts` seed; bu dokümanın onayı; olay sözlüğü taslağı | Yok |
 | **1. Kimlik ve kiracı** | M10 (T200+) | Better Auth → `users` + `auth_*`; `users` yeni sütunlar; `companies` yeni sütunlar; `company_addresses`; Postgres RLS + `nittcam_app` rolü; `audit.audit_log`; `privacy.legal_documents`, `consents` (kayıt formunda aydınlatma + şartlar) | `users`: `status`, `last_login_at`, `deleted_at` …; `users_email_uq` kısmi; `companies`: `slug`, `status`, `segment`, `timezone`, `locale`, `deleted_at`; `tenantTables` listesine yeni kiracı tabloları |
-| **2. Kullanım ölçümü** | M10 sonu / M12 pilot öncesi | `analytics.user_sessions`, `user_activity_hourly`, heartbeat uç noktası; `analytics.events` (bölümlü) + `event_types`; sunucu olayları; istemci olay toplayıcı; günlük özet işleri; **geri doldurma**: `exports` → `nc/dxf/pdf.exported`, `projects.created_at` → `project.created`, `project_commands` → günlük etkin gün (dakika geri doldurulamaz) | Yok (yalnızca INSERT eklenir) |
-| **3. Backoffice ve CRM** | M12 pilot | `bo` şeması, `staff_users`, `nittcam_bo` rolü, görünümler; `crm.*`; `support.*` (uygulama içi "Destek" formu); `analytics.mv_company_health`; panel v1 (liste, firma kartı, harita) | Yok |
-| **4. Faturalama** | M13 ticari (fiyat kararı sonrası) | `billing.*`; ödeme sağlayıcı + e-Fatura/e-Arşiv entegratörü; dunning işleri; `companies.plan` önbellek olur, `ai_quota_monthly` → paket hakları; `mv_mrr_monthly`, kohortlar | `companies.plan` kullanımdan kalkar (sonra düşer), `ai_quota_monthly` → `ai_quota_bonus` |
+| **2. Kullanım ölçümü** | M10 sonu / M12 pilot öncesi | `analytics.user_sessions`, `user_activity_hourly`, `daily_project_usage`, heartbeat uç noktası; `analytics.events` (bölümlü) + `event_types`; sunucu olayları; istemci olay toplayıcı; günlük özet işleri; **geri doldurma**: `exports` → `nc/dxf/pdf.exported`, `projects.created_at` → `project.created`, `project_commands` → günlük etkin gün (dakika geri doldurulamaz) | Yok (yalnızca INSERT eklenir) |
+| **3. Backoffice, CRM ve abonelik çekirdeği** | M12 pilot | `bo` şeması, `staff_users`, `nittcam_bo` rolü, görünümler; `crm.*`; `support.*` (uygulama içi "Destek" formu); **`billing.plans`, `plan_prices`, `subscriptions`, `subscription_events`** (R10: ödeme entegrasyonu yok, deneme/aktif durumu personel panelden yönetir, pilot fiyatı `price_kind = 'custom'`); `analytics.company_health_daily`; panel v1 (liste, firma kartı, harita) | `companies.plan` önbellek olur (abonelikten yazılır) |
+| **4. Faturalama ve tahsilat** | M13 ticari (fiyat kararı sonrası) | `billing.billing_profiles`, `invoices`, `invoice_lines`, `invoice_counters`, `payments`, `dunning_steps`; ödeme sağlayıcı + e-Fatura/e-Arşiv entegratörü; dunning işleri; `ai_quota_monthly` → paket hakları; `mv_mrr_monthly`, kohortlar | `companies.plan` düşer, `ai_quota_monthly` → `ai_quota_bonus` |
 | **5. Ölçek** | İhtiyaç olunca | Okuma kopyası, analitik depo, `audit_log` soğuk arşiv | Yok |
 
-Riskler: (1) Better Auth tablo adlandırması/alanları sürüm değişikliğinde kırılabilir: sürüm sabitlenir, eşleme testle korunur. (2) İstemci olayları sahtelenebilir: faturalama/kota kararları yalnızca sunucu olaylarına dayanır. (3) Heartbeat ağ trafiği: 60 sn aralık ve yalnızca görünür sekmede.
+Faz bağımlılıkları: 2 → 1 (oturum ve rol kimlik ister); 3 → 1 ve 2 (yaşam döngüsü kullanım ve abonelik durumu ister, bu yüzden abonelik çekirdeği Faz 3'tedir); 4 → 3. Faz 0 hiçbir şeye bağlı değildir.
+
+Riskler: (1) Better Auth tablo adlandırması/alanları sürüm değişikliğinde kırılabilir: sürüm sabitlenir, eşleme testle korunur. (2) İstemci olayları sahtelenebilir: faturalama/kota kararları yalnızca sunucu olaylarına dayanır. (3) Heartbeat ağ trafiği: 60 sn aralık ve yalnızca görünür sekmede. (4) Heartbeat her dakika 3 satır günceller (oturum, saat kovası, proje günü): 1.500 eşzamanlı kullanıcıda ≈ 75 yazma/sn, tek Postgres için rahat; eşik aşılırsa heartbeat'ler bellekte toplanıp 5 dk'da bir yazılır.
 
 ---
 
@@ -1342,7 +1511,7 @@ Riskler: (1) Better Auth tablo adlandırması/alanları sürüm değişikliğind
 
 | # | Soru | Seçenekler / öneri |
 | --- | --- | --- |
-| S1 | Bir kullanıcı birden çok firmada olabilir mi? (Serbest operatör, makine bayisi/servis birkaç atölyeyi yönetir) | **Öneri:** v1'de hayır (mevcut kural: e-posta tekil, bir firma). Bayi kanalı için ileride `crm.partners` + Better Auth organization eklentisi |
+| S1 | Bir kullanıcı birden çok firmada olabilir mi? (Serbest operatör, makine bayisi/servis birkaç atölyeyi yönetir) | **Öneri:** v1'de hayır (mevcut kural: e-posta tekil, bir firma). Bayi kanalı için ileride `crm.partners` + Better Auth organization eklentisi. **Not:** bu karar M10 başlamadan verilmeli; sonradan "evet"e dönmek `users.company_id`'yi üyelik tablosuna taşımayı ve bütün `(company_id, user_id)` FK'lerini etkiler |
 | S2 | Koltuk neye göre ücretlenir: kullanıcı, makine, ikisi? Operatör koltuk sayılır mı? | Model üçünü de taşır (`included_seats`, `extra_seat_kurus`, `max_machines`); karar fiyatla birlikte |
 | S3 | Ödeme sağlayıcı ve e-Fatura/e-Arşiv entegratörü hangisi? | Yurt içi kart altyapısı + GİB özel entegratörü; barındırma kararıyla birlikte (KVKK) |
 | S4 | Deneme süresi (14/30 gün), kart zorunlu mu, ödeme gecikmesinde kaç gün sonra salt okunur? | Öneri: 14 gün, kartsız; 14 gün sonra salt okunur, 60 gün sonra `expired` |
