@@ -1738,12 +1738,12 @@ Owner 2026-11-21, before the field test (D-112; usta raporu 2 "Elif": "depth exi
 
 Source for every number: `docs/materials/kesim-degerleri-arastirma.md` (PR #190; section d "starting values" and the consolidated table c). PO decisions: (1) values are **starting points, always unverified**: they never mark a set or a profile as verified; (2) MDF 18 / Ø8 stays exactly as today (6000 / 1500 / 18 000 / 6): goldens and the frozen default profile do not change; (3) the kinds stay as they are: `solidWood` starts from the **hardwood** row and `pvc` from the **rigid PVC** row (the safe side), with a note naming the softer variant; splitting the kinds is not part of this batch; (4) no metal here (M-Metal).
 
-### T327 Starting-value table in core   [status: todo]
+### T327 Starting-value table in core   [status: done]
 Spec: §3.6, §7.1 · Depends: – · From: owner 2026-11-23
-- [ ] `packages/core` gets a pure data table: material kind × tool type × flute count × diameter band → chip load (min / typ / max), rpm (typ, within the usual 6 000–24 000), step-down rule, plunge share, entry (straight / ramp), notes key; each row carries the source id from the research doc
-- [ ] `suggestCuttingSet(kind, thickness, tool, spindleRange)` returns feed, plunge feed, rpm, step-down (feed = chip load × flutes × rpm, rounded to 100 mm/min; rpm clamped to the machine range and the feed recomputed; step-down never above the tool's flute length and reduced by the research rule when the cut is deeper than 1 × Ø) or `undefined` when the table has no row (never a guess)
-- [ ] for MDF 18 with the Ø8 two-flute end mill the result equals today's built-in set exactly (test); property test: every suggestion is inside its row's chip-load band and the machine limits
-- [ ] no change to existing profiles, projects or goldens
+- [x] `packages/core` gets a pure data table: material kind × tool type × flute count × diameter band → chip load (min / typ / max), rpm (typ, within the usual 6 000–24 000), step-down rule, plunge share, entry (straight / ramp), notes key; each row carries the source id from the research doc
+- [x] `suggestCuttingSet(kind, thickness, tool, spindleRange)` returns feed, plunge feed, rpm, step-down (feed = chip load × flutes × rpm, rounded to 100 mm/min; rpm clamped to the machine range and the feed recomputed; step-down never above the tool's flute length and reduced by the research rule when the cut is deeper than 1 × Ø) or `undefined` when the table has no row (never a guess)
+- [x] for MDF 18 with the Ø8 two-flute end mill the result equals today's built-in set exactly (test); property test: every suggestion is inside its row's chip-load band and the machine limits
+- [x] no change to existing profiles, projects or goldens
 Tester focus: table rows against the research doc for 6 spot checks; clamping at 6 000 and 24 000 rpm; missing row → no suggestion.
 
 ### T328 "Kesim ayarı ekle" starts from the material's values   [status: todo]
