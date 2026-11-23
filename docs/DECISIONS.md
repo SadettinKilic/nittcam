@@ -875,3 +875,13 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - The owner's case behind D-113 is solved by brands (D-114), so multi-company membership has no user today. The owner left the choice to the PO: follow current practice.
 - Current practice for SaaS identity is a global user plus a membership row per organisation (the shape of the Better Auth organization plugin). Going back to `users.company_id` would save little now and cost a data migration over every user FK the day a dealer or a second workshop needs it. So the D-113 tables stay.
 - What is cut is the product cost: M10 ships without a company switcher, and the app refuses an invite for an e-mail that is already a member elsewhere. The limit lives in application code, not in the database. Lifting it later needs UI only.
+
+## D-118 Metal scope and rules (2026-11-23, owner: "metal de eklensin"; decisions delegated to the PO)
+- Owner added metal to the product and delegated the technical choices to the PO ("kararları sen ver"). Plan: `docs/metal/metal-analizi.md`, BACKLOG "M-Metal" (T340–T372).
+- Order: ACM cut → ACM V-groove for folding → aluminium sheet (1–6 mm, plate to 10 mm) → brass engraving later; copper "yakında"; steel and stainless never (no spindle torque at the needed rpm, gantry rigidity, sparks with wood dust).
+- Aluminium may be cut with air blast only (no mist) under tighter step-down and chip-load limits; mist or air is required, never dry.
+- A machine is allowed to cut metal on the user's own declaration in the profile plus a passed test cut for that material family plus the per-file acceptance; NittCam does not approve machines one by one.
+- Verification becomes per material family: a machine verified with MDF is not verified for aluminium or ACM.
+- V-groove depth is entered as remaining thickness and measured from the table side (panel thickness varies ±0.2 mm), per the material research (`docs/materials/kesim-degerleri-arastirma.md`); cutting numbers in the metal plan follow that research where they differ.
+- Edge-band columns are hidden for plastics too, after the field test.
+- Before field test 1 only T340–T342 may start (no visible change, goldens identical). No metal NC leaves the app until that tier's own machine test passed (human gate: the owner runs it); pricing and the legal clause stay with the owner.
