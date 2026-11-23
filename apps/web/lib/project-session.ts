@@ -14,9 +14,14 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AutosaveQueue,
+  dropParkedQueue,
+  parkedQueue,
   queueKey,
+  takeOverQueue,
+  storedQueue,
   takeUnsentQueue,
   type KeyValueStorage,
+  type StoredQueue,
   type RestoredUnit,
   type SaveRequest,
   type SaveState,
@@ -124,6 +129,38 @@ export interface SessionInit {
 }
 
 const now = () => new Date().toISOString();
+
+/** The Web Locks API where the browser has it (B60: a lock dies with its page, crash included). */
+function webLocks(): LockManager | null {
+  try {
+    return typeof navigator !== 'undefined' && navigator.locks ? navigator.locks : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lock name of a stored queue (B60): held by the page that writes it, for as long as it lives. */
+export function queueLockName(id: string | null, newId?: string): string {
+  return 'nittcam-queue:' + queueKey(id, newId);
+}
+
+/**
+ * Replays a stored queue onto `stack` (T326): a unit the earlier page had on the way is resent as
+ * it was (the project after its own entries), then the rest is replayed on top.
+ */
+function replayStored(
+  stack: CommandStack,
+  stored: StoredQueue,
+): { replayed: CommandLogEntry[]; unit: RestoredUnit | undefined } {
+  const count = stored.unit?.count ?? 0;
+  const first = replayLog(stack, stored.entries.slice(0, count));
+  const unit =
+    stored.unit && first > 0
+      ? { saveId: stored.unit.saveId, count: first, project: stack.project }
+      : undefined;
+  const rest = first === count ? replayLog(stack, stored.entries.slice(count)) : 0;
+  return { replayed: stored.entries.slice(0, first + rest), unit };
+}
 const history = (command: 'undo' | 'redo'): CommandLogEntry => ({
   command,
   params: {},
@@ -156,25 +193,25 @@ export function useProjectSession({
     // "Yeni proje" (no draft in the address, or one this tab has no queue for) starts empty.
     const draftId = initial.id === null ? validDraft(draft) : undefined;
     const server = { revision: initial.revision, lastSaveId: initial.lastSaveId ?? null };
+    // B60: with Web Locks the shared queue is taken only once this page holds its lock (below);
+    // without them, here by the age rule (T326).
+    const locked = webLocks() !== null;
     const stored =
-      takeUnsentQueue(queueStore(), initial.id, server, draftId) ??
+      (locked ? null : takeUnsentQueue(queueStore(), initial.id, server, draftId)) ??
       takeUnsentQueue(legacyStore(), initial.id, server, draftId);
-    // T326: a unit the earlier page had on the way is resent as it was: the project after its
-    // own entries, then the rest is replayed on top.
-    let unit: RestoredUnit | undefined;
-    let replayed: CommandLogEntry[] = [];
-    if (stored) {
-      const count = stored.unit?.count ?? 0;
-      const first = replayLog(stack, stored.entries.slice(0, count));
-      if (stored.unit && first > 0) {
-        unit = { saveId: stored.unit.saveId, count: first, project: stack.project };
-      }
-      const rest = first === count ? replayLog(stack, stored.entries.slice(count)) : 0;
-      replayed = stored.entries.slice(0, first + rest);
-    }
+    const draftLeft =
+      locked &&
+      draftId !== undefined &&
+      storedQueue(queueStore(), queueKey(null, draftId)) !== null;
+    const { replayed, unit } = stored
+      ? replayStored(stack, stored)
+      : { replayed: [] as CommandLogEntry[], unit: undefined };
     // A new project gets its id here (D-030); after a reload during the first save the stored
     // queue keeps it, so the repeated create returns the same project instead of a duplicate.
-    const newId = initial.id === null ? (stored?.newId ?? crypto.randomUUID()) : undefined;
+    const newId =
+      initial.id === null
+        ? (stored?.newId ?? (draftLeft ? draftId : undefined) ?? crypto.randomUUID())
+        : undefined;
     return { stack, replayed, unit, name: stored?.name ?? initial.name, newId };
   });
   const stack = boot.stack;
@@ -182,30 +219,41 @@ export function useProjectSession({
   const [name, setName] = useState(boot.name);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [revision, setRevision] = useState(initial.revision);
-
-  const [queue] = useState(
-    () =>
-      new AutosaveQueue(
-        {
-          send: async (req) => {
-            const r = await sendSave(req);
-            if (r.ok) setRevision(r.revision);
-            return r;
-          },
-          storage: queueStore(),
-          setTimer: (fn, ms) => setTimeout(fn, ms),
-          clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
-          onState: setSaveState,
-        },
-        {
-          id: initial.id,
-          revision: initial.revision,
-          name: initial.name,
-          project: initial.project,
-          ...(boot.newId ? { newId: boot.newId } : {}),
-        },
-      ),
+  const [restoredCount, setRestoredCount] = useState(boot.replayed.length);
+  // B60: until this page knows (by its Web Lock) whether the page that left a queue is gone, edits
+  // wait: a left queue is replayed before the first local edit. Only where the browser has locks.
+  const recovering = useRef(webLocks() !== null);
+  const [, setRecovered] = useState(false);
+  // B60: changes left by an earlier page that no longer fit the server: the user applies or
+  // deletes them (never dropped silently).
+  const [parked, setParked] = useState<StoredQueue | null>(() =>
+    initial.id ? parkedQueue(queueStore(), initial.id) : null,
   );
+
+  const [queue] = useState(() => {
+    const q = new AutosaveQueue(
+      {
+        send: async (req) => {
+          const r = await sendSave(req);
+          if (r.ok) setRevision(r.revision);
+          return r;
+        },
+        storage: queueStore(),
+        setTimer: (fn, ms) => setTimeout(fn, ms),
+        clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+        onState: setSaveState,
+      },
+      {
+        id: initial.id,
+        revision: initial.revision,
+        name: initial.name,
+        project: initial.project,
+        ...(boot.newId ? { newId: boot.newId } : {}),
+      },
+    );
+    if (webLocks()) q.useLocks();
+    return q;
+  });
 
   useEffect(() => {
     queue.setOnCreated(onCreated);
@@ -231,6 +279,70 @@ export function useProjectSession({
       });
     }
   }, [boot, initial.id, initial.name, queue, stack]);
+
+  // B60 fix round 1 (PO): liveness by Web Locks, not by age. This page holds the lock of its queue
+  // for as long as it lives; the browser frees it when the page dies (crash included). Granted at
+  // once: whoever wrote a stored queue is gone, so it is taken over and replayed now. Held by a
+  // live tab: that tab keeps it (two-tab rule unchanged) and this page waits for the lock.
+  useEffect(() => {
+    const locks = webLocks();
+    if (!locks) return;
+    const store = queueStore();
+    let release: () => void = () => {};
+    const held = new Promise<void>((r) => (release = r));
+    const abort = new AbortController();
+    let gone = false;
+    const done = () => {
+      recovering.current = false;
+      setRecovered(true);
+    };
+    const grant = (): Promise<void> => {
+      if (gone) return Promise.resolve();
+      const clean =
+        !queue.dirty && queue.projectId === initial.id && queue.baseRevision === initial.revision;
+      const stored = takeOverQueue(store, {
+        id: queue.projectId,
+        ...(boot.newId ? { newId: boot.newId } : {}),
+        server: { revision: initial.revision, lastSaveId: initial.lastSaveId ?? null },
+        clean,
+        pageId: queue.ownerId,
+      });
+      if (stored) {
+        const { replayed, unit } = replayStored(stack, stored);
+        setRestoredCount((n) => n + replayed.length);
+        if (replayed.length > 0 || stored.name !== initial.name) {
+          if (stored.name !== initial.name) setName(stored.name);
+          queue.restore({
+            entries: replayed,
+            project: stack.project,
+            name: stored.name,
+            ...(unit ? { unit } : {}),
+          });
+        }
+      }
+      const id = queue.projectId;
+      if (id) setParked(parkedQueue(store, id));
+      queue.claim();
+      done();
+      return held;
+    };
+    const name = queueLockName(initial.id, boot.newId);
+    locks
+      .request(name, { ifAvailable: true }, (lock) => {
+        if (lock) return grant();
+        done();
+        void locks.request(name, { signal: abort.signal }, () => grant()).catch(() => undefined);
+        return undefined;
+      })
+      .catch(() => done());
+    return () => {
+      gone = true;
+      abort.abort();
+      release();
+    };
+    // Once per page: the lock follows the queue the page was opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue]);
 
   // T187: the connection is back, send the unsent queue now instead of waiting for the backoff.
   useEffect(() => {
@@ -280,6 +392,8 @@ export function useProjectSession({
 
   const run = useCallback(
     (command: string, params: unknown): boolean => {
+      // B60: a left queue is replayed first (a few ms after the page opened).
+      if (recovering.current) return false;
       const result = stack.execute(command, params, { actor: 'user', at: now() });
       if (result.ok && result.changed) changed([result.entry]);
       return result.ok;
@@ -302,9 +416,11 @@ export function useProjectSession({
   );
 
   const undo = useCallback(() => {
+    if (recovering.current) return;
     if (stack.undo()) changed([history('undo')]);
   }, [stack, changed]);
   const redo = useCallback(() => {
+    if (recovering.current) return;
     if (stack.redo()) changed([history('redo')]);
   }, [stack, changed]);
 
@@ -320,6 +436,22 @@ export function useProjectSession({
   useEffect(() => {
     stack.setValidationContext(machine ? { machine } : {});
   }, [stack, machine]);
+
+  /** B60: applies parked changes on top of the project as new edits (the user decided). */
+  const applyParked = useCallback(() => {
+    const id = queue.projectId;
+    if (!parked || !id) return 0;
+    const n = replayLog(stack, parked.entries);
+    dropParkedQueue(queueStore(), id);
+    setParked(null);
+    if (n > 0) changed(parked.entries.slice(0, n));
+    return n;
+  }, [parked, queue, stack, changed]);
+  const dropParked = useCallback(() => {
+    const id = queue.projectId;
+    if (id) dropParkedQueue(queueStore(), id);
+    setParked(null);
+  }, [queue]);
 
   const project = stack.project;
   const issues: readonly ValidationIssue[] = useMemo(
@@ -337,7 +469,11 @@ export function useProjectSession({
     projectId: queue.projectId,
     /** The draft id of a project not created yet (T305: `?taslak=` in the address). */
     draftId: boot.newId,
-    restoredCount: boot.replayed.length,
+    restoredCount,
+    /** B60: changes an earlier page left that no longer fit the server (count), or 0. */
+    parkedCount: parked?.entries.length ?? 0,
+    applyParked,
+    dropParked,
     canUndo: stack.canUndo,
     canRedo: stack.canRedo,
     redoCommand: stack.redoCommand,

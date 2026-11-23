@@ -15,6 +15,7 @@ import {
 import { findMaterialParams, findTool, minSheetMargin } from '@nittcam/core';
 import { fill, newProject, pocketToolDiameterFor, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
+import { ParkedChangesNotice } from './parked-changes';
 import type { Messages } from '../../lib/messages';
 import { MessagesContext } from '../../lib/messages-context';
 import { DRAFT_PARAM, useProjectSession, type SessionInit } from '../../lib/project-session';
@@ -1494,6 +1495,14 @@ function WizardSession({
         <Callout tone="info" role="status" icon={<Info aria-hidden />}>
           <p>{fill(t.restored, { count: session.restoredCount })}</p>
         </Callout>
+      ) : null}
+      {session.parkedCount > 0 ? (
+        <ParkedChangesNotice
+          count={session.parkedCount}
+          t={t}
+          onApply={() => void session.applyParked()}
+          onDrop={session.dropParked}
+        />
       ) : null}
 
       {step === 'parcalar' && !drawing && !wide ? (

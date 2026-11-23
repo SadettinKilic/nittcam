@@ -247,7 +247,9 @@ export function ProjectsView({
       />
 
       {drafts.map((d) => {
-        const saved = list.status === 'ready' && list.items.some((p) => p.id === d.draftId);
+        const saved =
+          d.parked === true ||
+          (list.status === 'ready' && list.items.some((p) => p.id === d.draftId));
         const href = saved
           ? `/projeler/${d.draftId}`
           : `/projeler/yeni?${DRAFT_PARAM}=${encodeURIComponent(d.draftId)}`;

@@ -95,7 +95,11 @@ test.describe('T326 nothing drawn is lost when the tab closes', () => {
       // A second change while the first save is on the way.
       await drawRect(page, canvas, 0.6, 300, 200);
       await expect(page.getByTestId('editor-part-list').getByRole('button')).toHaveCount(7);
+      // page.route does not see keepalive requests (tester, B60): only offline really keeps the
+      // close-time send from arriving.
+      if (!reached) await context.setOffline(true);
       await page.close();
+      await context.setOffline(false);
 
       const again = await reopen(context, id);
       await expect.poll(() => serverParts(again, id).then((p) => p.length)).toBe(7);
@@ -108,13 +112,12 @@ test.describe('T326 nothing drawn is lost when the tab closes', () => {
     context,
   }) => {
     test.setTimeout(120_000);
-    // Offline for this page: the create never arrives.
-    await page.route('**/api/projects', (route) =>
-      route.request().method() === 'POST' ? route.abort('internetdisconnected') : route.continue(),
-    );
+    // Offline (not page.route: it does not see keepalive requests): the create never arrives.
     await openNewProject(page, 'parcalar');
+    await context.setOffline(true);
     await paste(page, 'Ad\tEn\tBoy\tAdet\nKapanis\t400\t300\t1', 1);
     await page.close();
+    await context.setOffline(false);
 
     const list = await context.newPage();
     await list.goto('/projeler');
@@ -136,12 +139,11 @@ test.describe('T326 nothing drawn is lost when the tab closes', () => {
     context,
   }) => {
     test.setTimeout(120_000);
-    await page.route('**/api/projects', (route) =>
-      route.request().method() === 'POST' ? route.abort('internetdisconnected') : route.continue(),
-    );
     await openNewProject(page, 'parcalar');
+    await context.setOffline(true);
     await paste(page, 'Ad\tEn\tBoy\tAdet\nSilinecek\t400\t300\t1', 1);
     await page.close();
+    await context.setOffline(false);
 
     const list = await context.newPage();
     await list.goto('/projeler');

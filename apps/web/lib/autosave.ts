@@ -180,6 +180,54 @@ export function heldByLivePage(q: StoredQueue, now: number): boolean {
 }
 
 /**
+ * B60 fix round 1: a stored queue that cannot be replayed cleanly (the server moved on, e.g. by a
+ * newer save from this browser) is never dropped silently. It is parked under
+ * `nittcam.unsent.left.<project id>` and offered to the user (apply / delete).
+ */
+const LEFT_PREFIX = KEY_PREFIX + 'left.';
+
+export function leftKey(projectId: string): string {
+  return LEFT_PREFIX + projectId;
+}
+
+/** Parks `q` for `projectId` (appended to what is parked there already). */
+export function parkQueue(
+  storage: KeyValueStorage | null | undefined,
+  projectId: string,
+  q: StoredQueue,
+): void {
+  if (q.entries.length === 0) return;
+  const before = readQueue(storage, leftKey(projectId));
+  const parked: StoredQueue = {
+    baseRevision: q.baseRevision,
+    entries: [...(before?.entries ?? []), ...q.entries],
+    name: q.name,
+    closed: true,
+  };
+  try {
+    storage?.setItem(leftKey(projectId), JSON.stringify(parked));
+  } catch {
+    // Storage is a convenience.
+  }
+}
+
+/** The parked changes of `projectId`, or null. */
+export function parkedQueue(
+  storage: KeyValueStorage | null | undefined,
+  projectId: string,
+): StoredQueue | null {
+  const q = readQueue(storage, leftKey(projectId));
+  return q && q.entries.length > 0 ? q : null;
+}
+
+export function dropParkedQueue(
+  storage: KeyValueStorage | null | undefined,
+  projectId: string,
+): void {
+  forget(storage, leftKey(projectId));
+}
+
+/**
  * What of a stored queue is still to be saved, given what the server has now (T326, D-117):
  * - the server is still on the queue's base revision: all of it (its unit is resent as it was);
  * - the server is one revision ahead, made by the queue's own unit: only the entries after it;
@@ -209,6 +257,15 @@ export function takeUnsentQueue(
   /** For a new project: its draft id (T305: only this draft's own queue is ever replayed). */
   newId?: string,
   now: number = Date.now(),
+  opts: {
+    /**
+     * B60: this page holds the queue's Web Lock, so any other writer is gone (crash included):
+     * the queue is taken whatever its age. Without locks the age rule (`heldByLivePage`) decides.
+     */
+    owned?: boolean;
+    /** This page's own id: its own queue is never "taken". */
+    pageId?: string;
+  } = {},
 ): StoredQueue | null {
   const state: ServerState = typeof server === 'number' ? { revision: server } : server;
   if (id === null) {
@@ -224,11 +281,14 @@ export function takeUnsentQueue(
       forget(storage, key);
       continue;
     }
-    if (heldByLivePage(q, now)) continue;
+    if (opts.pageId !== undefined && q.owner === opts.pageId) continue;
+    if (!opts.owned && heldByLivePage(q, now)) continue;
     const draftKey = key !== queueKey(id, newId);
-    const left =
-      (id === null || draftKey) && q.newId !== (id ?? newId) ? null : remainingQueue(q, state);
+    const foreign = (id === null || draftKey) && q.newId !== (id ?? newId);
+    const left = foreign ? null : remainingQueue(q, state);
     if (!left) {
+      // B60: changes of this project that no longer fit the server are parked, never dropped.
+      if (!foreign && id !== null) parkQueue(storage, id, q);
       forget(storage, key);
       continue;
     }
@@ -237,6 +297,34 @@ export function takeUnsentQueue(
       forget(storage, key);
     }
     return left;
+  }
+  return null;
+}
+
+/**
+ * B60 fix round 1: the page now holds the Web Lock of its queue, so the page that wrote a stored
+ * queue is gone (closed or crashed, whatever the queue's age). A `clean` page (no own edits or
+ * saves yet) takes the queue over to replay it; otherwise the left changes are parked (never
+ * dropped) for the user to apply or delete. This page's own queue is never touched.
+ */
+export function takeOverQueue(
+  storage: KeyValueStorage | null | undefined,
+  s: { id: string | null; newId?: string; server: ServerState; clean: boolean; pageId: string },
+  now: number = Date.now(),
+): StoredQueue | null {
+  if (s.clean) {
+    return takeUnsentQueue(storage, s.id, s.server, s.newId, now, {
+      owned: true,
+      pageId: s.pageId,
+    });
+  }
+  if (s.id === null) return null;
+  for (const key of [queueKey(s.id), queueKey(null, s.id)]) {
+    const q = readQueue(storage, key);
+    if (!q || q.owner === s.pageId) continue;
+    if (key !== queueKey(s.id) && q.newId !== s.id) continue;
+    parkQueue(storage, s.id, q);
+    forget(storage, key);
   }
   return null;
 }
@@ -274,6 +362,12 @@ export class AutosaveQueue {
   /** T326: the page is being closed (the stored queue says so, another page may take it). */
   private closed = false;
   private readonly pageId: string;
+  /**
+   * B60: liveness by Web Locks. `locked`: the page decides by its lock (not by age); `claimed`:
+   * it holds the lock of its queue, so it is the only writer.
+   */
+  private locked = false;
+  private claimed = false;
   private readonly deps: AutosaveDeps;
   private createdListener: ((id: string) => void) | undefined;
 
@@ -313,6 +407,24 @@ export class AutosaveQueue {
   }
   get dirty(): boolean {
     return this.generation !== this.savedGeneration;
+  }
+  /** Id of this page (owner of the stored queue it writes). */
+  get ownerId(): string {
+    return this.pageId;
+  }
+
+  /**
+   * B60: the browser has Web Locks; until `claim` this page writes no stored queue another page
+   * owns (a live tab, or a dead one whose changes are taken over first), whatever its age.
+   */
+  useLocks(): void {
+    this.locked = true;
+  }
+
+  /** B60: this page now holds its queue's lock: it is the only writer. */
+  claim(): void {
+    this.claimed = true;
+    this.persist();
   }
 
   /** Records changes (new log entries and/or the resulting project, a new name). */
@@ -546,8 +658,11 @@ export class AutosaveQueue {
 
   /** T326: whether this page may write the stored queue (not another live page's). */
   private mayWrite(key: string): boolean {
+    if (this.claimed) return true;
     const q = readQueue(this.deps.storage, key);
-    return !q || q.owner === this.pageId || !heldByLivePage(q, this.now());
+    if (!q || q.owner === this.pageId) return true;
+    if (this.locked) return false;
+    return !heldByLivePage(q, this.now());
   }
 
   private persist(): void {
@@ -599,9 +714,12 @@ export interface LeftDraft {
   draftId: string;
   name: string;
   changes: number;
+  /** B60: changes of a saved project that no longer fit the server (parked, not a draft). */
+  parked?: true;
 }
 
 const DRAFT_KEY = /^nittcam\.unsent\.new\.([0-9a-f-]{36})$/;
+const PARKED_KEY = /^nittcam\.unsent\.left\.([0-9a-f-]{36})$/;
 
 /**
  * The drafts whose page is gone (closed, crashed) with changes the server never confirmed, from
@@ -614,6 +732,12 @@ export function leftDrafts(
 ): LeftDraft[] {
   const out: LeftDraft[] = [];
   for (const key of keys) {
+    const parked = PARKED_KEY.exec(key)?.[1];
+    if (parked) {
+      const q = parkedQueue(storage, parked);
+      if (q) out.push({ draftId: parked, name: q.name, changes: q.entries.length, parked: true });
+      continue;
+    }
     const m = DRAFT_KEY.exec(key);
     if (!m?.[1]) continue;
     const q = readQueue(storage, key);
@@ -633,7 +757,16 @@ export function discardLeftDraft(
 ): void {
   try {
     storage?.removeItem(queueKey(null, draftId));
+    storage?.removeItem(leftKey(draftId));
   } catch {
     // Blocked storage: nothing stored either.
   }
+}
+
+/** The stored queue under `key`, or null (B60: a page peeks before it holds the lock). */
+export function storedQueue(
+  storage: KeyValueStorage | null | undefined,
+  key: string,
+): StoredQueue | null {
+  return readQueue(storage, key);
 }

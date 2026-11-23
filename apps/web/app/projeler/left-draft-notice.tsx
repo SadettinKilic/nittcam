@@ -44,7 +44,9 @@ export function LeftDraftNotice({
       data-testid="left-draft"
       className="items-center"
     >
-      <p className="min-w-0 flex-1">{fill(t.text, { name: draft.name, count: draft.changes })}</p>
+      <p className="min-w-0 flex-1">
+        {fill(draft.parked ? t.parkedText : t.text, { name: draft.name, count: draft.changes })}
+      </p>
       <Button asChild size="sm" variant="outline">
         <Link href={href} data-testid="left-draft-open" className={focusRing}>
           {t.open}

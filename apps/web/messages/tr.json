@@ -1536,6 +1536,7 @@
     "newProject": "Yeni proje",
     "leftDraft": {
       "text": "“{name}” kaydedilmeden kapandı ({count} değişiklik bu bilgisayarda duruyor). Açınca kaydedilir.",
+      "parkedText": "“{name}” projesinde bu bilgisayarda kalan {count} kaydedilmemiş değişiklik var; proje o zamandan beri kaydedildi. Açıp uygulayabilir ya da silebilirsiniz.",
       "open": "Taslağı aç",
       "discard": "Taslağı sil",
       "discardTitle": "“{name}” taslağı silinsin mi?",
@@ -1811,6 +1812,12 @@
       "copyFailed": "Kopya oluşturulamadı. Tekrar deneyin."
     },
     "restored": "Kaydedilmemiş {count} değişiklik geri yüklendi.",
+    "parked": "Bu bilgisayarda bu projenin kaydedilmemiş {count} değişikliği kaldı; sunucudaki proje o zamandan beri değişti. Uygularsanız mevcut projenin üstüne eklenir (geri alınabilir).",
+    "parkedApply": "Değişiklikleri uygula",
+    "parkedDrop": "Değişiklikleri sil",
+    "parkedDropTitle": "Kalan değişiklikler silinsin mi?",
+    "parkedDropBody": "Bu bilgisayarda kalan kaydedilmemiş değişiklikler silinecek. Geri alınamaz.",
+    "parkedCancel": "Vazgeç",
     "machine": {
       "title": "Makine ve plaka",
       "help": "Makine; tabla ölçüsünü, takımları ve G-code biçimini belirler. Malzeme ve kalınlık kesim ayarlarını seçer.",

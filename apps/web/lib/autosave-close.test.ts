@@ -9,6 +9,9 @@ import {
   defaultRetryMs,
   queueKey,
   discardLeftDraft,
+  leftKey,
+  parkedQueue,
+  takeOverQueue,
   leftDrafts,
   STALE_MS,
   takeUnsentQueue,
@@ -479,5 +482,135 @@ describe('T326: Projeler offers a draft left before the server had it', () => {
     };
     expect(() => discardLeftDraft(blocked, A)).not.toThrow();
     expect(() => discardLeftDraft(null, A)).not.toThrow();
+  });
+});
+
+/**
+ * B60 fix round 1 (PO): liveness by Web Locks. A page that gets its queue's lock knows the writer
+ * is gone (crash included) and takes the queue over at once, whatever its age; a page that does
+ * not get it (a live tab holds it) neither takes nor writes that queue.
+ */
+describe('B60: crash, then reopen (Web Locks)', () => {
+  /** A page opened with locks; `grant` = the lock was free (the earlier page is gone). */
+  function lockedPage(storage: KeyValueStorage, srv: Server, id: string, at: number) {
+    const next = page(storage, srv, { id, revision: srv.revision });
+    next.q.useLocks();
+    const grant = () => {
+      const stored = takeOverQueue(
+        storage,
+        {
+          id,
+          server: { revision: srv.revision, lastSaveId: srv.lastSaveId },
+          clean: !next.q.dirty && next.q.baseRevision === srv.revision,
+          pageId: next.q.ownerId,
+        },
+        at,
+      );
+      if (stored && stored.entries.length > 0) {
+        next.q.restore({
+          entries: stored.entries,
+          project: P(stored.entries.length),
+          name: stored.name,
+          ...(stored.unit ? { unit: { ...stored.unit, project: P(stored.unit.count) } } : {}),
+        });
+      }
+      next.q.claim();
+    };
+    return { ...next, grant };
+  }
+
+  /** Page A draws "rect" while saves never arrive; then the tab crashes (no pagehide). */
+  function crashed(id = 'p1') {
+    const storage = memoryStorage();
+    const srv = savedProject();
+    const a = page(storage, srv, { id, revision: 1 });
+    srv.drop = true;
+    a.q.push({ entries: [e('rect')], project: P(1) });
+    void a.c.advance(1000);
+    a.q.dispose(); // crash: no closing(), the queue keeps owner and a fresh time
+    srv.drop = false;
+    return { storage, srv };
+  }
+
+  for (const [label, after] of [
+    ['0 s', 0],
+    ['5 s', 5_000],
+    ['20 s', 20_000],
+  ] as const) {
+    it(`reopened after ${label}: the crashed edit is replayed first, then new edits; each once`, async () => {
+      const { storage, srv } = crashed();
+      const b = lockedPage(storage, srv, 'p1', NOW + after);
+      b.grant();
+      expect(b.q.pending.map((x) => x.command)).toEqual(['rect']);
+      await b.c.advance(1000);
+      expect(srv.log).toEqual(['rect']);
+      b.q.push({ entries: [e('more')], project: P(2) });
+      await b.c.advance(1000);
+      expect(srv.log).toEqual(['rect', 'more']);
+      expect(srv.revision).toBe(3);
+      // Closed and opened again later: nothing left, nothing twice.
+      b.q.dispose();
+      const c = lockedPage(storage, srv, 'p1', NOW + after + 60_000);
+      c.grant();
+      expect(c.q.pending).toEqual([]);
+      expect(parkedQueue(storage, 'p1')).toBeNull();
+    });
+
+    it(`reopened after ${label} without new edits: replayed once`, async () => {
+      const { storage, srv } = crashed();
+      const b = lockedPage(storage, srv, 'p1', NOW + after);
+      b.grant();
+      await b.c.advance(1000);
+      expect(srv.log).toEqual(['rect']);
+      expect(b.q.dirty).toBe(false);
+    });
+  }
+
+  it('a page that saved its own edit before it got the lock parks the left queue, never drops it', async () => {
+    const { storage, srv } = crashed(D);
+    const b = lockedPage(storage, srv, D, NOW);
+    b.q.push({ entries: [e('mine')], project: P(1) });
+    await b.c.advance(1000);
+    expect(srv.log).toEqual(['mine']);
+    b.grant();
+    expect(b.q.pending).toEqual([]);
+    expect(parkedQueue(storage, D)?.entries.map((x) => x.command)).toEqual(['rect']);
+    expect(leftDrafts(storage, [leftKey(D)], NOW)).toEqual([
+      { draftId: D, name: 'Proje', changes: 1, parked: true },
+    ]);
+    // "Taslağı sil" on Projeler removes the parked changes too.
+    discardLeftDraft(storage, D);
+    expect(parkedQueue(storage, D)).toBeNull();
+  });
+
+  it('two live tabs: the page without the lock neither takes nor overwrites the other queue', async () => {
+    const storage = memoryStorage();
+    const srv = savedProject();
+    const a = page(storage, srv, { id: 'p1', revision: 1 });
+    a.q.useLocks();
+    a.q.claim();
+    srv.drop = true;
+    a.q.push({ entries: [e('a1')], project: P(1) });
+    await a.c.advance(1000);
+    srv.drop = false;
+    // Tab B opens while A lives: no lock, so no takeover (whatever the queue's age).
+    const b = page(storage, srv, { id: 'p1', revision: 1 });
+    b.q.useLocks();
+    b.q.push({ entries: [e('b1')], project: P(1) });
+    await b.c.advance(1000);
+    expect(srv.log).toEqual(['b1']);
+    const stored = JSON.parse(storage.getItem(queueKey('p1')) ?? '{}') as StoredQueue;
+    expect(stored.entries.map((x) => x.command)).toEqual(['a1']);
+  });
+
+  it('without locks a stale queue is parked, not dropped (server moved on)', () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      queueKey('p1'),
+      JSON.stringify({ baseRevision: 1, entries: [e('old')], name: 'Proje', closed: true }),
+    );
+    expect(takeUnsentQueue(storage, 'p1', { revision: 3 }, undefined, NOW)).toBeNull();
+    expect(storage.getItem(queueKey('p1'))).toBeNull();
+    expect(parkedQueue(storage, 'p1')?.entries.map((x) => x.command)).toEqual(['old']);
   });
 });

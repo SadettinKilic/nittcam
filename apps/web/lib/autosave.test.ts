@@ -220,9 +220,10 @@ describe('AutosaveQueue: unsent queue in storage (§8.2)', () => {
     const queue = { baseRevision: 3, entries: [e('a')], name: 'X' };
     storage.setItem(queueKey('p1'), JSON.stringify(queue));
     expect(takeUnsentQueue(storage, 'p1', 3)).toEqual(queue);
-    // The save went through before the reload: the server is ahead, the queue is dropped.
+    // The server is ahead: the queue is not replayed, and (B60) parked for the user, not dropped.
     expect(takeUnsentQueue(storage, 'p1', 4)).toBeNull();
-    expect(storage.data.size).toBe(0);
+    expect([...storage.data.keys()]).toEqual(['nittcam.unsent.left.p1']);
+    storage.data.clear();
     storage.setItem(queueKey('p1'), '{broken');
     expect(takeUnsentQueue(storage, 'p1', 3)).toBeNull();
     expect(takeUnsentQueue(null, 'p1', 3)).toBeNull();
