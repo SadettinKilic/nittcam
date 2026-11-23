@@ -870,3 +870,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-115 One subscription and one invoice per workshop (2026-11-23, owner decision, backoffice model question S14)
 - Owner: brands are a convenience for the workshop, not a billing dimension. No invoice per brand, no split invoices, no tax number per brand ("atölye kimi söylerse ona keseriz").
 - Model: `billing.billing_profiles` stays 1:1 with the company. The workshop admin may change the invoice identity; the change applies from the next invoice, issued invoices keep their snapshot, the change is audited.
+
+## D-116 Membership model in the data, single membership in the M10 product (2026-11-23, owner delegated: "güncelde nasıl oluyorsa öyle")
+- The owner's case behind D-113 is solved by brands (D-114), so multi-company membership has no user today. The owner left the choice to the PO: follow current practice.
+- Current practice for SaaS identity is a global user plus a membership row per organisation (the shape of the Better Auth organization plugin). Going back to `users.company_id` would save little now and cost a data migration over every user FK the day a dealer or a second workshop needs it. So the D-113 tables stay.
+- What is cut is the product cost: M10 ships without a company switcher, and the app refuses an invite for an e-mail that is already a member elsewhere. The limit lives in application code, not in the database. Lifting it later needs UI only.
