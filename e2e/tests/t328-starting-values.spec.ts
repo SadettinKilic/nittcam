@@ -58,7 +58,7 @@ test.describe('T328 starting values for a new cutting set', () => {
     expect(await values(row)).toEqual([6000, 1500, 18000, 6]);
 
     // Acrylic with a two-flute tool: refreshed, with the material note and a hint (not a block).
-    await pickOption(row.locator('[id$="-material"]'), tr.materials.acrylic);
+    await pickOption(row.locator('[id$="-material"]'), tr.machines.form.options.material.acrylic);
     expect(await values(row)).toEqual([5000, 2500, 18000, 4]);
     await expect(detail.getByTestId('material-starting-note')).toContainText('O-flute');
     await expect(detail.getByTestId('material-tool-hint')).toBeVisible();
@@ -68,7 +68,7 @@ test.describe('T328 starting values for a new cutting set', () => {
     await feed.fill('4100');
     await feed.press('Tab');
     await expect(detail.getByTestId('material-unverified-note')).toHaveCount(0);
-    await pickOption(row.locator('[id$="-material"]'), tr.materials.mdf);
+    await pickOption(row.locator('[id$="-material"]'), tr.machines.form.options.material.mdf);
     expect((await values(row))[0]).toBe(4100);
   });
 
@@ -77,7 +77,7 @@ test.describe('T328 starting values for a new cutting set', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const { row, detail } = await addSet(page);
     // Melamine with the Ø6 two-flute spiral: the research has no such row.
-    await pickOption(row.locator('[id$="-material"]'), tr.materials.melamine);
+    await pickOption(row.locator('[id$="-material"]'), tr.machines.form.options.material.melamine);
     const v = await values(row);
     expect(v.every((x) => Number.isNaN(x))).toBe(true);
     await expect(detail.getByTestId('material-starting-source')).toHaveAttribute(
