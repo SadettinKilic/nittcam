@@ -1794,11 +1794,11 @@ Spec: §6.6 · Depends: T322, T274 · From: field rehearsal N3 · Decision: D-12
 - [x] the tool order of the sheet ("1. T1 Ø6 düz freze → 2. T2 Ø8 düz freze"), with "elle değişim" when the changer is manual; labels page unchanged
 - [x] no NC export of the revision → the page says so, never a guessed name; unit test on the page text
 
-### T334 The NC header tells the real tab count (N1)   [status: todo]
+### T334 The NC header tells the real tab count (N1)   [status: done]
 Spec: §7.2 · Depends: T324, T288 · From: field rehearsal N1 · Decision: D-126
-- [ ] when ramp entry leaves a part fewer tabs than the setting, a second ASCII header line names how many parts and the minimum; otherwise no new line (goldens identical)
-- [ ] Simülasyon / Uyarılar shows the same warning naming the parts
-- [ ] new fixture + golden for ramp + small part (`needs-human`); the independent checker still accepts the file
+- [x] when ramp entry leaves a part fewer tabs than the setting, a second ASCII header line names how many parts and the minimum; otherwise no new line (goldens identical)
+- [x] Simülasyon / Uyarılar shows the same warning naming the parts
+- [x] new fixture + golden for ramp + small part (`needs-human`); the independent checker still accepts the file
 
 ### T335 End at the park point; time estimate at machine speed (N2, N4; rider)   [status: todo]
 Spec: §7.2, §6.6 · Depends: T309, T330 · From: field rehearsal N2, N4 · Decision: D-127
