@@ -528,6 +528,24 @@ export function motionRules(
           m.line,
           `Cutting move to ${fmt(m.to)} leaves the sheet (plus the tool radius).`,
         );
+      } else {
+        // T331 (field rehearsal B2): the whole cutter stays on the sheet below the material top:
+        // the centre keeps the active tool's radius from every sheet edge (a stop, fence or clamp
+        // at the edge is hit otherwise). The radius is the program's own tool, read here.
+        const own = d.ops.find((o) => o.tool === raw.tool)?.toolDiameter;
+        const rr = (own ?? 0) / 2 - tol;
+        const off = pts.find(
+          (p) =>
+            p.x < rr || p.y < rr || p.x > stock.sheetWidth - rr || p.y > stock.sheetHeight - rr,
+        );
+        if (rr > 0 && off) {
+          push(
+            'R6',
+            'CUTTER_OFF_SHEET',
+            m.line,
+            `Cutting move to ${fmt(m.to)}: the Ø${own} cutter reaches past the sheet edge at X${off.x.toFixed(4)} Y${off.y.toFixed(4)}.`,
+          );
+        }
       }
     }
   });

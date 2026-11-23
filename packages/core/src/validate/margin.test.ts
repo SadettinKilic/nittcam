@@ -3,7 +3,8 @@ import cabinetDoors from '../schema/__fixtures__/cabinet-doors.json';
 import { parseProject, type Project } from '../schema';
 import { marginBelowToolRadius, minSheetMargin, validateProject } from './index';
 
-// T300 (CTO #12 E1, D-085): a sheet margin below the tool radius is a warning on Dizilim.
+// T300 (CTO #12 E1, D-085), T331 (D-122): a sheet margin below the tool diameter is a warning on
+// Dizilim (the cutter's far edge lies one diameter outside the part).
 
 function withMargin(margin: number): Project {
   const json = JSON.parse(JSON.stringify(cabinetDoors));
@@ -14,18 +15,18 @@ function withMargin(margin: number): Project {
 }
 
 describe('marginBelowToolRadius (T300)', () => {
-  it('minSheetMargin is the tool radius, 0 without a tool', () => {
-    expect(minSheetMargin(8)).toBe(4);
-    expect(minSheetMargin(6.35)).toBeCloseTo(3.175);
+  it('minSheetMargin is the tool diameter, 0 without a tool', () => {
+    expect(minSheetMargin(8)).toBe(8);
+    expect(minSheetMargin(6.35)).toBeCloseTo(6.35);
     expect(minSheetMargin(0)).toBe(0);
   });
 
   it.each([
     [0, true],
-    [3, true],
-    [3.998, true],
-    [3.9995, false],
-    [4, false],
+    [4, true],
+    [7.998, true],
+    [7.9995, false],
+    [8, false],
     [10, false],
   ])('margin %s mm with a Ø8 tool → warning %s', (margin, warned) => {
     const issues = marginBelowToolRadius(withMargin(margin), { toolDiameter: 8 });

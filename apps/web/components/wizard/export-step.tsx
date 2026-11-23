@@ -95,6 +95,7 @@ export function ExportStep({
   onOpenPart,
   onOpenRow,
   onOpenSkin,
+  onUseLatest,
   projectId,
   revision,
   saved,
@@ -114,6 +115,8 @@ export function ExportStep({
   onOpenRow?: (partId: string) => void;
   /** T298: opens step 1 on the thin-skin field. */
   onOpenSkin?: () => void;
+  /** T332: moves the project to the machine's newest profile version (checklist button). */
+  onUseLatest?: (() => void) | undefined;
   projectId: string | null;
   revision: number;
   /** False while changes wait for the autosave. */
@@ -469,6 +472,7 @@ export function ExportStep({
               hingeHandleParts={hingeHandleParts}
               checks={f.checks}
               onChange={(checks) => update({ checks })}
+              onUseLatest={onUseLatest}
             />
           ) : null}
 

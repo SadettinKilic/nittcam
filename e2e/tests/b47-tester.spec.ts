@@ -241,21 +241,23 @@ test.describe('B47 tester: T299 locked Simülasyon scroll', () => {
 });
 
 test.describe('B47 tester: T300 margin rule', () => {
-  test('margin 0 / 3 / 4 / 10 and gap 0 / 2 / 8 with Ø8', async ({ page }) => {
+  // T331 (D-122): the minimum margin is the tool diameter (8), no longer the radius (4).
+  test('margin 0 / 3 / 4 / 8 / 10 and gap 0 / 2 / 8 with Ø8', async ({ page }) => {
     test.setTimeout(240_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await openNewProject(page, 'parcalar');
     await pasteAndNest(page, 'Ad\tEn\tBoy\tAdet\nYan\t560\t720\t1\nRaf\t540\t300\t2', 2);
     await saved(page);
     const warn = page.getByTestId('layout-margin-warning');
-    const text = fill(tr.wizard.layout.marginWarning, { tool: '8', min: '4' });
+    const text = fill(tr.wizard.layout.marginWarning, { tool: '8', min: '8' });
     await expect(page.getByTestId('layout-gap-note')).toHaveText(
       fill(tr.wizard.layout.gapNote, { tool: '8', gap: '0,1', clear: '8,1' }),
     );
     for (const [m, low] of [
       ['0', true],
       ['3', true],
-      ['4', false],
+      ['4', true],
+      ['8', false],
       ['10', false],
     ] as const) {
       await commit(page, 'layout-margin', m);
@@ -282,7 +284,7 @@ test.describe('B47 tester: T300 margin rule', () => {
     const hint = page.getByTestId('sim-margin-hint');
     await expect(hint).toBeVisible({ timeout: 30_000 });
     await expect(hint).toContainText(
-      fill(tr.simulation.blocked.marginHint, { margin: '3', tool: '8', min: '4' }),
+      fill(tr.simulation.blocked.marginHint, { margin: '3', tool: '8', min: '8' }),
     );
     await expectNoA11yViolations(page, { exclude: ['canvas'] });
     await snap(page, 'b47-tester-t300-sim-1440-light', { baseline: false, keepScroll: true });

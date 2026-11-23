@@ -55,6 +55,8 @@ export type ValidationCode =
   | 'SPINDLE_RPM_OUT_OF_RANGE'
   | 'FEED_OUT_OF_RANGE'
   | 'FEED_ABOVE_RECOMMENDED'
+  /** T332: raised by the app (validation does not know the newest profile version). */
+  | 'PROFILE_VERSION_OUTDATED'
   | 'OPERATION_TOOL_UNSUITABLE'
   | 'SHEET_LARGER_THAN_TABLE'
   | 'HOLE_OUTSIDE_PART'
@@ -533,18 +535,21 @@ export const feedAboveRecommended: ValidationRule = (project, context) => {
 };
 
 /**
- * T300 (CTO #12 E1, D-085): the smallest sheet margin that keeps the cutter on the sheet. An
- * outside profile runs the tool centre one radius outside the part, so a part on a margin below
- * the radius sends the tool past the sheet edge (and past the work envelope when the sheet sits
- * at the machine origin). Leads are clipped to the sheet by the toolpath, so the radius is enough.
+ * T300 (D-085), T331 (D-122, field rehearsal B2): the smallest sheet margin that keeps the whole
+ * cutter on the sheet. An outside profile runs the tool centre one radius outside the part, so
+ * the cutter's far edge lies one diameter outside the part: a margin below the tool diameter
+ * sends the cutter past the sheet edge (into a stop, fence or clamp there). Leads are clipped so
+ * the cutter stays on the sheet (shortened or removed with LEAD_SHORTENED / LEAD_REMOVED); the
+ * G-code check refuses a cutter past the edge (R6 CUTTER_OFF_SHEET). The code keeps its old name.
  */
 export function minSheetMargin(toolDiameter: number): number {
-  return toolDiameter > 0 ? toolDiameter / 2 : 0;
+  return toolDiameter > 0 ? toolDiameter : 0;
 }
 
 /**
- * (e2) T300 (D-045, D-085): the sheet margin is below the tool radius. A warning on the Dizilim
- * step, before the G-code check stops the export with a machine error. Skipped without a tool.
+ * (e2) T300 (D-045, D-085), T331 (D-122): the sheet margin is below the tool diameter. A warning
+ * on the Dizilim step, before the G-code check stops the export with a machine error. Skipped
+ * without a tool.
  */
 export const marginBelowToolRadius: ValidationRule = (project, context) => {
   const tool = validationToolDiameter(project, context);
@@ -555,7 +560,7 @@ export const marginBelowToolRadius: ValidationRule = (project, context) => {
       code: 'MARGIN_BELOW_TOOL_RADIUS',
       severity: 'warning',
       path: 'nesting.margin',
-      message: `the ${mm(project.nesting.margin)} mm sheet margin is below the ${mm(min)} mm radius of the Ø${mm(tool)} mm tool; the tool leaves the sheet`,
+      message: `the ${mm(project.nesting.margin)} mm sheet margin is below the ${mm(min)} mm diameter of the Ø${mm(tool)} mm tool; the cutter leaves the sheet`,
     },
   ];
 };

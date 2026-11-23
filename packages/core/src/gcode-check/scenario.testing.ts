@@ -152,7 +152,8 @@ export function buildScenario(s: Scenario): Built | null {
     sheet: s.sheet,
     thickness: s.thickness,
     gap: 4,
-    margin: 10,
+    // T331 (D-122): the cutter stays on the sheet only with a margin of at least the tool Ø.
+    margin: Math.max(10, s.toolDia),
     leadIn: s.lead === 'line' ? 'line' : 'arc',
     direction: s.direction,
   });

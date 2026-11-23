@@ -57,6 +57,16 @@ export function parkOff(profile: {
   return profile.toolChanger.type === 'manual' && profile.toolChanger.park?.enabled !== true;
 }
 
+/**
+ * T332 (field rehearsal S1): park on with a manual changer: the G53 park move is in machine
+ * coordinates and needs a referenced (homed) machine.
+ */
+export function parkNeedsHome(profile: {
+  toolChanger: { type: string; park?: { enabled: boolean } | undefined };
+}): boolean {
+  return profile.toolChanger.type === 'manual' && profile.toolChanger.park?.enabled === true;
+}
+
 /** T322: file names of an NC export against the machine's limit (and the newest version's). */
 export interface FileNameInfo {
   /** The profile version's `maxFileNameLength`. */

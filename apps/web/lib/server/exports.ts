@@ -22,7 +22,7 @@ import {
   type UnverifiedReason,
 } from '@nittcam/core';
 import type { CompanyScope, ExportRow, MachineWithProfile, ProjectRow } from '@nittcam/db';
-import { fileNameInfo, parkOff } from '../check-state';
+import { fileNameInfo, parkNeedsHome, parkOff } from '../check-state';
 import { POST_CONFIGS } from '@nittcam/machines';
 import { NextResponse } from 'next/server';
 import {
@@ -40,6 +40,7 @@ import {
 } from '../exports-api';
 import { blockingItems } from '../blocking-issues';
 import { ncNameOptions } from '../file-names';
+import { profileChanges } from '../profile-version';
 import { fill } from '../fill';
 import { getMessages } from '../messages';
 
@@ -244,13 +245,25 @@ export async function runExportOf(
     violations: violationsOf(r),
     needsAcceptance: needsUnverifiedAcceptance(pv, cfg.config),
     unverifiedReasons: unverifiedReasons(pv, cfg.config),
-    checklist: checklistOf(machine, data, r.tools, {
-      names: r.files.map((x) => x.name),
-      latestLimit:
-        latest && latest.version.version !== machine.version.version
-          ? latest.profile.constraints.maxFileNameLength
-          : null,
-    }),
+    checklist: {
+      ...checklistOf(machine, data, r.tools, {
+        names: r.files.map((x) => x.name),
+        latestLimit:
+          latest && latest.version.version !== machine.version.version
+            ? latest.profile.constraints.maxFileNameLength
+            : null,
+      }),
+      // T332 (field rehearsal S2): the file is built from an older profile version.
+      ...(latest && latest.version.version !== machine.version.version
+        ? {
+            staleProfile: {
+              version: machine.version.version,
+              latest: latest.version.version,
+              changes: profileChanges(machine.profile, latest.profile),
+            },
+          }
+        : {}),
+    },
   };
 }
 
@@ -293,6 +306,7 @@ function checklistOf(
     toolChanges: program?.manualChanges ?? 0,
     rezeroZ: program?.rezeroZ ?? false,
     parkOff: parkOff(p),
+    parkHome: (program?.manualChanges ?? 0) > 0 && parkNeedsHome(p),
     highFeeds: spindleSettingsOf(data, p)
       .filter(feedAboveRecommendation)
       .map((s) => ({

@@ -14,6 +14,8 @@ export interface ChecklistState {
   templates: boolean;
   /** Feeds far above the recommendation are meant (T330); only asked when there are any. */
   feeds?: boolean;
+  /** The file uses an older machine profile version on purpose (T332); only asked then. */
+  stale?: boolean;
 }
 
 export const EMPTY_CHECKLIST: ChecklistState = {
@@ -43,6 +45,7 @@ export function downloadBlocker(
   if ((preview.checklist?.toolChanges ?? 0) > 0 && !checklist.toolChange) return 'checklist';
   if (unverifiedTemplates > 0 && !checklist.templates) return 'checklist';
   if ((preview.checklist?.highFeeds?.length ?? 0) > 0 && !checklist.feeds) return 'checklist';
+  if (preview.checklist?.staleProfile && !checklist.stale) return 'checklist';
   if (preview.needsAcceptance && !accepted) return 'accept';
   return null;
 }

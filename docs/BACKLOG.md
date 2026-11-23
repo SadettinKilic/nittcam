@@ -1771,11 +1771,11 @@ Spec: §7.1, §7.2 rule 5 · Depends: T323 · From: field rehearsal B1 · Decisi
 - [x] warning `FEED_ABOVE_RECOMMENDED` when a job feed or plunge is > 1,5 × the recommendation or the chip load > 2 × the set's: Kesim ayarları line, Uyarılar count, export checklist line to tick
 - [x] goldens byte-identical; unit tests with the tester's numbers (59 000 / 29 000) and checker rejection tests
 
-### T331 The cutter never leaves the sheet (B2, blocker)   [status: todo]
-Spec: §6.3, §7.2 rule 6 · Depends: – · From: field rehearsal B2
-- [ ] every cutting and lead move keeps the whole cutter (centre ± radius) on the sheet, for all tool diameters, leads, ramps and pocket entries; a lead that does not fit is shortened or removed with the existing lead warning
-- [ ] validation says so before export; the independent checker judges the cutter edge on the read path with its own geometry (new error code) with rejection tests; the tester's `lead-sheet-edge.field.tester.test.ts` passes
-- [ ] changed goldens listed with the reason (label `needs-human`, D-051)
+### T331 The cutter never leaves the sheet (B2, blocker)   [status: done]
+Spec: §6.3, §7.2 rule 6 · Depends: – · From: field rehearsal B2 · Decision: D-122
+- [x] every cutting and lead move keeps the whole cutter (centre ± radius) on the sheet, for all tool diameters, leads, ramps and pocket entries; a lead that does not fit is shortened or removed with the existing lead warning
+- [x] validation says so before export; the independent checker judges the cutter edge on the read path with its own geometry (new error code) with rejection tests; the tester's `lead-sheet-edge.field.tester.test.ts` passes
+- [x] changed goldens listed with the reason (label `needs-human`, D-051)
 
 ### T332 Field-kit and checklist truth (S1, S2, S3; rider)   [status: todo]
 Spec: §6.6, §7.3, §12.3 · Depends: – · From: field rehearsal S1–S3

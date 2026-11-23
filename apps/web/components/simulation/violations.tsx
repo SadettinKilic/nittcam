@@ -47,7 +47,11 @@ export interface PartLinks {
 }
 
 /** T300: errors a too-small sheet margin causes (the tool leaves the sheet or the envelope). */
-export const MARGIN_CODES: ReadonlySet<string> = new Set(['OUT_OF_ENVELOPE', 'CUT_OUTSIDE_SHEET']);
+export const MARGIN_CODES: ReadonlySet<string> = new Set([
+  'OUT_OF_ENVELOPE',
+  'CUT_OUTSIDE_SHEET',
+  'CUTTER_OFF_SHEET',
+]);
 
 /** T298: findings fixed in the step-1 thin-skin field. */
 export const SKIN_CODES: ReadonlySet<string> = new Set(['SMALL_PART_SKIN_OUT_OF_BOUNDS']);
