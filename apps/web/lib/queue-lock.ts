@@ -60,7 +60,12 @@ export interface QueueLockHooks {
    * free too, so that draft's queue may be taken as well (otherwise its live page still owns it);
    * always true for a draft page (its own key is the draft key).
    */
-  onGrant(draft: boolean): void;
+  onGrant(draft: boolean): void | Promise<void>;
+  /**
+   * B60 r3, draft pages: the draft id from the address belongs to a live tab (its lock is held).
+   * Returns a new draft id for this page (its lock is taken instead), or null to wait as before.
+   */
+  onDraftBusy?(): string | null;
   /** Another live page holds the lock: this page waits for it (edits may start meanwhile). */
   onWait(): void;
   /** The page holds the project key's lock now: its queue moves there (`AutosaveQueue.adopt`). */
@@ -109,9 +114,22 @@ export function holdQueueLocks(
 
   current = (async () => {
     try {
-      const release = await take(queueLockName(start.id, start.newId), () => {
-        if (!gone) hooks.onWait();
-      });
+      let name = queueLockName(start.id, start.newId);
+      let early: Release | null = null;
+      if (start.id === null && hooks.onDraftBusy) {
+        // A copied ?taslak= address: never share a live tab's draft, take an own one (T305).
+        early = keep(await holdLock(locks, name, { ifAvailable: true }));
+        if (!early && !gone) {
+          const renewed = hooks.onDraftBusy();
+          if (renewed) name = queueLockName(null, renewed);
+        }
+      }
+      if (gone) return null;
+      const release =
+        early ??
+        (await take(name, () => {
+          if (!gone) hooks.onWait();
+        }));
       if (!release) return null;
       // A saved project may take the queue of the draft it was created from only while it also
       // holds that draft's lock (the page that created it is gone).
@@ -120,7 +138,7 @@ export function holdQueueLocks(
           ? keep(await holdLock(locks, queueLockName(null, start.id), { ifAvailable: true }))
           : null;
       if (gone) return null;
-      hooks.onGrant(start.id === null || draft !== null);
+      await hooks.onGrant(start.id === null || draft !== null);
       drop(draft);
       return release;
     } catch {

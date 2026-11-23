@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AutosaveQueue,
   dropParkedQueue,
+  markParkedApplying,
   parkedQueue,
   queueKey,
   takeOverQueue,
@@ -26,6 +27,7 @@ import {
   type SaveRequest,
   type SaveState,
   type SendResult,
+  type ServerState,
 } from './autosave';
 import { holdQueueLocks, type LockApi } from './queue-lock';
 import { FALLBACK_TOOL_DIAMETER } from './draft-project';
@@ -159,6 +161,55 @@ function replayStored(
   const rest = first === count ? replayLog(stack, stored.entries.slice(count)) : 0;
   return { replayed: stored.entries.slice(0, first + rest), unit };
 }
+/**
+ * B60 fix round 3: the server's revision and last save id now (the takeover decides against them,
+ * never against the revision this tab loaded). Null when it cannot be read.
+ */
+async function serverState(id: string): Promise<ServerState | null> {
+  try {
+    const res = await fetch(`/api/projects/${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { revision?: unknown; lastSaveId?: unknown };
+    if (typeof body.revision !== 'number') return null;
+    return {
+      revision: body.revision,
+      lastSaveId: typeof body.lastSaveId === 'string' ? body.lastSaveId : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** B60 r3: "Uygula" asked for before a reload that brings this tab up to the server. */
+const applyAfterReloadKey = (id: string) => 'nittcam.applyParked.' + id;
+function applyAfterReload(id: string, set?: boolean): boolean {
+  try {
+    const store = window.sessionStorage;
+    if (set) {
+      store.setItem(applyAfterReloadKey(id), '1');
+      return true;
+    }
+    const asked = store.getItem(applyAfterReloadKey(id)) === '1';
+    store.removeItem(applyAfterReloadKey(id));
+    return asked;
+  } catch {
+    return false;
+  }
+}
+
+/** B60 r3: whether a page holding the lock has anything left to decide on (a server read). */
+function leftToDecide(
+  store: KeyValueStorage | null,
+  id: string,
+  pageId: string,
+  draft: boolean,
+): boolean {
+  const own = storedQueue(store, queueKey(id));
+  if (own && own.owner !== pageId) return true;
+  if (draft && storedQueue(store, queueKey(null, id))) return true;
+  return parkedQueue(store, id)?.applying !== undefined;
+}
+
 const history = (command: 'undo' | 'redo'): CommandLogEntry => ({
   command,
   params: {},
@@ -176,12 +227,18 @@ export function useProjectSession({
   machine,
   onCreated,
   draft,
+  onStale,
 }: {
   initial: SessionInit;
   machine: MachineProfile | null;
   onCreated: (id: string) => void;
   /** `?taslak=` of the address (T305); only read for a project not created yet. */
   draft?: string | null;
+  /**
+   * B60 r3: this tab is behind the server and must load it before a left queue (or parked
+   * changes) can be applied: the wizard reloads the project (a new page session).
+   */
+  onStale?: () => void;
 }) {
   // A reload before the last save went through: replay the unsent commands of this tab (§8.2).
   const [boot] = useState(() => {
@@ -239,7 +296,21 @@ export function useProjectSession({
         storage: queueStore(),
         setTimer: (fn, ms) => setTimeout(fn, ms),
         clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
-        onState: setSaveState,
+        onState: (state) => {
+          setSaveState(state);
+          // B60 r3: parked changes being applied stay parked until their save lands.
+          const id = q.applying;
+          if (!id) return;
+          if (state === 'saved') {
+            q.setApplying(null);
+            dropParkedQueue(queueStore(), id);
+            setParked(null);
+          } else if (state === 'conflict') {
+            q.setApplying(null);
+            markParkedApplying(queueStore(), id, null);
+            setParked(parkedQueue(queueStore(), id));
+          }
+        },
       },
       {
         id: initial.id,
@@ -255,6 +326,12 @@ export function useProjectSession({
 
   // B60 r2: the page's queue locks (set by the lock effect below).
   const lockHolder = useRef<{ created(id: string): void } | null>(null);
+  const [draftId, setDraftId] = useState(boot.newId);
+  const staleRef = useRef(onStale);
+  useEffect(() => {
+    staleRef.current = onStale;
+  }, [onStale]);
+  const applyRef = useRef<() => Promise<number>>(async () => 0);
   useEffect(() => {
     queue.setOnCreated((id) => {
       // B60 r2: the queue's lock moves to the project key (then the queue moves, see above).
@@ -294,6 +371,7 @@ export function useProjectSession({
     const locks = webLocks();
     if (!locks) return;
     const store = queueStore();
+    let alive = true;
     const done = () => {
       recovering.current = false;
       setRecovered(true);
@@ -302,20 +380,31 @@ export function useProjectSession({
       locks,
       { id: initial.id, ...(boot.newId ? { newId: boot.newId } : {}) },
       {
-        onGrant: (draft) => {
-          const clean =
-            !queue.dirty &&
-            queue.projectId === initial.id &&
-            queue.baseRevision === initial.revision;
-          const stored = takeOverQueue(store, {
-            id: queue.projectId,
-            ...(boot.newId ? { newId: boot.newId } : {}),
-            server: { revision: initial.revision, lastSaveId: initial.lastSaveId ?? null },
-            clean,
+        onGrant: async (draft) => {
+          const id = queue.projectId;
+          // B60 r3 (D-117 table): decide against the server now, not this tab's loaded revision.
+          const server =
+            id !== null && leftToDecide(store, id, queue.ownerId, draft)
+              ? await serverState(id)
+              : id !== null
+                ? { revision: queue.baseRevision }
+                : null;
+          if (!alive) return;
+          const decision = takeOverQueue(store, {
+            id,
+            ...(queue.draftId ? { newId: queue.draftId } : {}),
+            server,
+            tab: { revision: queue.baseRevision, busy: queue.busy },
             pageId: queue.ownerId,
             draft,
           });
-          if (stored) {
+          if (decision.action === 'reload') {
+            // Behind the server: load it first; the left queue waits for the next page session.
+            staleRef.current?.();
+            return;
+          }
+          if (decision.action === 'replay') {
+            const stored = decision.queue;
             const { replayed, unit } = replayStored(stack, stored);
             setRestoredCount((n) => n + replayed.length);
             if (replayed.length > 0 || stored.name !== initial.name) {
@@ -328,10 +417,21 @@ export function useProjectSession({
               });
             }
           }
-          const id = queue.projectId;
           if (id) setParked(parkedQueue(store, id));
           queue.claim();
           done();
+          // "Uygula" pressed before the reload that brought this tab up to the server.
+          if (id && applyAfterReload(id) && parkedQueue(store, id)) void applyRef.current();
+        },
+        onDraftBusy: () => {
+          // A live tab owns the draft of the address (a copied ?taslak=): this page takes its own.
+          // A page being closed (its queue says so) frees the lock soon: wait for it instead.
+          const current = queue.draftId;
+          if (current && storedQueue(store, queueKey(null, current))?.closed) return null;
+          const next = crypto.randomUUID();
+          if (!queue.renewDraft(next)) return null;
+          setDraftId(next);
+          return next;
         },
         onWait: done,
         onMoved: () => {
@@ -344,6 +444,7 @@ export function useProjectSession({
     );
     lockHolder.current = holder;
     return () => {
+      alive = false;
       lockHolder.current = null;
       holder.dispose();
     };
@@ -444,16 +545,43 @@ export function useProjectSession({
     stack.setValidationContext(machine ? { machine } : {});
   }, [stack, machine]);
 
-  /** B60: applies parked changes on top of the project as new edits (the user decided). */
-  const applyParked = useCallback(() => {
+  /**
+   * B60: applies parked changes on top of the project as new edits (the user decided). Fix round 3:
+   * only on the server's current state. A tab behind the server reloads first and applies after
+   * the reload; the parked changes stay parked (marked as being applied) until their save lands,
+   * and stay parked when it ends in a conflict ("Sunucudaki son hali yükle" never drops them).
+   */
+  const applyParked = useCallback(async (): Promise<number> => {
     const id = queue.projectId;
-    if (!parked || !id) return 0;
-    const n = replayLog(stack, parked.entries);
-    dropParkedQueue(queueStore(), id);
-    setParked(null);
-    if (n > 0) changed(parked.entries.slice(0, n));
+    const store = queueStore();
+    const left = id ? parkedQueue(store, id) : null;
+    if (!id || !left || recovering.current || queue.applying) return 0;
+    if (queue.busy) {
+      await queue.settle().catch(() => null);
+      if (queue.busy || queue.state === 'conflict') return 0;
+    }
+    const server = await serverState(id);
+    if (!server) return 0; // offline: they stay parked
+    if (server.revision !== queue.baseRevision) {
+      applyAfterReload(id, true);
+      staleRef.current?.();
+      return 0;
+    }
+    if (queue.busy) return 0;
+    const n = replayLog(stack, left.entries);
+    if (n === 0) return 0;
+    queue.setApplying(id);
+    markParkedApplying(store, id, { owner: queue.ownerId });
+    changed(left.entries.slice(0, n));
+    const saving = queue.flush();
+    const saveId = queue.unitSaveId;
+    if (saveId) markParkedApplying(store, id, { owner: queue.ownerId, saveId });
+    await saving;
     return n;
-  }, [parked, queue, stack, changed]);
+  }, [queue, stack, changed]);
+  useEffect(() => {
+    applyRef.current = applyParked;
+  }, [applyParked]);
   const dropParked = useCallback(() => {
     const id = queue.projectId;
     if (id) dropParkedQueue(queueStore(), id);
@@ -475,7 +603,7 @@ export function useProjectSession({
     revision,
     projectId: queue.projectId,
     /** The draft id of a project not created yet (T305: `?taslak=` in the address). */
-    draftId: boot.newId,
+    draftId,
     restoredCount,
     /** B60: changes an earlier page left that no longer fit the server (count), or 0. */
     parkedCount: parked?.entries.length ?? 0,

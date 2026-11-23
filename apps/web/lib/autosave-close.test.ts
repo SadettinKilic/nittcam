@@ -15,6 +15,7 @@ import {
   leftDrafts,
   STALE_MS,
   takeUnsentQueue,
+  storedQueue,
   type KeyValueStorage,
   type SaveRequest,
   type SendResult,
@@ -499,17 +500,15 @@ describe('B60: crash, then reopen (Web Locks)', () => {
   function lockedPage(storage: KeyValueStorage, srv: Server, id: string, at: number) {
     const next = page(storage, srv, { id, revision: srv.revision });
     next.q.useLocks();
+    void at;
     const grant = () => {
-      const stored = takeOverQueue(
-        storage,
-        {
-          id,
-          server: { revision: srv.revision, lastSaveId: srv.lastSaveId },
-          clean: !next.q.dirty && next.q.baseRevision === srv.revision,
-          pageId: next.q.ownerId,
-        },
-        at,
-      );
+      const t = takeOverQueue(storage, {
+        id,
+        server: { revision: srv.revision, lastSaveId: srv.lastSaveId },
+        tab: { revision: next.q.baseRevision, busy: next.q.busy },
+        pageId: next.q.ownerId,
+      });
+      const stored = t.action === 'replay' ? t.queue : null;
       if (stored && stored.entries.length > 0) {
         next.q.restore({
           entries: stored.entries,
@@ -682,14 +681,19 @@ describe('B60 r2: the queue lock follows the queue key', () => {
       {
         onGrant: (draft) => {
           events.push(draft ? 'grant' : 'grant-no-draft');
-          const left = takeOverQueue(storage, {
+          const t = takeOverQueue(storage, {
             id: p.q.projectId,
-            ...(init.newId ? { newId: init.newId } : {}),
-            server: { revision: srv.revision, lastSaveId: srv.lastSaveId },
-            clean: !p.q.dirty && p.q.projectId === init.id && p.q.baseRevision === init.revision,
+            ...(p.q.draftId ? { newId: p.q.draftId } : {}),
+            server: p.q.projectId ? { revision: srv.revision, lastSaveId: srv.lastSaveId } : null,
+            tab: { revision: p.q.baseRevision, busy: p.q.busy },
             pageId: p.q.ownerId,
             draft,
           });
+          if (t.action === 'reload') {
+            events.push('reload');
+            return;
+          }
+          const left = t.action === 'replay' ? t.queue : null;
           if (left && left.entries.length > 0) {
             p.q.restore({
               entries: left.entries,
@@ -924,5 +928,302 @@ describe('B60 r2: the queue lock follows the queue key', () => {
     await unsentRect(srv, a);
     expect(commands(stored(storage, queueKey(D)))).toEqual(['rect']);
     expect(stored(storage, queueKey(null, D))).toBeNull();
+  });
+});
+
+/**
+ * B60 fix round 3: the takeover table (D-117). A page that holds the lock decides against the
+ * server's revision and last save id read now, never against the revision it loaded.
+ */
+describe('B60 r3: takeover table', () => {
+  const ID = 'p3';
+  /** A queue a gone page left under the project key: base `base`, entries a, b; unit = a. */
+  function left(storage: KeyValueStorage, base: number, extra: Partial<StoredQueue> = {}) {
+    storage.setItem(
+      queueKey(ID),
+      JSON.stringify({
+        baseRevision: base,
+        entries: [e('a'), e('b')],
+        name: 'Proje',
+        unit: { saveId: 'u1', count: 1 },
+        owner: 'gone',
+        at: NOW,
+        ...extra,
+      }),
+    );
+  }
+  const take = (
+    storage: KeyValueStorage,
+    server: { revision: number; lastSaveId?: string | null } | null,
+    tab: { revision: number; busy?: boolean },
+  ) =>
+    takeOverQueue(storage, {
+      id: ID,
+      server,
+      tab: { revision: tab.revision, busy: tab.busy ?? false },
+      pageId: 'me',
+    });
+  const cmds = (q: StoredQueue | null | undefined) => q?.entries.map((x) => x.command);
+
+  it('base = server, tab current → replay (taken off the store)', () => {
+    const storage = memoryStorage();
+    left(storage, 4);
+    const t = take(storage, { revision: 4, lastSaveId: 'x' }, { revision: 4 });
+    expect(t.action).toBe('replay');
+    expect(t.action === 'replay' && cmds(t.queue)).toEqual(['a', 'b']);
+    expect(storage.getItem(queueKey(ID))).toBeNull();
+  });
+
+  it('base = server, tab stale → reload first; the queue stays stored as it is', () => {
+    const storage = memoryStorage();
+    left(storage, 5);
+    const before = storage.getItem(queueKey(ID));
+    expect(take(storage, { revision: 5, lastSaveId: 'x' }, { revision: 4 }).action).toBe('reload');
+    expect(storage.getItem(queueKey(ID))).toBe(before);
+    expect(parkedQueue(storage, ID)).toBeNull();
+    // After the reload the tab is current: replayed.
+    expect(take(storage, { revision: 5, lastSaveId: 'x' }, { revision: 5 }).action).toBe('replay');
+  });
+
+  it('own save ahead (server = base + 1 by its unit), tab current → replay what came after', () => {
+    const storage = memoryStorage();
+    left(storage, 4);
+    const t = take(storage, { revision: 5, lastSaveId: 'u1' }, { revision: 5 });
+    expect(t.action === 'replay' && cmds(t.queue)).toEqual(['b']);
+  });
+
+  it('own save ahead, tab stale → reload first, then replay what came after', () => {
+    const storage = memoryStorage();
+    left(storage, 4);
+    expect(take(storage, { revision: 5, lastSaveId: 'u1' }, { revision: 4 }).action).toBe('reload');
+    const t = take(storage, { revision: 5, lastSaveId: 'u1' }, { revision: 5 });
+    expect(t.action === 'replay' && cmds(t.queue)).toEqual(['b']);
+  });
+
+  for (const tab of [6, 4]) {
+    it(`foreign ahead, tab ${tab === 6 ? 'current' : 'stale'} → parked, never replayed`, () => {
+      const storage = memoryStorage();
+      left(storage, 4);
+      expect(take(storage, { revision: 6, lastSaveId: 'other' }, { revision: tab }).action).toBe(
+        'parked',
+      );
+      expect(cmds(parkedQueue(storage, ID))).toEqual(['a', 'b']);
+      expect(storage.getItem(queueKey(ID))).toBeNull();
+    });
+  }
+
+  it('fits, but the tab has unsent edits or a save on the way → parked (never merged)', () => {
+    const storage = memoryStorage();
+    left(storage, 4);
+    expect(take(storage, { revision: 4 }, { revision: 4, busy: true }).action).toBe('parked');
+    expect(cmds(parkedQueue(storage, ID))).toEqual(['a', 'b']);
+  });
+
+  it('server not reachable → parked', () => {
+    const storage = memoryStorage();
+    left(storage, 4);
+    expect(take(storage, null, { revision: 4 }).action).toBe('parked');
+    expect(cmds(parkedQueue(storage, ID))).toEqual(['a', 'b']);
+  });
+
+  it('draft page (no project yet) → replay against revision 0', () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      queueKey(null, D),
+      JSON.stringify({
+        baseRevision: 0,
+        entries: [e('a')],
+        name: 'Proje',
+        newId: D,
+        owner: 'gone',
+      }),
+    );
+    const t = takeOverQueue(storage, {
+      id: null,
+      newId: D,
+      server: null,
+      tab: { revision: 0, busy: false },
+      pageId: 'me',
+    });
+    expect(t.action === 'replay' && cmds(t.queue)).toEqual(['a']);
+  });
+
+  describe('parked changes a gone page was applying ("Uygula")', () => {
+    function applying(storage: KeyValueStorage, saveId?: string) {
+      storage.setItem(
+        leftKey(ID),
+        JSON.stringify({
+          baseRevision: 3,
+          entries: [e('a')],
+          name: 'Proje',
+          closed: true,
+          applying: { owner: 'gone', ...(saveId ? { saveId } : {}) },
+        }),
+      );
+    }
+    it('its queue (holding them) is replayed → the parked copy goes', () => {
+      const storage = memoryStorage();
+      applying(storage, 'u1');
+      left(storage, 4);
+      expect(take(storage, { revision: 4 }, { revision: 4 }).action).toBe('replay');
+      expect(parkedQueue(storage, ID)).toBeNull();
+    });
+    it('its queue is parked again → it replaces them, nothing twice', () => {
+      const storage = memoryStorage();
+      applying(storage, 'u1');
+      left(storage, 4);
+      expect(take(storage, { revision: 6, lastSaveId: 'z' }, { revision: 6 }).action).toBe(
+        'parked',
+      );
+      const p = parkedQueue(storage, ID);
+      expect(cmds(p)).toEqual(['a', 'b']);
+      expect(p?.applying).toBeUndefined();
+    });
+    it('no queue left and the server has the applying save → they go', () => {
+      const storage = memoryStorage();
+      applying(storage, 'u1');
+      expect(take(storage, { revision: 4, lastSaveId: 'u1' }, { revision: 4 }).action).toBe('none');
+      expect(parkedQueue(storage, ID)).toBeNull();
+    });
+    it('no queue left and the server does not have it → they stay parked, mark cleared', () => {
+      const storage = memoryStorage();
+      applying(storage, 'u1');
+      take(storage, { revision: 4, lastSaveId: 'other' }, { revision: 4 });
+      const p = parkedQueue(storage, ID);
+      expect(cmds(p)).toEqual(['a']);
+      expect(p?.applying).toBeUndefined();
+    });
+  });
+});
+
+describe('B60 r3: one draft identity per live tab (copied ?taslak=)', () => {
+  function fakeLocks() {
+    const holders = new Set<string>();
+    const api: LockApi = {
+      request(name, options, cb) {
+        if (holders.has(name)) {
+          if (options.ifAvailable) return Promise.resolve(cb(null));
+          return new Promise(() => {});
+        }
+        holders.add(name);
+        return Promise.resolve(cb({ name })).finally(() => holders.delete(name));
+      },
+    };
+    return { api, held: (n: string) => holders.has(n) };
+  }
+  const flush = async () => {
+    for (let i = 0; i < 6; i += 1) await settle();
+  };
+
+  function draftTab(locks: LockApi, storage: KeyValueStorage, srv: Server, renew: string) {
+    const p = page(storage, srv, { id: null, revision: 0, newId: D });
+    p.q.useLocks();
+    const events: string[] = [];
+    const holder = holdQueueLocks(
+      locks,
+      { id: null, newId: D },
+      {
+        onGrant: () => {
+          events.push('grant');
+          p.q.claim();
+        },
+        onWait: () => events.push('wait'),
+        onMoved: () => p.q.adopt(),
+        onError: () => events.push('error'),
+        onDraftBusy: () => {
+          if (storedQueue(storage, queueKey(null, D))?.closed) return null;
+          return p.q.renewDraft(renew) ? renew : null;
+        },
+      },
+    );
+    p.q.setOnCreated((id) => holder.created(id));
+    return { ...p, events, holder };
+  }
+
+  it('a live tab owns the draft: the second tab takes a new id and never writes under it', async () => {
+    const locks = fakeLocks();
+    const storage = memoryStorage();
+    const srv = fakeServer();
+    const a = draftTab(locks.api, storage, srv, 'unused');
+    await flush();
+    srv.fail = true;
+    a.q.push({ entries: [e('kop')], project: P(1) });
+    await a.c.advance(1000);
+    srv.fail = false;
+    const B = '0b0b0b0b-1b2c-4d5e-8f90-a1b2c3d4e5f6';
+    const b = draftTab(locks.api, storage, srv, B);
+    await flush();
+    expect(b.events).toEqual(['grant']);
+    expect(b.q.draftId).toBe(B);
+    expect(locks.held(queueLockName(null, B))).toBe(true);
+    b.q.push({ entries: [e('yeni')], project: P(1) });
+    await b.c.advance(1000);
+    // B created its own project; A's queue is still A's, under A's draft.
+    expect(b.sent.at(-1)?.newId).toBe(B);
+    const stored = JSON.parse(storage.getItem(queueKey(null, D)) ?? '{}') as StoredQueue;
+    expect(stored.entries.map((x) => x.command)).toEqual(['kop']);
+    expect(stored.owner).toBe(a.q.ownerId);
+    expect(srv.log).toEqual(['yeni']);
+    expect(a.sent.every((r) => r.newId === D)).toBe(true);
+  });
+
+  it('the draft page is being closed (reload of the same tab): wait for its lock, keep the id', async () => {
+    const locks = fakeLocks();
+    const storage = memoryStorage();
+    const srv = fakeServer();
+    const a = draftTab(locks.api, storage, srv, 'unused');
+    await flush();
+    srv.fail = true;
+    a.q.push({ entries: [e('kop')], project: P(1) });
+    await a.c.advance(1000);
+    a.q.closing();
+    const b = draftTab(locks.api, storage, srv, 'other');
+    await flush();
+    expect(b.events).toEqual(['wait']);
+    expect(b.q.draftId).toBe(D);
+  });
+});
+
+describe('B60 r3: a stale second tab takes a crashed queue after a reload (tester r3, test 1)', () => {
+  it('A saved r+1 and crashed with one more edit; B (still on r) reloads, then replays once', async () => {
+    const storage = memoryStorage();
+    const srv = savedProject(); // rev 1 = "r"
+    const a = page(storage, srv, { id: 'p1', revision: 1 });
+    a.q.useLocks();
+    a.q.claim();
+    a.q.push({ entries: [e('six')], project: P(1) });
+    await a.c.advance(1000);
+    expect(srv.revision).toBe(2);
+    srv.fail = true;
+    a.q.push({ entries: [e('seven')], project: P(2) });
+    await a.c.advance(1000);
+    srv.fail = false;
+    a.q.dispose(); // crash
+    // B loaded at rev 1; the server says 2, and A's queue is based on 2.
+    const server = { revision: srv.revision, lastSaveId: srv.lastSaveId };
+    const stale = takeOverQueue(storage, {
+      id: 'p1',
+      server,
+      tab: { revision: 1, busy: false },
+      pageId: 'b',
+    });
+    expect(stale.action).toBe('reload');
+    // The reloaded B is on rev 2: replays "seven" once.
+    const b = page(storage, srv, { id: 'p1', revision: srv.revision });
+    b.q.useLocks();
+    const t = takeOverQueue(storage, {
+      id: 'p1',
+      server,
+      tab: { revision: b.q.baseRevision, busy: b.q.busy },
+      pageId: b.q.ownerId,
+    });
+    expect(t.action).toBe('replay');
+    if (t.action === 'replay')
+      b.q.restore({ entries: t.queue.entries, project: P(3), name: 'Proje' });
+    b.q.claim();
+    await b.c.advance(1000);
+    expect(srv.log).toEqual(['six', 'seven']);
+    expect(srv.revision).toBe(3);
+    expect(parkedQueue(storage, 'p1')).toBeNull();
   });
 });

@@ -654,6 +654,8 @@ function WizardSession({
     machine: pinned?.profile ?? null,
     onCreated: created,
     draft,
+    // B60 r3: behind the server before a left queue or parked changes apply: load it first.
+    onStale: onReload,
   });
   // T290: remember the Parçalar view per saved project.
   useEffect(() => {

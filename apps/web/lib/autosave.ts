@@ -99,6 +99,11 @@ export interface StoredQueue {
   owner?: string;
   at?: number;
   closed?: boolean;
+  /**
+   * B60 fix round 3, parked changes only: a page is applying them ("Uygula") with the save
+   * `saveId`; they stay parked until that save lands.
+   */
+  applying?: { owner: string; saveId?: string };
 }
 
 /** A unit that a reopened page resends as it was (the project after its `count` entries). */
@@ -160,6 +165,14 @@ function readQueue(storage: KeyValueStorage | null | undefined, key: string): St
       ...(typeof q.owner === 'string' ? { owner: q.owner } : {}),
       ...(typeof q.at === 'number' ? { at: q.at } : {}),
       ...(q.closed === true ? { closed: true } : {}),
+      ...(q.applying && typeof q.applying.owner === 'string'
+        ? {
+            applying: {
+              owner: q.applying.owner,
+              ...(typeof q.applying.saveId === 'string' ? { saveId: q.applying.saveId } : {}),
+            },
+          }
+        : {}),
     };
   } catch {
     return null;
@@ -198,9 +211,12 @@ export function parkQueue(
 ): void {
   if (q.entries.length === 0) return;
   const before = readQueue(storage, leftKey(projectId));
+  // B60 r3: parked changes that were being applied are in the applying page's queue again (it
+  // put them first): that queue replaces them, never twice.
+  const keep = before !== null && !(before.applying && before.applying.owner === q.owner);
   const parked: StoredQueue = {
     baseRevision: q.baseRevision,
-    entries: [...(before?.entries ?? []), ...q.entries],
+    entries: [...(keep && before ? before.entries : []), ...q.entries],
     name: q.name,
     closed: true,
   };
@@ -218,6 +234,23 @@ export function parkedQueue(
 ): StoredQueue | null {
   const q = readQueue(storage, leftKey(projectId));
   return q && q.entries.length > 0 ? q : null;
+}
+
+/** B60 r3: marks the parked changes of `projectId` as being applied by `owner` (or clears it). */
+export function markParkedApplying(
+  storage: KeyValueStorage | null | undefined,
+  projectId: string,
+  applying: { owner: string; saveId?: string } | null,
+): void {
+  const q = readQueue(storage, leftKey(projectId));
+  if (!q) return;
+  const { applying: _old, ...rest } = q;
+  void _old;
+  try {
+    storage?.setItem(leftKey(projectId), JSON.stringify(applying ? { ...rest, applying } : rest));
+  } catch {
+    // Storage is a convenience.
+  }
 }
 
 export function dropParkedQueue(
@@ -313,42 +346,109 @@ export function takeUnsentQueue(
   return null;
 }
 
+/** What a page that holds the lock does with a left queue (B60 fix round 3, D-117 table). */
+export type Takeover =
+  | { action: 'none' }
+  | { action: 'replay'; queue: StoredQueue }
+  | { action: 'reload' }
+  | { action: 'parked' };
+
 /**
- * B60 fix round 1: the page now holds the Web Lock of its queue, so the page that wrote a stored
- * queue is gone (closed or crashed, whatever the queue's age). A `clean` page (no own edits or
- * saves yet) takes the queue over to replay it; otherwise the left changes are parked (never
- * dropped) for the user to apply or delete. This page's own queue is never touched.
+ * B60 (fix rounds 1 and 3): the page holds the Web Lock of the queue's key, so the page that wrote
+ * it is gone (closed or crashed, whatever the queue's age). The decision is made against the
+ * server's revision and `lastSaveId` read now (`server`; null when it could not be read), never
+ * against the revision this tab loaded:
+ * - what is left fits the server (`remainingQueue`) and the tab is current with nothing of its own
+ *   unsent → replay; the tab is behind the server → reload first (the queue stays stored);
+ * - it does not fit (someone else moved the server), the tab has unsent edits or a save on the
+ *   way, or the server could not be read → parked for the user (never dropped).
+ * A draft page (no project yet) replays against revision 0 (a repeated create is answered by its
+ * save id). This page's own queue is never touched. Parked changes a gone page was applying are
+ * settled here too (`settleApplying`).
  */
 export function takeOverQueue(
   storage: KeyValueStorage | null | undefined,
   s: {
     id: string | null;
     newId?: string;
-    server: ServerState;
-    clean: boolean;
+    server: ServerState | null;
+    tab: { revision: number; busy: boolean };
     pageId: string;
-    /** B60 r2: this page holds the lock of the draft the project came from too (default true). */
+    /** This page holds the lock of the draft the project came from too (default true). */
     draft?: boolean;
   },
-  now: number = Date.now(),
-): StoredQueue | null {
-  if (s.clean) {
-    return takeUnsentQueue(storage, s.id, s.server, s.newId, now, {
-      owned: true,
-      pageId: s.pageId,
-      ...(s.draft === false ? { draft: false } : {}),
-    });
-  }
-  if (s.id === null) return null;
-  const keys = s.draft === false ? [queueKey(s.id)] : [queueKey(s.id), queueKey(null, s.id)];
+): Takeover {
+  if (s.id === null) forget(storage, queueKey(null)); // the shared key of earlier versions
+  const keys =
+    s.id === null
+      ? s.newId
+        ? [queueKey(null, s.newId)]
+        : []
+      : s.draft === false
+        ? [queueKey(s.id)]
+        : [queueKey(s.id), queueKey(null, s.id)];
+  const server = s.id === null ? { revision: 0 } : s.server;
+  let result: Takeover = { action: 'none' };
+  const owners: string[] = [];
   for (const key of keys) {
     const q = readQueue(storage, key);
-    if (!q || q.owner === s.pageId) continue;
-    if (key !== queueKey(s.id) && q.newId !== s.id) continue;
-    parkQueue(storage, s.id, q);
-    forget(storage, key);
+    if (!q) {
+      forget(storage, key); // nothing, or not a queue (T020): never leave a corrupt one behind
+      continue;
+    }
+    if (q.owner === s.pageId) continue;
+    const draftKey = s.id !== null && key !== queueKey(s.id);
+    if ((s.id === null || draftKey) && q.newId !== (s.id ?? s.newId)) {
+      forget(storage, key); // another draft's queue under a key it does not own
+      continue;
+    }
+    if (q.owner) owners.push(q.owner);
+    const left = server ? remainingQueue(q, server) : null;
+    if (!left || (s.tab.busy && s.id !== null)) {
+      if (s.id !== null) {
+        parkQueue(storage, s.id, q);
+        result = { action: 'parked' };
+      }
+      forget(storage, key);
+      continue;
+    }
+    if (server && s.id !== null && s.tab.revision !== server.revision) {
+      // The tab is behind the server: it reloads first, the queue waits for it as it is.
+      return { action: 'reload' };
+    }
+    forget(storage, key); // this page stores it under its own key right away (restore + claim)
+    if (s.id !== null) settleApplying(storage, s.id, owners, server);
+    return { action: 'replay', queue: left };
   }
-  return null;
+  if (s.id !== null) settleApplying(storage, s.id, owners, server);
+  return result;
+}
+
+/**
+ * B60 r3: parked changes a gone page was applying. Its queue was handled above (replayed: they are
+ * in it, so they go; parked again: `parkQueue` replaced them). No queue of that page left: they
+ * go only when the server's last save is the applying one; otherwise they stay parked.
+ */
+function settleApplying(
+  storage: KeyValueStorage | null | undefined,
+  id: string,
+  owners: readonly string[],
+  server: ServerState | null,
+): void {
+  const parked = readQueue(storage, leftKey(id));
+  const applying = parked?.applying;
+  if (!applying) return;
+  if (owners.includes(applying.owner)) {
+    // Replayed: the parked copy is in this page's queue now, so it goes. (Parked again, `parkQueue`
+    // already replaced it and the mark is gone: `applying` above would be undefined.)
+    forget(storage, leftKey(id));
+    return;
+  }
+  if (applying.saveId !== undefined && server?.lastSaveId === applying.saveId) {
+    forget(storage, leftKey(id));
+    return;
+  }
+  markParkedApplying(storage, id, null);
 }
 
 /** A save unit: fixed once formed, resent as it is until the server answers it (T326). */
@@ -363,7 +463,7 @@ interface Unit {
 
 export class AutosaveQueue {
   private id: string | null;
-  private readonly newId: string | undefined;
+  private newId: string | undefined;
   private revision: number;
   private name: string;
   private project: Project;
@@ -437,6 +537,41 @@ export class AutosaveQueue {
   get dirty(): boolean {
     return this.generation !== this.savedGeneration;
   }
+  /** The draft id of a project not created yet (T305; B60 r3: it may be renewed once). */
+  get draftId(): string | undefined {
+    return this.newId;
+  }
+  /** B60 r3: unsent edits of its own, or a save on the way. */
+  get busy(): boolean {
+    return this.dirty || this.inFlight;
+  }
+  /** B60 r3: the project whose parked changes this page is applying (until their save lands). */
+  private applyingParked: string | null = null;
+  get applying(): string | null {
+    return this.applyingParked;
+  }
+  setApplying(id: string | null): void {
+    this.applyingParked = id;
+  }
+  /** B60 r3: the save id of the unit on the way, if any. */
+  get unitSaveId(): string | undefined {
+    return this.unit?.saveId;
+  }
+
+  /**
+   * B60 fix round 3: the draft id from the address belongs to a live tab (its lock is held): this
+   * page takes a new draft id of its own before anything was edited or stored, so two tabs never
+   * write under one draft or project identity (T305 / D-094, as before B60).
+   */
+  renewDraft(newId: string): boolean {
+    if (this.id !== null || this.claimed || this.busy || this.unit || this.entries.length > 0) {
+      return false;
+    }
+    this.newId = newId;
+    this.key = queueKey(null, newId);
+    return true;
+  }
+
   /** B60 r2: the key the queue is stored under (the page holds that key's lock). */
   get storageKey(): string {
     return this.key;
@@ -742,7 +877,7 @@ export class AutosaveQueue {
       entries: this.entries,
       name: this.name,
       // A draft key names its draft (also after the create, until the queue moves: D-094).
-      ...(draft ? { newId: this.newId } : {}),
+      ...(draft && this.newId ? { newId: this.newId } : {}),
       ...(this.unit ? { unit: { saveId: this.unit.saveId, count: this.unit.count } } : {}),
       owner: this.pageId,
       at: this.now(),
