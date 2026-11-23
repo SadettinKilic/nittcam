@@ -67,14 +67,17 @@ describe('B61 tester: §d Ø6 / Ø8 rows', () => {
     expect(s.chipLoad).toBeLessThanOrEqual(s.row.chipLoad.max);
   });
 
-  it('wood plunge stays at or below a quarter of the feed, plastics at or below half', () => {
+  it('plunge stays at or below a quarter of the feed for every material (PO B61)', () => {
     for (const r of STARTING_VALUE_ROWS) {
       const s = suggestCuttingSet(r.kind, 18, tool(r.diameter, r.flutes, r.toolType), SPINDLE);
       if (!s) throw new Error(r.id);
-      const limit = r.kind === 'acrylic' || r.kind === 'pvc' ? 0.5 : 0.25;
-      expect(s.plungeFeed, r.id).toBeLessThanOrEqual(limit * s.feed);
+      expect(s.plungeFeed, r.id).toBeLessThanOrEqual(0.25 * s.feed);
+      // Floored to the 100, never more than 100 under the quarter.
+      expect(s.plungeFeed % 100, r.id).toBe(0);
+      expect(s.plungeFeed, r.id).toBeGreaterThan(0.25 * s.feed - 100);
       // step-down ≤ 1 × D, except the melamine compression rows (first pass ≥ down-cut length).
       if (r.toolType !== 'compression') expect(s.stepDown, r.id).toBeLessThanOrEqual(r.diameter);
+      if (r.toolType === 'compression' && r.diameter <= 6) expect(s.stepDown, r.id).toBe(6);
     }
   });
 

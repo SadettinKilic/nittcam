@@ -215,3 +215,35 @@ test('end to end: plywood 18 on the example machine → Mach3 NC carries the tab
     }
   }
 });
+
+test('PO tweak: "Kesim ayarı ekle" for melamine 16 on the example machine starts on T2, filled', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openNewProject(page, 'makine');
+  await chooseMachine(page, SEEDED);
+  await pickOption(page.getByTestId('wizard-material'), tr.materials.melamine);
+  const thick = page.getByTestId('wizard-thickness');
+  await thick.fill('16');
+  await thick.press('Enter');
+  await expect(page.getByTestId('no-cutting-params')).toBeVisible();
+  await page.getByTestId('add-cutting-params').click();
+  await expect(page.getByTestId('machine-form')).toBeVisible({ timeout: 30_000 });
+  const table = page.getByTestId('materials-table');
+  const row = table.locator('tbody tr:not([data-detail])').last();
+  const detail = table.locator('tbody tr[data-detail]').last();
+  // T1 (Ø6 two-flute spiral) has no melamine row: the set takes T2 (Ø8 two-flute), filled.
+  expect(await row.locator('[id$="-tool"]').inputValue()).toBe('2');
+  expect(await values(row)).toEqual([5000, 1200, 18000, 6]);
+  await expect(detail.getByTestId('material-starting-source')).toHaveAttribute(
+    'data-kind',
+    'table',
+  );
+  await expect(detail.getByTestId('material-tool-hint')).toHaveText(
+    tr.machines.form.toolFit.melamineCompression,
+  );
+  await detail.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: '__screenshots__/b61-po-melamine16-fix.png' });
+  await axeClean(page);
+});
