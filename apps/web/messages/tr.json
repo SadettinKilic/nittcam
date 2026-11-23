@@ -2371,6 +2371,19 @@
         "Aşağıdaki formu kumpasla doldurun; farkı 0,2 mm’yi geçen ölçüyü işaretleyin."
       ]
     },
+    "mach3": {
+      "title": "Mach3 ön kontrol (air cut'tan önce)",
+      "intro": "İlk çalıştırmayı bozabilecek Mach3 ayarları. Her satırı makinede bakıp işaretleyin; bir ayar farklıysa değiştirmeden önce fotoğrafını çekin.",
+      "items": [
+        "Config > General Config: \"G04 Dwell param in milliseconds\" İŞARETSİZ olmalı. Dosya G4 P5.0 yazar (5 sn); işaretliyse spindle 5 ms bekler, devrini almadan kesime girer.",
+        "Help > About: lisans. Demo sürüm 500 satırda durur; büyük dosya yarıda kalır.",
+        "Config > Spindle Setup, Flood Mist Control ve Ports & Pins > Output Signals: M7 hangi çıkışı açıyor? Profil vakumu M7 / M9 ile açıp kapatır; Mach3'te M7 varsayılan olarak soğutma (mist) çıkışıdır.",
+        "Config > Spindle Setup: devri programdaki S mi ayarlıyor, yoksa inverter panelinden elle mi? Elle ise paneli dosya başlığındaki DEVIR değerine getirin.",
+        "Config > Homing/Limits ve ekrandaki \"Ref All Home\": park noktalı (G53) bir programdan önce makine referanslanmış (home) olmalı; home anahtarı yoksa profilde park kapalı kalsın.",
+        "Config > Motor Tuning: X, Y, Z \"Velocity\" dosyadaki ilerlemelerden (başlıktaki ILERLEME / dalma) küçük olmamalı.",
+        "Config > General Config, \"Program end or M30 or Rewind\": iş ofsetini silen seçenek işaretli olmamalı; yoksa ikinci plakada sıfır kaybolur."
+      ]
+    },
     "park": {
       "title": "Not: takım değişimi ve park konumu",
       "text": "Elle takım değişiminde makine malzemenin 20 mm üstünde durur; ayrı bir park konumu yok. Takımı değiştirmeden önce spindle’ın durduğunu görün, gerekirse Z’yi elle kaldırın. Bu yükseklik sizin makinenizde yeterli mi, not alın.",

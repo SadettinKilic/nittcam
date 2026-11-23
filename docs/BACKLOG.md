@@ -1777,11 +1777,12 @@ Spec: §6.3, §7.2 rule 6 · Depends: – · From: field rehearsal B2 · Decisio
 - [x] validation says so before export; the independent checker judges the cutter edge on the read path with its own geometry (new error code) with rejection tests; the tester's `lead-sheet-edge.field.tester.test.ts` passes
 - [x] changed goldens listed with the reason (label `needs-human`, D-051)
 
-### T332 Field-kit and checklist truth (S1, S2, S3; rider)   [status: todo]
-Spec: §6.6, §7.3, §12.3 · Depends: – · From: field rehearsal S1–S3
-- [ ] (S1) park on (G53): checklist and field kit say the machine must be homed; a short ASCII note in the pause comment before the park move; goldens with park off identical
-- [ ] (S2) a project on an older machine profile version: a warning counted in Uyarılar and a checklist line naming what changed, with "Güncel makine sürümüne geç"; the binding model (§7.3) unchanged
-- [ ] (S3) the air-cut Z-zero step of the field kit is unambiguous (zero on the spoilboard / table plus the stated safe offset); the other kit steps checked for the same ambiguity
+### T332 Field-kit and checklist truth (S1, S2, S3; rider)   [status: done]
+Spec: §6.6, §7.3, §12.3 · Depends: – · From: field rehearsal S1–S3 · Decision: D-124
+- [x] (S1) park on (G53): checklist and field kit say the machine must be homed; a short ASCII note in the pause comment before the park move; goldens with park off identical
+- [x] (S2) a project on an older machine profile version: a warning counted in Uyarılar and a checklist line naming what changed, with "Güncel makine sürümüne geç"; the binding model (§7.3) unchanged
+- [x] (S3) the air-cut Z-zero step of the field kit is unambiguous (zero on the spoilboard / table plus the stated safe offset); the other kit steps checked for the same ambiguity
+- [x] (rider, PO) "Mach3 ön kontrol" block in the field kit for the `mach3` post: 7 settings from `docs/machines/controllers/mach3-saha-kontrol.md` with their menu paths; every manual change after the first writes `M5` before `M0` (checked over all goldens)
 
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
