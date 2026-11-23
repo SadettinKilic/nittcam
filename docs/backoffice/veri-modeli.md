@@ -1,6 +1,6 @@
 # NittCam backoffice veri modeli (öneri)
 
-> Durum: **öneri (v2.1)**, uygulama kodu, şema ve migration değişmedi. Hazırlayan: Data Engineer, 2026-11-22; v2 gözden geçirme: PO, 2026-11-23 (değişiklikler §0); v2.1: sahibin S1 kararı (R13).
+> Durum: **öneri (v2.2)**, uygulama kodu, şema ve migration değişmedi. Hazırlayan: Data Engineer, 2026-11-22; v2 gözden geçirme: PO, 2026-11-23 (değişiklikler §0); v2.1: sahibin S1 kararı (R13); v2.2: marka (R14).
 > Kaynaklar: `docs/SPEC.md` §2, §3, §8.2, §8.5, §8.6, §9, §13, §14.2; `packages/db/src/schema.ts`, `tenant.ts`, `migrations/0000…0013`; `docs/DECISIONS.md` D-014, D-016; `docs/BACKLOG.md` M10.
 > Bütün fiyatlar, firmalar, kişiler, telefonlar ve e-postalar **uydurmadır**. Fiyatlar insan kapısıdır (§14.2), burada yalnızca veri biçimini gösterir.
 
@@ -39,6 +39,7 @@ v1 üzerinde yapılan tasarım düzeltmeleri. Her madde ilgili bölümde uygulan
 | R10 | Abonelik çekirdeği (`plans`, `plan_prices`, `subscriptions`, `subscription_events`) Faz 4'ten **Faz 3**'e alındı | Faz 3'teki görünümler, yaşam döngüsü ve harita abonelik durumuna dayanıyor; pilot firmaların deneme/aktif durumu ödeme entegrasyonu beklemeden elle yönetilebilmeli | §10 |
 | R11 | Sorgu düzeltmeleri: İstanbul günü (`current_date` yerine), 8.6 ikinci sorgu kendi CTE'leriyle, haritada konumsuz firma sayısı | Taslak sorgular olduğu gibi çalışmalı | §8 |
 | R12 | `ref.districts.id` kalıcı kod (yeniden numaralanmaz), `is_active` | Yeni ilçe kurulunca ya da ilçe kapanınca eski adres satırları bozulmamalı | §6.1 |
+| R14 | **Marka (D-114):** aynı atölyenin birden çok markası firmanın içinde `public.company_brands` + `projects.brand_id` ile tutulur; ayrı kiracı açılmaz | Sahibin asıl senaryosu buydu (koltuk + sandalye markası, tek atölye, tek hesap). Ayrı firma yapmak makine doğrulamasını, stoğu ve aboneliği ikiye böler. R13 (çoklu firma üyeliği) yerinde kalır, ama gerçekten ayrı atölyeler içindir | §6.2 |
 | R13 | **Sahip kararı S1 (D-113): bir kişi birden çok firmada olabilir.** `users` küresel kimlik olur (`company_id`, `role` kalkar); üyelik ve rol `public.company_members`, bekleyen davet `public.company_invitations`; oturum **etkin firma** taşır; kullanıcı × zaman özetlerinin anahtarına `company_id` girer | v1 "bir kullanıcı = bir firma" varsayıyordu. Karar M10'dan önce verildiği için göç ucuz: bugün tek varsayılan firma ve kullanıcı var | §6.3, §6.5, §7, §10 |
 
 ---
@@ -203,6 +204,8 @@ erDiagram
     companies ||--o{ machines : "makine"
     companies ||--o{ projects : "proje"
     projects ||--o{ exports : "export"
+    companies ||--o{ company_brands : "marka"
+    company_brands |o--o{ projects : "markanın projeleri"
     users ||--o{ auth_sessions : "aktif token"
     users ||--o{ auth_accounts : "giriş yöntemi"
 
@@ -348,6 +351,40 @@ Atölye (haritadaki konum) ve fatura adresi. Kiracı yöneticisi Ayarlar → Şi
 ```json
 {"id":"a-001","company_id":"c-001","kind":"workshop","is_primary":true,"province_code":38,"district_id":3801,"neighbourhood":"Organize Sanayi","address_line":"Mobilyacılar Sitesi 12. Cad. No: 7","postal_code":"38070","lat":38.751200,"lng":35.421900,"geo_source":"manual_pin","geo_accuracy_m":20,"country":"TR"}
 {"id":"a-002","company_id":"c-001","kind":"billing","is_primary":true,"province_code":38,"district_id":3801,"neighbourhood":"Alpaslan","address_line":"Ahmet Paşa Cad. No: 41/3","postal_code":"38030","lat":null,"lng":null,"geo_source":null,"country":"TR"}
+```
+
+#### `public.company_brands` (yeni, kiracı): bir atölyenin markaları (R14)
+
+Sahibin örneği (2026-11-23, D-114): aynı mobilyacının **koltuk** ve **sandalye** için iki ayrı markası var, atölye aynı, tek hesaptan ikisi için de çalışacak. Bu durumda markalar ayrı kiracı **olmaz**: atölye tek firmadır, marka firmanın içinde bir boyuttur. Ayrı firma yapılsaydı aynı makineler iki kez tanımlanıp iki kez doğrulanır (air cut, test kesimi), malzeme stoğu ve artık parçalar ikiye bölünür, bir markanın artığı diğerinin işinde kullanılamaz ve iki abonelik gerekirdi.
+
+| Ne | Nerede durur | Markalar arasında |
+| --- | --- | --- |
+| Makineler, profil sürümleri, doğrulamalar, takımlar | Firma | **Ortak** |
+| Malzeme kütüphanesi, plaka stoğu, artık parçalar, şablonlar | Firma | **Ortak** |
+| Kullanıcılar, roller, abonelik, koltuk | Firma | **Ortak** |
+| Proje | Firma + `brand_id` | Markaya göre ayrılır (liste filtresi) |
+| Çıktılardaki ad ve logo (PDF, etiket, rapor) | Marka (yoksa firma) | Markaya göre |
+
+| Sütun | Tip | Null | Anahtar | Açıklama |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | H | PK | `unique(company_id, id)` (projelerdeki bileşik FK için) |
+| `company_id` | `uuid` | H | FK → `companies` | |
+| `name` | `text` | H | | Çıktılarda görünen marka adı ("Kılıç Koltuk") |
+| `logo_key` | `text` | E | | Markanın logosu; boşsa firma logosu kullanılır |
+| `color` | `text` | E | | Proje listesinde marka rozeti |
+| `sort_order` | `smallint` | H | | Seçicideki sıra |
+| `archived_at` | `timestamptz` | E | | Arşiv: yeni projede seçilemez, eski projelerde kalır (makine ve şablon arşiviyle aynı alışkanlık) |
+| `created_at`, `updated_at` | `timestamptz` | H | | |
+
+İndeks: tekil `(company_id, lower(name)) WHERE archived_at IS NULL`.
+
+`public.projects` değişikliği: **`brand_id uuid NULL`**, bileşik FK `(company_id, brand_id) → company_brands (company_id, id)`, indeks `(company_id, brand_id, updated_at)`. **Boş = markasız**: çıktılar firma adı ve logosuyla çıkar. Tek markalı atölye hiçbir şey görmez (marka seçici ancak en az bir marka tanımlıysa çıkar); bugünkü projeler olduğu gibi kalır, geri doldurma gerekmez. Marka `projects.data` JSON'una girmez (çekirdek saf kalır, G-code markaya bağlı değildir); marka değişimi export hash'ini değiştirmez, yalnızca PDF/etiket başlığını.
+
+Backoffice: firma kartı markaları listeler; `bo.v_company_projects` marka adını taşır; kullanım süresi `daily_project_usage` → `projects.brand_id` ile marka kırılımında okunur (hangi marka ne kadar iş çıkarıyor). Marka CRM hesabı ya da abonelik **değildir**; fatura firmaya kesilir (ayrı tüzel kişilik sorusu S14).
+
+```json
+{"id":"b-01","company_id":"c-001","name":"Kılıç Koltuk","logo_key":"c-001/brands/b-01/logo.png","color":"#0E7C66","sort_order":1,"archived_at":null}
+{"id":"b-02","company_id":"c-001","name":"Kılıç Sandalye","logo_key":null,"color":"#1F5FA8","sort_order":2,"archived_at":null}
 ```
 
 ### 6.3 Kullanıcı ve oturum
@@ -1212,7 +1249,7 @@ Saklama kurallarını kodda değil veride tutar; temizlik işi buradan okur.
 | `bo.v_company_overview` | görünüm | Firma satırı: ad, segment, durum, il/ilçe/koordinat (atölye adresi, yoksa ilçe merkezi), paket, abonelik durumu, MRR, aktif kullanıcı sayısı (yönetici/operatör), makine sayısı, proje sayısı, son etkinlik, sorumlu personel, etiketler | canlı |
 | `bo.v_company_users` | görünüm | Firmanın üyeleri (`company_members` + `users`): ad, e-posta, rol, durum, son etkinlik, son 30 gün dakika, kişinin **başka kaç firmada** üyeliği olduğu (bayi/serbest operatör işareti) | canlı |
 | `bo.v_company_machines` | görünüm | Makine adı, marka, model, controller (son profil sürümünden), doğrulama aşaması, arşiv | canlı |
-| `bo.v_company_projects` | görünüm | Proje **metaverisi**: ad, durum, revizyon, parça/plaka sayısı (JSON'dan yalnızca sayılar), export sayısı, tarih. `data` yok | canlı |
+| `bo.v_company_projects` | görünüm | Proje **metaverisi**: ad, **marka**, durum, revizyon, parça/plaka sayısı (JSON'dan yalnızca sayılar), export sayısı, tarih. `data` yok | canlı |
 | `bo.v_map_provinces` | görünüm | İl başına: müşteri, deneme, risk altındaki, potansiyel sayısı, MRR | canlı |
 | `bo.v_map_districts` | görünüm | İl içinde ilçe başına aynı sayılar | canlı |
 | `bo.v_map_pins` | görünüm | Firma ve potansiyel pinleri (lat/lng, tür, durum) | canlı |
@@ -1581,7 +1618,7 @@ Kural: her faz ayrı migration dosyaları (`0014`'ten devam; `0011` boşluğu bi
 | Faz | Zaman | İçerik | Mevcut şemada değişiklik |
 | --- | --- | --- | --- |
 | **0. Referans** | Şimdi (küçük, risksiz) | `ref.provinces` (81), `ref.districts` seed; bu dokümanın onayı; olay sözlüğü taslağı | Yok |
-| **1. Kimlik ve kiracı** | M10 (T200+) | Better Auth (+ organization eklentisi) → `users` + `auth_*`; **`company_members`, `company_invitations`** (R13: mevcut `users.company_id`/`role` üyeliğe kopyalanır, dört kullanıcı FK'si üyeliğe çevrilir, sonra iki sütun düşer), firma seçici; `users` yeni sütunlar; `companies` yeni sütunlar; `company_addresses`; Postgres RLS + `nittcam_app` rolü; `audit.audit_log`; `privacy.legal_documents`, `consents` (kayıt formunda aydınlatma + şartlar) | `users`: `company_id` ve `role` **düşer**, `last_login_at`, `last_company_id`, `deleted_at` … eklenir; `users_email_uq` kısmi; `project_commands`, `exports` (2 sütun), `validations`, `chat_messages` kullanıcı FK'leri `company_members`'a; `tenantTables`'tan `users` çıkar, `company_members` ve `company_invitations` girer; `companies`: `slug`, `status`, `segment`, `timezone`, `locale`, `deleted_at`; `tenantTables` listesine yeni kiracı tabloları |
+| **1. Kimlik ve kiracı** | M10 (T200+) | Better Auth (+ organization eklentisi) → `users` + `auth_*`; **`company_members`, `company_invitations`** (R13: mevcut `users.company_id`/`role` üyeliğe kopyalanır, dört kullanıcı FK'si üyeliğe çevrilir, sonra iki sütun düşer), firma seçici; **`company_brands` + `projects.brand_id`** (R14; eklemeli, istenirse M10'dan bağımsız daha erken de alınabilir); `users` yeni sütunlar; `companies` yeni sütunlar; `company_addresses`; Postgres RLS + `nittcam_app` rolü; `audit.audit_log`; `privacy.legal_documents`, `consents` (kayıt formunda aydınlatma + şartlar) | `users`: `company_id` ve `role` **düşer**, `last_login_at`, `last_company_id`, `deleted_at` … eklenir; `users_email_uq` kısmi; `project_commands`, `exports` (2 sütun), `validations`, `chat_messages` kullanıcı FK'leri `company_members`'a; `tenantTables`'tan `users` çıkar, `company_members` ve `company_invitations` girer; `companies`: `slug`, `status`, `segment`, `timezone`, `locale`, `deleted_at`; `tenantTables` listesine yeni kiracı tabloları |
 | **2. Kullanım ölçümü** | M10 sonu / M12 pilot öncesi | `analytics.user_sessions`, `user_activity_hourly`, `daily_project_usage`, heartbeat uç noktası; `analytics.events` (bölümlü) + `event_types`; sunucu olayları; istemci olay toplayıcı; günlük özet işleri; **geri doldurma**: `exports` → `nc/dxf/pdf.exported`, `projects.created_at` → `project.created`, `project_commands` → günlük etkin gün (dakika geri doldurulamaz) | Yok (yalnızca INSERT eklenir) |
 | **3. Backoffice, CRM ve abonelik çekirdeği** | M12 pilot | `bo` şeması, `staff_users`, `nittcam_bo` rolü, görünümler; `crm.*`; `support.*` (uygulama içi "Destek" formu); **`billing.plans`, `plan_prices`, `subscriptions`, `subscription_events`** (R10: ödeme entegrasyonu yok, deneme/aktif durumu personel panelden yönetir, pilot fiyatı `price_kind = 'custom'`); `analytics.company_health_daily`; panel v1 (liste, firma kartı, harita) | `companies.plan` önbellek olur (abonelikten yazılır) |
 | **4. Faturalama ve tahsilat** | M13 ticari (fiyat kararı sonrası) | `billing.billing_profiles`, `invoices`, `invoice_lines`, `invoice_counters`, `payments`, `dunning_steps`; ödeme sağlayıcı + e-Fatura/e-Arşiv entegratörü; dunning işleri; `ai_quota_monthly` → paket hakları; `mv_mrr_monthly`, kohortlar | `companies.plan` düşer, `ai_quota_monthly` → `ai_quota_bonus` |
@@ -1609,4 +1646,5 @@ Riskler: (1) Better Auth tablo adlandırması/alanları sürüm değişikliğind
 | S10 | Backoffice ayrı bir uygulama mı (ayrı repo/alt alan adı) yoksa `apps/backoffice`? | Öneri: aynı monorepo'da `apps/backoffice`, ayrı dağıtım ve ayrı DB rolü |
 | S11 | İl/ilçe kodları ve koordinat kaynağı (NVİ/AKS, TÜİK, açık veri) ve firma konumu nasıl alınır (elle pin, adres geocoding)? | Öneri: il = plaka kodu; ilçe resmi kodu `official_code`; konum yönetici ayarında haritada pin, yoksa ilçe merkezi |
 | S12 | Pazarlama izni (İYS) toplanacak mı, kanal bazında mı? | Model kanal bazında (`marketing_email/sms/call`) |
+| S14 | Aynı atölyenin markaları ayrı tüzel kişilik olabilir mi (ayrı vergi no, ayrı fatura)? | **Öneri:** hayır, fatura firmaya tek kesilir (`billing_profiles` 1:1 firma). "Evet" ise iki yol: markaya isteğe bağlı fatura kimliği, ya da o markayı ayrı firma yapmak (R13 sayesinde aynı hesapla girilir, ama makine ve stok ayrılır) |
 | S13 | Ürün analitiği için çerez/izleme onayı: oturum ve kullanım ölçümü meşru menfaat mi, açık rıza mı? | Hukuki görüş; model ikisini de destekler (`analytics_cookies`) |
