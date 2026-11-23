@@ -107,3 +107,36 @@ describe('importParams', () => {
     });
   });
 });
+
+describe('summarize: holes apart from cut-outs (B53, tester B16)', () => {
+  const drawing = {
+    report: { supported: {}, converted: {}, ignored: {}, skipped: {} },
+  } as unknown as Parameters<typeof summarize>[0];
+  const circle = { cx: 0, cy: 0, d: 8 };
+  const plan = {
+    parts: [
+      {
+        inners: [
+          { drill: true, circle },
+          { drill: true, circle },
+          { drill: false, circle },
+          { drill: false },
+        ],
+        lines: [],
+      },
+    ],
+    open: [],
+    duplicates: 0,
+    pending: [],
+    orphans: [],
+    lineOrphans: [],
+  } as unknown as Parameters<typeof summarize>[1];
+
+  it('with a hole tool, drill-layer circles count as holes', () => {
+    expect(summarize(drawing, plan, 3)).toMatchObject({ inners: 2, holes: 2 });
+  });
+
+  it('without one, every inner stays a cut-out', () => {
+    expect(summarize(drawing, plan)).toMatchObject({ inners: 4, holes: 0 });
+  });
+});

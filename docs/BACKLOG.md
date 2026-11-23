@@ -1523,28 +1523,28 @@ Done in B44 (#145) except the two items left open below.
 - Kesim ayarları card: tab options as one segmented row, three fields in one row; a field with a refused value shows the value in use ("kullanılan: 4") [#11] (done in B44)
 - Özet cutting-settings line wraps to two lines at 232 px and also names the thin skin; Özet warning count equals the Uyarılar panel; Dizilim says the part gap is added to the tool diameter [#12] (done in B44)
 - Phone: Simülasyon 3rd sheet tab cut at 390 (scrollable) [T B43] (done in B44)
-- Dizilim canvas: a rotated part's label shows the part's own En × Boy, like the right panel (PO decision, usta 2 test 2026-11-21) [usta]
+- Dizilim canvas: a rotated part's label shows the part's own En × Boy, like the right panel (PO decision, usta 2 test 2026-11-21) [usta] (done in B53)
 
-### P3 Kesim listesi, adım 1, makine formu, DXF   [status: partial, B46 #150]
-Partly done in B46 (#150): items marked "done in B46"; the rest stays open.
+### P3 Kesim listesi, adım 1, makine formu, DXF   [status: done, B46 #150, B53 #160]
+Done in B46 (#150) and B53 (#160), except the flaky-e2e note (watch item).
 - Cut list: edge band unit "mm"; a name-only row is not counted in the part total; cabinet toast and button use the same unit [#9, #10] (done in B46)
-- Cut list: "Uyarılar" panel does not cover cells, clicking an issue focuses its row; row marker for parts with inner cuts [#5, #6]
+- Cut list: "Uyarılar" panel does not cover cells, clicking an issue focuses its row; row marker for parts with inner cuts [#5, #6] (done in B53)
 - Paste: skipped rows (e.g. size 0) are named with the reason in the preview [#10] (done in B46)
 - Step 1: thickness row only when there is a choice [#5] (done in B46)
-- Step 1: red "kesim ayarı yok" box does not push "Plaka ölçüsü" under the footer [#5]
-- ★ Machine form and Ayarlar → Malzemeler: parameter table fits 1440 and 1024 without horizontal scroll; copied-set note spans the row; from the fix flow the section nav and breadcrumb are right and "Değerleri doğruladım" is not under the sticky bar; "Projeye dön" back to the project [#5, #6, #7]
-- Wizard header stays one row down to ~1095 px container width [#6]
+- Step 1: red "kesim ayarı yok" box does not push "Plaka ölçüsü" under the footer [#5] (done in B53)
+- ★ Machine form and Ayarlar → Malzemeler: parameter table fits 1440 and 1024 without horizontal scroll; copied-set note spans the row; from the fix flow the section nav and breadcrumb are right and "Değerleri doğruladım" is not under the sticky bar; "Projeye dön" back to the project [#5, #6, #7] (done in B53)
+- Wizard header stays one row down to ~1095 px container width [#6] (done in B53)
 - DXF dialog: focus returns to "DXF içe aktar"; duplicate `data-testid="dxf-open"` [T B16] (done in B46)
-- DXF dialog: first focus visible; a LINE over a closed polyline edge counts as duplicate; report shows holes separately [T B16]
+- DXF dialog: first focus visible; a LINE over a closed polyline edge counts as duplicate; report shows holes separately [T B16] (done in B53)
 - Step 1 "ince tabaka" switch and Simülasyon "Köprü: Kapalı" use the same word and link to each other [#11] (done in B46)
 - Server accepts a grain value on a grainless offcut PATCH [T B36] (done in B46)
-- T292 rows get a stray thickness note when the target thickness differs [T B36]
+- T292 rows get a stray thickness note when the target thickness differs [T B36] (done in B53)
 - Out-of-range fields say the limit (Ayarlar defaults, offcut dialog) instead of a silent disabled Kaydet [#12] (done in B46)
 - ★ One vocabulary across Ayarlar / Simülasyon / step 1: Köprü, Kapalı, ince tabaka, Climb (tırmanma) [#11, #12] (done in B46)
 - "Ayrı plaka parçalarını yeni projeye aktar" also on an unsaved new project (saves first); a project on an archived machine shows "bu makine arşivlendi" on step 1 and Dışa aktar [#12] (done in B46)
-- Machine form park fields: the unit sits against the number ("0mm"), needs a space like the other fields [T B55 tester]
+- Machine form park fields: the unit sits against the number ("0mm"), needs a space like the other fields [T B55 tester] (done in B53)
 - Flaky e2e seen in CI round 24 (green on rerun): `b07-cutlist-tester-r3.spec.ts:247` 390 touch tap after scroll (scrollIntoViewIfNeeded timeout), `b21-preview3d-perf.spec.ts:69` fps read 0 on the CPU runner [T CI]
-- Parçalar header: after a quantity change "1 sorun" and "Hatalı satırlar" stay yellow; they should be neutral (usta test 2026-11-21) [usta]
+- Parçalar header: after a quantity change "1 sorun" and "Hatalı satırlar" stay yellow; they should be neutral (usta test 2026-11-21) [usta] (done in B53)
 
 ### P4 Kabuk, bildirimler, ana sayfa   [status: done, B39]
 Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is already the box.

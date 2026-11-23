@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { clearance, labelSpot, spotLabel } from './label-spot';
+import type { Project } from '@nittcam/core';
+import { drawnParts } from '../components/layout-view/model';
 
 const rect = (x0: number, y0: number, x1: number, y1: number) => [x0, y0, x1, y0, x1, y1, x0, y1];
 
@@ -63,5 +65,42 @@ describe('spotLabel (T319)', () => {
     const label = spotLabel({ label: '4.1', name: 'Elif panel', w: 600, h: 400 }, spot, 2);
     expect(label.level).toBe('full');
     expect(label.lines[1]).toBe('600 × 400');
+  });
+});
+
+describe('turned part label (B53, usta 2)', () => {
+  const part = (rot: number) =>
+    ({
+      parts: [
+        {
+          id: 'P',
+          kind: 'rect',
+          name: 'Kapak',
+          qty: 1,
+          grain: { mode: 'free', angle: 0 },
+          params: { w: 600, h: 400, r: 0 },
+          inners: [],
+          holes: [],
+          edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+        },
+      ],
+      layout: {
+        sheets: [{ placements: [{ partId: 'P', index: 0, x: 10, y: 10, rot, locked: false }] }],
+      },
+    }) as unknown as Project;
+
+  it('a part turned 90° has a 400 × 600 footprint but its label reads its own 600 × 400', () => {
+    const [d] = drawnParts(part(90), 0);
+    if (!d) throw new Error('not drawn');
+    expect({ w: d.w, h: d.h }).toEqual({ w: 400, h: 600 });
+    expect(d.own).toEqual({ w: 600, h: 400 });
+    const label = spotLabel(d, labelSpot(d), 2);
+    expect(label.lines[1]).toBe('600 × 400');
+  });
+
+  it('an unturned part: own size = footprint', () => {
+    const [d] = drawnParts(part(0), 0);
+    expect(d?.own).toEqual({ w: 600, h: 400 });
+    expect(d && spotLabel(d, labelSpot(d), 2).lines[1]).toBe('600 × 400');
   });
 });

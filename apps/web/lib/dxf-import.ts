@@ -68,7 +68,10 @@ export interface DxfReportSummary {
   open: number;
   duplicates: number;
   parts: number;
+  /** Inner contours (cut-outs) the parts get. */
   inners: number;
+  /** Drill circles that become hole objects (B53, tester B16: reported apart from cut-outs). */
+  holes: number;
   pending: number;
   orphans: number;
   /** On-line (engraving) lines imported into parts, and those in no part (T277). */
@@ -76,8 +79,23 @@ export interface DxfReportSummary {
   lineOrphans: number;
 }
 
-export function summarize(drawing: DxfDrawing, plan: DxfPlan): DxfReportSummary {
+export function summarize(
+  drawing: DxfDrawing,
+  plan: DxfPlan,
+  /** The hole tool: with it, circles on a drill layer become holes (as in `dxfImportParts`). */
+  holeTool?: number,
+): DxfReportSummary {
   const r = drawing.report;
+  const isHole = (i: DxfPlan['parts'][number]['inners'][number]) =>
+    holeTool !== undefined && i.drill === true && i.circle !== undefined;
+  let holes = 0;
+  let inners = 0;
+  for (const part of plan.parts) {
+    for (const inner of part.inners) {
+      if (isHole(inner)) holes += 1;
+      else inners += 1;
+    }
+  }
   return {
     supported: sum(r.supported),
     converted: sum(r.converted),
@@ -87,7 +105,8 @@ export function summarize(drawing: DxfDrawing, plan: DxfPlan): DxfReportSummary 
     open: plan.open.length,
     duplicates: plan.duplicates,
     parts: plan.parts.length,
-    inners: plan.parts.reduce((s, p) => s + p.inners.length, 0),
+    inners,
+    holes,
     pending: plan.pending.length,
     orphans: plan.orphans.length,
     lines: plan.parts.reduce((s, p) => s + p.lines.length, 0),

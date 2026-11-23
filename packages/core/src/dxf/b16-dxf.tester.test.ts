@@ -446,10 +446,10 @@ describe('B16 tester: join tolerance and dirty soups', () => {
     );
     expect(plan.parts).toHaveLength(1);
     expect(plan.parts[0]!.inners).toHaveLength(1);
-    // Observed: a single LINE lying on an edge of a closed LWPOLYLINE is not a duplicate of a
-    // whole piece, so it stays as one flagged open chain (never imported). Note, not a blocker.
-    expect(plan.open).toHaveLength(1);
-    expect(plan.duplicates).toBeGreaterThanOrEqual(1);
+    // B53: a single LINE lying on an edge of a closed LWPOLYLINE counts as a duplicate (it was a
+    // flagged open chain before).
+    expect(plan.open).toHaveLength(0);
+    expect(plan.duplicates).toBe(2);
   });
 
   it('a T-branch (three lines in one point) does not crash and imports nothing bogus', () => {
