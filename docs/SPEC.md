@@ -606,7 +606,7 @@ Bedeli: Shapely ve rectpack gibi olgun kütüphaneler yerine offset kütüphanes
 | Tablo | Tuttuğu şey | Önemli alanlar |
 | --- | --- | --- |
 | `companies` | Şirket (kiracı) | ad, logo, paket, AI kotası |
-| `users` | Kullanıcı | şirket, rol (yönetici / operatör), e-posta |
+| `users` | Kullanıcı | şirket, rol (yönetici / operatör), e-posta. M10'dan itibaren kişi birden çok şirkette olabilir: şirket ve rol üyelik tablosuna (`company_members`) taşınır (D-113) |
 | `machines` | Makine | şirket, marka, model, bakım kaydı |
 | `machine_profile_versions` | Profilin değişmez sürümleri | makine, sürüm no, profil JSON'u, post ayarı ve sürümü |
 | `tools` | Takım seti | makine, takım no, tip, çap |

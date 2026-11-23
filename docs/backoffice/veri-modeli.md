@@ -1,6 +1,6 @@
 # NittCam backoffice veri modeli (öneri)
 
-> Durum: **öneri (v2)**, uygulama kodu, şema ve migration değişmedi. Hazırlayan: Data Engineer, 2026-11-22; v2 gözden geçirme: PO, 2026-11-23 (değişiklikler §0).
+> Durum: **öneri (v2.1)**, uygulama kodu, şema ve migration değişmedi. Hazırlayan: Data Engineer, 2026-11-22; v2 gözden geçirme: PO, 2026-11-23 (değişiklikler §0); v2.1: sahibin S1 kararı (R13).
 > Kaynaklar: `docs/SPEC.md` §2, §3, §8.2, §8.5, §8.6, §9, §13, §14.2; `packages/db/src/schema.ts`, `tenant.ts`, `migrations/0000…0013`; `docs/DECISIONS.md` D-014, D-016; `docs/BACKLOG.md` M10.
 > Bütün fiyatlar, firmalar, kişiler, telefonlar ve e-postalar **uydurmadır**. Fiyatlar insan kapısıdır (§14.2), burada yalnızca veri biçimini gösterir.
 
@@ -39,6 +39,7 @@ v1 üzerinde yapılan tasarım düzeltmeleri. Her madde ilgili bölümde uygulan
 | R10 | Abonelik çekirdeği (`plans`, `plan_prices`, `subscriptions`, `subscription_events`) Faz 4'ten **Faz 3**'e alındı | Faz 3'teki görünümler, yaşam döngüsü ve harita abonelik durumuna dayanıyor; pilot firmaların deneme/aktif durumu ödeme entegrasyonu beklemeden elle yönetilebilmeli | §10 |
 | R11 | Sorgu düzeltmeleri: İstanbul günü (`current_date` yerine), 8.6 ikinci sorgu kendi CTE'leriyle, haritada konumsuz firma sayısı | Taslak sorgular olduğu gibi çalışmalı | §8 |
 | R12 | `ref.districts.id` kalıcı kod (yeniden numaralanmaz), `is_active` | Yeni ilçe kurulunca ya da ilçe kapanınca eski adres satırları bozulmamalı | §6.1 |
+| R13 | **Sahip kararı S1 (D-113): bir kişi birden çok firmada olabilir.** `users` küresel kimlik olur (`company_id`, `role` kalkar); üyelik ve rol `public.company_members`, bekleyen davet `public.company_invitations`; oturum **etkin firma** taşır; kullanıcı × zaman özetlerinin anahtarına `company_id` girer | v1 "bir kullanıcı = bir firma" varsayıyordu. Karar M10'dan önce verildiği için göç ucuz: bugün tek varsayılan firma ve kullanıcı var | §6.3, §6.5, §7, §10 |
 
 ---
 
@@ -52,7 +53,8 @@ Sahip kendi **backoffice panelini** kuracak. Panel şunları cevaplamalı:
 | --- | --- |
 | Hangi ilde kaç firma var, ilçeye inince hangileri? (Türkiye haritası) | `ref.provinces`, `ref.districts`, `public.company_addresses`, `bo.v_map_*` |
 | Firma kartı: adres, yetkililer, abonelik geçmişi, makineler, projeler, notlar, destek | `crm.accounts`, `crm.contacts`, `billing.*`, `bo.v_company_*`, `crm.activities`, `support.tickets` |
-| Kaç hesap var, yönetici/operatör oturumları, kullanım süresi | `public.users`, `analytics.user_sessions`, `analytics.user_activity_hourly` |
+| Kaç hesap var, yönetici/operatör oturumları, kullanım süresi | `public.users`, `public.company_members`, `analytics.user_sessions`, `analytics.user_activity_hourly` |
+| Hangi kişiler birden çok atölyede çalışıyor (bayi, servis, serbest operatör) | `public.company_members` (sorgu 8.3) |
 | Hangi projede ne kadar çalışıldı | `analytics.daily_project_usage` |
 | Ürün nasıl kullanılıyor (proje, nesting, NC export) | `analytics.events` → `analytics.daily_company_usage` |
 | MRR/ARR, paket dağılımı, deneme→ücretli dönüşüm, churn | `billing.subscriptions`, `billing.subscription_events`, `analytics.mv_mrr_monthly` |
@@ -79,7 +81,7 @@ Mevcut durum (`main`, migration `0013_t191_test_downloads`): 15 tablo, hepsi `pu
 | Tablo | Backoffice için ne verir | Not |
 | --- | --- | --- |
 | `companies` | Kiracı kökü, ad, logo, oluşturma tarihi | `plan` serbest metin (`trial`), `ai_quota_monthly` var; adres, vergi, durum, konum yok |
-| `users` | Hesap sayısı, rol dağılımı | `email` platform genelinde tekil (küçük harf), bir kullanıcı = bir firma; durum, son giriş, silinme yok |
+| `users` | Hesap sayısı, rol dağılımı | `email` platform genelinde tekil (küçük harf); bugün bir kullanıcı = bir firma (`company_id`, `role` bu tabloda), R13 ile üyelik tablosuna ayrılır; durum, son giriş, silinme yok |
 | `machines`, `machine_profile_versions` | Firma makine parkı, controller dağılımı (profil JSON → `identity.controller`), arşiv | `maintenance_log`, `test_downloads` jsonb |
 | `projects` | Proje sayısı, durum, son güncelleme, yumuşak silme | `data` jsonb müşteri içeriği: backoffice'e **açılmaz** |
 | `project_commands` | Kim (kullanıcı / AI) ne zaman komut verdi: etkinlik geri doldurma için iyi kaynak | Yalnızca proje içi |
@@ -97,7 +99,7 @@ Güçlü yanlar: her kiracı tablosunda `company_id` (NOT NULL, FK, indeksin ilk
 | G1 | Kimlik/oturum tabloları yok (Better Auth M10'da) | Oturum, kullanım süresi, rol bazlı analiz yapılamıyor |
 | G2 | `companies`: adres, il/ilçe, koordinat, vergi bilgisi, durum, saat dilimi yok | Harita ve fatura imkansız |
 | G3 | `companies.plan` serbest metin; paket, fiyat, abonelik, fatura, ödeme yok | MRR, deneme, churn, tahsilat yok |
-| G4 | `users`: durum (davetli/aktif/pasif), son giriş, yumuşak silme yok | Koltuk (seat) sayımı ve "aktif hesap" tanımı belirsiz |
+| G4 | `users`: durum (davetli/aktif/pasif), son giriş, yumuşak silme yok; kişi tek firmaya bağlı | Koltuk (seat) sayımı ve "aktif hesap" tanımı belirsiz; bayi/serbest operatör her atölye için ayrı e-posta açmak zorunda (R13 ile çözülür) |
 | G5 | Ürün olay günlüğü yok (nesting tarayıcıda çalışır, sunucu görmez) | Nesting kullanımı ölçülemiyor |
 | G6 | Genel denetim günlüğü yok (`project_commands` yalnızca proje) | Rol değişikliği, paket değişikliği, personel erişimi izlenemiyor |
 | G7 | KVKK: rıza, aydınlatma metni sürümü, başvuru, saklama politikası yok | Yasal risk (§13.5 açık madde) |
@@ -195,7 +197,9 @@ erDiagram
     ref_provinces ||--o{ crm_accounts : "aday konumu"
 
     companies ||--o{ company_addresses : "adres"
-    companies ||--o{ users : "hesap"
+    companies ||--o{ company_members : "üye"
+    users ||--o{ company_members : "üyelik (firma başına rol)"
+    companies ||--o{ company_invitations : "bekleyen davet"
     companies ||--o{ machines : "makine"
     companies ||--o{ projects : "proje"
     projects ||--o{ exports : "export"
@@ -348,24 +352,83 @@ Atölye (haritadaki konum) ve fatura adresi. Kiracı yöneticisi Ayarlar → Şi
 
 ### 6.3 Kullanıcı ve oturum
 
-#### `public.users` (mevcut, değişiklik önerisi)
+#### `public.users` (mevcut, değişir): küresel kimlik (R13)
+
+Sahip kararı (S1, 2026-11-23, D-113): **bir kişi birden çok firmada çalışabilir** (serbest operatör, birkaç atölyeyi yöneten makine bayisi/servis). Bu yüzden `users` artık kiracı tablosu değildir: kişi başına **tek** satır, tek e-posta, tek şifre. Firmaya bağlılık ve rol `company_members`'tadır. `company_id` ve `role` sütunları bu tablodan **kalkar**.
 
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
-| `id`, `company_id`, `email`, `name`, `role`, `created_at`, `updated_at` | | | | Mevcut (`role`: `admin` = yönetici, `operator` = operatör) |
-| **`status`** | `text` | H | | `invited`, `active`, `disabled`. Koltuk sayımı = `active` |
+| `id`, `email`, `name`, `created_at`, `updated_at` | | | | Mevcut |
+| ~~`company_id`~~, ~~`role`~~ | | | | `company_members`'a taşınır (Faz 1 göçü) |
 | **`email_verified_at`** | `timestamptz` | E | | Better Auth `emailVerified` |
 | **`phone_e164`** | `text` | E | | İsteğe bağlı ("+905321234567") |
-| **`invited_by_user_id`** | `uuid` | E | FK (aynı firma) | |
-| **`invited_at`**, **`activated_at`**, **`disabled_at`** | `timestamptz` | E | | Yaşam döngüsü |
-| **`last_login_at`**, **`last_active_at`** | `timestamptz` | E | | Önbellek (asıl kaynak `analytics`); liste ekranı için |
-| **`deleted_at`** | `timestamptz` | E | | Yumuşak silme; KVKK silmede ad/e-posta anonimleşir |
+| **`last_login_at`** | `timestamptz` | E | | Önbellek (asıl kaynak `analytics`) |
+| **`last_company_id`** | `uuid` | E | FK → `companies` | Son çalıştığı firma: girişte doğrudan oraya açılır |
+| **`deleted_at`** | `timestamptz` | E | | Hesap kapatıldı; KVKK silmede ad/e-posta anonimleşir |
 
-İndeksler: mevcut `users_email_uq (lower(email))` **`WHERE deleted_at IS NULL`** olacak şekilde kısmi yapılmalı (silinen hesabın e-postası yeniden kullanılabilsin); `(company_id, role) WHERE status='active'`.
+İndeksler: mevcut `users_email_uq (lower(email))` **`WHERE deleted_at IS NULL`** olacak şekilde kısmi yapılmalı (silinen hesabın e-postası yeniden kullanılabilsin).
+
+RLS: tablo kiracı sütunu taşımadığı için politika üyelik üzerinden yazılır: uygulama rolü bir kullanıcı satırını yalnızca (a) o kişi **geçerli firmanın üyesiyse** ya da (b) satır oturum sahibinin kendisiyse (`app.user_id`) görür. Uygulamaya yalnızca `id`, `name`, `email` sütunları açılır. Böylece bir firma, üyesi olmayan kişileri (başka firmaların kullanıcılarını) listeleyemez; e-posta ile "bu kişi kayıtlı mı" sorgusu da yapamaz (davet e-postaya gider, kayıtlı olup olmadığı davet edene söylenmez).
 
 ```json
-{"id":"u-101","company_id":"c-001","email":"sadettin@kilicmobilya.example","name":"Sadettin Kılıç","role":"admin","status":"active","last_login_at":"2027-03-02T05:58:10Z"}
-{"id":"u-102","company_id":"c-001","email":"usta.mehmet@kilicmobilya.example","name":"Mehmet Usta","role":"operator","status":"active","invited_by_user_id":"u-101","last_login_at":"2027-03-02T06:12:44Z"}
+{"id":"u-101","email":"sadettin@kilicmobilya.example","name":"Sadettin Kılıç","last_login_at":"2027-03-02T05:58:10Z","last_company_id":"c-001"}
+{"id":"u-140","email":"servis@anadolucnc.example","name":"Hakan Servis","last_login_at":"2027-03-01T13:20:00Z","last_company_id":"c-002"}
+```
+
+#### `public.company_members` (yeni, kiracı): üyelik ve rol
+
+Bir kişinin bir firmadaki yeri. Rol **firma başınadır**: aynı kişi bir atölyede yönetici, diğerinde operatör olabilir. Better Auth "organization" eklentisinin `member` modeli bu tabloya, `organization` modeli `companies`'e eşlenir.
+
+| Sütun | Tip | Null | Anahtar | Açıklama |
+| --- | --- | --- | --- | --- |
+| `company_id` | `uuid` | H | PK (1), FK → `companies` | |
+| `user_id` | `uuid` | H | PK (2), FK → `users` | |
+| `role` | `user_role` | H | | `admin` = yönetici, `operator` = operatör (mevcut enum) |
+| `status` | `text` | H | | `active`, `disabled` (yönetici askıya aldı), `removed` (firmadan çıkarıldı). Koltuk sayımı = `active` |
+| `invited_by_user_id` | `uuid` | E | FK (`company_id`, `invited_by_user_id`) → bu tablo | |
+| `joined_at` | `timestamptz` | H | | Daveti kabul ettiği an |
+| `disabled_at`, `removed_at` | `timestamptz` | E | | |
+| `last_active_at` | `timestamptz` | E | | Bu firmadaki son etkinlik (önbellek; liste ekranı için) |
+| `created_at`, `updated_at` | `timestamptz` | H | | |
+
+Kurallar:
+
+- **Satır silinmez.** Geçmiş kayıtlar (`project_commands.user_id`, `exports.created_by`, `validations.approved_by`, `chat_messages.user_id`) bugün `(company_id, user_id) → users (company_id, id)` bileşik FK'siyle bağlıdır; Faz 1'de hepsi `→ company_members (company_id, user_id)` olur. Kiracı garantisi aynı kalır, hatta güçlenir: bir satır yalnızca **o firmanın üyesi olmuş** bir kişiye bağlanabilir. Firmadan çıkarılan üye `removed` olur, satırı kalır ("bu NC dosyasını kim aldı" sorusu cevapsız kalmaz).
+- **Son yönetici korunur:** firmada `active` + `admin` en az bir üye kalmalı (tetikleyici; rol düşürme, askıya alma ve çıkarma bunu denetler).
+- **Koltuk firma başına sayılır:** iki atölyede çalışan kişi her ikisinde de bir koltuk tutar (fiyatlandırma S2).
+- RLS standart kiracı politikasıdır (`company_id`). Ek olarak kişi **kendi** üyeliklerini bütün firmalarda görür (`user_id = app.user_id`): firma seçici bunu okur.
+
+İndeksler: PK; `(user_id) WHERE status = 'active'` (kişinin firmaları); `(company_id, role) WHERE status = 'active'` (koltuk ve rol sayımı).
+
+```json
+{"company_id":"c-001","user_id":"u-101","role":"admin","status":"active","joined_at":"2026-12-03T07:41:12Z"}
+{"company_id":"c-001","user_id":"u-102","role":"operator","status":"active","invited_by_user_id":"u-101","joined_at":"2026-12-04T06:10:00Z"}
+{"company_id":"c-001","user_id":"u-140","role":"admin","status":"active","invited_by_user_id":"u-101","joined_at":"2027-01-20T09:00:00Z"}
+{"company_id":"c-002","user_id":"u-140","role":"admin","status":"active","joined_at":"2027-01-14T11:05:40Z"}
+```
+(`u-140` bayi servis elemanı: iki atölyede de yönetici.)
+
+#### `public.company_invitations` (yeni, kiracı): bekleyen davetler
+
+Davet edilen kişinin henüz hesabı olmayabilir; bu yüzden davet `users`'a değil **e-postaya** yazılır. Kabulde kişi (gerekirse yeni `users` satırıyla) üye olur. v1'deki `users.status = 'invited'` durumu buraya taşındı.
+
+| Sütun | Tip | Null | Anahtar | Açıklama |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | H | PK | |
+| `company_id` | `uuid` | H | FK | |
+| `email` | `text` | H | | Küçük harfe çevrilmiş |
+| `role` | `user_role` | H | | Kabulde verilecek rol |
+| `token_hash` | `text` | H | UQ | Bağlantıdaki token'ın hash'i |
+| `invited_by_user_id` | `uuid` | H | FK (`company_id`, `invited_by_user_id`) → `company_members` | |
+| `expires_at` | `timestamptz` | H | | Varsayılan 7 gün |
+| `accepted_at`, `revoked_at` | `timestamptz` | E | | |
+| `accepted_user_id` | `uuid` | E | FK → `users` | |
+| `created_at` | `timestamptz` | H | | |
+
+İndeks: tekil `(company_id, email) WHERE accepted_at IS NULL AND revoked_at IS NULL` (aynı kişiye tek açık davet).
+
+```json
+{"id":"inv-u-9","company_id":"c-001","email":"yeni.usta@ornek.example","role":"operator","invited_by_user_id":"u-101","expires_at":"2027-03-09T08:00:00Z","accepted_at":null}
 ```
 
 #### `public.auth_sessions`, `public.auth_accounts`, `public.auth_verifications` (yeni, Better Auth)
@@ -374,12 +437,18 @@ Better Auth'un kendi tabloları (`session`, `account`, `verification`) `modelNam
 
 | Tablo | Önemli sütunlar | Not |
 | --- | --- | --- |
-| `auth_sessions` | `id` PK, `user_id` FK, **`company_id`** (ek alan, RLS için), `token` (UQ, hash'li saklanır), `expires_at`, `ip_address`, `user_agent`, **`device_id`**, **`role_at_login`**, `created_at`, `updated_at` | Rol değişince kullanıcının oturumları sonlandırılır (yeniden giriş = yeni rol) |
+| `auth_sessions` | `id` PK, `user_id` FK, **`active_company_id`** (etkin firma; Better Auth organization eklentisinin `activeOrganizationId` alanı), `token` (UQ, hash'li saklanır), `expires_at`, `ip_address`, `user_agent`, **`device_id`**, `created_at`, `updated_at` | Oturum kişiye aittir, firmaya değil (R13). Her istekte sunucu `(active_company_id, user_id)` üyeliğini okur: `active` değilse istek reddedilir, rol **üyelikten** gelir (oturumda saklanmaz, böylece rol değişikliği ve firmadan çıkarma anında etkili olur). `app.company_id` ve `app.user_id` bu iki değerden ayarlanır |
 | `auth_accounts` | `id`, `user_id`, `provider_id` (`credential`, ileride `google`), `account_id`, `password` (hash), `created_at` | Şifre hash'i yalnızca burada |
 | `auth_verifications` | `id`, `identifier`, `value`, `expires_at` | Şifre sıfırlama, e-posta doğrulama |
 
 ```json
-{"id":"as-9f1","user_id":"u-102","company_id":"c-001","expires_at":"2027-03-09T06:12:44Z","ip_address":"85.105.12.34","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131","device_id":"d-7c2e","role_at_login":"operator"}
+{"id":"as-9f1","user_id":"u-102","active_company_id":"c-001","expires_at":"2027-03-09T06:12:44Z","ip_address":"85.105.12.34","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131","device_id":"d-7c2e"}
+```
+
+**Firma seçimi:** tek üyeliği olan kişi girişte doğrudan firmasına düşer (bugünkü deneyim değişmez). Birden çok üyeliği olan kişi son çalıştığı firmaya (`users.last_company_id`) açılır ve üst çubuktaki firma seçiciden geçiş yapar. Geçiş `active_company_id`'yi değiştirir, açık iş oturumunu `company_switch` ile kapatır ve yenisini açar; böylece süre ve olaylar hep doğru firmaya yazılır.
+
+```json
+{"note":"firma değiştirme sonrası aynı kimlik oturumu","id":"as-b71","user_id":"u-140","active_company_id":"c-002"}
 ```
 
 #### `analytics.user_sessions` (yeni): kalıcı oturum kaydı
@@ -391,12 +460,12 @@ Her **iş oturumu** bir satır: kullanıcının kesintisiz çalıştığı aral�
 | `id` | `uuid` | H | PK | Kendi kimliği (UUIDv7, sunucu üretir) |
 | `auth_session_id` | `uuid` | H | | Hangi kimlik oturumunda açıldı. FK **yok**: `auth_sessions` satırı süresi dolunca silinir, bu satır kalır |
 | `company_id` | `uuid` | H | FK | |
-| `user_id` | `uuid` | H | FK (`company_id`, `user_id`) | |
-| `role` | `text` | H | | **Giriş anındaki rol** (`admin`/`operator`) |
+| `user_id` | `uuid` | H | FK (`company_id`, `user_id`) → `company_members` | |
+| `role` | `text` | H | | İş oturumu **açılırken o firmadaki rol** (`admin`/`operator`). Rol oturum sürerken değişirse oturum `revoked` ile kapanır ve yenisi açılır: bir iş oturumu = tek firma, tek rol |
 | `started_at` | `timestamptz` | H | | |
 | `last_seen_at` | `timestamptz` | H | | Son heartbeat |
 | `ended_at` | `timestamptz` | E | | Kapanış (çıkış, zaman aşımı, kullanıcı değiştirme) |
-| `end_reason` | `text` | E | | `logout`, `idle_timeout` (30 dk heartbeat yok), `expired`, `user_switch` (§3.2 hızlı kullanıcı değiştirme), `revoked` |
+| `end_reason` | `text` | E | | `logout`, `idle_timeout` (30 dk heartbeat yok), `expired`, `user_switch` (§3.2 hızlı kullanıcı değiştirme), `company_switch` (kişi başka firmasına geçti, R13), `revoked` |
 | `active_seconds` | `integer` | H | | Heartbeat'lerden toplanan **etkin** süre |
 | `heartbeat_count` | `integer` | H | | |
 | `device_id` | `text` | E | | Tarayıcıda saklanan rastgele kimlik: ortak atölye PC'sini tanır |
@@ -408,7 +477,7 @@ Her **iş oturumu** bir satır: kullanıcının kesintisiz çalıştığı aral�
 
 **Etkin süre tanımı:** sekme görünür ve son 2 dakikada klavye/fare/dokunma olduysa istemci her 60 sn `POST /api/heartbeat` gönderir; gövdede açık projenin `project_id`'si (proje dışı ekranda boş) bulunur. Sunucu tek işlemde:
 
-1. Kullanıcının bu `auth_session_id` için **açık** iş oturumunu bulur (`ended_at IS NULL`). Yoksa ya da `now() - last_seen_at > 30 dk` ise eskisini `idle_timeout` ile kapatır (`ended_at = last_seen_at`) ve **yeni satır** açar.
+1. Kullanıcının bu `auth_session_id` için **açık** iş oturumunu bulur (`ended_at IS NULL`). Yoksa, `now() - last_seen_at > 30 dk` ise ya da oturumun firması kimlik oturumunun etkin firmasından farklıysa eskisini kapatır (`idle_timeout` / `company_switch`, `ended_at = last_seen_at`) ve **yeni satır** açar.
 2. `delta = least(now() - last_seen_at, 90 sn)` (yeni oturumda 0); `active_seconds += delta`, `last_seen_at = now()`.
 3. Aynı `delta`'yı `analytics.user_activity_hourly`'ye (saat kovası) ve `project_id` doluysa `analytics.daily_project_usage`'a ekler.
 
@@ -423,17 +492,17 @@ Her **iş oturumu** bir satır: kullanıcının kesintisiz çalıştığı aral�
 
 #### `analytics.user_activity_hourly` (yeni): saatlik etkin süre
 
-Günler arası bölünmeyi doğru yapmak ve "atölyeler günün hangi saatinde çalışıyor" ısı haritası için. Kullanıcı başına günde en çok 24 satır.
+Günler arası bölünmeyi doğru yapmak ve "atölyeler günün hangi saatinde çalışıyor" ısı haritası için. Kullanıcı × firma başına günde en çok 24 satır. `company_id` anahtarın parçasıdır (R13): aynı saatte iki firmada çalışan kişinin süresi firmalara ayrı yazılır.
 
 | Sütun | Tip | Null | Anahtar | Açıklama |
 | --- | --- | --- | --- | --- |
-| `user_id` | `uuid` | H | PK (1) | |
-| `hour_start` | `timestamptz` | H | PK (2) | Saat başı (UTC) |
-| `company_id` | `uuid` | H | | |
-| `role` | `text` | H | | O saatteki rol |
+| `company_id` | `uuid` | H | PK (1) | |
+| `user_id` | `uuid` | H | PK (2) | |
+| `hour_start` | `timestamptz` | H | PK (3) | Saat başı (UTC) |
+| `role` | `text` | H | | O saatte o firmadaki rol |
 | `active_seconds` | `integer` | H | | `CHECK (active_seconds BETWEEN 0 AND 3600)` |
 
-İndeks: `(company_id, hour_start)`. Saklama: 25 ay.
+İndeks: `(company_id, hour_start)`, `(user_id, hour_start)`. Saklama: 25 ay. Bir kişinin bir saatteki toplamı firmalar arasında 3.600 saniyeyi geçemez (heartbeat `delta`'sı tek firmaya yazıldığı için kendiliğinden sağlanır).
 
 ```json
 {"user_id":"u-102","hour_start":"2027-03-02T07:00:00Z","company_id":"c-001","role":"operator","active_seconds":3240}
@@ -720,7 +789,7 @@ Başlangıç sözlüğü:
 | `machine.created`, `machine.profile_saved`, `validation.stage_changed` | server | `controller`, `stage` |
 | `template.used`, `offcut.saved`, `offcut.used` | server | |
 | `ai.request` | server | `tokens_in`, `tokens_out` |
-| `user.invited`, `user.role_changed`, `settings.changed` | server | |
+| `member.invited`, `member.joined`, `member.role_changed`, `member.removed`, `auth.company_switched`, `settings.changed` | server | |
 
 Sunucu olayları iş işlemiyle **aynı transaction'da** yazılır (export kaydedilmeden olay oluşmaz). İstemci olayları `POST /api/events` ile toplu gelir, `event_types` ve `props_schema` ile doğrulanır, oturum başına hız sınırı uygulanır.
 
@@ -777,13 +846,13 @@ Panelin ana kaynağı. Her gece (ve gün içinde saatlik) `Europe/Istanbul` gün
 
 #### `analytics.daily_user_usage`: kullanıcı × gün özeti
 
-Aynı ölçütler kullanıcı düzeyinde (`user_id`, `day` PK; `company_id`, `role`, `sessions`, `active_minutes`, `projects_opened`, `nesting_runs`, `nc_exports`). Firma kartındaki "kim ne kadar kullanıyor" tablosu buradan.
+Aynı ölçütler üyelik düzeyinde (PK `company_id`, `user_id`, `day`; `role`, `sessions`, `active_minutes`, `projects_opened`, `nesting_runs`, `nc_exports`). Firma kartındaki "kim ne kadar kullanıyor" tablosu buradan. İki firmada çalışan kişi o gün iki satırdır (R13).
 
 ```json
 {"user_id":"u-102","day":"2027-03-02","company_id":"c-001","role":"operator","sessions":3,"active_minutes":214,"projects_opened":5,"nesting_runs":11,"nc_exports":4}
 ```
 
-Aylık/haftalık aktif kullanıcı (MAU/WAU) **bu tablodan** `count(DISTINCT user_id)` ile hesaplanır; `daily_company_usage.active_users` toplanamaz (aynı kullanıcı her gün yeniden sayılır).
+Aylık/haftalık aktif kullanıcı (MAU/WAU) **bu tablodan** `count(DISTINCT user_id)` ile hesaplanır; `daily_company_usage.active_users` toplanamaz (aynı kullanıcı her gün yeniden sayılır). Platform toplamında da `DISTINCT user_id` kullanılır: firma başına aktif kullanıcıların toplamı, birden çok firmada çalışan kişileri iki kez sayar (kişi ≠ koltuk).
 
 #### `analytics.daily_project_usage` (yeni, R3): proje × kullanıcı × gün
 
@@ -885,7 +954,7 @@ Hesaba bağlı kişi (patron, usta, muhasebe). Uygulama kullanıcısı olabilir 
 | `id` | `uuid` | H | PK | |
 | `account_id` | `uuid` | H | FK → `crm.accounts` | |
 | `company_id` | `uuid` | E | | Yalnızca `user_id` doluyken dolu (bileşik FK'nin parçası) |
-| `user_id` | `uuid` | E | FK (`company_id`, `user_id`) → `users (company_id, id)` | Aynı kişinin uygulama hesabı (R9). Kullanıcı KVKK ile anonimleşirse bağ koparılır |
+| `user_id` | `uuid` | E | FK (`company_id`, `user_id`) → `company_members` | Aynı kişinin o firmadaki üyeliği (R9, R13). Kullanıcı KVKK ile anonimleşirse bağ koparılır |
 | `full_name` | `text` | H | | |
 | `title` | `text` | E | | "Firma sahibi", "CNC ustası", "Muhasebe" |
 | `contact_role` | `text` | E | | `decision_maker`, `operator`, `billing`, `technical` |
@@ -1040,7 +1109,7 @@ Kim, ne zaman, neyi, öncesi/sonrası. Yalnızca INSERT (`REVOKE UPDATE, DELETE`
 | `actor_kind` | `text` | H | | `user`, `staff`, `system`, `ai`, `psp` |
 | `actor_id` | `uuid` | E | | |
 | `company_id` | `uuid` | E | | Platform olaylarında NULL |
-| `action` | `text` | H | | `user.role_changed`, `user.disabled`, `subscription.plan_changed`, `machine.profile_saved`, `export.unverified_accepted`, `staff.viewed_company`, `staff.viewed_project`, `staff.exported_csv`, `privacy.erasure_executed` |
+| `action` | `text` | H | | `member.role_changed`, `member.disabled`, `member.removed`, `subscription.plan_changed`, `machine.profile_saved`, `export.unverified_accepted`, `staff.viewed_company`, `staff.viewed_project`, `staff.exported_csv`, `privacy.erasure_executed` |
 | `entity_type` | `text` | H | | Şema dahil tablo adı: `public.users`, `billing.subscriptions`, … |
 | `entity_id` | `text` | E | | Satırın anahtarı metin olarak (R9): `uuid`, il kodu ya da bileşik anahtar (`"u-102|2027-03-02"`) |
 | `before`, `after` | `jsonb` | E | | Yalnızca değişen alanlar; şifre/token asla |
@@ -1055,7 +1124,7 @@ Yazma yolu: uygulama rolü yalnızca kendi firması için satır ekleyebilir (RL
 Not: `project_commands` proje içi ayrıntılı geçmiş olarak kalır, buraya kopyalanmaz.
 
 ```json
-{"id":"0195e8…","occurred_at":"2027-02-20T12:04:11Z","actor_kind":"user","actor_id":"u-101","company_id":"c-001","action":"user.role_changed","entity_type":"public.users","entity_id":"u-103","before":{"role":"operator"},"after":{"role":"admin"},"request_id":"req_7Hk2","ip_prefix":"85.105.12.0/24"}
+{"id":"0195e8…","occurred_at":"2027-02-20T12:04:11Z","actor_kind":"user","actor_id":"u-101","company_id":"c-001","action":"member.role_changed","entity_type":"public.company_members","entity_id":"c-001|u-103","before":{"role":"operator"},"after":{"role":"admin"},"request_id":"req_7Hk2","ip_prefix":"85.105.12.0/24"}
 {"id":"0195f2…","occurred_at":"2027-03-02T08:01:30Z","actor_kind":"staff","actor_id":"s-02","company_id":"c-001","action":"staff.viewed_project","entity_type":"public.projects","entity_id":"pr-4410","after":{"grant_id":"ag-9","ticket_id":"t-1042"}}
 ```
 
@@ -1141,7 +1210,7 @@ Saklama kurallarını kodda değil veride tutar; temizlik işi buradan okur.
 | Ad | Tür | İçerik | Yenileme |
 | --- | --- | --- | --- |
 | `bo.v_company_overview` | görünüm | Firma satırı: ad, segment, durum, il/ilçe/koordinat (atölye adresi, yoksa ilçe merkezi), paket, abonelik durumu, MRR, aktif kullanıcı sayısı (yönetici/operatör), makine sayısı, proje sayısı, son etkinlik, sorumlu personel, etiketler | canlı |
-| `bo.v_company_users` | görünüm | Kullanıcı listesi: ad, e-posta, rol, durum, son giriş, son 30 gün dakika | canlı |
+| `bo.v_company_users` | görünüm | Firmanın üyeleri (`company_members` + `users`): ad, e-posta, rol, durum, son etkinlik, son 30 gün dakika, kişinin **başka kaç firmada** üyeliği olduğu (bayi/serbest operatör işareti) | canlı |
 | `bo.v_company_machines` | görünüm | Makine adı, marka, model, controller (son profil sürümünden), doğrulama aşaması, arşiv | canlı |
 | `bo.v_company_projects` | görünüm | Proje **metaverisi**: ad, durum, revizyon, parça/plaka sayısı (JSON'dan yalnızca sayılar), export sayısı, tarih. `data` yok | canlı |
 | `bo.v_map_provinces` | görünüm | İl başına: müşteri, deneme, risk altındaki, potansiyel sayısı, MRR | canlı |
@@ -1206,7 +1275,7 @@ LEFT JOIN billing.plans pl ON pl.id = s.plan_id
 LEFT JOIN LATERAL (
   SELECT count(*) FILTER (WHERE role = 'admin')    AS active_admins,
          count(*) FILTER (WHERE role = 'operator') AS active_operators
-  FROM public.users WHERE company_id = c.id AND status = 'active' AND deleted_at IS NULL
+  FROM public.company_members WHERE company_id = c.id AND status = 'active'
 ) u ON true
 LEFT JOIN LATERAL (
   SELECT count(*) AS machine_count FROM public.machines
@@ -1299,6 +1368,23 @@ FROM analytics.user_sessions
 WHERE started_at >= now() - interval '30 days' AND device_id IS NOT NULL
 GROUP BY company_id, device_id HAVING count(DISTINCT user_id) > 1;
 ```
+
+Birden çok firmada çalışan kişiler (bayi, servis, serbest operatör; R13). Bayi kanalının (§13.2) ne kadar firma getirdiğini de gösterir:
+
+```sql
+SELECT u.id, u.name, u.email,
+       count(*)                                   AS companies,
+       count(*) FILTER (WHERE m.role = 'admin')   AS admin_in,
+       array_agg(c.name ORDER BY m.joined_at)     AS company_names
+FROM public.company_members m
+JOIN public.users u     ON u.id = m.user_id
+JOIN public.companies c ON c.id = m.company_id
+WHERE m.status = 'active' AND u.deleted_at IS NULL
+GROUP BY u.id, u.name, u.email
+HAVING count(*) > 1
+ORDER BY companies DESC;
+```
+(Taslak ham tablolarla yazıldı; panelde `bo.v_company_users` üzerinden çalışır.)
 
 ### 8.4 Firma başına kullanım dakikası (son 30 gün ve önceki 30 gün)
 
@@ -1495,7 +1581,7 @@ Kural: her faz ayrı migration dosyaları (`0014`'ten devam; `0011` boşluğu bi
 | Faz | Zaman | İçerik | Mevcut şemada değişiklik |
 | --- | --- | --- | --- |
 | **0. Referans** | Şimdi (küçük, risksiz) | `ref.provinces` (81), `ref.districts` seed; bu dokümanın onayı; olay sözlüğü taslağı | Yok |
-| **1. Kimlik ve kiracı** | M10 (T200+) | Better Auth → `users` + `auth_*`; `users` yeni sütunlar; `companies` yeni sütunlar; `company_addresses`; Postgres RLS + `nittcam_app` rolü; `audit.audit_log`; `privacy.legal_documents`, `consents` (kayıt formunda aydınlatma + şartlar) | `users`: `status`, `last_login_at`, `deleted_at` …; `users_email_uq` kısmi; `companies`: `slug`, `status`, `segment`, `timezone`, `locale`, `deleted_at`; `tenantTables` listesine yeni kiracı tabloları |
+| **1. Kimlik ve kiracı** | M10 (T200+) | Better Auth (+ organization eklentisi) → `users` + `auth_*`; **`company_members`, `company_invitations`** (R13: mevcut `users.company_id`/`role` üyeliğe kopyalanır, dört kullanıcı FK'si üyeliğe çevrilir, sonra iki sütun düşer), firma seçici; `users` yeni sütunlar; `companies` yeni sütunlar; `company_addresses`; Postgres RLS + `nittcam_app` rolü; `audit.audit_log`; `privacy.legal_documents`, `consents` (kayıt formunda aydınlatma + şartlar) | `users`: `company_id` ve `role` **düşer**, `last_login_at`, `last_company_id`, `deleted_at` … eklenir; `users_email_uq` kısmi; `project_commands`, `exports` (2 sütun), `validations`, `chat_messages` kullanıcı FK'leri `company_members`'a; `tenantTables`'tan `users` çıkar, `company_members` ve `company_invitations` girer; `companies`: `slug`, `status`, `segment`, `timezone`, `locale`, `deleted_at`; `tenantTables` listesine yeni kiracı tabloları |
 | **2. Kullanım ölçümü** | M10 sonu / M12 pilot öncesi | `analytics.user_sessions`, `user_activity_hourly`, `daily_project_usage`, heartbeat uç noktası; `analytics.events` (bölümlü) + `event_types`; sunucu olayları; istemci olay toplayıcı; günlük özet işleri; **geri doldurma**: `exports` → `nc/dxf/pdf.exported`, `projects.created_at` → `project.created`, `project_commands` → günlük etkin gün (dakika geri doldurulamaz) | Yok (yalnızca INSERT eklenir) |
 | **3. Backoffice, CRM ve abonelik çekirdeği** | M12 pilot | `bo` şeması, `staff_users`, `nittcam_bo` rolü, görünümler; `crm.*`; `support.*` (uygulama içi "Destek" formu); **`billing.plans`, `plan_prices`, `subscriptions`, `subscription_events`** (R10: ödeme entegrasyonu yok, deneme/aktif durumu personel panelden yönetir, pilot fiyatı `price_kind = 'custom'`); `analytics.company_health_daily`; panel v1 (liste, firma kartı, harita) | `companies.plan` önbellek olur (abonelikten yazılır) |
 | **4. Faturalama ve tahsilat** | M13 ticari (fiyat kararı sonrası) | `billing.billing_profiles`, `invoices`, `invoice_lines`, `invoice_counters`, `payments`, `dunning_steps`; ödeme sağlayıcı + e-Fatura/e-Arşiv entegratörü; dunning işleri; `ai_quota_monthly` → paket hakları; `mv_mrr_monthly`, kohortlar | `companies.plan` düşer, `ai_quota_monthly` → `ai_quota_bonus` |
@@ -1511,8 +1597,8 @@ Riskler: (1) Better Auth tablo adlandırması/alanları sürüm değişikliğind
 
 | # | Soru | Seçenekler / öneri |
 | --- | --- | --- |
-| S1 | Bir kullanıcı birden çok firmada olabilir mi? (Serbest operatör, makine bayisi/servis birkaç atölyeyi yönetir) | **Öneri:** v1'de hayır (mevcut kural: e-posta tekil, bir firma). Bayi kanalı için ileride `crm.partners` + Better Auth organization eklentisi. **Not:** bu karar M10 başlamadan verilmeli; sonradan "evet"e dönmek `users.company_id`'yi üyelik tablosuna taşımayı ve bütün `(company_id, user_id)` FK'lerini etkiler |
-| S2 | Koltuk neye göre ücretlenir: kullanıcı, makine, ikisi? Operatör koltuk sayılır mı? | Model üçünü de taşır (`included_seats`, `extra_seat_kurus`, `max_machines`); karar fiyatla birlikte |
+| S1 | ~~Bir kullanıcı birden çok firmada olabilir mi?~~ | **Karar (sahip, 2026-11-23, D-113): olabilir.** Modele işlendi (R13): `company_members`, `company_invitations`, oturumda etkin firma. Buna bağlı açık kalan: bayi/servis firmasının kendisi bir varlık olarak tutulacak mı (`crm.partners`, komisyon/yönlendirme takibi)? Şimdilik hayır; birden çok firmada yönetici olan kişiler sorgu 8.3'ten okunur |
+| S2 | Koltuk neye göre ücretlenir: kullanıcı, makine, ikisi? Operatör koltuk sayılır mı? Birkaç atölyede çalışan bayi/servis elemanı her atölyede koltuk tutar mı (R13)? | Model üçünü de taşır (`included_seats`, `extra_seat_kurus`, `max_machines`); koltuk firma başına `active` üyelikten sayılır, bayi istisnası istenirse `company_members`'a `is_billable` eklenir; karar fiyatla birlikte |
 | S3 | Ödeme sağlayıcı ve e-Fatura/e-Arşiv entegratörü hangisi? | Yurt içi kart altyapısı + GİB özel entegratörü; barındırma kararıyla birlikte (KVKK) |
 | S4 | Deneme süresi (14/30 gün), kart zorunlu mu, ödeme gecikmesinde kaç gün sonra salt okunur? | Öneri: 14 gün, kartsız; 14 gün sonra salt okunur, 60 gün sonra `expired` |
 | S5 | Fiyat TL mi, USD endeksli mi (§13.1)? | Model `fx_rate` taşır; karar fiyat kapısında |
