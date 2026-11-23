@@ -1294,6 +1294,7 @@
       "SMALL_PART_SKIN": "Küçük parçanın altında ince tabaka bırakıldı; plakanın sonunda temizleme pasosuyla kesilir.",
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
       "TABS_REDUCED": "Köprü sayısı azaltıldı.",
+      "TABS_REDUCED_RAMP": "Köprü sayısı azaltıldı: rampa girişi köprülerin yerini kaplıyor (G-code başlığı da yazar). Tüm köprüler için Kesim ayarlarında girişi düz dalmaya alın.",
       "TABS_NOT_PLACED": "Köprüler yerleştirilemedi.",
       "UNPLACED_COPIES": "Bazı parçalar plakaya yerleşmedi ve kesilmeyecek.",
       "CLEARANCE_CLAMPED": "Yaklaşma yüksekliği güvenli Z ile sınırlandı.",

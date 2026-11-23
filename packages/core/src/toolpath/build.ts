@@ -527,6 +527,8 @@ function buildOuterOperation(
   );
   const what = isInner ? `Small slug of inner contour ${(ctx.inner ?? 0) + 1}` : 'Small part';
   let tabs: Tab[] = [];
+  // T334 (N1): fewer tabs than asked, and whether the ramp entry took their room.
+  let short: { wanted: number; ramp: boolean } | null = null;
   if ((p.tabs.all || small) && !skinned) {
     const warnKey = isInner ? `${partId}/inner${ctx.inner}` : partId;
     if (small && !p.tabs.all && !smallWarned.has(warnKey)) {
@@ -592,12 +594,20 @@ function buildOuterOperation(
         ),
       );
     } else if (tabs.length < count) {
+      // The ramp leg keeps tabs away like a lead-out; without it, would more have fit?
+      const ramped =
+        rampLeg > 0 &&
+        placeTabs(segs, { ...tabOpts, keepFwd: leadOut + toolRadius, onArcs: isInner }).length >
+          tabs.length;
+      short = { wanted: count, ramp: ramped };
       warnings.push(
         issue(
           'TABS_REDUCED',
           'warning',
           partId,
-          `Only ${tabs.length} of ${count} tabs fit away from corners, arcs and the lead.`,
+          ramped
+            ? `Only ${tabs.length} of ${count} tabs fit: the ramp entry takes the room of the others.`
+            : `Only ${tabs.length} of ${count} tabs fit away from corners, arcs and the lead.`,
           where,
         ),
       );
@@ -719,6 +729,7 @@ function buildOuterOperation(
     travel: p.travel,
     passDepths: [...p.passDepths],
     tabs,
+    ...(short ? { tabsWanted: short.wanted, ...(short.ramp ? { tabsRamp: true as const } : {}) } : {}),
     segments,
   };
 }

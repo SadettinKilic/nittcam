@@ -73,6 +73,22 @@ export function cuttingHeader(c: PostCuttingMeta): string {
 }
 
 /**
+ * T334 (N1): "KÖPRÜ AZ: 4 parçada 3 köprü, rampa nedeniyle" when parts of this file got fewer tabs than the
+ * setting ("en az 2" when the counts differ; the ramp named when it took the room of any; no
+ * parentheses: a Mach3 comment ends at the first one).
+ * None when every part has its tabs, so programs without a shortfall stay byte-identical.
+ */
+export function tabsShortHeaders(ops: readonly Operation[]): string[] {
+  const short = ops.filter((o) => o.kind === 'outerContour' && o.tabsWanted !== undefined);
+  if (short.length === 0) return [];
+  const counts = short.map((o) => o.tabs.length);
+  const min = Math.min(...counts);
+  const same = counts.every((n) => n === min);
+  const ramp = short.some((o) => o.tabsRamp) ? ', rampa nedeniyle' : '';
+  return [`KÖPRÜ AZ: ${short.length} parçada ${same ? '' : 'en az '}${min} köprü${ramp}`];
+}
+
+/**
  * T307 (D-098): one header line per tool the project runs at its own spindle speed, right under
  * "KESİM" (its own line: the KESİM line is near the 120-character comment limit), e.g.
  * "DEVİR T2: 20000 d/dk elle, önerilen 18000". None when every tool runs at the recommended value.
@@ -757,6 +773,7 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
   if (meta.cutting) {
     lines.push(
       cuttingHeader(meta.cutting),
+      ...tabsShortHeaders(plan.ops),
       ...spindleHeaders(meta.cutting),
       ...feedHeaders(meta.cutting),
       ...entryHeaders(meta.cutting),

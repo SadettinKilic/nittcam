@@ -153,6 +153,8 @@ interface OpCutting {
   skin?: { thickness: number };
   leadIn: 'arc' | 'line';
   direction: 'climb' | 'conventional';
+  entry?: { type: 'ramp'; angleDeg: number };
+  tools?: { outer?: number };
 }
 
 const DEFAULT_CUTTING: OpCutting = { tabs: { auto: false }, leadIn: 'arc', direction: 'climb' };
@@ -274,6 +276,35 @@ export const GOLDEN_OP_FIXTURES: readonly {
       { id: 'strip', name: 'Çıta', qty: 1, rect: { w: 150, h: 90, r: 0 } },
     ],
     cutting: { tabs: { auto: true, width: 3, height: 17 }, leadIn: 'arc', direction: 'climb' },
+  },
+  {
+    id: 'ramp-small',
+    name: 'Rampa küçük parça',
+    revision: 1,
+    /**
+     * T334 (field rehearsal N1, job C): outer contours with T1 Ø6, ramp entry 3°, tabs on every
+     * part. The 600 × 400 panel keeps its 4 tabs; on the four small 80 × 50 blocks the ramp leg
+     * takes the room of one (straight plunge: 4), so the header writes "KÖPRÜ AZ ..., rampa nedeniyle".
+     * A Ø8 through hole with T2 on the panel gives the checker's mutation catalogue a straight
+     * plunge and a tool change to work on.
+     */
+    parts: [
+      {
+        id: 'panel',
+        name: 'Panel',
+        qty: 1,
+        rect: { w: 600, h: 400, r: 0 },
+        holes: [{ id: 'h1', type: 'through', d: 8, cx: 60, cy: 60, tool: 2 }],
+      },
+      { id: 'block', name: 'Takoz', qty: 4, rect: { w: 80, h: 50, r: 0 } },
+    ],
+    cutting: {
+      tabs: { auto: true },
+      leadIn: 'arc',
+      direction: 'climb',
+      entry: { type: 'ramp', angleDeg: 3 },
+      tools: { outer: 1 },
+    },
   },
 ];
 

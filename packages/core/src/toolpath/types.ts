@@ -130,6 +130,13 @@ export interface Operation {
   passDepths: number[];
   /** Tabs (empty = none); applied to every pass deeper than the tab top (D-022). */
   tabs: Tab[];
+  /**
+   * T334 (N1): the tab count asked for, present only when fewer fit (`tabs` holds the ones
+   * placed); the NC header and the warning tell it.
+   */
+  tabsWanted?: number;
+  /** T334: the ramp entry took the room of the missing tabs. */
+  tabsRamp?: true;
   /** Approach, lead-in, passes (one per depth), lead-out, retract. Starts and ends at safe Z. */
   segments: MoveSegment[];
 }

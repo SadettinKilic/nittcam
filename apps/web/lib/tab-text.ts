@@ -4,6 +4,8 @@
  * above the range gets the "çok yüksek" text. Null keeps the code's own text.
  */
 export function tabTextCode(code: string, message: string): string | null {
+  // T334 (N1): the ramp entry took the room of tabs; the NC header says the same.
+  if (code === 'TABS_REDUCED') return /ramp entry/.test(message) ? 'TABS_REDUCED_RAMP' : null;
   if (code !== 'SMALL_PART_TAB_TOO_SMALL' && code !== 'TABS_TOO_SMALL') return null;
   const size = /× (-?[\d.]+) mm tabs/.exec(message);
   const range = /height (-?[\d.]+)–(-?[\d.]+) mm/.exec(message);
