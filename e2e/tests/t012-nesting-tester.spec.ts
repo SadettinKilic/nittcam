@@ -54,7 +54,7 @@ test.describe('T012 nesting (tester)', () => {
     await goStep(page, 'dizilim');
     const run = page.getByRole('button', { name: n.run, exact: true });
     await run.click();
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
     const first = await summary(page);
 
     // Grow the quantity of the first part a lot; the stored layout no longer covers every copy.

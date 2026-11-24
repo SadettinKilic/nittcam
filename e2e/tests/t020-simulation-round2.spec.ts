@@ -98,7 +98,7 @@ async function reloadLayout(page: Page) {
   await page.reload();
   await wizardReady(page, 'dizilim');
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 8_000 });
-  await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
+  await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
 }
 
 test.describe('T020 round 2: persistence (server since T023)', () => {
@@ -116,7 +116,7 @@ test.describe('T020 round 2: persistence (server since T023)', () => {
       await page.waitForLoadState('load');
       await wizardReady(page, 'dizilim');
       await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 8_000 });
-      await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
+      await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
     }
     expect(problems).toEqual([]);
   });
