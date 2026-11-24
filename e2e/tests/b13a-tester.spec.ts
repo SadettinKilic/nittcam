@@ -67,6 +67,10 @@ async function simState(page: Page) {
   await expect(page.getByTestId('sim-check-status')).toBeVisible({ timeout: 30_000 });
   await saved(page);
   await expect.poll(async () => (await headLines(page)).length).toBeGreaterThan(5);
+  // The G-code head follows the save a moment later ("REVİZYON: kaydedilince" until then).
+  await expect
+    .poll(async () => (await headLines(page)).some((l) => /kaydedilince/i.test(l)))
+    .toBe(false);
   return {
     summary: (await page.getByTestId('sim-summary-list').innerText()).trim(),
     head: await headLines(page),
