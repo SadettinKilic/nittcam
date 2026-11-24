@@ -2419,7 +2419,7 @@
     },
     "extended": {
       "title": "Genişletilmiş test parçası",
-      "text": "Tek parçada üretimdeki bütün işlemler: yay köşeli dış kontur, iç pencere, iki delik, kör cep ve halka kanal. Normal işlerle aynı takım yolu, post ve kontrollerden geçer.",
+      "text": "Tek parçada üretimdeki bütün işlemler: yay köşeli dış kontur, iç pencere, iki delik, kör cep ve halka kanal. Normal işlerle aynı takım yolu, post ve kontrollerden geçer. Parça dış konturda 4 köprüyle plakaya bağlı kalır (yay köşelerde köprü yok); kesimden sonra köprüleri kesip parçayı çıkarın.",
       "blocked": "Test kesimi dosyası air cut onaylandıktan sonra açılır.",
       "airCut": "Genişletilmiş air cut",
       "testCut": "Genişletilmiş test parçası",

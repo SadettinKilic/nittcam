@@ -7,7 +7,8 @@ import { readGcode } from '../gcode-reader';
 import type { MachineProfile } from '../machine';
 import { validateProject } from '../validate';
 import { goldenProfile, GOLDEN_POSTS } from '../post/golden.testing';
-import { AIR_CUT_GAP, type TestProgramKind } from './program';
+import { buildToolpath } from '../toolpath';
+import { AIR_CUT_GAP, testPartToolpath, type TestProgramKind } from './program';
 import { EXTENDED_PART, extendedTestProgram, extendedTestProject } from './extended';
 
 function run(
@@ -93,5 +94,37 @@ describe('extended test program (T191)', () => {
     });
     expect(r.ok).toBe(false);
     expect(r.issues.map((i) => i.code)).toContain('TEST_STOCK_TOO_THIN');
+  });
+});
+
+describe('T339 (CTO #13 M2): test programs keep their parts on the sheet', () => {
+  it('no test program has a through outer contour without tabs (and none uses skin)', () => {
+    const profile = goldenProfile('generic');
+    const set = profile.materials[0];
+    const tool = set && profile.tools.find((t) => t.number === set.tool);
+    if (!set || !tool) throw new Error('golden profile without a material set');
+    const project = extendedTestProject(set, tool.diameter);
+    expect(project.cutting.skin).toBeUndefined();
+    const ext = buildToolpath(project, profile);
+    const std = testPartToolpath(profile);
+    expect(ext.ok).toBe(true);
+    expect(std.ok).toBe(true);
+    const ops = [...ext.toolpath.operations, ...(std.toolpath?.operations ?? [])];
+    const outer = ops.filter((o) => o.kind === 'outerContour');
+    expect(outer.length).toBeGreaterThanOrEqual(2);
+    for (const o of outer) expect(o.tabs.length).toBe(4);
+    // the extended part: never on the R20 corner arcs (both tab ends on a straight edge)
+    const { partAt: at, width: w, height: h, cornerRadius: rc } = EXTENDED_PART;
+    for (const t of ext.toolpath.operations.find((o) => o.kind === 'outerContour')?.tabs ?? []) {
+      for (const [x, y] of [
+        [t.x0, t.y0],
+        [t.x1, t.y1],
+      ] as const) {
+        const straight =
+          (x >= at.x + rc - 1e-6 && x <= at.x + w - rc + 1e-6) ||
+          (y >= at.y + rc - 1e-6 && y <= at.y + h - rc + 1e-6);
+        expect(straight).toBe(true);
+      }
+    }
   });
 });
