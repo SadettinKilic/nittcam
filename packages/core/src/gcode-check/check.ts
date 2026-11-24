@@ -5,6 +5,7 @@
  */
 import { readGcode, type GcodeEvent, type GcodeReadResult } from '../gcode-reader';
 import { derive, type Derived } from './derive';
+import { deepCuts, partHoldRule, type DeepCut } from './hold';
 import { cutLoops, expectedLoopCount, matchLayout, matchModel, type CutLoop } from './match';
 import { toSheetMoves, type SheetMove } from './path';
 import { pocketMoveRule, pocketNotCutRule } from './pocket';
@@ -139,6 +140,8 @@ function finish(
 ): GcodeCheckResult {
   if (layout) {
     matchLayout(a.loops, layout, d, a.push);
+    // T338 (D-129): tabs that hold, from the read material
+    partHoldRule(layout, deepCuts(a.sm, a.tools, d), d, a.push);
     pocketNotCutRule(layout, pocketMoveRule(a.sm, a.events, layout, d, a.push, a.tools), a.push);
   }
   const ok = !a.violations.some((v) => v.severity === 'error');
@@ -219,6 +222,7 @@ export function checkGcodeFiles(
     const loops: CutLoop[] = [];
     const sheetLayout = context.layout?.get(sheet);
     const pocketsReached = new Set<string>();
+    const deep: DeepCut[] = [];
     let lastResult: { analysis: Analysis; d: Derived; index: number } | null = null;
     group.forEach((file, gi) => {
       const isLast = gi === group.length - 1;
@@ -252,6 +256,7 @@ export function checkGcodeFiles(
       }
       cursor += a.consumed;
       loops.push(...a.loops);
+      if (sheetLayout) deep.push(...deepCuts(a.sm, a.tools, dr.d));
       out.push({ name: file.name, sheet, result: finish(a, null, dr.d) });
       lastResult = { analysis: a, d: dr.d, index: out.length - 1 };
     });
@@ -260,6 +265,7 @@ export function checkGcodeFiles(
     if (layout && lr) {
       const before = lr.analysis.violations.length;
       matchLayout(loops, layout, lr.d, lr.analysis.push);
+      partHoldRule(layout, deep, lr.d, lr.analysis.push);
       pocketNotCutRule(layout, pocketsReached, lr.analysis.push);
       const entry = out[lr.index];
       if (entry && lr.analysis.violations.length > before) {

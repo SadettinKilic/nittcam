@@ -13,7 +13,13 @@ import { bbox, forEachSegment, normalize } from '../geometry/polyline';
 import { sampleSegment } from '../geometry/segment';
 import type { Polyline } from '../geometry/types';
 import { innerOperation, outlineOperation, type Project } from '../schema';
-import { placedHoleCentre, placedInners, placedOutline } from '../toolpath';
+import {
+  TAB_DEFAULTS,
+  isSmallPart,
+  placedHoleCentre,
+  placedInners,
+  placedOutline,
+} from '../toolpath';
 import type { ExpectedPart } from './types';
 import { toCutSizes } from '../schema/cut-size';
 
@@ -53,10 +59,15 @@ export function expectedLayout(entered: Project, sheet: number, toolDiameter = 0
   for (const pl of project.layout.sheets[sheet]?.placements ?? []) {
     const part = project.parts.find((p) => p.id === pl.partId);
     if (!part) continue;
+    const outline = placedOutline(part, pl);
     out.push({
       partId: pl.partId,
       copy: pl.index,
-      ...centre(placedOutline(part, pl)),
+      ...centre(outline),
+      // T338 (D-129): the outline and small/skin flags for the hold rule (PART_NOT_HELD)
+      outline: polygonOf(outline),
+      small: isSmallPart(outline, TAB_DEFAULTS.smallPartArea, TAB_DEFAULTS.smallPartMinSide),
+      skin: project.cutting.skin !== undefined,
       // T142: only through cuts are closed loops at the target depth.
       ...(outlineOperation(part).kind === 'outside' ? {} : { outlineCut: false }),
       inners: placedInners(part, pl)
