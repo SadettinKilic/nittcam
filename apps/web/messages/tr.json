@@ -391,6 +391,7 @@
         "vacuumOn": "Vakum aç kodu",
         "vacuumOff": "Vakum kapat kodu",
         "mCodeHelp": "Boş bırakılabilir. Örnek: M7",
+        "mCodeHelpOff": "Boş bırakılabilir. Örnek: M9",
         "postId": "Post ayarı",
         "postVersion": "Post sürümü",
         "postHelp": "Makinenizin kontrol ünitesine uyan G-code biçimi. İki post da saha testine kadar doğrulanmadı.",
@@ -2391,6 +2392,7 @@
       "title": "Makine günü 2: test kesimi",
       "steps": [
         "Fire plakayı tablaya sabitleyin; plakanın köşesi program sıfırında olsun.",
+        "Kıskaç ya da vidaları yalnızca plakanın dış 30 mm bandına koyun, parçaların ve kesim yolunun dışında; hiçbiri güvenli Z’ye (malzemenin 20 mm üstü) kadar yükselmesin. Parçalar köprüyle plakaya bağlı kalır.",
         "Z sıfırını plakada profildeki yönteme göre ({zref}) yeniden alın; air cut için tablaya aldığınız sıfırla kesmeyin. Takımın değişmediğini kontrol edin.",
         "Önce 200 × 200 test parçasını kesin; ölçüleri uygulamadaki ölçü formuna girin (uygulama toleransa bakar, düzeltme önerir).",
         "Sonra genişletilmiş test parçasını kesin ({width} × {height} mm). Parçayı çıkarın, tozunu alın.",
@@ -2402,6 +2404,7 @@
       "intro": "İlk çalıştırmayı bozabilecek Mach3 ayarları. Her satırı makinede bakıp işaretleyin; bir ayar farklıysa değiştirmeden önce fotoğrafını çekin.",
       "items": [
         "Config > General Config: \"G04 Dwell param in milliseconds\" İŞARETSİZ olmalı. Dosya G4 P5.0 yazar (5 sn); işaretliyse spindle 5 ms bekler, devrini almadan kesime girer.",
+        "M3 spindle’ı gerçekten açıyor mu (röle, inverter)? Air cut başında spindle’ın döndüğünü görün; dönmüyorsa kesime geçmeyin.",
         "Help > About: lisans. Demo sürüm 500 satırda durur; büyük dosya yarıda kalır.",
         "Config > Spindle Setup, Flood Mist Control ve Ports & Pins > Output Signals: M7 hangi çıkışı açıyor? Profil vakumu M7 / M9 ile açıp kapatır; Mach3'te M7 varsayılan olarak soğutma (mist) çıkışıdır.",
         "Config > Spindle Setup: devri programdaki S mi ayarlıyor, yoksa inverter panelinden elle mi? Elle ise paneli dosya başlığındaki DEVIR değerine getirin.",
