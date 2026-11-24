@@ -9,7 +9,7 @@ import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../geometry
 import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
 import { nestingEngineOf } from '../nesting/nest';
 import { checkPlacement, partSizes } from '../nesting/placement';
-import { nestingToolDiameter } from '../nesting/tool';
+import { effectiveSpacing, nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
 import {
   defaultSheet,
@@ -111,9 +111,10 @@ function mm(v: number): string {
  * that is 0°/180° or 90°/270°, at other angles the bbox of the rotated outline); a free part may turn 90°. Freeform parts use the arc-aware bbox of their
  * outline (T006). The gap and tool diameter only matter between parts and are not counted.
  */
-export const partLargerThanSheet: ValidationRule = (project) => {
+export const partLargerThanSheet: ValidationRule = (project, context) => {
   const { width, height } = defaultSheet(project);
-  const { margin } = project.nesting;
+  // D-129: the placer's effective margin (with tabs at least tool Ø + 3 mm).
+  const { margin } = effectiveSpacing(project, validationToolDiameter(project, context));
   const usable = usableSize(defaultSheet(project), margin);
   const usables = [usable, ...stockSheetSizes(project).map((d) => usableSize(d, margin))];
   const issues: ValidationIssue[] = [];
@@ -315,6 +316,7 @@ export const lockedPlacementInvalid: ValidationRule = (project, context) => {
   const sizes = partSizes(project);
   // A true-shape layout (T167) is checked on the real footprints, not the bboxes.
   const trueShape = nestingEngineOf(project) === 'trueShape';
+  const spacing = effectiveSpacing(project, toolDiameter);
   const issues: ValidationIssue[] = [];
   project.layout.sheets.forEach((sheet, s) => {
     sheet.placements.forEach((pl, p) => {
@@ -322,11 +324,11 @@ export const lockedPlacementInvalid: ValidationRule = (project, context) => {
       const check = checkPlacement(project, s, pl, { toolDiameter, trueShape }, sizes);
       const reasons: string[] = [];
       if (check.outsideSheet) reasons.push('lies outside the sheet');
-      if (check.inMargin) reasons.push(`lies in the ${mm(project.nesting.margin)} mm margin`);
+      if (check.inMargin) reasons.push(`lies in the ${mm(spacing.margin)} mm margin`);
       if (check.conflicts.length > 0) {
         const names = check.conflicts.map((c) => `"${c.partId}" #${c.index + 1}`).join(', ');
         reasons.push(
-          `is closer than ${mm(toolDiameter + project.nesting.gap)} mm (tool + gap) to ${names}`,
+          `is closer than ${mm(toolDiameter + spacing.gap)} mm (tool + gap) to ${names}`,
         );
       }
       if (reasons.length === 0) return;
@@ -588,7 +590,8 @@ export const marginBelowToolRadius: ValidationRule = (project, context) => {
     outer !== undefined && context?.machine ? (findTool(context.machine, outer)?.diameter ?? 0) : 0;
   const tool = Math.max(validationToolDiameter(project, context), own);
   const min = minSheetMargin(tool);
-  if (min <= 0 || project.nesting.margin >= min - EPS) return [];
+  // D-129: with tabs the placer keeps at least tool Ø + 3 mm (the effective margin).
+  if (min <= 0 || effectiveSpacing(project, tool).margin >= min - EPS) return [];
   return [
     {
       code: 'MARGIN_BELOW_TOOL_RADIUS',

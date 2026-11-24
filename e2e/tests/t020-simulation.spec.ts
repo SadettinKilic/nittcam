@@ -132,8 +132,8 @@ test.describe('T020 simulation', () => {
     // one tool: the first tool is set-up, no in-program change (T274)
     await expect(page.getByTestId('sim-summary-tools')).toHaveText(/^0/);
     await expect(summary).toContainText(s.summary.cutLength);
-    // Three sheets, each its own tab; the banner stays visible.
-    await expect(page.getByRole('tab')).toHaveCount(3);
+    // Four sheets (D-129 spacing with tabs), each its own tab; the banner stays visible.
+    await expect(page.getByRole('tab')).toHaveCount(4);
     await expect(page.getByTestId('sim-banner')).toBeVisible();
     await expect(page.getByTestId('sim-canvas')).toHaveAttribute('data-done', '0');
     await shot(page, '__screenshots__/t020-simulasyon-baslangic.png');
@@ -320,7 +320,7 @@ test.describe('T020 simulation', () => {
     await page.getByTestId('wizard-back').click();
     await wizardReady(page, 'dizilim');
     await expect(page.getByTestId('layout-canvas')).toBeVisible();
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
   });
 
   test('390 px: canvas first, G-code panel in a sheet, no horizontal page scroll', async ({

@@ -104,8 +104,11 @@ describe('toolpath invariants (fast-check)', () => {
         fc.pre(placed);
         const res = buildToolpath(project, machine, options);
         // T015: a small part with no room for 2 tabs is an export-blocking error (D-022); the
-        // operation is still built and checked
-        expect(res.errors.filter((e) => e.code !== 'SMALL_PART_UNSECURED')).toEqual([]);
+        // operation is still built and checked. T338 (D-129): likewise a small part whose only tab
+        // spots face a neighbour's cut (e.g. a neighbour's arc lead reaching into the web) is
+        // refused with SMALL_PART_NOT_HELD (seed 1094944943).
+        const refused = new Set(['SMALL_PART_UNSECURED', 'SMALL_PART_NOT_HELD']);
+        expect(res.errors.filter((e) => !refused.has(e.code))).toEqual([]);
         expect(res.ok).toBe(res.errors.length === 0);
         expect(res.toolpath.operations.length).toBe(
           project.layout.sheets.reduce((n, s) => n + s.placements.length, 0),

@@ -289,7 +289,8 @@ describe('direction, leads and plunge options', () => {
           ],
         ],
       });
-    const shortened = buildToolpath(sandwich(2), machine, { leadLength: 3 });
+    // leads, not tab holding (D-129): the boxed-in parts would get no holding tab
+    const shortened = buildToolpath(sandwich(2), machine, { leadLength: 3, tabHold: false });
     expect(shortened.ok).toBe(true);
     expect(
       t014(shortened.warnings)
@@ -300,7 +301,7 @@ describe('direction, leads and plunge options', () => {
       toolpathViolations(sandwich(2), shortened, { ...handCheck, direction: 'climb' }),
     ).toEqual([]);
 
-    const removed = buildToolpath(sandwich(0), machine, { leadLength: 3 });
+    const removed = buildToolpath(sandwich(0), machine, { leadLength: 3, tabHold: false });
     expect(removed.ok).toBe(true);
     expect(
       t014(removed.warnings)

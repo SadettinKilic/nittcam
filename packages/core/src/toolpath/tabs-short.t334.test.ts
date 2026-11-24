@@ -84,6 +84,20 @@ describe('tabsShortHeaders (T334)', () => {
     ).toEqual(['KÖPRÜ AZ: 2 parçada 3 köprü, rampa nedeniyle']);
   });
 
+  it('T338 (D-129): tabs that would not hold name the neighbour cut or the sheet edge', () => {
+    expect(tabsShortHeaders([op(2, { tabsWanted: 4, tabsFacing: true })])).toEqual([
+      'KÖPRÜ AZ: 1 parçada 2 köprü, komşu kesim ya da plaka kenarı nedeniyle',
+    ]);
+    expect(
+      tabsShortHeaders([
+        op(3, { tabsWanted: 4, tabsRamp: true }),
+        op(2, { tabsWanted: 4, tabsFacing: true }),
+      ]),
+    ).toEqual([
+      'KÖPRÜ AZ: 2 parçada en az 2 köprü, rampa, komşu kesim ya da plaka kenarı nedeniyle',
+    ]);
+  });
+
   it('only outer contours count; no parentheses (a Mach3 comment ends at the first one)', () => {
     const line = tabsShortHeaders([
       { ...op(1, { tabsWanted: 4 }), kind: 'innerContour' } as Operation,

@@ -1823,6 +1823,19 @@ Spec: §7.2, §6.6 · Depends: T330 · From: B62 audit · Decision: D-128
 - [x] the production export path always passes the post to the checker (asserted), so TOOL_PAUSE_COUNT never runs in its lenient "no post given" mode there; test contexts unchanged
 - [x] the third audit item (Simülasyon shows an empty blocking list while the profile loads) is in the polish queue P2
 
+### T338 Tabs that hold: 3 mm web, nesting room with tabs, checker rule (CTO #13 M1; B64)   [status: review]
+Spec: §6.3, §6.2, §7.2 · Depends: T293, T313, T334 · From: CTO review #13 M1 · Decision: D-129
+- [x] a tab is placed only where a 3 mm web behind its kerf stays (no other cut at tab depth, on the sheet): two-phase toolpath build, slug tabs too
+- [x] with tabs, nesting / checkPlacement / margin rules use pay ≥ tool Ø + 3.1 and margin ≥ tool Ø + 3 (stored values kept; Dizilim note); thin skin unchanged (D-104)
+- [x] SMALL_PART_NOT_HELD (error), TABS_NOT_HELD (warning), NC header cause "komşu kesim ya da plaka kenarı", Simülasyon link to the clearance field, export checklist line
+- [x] independent checker rule PART_NOT_HELD with rejection tests (deleted tab climb, neighbour pass over a tab)
+- [x] goldens re-generated and listed in the PR (needs-human); new golden `small-rows` (two rows of small parts at the default clearance hold)
+
+### T339 The extended test part keeps its tabs (CTO #13 M2; B64)   [status: review]
+Spec: §7.3 · Depends: T191 · From: CTO review #13 M2
+- [x] tabs on every part of the extended test program: 4 on the outer contour, none on the R20 arcs; field-kit text says so
+- [x] test: no test program has a through outer contour without tabs (and none uses skin)
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine

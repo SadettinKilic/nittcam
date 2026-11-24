@@ -6,9 +6,12 @@ import { marginBelowToolRadius, minSheetMargin, validateProject } from './index'
 // T300 (CTO #12 E1, D-085), T331 (D-123): a sheet margin below the tool diameter is a warning on
 // Dizilim (the cutter's far edge lies one diameter outside the part).
 
-function withMargin(margin: number): Project {
+// D-129: with tabs the placer keeps the margin at least Ø + 3, so the rule only bites with thin
+// skin (the stored margin is used as it is). skin = false means tabs.
+function withMargin(margin: number, skin = true): Project {
   const json = JSON.parse(JSON.stringify(cabinetDoors));
   json.nesting.margin = margin;
+  if (skin) json.cutting.skin = { thickness: 0.5 };
   const result = parseProject(json);
   if (!result.ok) throw new Error(JSON.stringify(result.issues));
   return result.project;
@@ -39,6 +42,10 @@ describe('marginBelowToolRadius (T300)', () => {
         path: 'nesting.margin',
       });
     }
+  });
+
+  it('D-129: with tabs the effective margin (Ø + 3) never falls below the tool', () => {
+    expect(marginBelowToolRadius(withMargin(0, false), { toolDiameter: 8 })).toEqual([]);
   });
 
   it('blocks the export (B62 fix r1); no tool known = no program to check', () => {

@@ -111,7 +111,9 @@ describe('snapToNeighbours (T170)', () => {
       rect('A', 400, 300, { mode: 'free', angle: 0 }),
       rect('B', 200, 200, { mode: 'free', angle: 0 }),
     ];
-    const p = project(parts, null);
+    // thin skin: the stored gap 0.5 counts (D-129 lifts it with tabs)
+    const p0 = project(parts, null);
+    const p = { ...p0, cutting: { ...p0.cutting, skin: { thickness: 0.5 } } };
     const a = { x: 10, y: 10 }; // first placement of project()
     const snapped = snapToNeighbours(
       { w: 200, h: 200 },

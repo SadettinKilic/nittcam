@@ -132,7 +132,7 @@ test.describe('T023 wizard', () => {
     await wizardReady(page, 'dizilim');
     await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
     await saved(page);
     await shot(page, 't023-adim3-dizilim');
 
@@ -354,8 +354,9 @@ test.describe('T023 wizard', () => {
     const data = [name, SEEDED];
     for (const step of STEP_KEYS) {
       await goStep(page, step);
-      if (step === 'dizilim' && (await page.getByTestId('layout-canvas').count()) === 0) {
-        await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+      if (step === 'dizilim') {
+        // T261: entering Dizilim nests by itself. Below 1024 px a click on "Diz" here can land on
+        // the same button as "İptal" mid-run (T198, longer with D-129 spacing) and cancel it.
         await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
       }
       if (step === 'simulasyon') {

@@ -17,7 +17,10 @@ function load(json: unknown): Project {
   return r.project;
 }
 
-/** A 1000 × 800 sheet, margin 10, gap 4; two rect parts a (100 × 50) and b (60 × 60). */
+/**
+ * A 1000 × 800 sheet, margin 10, gap 4; two rect parts a (100 × 50) and b (60 × 60). Thin skin, so
+ * the stored gap and margin apply as they are (D-129 raises them only with tabs).
+ */
 function base(placements: Placement[]): Project {
   return load({
     schemaVersion: 1,
@@ -56,7 +59,7 @@ function base(placements: Placement[]): Project {
     ],
     nesting: { mode: 'minWaste', gap: 4, margin: 10 },
     layout: { sheets: [{ placements }] },
-    cutting: { tabs: { auto: true }, leadIn: 'arc', direction: 'climb' },
+    cutting: { tabs: { auto: true }, leadIn: 'arc', direction: 'climb', skin: { thickness: 0.5 } },
     settings: { dimensionMode: 'cut' },
   });
 }
@@ -115,6 +118,29 @@ describe('checkPlacement / LOCKED_PLACEMENT_INVALID (D-020)', () => {
   it('a rotated footprint counts: 50 × 100 at rot 90', () => {
     const p = base([pl('a', 0, 10, 700, true, 90)]); // 50 wide, 100 high: top at 800 > 790
     expect(checkPlacement(p, 0, p.layout.sheets[0]!.placements[0]!, tool).inMargin).toBe(true);
+  });
+
+  it('D-129: with tabs (no skin) the margin is at least Ø + 3 and the gap at least Ø + 3.1', () => {
+    const withTabs = (placements: Placement[]): Project => {
+      const p = base(placements);
+      const cutting = { ...p.cutting };
+      delete cutting.skin;
+      return { ...p, nesting: { ...p.nesting, gap: 0.1, margin: 10 }, cutting };
+    };
+    // margin 10 < Ø8 + 3 = 11: x = 10 lies in the effective margin band, x = 11 does not
+    const inBand = withTabs([pl('a', 0, 10, 20)]);
+    expect(checkPlacement(inBand, 0, inBand.layout.sheets[0]!.placements[0]!, tool).inMargin).toBe(
+      true,
+    );
+    const clear = withTabs([pl('a', 0, 11, 20), pl('b', 0, 131, 20, false)]);
+    // 131 − 111 = 20 ≥ Ø8 + 11.1 = 19.1 (gap 0.1 raised to Ø + 3.1): clear; 130 − 111 = 19 is not
+    expect(
+      placementIsValid(checkPlacement(clear, 0, clear.layout.sheets[0]!.placements[0]!, tool)),
+    ).toBe(true);
+    const close = withTabs([pl('a', 0, 11, 20), pl('b', 0, 130, 20, false)]);
+    expect(
+      checkPlacement(close, 0, close.layout.sheets[0]!.placements[0]!, tool).conflicts,
+    ).toHaveLength(1);
   });
 
   it('unlocked placements are not judged, only counted as neighbours', () => {

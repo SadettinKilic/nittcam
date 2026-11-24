@@ -160,6 +160,7 @@ export function SimulationView({
   onOpenRow,
   onOpenSkin,
   margin,
+  hold,
   view3d,
 }: {
   t: SimText;
@@ -182,6 +183,8 @@ export function SimulationView({
   onOpenSkin?: () => void;
   /** T300: the sheet margin is below the tool radius: the hint and "Kenar payına git". */
   margin?: PartLinks['margin'];
+  /** T338: tabs that would not hold: the hint and "Parça arası paya git". */
+  hold?: PartLinks['hold'];
   /** Shown instead of the simulation when there is no layout or no machine (wizard texts). */
   empty: { noLayout: React.ReactNode; noMachine: React.ReactNode };
 }) {
@@ -296,6 +299,7 @@ export function SimulationView({
         onOpenRow={onOpenRow}
         onOpenSkin={onOpenSkin}
         margin={margin}
+        hold={hold}
       />
     );
   } else if (sim) {

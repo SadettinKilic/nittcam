@@ -300,10 +300,10 @@ test.describe('T013 layout view', () => {
     await paste(page, KITCHEN_3, 5);
     await nest(page);
     const tabs = page.getByRole('tab');
-    await expect(tabs).toHaveCount(3);
+    await expect(tabs).toHaveCount(4);
     const counts: number[] = [];
     // T249: no per-plate lines; read each plate's part count from the canvas.
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 4; i += 1) {
       await tabs.nth(i).click();
       await expect(tabs.nth(i)).toHaveAttribute('aria-selected', 'true');
       counts.push(Number(await page.getByTestId('layout-canvas').getAttribute('data-part-count')));
@@ -323,7 +323,7 @@ test.describe('T013 layout view', () => {
     );
     // T171: the minimap opens any sheet; the stats follow the shown sheet.
     await page.getByTestId('layout-minimap-button').click();
-    await expect(page.getByTestId('layout-minimap').getByRole('button')).toHaveCount(3);
+    await expect(page.getByTestId('layout-minimap').getByRole('button')).toHaveCount(4);
     await page
       .getByRole('button', {
         name: new RegExp(`^${fill(l.minimap.sheet, { n: 1, parts: counts[0] ?? 0, used: '' })}`),

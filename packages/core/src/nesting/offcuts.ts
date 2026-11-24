@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { defaultSheet, sheetSizeOf, type Project } from '../schema';
 import { toCutSizes } from '../schema/cut-size';
 import { partSpacing, placementRect } from './nest';
+import { effectiveSpacing } from './tool';
 import { partSizes } from './placement';
 
 /** Default minimum offcut side, mm (spec §6.2: 300 × 300). */
@@ -69,7 +70,7 @@ export function proposeOffcuts(
   const grain = storableGrain(defaultSheet(project).grain);
   if (grain === undefined) return [];
   const sizes = partSizes(project);
-  const s = partSpacing(toolDiameter, project.nesting.gap);
+  const s = partSpacing(toolDiameter, effectiveSpacing(project, toolDiameter).gap);
   const out: OffcutProposal[] = [];
   project.layout.sheets.forEach((sheet, i) => {
     if (sheet.placements.length === 0) return;

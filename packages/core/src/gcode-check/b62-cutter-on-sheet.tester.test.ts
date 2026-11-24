@@ -98,6 +98,8 @@ describe('B62 tester: the cutter stays on the sheet, read from the NC text', () 
       leadIn: lead,
       direction: dir,
       placements: [placements(m)],
+      // D-129: with tabs the margin is lifted to Ø + 3; the stored margin counts with skin
+      skin: 0.5,
     });
     const profile = machineOf({ toolDiameter: d });
     // The posts write T.. M6: an automatic changer, as in the checker scenarios.

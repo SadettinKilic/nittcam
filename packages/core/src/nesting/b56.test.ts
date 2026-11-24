@@ -219,11 +219,19 @@ describe('T313 clearance between parts', () => {
     expect(2 * partSpacing(8, DEFAULT_PART_CLEARANCE)).toBeCloseTo(8.1, 9);
   });
 
-  for (const engine of ['maxrects', 'trueShape'] as const) {
-    it(`${engine}: measured clear distance between neighbours ≥ Ø + clearance, and tight`, () => {
+  // D-129: with tabs (no skin) the effective clearance is at least Ø + 3.1 mm; with thin skin D-104's
+  // 0.1 mm stays.
+  for (const [engine, skin] of [
+    ['maxrects', true],
+    ['trueShape', true],
+    ['maxrects', false],
+    ['trueShape', false],
+  ] as const) {
+    it(`${engine}, skin ${skin}: measured clear distance ≥ Ø + effective clearance, tight`, () => {
       const tool = 8;
-      const gap = DEFAULT_PART_CLEARANCE;
-      const p = cabinetProject({ width: 1200, shelves: 3 }, gap);
+      const base = cabinetProject({ width: 1200, shelves: 3 }, DEFAULT_PART_CLEARANCE);
+      const p = skin ? { ...base, cutting: { ...base.cutting, skin: { thickness: 0.5 } } } : base;
+      const gap = skin ? DEFAULT_PART_CLEARANCE : tool + 3 + DEFAULT_PART_CLEARANCE;
       const res = nestProject(p, { toolDiameter: tool, engine });
       const sizes = new Map(
         nestingInputFromProject(p, { toolDiameter: tool }).parts.map((x) => [

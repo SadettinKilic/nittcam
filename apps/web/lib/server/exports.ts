@@ -322,6 +322,7 @@ function checklistOf(
         recommendedPlungeFeed: s.recommendedPlungeFeed,
       })),
     fileNames: fileNameInfo(files.names, p.constraints.maxFileNameLength, files.latestLimit),
+    ...(program && program.tabsNotHeld > 0 ? { tabsNotHeld: program.tabsNotHeld } : {}),
   };
 }
 

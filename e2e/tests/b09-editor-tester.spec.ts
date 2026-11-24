@@ -545,10 +545,10 @@ test.describe('B9 tester: plate tabs (T199b)', () => {
     await openNewProject(page, 'parcalar');
     await pasteAndNest(page, KITCHEN_3, 5);
     const layoutStrip = page.getByTestId('sheet-tabs-scroll');
-    await expect(layoutStrip.getByRole('tab')).toHaveCount(3);
+    await expect(layoutStrip.getByRole('tab')).toHaveCount(4);
     await goStep(page, 'simulasyon');
     const strip = page.getByTestId('sim-tabs-scroll');
-    await expect(strip.getByRole('tab')).toHaveCount(3);
+    await expect(strip.getByRole('tab')).toHaveCount(4);
     const sb = await strip.boundingBox();
     if (!sb) throw new Error('strip box');
     // Own row: nothing else on the page shares the strip's vertical band inside its parent row.

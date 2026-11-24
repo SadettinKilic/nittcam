@@ -814,7 +814,7 @@ export function MachineForm({
             <TextField
               path="holdDown.vacuumOff"
               label={f.vacuumOff}
-              help={f.mCodeHelp}
+              help={f.mCodeHelpOff}
               value={profile.holdDown.vacuumOff}
               error={e('holdDown.vacuumOff')}
               onChange={(v) => update((p) => void (p.holdDown.vacuumOff = v))}
