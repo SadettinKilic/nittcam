@@ -1661,11 +1661,12 @@ Acceptance:
   - CTO review #13 (2026-11-23, `docs/reviews/2026-11-23-cto-design-review-13.md`, main `42258a0`, B63 and B60 counted as landing):
   - [x] M2–M8 exits met
   - [ ] M9 exit: open until M1 (tabs facing a neighbour hold nothing at the default clearance) and M2 (extended test part cut free) of review #13 land or the owner accepts the runbook workaround, B63 lands, and the owner signs off
+    - tester 2026-11-24: M1 (D-129), M2 and B63 are on main and verified in the NC; only the owner sign-off is open. Runbook steps "Gitmeden 6" and section D are stale (see the readiness report).
   - [x] known issues list written (review #13 §4), each with "matters at the field test"
   - [x] open spec items (§14.2) that affect the test listed (review #13 §4)
   - [ ] machine info (§12.3) collected: not collected; the owner's bring-list and day runbook are in `docs/machines/saha-gunu.md`
   - [ ] question to the owner via the dashboard (PO)
-  - [ ] tester: final full run with one summary report
+  - [x] tester: final full run with one summary report (2026-11-24, main `751b649`: CI 45340824739 green, `pnpm test` green, 3 rehearsal jobs + kit files read line by line, M1, M2, B63 verified, no blocker; `docs/reviews/2026-11-24-field-readiness.md`)
   - [ ] owner sign-off
 Tester focus: final full run (unit, property, golden, e2e, visual, axe, perf) with one summary report.
 
