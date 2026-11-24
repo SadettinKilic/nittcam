@@ -293,6 +293,12 @@ export const projects = pgTable(
      * new project). Same company; the source lists it as "Ayrı plaka projesi". Null = none.
      */
     sourceProjectId: uuid('source_project_id'),
+    /**
+     * Client id of the save that produced the current revision (T326, D-117): a repeated save with
+     * the same id (a retry or a close-time send whose answer was lost) is answered from the stored
+     * row instead of a conflict, so a save is never applied twice. Null = an older client.
+     */
+    lastSaveId: uuid('last_save_id'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

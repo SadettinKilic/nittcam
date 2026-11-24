@@ -9,6 +9,12 @@
  * few are compacted (slid down, left, down by bisection over valid positions, so true shapes
  * interlock) and the best result wins. A copy goes on the first sheet that takes it; otherwise a
  * new sheet opens.
+ *
+ * T306: when every copy is placed, a tidy pass puts each new placement position on the 0.001 mm
+ * grid (the nudge and bisection residue reached the 4-decimal Mach3 output as X522.0001), only
+ * where the moved footprint stays on the sheet and overlaps nothing; else it stays. A position
+ * moves by less than 0.001 mm; sheet counts, order and rotations never change. A part's own
+ * geometry (a rotated outline's real decimals) is not touched, nor is the post's rounding.
  */
 import { EPS } from '../geometry/constants';
 import type { Placement } from '../schema';
@@ -53,6 +59,8 @@ const SLIDE_STEPS = 14;
 const GRID = 16;
 /** Candidates next to a footprint start this far off it (mm), so float noise never reads touching as overlap. */
 const NUDGE = 1e-4;
+/** The grid of placement positions after the tidy pass (mm, T306). */
+const GRID_MM = 1e-3;
 
 class SheetState {
   readonly fps: Footprint[] = [];
@@ -92,6 +100,16 @@ class SheetState {
         if (list) list.push(id);
         else this.cells.set(key, [id]);
       }
+  }
+  /**
+   * T306: whether `fp` overlaps a placed footprint other than `self`. Checks every footprint (no
+   * grid cells): a tidied footprint may have moved across a cell border.
+   */
+  hitsExcept(fp: Footprint, self: number): boolean {
+    for (const [id, other] of this.fps.entries()) {
+      if (id !== self && footprintsOverlap(other, fp)) return true;
+    }
+    return false;
   }
   /** Whether `fp` overlaps a placed footprint. */
   hits(fp: Footprint): boolean {
@@ -219,8 +237,27 @@ function findSpot(sheet: SheetState, item: ShapeItem, margin: number): Spot | nu
   return best;
 }
 
+/**
+ * Grid values to try for a placement position (T306): the nearest first, then the one on the
+ * other side (a part nudged off a neighbour moves away from it when touching reads as an
+ * overlap). Empty when the value is already on the grid.
+ */
+export function tidyCandidates(v: number): number[] {
+  const steps = Math.round(v / GRID_MM);
+  const g = steps * GRID_MM;
+  const off = v - g;
+  if (Math.abs(off) <= 1e-9) return [];
+  const clean = (n: number) => Number((n * GRID_MM).toFixed(3));
+  return [clean(steps), clean(off > 0 ? steps + 1 : steps - 1)];
+}
+
 /** Packs the items in the given order on true-shape footprints. Always terminates. */
-export function packTrueShape(input: ShapePackInput, items: readonly ShapeItem[]): ShapePacked {
+export function packTrueShape(
+  input: ShapePackInput,
+  items: readonly ShapeItem[],
+  /** T306: the grid tidy pass (on by default; off only to compare in tests). */
+  opts: { tidy?: boolean } = {},
+): ShapePacked {
   const { dims, margin } = input;
   const states: SheetState[] = [];
   const sheets: Placement[][] = [];
@@ -252,9 +289,13 @@ export function packTrueShape(input: ShapePackInput, items: readonly ShapeItem[]
     suffixArea[i] = (suffixArea[i + 1] as number) + (items[i] as ShapeItem).area;
 
   const unplaced: UnplacedPart[] = [];
+  /** Per sheet, per new placement: its footprint index on the sheet and its unmoved footprint. */
+  const placedFps: { id: number; fp: Footprint; o: ShapeOption }[][] = sheets.map(() => []);
   const put = (si: number, item: ShapeItem, spot: Spot): void => {
     const o = item.options[spot.opt] as ShapeOption;
-    (states[si] as SheetState).add(moveFootprint(o.fp, spot.x, spot.y), item.area);
+    const st = states[si] as SheetState;
+    (placedFps[si] ??= []).push({ id: st.fps.length, fp: o.fp, o });
+    st.add(moveFootprint(o.fp, spot.x, spot.y), item.area);
     (sheets[si] as Placement[]).push({
       partId: item.partId,
       index: item.index,
@@ -311,9 +352,35 @@ export function packTrueShape(input: ShapePackInput, items: readonly ShapeItem[]
       states.pop();
       sheets.pop();
       sizeOf.pop();
+      placedFps.length = Math.min(placedFps.length, states.length);
       used[pick] = (used[pick] ?? 1) - 1;
       unplaced.push({ partId: item.partId, index: item.index, reason: 'TOO_LARGE' });
     }
   });
+  // T306: tidy pass over the finished sheets, in placement order.
+  for (const [si, st] of opts.tidy === false ? [] : states.entries()) {
+    const list = sheets[si] as Placement[];
+    for (const [k, p] of list.entries()) {
+      const meta = placedFps[si]?.[k];
+      if (!meta) continue;
+      const inside = (x: number, y: number): boolean =>
+        x >= margin - EPS &&
+        y >= margin - EPS &&
+        x + meta.o.w <= st.width - margin + EPS &&
+        y + meta.o.h <= st.height - margin + EPS;
+      for (const axis of ['x', 'y'] as const) {
+        for (const v of tidyCandidates(p[axis])) {
+          const x = axis === 'x' ? v : p.x;
+          const y = axis === 'y' ? v : p.y;
+          if (!inside(x, y)) continue;
+          const moved = moveFootprint(meta.fp, x, y);
+          if (st.hitsExcept(moved, meta.id)) continue;
+          st.fps[meta.id] = moved;
+          p[axis] = v;
+          break;
+        }
+      }
+    }
+  }
   return { sheets, sizeOf, unplaced };
 }

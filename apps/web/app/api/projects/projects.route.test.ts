@@ -129,6 +129,48 @@ describe('/api/projects', () => {
     expect(item?.machine).toBeNull();
   });
 
+  it('T326: a repeated save or create (same saveId) is answered, never applied twice', async () => {
+    const p = project();
+    const id = crypto.randomUUID();
+    const s1 = crypto.randomUUID();
+    const createBody = {
+      id,
+      saveId: s1,
+      name: 'Kapanis',
+      project: p,
+      commands: [entry('setGrain', { grain: 0 })],
+    };
+    expect((await create(json(createBody))).status).toBe(201);
+    // The create again (the page closed before its answer): 200, same project.
+    const again = await create(json(createBody));
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as ProjectDetail).revision).toBe(1);
+    // Another save id for that draft id is not the same create.
+    expect((await create(json({ ...createBody, saveId: crypto.randomUUID() }))).status).toBe(409);
+
+    const s2 = crypto.randomUUID();
+    const put = {
+      project: { ...p, stock: { ...p.stock, thickness: 16 } },
+      baseRevision: 1,
+      commands: [entry('setThickness', { thickness: 16 })],
+      saveId: s2,
+    };
+    expect(((await (await save(json(put, 'PUT'), ctx(id))).json()) as SaveResponse).revision).toBe(
+      2,
+    );
+    const repeat = await save(json(put, 'PUT'), ctx(id));
+    expect(repeat.status).toBe(200);
+    expect(((await repeat.json()) as SaveResponse).revision).toBe(2);
+    const loaded = (await (await get(new Request('http://test'), ctx(id))).json()) as ProjectDetail;
+    expect(loaded).toMatchObject({ revision: 2, lastSaveId: s2 });
+    // Once the project moved on, the create of the draft is a conflict (never a silent 200).
+    expect((await create(json(createBody))).status).toBe(409);
+    expect((await save(json({ ...put, saveId: 'nope' }, 'PUT'), ctx(id))).status).toBe(400);
+    const scope = await companyScope();
+    const cmds = await scope.projects.listCommands(id);
+    expect(cmds.map((c) => c.command)).toEqual(['setGrain', 'setThickness']);
+  });
+
   it('save records undo/redo history events', async () => {
     const created = (await (
       await create(json({ name: 'H', project: project() }))

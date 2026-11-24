@@ -433,6 +433,8 @@ export interface NewProject {
   userId?: string;
   /** T292: the project it was split off from (same company, checked by the caller). */
   sourceProjectId?: string | null;
+  /** Client id of this save (T326, D-117); kept as `lastSaveId`. */
+  saveId?: string;
 }
 
 export interface SaveProject {
@@ -445,6 +447,11 @@ export interface SaveProject {
   commands?: readonly CommandLogEntry[];
   /** User who saved (same company); stored on the command rows. */
   userId?: string;
+  /**
+   * Client id of this save (T326, D-117). A save whose id produced the current revision, based on
+   * the revision just before it, is a repeat: it returns the stored row and writes nothing.
+   */
+  saveId?: string;
 }
 
 function projectsRepo(db: Db, companyId: string) {
@@ -588,6 +595,7 @@ function projectsRepo(db: Db, companyId: string) {
             name: values.name,
             ...(values.status ? { status: values.status } : {}),
             ...(values.sourceProjectId ? { sourceProjectId: values.sourceProjectId } : {}),
+            ...(values.saveId ? { lastSaveId: values.saveId } : {}),
             data,
             revision: 1,
           })
@@ -616,6 +624,7 @@ function projectsRepo(db: Db, companyId: string) {
           .set({
             data,
             revision: sql`${projectsTable.revision} + 1`,
+            lastSaveId: input.saveId ?? null,
             updatedAt: new Date(),
             ...(input.name !== undefined ? { name: input.name } : {}),
             ...(input.status !== undefined ? { status: input.status } : {}),
@@ -624,12 +633,18 @@ function projectsRepo(db: Db, companyId: string) {
           .returning();
         const saved = rows[0];
         if (!saved) {
-          const current = await tx
-            .select({ revision: projectsTable.revision })
-            .from(projectsTable)
-            .where(scope(id));
+          const current = await tx.select().from(projectsTable).where(scope(id));
           const found = current[0];
           if (!found) throw new NotFound('project', id);
+          // T326 (D-117): this very save already went through (its answer was lost, or the page
+          // closed while it was on the way): answer it again, never apply it twice.
+          if (
+            input.saveId !== undefined &&
+            found.lastSaveId === input.saveId &&
+            found.revision === input.revision + 1
+          ) {
+            return upgradeRow(found);
+          }
           throw new RevisionConflict(id, input.revision, found.revision);
         }
         await insertCommands(tx, id, saved.revision, input.commands ?? [], input.userId);

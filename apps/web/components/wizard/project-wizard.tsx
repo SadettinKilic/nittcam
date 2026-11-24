@@ -17,7 +17,12 @@ import { fill, newProject, pocketToolDiameterFor, toolDiameterFor } from '../../
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import type { Messages } from '../../lib/messages';
 import { MessagesContext } from '../../lib/messages-context';
-import { DRAFT_PARAM, useProjectSession, type SessionInit } from '../../lib/project-session';
+import {
+  DRAFT_PARAM,
+  createdFromDraft,
+  useProjectSession,
+  type SessionInit,
+} from '../../lib/project-session';
 import { STEP_REQUEST_EVENT } from '../../lib/step-request';
 import { leavingLinkHref, onNavigationStart } from '../../lib/navigation-guard';
 import { nextFailing, saveBannerKind } from '../../lib/save-banner';
@@ -31,9 +36,11 @@ import { splitOffProject, type SplitTarget } from '../../lib/split-project';
 import { ProjectLinksBar } from './project-links';
 import type { SimMachine } from '../simulation/simulation-view';
 import {
+  CuttingSettings,
   DrawingBoard,
   ExportStep,
   LayoutStep,
+  ParkedChangesNotice,
   SimulationView,
   preloadWizardSteps,
 } from './lazy-steps';
@@ -50,7 +57,6 @@ import { profileChanges } from '../../lib/profile-version';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
 import { HoleIssuesContext, holeErrors } from '../editor/hole-issues';
 import { ValidationPanel } from './validation-panel';
-import { CuttingSettings } from '../simulation/cutting-settings';
 import {
   STEPS,
   saveIndicator,
@@ -273,6 +279,7 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
   // The URL's step when the wizard mounts (keyed by project); later steps are the session's own.
   const urlStepRef = useRef(step);
   const [attempt, setAttempt] = useState(0);
+  const router = useRouter();
   // A new project gets its id from the first save; "+ Yeni proje" afterwards starts another one.
   const pathname = usePathname();
   const [created, setCreated] = useState<string | null>(null);
@@ -290,6 +297,10 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
   // T305: "+ Yeni proje" while a draft (not saved yet) is open keeps the path but drops the draft
   // from the address: that is another new project too, not the same draft.
   const draftParam = useSearchParams().get(DRAFT_PARAM);
+  const draftRef = useRef(draftParam);
+  useEffect(() => {
+    draftRef.current = draftParam;
+  }, [draftParam]);
   const [lastDraft, setLastDraft] = useState(draftParam);
   if (draftParam !== lastDraft) {
     setLastDraft(draftParam);
@@ -329,6 +340,7 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
           init = {
             id: p.body.id,
             revision: p.body.revision,
+            lastSaveId: p.body.lastSaveId ?? null,
             name: p.body.name,
             project: p.body.project,
           };
@@ -340,15 +352,27 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
             });
           }
         } else {
+          // The company's projects: the "Adsız proje" counter (T194a) and the draft check below;
+          // a failed list only drops both.
+          const listed = await getJson<ProjectListItem[]>('/api/projects').then(
+            (r) => r.body ?? [],
+            () => [] as ProjectListItem[],
+          );
+          // B60 F2: Back onto a draft that its own (left) page saved meanwhile opens that project.
+          // Looked up in the list, not by GET /api/projects/<draft id>: a draft that never reached
+          // the server would log a 404 on every new-project page.
+          const became = await createdFromDraft(draftRef.current, {
+            exists: async (pid) => listed.some((p) => p.id === pid),
+          });
+          if (became) {
+            if (live) router.replace(stepUrl(became, urlStepRef.current ?? 'parcalar'));
+            return;
+          }
           const first = pickableMachines(machines.body)[0];
           if (first) {
             firstDetail = (await getJson<MachineDetail>(`/api/machines/${first.id}`)).body;
           }
-          // "Adsız proje" + counter (T194a); a failed list only drops the counter.
-          const names = await getJson<ProjectListItem[]>('/api/projects').then(
-            (r) => (r.body ?? []).map((p) => p.name),
-            () => [],
-          );
+          const names = listed.map((p) => p.name);
           // T259: a new project starts on the library's first entry the machine can cut.
           const library = firstDetail ? ((await fetchMaterials()) ?? []) : [];
           // T182: the company's project defaults (Ayarlar); built-ins when they cannot be read.
@@ -370,7 +394,8 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
     return () => {
       live = false;
     };
-  }, [projectId, attempt, t.defaultName]);
+    // router is stable; the draft is read when the loader runs (draftRef).
+  }, [projectId, attempt, t.defaultName, router]);
 
   const reload = useCallback(() => {
     setLoaded({ status: 'loading' });
@@ -656,6 +681,8 @@ function WizardSession({
     machine: pinned?.profile ?? null,
     onCreated: created,
     draft,
+    // B60 r3: behind the server before a left queue or parked changes apply: load it first.
+    onStale: onReload,
   });
   // T290: remember the Parçalar view per saved project.
   useEffect(() => {
@@ -678,7 +705,8 @@ function WizardSession({
       new URLSearchParams(window.location.search).get(LATEST_PARAM) === LATEST_VALUE,
   );
   useEffect(() => {
-    if (!takeLatest || !detail) return;
+    // B60: wait until a left queue is taken over (`run` refuses edits until then).
+    if (!takeLatest || !detail || session.recovering) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTakeLatest(false);
     const pinned = session.project.machine;
@@ -1538,6 +1566,14 @@ function WizardSession({
         <Callout tone="info" role="status" icon={<Info aria-hidden />}>
           <p>{fill(t.restored, { count: session.restoredCount })}</p>
         </Callout>
+      ) : null}
+      {session.parkedCount > 0 ? (
+        <ParkedChangesNotice
+          count={session.parkedCount}
+          t={t}
+          onApply={() => void session.applyParked()}
+          onDrop={session.dropParked}
+        />
       ) : null}
 
       {step === 'parcalar' && !drawing && !wide ? (

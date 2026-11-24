@@ -35,6 +35,20 @@ export const SimulationView = dynamic(() => loadSimulationView().then((m) => m.S
 export const ExportStep = dynamic(() => loadExportStep().then((m) => m.ExportStep), {
   loading: StepLoading,
 });
+/**
+ * Simülasyon's cutting settings (B60 round 38, B42 wizard budget): they render inside the lazy
+ * simulation view, so they load with it instead of with every wizard page.
+ */
+export const CuttingSettings = dynamic(() =>
+  import('../simulation/cutting-settings').then((m) => m.CuttingSettings),
+);
+/**
+ * B60: the "changes left behind" notice is rare and pulls the alert dialog; it loads only when a
+ * page has parked changes (B42 wizard budget, D-079).
+ */
+export const ParkedChangesNotice = dynamic(() =>
+  import('./parked-changes').then((m) => m.ParkedChangesNotice),
+);
 
 let preloaded = false;
 
