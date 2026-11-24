@@ -38,6 +38,8 @@ import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
 import { fill } from '../../lib/fill';
 import { OffcutStock } from './offcut-stock';
+import { DRAFT_PARAM, discardLeftDraft, leftDrafts, type LeftDraft } from '../../lib/autosave';
+import { LeftDraftNotice } from './left-draft-notice';
 import type { Messages } from '../../lib/messages';
 import {
   NO_FILTERS,
@@ -100,6 +102,17 @@ export function ProjectsView({
   const [deletedList, setDeletedList] = useState<ListState>({ status: 'loading' });
   const [copying, setCopying] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // T326 (D-117): new projects whose tab was closed before the server had them.
+  const [drafts, setDrafts] = useState<LeftDraft[]>([]);
+  useEffect(() => {
+    try {
+      const store = window.localStorage;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDrafts(leftDrafts(store, Object.keys(store)));
+    } catch {
+      // Blocked storage: nothing to offer.
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setList({ status: 'loading' });
@@ -231,6 +244,33 @@ export function ProjectsView({
           </Button>
         }
       />
+
+      {drafts.map((d) => {
+        const saved =
+          d.parked === true ||
+          (list.status === 'ready' && list.items.some((p) => p.id === d.draftId));
+        const href = saved
+          ? `/projeler/${d.draftId}`
+          : `/projeler/yeni?${DRAFT_PARAM}=${encodeURIComponent(d.draftId)}`;
+        return (
+          <LeftDraftNotice
+            key={d.draftId}
+            draft={d}
+            href={href}
+            t={t.leftDraft}
+            onDiscard={(id) => {
+              let store: Storage | null = null;
+              try {
+                store = window.localStorage;
+              } catch {
+                // Blocked storage: nothing stored either.
+              }
+              discardLeftDraft(store, id);
+              setDrafts((all) => all.filter((x) => x.draftId !== id));
+            }}
+          />
+        );
+      })}
 
       <Tabs value={tab} onValueChange={changeTab} className="flex flex-col gap-6">
         <TabsList aria-label={t.title} className="self-start">

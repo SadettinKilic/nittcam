@@ -21,7 +21,7 @@ const t = tr.cutList;
 
 async function unsentKeys(page: Page): Promise<string[]> {
   return page.evaluate(() =>
-    Object.keys(sessionStorage).filter((k) => k.startsWith('nittcam.unsent.')),
+    Object.keys(localStorage).filter((k) => k.startsWith('nittcam.unsent.')),
   );
 }
 

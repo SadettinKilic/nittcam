@@ -36,7 +36,6 @@ test('B35 tester: DXF download names, exported project opens on Dışa aktar', a
     const r1 = await request.get(url);
     expect(r1.status(), tur).toBe(200);
     const cd = r1.headers()['content-disposition'] ?? '';
-    // eslint-disable-next-line no-control-regex
     expect(cd, tur).toMatch(/^attachment; filename="[\x20-\x7e]+\.dxf"$/);
     // Transliterated ASCII stem; the separator follows the file-name pattern (T176, T295).
     expect(cd).toMatch(/Cekmeceli[-_]dolap[-_]Igs[-_]/);

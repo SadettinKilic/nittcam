@@ -6,6 +6,7 @@ import {
   readBody,
   readCommands,
   readName,
+  readSaveId,
   toDetail,
   UUID,
 } from '../../../../lib/server/projects';
@@ -31,6 +32,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/projects/[i
       ...toDetail(row),
       exported: exports.length > 0,
       lastNcRevision: nc.length > 0 ? Math.max(...nc) : null,
+      lastSaveId: row.lastSaveId,
     });
   } catch (err) {
     return handleError(err);
@@ -40,7 +42,8 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/projects/[i
 /**
  * PUT /api/projects/:id `{ project, baseRevision, commands, name? }` → saves with the revision lock
  * (spec §8.2): the stored revision must equal `baseRevision`, else 409 `{ error: 'conflict' }`.
- * The commands are appended to `project_commands` under the new revision.
+ * The commands are appended to `project_commands` under the new revision. T326: an optional
+ * `saveId` (UUID) makes the save repeatable: the same save again answers 200 with the stored row.
  */
 export async function PUT(request: Request, ctx: RouteContext<'/api/projects/[id]'>) {
   const { id } = await ctx.params;
@@ -55,6 +58,9 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/projects/[id
     return apiError({ error: 'bad_request' }, 400);
   const commands = readCommands(body['commands']);
   if (!commands.ok) return commands.response;
+  // T326 (D-117): a repeat of a save that already went through is answered, not applied twice.
+  const saveId = readSaveId(body);
+  if (saveId === null) return apiError({ error: 'bad_request' }, 400);
   try {
     const scope = await companyScope();
     const current = await scope.projects.get(id);
@@ -64,6 +70,7 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/projects/[id
       data: body['project'],
       commands: commands.entries,
       ...(name !== undefined ? { name } : {}),
+      ...(saveId ? { saveId } : {}),
     });
     const res: SaveResponse = {
       id: row.id,

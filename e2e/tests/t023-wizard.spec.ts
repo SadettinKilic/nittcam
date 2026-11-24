@@ -196,7 +196,7 @@ test.describe('T023 wizard', () => {
         });
       }
     }
-    // A quick edit and an immediate reload: the unsent queue (sessionStorage) replays it.
+    // A quick edit and an immediate reload: the unsent queue (localStorage, T326) replays it.
     await goStep(page, 'parcalar');
     await page.getByRole('button', { name: tr.cutList.addRow }).click();
     await page.reload();

@@ -1441,12 +1441,12 @@ CTO #12 on T295 / T296. Acceptance: the NC file name respects the machine file-n
 ### T304 2 000-row paste without a frozen page (rider)   [status: done]
 B42 perf budget (D-079): pasting / applying 2 000 cut-list rows blocks the main thread ~8–9 s, while core import + validation take < 50 ms, so the cost is in the React render path. Acceptance: batch / defer / virtualise so that no single main-thread task exceeds 200 ms and the whole apply takes < 2 s locally; the 20 s guard in the perf spec is tightened to these numbers.
 
-### T306 Nesting positions without nudge residue   [status: todo]
+### T306 Nesting positions without nudge residue   [status: in-review]
 Spec: §6.2 · From: CTO #8, B51 (D-091)
 The true-shape placer starts candidates 1e-4 mm off a neighbour (`nesting/trueshape.ts`, `NUDGE`), so positions such as 522.0001 reach the 4-decimal Mach3 output (`X522.0001`, `Y117.9999`). Acceptance:
-- [ ] placements carry no residue near the 0.001 mm grid (e.g. a clean candidate grid, or a final tidy pass over finished sheets that never creates an overlap)
-- [ ] interlock results (sheet counts) and determinism unchanged; real 4th decimals of rotated shapes untouched
-- [ ] goldens regenerated with the per-file reason; no post-side rounding change
+- [x] placements carry no residue near the 0.001 mm grid (e.g. a clean candidate grid, or a final tidy pass over finished sheets that never creates an overlap): B60 tidy pass in `packTrueShape` puts every new position on the 0.001 mm grid (nearest, else the other side) where the moved footprint stays on the sheet and overlaps nothing
+- [x] interlock results (sheet counts) and determinism unchanged; real 4th decimals of rotated shapes untouched (positions move < 0.001 mm; part geometry untouched; property test `trueshape.t306.test.ts`)
+- [x] goldens regenerated with the per-file reason; no post-side rounding change (mach3 true-shape, arc-tabs, thin-skin; generic true-shape, arc-tabs: see PR #192)
 Tester focus: true-shape and arc-tabs goldens read back clean; nesting property tests.
 
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
@@ -1770,6 +1770,17 @@ Spec: §7.1 · Depends: T327 · From: D-046 (the two sets are copies of MDF 18)
 - [x] `exampleMachineProfile()` (new companies only) takes its Melamin 18 and Kontrplak 18 sets from the table for its own tools instead of the MDF copy; `copiedFrom` is dropped for them; MDF 18 unchanged
 - [x] existing companies' machines are not touched (no migration); the frozen `defaultMachineProfile()` and every golden stay byte-identical; e2e that export from the example machine with melamine or plywood are checked for stale expectations
 Tester focus: fresh company gets the three sets; an old company's machine is unchanged; goldens identical.
+
+### Batch B60: T326, T306 (before the field test; Dev 1)
+
+### T326 Nothing drawn is lost when the tab closes   [status: in-review]
+From: `.team/usta2-rapor.md` (a rectangle drawn ~1 s before closing, "Kaydediliyor", was gone) · D-117 · related T305 / D-094
+- [x] facts: queue in sessionStorage (gone with the tab), close-time save a plain fetch, a save on the way not resent, no close warning → reproducible by design for edits in the debounce window or after a save on the way
+- [x] unsent queue in localStorage with page owner / closed / age; taken by the next page in any tab; another live page's queue left alone
+- [x] save units with a client `saveId`; `projects.last_save_id` (migration 0014); a repeated save/create is answered, never applied twice; revision lock unchanged
+- [x] pagehide: keepalive send (≤ 60 000 bytes), the unit on the way resent with the same id; beforeunload prompt while unsaved; Projeler offers a draft closed before the server had it
+- [x] tests: db `projects.test.ts`, route `projects.route.test.ts`, web `autosave-close.test.ts`, `send-save.test.ts`; e2e `t326-save-on-close.spec.ts` (written, not run locally yet: PC memory, PO hold)
+- [x] fix round 4: F1 peer tabs keep their queue under an own key; the lock holder parks a gone peer's queue (grant, storage, focus, 10 s); F2 Back onto a draft that became a project opens it; tests `autosave-close.test.ts`, `created-from-draft.test.ts`, e2e r4 + `t305-tester`
 
 ### Batch B62: T330–T332 (field rehearsal 2026-11-23, blockers before the machine; Dev 2)
 

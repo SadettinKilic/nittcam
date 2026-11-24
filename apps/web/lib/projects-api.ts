@@ -42,6 +42,11 @@ export interface ProjectDetail {
   exported?: boolean;
   /** Revision of the newest NC export, null without one (GET /api/projects/:id only; T303). */
   lastNcRevision?: number | null;
+  /**
+   * Client id of the save that produced this revision (GET /api/projects/:id only; T326, D-117):
+   * a reopened page tells whether its last close-time save went through.
+   */
+  lastSaveId?: string | null;
 }
 
 /**

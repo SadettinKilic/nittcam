@@ -275,8 +275,8 @@ test.describe('T023 tester: autosave, offline, restore', () => {
     // A second edit while offline goes into the same queue (T259: a new project starts on a
     // library entry, whose sheet sizes are 2.070 × 2.800 and 1.220 × 2.440).
     await page.getByLabel(fill(w.machine.preset, { a: '1.220', b: '2.440' })).check();
-    const queued = await page.evaluate((k) => sessionStorage.getItem(k), `nittcam.unsent.${id}`);
-    expect(queued, 'unsent queue is mirrored to sessionStorage').toBeTruthy();
+    const queued = await page.evaluate((k) => localStorage.getItem(k), `nittcam.unsent.${id}`);
+    expect(queued, 'unsent queue is mirrored to localStorage (T326)').toBeTruthy();
     expect(queued).toContain('setGrain');
     // Nothing reached the server.
     expect((await (await request.get(`/api/projects/${id}`)).json()).revision).toBe(base);
@@ -290,7 +290,7 @@ test.describe('T023 tester: autosave, offline, restore', () => {
     expect(server.project.stock.sheet.grain).toBe(90);
     expect(server.project.stock.sheet.height).toBe(1220);
     // Queue emptied after the save.
-    const after = await page.evaluate((k) => sessionStorage.getItem(k), `nittcam.unsent.${id}`);
+    const after = await page.evaluate((k) => localStorage.getItem(k), `nittcam.unsent.${id}`);
     expect(after === null || after === '[]' || !after.includes('setGrain')).toBe(true);
     expect(problems.filter((p) => !/Failed to load resource|ERR_/.test(p))).toEqual([]);
   });

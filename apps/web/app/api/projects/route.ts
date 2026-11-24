@@ -7,6 +7,7 @@ import {
   readBody,
   readCommands,
   readName,
+  readSaveId,
   toDetail,
   toListItem,
   UUID,
@@ -41,7 +42,7 @@ export async function GET(request?: Request) {
  * POST /api/projects `{ id?, name, project, commands?, sourceProjectId? }` → creates the project at
  * revision 1 (status taslak) with the commands that produced it (201, the project detail). With a
  * client-generated `id` (UUID, D-030) the create is idempotent: a repeat returns the stored project
- * (200). T292: `sourceProjectId` links a project split off from another one.
+ * (200); T326: with a `saveId` only when that same create made it at revision 1, else 409. T292: `sourceProjectId` links a project split off from another one.
  */
 export async function POST(request: Request) {
   const body = await readBody(request);
@@ -54,6 +55,8 @@ export async function POST(request: Request) {
   }
   const commands = readCommands(body['commands']);
   if (!commands.ok) return commands.response;
+  const saveId = readSaveId(body);
+  if (saveId === null) return apiError({ error: 'bad_request' }, 400);
   const source = body['sourceProjectId'];
   if (source !== undefined && (typeof source !== 'string' || !UUID.test(source))) {
     return apiError({ error: 'bad_request' }, 400);
@@ -68,7 +71,17 @@ export async function POST(request: Request) {
     }
     const values = { name, data: body['project'], commands: commands.entries, sourceProjectId };
     if (typeof id === 'string') {
-      const res = await scope.projects.createOnce({ ...values, id: id.toLowerCase() });
+      const res = await scope.projects.createOnce({
+        ...values,
+        id: id.toLowerCase(),
+        ...(saveId ? { saveId } : {}),
+      });
+      // T326 (D-117): a repeated create is only this same create again. A project that moved on
+      // since (another tab saved) or was created by another save is a conflict: replaying the
+      // draft over it would overwrite newer data.
+      if (!res.created && saveId && (res.row.revision !== 1 || res.row.lastSaveId !== saveId)) {
+        return apiError({ error: 'conflict', currentRevision: res.row.revision }, 409);
+      }
       return NextResponse.json(toDetail(res.row), { status: res.created ? 201 : 200 });
     }
     const row = await scope.projects.create(values);
