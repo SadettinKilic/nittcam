@@ -1523,28 +1523,29 @@ Done in B44 (#145) except the two items left open below.
 - Kesim ayarları card: tab options as one segmented row, three fields in one row; a field with a refused value shows the value in use ("kullanılan: 4") [#11] (done in B44)
 - Özet cutting-settings line wraps to two lines at 232 px and also names the thin skin; Özet warning count equals the Uyarılar panel; Dizilim says the part gap is added to the tool diameter [#12] (done in B44)
 - Phone: Simülasyon 3rd sheet tab cut at 390 (scrollable) [T B43] (done in B44)
-- Dizilim canvas: a rotated part's label shows the part's own En × Boy, like the right panel (PO decision, usta 2 test 2026-11-21) [usta]
+- Dizilim canvas: a rotated part's label shows the part's own En × Boy, like the right panel (PO decision, usta 2 test 2026-11-21) [usta] (done in B53)
+- Simülasyon: while the machine profile loads the blocking-issues list shows empty (reads as "nothing blocks"); show a loading state instead [B62 audit]
 
-### P3 Kesim listesi, adım 1, makine formu, DXF   [status: partial, B46 #150]
-Partly done in B46 (#150): items marked "done in B46"; the rest stays open.
+### P3 Kesim listesi, adım 1, makine formu, DXF   [status: done, B46 #150, B53 #160]
+Done in B46 (#150) and B53 (#160), except the flaky-e2e note (watch item).
 - Cut list: edge band unit "mm"; a name-only row is not counted in the part total; cabinet toast and button use the same unit [#9, #10] (done in B46)
-- Cut list: "Uyarılar" panel does not cover cells, clicking an issue focuses its row; row marker for parts with inner cuts [#5, #6]
+- Cut list: "Uyarılar" panel does not cover cells, clicking an issue focuses its row; row marker for parts with inner cuts [#5, #6] (done in B53)
 - Paste: skipped rows (e.g. size 0) are named with the reason in the preview [#10] (done in B46)
 - Step 1: thickness row only when there is a choice [#5] (done in B46)
-- Step 1: red "kesim ayarı yok" box does not push "Plaka ölçüsü" under the footer [#5]
-- ★ Machine form and Ayarlar → Malzemeler: parameter table fits 1440 and 1024 without horizontal scroll; copied-set note spans the row; from the fix flow the section nav and breadcrumb are right and "Değerleri doğruladım" is not under the sticky bar; "Projeye dön" back to the project [#5, #6, #7]
-- Wizard header stays one row down to ~1095 px container width [#6]
+- Step 1: red "kesim ayarı yok" box does not push "Plaka ölçüsü" under the footer [#5] (done in B53)
+- ★ Machine form and Ayarlar → Malzemeler: parameter table fits 1440 and 1024 without horizontal scroll; copied-set note spans the row; from the fix flow the section nav and breadcrumb are right and "Değerleri doğruladım" is not under the sticky bar; "Projeye dön" back to the project [#5, #6, #7] (done in B53)
+- Wizard header stays one row down to ~1095 px container width [#6] (done in B53)
 - DXF dialog: focus returns to "DXF içe aktar"; duplicate `data-testid="dxf-open"` [T B16] (done in B46)
-- DXF dialog: first focus visible; a LINE over a closed polyline edge counts as duplicate; report shows holes separately [T B16]
+- DXF dialog: first focus visible; a LINE over a closed polyline edge counts as duplicate; report shows holes separately [T B16] (done in B53)
 - Step 1 "ince tabaka" switch and Simülasyon "Köprü: Kapalı" use the same word and link to each other [#11] (done in B46)
 - Server accepts a grain value on a grainless offcut PATCH [T B36] (done in B46)
-- T292 rows get a stray thickness note when the target thickness differs [T B36]
+- T292 rows get a stray thickness note when the target thickness differs [T B36] (done in B53)
 - Out-of-range fields say the limit (Ayarlar defaults, offcut dialog) instead of a silent disabled Kaydet [#12] (done in B46)
 - ★ One vocabulary across Ayarlar / Simülasyon / step 1: Köprü, Kapalı, ince tabaka, Climb (tırmanma) [#11, #12] (done in B46)
 - "Ayrı plaka parçalarını yeni projeye aktar" also on an unsaved new project (saves first); a project on an archived machine shows "bu makine arşivlendi" on step 1 and Dışa aktar [#12] (done in B46)
-- Machine form park fields: the unit sits against the number ("0mm"), needs a space like the other fields [T B55 tester]
+- Machine form park fields: the unit sits against the number ("0mm"), needs a space like the other fields [T B55 tester] (done in B53)
 - Flaky e2e seen in CI round 24 (green on rerun): `b07-cutlist-tester-r3.spec.ts:247` 390 touch tap after scroll (scrollIntoViewIfNeeded timeout), `b21-preview3d-perf.spec.ts:69` fps read 0 on the CPU runner [T CI]
-- Parçalar header: after a quantity change "1 sorun" and "Hatalı satırlar" stay yellow; they should be neutral (usta test 2026-11-21) [usta]
+- Parçalar header: after a quantity change "1 sorun" and "Hatalı satırlar" stay yellow; they should be neutral (usta test 2026-11-21) [usta] (done in B53)
 
 ### P4 Kabuk, bildirimler, ana sayfa   [status: done, B39]
 Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is already the box.
@@ -1558,6 +1559,7 @@ Done in B39 (#134). The Dışa aktar profile-version item was dropped: T269 is a
 - ★ Projeler row 205 px on a 3-sheet project: one line + "3 dosya" / zip button, no mid-word breaks; search / filter / sort in the URL [#11, #12]
 - Ana sayfa: "Bu hafta dışa aktarma" counts NC only (or relabel), deleted projects not counted; "Makine yok" when no active machine [#12]
 - Dışa aktar: the footer hint jumps to the checklist (or the list sits above Dosyalar); file names break at _ / - or are middle-truncated; report card time rounds like Simülasyon [#12]
+- Projeler: hide the "kaydedilmeden kapandı" draft banner when the server already has that save (the keepalive create landed): needs `lastSaveId` in the project list API; match it against the stored unit [tester B60, PO 2026-11-23]
 - Small server fixes: maintenance day in local time; client-log limit in bytes [T B38, T B43] (done in B46 #150, D-086)
 
 ### P5 Output (golden impact: tester gcode-safety review, D-051)   [status: done, B51 #155; float residue → T306]
@@ -1656,6 +1658,15 @@ Tester focus: try to get one project's parts into another (leave fast, offline, 
 Spec: §12.1 · Depends: T191, T192 · Owner: PO + tester · **Human gate: owner sign-off**
 Acceptance:
 - [ ] checklist: all M2–M9 exits met, known issues list, open spec items (§14.2) that affect the test, machine info (§12.3) collected; question to the owner via the dashboard
+  - CTO review #13 (2026-11-23, `docs/reviews/2026-11-23-cto-design-review-13.md`, main `42258a0`, B63 and B60 counted as landing):
+  - [x] M2–M8 exits met
+  - [ ] M9 exit: open until M1 (tabs facing a neighbour hold nothing at the default clearance) and M2 (extended test part cut free) of review #13 land or the owner accepts the runbook workaround, B63 lands, and the owner signs off
+  - [x] known issues list written (review #13 §4), each with "matters at the field test"
+  - [x] open spec items (§14.2) that affect the test listed (review #13 §4)
+  - [ ] machine info (§12.3) collected: not collected; the owner's bring-list and day runbook are in `docs/machines/saha-gunu.md`
+  - [ ] question to the owner via the dashboard (PO)
+  - [ ] tester: final full run with one summary report
+  - [ ] owner sign-off
 Tester focus: final full run (unit, property, golden, e2e, visual, axe, perf) with one summary report.
 
 ---
@@ -1738,26 +1749,26 @@ Owner 2026-11-21, before the field test (D-112; usta raporu 2 "Elif": "depth exi
 
 Source for every number: `docs/materials/kesim-degerleri-arastirma.md` (PR #190; section d "starting values" and the consolidated table c). PO decisions: (1) values are **starting points, always unverified**: they never mark a set or a profile as verified; (2) MDF 18 / Ø8 stays exactly as today (6000 / 1500 / 18 000 / 6): goldens and the frozen default profile do not change; (3) the kinds stay as they are: `solidWood` starts from the **hardwood** row and `pvc` from the **rigid PVC** row (the safe side), with a note naming the softer variant; splitting the kinds is not part of this batch; (4) no metal here (M-Metal).
 
-### T327 Starting-value table in core   [status: todo]
+### T327 Starting-value table in core   [status: done]
 Spec: §3.6, §7.1 · Depends: – · From: owner 2026-11-23
-- [ ] `packages/core` gets a pure data table: material kind × tool type × flute count × diameter band → chip load (min / typ / max), rpm (typ, within the usual 6 000–24 000), step-down rule, plunge share, entry (straight / ramp), notes key; each row carries the source id from the research doc
-- [ ] `suggestCuttingSet(kind, thickness, tool, spindleRange)` returns feed, plunge feed, rpm, step-down (feed = chip load × flutes × rpm, rounded to 100 mm/min; rpm clamped to the machine range and the feed recomputed; step-down never above the tool's flute length and reduced by the research rule when the cut is deeper than 1 × Ø) or `undefined` when the table has no row (never a guess)
-- [ ] for MDF 18 with the Ø8 two-flute end mill the result equals today's built-in set exactly (test); property test: every suggestion is inside its row's chip-load band and the machine limits
-- [ ] no change to existing profiles, projects or goldens
+- [x] `packages/core` gets a pure data table: material kind × tool type × flute count × diameter band → chip load (min / typ / max), rpm (typ, within the usual 6 000–24 000), step-down rule, plunge share, entry (straight / ramp), notes key; each row carries the source id from the research doc
+- [x] `suggestCuttingSet(kind, thickness, tool, spindleRange)` returns feed, plunge feed, rpm, step-down (feed = chip load × flutes × rpm, rounded to 100 mm/min; rpm clamped to the machine range and the feed recomputed; step-down never above the tool's flute length and reduced by the research rule when the cut is deeper than 1 × Ø) or `undefined` when the table has no row (never a guess)
+- [x] for MDF 18 with the Ø8 two-flute end mill the result equals today's built-in set exactly (test); property test: every suggestion is inside its row's chip-load band and the machine limits
+- [x] no change to existing profiles, projects or goldens
 Tester focus: table rows against the research doc for 6 spot checks; clamping at 6 000 and 24 000 rpm; missing row → no suggestion.
 
-### T328 "Kesim ayarı ekle" starts from the material's values   [status: todo]
+### T328 "Kesim ayarı ekle" starts from the material's values   [status: done]
 Spec: §3.6 · Depends: T327 · From: owner 2026-11-23, CTO metal analysis (a new set starts at 5 000 mm/min, 18 000 rpm for every material today)
-- [ ] a new cutting set in the machine form, Ayarlar → Malzemeler and the "kesim ayarı yok" fix flow is prefilled from `suggestCuttingSet` for the chosen kind, thickness and tool; changing kind or tool before the first manual edit refreshes the values; a manual edit is never overwritten
-- [ ] the set shows "Başlangıç değeri: <kaynak kısa adı> · doğrulanmadı, önce deneme kesimi" and stays unverified; the existing "Değerleri doğruladım" gate (T265) is unchanged
-- [ ] a material note where the research has one: melamine (alt yüz / üst yüz kırılması, compression takım), acrylic and PVC (tek ağız, rampa, hava üfleme), plywood (yüz kırılması); a tool that does not fit the material (e.g. two-flute in acrylic) gives a hint, not a block
-- [ ] no table row → the fields start empty with "Bu malzeme için hazır değer yok", never the old fixed numbers
+- [x] a new cutting set in the machine form, Ayarlar → Malzemeler and the "kesim ayarı yok" fix flow is prefilled from `suggestCuttingSet` for the chosen kind, thickness and tool; changing kind or tool before the first manual edit refreshes the values; a manual edit is never overwritten
+- [x] the set shows "Başlangıç değeri: <kaynak kısa adı> · doğrulanmadı, önce deneme kesimi" and stays unverified; the existing "Değerleri doğruladım" gate (T265) is unchanged
+- [x] a material note where the research has one: melamine (alt yüz / üst yüz kırılması, compression takım), acrylic and PVC (tek ağız, rampa, hava üfleme), plywood (yüz kırılması); a tool that does not fit the material (e.g. two-flute in acrylic) gives a hint, not a block
+- [x] no table row → the fields start empty with "Bu malzeme için hazır değer yok", never the old fixed numbers
 Tester focus: every kind × Ø6 / Ø8; edit-then-change-kind keeps the edit; unverified export warning still shown.
 
-### T329 Example machine: real melamine and plywood sets   [status: todo]
+### T329 Example machine: real melamine and plywood sets   [status: done]
 Spec: §7.1 · Depends: T327 · From: D-046 (the two sets are copies of MDF 18)
-- [ ] `exampleMachineProfile()` (new companies only) takes its Melamin 18 and Kontrplak 18 sets from the table for its own tools instead of the MDF copy; `copiedFrom` is dropped for them; MDF 18 unchanged
-- [ ] existing companies' machines are not touched (no migration); the frozen `defaultMachineProfile()` and every golden stay byte-identical; e2e that export from the example machine with melamine or plywood are checked for stale expectations
+- [x] `exampleMachineProfile()` (new companies only) takes its Melamin 18 and Kontrplak 18 sets from the table for its own tools instead of the MDF copy; `copiedFrom` is dropped for them; MDF 18 unchanged
+- [x] existing companies' machines are not touched (no migration); the frozen `defaultMachineProfile()` and every golden stay byte-identical; e2e that export from the example machine with melamine or plywood are checked for stale expectations
 Tester focus: fresh company gets the three sets; an old company's machine is unchanged; goldens identical.
 
 ### Batch B60: T326, T306 (before the field test; Dev 1)
@@ -1769,6 +1780,58 @@ From: `.team/usta2-rapor.md` (a rectangle drawn ~1 s before closing, "Kaydediliy
 - [x] save units with a client `saveId`; `projects.last_save_id` (migration 0014); a repeated save/create is answered, never applied twice; revision lock unchanged
 - [x] pagehide: keepalive send (≤ 60 000 bytes), the unit on the way resent with the same id; beforeunload prompt while unsaved; Projeler offers a draft closed before the server had it
 - [x] tests: db `projects.test.ts`, route `projects.route.test.ts`, web `autosave-close.test.ts`, `send-save.test.ts`; e2e `t326-save-on-close.spec.ts` (written, not run locally yet: PC memory, PO hold)
+
+### Batch B62: T330–T332 (field rehearsal 2026-11-23, blockers before the machine; Dev 2)
+
+Source: `docs/reviews/2026-11-23-field-rehearsal.md` (tester, branch `test/field-rehearsal`), findings B1, B2, S1–S3.
+
+### T330 Feed limits come from the machine (B1, blocker)   [status: done]
+Spec: §7.1, §7.2 rule 5 · Depends: T323 · From: field rehearsal B1 · Decision: D-121
+- [x] profile: optional `maxFeed` / `maxPlungeFeed` (form fields with units); without them the ceiling is the rapid rate (feed) and half of it (plunge), never below the machine's own set feeds; never the old fixed 60 000 / 30 000
+- [x] command, validation, toolpath, post and checker R5 (`FEED_ABOVE_MACHINE`, derived from the profile on its own) use that ceiling as a hard error
+- [x] warning `FEED_ABOVE_RECOMMENDED` when a job feed or plunge is > 1,5 × the recommendation or the chip load > 2 × the set's: Kesim ayarları line, Uyarılar count, export checklist line to tick
+- [x] goldens byte-identical; unit tests with the tester's numbers (59 000 / 29 000) and checker rejection tests
+
+### T331 The cutter never leaves the sheet (B2, blocker)   [status: done]
+Spec: §6.3, §7.2 rule 6 · Depends: – · From: field rehearsal B2 · Decision: D-123
+- [x] every cutting and lead move keeps the whole cutter (centre ± radius) on the sheet, for all tool diameters, leads, ramps and pocket entries; a lead that does not fit is shortened or removed with the existing lead warning
+- [x] validation says so before export; the independent checker judges the cutter edge on the read path with its own geometry (new error code) with rejection tests; the tester's `lead-sheet-edge.field.tester.test.ts` passes
+- [x] changed goldens listed with the reason (label `needs-human`, D-051)
+
+### T332 Field-kit and checklist truth (S1, S2, S3; rider)   [status: done]
+Spec: §6.6, §7.3, §12.3 · Depends: – · From: field rehearsal S1–S3 · Decision: D-124
+- [x] (S1) park on (G53): checklist and field kit say the machine must be homed; a short ASCII note in the pause comment before the park move; goldens with park off identical
+- [x] (S2) a project on an older machine profile version: a warning counted in Uyarılar and a checklist line naming what changed, with "Güncel makine sürümüne geç"; the binding model (§7.3) unchanged
+- [x] (S3) the air-cut Z-zero step of the field kit is unambiguous (zero on the spoilboard / table plus the stated safe offset); the other kit steps checked for the same ambiguity
+- [x] (rider, PO) "Mach3 ön kontrol" block in the field kit for the `mach3` post: 7 settings from `docs/machines/controllers/mach3-saha-kontrol.md` with their menu paths; every manual change after the first writes `M5` before `M0` (checked over all goldens)
+
+### Batch B63: T333–T336 (field rehearsal 2026-11-23, notes N1–N4; Dev 2)
+
+Source: `docs/reviews/2026-11-23-field-rehearsal.md` section "NOTE" (N1–N4). Based on main (B62 landed).
+
+### T333 The sheet PDF names the NC file and the tool order (N3)   [status: done]
+Spec: §6.6 · Depends: T322, T274 · From: field rehearsal N3 · Decision: D-125
+- [x] each sheet page names the NC file(s) of the sheet exactly as exported (stored names of the newest NC export of the revision; split files all, in order)
+- [x] the tool order of the sheet ("1. T1 Ø6 düz freze → 2. T2 Ø8 düz freze"), with "elle değişim" when the changer is manual; labels page unchanged
+- [x] no NC export of the revision → the page says so, never a guessed name; unit test on the page text
+
+### T334 The NC header tells the real tab count (N1)   [status: done]
+Spec: §7.2 · Depends: T324, T288 · From: field rehearsal N1 · Decision: D-126
+- [x] when ramp entry leaves a part fewer tabs than the setting, a second ASCII header line names how many parts and the minimum; otherwise no new line (goldens identical)
+- [x] Simülasyon / Uyarılar shows the same warning naming the parts
+- [x] new fixture + golden for ramp + small part (`needs-human`); the independent checker still accepts the file
+
+### T335 End at the park point; time estimate at machine speed (N2, N4; rider)   [status: done]
+Spec: §7.2, §6.6 · Depends: T309, T330 · From: field rehearsal N2, N4 · Decision: D-127
+- [x] park on: program end = safe Z → spindle off → park move → vacuum off → M30; the checker accepts the end G53 only at the profile's point; park off byte-identical
+- [x] machine form hint and field kit say the program ends at park
+- [x] the time estimate clamps every move at the machine's feed ceiling and the rapid rate
+
+### T336 Vacuum switched by hand is never silent; the export check always has the post (B62 audit; rider)   [status: done]
+Spec: §7.2, §6.6 · Depends: T330 · From: B62 audit · Decision: D-128
+- [x] vacuum hold-down and no vacuum code written (post vacuum off or no on-code): the export checklist has a line that must be ticked ("Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın"), the NC header an ASCII note, the field kit the same text; with a code nothing changes (goldens identical)
+- [x] the production export path always passes the post to the checker (asserted), so TOOL_PAUSE_COUNT never runs in its lenient "no post given" mode there; test contexts unchanged
+- [x] the third audit item (Simülasyon shows an empty blocking list while the profile loads) is in the polish queue P2
 
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)

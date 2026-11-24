@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useState, type ComponentProps, type KeyboardEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type ComponentProps, type KeyboardEvent } from 'react';
 import { cn } from '../lib/cn';
 import { formatNumberTr, parseNumberTr, stepNumber, type NumberParseError } from '../lib/number';
 import { fieldBase, fieldFocus } from '../lib/styles';
@@ -66,6 +66,22 @@ export function NumberInput({
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<NumberParseError | null>(null);
   const [shown, setShown] = useState(value);
+  const unitRef = useRef<HTMLSpanElement>(null);
+  const [unitPx, setUnitPx] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = unitRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.getBoundingClientRect().width;
+      setUnitPx(w > 0 ? w : null);
+    };
+    measure();
+    // Web fonts can arrive after the first measure.
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [unit]);
   // Follow outside changes of `value` unless the user is typing (derived state, no effect).
   if (!editing && value !== shown) {
     setShown(value);
@@ -123,7 +139,13 @@ export function NumberInput({
   // The input itself is the field box (border, focus halo), so keyboard focus is visible on the
   // focused element; unit and stepper sit on top of its right padding.
   const stepperWidth = showStepper ? '1.75rem' : '0px';
-  const unitWidth = unit ? `calc(${unit.length}ch + 0.5rem)` : '0px';
+  // The unit's rendered width plus a 0.5rem gap. Before the first measure (server render) it is
+  // estimated in `ch`, which is too narrow for wide letters: "mm" sat against the number ("0mm").
+  const unitWidth = unit
+    ? unitPx !== null
+      ? `calc(${unitPx}px + 0.5rem)`
+      : `calc(${unit.length}ch + 0.5rem)`
+    : '0px';
 
   return (
     <div className={cn('relative flex', heights[inputSize], className)}>
@@ -163,7 +185,9 @@ export function NumberInput({
       />
       {unit ? (
         <span
+          ref={unitRef}
           aria-hidden
+          data-unit=""
           className={cn(
             'pointer-events-none absolute inset-y-0 flex items-center text-sm text-fg-subtle select-none peer-focus:text-fg-muted',
             showStepper ? 'right-10' : 'right-3',

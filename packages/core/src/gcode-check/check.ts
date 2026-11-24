@@ -9,6 +9,7 @@ import { cutLoops, expectedLoopCount, matchLayout, matchModel, type CutLoop } fr
 import { toSheetMoves, type SheetMove } from './path';
 import { pocketMoveRule, pocketNotCutRule } from './pocket';
 import {
+  activeTools,
   floorRule,
   rampRule,
   headerRule,
@@ -70,6 +71,8 @@ interface Analysis {
   /** The read path and events (sheet frame), for the layout-level pocket rule (T325). */
   sm: SheetMove[];
   events: readonly GcodeEvent[];
+  /** B62 fix r1: the active tool of every read move (null = unknown). */
+  tools: (number | null)[];
 }
 
 function read(text: string, d: Derived): GcodeReadResult {
@@ -91,7 +94,12 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
   headerRule(text, d, push);
   modalRule(r, d, push);
   const sm = toSheetMoves(r.moves, d.frame, r.events);
-  motionRules(r, sm, d, push);
+  // B62 fix r1: the active tool comes from this file's own operations (a split or per-tool file
+  // consumes a prefix of the remaining ones); a silent first match finds them.
+  const pre = matchModel(sm, d.ops, d, prefix, () => undefined);
+  const fileOps = pre.ok ? d.ops.slice(0, pre.consumed) : d.ops;
+  motionRules(r, sm, d, push, fileOps);
+  const tools = activeTools(r, sm, d, fileOps);
   floorRule(sm, d, push);
   rampRule(sm, d, push);
   const m = matchModel(sm, d.ops, d, prefix, push);
@@ -107,6 +115,7 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
     moves: r.moves.length,
     sm,
     events: r.events,
+    tools,
   };
 }
 
@@ -130,7 +139,7 @@ function finish(
 ): GcodeCheckResult {
   if (layout) {
     matchLayout(a.loops, layout, d, a.push);
-    pocketNotCutRule(layout, pocketMoveRule(a.sm, a.events, layout, d, a.push), a.push);
+    pocketNotCutRule(layout, pocketMoveRule(a.sm, a.events, layout, d, a.push, a.tools), a.push);
   }
   const ok = !a.violations.some((v) => v.severity === 'error');
   return {
@@ -180,6 +189,9 @@ export function checkGcodeFiles(
   const all: GcodeCheckViolation[] = [];
   const sheets = [...new Set(files.map((f) => f.sheet))];
   const expectedSheets = new Set(context.toolpath?.operations.map((o) => o.sheet) ?? []);
+  // B62 fix r1 (audit): a sheet of the expected layout with parts needs a program too, so a
+  // toolpath that silently drops a whole sheet cannot pass.
+  for (const [s, parts] of context.layout ?? []) if (parts.length > 0) expectedSheets.add(s);
   for (const s of expectedSheets) {
     if (!sheets.includes(s)) {
       all.push({
@@ -234,7 +246,7 @@ export function checkGcodeFiles(
       }
       const a = analyse(file.content, dr.d, !isLast);
       if (sheetLayout) {
-        for (const k of pocketMoveRule(a.sm, a.events, sheetLayout, dr.d, a.push)) {
+        for (const k of pocketMoveRule(a.sm, a.events, sheetLayout, dr.d, a.push, a.tools)) {
           pocketsReached.add(k);
         }
       }

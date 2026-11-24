@@ -56,6 +56,8 @@ import {
   FORM_SECTIONS,
   isDirty,
   newParamSet,
+  refreshStartingValues,
+  startingNote,
   parseErrorText,
   withParamSet,
   type FormSection,
@@ -597,6 +599,23 @@ export function MachineForm({
               u.feed,
               f.rapidFeedHelp,
             )}
+            {/* T330 (D-121): the feed ceiling; empty = from the rapid rate. */}
+            {num(
+              'maxFeed',
+              f.maxFeed,
+              profile.maxFeed ?? Number.NaN,
+              (p, v) => void (p.maxFeed = v),
+              u.feed,
+              f.maxFeedHelp,
+            )}
+            {num(
+              'maxPlungeFeed',
+              f.maxPlungeFeed,
+              profile.maxPlungeFeed ?? Number.NaN,
+              (p, v) => void (p.maxPlungeFeed = v),
+              u.feed,
+              f.maxPlungeFeedHelp,
+            )}
           </Section>
 
           <Section id="origin" title={s.origin} hint={h.origin}>
@@ -963,6 +982,15 @@ export function MachineForm({
                     delete x.copiedFrom;
                     delete x.unverified;
                   });
+                // T328 (D-120): kind, thickness or tool of a starting-value row not yet edited by
+                // hand: the values follow the table. An edited row keeps its numbers.
+                const choose = (fn: (x: MaterialParams) => void) =>
+                  update((p) => {
+                    const x = p.materials[i] as MaterialParams;
+                    fn(x);
+                    if (x.unverified) refreshStartingValues(p, x);
+                    else delete x.copiedFrom;
+                  });
                 // T265: the headers carry the units, so the cells stay narrow and the whole row
                 // (Paso, Takım no) fits without sideways scrolling at 1440.
                 const cell = (
@@ -978,7 +1006,11 @@ export function MachineForm({
                     value={m[k]}
                     error={e(path(k))}
                     onParseError={onParseError}
-                    onChange={(v) => set((x) => void (x[k] = v))}
+                    onChange={(v) =>
+                      k === 'thickness' || k === 'tool'
+                        ? choose((x) => void (x[k] = v))
+                        : set((x) => void (x[k] = v))
+                    }
                   />
                 );
                 return [
@@ -991,42 +1023,8 @@ export function MachineForm({
                       value={m.material}
                       options={o.material}
                       error={e(path('material'))}
-                      onChange={(v) => set((x) => void (x.material = v))}
+                      onChange={(v) => choose((x) => void (x.material = v))}
                     />
-                    {m.copiedFrom ? (
-                      <p
-                        className="flex items-start gap-1 text-xs text-warning-text"
-                        data-testid="material-copied-note"
-                      >
-                        <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                        {t.form.copiedFrom
-                          .replace(
-                            '{from}',
-                            (o.material as Record<string, string>)[m.copiedFrom] ?? m.copiedFrom,
-                          )
-                          .replace('{thickness}', String(m.thickness).replace('.', ','))}
-                      </p>
-                    ) : null}
-                    {m.unverified ? (
-                      <div
-                        className="flex flex-col items-start gap-1 text-xs text-warning-text"
-                        data-testid="material-unverified-note"
-                      >
-                        <p className="flex items-start gap-1">
-                          <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                          {t.form.unverified}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          data-testid="material-unverified-confirm"
-                          onClick={() => set(() => undefined)}
-                        >
-                          {t.form.unverifiedConfirm}
-                        </Button>
-                      </div>
-                    ) : null}
                   </div>,
                   cell('thickness', f.thickness),
                   cell('feed', f.feed),
@@ -1036,23 +1034,99 @@ export function MachineForm({
                   cell('tool', f.materialTool),
                 ];
               }}
-              renderDetail={(i) => (
-                <MaterialTabsDetail
-                  t={t.form.tabs}
-                  index={i}
-                  set={profile.materials[i] as MaterialParams}
-                  error={e}
-                  onParseError={onParseError}
-                  onChange={(fn) =>
-                    update((p) => {
-                      const x = p.materials[i] as MaterialParams;
-                      fn(x);
-                      delete x.copiedFrom;
-                      delete x.unverified;
-                    })
-                  }
-                />
-              )}
+              renderDetail={(i) => {
+                const set = profile.materials[i] as MaterialParams;
+                // B53 (CTO #5 / #7): the copied-set and starting-values notes span the row, under
+                // the fields, instead of stretching the material cell.
+                const clearMarks = () =>
+                  update((p) => {
+                    const x = p.materials[i] as MaterialParams;
+                    delete x.copiedFrom;
+                    delete x.unverified;
+                  });
+                return (
+                  <div className="flex flex-col gap-2">
+                    {set.copiedFrom ? (
+                      <p
+                        className="flex items-start gap-1 text-xs text-warning-text"
+                        data-testid="material-copied-note"
+                      >
+                        <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                        {t.form.copiedFrom
+                          .replace(
+                            '{from}',
+                            (o.material as Record<string, string>)[set.copiedFrom] ??
+                              set.copiedFrom,
+                          )
+                          .replace('{thickness}', String(set.thickness).replace('.', ','))}
+                      </p>
+                    ) : null}
+                    {set.unverified ? (
+                      <div
+                        className="flex flex-col items-start gap-1 text-xs text-warning-text"
+                        data-testid="material-unverified-note"
+                      >
+                        {(() => {
+                          // T328 (D-120): where the numbers come from, the material note and a
+                          // tool hint (never a block).
+                          const n = startingNote(profile, set);
+                          const lines = [
+                            n.kind === 'table'
+                              ? fill(t.form.startingValue, { source: n.sources })
+                              : n.kind === 'none'
+                                ? t.form.startingNone
+                                : t.form.unverified,
+                            n.kind === 'none' || !n.note ? null : t.form.startingNotes[n.note],
+                            n.hint ? t.form.toolFit[n.hint] : null,
+                          ];
+                          const ids = [
+                            'material-starting-source',
+                            'material-starting-note',
+                            'material-tool-hint',
+                          ];
+                          return lines.map((text, k) =>
+                            text ? (
+                              <p
+                                key={ids[k]}
+                                className="flex items-start gap-1"
+                                data-testid={ids[k]}
+                                data-kind={k === 0 ? n.kind : undefined}
+                              >
+                                <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                                {text}
+                              </p>
+                            ) : null,
+                          );
+                        })()}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          data-testid="material-unverified-confirm"
+                          onClick={clearMarks}
+                        >
+                          {t.form.unverifiedConfirm}
+                        </Button>
+                      </div>
+                    ) : null}
+                    <MaterialTabsDetail
+                      t={t.form.tabs}
+                      index={i}
+                      set={set}
+                      error={e}
+                      onParseError={onParseError}
+                      onChange={(fn) =>
+                        update((p) => {
+                          const x = p.materials[i] as MaterialParams;
+                          fn(x);
+                          delete x.copiedFrom;
+                          delete x.unverified;
+                        })
+                      }
+                    />
+                  </div>
+                );
+              }}
             />
           </Section>
         </div>
@@ -1138,15 +1212,18 @@ function RowTable(props: {
 }) {
   const { headers, addLabel, removeLabel, error, keys, testId, onAdd, onRemove, renderRow } = props;
   const pad = props.dense ? 'px-2' : 'px-3';
-  // Mobile UI pass (CTO #5, D-043): below 640 px the dense table (materials, 7 columns) turns
-  // into one card per row with the column name above each field, instead of a sideways scroll.
+  // Mobile UI pass (CTO #5, D-043) and B53 (CTO #5 / #6 / #7): where the dense table (materials,
+  // 7 columns) does not fit its container (below 52 rem: the 1024 px desktop with the side index,
+  // and phones) it turns into one card per row with the column name above each field, instead of
+  // a sideways scroll. Container query, so the sidebar and the side index count. Cards are two
+  // columns on phones and four from 32 rem.
   const cards = props.dense === true;
   const m = (cls: string) => (cards ? cls : '');
   return (
-    <div className="flex flex-col gap-3">
+    <div className={`flex flex-col gap-3 ${m('@container')}`}>
       <div className="relative max-w-full overflow-x-auto rounded-lg border border-border">
-        <table className={`w-full text-sm ${m('max-sm:block')}`} data-testid={testId}>
-          <thead className={`bg-surface-subtle ${m('max-sm:sr-only')}`}>
+        <table className={`w-full text-sm ${m('@max-[52rem]:block')}`} data-testid={testId}>
+          <thead className={`bg-surface-subtle ${m('@max-[52rem]:sr-only')}`}>
             <tr>
               {headers.map((h) => (
                 <th
@@ -1163,28 +1240,30 @@ function RowTable(props: {
             </tr>
           </thead>
           <tbody
-            className={`divide-y divide-border-subtle ${m('max-sm:flex max-sm:flex-col max-sm:gap-2 max-sm:divide-y-0 max-sm:p-2')}`}
+            className={`divide-y divide-border-subtle ${m('@max-[52rem]:flex @max-[52rem]:flex-col @max-[52rem]:gap-2 @max-[52rem]:divide-y-0 @max-[52rem]:p-2')}`}
           >
             {keys.map((key, i) => (
               <Fragment key={key}>
                 <tr
-                  className={`${props.renderDetail ? 'border-b-0! ' : ''}align-top ${m('max-sm:grid max-sm:grid-cols-2 max-sm:gap-x-3 max-sm:gap-y-2 max-sm:rounded-lg max-sm:border max-sm:border-border-subtle max-sm:p-2')}`}
+                  className={`${props.renderDetail ? 'border-b-0! ' : ''}align-top ${m('@max-[52rem]:grid @max-[52rem]:grid-cols-2 @min-[32rem]:@max-[52rem]:grid-cols-4 @max-[52rem]:gap-x-3 @max-[52rem]:gap-y-2 @max-[52rem]:rounded-lg @max-[52rem]:border @max-[52rem]:border-border-subtle @max-[52rem]:p-2')}`}
                   data-testid={cards ? `${testId}-row` : undefined}
                 >
                   {renderRow(i).map((cell, c) => (
                     <td
                       key={c}
-                      className={`${pad} py-2 ${m('max-sm:flex max-sm:min-w-0 max-sm:flex-col max-sm:gap-1 max-sm:p-0')}`}
+                      className={`${pad} py-2 ${m('@max-[52rem]:flex @max-[52rem]:min-w-0 @max-[52rem]:flex-col @max-[52rem]:gap-1 @max-[52rem]:p-0')} ${c === 0 ? m('@max-[52rem]:col-span-2') : ''}`}
                     >
                       {cards ? (
-                        <span aria-hidden className="text-2xs text-fg-subtle sm:hidden">
+                        <span aria-hidden className="text-2xs text-fg-subtle @min-[52rem]:hidden">
                           {headers[c]}
                         </span>
                       ) : null}
                       {cell}
                     </td>
                   ))}
-                  <td className={`px-2 py-2 text-right ${m('max-sm:col-span-2 max-sm:p-0')}`}>
+                  <td
+                    className={`px-2 py-2 text-right ${m('@max-[52rem]:col-span-full @max-[52rem]:p-0')}`}
+                  >
                     <IconButton
                       type="button"
                       size="sm"
@@ -1197,10 +1276,10 @@ function RowTable(props: {
                   </td>
                 </tr>
                 {props.renderDetail ? (
-                  <tr data-detail="" className={m('max-sm:block')}>
+                  <tr data-detail="" className={m('@max-[52rem]:block')}>
                     <td
                       colSpan={headers.length + 1}
-                      className={`${pad} pt-0 pb-3 ${m('max-sm:block max-sm:p-0')}`}
+                      className={`${pad} pt-0 pb-3 ${m('@max-[52rem]:block @max-[52rem]:p-0')}`}
                     >
                       {props.renderDetail(i)}
                     </td>

@@ -306,6 +306,20 @@
       "copiedFrom": "{from} {thickness} mm ayarından kopyalandı; kendi makinenizde doğrulayın.",
       "unverified": "Başlangıç değerleri; bu malzeme için doğrulanmadı. Kendi makinenizde doğrulayın.",
       "unverifiedConfirm": "Değerleri doğruladım",
+      "startingValue": "Başlangıç değeri: {source} · doğrulanmadı, önce deneme kesimi",
+      "startingNone": "Bu malzeme için hazır değer yok. Değerleri girin ve deneme kesimiyle doğrulayın.",
+      "startingNotes": {
+        "plywoodFace": "Kontrplak: yüz kaplaması kırılabilir; temiz kenar için aşağı helisli ya da compression takım.",
+        "melamineFace": "Melamin: alt ve üst yüzde kırılma olabilir; ilk paso en az takımın aşağı helis boyu kadar olmalı.",
+        "melamineNoCompression": "Melamin: compression takım yok; üst yüz temiz kalır, alt yüz kırılabilir.",
+        "solidWoodHard": "Masif: sert ağaç değerleri. Çam gibi yumuşak ağaçta ilerleme deneme kesiminden sonra artırılabilir.",
+        "acrylicPlastic": "Akrilik: tek ağızlı (O-flute) takım, rampayla giriş ve hava üfleme; ilerlemeyi düşürmek erimeyi artırır.",
+        "pvcRigid": "PVC: sert PVC değerleri. Köpük PVC (dekota, foreks) daha hızlı kesilebilir; tek ağızlı takım, rampa ve hava üfleme."
+      },
+      "toolFit": {
+        "melamineCompression": "İpucu: melaminde iki yüzün de temiz kalması için compression takım önerilir.",
+        "plasticSingleFlute": "İpucu: plastikte tek ağızlı (O-flute) takım önerilir; çok ağızlı takım ısınıp eritebilir."
+      },
       "editTitle": "Makineyi düzenle",
       "exampleNote": "Bu bir örnek profildir. Değerleri kendi makinenize göre kontrol edin; üretimden önce air cut ve test kesimi yapın.",
       "versionNote": "Her kayıt yeni bir profil sürümü oluşturur. Makine, takım veya post sürümü değişirse doğrulama yeniden gerekir.",
@@ -347,7 +361,11 @@
         "tableDepth": "Tabla derinliği, Y (mm)",
         "safeZ": "Güvenli Z yüksekliği (mm)",
         "rapidFeed": "Hızlı hareket hızı, G0 (mm/dk)",
-        "rapidFeedHelp": "Yalnızca tahmini kesim süresi için. Bilmiyorsanız 10000 bırakın.",
+        "rapidFeedHelp": "Tahmini kesim süresi için; en yüksek kesme ilerlemesi boşsa bu değer sınır olur. Bilmiyorsanız 10000 bırakın.",
+        "maxFeed": "En yüksek kesme ilerlemesi (mm/dk)",
+        "maxFeedHelp": "Programdaki hiçbir kesme hareketi bunu aşamaz. Boşsa hızlı hareket hızı kullanılır.",
+        "maxPlungeFeed": "En yüksek dalma ilerlemesi (mm/dk)",
+        "maxPlungeFeedHelp": "Malzemeye dalış bunu aşamaz. Boşsa hızlı hareket hızının yarısı kullanılır.",
         "corner": "Sıfır noktası hangi köşede",
         "xPositive": "+X yönü (önden bakınca)",
         "yPositive": "+Y yönü (önden bakınca)",
@@ -364,7 +382,7 @@
         "capacity": "Takım kapasitesi",
         "g43": "Takım boyu telafisi var (G43)",
         "park": "Takım değişiminde park noktasına git",
-        "parkHelp": "Takım değiştirirken makine buraya gelsin: önce güvenli Z'ye çıkar, sonra makine koordinatındaki bu X/Y'ye (G53) gider ve durur. İş sıfırından bağımsızdır.",
+        "parkHelp": "Takım değiştirirken makine buraya gelsin: önce güvenli Z'ye çıkar, sonra makine koordinatındaki bu X/Y'ye (G53) gider ve durur. Program bitince de spindle durduktan sonra buraya gider, plaka boşaltmaya hazır olur. İş sıfırından bağımsızdır.",
         "parkX": "Park X (mm)",
         "parkY": "Park Y (mm)",
         "parkXYHelp": "Makine koordinatı (G53): kumandanın makine/mutlak ekranındaki değer, makine sıfırına (home) göre. Eksen hareket alanının içinde olmalı.",
@@ -517,6 +535,8 @@
       "duplicateMaterial": "Bu malzeme ve kalınlık zaten var.",
       "unknownTool": "Bu numarada takım yok.",
       "plungeAboveFeed": "Dalma hızı beslemeden büyük olamaz.",
+      "feedAboveMachineMax": "Bu makinenin en yüksek ilerlemesinin üstünde (girilen en yüksek kesme ilerlemesi, girilmediyse hızlı hareket hızı). Değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
+      "plungeAboveMachineMax": "Bu makinenin en yüksek dalma ilerlemesinin üstünde (girilen en yüksek dalma, girilmediyse hızlı hareket hızının yarısı). Değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
       "rpmOutsideSpindle": "Devir, spindle aralığının dışında.",
       "tabHeightAboveThickness": "Köprü yüksekliği malzeme kalınlığından en az 1 mm az olmalı."
     },
@@ -786,6 +806,14 @@
       "label": "Uyarılar: {state}"
     },
     "rowIssue": "Satır {n}: {text}",
+    "rowMachining": "Satır {n}: işleme var ({text})",
+    "machining": {
+      "inners": "{count} iç kesim",
+      "holes": "{count} delik",
+      "lines": "{count} çizgi",
+      "templates": "{count} delik şablonu",
+      "shape": "serbest şekil"
+    },
     "cards": {
       "label": "Parça kartları",
       "title": "Satır {n}"
@@ -1182,6 +1210,7 @@
       "OUT_OF_ENVELOPE": "Hareket makinenin çalışma alanının dışına çıkıyor: plaka veya parça bu makineye sığmıyor.",
       "SHEET_OUTSIDE_TABLE": "Plaka makinenin tablasına sığmıyor.",
       "CUT_OUTSIDE_SHEET": "Kesim plakanın dışına taşıyor.",
+      "CUTTER_OFF_SHEET": "Takımın kenarı plaka kenarını geçiyor; kenardaki dayama ya da mengeneye çarpabilir. Dizilimde kenar payını büyütün.",
       "BELOW_SPOILBOARD_ALLOWANCE": "Kesim, fedakâr tablaya izin verilenden derine iniyor.",
       "TOOL_CHANGE_UNSUPPORTED": "Post otomatik takım değiştirme (T.. M6) yazıyor ama makinenin takım değiştiricisi elle. Makineler sayfasında post'u Mach3 yapın ya da takım değiştiriciyi otomatik seçin.",
       "M6_WITHOUT_CHANGER": "Otomatik takım değiştiricisi olmayan makinede M6 yazılmış.",
@@ -1229,7 +1258,7 @@
       "TOOL_CHANGE_BELOW_SAFE_Z": "Takım değişimi güvenli Z'nin altında.",
       "NO_SAFE_Z_AFTER_TOOL_CHANGE": "Takım değişiminden sonra önce güvenli Z'ye kalkılmıyor.",
       "FEED_FROM_UNKNOWN_POSITION": "Kesim, bilinmeyen bir konumdan başlıyor.",
-      "MACHINE_MOVE": "Makine koordinatında (G53) bir hareket var ama makine profilindeki park noktası değil (ya da güvenli Z'de, spindle kapalıyken ve hemen ardından duraklama ile değil).",
+      "MACHINE_MOVE": "Makine koordinatında (G53) bir hareket var ama makine profilindeki park noktası değil (ya da güvenli Z'de, spindle kapalıyken ve hemen ardından duraklama veya program sonu ile değil).",
       "PLUNGE_TOO_FAST": "Dalma, dalma beslemesinden hızlı.",
       "FEED_ABOVE_MACHINE": "İlerleme makinenin sınırının üstünde.",
       "RAMP_OUTSIDE_KERF": "Rampa, girdiği kesim çizgisinin dışına çıkıyor.",
@@ -1261,6 +1290,7 @@
       "TOOL_MISMATCH": "Kesimde beklenenden farklı takım kullanılıyor.",
       "TOOL_ORDER": "Takım değiştirme sırası yanlış.",
       "TOOL_PAUSE_COUNT": "Elle takım değiştirme duraklaması sayısı yanlış.",
+      "TOOL_UNKNOWN": "Bir kesim hareketinin hangi takımla yapıldığı programdan ve işten belirlenemiyor.",
       "TOOL_CHANGE_OPTIONAL_STOP": "Elle takım değişimi M1 (isteğe bağlı durma) ile duruyor; kumandada isteğe bağlı durma kapalıysa makine eski takımla devam eder. M0 kullanılmalı.",
       "TOOL_PROMPT_MISMATCH": "Takım değiştirme mesajı yanlış takımı söylüyor.",
       "STOCK_MISMATCH": "Malzeme kalınlığı takım yolu derinliğiyle uyuşmuyor.",
@@ -1279,6 +1309,7 @@
       "SMALL_PART_SKIN": "Küçük parçanın altında ince tabaka bırakıldı; plakanın sonunda temizleme pasosuyla kesilir.",
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
       "TABS_REDUCED": "Köprü sayısı azaltıldı.",
+      "TABS_REDUCED_RAMP": "Köprü sayısı azaltıldı: rampa girişi köprülerin yerini kaplıyor (G-code başlığı da yazar). Tüm köprüler için Kesim ayarlarında girişi düz dalmaya alın.",
       "TABS_NOT_PLACED": "Köprüler yerleştirilemedi.",
       "UNPLACED_COPIES": "Bazı parçalar plakaya yerleşmedi ve kesilmeyecek.",
       "CLEARANCE_CLAMPED": "Yaklaşma yüksekliği güvenli Z ile sınırlandı.",
@@ -1304,11 +1335,13 @@
       "SMALL_PART_SKIN_OUT_OF_BOUNDS": "İnce tabaka bu küçük parçayı tutamaz (kalınlık 0,2 mm ile kalınlık − 1 mm arası olmalı); parça son pasoda serbest kalır. 1. adımda tabaka kalınlığını düzeltin.",
       "SMALL_PART_TAB_TOO_SMALL": "Köprü bu küçük parçayı tutamayacak kadar küçük (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası); parça serbest kalır. Kesim ayarlarında köprü ölçüsünü düzeltin ya da “Köprü: Kapalı” seçin.",
       "TABS_TOO_SMALL": "Köprü ölçüsü tutma sınırının altında (genişlik en az 3 mm, yükseklik 1 mm ile kalınlık − 1 mm arası).",
-      "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
+      "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım çapından küçük; takımın kenarı plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
       "TABS_TOO_SMALL_HIGH": "Köprü çok yüksek: yükseklik en fazla kalınlık − 1 mm olabilir. Kesim ayarlarında köprü yüksekliğini düşürün.",
       "SMALL_PART_TAB_TOO_SMALL_HIGH": "Köprü bu küçük parça için çok yüksek (yükseklik en fazla kalınlık − 1 mm); parça tutulamaz. Kesim ayarlarında köprü yüksekliğini düşürün ya da “Köprü: Kapalı” seçin.",
       "SPINDLE_RPM_OUT_OF_RANGE": "Bir takımın devri makinenin devir aralığının dışında. Kesim ayarlarında “Önerilene dön” deyin ya da aralık içinde bir değer seçin.",
       "FEED_OUT_OF_RANGE": "Bir takımın ilerlemesi ya da dalması makinenin sınırlarının dışında. Kesim ayarlarında “İlerlemede önerilene dön” deyin ya da sınır içinde bir değer girin.",
+      "MACHINE_FEED_ABOVE_MAX": "Makinenin malzeme ayarındaki ilerleme bu makinenin en yüksek ilerlemesinin üstünde (en yüksek ilerleme girilmediyse hızlı hareket hızı, dalmada yarısı). Makineler'de değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
+      "FEED_ABOVE_RECOMMENDED": "Bir takımın ilerlemesi ya da dalması önerilenin 1,5 katından fazla (ya da talaş yükü 2 katından fazla); fazladan bir sıfır yazılmış olabilir. Kesim ayarlarında değeri kontrol edin ya da “İlerlemede önerilene dön” deyin.",
       "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor (türü, boyu ya da çapı). Kesim ayarlarında “Önerilene dön” deyin ya da listeden başka bir takım seçin."
     },
     "codeFallback": "Kontrol {code}",
@@ -1508,6 +1541,8 @@
         "feedUnit": "mm/dk",
         "feedBounds": "{min}–{max} mm/dk arası",
         "plungeFaster": "Dalma ilerlemeden hızlı; çoğu takım için dalma ilerlemenin yarısı ya da daha azıdır.",
+        "feedHigh": "Önerilenin 1,5 katından fazla: fazladan bir sıfır mı yazıldı? Takım kırılabilir; dışa aktarırken ayrıca onaylamanız istenir.",
+        "chipLoadHigh": "Talaş yükü malzeme ayarındakinin 2 katından fazla: takım kırılabilir; dışa aktarırken ayrıca onaylamanız istenir.",
         "feedSource": {
           "recommended": "İlerleme ve dalma malzeme ayarından ({feed} / {plunge} mm/dk).",
           "project": "Bu projeye özel ilerleme/dalma (önerilen {feed} / {plunge} mm/dk)."
@@ -1772,7 +1807,7 @@
         "slugUnsecured": "Bir iç kesimin göbeğine 2 köprü sığmıyor; G-code üretilemez.",
         "holeInvalid": "Bir delik bu makineyle delinemiyor ya da parçaya uymuyor; G-code üretilemez.",
         "lineOutside": "Bir çizgi parçanın dışına taşıyor; G-code üretilemez.",
-        "marginLow": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar."
+        "marginLow": "Kenar payı takım çapından küçük; takımın kenarı plakanın dışına çıkar."
       },
       "nextStep": "Sonraki: {name}",
       "counter": "{n} / {total}"
@@ -1826,13 +1861,13 @@
       "table": "Tabla {size} · post {post}",
       "unverified": "Bu makine profili doğrulanmadı: G-code'un ilk satırı \"DOĞRULANMADI, önce air cut\" uyarısıdır.",
       "profileNewer": "Makine profili güncellendi: proje sürüm {old} ile kaydedildi, son sürüm {latest}. Önizleme ve dosya projenin sürümüyle (sürüm {old}) yapılır.",
-      "useLatest": "Son sürüme geç",
+      "profileNewerChanges": "Makine profili güncellendi: proje sürüm {old} ile kaydedildi, son sürüm {latest}. Değişenler: {changes}. Önizleme ve dosya eski sürümün değerleriyle (sürüm {old}) yapılır.",
+      "useLatest": "Güncel makine sürümüne geç",
       "unknownMachine": "Projenin makinesi bulunamadı. Listeden bir makine seçin.",
       "choose": "Makine seçin",
       "material": "Malzeme",
       "thickness": "Kalınlık (mm)",
       "thicknessHint": "Bu makinede kesim ayarı olan kalınlıklar: {list} mm",
-      "thicknessNone": "Bu makinede bu malzeme için kesim ayarı yok.",
       "sheet": "Plaka ölçüsü",
       "preset": "{a} × {b} mm",
       "custom": "Özel ölçü",
@@ -1990,9 +2025,24 @@
       "checkToolChange": "Program içinde {count} kez durup takım ister.",
       "checkToolChangeZ": "Program içinde {count} kez durup takım ister. Her değişimden sonra Z'yi yeniden sıfırlayacağım.",
       "parkOff": "Park noktası kapalı: takım değişiminde takım plakanın üstünde kalır. Makineler › makine › Takım değiştirici bölümünden park noktası ayarlayın.",
+      "parkHome": "Makine referanslanmış (home) olmalı; değilse park hareketi sınır anahtarına gidebilir. Park noktası makine koordinatıdır (G53).",
       "fileNameLong": "Dosya adı {longest} karakter; makine en fazla {limit} karakter okuyor. Makinenin son sürümüne geçin ya da proje adını kısaltın.",
       "checkAirCut": "Air cut yapılacak mı?",
       "checkTemplates": "Hazır şablon ölçüleri doğrulanmadı: {names}. Ölçüleri kendi menteşe / kulp verinizle karşılaştırdım.",
+      "checkStale": "Dosya makinenin eski profil sürümüyle (sürüm {old}) üretiliyor; son sürüm {latest}. Değişenler: {changes}. Eski değerlerin bilerek kullanıldığını onaylıyorum.",
+      "useLatestVersion": "Güncel makine sürümüne geç",
+      "profileChange": {
+        "tools": "takımlar",
+        "limits": "sınırlar (hareket, tabla, devir, ilerleme, Z)",
+        "post": "post",
+        "origin": "sıfır noktası",
+        "toolChanger": "takım değiştirici ve park",
+        "materials": "kesim ayarları",
+        "other": "diğer ayarlar"
+      },
+      "checkVacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
+      "checkFeeds": "İlerleme önerilenin çok üstünde: {tools}. Fazladan sıfır olmadığını kontrol ettim; bu değerler bilerek girildi.",
+      "checkFeedsTool": "T{tool} ilerleme {feed} (önerilen {recFeed}), dalma {plunge} (önerilen {recPlunge}) mm/dk",
       "hingeHandle": "Kulp delikleri menteşe ile aynı kenarda ({names}). Kulp menteşe tarafında olamaz; kenarı kontrol edin.",
       "airCutNote": "Simülasyon air cut'ın yerine geçmez: ilk çalıştırmada takımı malzemenin üstünde boşta çalıştırın.",
       "unverifiedTitle": "Bu makine profili doğrulanmadı",
@@ -2101,9 +2151,12 @@
         "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
         "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
         "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
-        "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım yarıçapından küçük; takım plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
+        "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım çapından küçük; takımın kenarı plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
         "SPINDLE_RPM_OUT_OF_RANGE": "Takım devri makinenin devir aralığının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
         "FEED_OUT_OF_RANGE": "Takım ilerlemesi ya da dalması makinenin sınırlarının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
+        "MACHINE_FEED_ABOVE_MAX": "Makinenin malzeme ayarındaki ilerleme bu makinenin en yüksek ilerlemesinin üstünde (en yüksek ilerleme girilmediyse hızlı hareket hızı, dalmada yarısı). Makineler'de değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
+        "FEED_ABOVE_RECOMMENDED": "Takım ilerlemesi ya da dalması önerilenin çok üstünde; Simülasyon → Kesim ayarlarında kontrol edin.",
+        "PROFILE_VERSION_OUTDATED": "Proje makinenin eski profil sürümüyle kayıtlı; dosya eski takım ve sınır değerleriyle üretilir. Makine ve plaka adımında “Güncel makine sürümüne geç” deyin.",
         "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor; Simülasyon → Kesim ayarlarında başka takım seçin."
       },
       "other": "Kontrol {code}"
@@ -2294,6 +2347,7 @@
     "fieldKitLink": "Saha testi kiti"
   },
   "fieldKit": {
+    "vacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
     "title": "Saha testi kiti",
     "subtitle": "{machine} · profil v{version} · post {post}",
     "metaTitle": "Saha testi kiti",
@@ -2334,7 +2388,7 @@
       "steps": [
         "Takımı takın: T{tool}, Ø{diameter} mm. Profildeki takımla aynı olmalı.",
         "X/Y program sıfırını {corner} köşeye alın.",
-        "Z sıfırını profildeki yönteme göre alın: {zref}.",
+        "Z sıfırını malzeme yokken fedakâr tablanın (ya da tablanın) üst yüzeyine alın; air cut programı takımı bu yüzeyin en az {gap} mm üstünde tutar. Bu sıfır yalnızca air cut içindir: test kesiminden önce Z sıfırını plakada profildeki yönteme göre ({zref}) yeniden alın.",
         "Air cut dosyasını yükleyin; ilk satırda “DOGRULANMADI, once air cut” yazdığını görün.",
         "Besleme hızını %25–50’ye indirin; acil stop elinizin altında olsun.",
         "Çalıştırın: takım malzemenin {gap} mm üstünde kalır, spindle döner, hiçbir yere değmez.",
@@ -2346,16 +2400,29 @@
       "title": "Makine günü 2: test kesimi",
       "steps": [
         "Fire plakayı tablaya sabitleyin; plakanın köşesi program sıfırında olsun.",
-        "Z sıfırını yeniden alın ve takımın değişmediğini kontrol edin.",
+        "Z sıfırını plakada profildeki yönteme göre ({zref}) yeniden alın; air cut için tablaya aldığınız sıfırla kesmeyin. Takımın değişmediğini kontrol edin.",
         "Önce 200 × 200 test parçasını kesin; ölçüleri uygulamadaki ölçü formuna girin (uygulama toleransa bakar, düzeltme önerir).",
         "Sonra genişletilmiş test parçasını kesin ({width} × {height} mm). Parçayı çıkarın, tozunu alın.",
         "Aşağıdaki formu kumpasla doldurun; farkı 0,2 mm’yi geçen ölçüyü işaretleyin."
       ]
     },
+    "mach3": {
+      "title": "Mach3 ön kontrol (air cut'tan önce)",
+      "intro": "İlk çalıştırmayı bozabilecek Mach3 ayarları. Her satırı makinede bakıp işaretleyin; bir ayar farklıysa değiştirmeden önce fotoğrafını çekin.",
+      "items": [
+        "Config > General Config: \"G04 Dwell param in milliseconds\" İŞARETSİZ olmalı. Dosya G4 P5.0 yazar (5 sn); işaretliyse spindle 5 ms bekler, devrini almadan kesime girer.",
+        "Help > About: lisans. Demo sürüm 500 satırda durur; büyük dosya yarıda kalır.",
+        "Config > Spindle Setup, Flood Mist Control ve Ports & Pins > Output Signals: M7 hangi çıkışı açıyor? Profil vakumu M7 / M9 ile açıp kapatır; Mach3'te M7 varsayılan olarak soğutma (mist) çıkışıdır.",
+        "Config > Spindle Setup: devri programdaki S mi ayarlıyor, yoksa inverter panelinden elle mi? Elle ise paneli dosya başlığındaki DEVIR değerine getirin.",
+        "Config > Homing/Limits ve ekrandaki \"Ref All Home\": park noktalı (G53) bir programdan önce makine referanslanmış (home) olmalı; home anahtarı yoksa profilde park kapalı kalsın.",
+        "Config > Motor Tuning: X, Y, Z \"Velocity\" dosyadaki ilerlemelerden (başlıktaki ILERLEME / dalma) küçük olmamalı.",
+        "Config > General Config, \"Program end or M30 or Rewind\": iş ofsetini silen seçenek işaretli olmamalı; yoksa ikinci plakada sıfır kaybolur."
+      ]
+    },
     "park": {
       "title": "Not: takım değişimi ve park konumu",
       "text": "Elle takım değişiminde makine malzemenin 20 mm üstünde durur; ayrı bir park konumu yok. Takımı değiştirmeden önce spindle’ın durduğunu görün, gerekirse Z’yi elle kaldırın. Bu yükseklik sizin makinenizde yeterli mi, not alın.",
-      "on": "Elle takım değişiminde makine önce güvenli Z'ye (malzemenin 20 mm üstü) çıkar, sonra makine koordinatında X {x} / Y {y} park noktasına gider (G53) ve durur. Takımı değiştirmeden önce spindle'ın durduğunu görün; park noktasının sizin makinenizde rahat bir yer olduğunu not alın.",
+      "on": "Elle takım değişiminde makine önce güvenli Z'ye (malzemenin 20 mm üstü) çıkar, sonra makine koordinatında X {x} / Y {y} park noktasına gider (G53) ve durur. Program bitince de makine spindle durduktan sonra park noktasına gider; plaka boşaltmaya hazır olur. Park noktası makine koordinatıdır: makine açıldıktan sonra referanslanmış (home) olmalı; değilse park hareketi sınır anahtarına gidebilir. Makinenizde home anahtarı yoksa ilk air cut için park noktasını kapatın. Takımı değiştirmeden önce spindle'ın durduğunu görün; park noktasının sizin makinenizde rahat bir yer olduğunu not alın.",
       "off": "Uyarı: park noktası kapalı. Takım değişiminde takım plakanın üstünde kalır; park noktası ayarlayın.",
       "hint": "Park noktası makine profilinde açılabilir: Makineler › makine › Takım değiştirici › “Takım değişiminde park noktasına git” (makine koordinatı, G53)."
     },
@@ -3109,7 +3176,8 @@
     "report": {
       "title": "Rapor",
       "parts": "Parça",
-      "inners": "İç kontur / delik",
+      "inners": "İç kontur",
+      "holes": "Delik (delik katmanından)",
       "supported": "Okunan nesne",
       "converted": "Dönüştürülen eğri (spline, elips)",
       "ignored": "Yok sayılan (yazı, ölçü, tarama)",
@@ -3246,6 +3314,20 @@
     "parts": "{count} parça",
     "legend": "Parça no: satır.kopya · Ok: damar yönü · Ölçüler mm (kesim ölçüsü) · Kesikli çizgi: kör cep",
     "pocketDepth": "Cep {d}",
+    "ncFile": "NC dosyası: {names}",
+    "ncFiles": "NC dosyaları ({count}, bu sırayla): {names}",
+    "ncNone": "NC dosyası: bu revizyon için henüz dışa aktarılmadı. Dışa aktar adımında NC üretince PDF'yi yeniden alın.",
+    "ncNoFile": "NC dosyası: bu plakada kesilecek iş yok.",
+    "toolOrder": "Takım sırası: {order}",
+    "toolOrderManual": "Takım sırası: {order} · elle değişim",
+    "toolRun": "{n}. T{tool} Ø{d} {type}",
+    "toolTypes": {
+      "flatEndMill": "düz freze",
+      "ballEndMill": "küresel freze",
+      "compression": "kompresyon freze",
+      "vBit": "V uç",
+      "drill": "matkap"
+    },
     "empty": "Dizilim yok. Önce Dizilim adımında yerleştirme yapın.",
     "listTitle": "Parça listesi",
     "listDetails": "{rows} satır · {pieces} parça",
@@ -3413,7 +3495,7 @@
         "materialsHint": "Malzeme, kalınlık, plaka ölçüsü ve damar malzeme kütüphanesinde; kesim değerleri ve köprü ölçüleri makinenin malzeme ayarında.",
         "materialsLink": "Malzeme kütüphanesine git",
         "range": "0–{max} mm arası olmalı; bu değer alınmadı.",
-        "marginNote": "Takım yarıçapından küçük olursa takım plakanın dışına çıkar (örneğin Ø8 takım için en az 4 mm). Takım projede seçildiğinde Dizilim uyarır.",
+        "marginNote": "Takım çapından küçük olursa takımın kenarı plakanın dışına çıkar (örneğin Ø8 takım için en az 8 mm). Takım projede seçildiğinde Dizilim uyarır.",
         "machinesLink": "Makinelerde malzeme ayarına git"
       }
     },

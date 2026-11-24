@@ -108,6 +108,8 @@ describe('POST /api/projects/:id/export', () => {
     expect(pv.profile).toMatchObject({ machineId: machine.id, version: machine.version });
     expect(pv.checklist?.origin.corner).toBeTruthy();
     expect(pv.checklist?.tools.length).toBeGreaterThan(0);
+    // T336: the seeded machine switches its vacuum from the program: no hand-vacuum line.
+    expect(pv.checklist?.vacuumByHand).toBeUndefined();
 
     // T297 (D-072): no checklist confirmation → 428 checklist_required with the checklist data,
     // even with the acceptance; a non-boolean is a bad request; nothing stored.

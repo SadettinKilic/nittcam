@@ -12,6 +12,12 @@ export interface ChecklistState {
   toolChange: boolean;
   /** Unverified ready-template values are checked by hand (T282); only asked when there are any. */
   templates: boolean;
+  /** Feeds far above the recommendation are meant (T330); only asked when there are any. */
+  feeds?: boolean;
+  /** The file uses an older machine profile version on purpose (T332); only asked then. */
+  stale?: boolean;
+  /** The vacuum is switched on by hand (T336); only asked when the program writes no code. */
+  vacuum?: boolean;
 }
 
 export const EMPTY_CHECKLIST: ChecklistState = {
@@ -20,6 +26,7 @@ export const EMPTY_CHECKLIST: ChecklistState = {
   airCut: false,
   toolChange: false,
   templates: false,
+  feeds: false,
 };
 
 /** Why the download is disabled, in the order the user meets them; null = may download. */
@@ -39,6 +46,9 @@ export function downloadBlocker(
   if (!checklist.origin || !checklist.tool || !checklist.airCut) return 'checklist';
   if ((preview.checklist?.toolChanges ?? 0) > 0 && !checklist.toolChange) return 'checklist';
   if (unverifiedTemplates > 0 && !checklist.templates) return 'checklist';
+  if ((preview.checklist?.highFeeds?.length ?? 0) > 0 && !checklist.feeds) return 'checklist';
+  if (preview.checklist?.staleProfile && !checklist.stale) return 'checklist';
+  if (preview.checklist?.vacuumByHand && !checklist.vacuum) return 'checklist';
   if (preview.needsAcceptance && !accepted) return 'accept';
   return null;
 }

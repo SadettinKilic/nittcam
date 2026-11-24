@@ -523,14 +523,18 @@ describe('machine profile rapid feed (deferred from T014)', () => {
       ],
     });
     const slow = profileFor();
-    slow.rapidFeed = 2000;
+    // T335: feeds are timed at most at the rapid rate, so the slow rapid stays above the 6000 feed.
+    slow.rapidFeed = 8000;
+    // B62 fix r1: the ceiling is the rapid rate strictly; this machine declares its own maximum.
+    slow.maxFeed = 10000;
+    slow.maxPlungeFeed = 5000;
     const fast = profileFor();
     fast.rapidFeed = 20000;
     const a = buildToolpath(project, slow).summary;
     const b = buildToolpath(project, fast).summary;
     expect(a.rapidLength).toBeCloseTo(b.rapidLength, 9);
     expect(a.estimatedSeconds - b.estimatedSeconds).toBeCloseTo(
-      (a.rapidLength / 2000 - a.rapidLength / 20000) * 60,
+      (a.rapidLength / 8000 - a.rapidLength / 20000) * 60,
       6,
     );
     const none = profileFor();

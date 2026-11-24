@@ -432,7 +432,15 @@ function buildOuterOperation(
   const perimeter = pathLength(segs);
 
   // Leads: requested length, then shorter, then none.
-  const sheetBox: BBox = { minX: 0, minY: 0, maxX: p.sheet.width, maxY: p.sheet.height };
+  // T331 (field rehearsal B2): the whole cutter stays on the sheet, so the lead's tool centre
+  // keeps one tool radius from every sheet edge (the contour itself may only come closer when the
+  // margin is below the radius, which MARGIN_BELOW_TOOL_RADIUS reports).
+  const sheetBox: BBox = {
+    minX: toolRadius,
+    minY: toolRadius,
+    maxX: p.sheet.width - toolRadius,
+    maxY: p.sheet.height - toolRadius,
+  };
   const bounds = unionBox(sheetBox, bbox(loop));
   let leads: Leads = { leadIn: null, leadOut: null };
   /** Length of the chosen leads (0 = none). */
@@ -519,6 +527,8 @@ function buildOuterOperation(
   );
   const what = isInner ? `Small slug of inner contour ${(ctx.inner ?? 0) + 1}` : 'Small part';
   let tabs: Tab[] = [];
+  // T334 (N1): fewer tabs than asked, and whether the ramp entry took their room.
+  let short: { wanted: number; ramp: boolean } | null = null;
   if ((p.tabs.all || small) && !skinned) {
     const warnKey = isInner ? `${partId}/inner${ctx.inner}` : partId;
     if (small && !p.tabs.all && !smallWarned.has(warnKey)) {
@@ -584,12 +594,20 @@ function buildOuterOperation(
         ),
       );
     } else if (tabs.length < count) {
+      // The ramp leg keeps tabs away like a lead-out; without it, would more have fit?
+      const ramped =
+        rampLeg > 0 &&
+        placeTabs(segs, { ...tabOpts, keepFwd: leadOut + toolRadius, onArcs: isInner }).length >
+          tabs.length;
+      short = { wanted: count, ramp: ramped };
       warnings.push(
         issue(
           'TABS_REDUCED',
           'warning',
           partId,
-          `Only ${tabs.length} of ${count} tabs fit away from corners, arcs and the lead.`,
+          ramped
+            ? `Only ${tabs.length} of ${count} tabs fit: the ramp entry takes the room of the others.`
+            : `Only ${tabs.length} of ${count} tabs fit away from corners, arcs and the lead.`,
           where,
         ),
       );
@@ -711,6 +729,9 @@ function buildOuterOperation(
     travel: p.travel,
     passDepths: [...p.passDepths],
     tabs,
+    ...(short
+      ? { tabsWanted: short.wanted, ...(short.ramp ? { tabsRamp: true as const } : {}) }
+      : {}),
     segments,
   };
 }
@@ -1075,7 +1096,7 @@ export function buildToolpath(
         own.plungeFeed ?? (o.plungeFeed === undefined && rec ? rec.plungeFeed : plungeFeed),
     };
   };
-  const feedLimits = machineFeedLimits();
+  const feedLimits = machineFeedLimits(machine);
   for (const n of jobToolNumbers(project, machine)) {
     const f = feedsOf(n);
     for (const [what, v, range] of [
@@ -1737,7 +1758,10 @@ export function buildToolpath(
     toolpath,
     warnings,
     errors,
-    summary: summarizeToolpath(toolpath, rapidFeed),
+    summary: summarizeToolpath(toolpath, rapidFeed, {
+      feed: feedLimits.feed.max,
+      plunge: feedLimits.plungeFeed.max,
+    }),
     order: orderSummary(order),
   };
 }

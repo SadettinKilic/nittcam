@@ -40,6 +40,8 @@ const HEADER = 44;
 const FOOTER = 22;
 /** Room for the sheet dimension lines (left and below the sheet), points. */
 const DIM_ROOM = 18;
+/** T333: room for the NC file and tool-order lines above the sheet drawing, points. */
+const NC_ROOM = 26;
 
 export interface PageHeader {
   projectName: string;
@@ -84,6 +86,60 @@ export interface PdfOffcut {
 }
 
 export type PdfMachine = Pick<MachineProfile, 'origin' | 'zZero' | 'workEnvelope'> | null;
+
+/** T333 (N3): one tool run of a sheet program, in order of use. */
+export interface PdfNcTool {
+  number: number;
+  diameter: number;
+  /** Tool type of the profile ('' when unknown). */
+  type: string;
+}
+
+/**
+ * T333 (N3): the newest NC export of this revision as the sheet page names it: per layout sheet
+ * index, the file names exactly as exported (split parts in order) and the tool runs in order of
+ * use. null = no NC export of this revision yet.
+ */
+export interface PdfNc {
+  sheets: Readonly<Record<number, { files: readonly string[]; tools: readonly PdfNcTool[] }>>;
+  /** The machine's tool changer is manual: the operator changes the tool at each stop. */
+  manual: boolean;
+}
+
+const toolNf = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 });
+
+/** "1. T1 Ø6 düz freze → 2. T2 Ø8 düz freze" (Ø to 0.01 mm: 6,35 is not 6,4). */
+export function toolOrderText(tools: readonly PdfNcTool[]): string {
+  const types = t.toolTypes as Record<string, string>;
+  return tools
+    .map((tool, i) =>
+      fill(t.toolRun, {
+        n: i + 1,
+        tool: tool.number,
+        d: toolNf.format(tool.diameter),
+        type: types[tool.type] ?? '',
+      }).trim(),
+    )
+    .join(' → ');
+}
+
+/**
+ * T333 (N3): the two lines above the sheet drawing: the NC file(s) of the sheet and its tool order.
+ * No export of this revision → one line saying so (never a guessed name).
+ */
+export function sheetNcLines(nc: PdfNc | null, sheetIndex: number): string[] {
+  if (nc === null) return [t.ncNone];
+  const sheet = nc.sheets[sheetIndex];
+  if (!sheet || sheet.files.length === 0) return [t.ncNoFile];
+  const files = fill(sheet.files.length > 1 ? t.ncFiles : t.ncFile, {
+    names: sheet.files.join(' → '),
+    count: sheet.files.length,
+  });
+  if (sheet.tools.length === 0) return [files];
+  const order = toolOrderText(sheet.tools);
+  const manual = nc.manual && sheet.tools.length > 1;
+  return [files, fill(manual ? t.toolOrderManual : t.toolOrder, { order })];
+}
 
 const nf = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 export const mm = (v: number): string => nf.format(v);
@@ -173,13 +229,24 @@ function ringPath(
   return `${d}Z`;
 }
 
-function drawSheet(page: PDFPage, fonts: PdfFonts, sheet: SheetDrawing, machine: PdfMachine): void {
+function drawSheet(
+  page: PDFPage,
+  fonts: PdfFonts,
+  sheet: SheetDrawing,
+  machine: PdfMachine,
+  ncLines: readonly string[],
+): void {
   const box = contentBox(page);
+  const top = box.y + box.height;
+  ncLines.forEach((line, i) => {
+    const font = i === 0 ? fonts.bold : fonts.regular;
+    text(page, fitText(line, font, 9, box.width), box.x, top - 9 - i * 12, font, 9, INK);
+  });
   const area = {
     x: box.x + DIM_ROOM,
     y: box.y + DIM_ROOM,
     width: box.width - DIM_ROOM,
-    height: box.height - DIM_ROOM,
+    height: box.height - DIM_ROOM - NC_ROOM,
   };
   const fit = fitSheet(sheet, area);
   const s = fit.scale;
@@ -424,6 +491,7 @@ export function addLayoutPages(
   pageCount: number,
   machine: PdfMachine = null,
   offcuts: Readonly<Record<string, PdfOffcut>> = {},
+  nc: PdfNc | null = null,
 ): PDFPage[] {
   const size = PAPER_SIZES[paper];
   return sheets.map((sheet, i) => {
@@ -444,7 +512,7 @@ export function addLayoutPages(
       pageCount,
       t.legend,
     );
-    drawSheet(page, fonts, sheet, machine);
+    drawSheet(page, fonts, sheet, machine, sheetNcLines(nc, i));
     if (sheet.grain !== null) {
       // Sheet grain left of the title.
       const { width, height } = page.getSize();

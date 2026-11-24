@@ -8,6 +8,7 @@ import {
   machineProfileSchema,
   type MachineProfile,
 } from './profile';
+import { suggestCuttingSet } from './starting-values';
 
 /** Name of the seeded example profile (data, shown as is). */
 export const DEFAULT_PROFILE_NAME = 'Genel düz G-code router';
@@ -79,8 +80,8 @@ export const EXAMPLE_PROFILE_NAME = 'Örnek router (Mach3)';
  * The example machine seeded for every new company since T020 (D-016, D-028): a Mach3 router
  * with a manual tool change, 3100 × 2200 × 200 mm travel and a 3050 × 2150 table, so the draft
  * sheet (2800 × 2070) and the example post export end to end. Same tools (6 and 8 mm) and MDF
- * 18 parameters as the generic profile, plus Melamin 18 and Kontrplak 18 sets copied from MDF 18
- * (D-046). Still an unverified example (`example: true`).
+ * 18 parameters as the generic profile, plus Melamin 18 and Kontrplak 18 sets from the built-in
+ * starting values (D-046, T329). Still an unverified example (`example: true`).
  */
 export function exampleMachineProfile(): MachineProfile {
   const p = defaultMachineProfile();
@@ -101,12 +102,24 @@ export function exampleMachineProfile(): MachineProfile {
   p.rapidFeed = 10000;
   p.toolChanger = { type: 'manual', capacity: 1, lengthCompensation: false };
   p.post = { id: 'mach3', version: '1.0.0' };
-  // D-046 (owner, T257): the seeded library's Melamin 18 and Kontrplak 18 cut out of the box with
-  // the MDF 18 values, marked as copied; the profile stays an unverified example (air cut first).
+  // D-046 (owner, T257): the seeded library's Melamin 18 and Kontrplak 18 cut out of the box.
+  // T329 (D-120): their values come from the starting-value table for the MDF set's own tool
+  // (Ø8 two-flute) instead of an MDF copy; the rest of the set (tabs) is as MDF 18. The profile
+  // stays an unverified example (air cut first). MDF 18 itself is unchanged.
   const mdf = p.materials.find((m) => m.material === 'mdf' && m.thickness === 18);
-  if (mdf) {
+  const tool = mdf && p.tools.find((t) => t.number === mdf.tool);
+  if (mdf && tool) {
     for (const material of ['melamine', 'plywood'] as const) {
-      p.materials.push({ ...mdf, material, copiedFrom: 'mdf' });
+      const s = suggestCuttingSet(material, mdf.thickness, tool, p.spindle);
+      if (!s) continue; // no table row: no set, never a guess
+      p.materials.push({
+        ...mdf,
+        material,
+        feed: s.feed,
+        plungeFeed: s.plungeFeed,
+        rpm: s.rpm,
+        stepDown: s.stepDown,
+      });
     }
   }
   return machineProfileSchema.parse(p);

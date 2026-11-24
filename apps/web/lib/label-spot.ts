@@ -107,18 +107,19 @@ export function labelSpot(shape: LabelShape): LabelSpot {
 /**
  * Label of a drawn part at its label spot (T319). The size text is always the part's own
  * footprint W × H; the spot only limits the room the text may use. Passing the spot as the size
- * printed the free room ("276 × 172,5") on a 600 × 400 panel with a cut-out.
+ * printed the free room ("276 × 172,5") on a 600 × 400 panel with a cut-out. With `own` (the
+ * part's unrotated size) a turned part reads its own W × H, not the footprint (usta 2).
  */
 export function spotLabel(
-  part: { label: string; name: string; w: number; h: number },
+  part: { label: string; name: string; w: number; h: number; own?: { w: number; h: number } },
   spot: LabelSpot,
   scale: number,
 ): PartLabel {
   return partLabel({
     number: part.label,
     name: part.name,
-    w: part.w,
-    h: part.h,
+    w: part.own?.w ?? part.w,
+    h: part.own?.h ?? part.h,
     scale,
     room: { w: spot.w, h: spot.h },
   });

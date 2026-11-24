@@ -286,6 +286,16 @@ export const machineProfileSchema = z
      * stay valid, the toolpath default is used without it).
      */
     rapidFeed: num().min(PROFILE_BOUNDS.rapidFeed.min).max(PROFILE_BOUNDS.rapidFeed.max).optional(),
+    /**
+     * T330 (D-121): the highest cutting feed (G1/G2/G3) the machine may run, mm/min. Optional:
+     * without it the ceiling comes from the rapid rate (see `machineFeedLimits`).
+     */
+    maxFeed: num().min(PROFILE_BOUNDS.feed.min).max(PROFILE_BOUNDS.feed.max).optional(),
+    /** T330: the highest plunge feed (descending into the material), mm/min. Optional. */
+    maxPlungeFeed: num()
+      .min(PROFILE_BOUNDS.plungeFeed.min)
+      .max(PROFILE_BOUNDS.plungeFeed.max)
+      .optional(),
     spindle: spindleSchema,
     toolChanger: toolChangerSchema,
     holdDown: holdDownSchema,
@@ -365,6 +375,22 @@ export const machineProfileSchema = z
           ['materials', i, 'tool'],
           'unknownTool',
           `tool T${m.tool} is not in the tool table`,
+        );
+      }
+      if (p.maxFeed !== undefined && m.feed > p.maxFeed) {
+        crossIssue(
+          ctx,
+          ['materials', i, 'feed'],
+          'feedAboveMachineMax',
+          "feed is above the machine's maximum cutting feed",
+        );
+      }
+      if (p.maxPlungeFeed !== undefined && m.plungeFeed > p.maxPlungeFeed) {
+        crossIssue(
+          ctx,
+          ['materials', i, 'plungeFeed'],
+          'plungeAboveMachineMax',
+          "plunge feed is above the machine's maximum plunge feed",
         );
       }
       if (m.plungeFeed > m.feed) {
@@ -504,10 +530,37 @@ export function materialTabIssues(
 }
 
 /** `parseMachineProfile` plus the rules that only apply to a profile being saved (T302). */
+/**
+ * B62 fix r1 (D-121 amended): material sets whose feed or plunge is above the machine ceiling
+ * (`machineFeedLimits`: own maximum, else the rapid rate and half of it). Save only: stored
+ * profiles still load, and such a set blocks the export until it is corrected.
+ */
+export function materialFeedIssues(profile: FeedLimitProfile): MachineProfileIssue[] {
+  const limits = machineFeedLimits(profile);
+  const out: MachineProfileIssue[] = [];
+  profile.materials.forEach((m, i) => {
+    if (m.feed > limits.feed.max)
+      out.push({
+        path: `materials[${i}].feed`,
+        code: 'custom',
+        key: 'feedAboveMachineMax',
+        message: `feed ${m.feed} is above the machine's maximum feed ${limits.feed.max} mm/min`,
+      });
+    if (m.plungeFeed > limits.plungeFeed.max)
+      out.push({
+        path: `materials[${i}].plungeFeed`,
+        code: 'custom',
+        key: 'plungeAboveMachineMax',
+        message: `plunge feed ${m.plungeFeed} is above the machine's maximum plunge feed ${limits.plungeFeed.max} mm/min`,
+      });
+  });
+  return out;
+}
+
 export function parseMachineProfileForSave(json: unknown): ParseMachineProfileResult {
   const parsed = parseMachineProfile(json);
   if (!parsed.ok) return parsed;
-  const issues = materialTabIssues(parsed.profile);
+  const issues = [...materialTabIssues(parsed.profile), ...materialFeedIssues(parsed.profile)];
   return issues.length > 0 ? { ok: false, issues } : parsed;
 }
 
@@ -523,20 +576,40 @@ export interface FeedRange {
 }
 
 /**
- * T323: the cutting feed and plunge feed a program may run on this machine, mm/min. The profile
- * has no own cutting-feed limit yet, so these are the profile-wide bounds of a material set (the
- * rapid rate is only an estimate input and is not used: a low typed rapid rate must not block
- * projects that cut today). One place, so a later per-machine limit changes only this function.
- * Used by the command, the validation, the toolpath and the post; the G-code check derives its
- * own limit from the profile.
+ * Rapid rate assumed for the feed ceiling when a profile has no `rapidFeed` (mm/min); the same
+ * value as the toolpath default (`TOOLPATH_DEFAULTS.rapidFeed`, a test keeps them equal).
  */
-export function machineFeedLimits(): {
+export const RAPID_FEED_FALLBACK = 10_000;
+
+/** The profile fields the feed ceiling is derived from. */
+export type FeedLimitProfile = Pick<
+  MachineProfile,
+  'rapidFeed' | 'maxFeed' | 'maxPlungeFeed' | 'materials'
+>;
+
+/**
+ * T323, T330 (D-121): the cutting feed and plunge feed a program may run on this machine, mm/min.
+ * The ceiling is the profile's own `maxFeed` / `maxPlungeFeed` when set. Without them it is the
+ * rapid rate for the feed and half of it for the plunge (never the old fixed 60 000 / 30 000).
+ * B62 fix r1: no floor at the machine's own material sets; a set above the ceiling is refused
+ * on save (`materialFeedIssues`) and blocks the export (`MACHINE_FEED_ABOVE_MAX`). One place: the command, the validation, the
+ * toolpath and the post use it; the G-code check derives the same rule from the profile itself.
+ */
+export function machineFeedLimits(profile: FeedLimitProfile): {
   feed: FeedRange;
   plungeFeed: FeedRange;
 } {
+  const rapid = profile.rapidFeed ?? RAPID_FEED_FALLBACK;
+  // B62 fix r1 (D-121 amended): strictly the own maximum, else the rapid rate (half for the
+  // plunge). No floor at the machine's own material sets: a typo there must not raise the ceiling.
+  const feedMax = profile.maxFeed ?? rapid;
+  const plungeMax = profile.maxPlungeFeed ?? rapid / 2;
   return {
-    feed: { min: PROFILE_BOUNDS.feed.min, max: PROFILE_BOUNDS.feed.max },
-    plungeFeed: { min: PROFILE_BOUNDS.plungeFeed.min, max: PROFILE_BOUNDS.plungeFeed.max },
+    feed: { min: PROFILE_BOUNDS.feed.min, max: Math.min(feedMax, PROFILE_BOUNDS.feed.max) },
+    plungeFeed: {
+      min: PROFILE_BOUNDS.plungeFeed.min,
+      max: Math.min(plungeMax, PROFILE_BOUNDS.plungeFeed.max),
+    },
   };
 }
 

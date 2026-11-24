@@ -85,12 +85,13 @@ const exp = (p: Project): string => {
 };
 
 describe('feed limits and schema (T323)', () => {
-  it('schema bounds equal the profile bounds; machine limits are those bounds', () => {
+  it('schema bounds equal the profile bounds; machine limits come from the machine (T330)', () => {
     expect(FEED_BOUNDS).toEqual(PROFILE_BOUNDS.feed);
     expect(PLUNGE_FEED_BOUNDS).toEqual(PROFILE_BOUNDS.plungeFeed);
-    expect(machineFeedLimits()).toEqual({
-      feed: PROFILE_BOUNDS.feed,
-      plungeFeed: PROFILE_BOUNDS.plungeFeed,
+    // Golden generic profile: rapid 10 000 → feed ≤ 10 000, plunge ≤ 5 000.
+    expect(machineFeedLimits(machine)).toEqual({
+      feed: { min: PROFILE_BOUNDS.feed.min, max: 10_000 },
+      plungeFeed: { min: PROFILE_BOUNDS.plungeFeed.min, max: 5_000 },
     });
   });
 

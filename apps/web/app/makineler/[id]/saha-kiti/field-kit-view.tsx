@@ -8,6 +8,7 @@ import { pageContainer, sectionLink } from '../../../../components/page/page-hea
 import { fill } from '../../../../lib/fill';
 import type { Messages } from '../../../../lib/messages';
 import type { VerificationOverview } from '../../../../lib/verification-api';
+import { Mach3PreCheck } from './mach3-precheck';
 import { ProgramFiles } from '../dogrulama/verification-view';
 
 type Text = Messages['fieldKit'];
@@ -213,12 +214,23 @@ function Kit({
       <Section title={t.bring.title} testId="field-kit-bring">
         <Checklist items={f(t.bring.items)} />
       </Section>
+      <Mach3PreCheck t={t.mach3} postId={data.post?.id} />
       <Section title={t.air.title} testId="field-kit-air">
         <Checklist items={f(t.air.steps)} ordered />
       </Section>
       <Section title={t.cut.title} testId="field-kit-cut">
         <Checklist items={f(t.cut.steps)} ordered />
       </Section>
+      {data.vacuumByHand ? (
+        // T336 (D-128): vacuum hold-down, but the programs write no vacuum code.
+        <p
+          className="flex items-start gap-1.5 text-sm font-medium text-warning-text"
+          data-testid="field-kit-vacuum-by-hand"
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t.vacuumByHand}
+        </p>
+      ) : null}
       <Section title={t.park.title} testId="field-kit-park">
         <p className="text-sm text-fg">
           {data.park

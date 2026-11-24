@@ -96,8 +96,8 @@ test.describe('B16 tester: DXF dialog flow', () => {
     await page.keyboard.press('Enter');
     const dialog = page.getByTestId('dxf-dialog');
     await expect(dialog).toBeVisible();
-    // Note (not blocking): initial focus lands on the visually hidden file input.
-    await expect(dialog.getByTestId('dxf-file')).toBeFocused();
+    // B53: initial focus lands on the visible "Dosya seç" button (was the hidden file input).
+    await expect(dialog.getByTestId('dxf-choose')).toBeFocused();
     await page.waitForTimeout(300);
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();

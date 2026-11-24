@@ -31,4 +31,10 @@ export {
 export type { MachineFrame, FrameStock } from './frame';
 export { arcGeometry, arcPieces, chordSegments, splitArc, ARC_RADIUS_TOL } from './arcs';
 export type { ArcGeometry } from './arcs';
-export { generateGcode, postCommentText, UNVERIFIED_HEADER } from './generate';
+export {
+  generateGcode,
+  postCommentText,
+  UNVERIFIED_HEADER,
+  VACUUM_BY_HAND_HEADER,
+  vacuumByHand,
+} from './generate';

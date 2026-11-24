@@ -72,6 +72,40 @@ export function cuttingHeader(c: PostCuttingMeta): string {
   return `KESİM: ${[...tabs, lead, `yön ${c.direction}`].join(', ')}`;
 }
 
+/** T336 (B62 audit): the NC header note when the vacuum is not switched by the program. */
+export const VACUUM_BY_HAND_HEADER = 'VAKUM PROGRAMDAN ACILMIYOR: KESIMDEN ONCE ELLE ACIN';
+
+/**
+ * T336 (B62 audit, D-128): the machine holds the sheet by vacuum but the program writes no vacuum
+ * code (the post has vacuum off, or the profile has no on-code). Not an error (the vacuum may be
+ * switched by hand), but never silent: the NC header, the export checklist and the field kit say
+ * it. Same condition as the generator's own vacuum codes, so a program with codes never gets it.
+ */
+export function vacuumByHand(
+  profile: { holdDown: { type: string; vacuumOn: string } },
+  post: { vacuum: { enabled: boolean } },
+): boolean {
+  return (
+    profile.holdDown.type === 'vacuum' && (!post.vacuum.enabled || profile.holdDown.vacuumOn === '')
+  );
+}
+
+/**
+ * T334 (N1): "KÖPRÜ AZ: 4 parçada 3 köprü, rampa nedeniyle" when parts of this file got fewer tabs than the
+ * setting ("en az 2" when the counts differ; the ramp named when it took the room of any; no
+ * parentheses: a Mach3 comment ends at the first one).
+ * None when every part has its tabs, so programs without a shortfall stay byte-identical.
+ */
+export function tabsShortHeaders(ops: readonly Operation[]): string[] {
+  const short = ops.filter((o) => o.kind === 'outerContour' && o.tabsWanted !== undefined);
+  if (short.length === 0) return [];
+  const counts = short.map((o) => o.tabs.length);
+  const min = Math.min(...counts);
+  const same = counts.every((n) => n === min);
+  const ramp = short.some((o) => o.tabsRamp) ? ', rampa nedeniyle' : '';
+  return [`KÖPRÜ AZ: ${short.length} parçada ${same ? '' : 'en az '}${min} köprü${ramp}`];
+}
+
 /**
  * T307 (D-098): one header line per tool the project runs at its own spindle speed, right under
  * "KESİM" (its own line: the KESİM line is near the 120-character comment limit), e.g.
@@ -393,10 +427,13 @@ class Writer {
    * T309 (D-097): before a manual tool change pause, go to the profile's park point: up to safe Z,
    * then `G53 G0 X.. Y..` (machine coordinates, independent of the work zero) at safe Z. Nothing
    * when the park is off or the post has no G53. XY in the work frame is unknown afterwards.
+   * T335 (N2): also at the program end (`atEnd`), after the spindle is off, when the tool change
+   * is manual (the checker knows the park point only then).
    */
-  private park(): void {
+  park(atEnd = false): void {
     const park = this.c.profile.toolChanger.park;
     if (!park?.enabled || this.c.cfg.motion.machineCoordinates !== true) return;
+    if (atEnd && this.c.cfg.toolChange.mode !== 'manual') return;
     const env = this.c.profile.workEnvelope;
     if (
       !Number.isFinite(park.x) ||
@@ -408,7 +445,13 @@ class Writer {
     }
     if (!this.zKnown || Math.abs(this.pos.z - this.c.toolpath.safeZ) > EPS) this.safeZ();
     const d = this.c.cfg.decimals.xy;
-    this.comment('PARK: TAKIM DEĞİŞİM NOKTASI (MAKİNE KOORDİNATI)');
+    // T332 (field rehearsal S1): G53 is machine coordinates; an unhomed machine hits a limit.
+    this.comment('PARK ICIN MAKINE HOME EDILMIS OLMALI');
+    this.comment(
+      atEnd
+        ? 'PARK: PROGRAM SONU, PLAKA BOSALTMA (MAKİNE KOORDİNATI)'
+        : 'PARK: TAKIM DEĞİŞİM NOKTASI (MAKİNE KOORDİNATI)',
+    );
     const rapid = this.c.cfg.motion.rapid;
     this.block([
       'G53',
@@ -494,7 +537,7 @@ class Writer {
       if (!Number.isFinite(v) || v <= 0) this.fail('FEED_INVALID', `Invalid ${name} ${v}.`, 5);
     }
     // T323: a feed above the machine's limit never reaches a program.
-    const limits = machineFeedLimits();
+    const limits = machineFeedLimits(profile);
     for (const [name, v, range] of [
       ['feed', op.feed, limits.feed],
       ['plunge feed', op.plungeFeed, limits.plungeFeed],
@@ -752,9 +795,11 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
     `ORİJİN: ${CORNER_LABEL[profile.origin.corner] ?? profile.origin.corner}, X+ ${profile.origin.xPositive === 'right' ? 'sağ' : 'sol'}, Y+ ${profile.origin.yPositive === 'back' ? 'arka' : 'ön'}, plaka ofseti ${f3(profile.origin.sheetOffset.x)} / ${f3(profile.origin.sheetOffset.y)}`,
   );
   lines.push(`Z SIFIR: ${profile.zZero.reference === 'table' ? 'tabla yüzeyi' : 'malzeme üstü'}`);
+  if (vacuumByHand(profile, cfg)) lines.push(VACUUM_BY_HAND_HEADER);
   if (meta.cutting) {
     lines.push(
       cuttingHeader(meta.cutting),
+      ...tabsShortHeaders(plan.ops),
       ...spindleHeaders(meta.cutting),
       ...feedHeaders(meta.cutting),
       ...entryHeaders(meta.cutting),
@@ -792,9 +837,10 @@ function renderProgram(
   w.safeZ();
   if (c.vacuum) w.block([c.vacuum.on]);
   for (const op of ops) w.operation(op);
-  // Rule 7: safe Z (once), spindle off, vacuum off, end code.
+  // Rule 7: safe Z (once), spindle off, [park, T335], vacuum off, end code.
   w.endSafeZ();
   w.spindleOff();
+  w.park(true);
   if (c.vacuum) w.block([c.vacuum.off]);
   for (const l of cfg.program.end) w.block([l]);
   for (const l of cfg.program.suffix) w.raw(l);

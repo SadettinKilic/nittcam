@@ -12,7 +12,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { findMaterialParams, findTool, minSheetMargin } from '@nittcam/core';
+import { findMaterialParams, findTool, minSheetMargin, type ValidationIssue } from '@nittcam/core';
 import { fill, newProject, pocketToolDiameterFor, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
 import { ParkedChangesNotice } from './parked-changes';
@@ -47,6 +47,7 @@ import { fetchProjectDefaults } from '../../lib/settings-api';
 import { AssistantLauncher } from '../assistant/assistant-launcher';
 import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
+import { profileChanges } from '../../lib/profile-version';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
 import { HoleIssuesContext, holeErrors } from '../editor/hole-issues';
 import { ValidationPanel } from './validation-panel';
@@ -437,7 +438,10 @@ function isTextField(target: EventTarget | null): boolean {
 
 /** Two-column layout per step (§3.6: fields panel left, preview right); wide content needs room. */
 const GRID: Record<StepKey, string> = {
-  makine: 'lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]',
+  // B53 (CTO #5): from 1280 px the settings column is wide enough for the three sheet-size
+  // choices on one row, so the sheet size stays above the footer at 1440 × 900.
+  makine:
+    'lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)] xl:grid-cols-[minmax(18rem,32rem)_minmax(0,1fr)]',
   parcalar: 'xl:grid-cols-[17rem_minmax(0,1fr)]',
   dizilim: 'xl:grid-cols-[19rem_minmax(0,1fr)]',
   simulasyon: '2xl:grid-cols-[17rem_minmax(0,1fr)]',
@@ -798,6 +802,13 @@ function WizardSession({
       <span>{t.machine.archivedNote}</span>
     </p>
   ) : null;
+  // T332 (field rehearsal S2): what the newer version changed, named in the warning.
+  const changeText =
+    gap !== null && pinned && detail
+      ? profileChanges(pinned.profile, detail.profile)
+          .map((c) => t.export.profileChange[c])
+          .join(', ') || t.export.profileChange.other
+      : undefined;
   const profileNotice =
     gap !== null ? (
       <ProfileVersionNotice
@@ -805,6 +816,7 @@ function WizardSession({
         machineId={project.machine.machineId}
         version={project.machine.profileVersion}
         latest={gap}
+        changes={changeText}
         run={session.run}
       />
     ) : null;
@@ -1032,7 +1044,23 @@ function WizardSession({
 
   const index = STEPS.indexOf(step);
   const progress = { partCount: project.parts.length, sheetCount: project.layout.sheets.length };
-  const validation = <ValidationPanel t={t.issues} project={project} issues={session.issues} />;
+  // T332 (S2): an older profile version than the machine's newest counts in Uyarılar.
+  const panelIssues = useMemo<readonly ValidationIssue[]>(
+    () =>
+      gap === null
+        ? session.issues
+        : [
+            ...session.issues,
+            {
+              code: 'PROFILE_VERSION_OUTDATED',
+              severity: 'warning',
+              path: 'machine.profileVersion',
+              message: `project on profile version ${project.machine.profileVersion}, machine at ${gap}`,
+            },
+          ],
+    [gap, session.issues, project.machine.profileVersion],
+  );
+  const validation = <ValidationPanel t={t.issues} project={project} issues={panelIssues} />;
 
   let left: ReactNode = null;
   let right: ReactNode = null;
@@ -1300,6 +1328,15 @@ function WizardSession({
         onOpenPart={openPart}
         onOpenRow={openRow}
         onOpenSkin={openSkin}
+        onUseLatest={
+          gap !== null
+            ? () =>
+                session.run('setMachine', {
+                  machineId: project.machine.machineId,
+                  profileVersion: gap,
+                })
+            : undefined
+        }
         projectId={session.projectId}
         revision={session.revision}
         saved={!session.dirty}
@@ -1432,7 +1469,7 @@ function WizardSession({
         <div className="@container" data-testid="wizard-head-row">
           {/* One header row when the content is as wide as at 1400 px with the sidebar open (T197); a
               container query (T263), so the 1280 px workspace with the icon rail gets the 1440 px row. */}
-          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3 @min-[1112px]:flex-nowrap @min-[1112px]:items-center">
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3 @min-[1088px]:flex-nowrap @min-[1088px]:items-center">
             <header className="contents">
               <NameField
                 label={t.nameLabel}
@@ -1441,12 +1478,12 @@ function WizardSession({
                 defaultBase={t.defaultName}
                 autoSelect={session.projectId === null && step === 'makine'}
               />
-              <div className="order-2 flex items-center gap-1 @min-[1112px]:order-3 @min-[1112px]:shrink-0">
+              <div className="order-2 flex items-center gap-1 @min-[1088px]:order-3 @min-[1088px]:shrink-0">
                 {headerActions}
               </div>
             </header>
 
-            <div className="order-3 flex w-full min-w-0 items-center gap-3 @min-[1112px]:order-2 @min-[1112px]:w-auto @min-[1112px]:flex-1 @min-[1112px]:@max-[1391px]:min-w-min">
+            <div className="order-3 flex w-full min-w-0 items-center gap-3 @min-[1088px]:order-2 @min-[1088px]:w-auto @min-[1088px]:flex-1 @min-[1088px]:@max-[1391px]:min-w-min">
               {step === 'parcalar' && wide ? (
                 <div className="shrink-0" data-testid="wizard-view-switch">
                   {viewSwitch}
@@ -1653,12 +1690,12 @@ function StepIndicator({
       <div className="flex min-w-0 items-center gap-3 lg:shrink-0">
         <span
           aria-hidden="true"
-          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:@max-[1111px]:flex @min-[1192px]:flex [&_svg]:size-5"
+          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:@max-[1087px]:flex @min-[1192px]:flex [&_svg]:size-5"
         >
           <StepIcon />
         </span>
         <div className="flex min-w-0 flex-col">
-          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase @min-[1112px]:@max-[1191px]:sr-only">
+          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase @min-[1088px]:@max-[1191px]:sr-only">
             {fill(t.stepOf, { n: index + 1, total: STEPS.length })}
           </p>
           <h1
@@ -1666,7 +1703,7 @@ function StepIndicator({
             tabIndex={-1}
             data-testid="wizard-step-title"
             data-step={current}
-            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:@max-[1111px]:text-xl @min-[1192px]:text-xl"
+            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:@max-[1087px]:text-xl @min-[1192px]:text-xl"
           >
             {t[current]}
           </h1>
@@ -1674,7 +1711,7 @@ function StepIndicator({
       </div>
       <nav
         aria-label={t.label}
-        className="min-w-0 lg:flex-1 @min-[1112px]:@max-[1391px]:min-w-[22.75rem]"
+        className="min-w-0 lg:flex-1 @min-[1088px]:@max-[1391px]:min-w-[22.75rem]"
       >
         <ol className="flex items-center gap-1" data-testid="wizard-steps">
           {STEPS.map((s, i) => {
@@ -1706,7 +1743,7 @@ function StepIndicator({
                   {active ? null : (
                     <span
                       aria-hidden="true"
-                      className={`${status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} hidden min-w-0 truncate whitespace-nowrap xl:@max-[1111px]:block @min-[1392px]:block`}
+                      className={`${status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} hidden min-w-0 truncate whitespace-nowrap xl:@max-[1087px]:block @min-[1392px]:block`}
                     >
                       {t[s]}
                     </span>
@@ -1948,7 +1985,7 @@ function NameField({
   }
   return (
     // B4b: in the one-row header (≥ 1400 px) the name yields first, down to 10rem (ellipsis + title).
-    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:@max-[1111px]:min-w-64 @min-[1112px]:min-w-40 @min-[1112px]:flex-[0_1_20rem]">
+    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:@max-[1087px]:min-w-64 @min-[1088px]:min-w-40 @min-[1088px]:flex-[0_1_20rem]">
       {/* T247: from 1280 px the caption goes; the name is the title (the label stays for AT). */}
       <span className="px-2 text-xs font-medium text-fg-subtle lg:sr-only">{label}</span>
       <span className="group/name relative w-full max-w-xl">

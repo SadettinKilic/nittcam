@@ -7,12 +7,15 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   canDownload,
   exportNc,
+  feedAboveRecommendation,
   findMaterialParams,
+  spindleSettingsOf,
   exportBlockingIssues,
   hingeEdgeHandleParts,
   needsUnverifiedAcceptance,
   parsePostConfig,
   unverifiedReasons,
+  vacuumByHand,
   unverifiedTemplateNames,
   type ExportNcResult,
   type PostFile,
@@ -20,7 +23,7 @@ import {
   type UnverifiedReason,
 } from '@nittcam/core';
 import type { CompanyScope, ExportRow, MachineWithProfile, ProjectRow } from '@nittcam/db';
-import { fileNameInfo, parkOff } from '../check-state';
+import { fileNameInfo, parkNeedsHome, parkOff } from '../check-state';
 import { POST_CONFIGS } from '@nittcam/machines';
 import { NextResponse } from 'next/server';
 import {
@@ -38,6 +41,7 @@ import {
 } from '../exports-api';
 import { blockingItems } from '../blocking-issues';
 import { ncNameOptions } from '../file-names';
+import { profileChanges } from '../profile-version';
 import { fill } from '../fill';
 import { getMessages } from '../messages';
 
@@ -242,13 +246,27 @@ export async function runExportOf(
     violations: violationsOf(r),
     needsAcceptance: needsUnverifiedAcceptance(pv, cfg.config),
     unverifiedReasons: unverifiedReasons(pv, cfg.config),
-    checklist: checklistOf(machine, data, r.tools, {
-      names: r.files.map((x) => x.name),
-      latestLimit:
-        latest && latest.version.version !== machine.version.version
-          ? latest.profile.constraints.maxFileNameLength
-          : null,
-    }),
+    checklist: {
+      // T336 (D-128): a vacuum machine whose program writes no vacuum code: a line to tick.
+      ...(vacuumByHand(machine.profile, cfg.config) ? { vacuumByHand: true as const } : {}),
+      ...checklistOf(machine, data, r.tools, {
+        names: r.files.map((x) => x.name),
+        latestLimit:
+          latest && latest.version.version !== machine.version.version
+            ? latest.profile.constraints.maxFileNameLength
+            : null,
+      }),
+      // T332 (field rehearsal S2): the file is built from an older profile version.
+      ...(latest && latest.version.version !== machine.version.version
+        ? {
+            staleProfile: {
+              version: machine.version.version,
+              latest: latest.version.version,
+              changes: profileChanges(machine.profile, latest.profile),
+            },
+          }
+        : {}),
+    },
   };
 }
 
@@ -291,6 +309,18 @@ function checklistOf(
     toolChanges: program?.manualChanges ?? 0,
     rezeroZ: program?.rezeroZ ?? false,
     parkOff: parkOff(p),
+    // Park on = a G53 move at every manual pause, the first-tool pause included (one-tool jobs
+    // too), so the homing line never depends on the number of tool changes (B62 r2).
+    parkHome: parkNeedsHome(p),
+    highFeeds: spindleSettingsOf(data, p)
+      .filter(feedAboveRecommendation)
+      .map((s) => ({
+        tool: s.tool,
+        feed: s.feed,
+        plungeFeed: s.plungeFeed,
+        recommendedFeed: s.recommendedFeed,
+        recommendedPlungeFeed: s.recommendedPlungeFeed,
+      })),
     fileNames: fileNameInfo(files.names, p.constraints.maxFileNameLength, files.latestLimit),
   };
 }

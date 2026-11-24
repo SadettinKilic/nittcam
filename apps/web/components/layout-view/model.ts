@@ -86,6 +86,12 @@ export interface DrawnPart {
   /** Footprint after rotation. */
   w: number;
   h: number;
+  /**
+   * The part's own W × H (unrotated box of its cut shape) for its canvas label: a part turned 90°
+   * still reads "600 × 400", not its footprint (usta 2, PO decision). The info panel keeps the
+   * footprint, which goes with its X/Y position.
+   */
+  own: { w: number; h: number };
   rot: Placement['rot'];
   locked: boolean;
   /** Sheet-frame angle of a fixed-grain part's grain line ([0, 180), D-034); null = free grain. */
@@ -101,7 +107,9 @@ export interface DrawnPart {
 type PartRow = { part: Project['parts'][number]; row: number };
 
 function drawPlacement(hit: PartRow, pl: Placement): DrawnPart {
-  const size = rotatedBoxSize(partShape(hit.part), pl.rot);
+  const shape = partShape(hit.part);
+  const size = rotatedBoxSize(shape, pl.rot);
+  const own = rotatedBoxSize(shape, 0);
   return {
     key: copyKey(pl),
     partId: pl.partId,
@@ -112,6 +120,7 @@ function drawPlacement(hit: PartRow, pl: Placement): DrawnPart {
     y: pl.y,
     w: size.w,
     h: size.h,
+    own: { w: own.w, h: own.h },
     rot: pl.rot,
     locked: pl.locked,
     grainAngle:
