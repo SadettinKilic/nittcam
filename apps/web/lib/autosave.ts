@@ -346,6 +346,70 @@ export function takeUnsentQueue(
   return null;
 }
 
+/**
+ * B60 F1: a page that does not hold its project's queue lock (another live tab does) stores its
+ * own unsent queue under a key of its own, `nittcam.unsent.peer.<project id>.<page id>`, never
+ * under the holder's key. The page holds the Web Lock `nittcam-page:<page id>` while it lives;
+ * the lock holder takes the queue of a peer whose page lock is free (the peer is gone) and parks
+ * it for the user (`takePeerQueue`).
+ */
+const PEER_PREFIX = KEY_PREFIX + 'peer.';
+
+export function peerKey(projectId: string, pageId: string): string {
+  return `${PEER_PREFIX}${projectId}.${pageId}`;
+}
+
+/** The Web Lock a page holds for as long as it lives (B60 F1). */
+export function pageLockName(pageId: string): string {
+  return 'nittcam-page:' + pageId;
+}
+
+/** Peer queues of `projectId` among the stored `keys`, with their page ids (not `ownPage`). */
+export function peerQueueKeys(
+  keys: readonly string[],
+  projectId: string,
+  ownPage: string,
+): { key: string; pageId: string }[] {
+  const prefix = `${PEER_PREFIX}${projectId}.`;
+  const out: { key: string; pageId: string }[] = [];
+  for (const key of keys) {
+    if (!key.startsWith(prefix)) continue;
+    const pageId = key.slice(prefix.length);
+    if (pageId && pageId !== ownPage) out.push({ key, pageId });
+  }
+  return out;
+}
+
+/**
+ * B60 F1: the peer page that wrote `key` is gone (its page lock is free). What of its queue the
+ * server does not have yet (`remainingQueue` against `server`; all of it when the server could
+ * not be read or moved on) is parked for the user, never dropped and never merged silently into
+ * this page's own edits. Returns whether anything was parked.
+ */
+export function takePeerQueue(
+  storage: KeyValueStorage | null | undefined,
+  key: string,
+  projectId: string,
+  server: ServerState | null,
+): boolean {
+  const q = readQueue(storage, key);
+  let parked = false;
+  if (q) {
+    const left = server ? remainingQueue(q, server) : null;
+    if (!left) {
+      parkQueue(storage, projectId, q);
+      parked = q.entries.length > 0;
+    } else if (left.entries.length > 0) {
+      const { unit: _unit, ...plain } = left;
+      void _unit;
+      parkQueue(storage, projectId, plain);
+      parked = true;
+    }
+  }
+  forget(storage, key);
+  return parked;
+}
+
 /** What a page that holds the lock does with a left queue (B60 fix round 3, D-117 table). */
 export type Takeover =
   | { action: 'none' }
@@ -490,6 +554,8 @@ export class AutosaveQueue {
    */
   private locked = false;
   private claimed = false;
+  /** B60 F1: the page holds its page lock (`pageLockName`): it may store a peer queue. */
+  private pageLive = false;
   /**
    * B60 fix round 2: the key the queue is stored under. With locks it is the key whose lock the
    * page holds: a created project keeps its draft key until the page holds the project key's lock
@@ -593,6 +659,30 @@ export class AutosaveQueue {
   claim(): void {
     this.claimed = true;
     this.persist();
+    // B60 F1: what it stored as a peer moves under the key it holds now.
+    if (this.id !== null) forget(this.deps.storage, peerKey(this.id, this.pageId));
+  }
+
+  /** B60 F1: the page holds its page lock now; a peer queue it stores is found if it dies. */
+  markPageLive(): void {
+    this.pageLive = true;
+    this.persist();
+  }
+
+  /** B60 F1: this page holds the lock of its project's queue (it takes gone peers' queues). */
+  get holdsLock(): boolean {
+    return this.claimed && this.id !== null && this.key === queueKey(this.id);
+  }
+
+  /**
+   * B60 F1: where the queue is stored now. A page waiting for the lock a live tab holds (a peer)
+   * uses a key of its own, so it never overwrites that tab's queue nor has its own overwritten.
+   */
+  private storeKey(): string {
+    if (this.locked && !this.claimed && this.id !== null && this.key === queueKey(this.id)) {
+      return peerKey(this.id, this.pageId);
+    }
+    return this.key;
   }
 
   /**
@@ -856,6 +946,7 @@ export class AutosaveQueue {
 
   /** T326: whether this page may write the stored queue (not another live page's). */
   private mayWrite(key: string): boolean {
+    if (this.id !== null && key === peerKey(this.id, this.pageId)) return true;
     // B60 r2: the lock this page holds is the one of its own key, not of any other.
     if (this.claimed && key === this.key) return true;
     const q = readQueue(this.deps.storage, key);
@@ -865,7 +956,9 @@ export class AutosaveQueue {
   }
 
   private persist(): void {
-    const key = this.key;
+    const key = this.storeKey();
+    // B60 F1: a peer stores its queue only once its page lock shows it alive.
+    if (key !== this.key && !this.pageLive) return;
     const draft = this.newId !== undefined && key === queueKey(null, this.newId);
     if (!this.dirty) {
       this.removeStored(key);

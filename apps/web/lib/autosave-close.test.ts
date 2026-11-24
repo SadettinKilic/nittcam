@@ -11,6 +11,9 @@ import {
   discardLeftDraft,
   leftKey,
   parkedQueue,
+  peerKey,
+  peerQueueKeys,
+  takePeerQueue,
   takeOverQueue,
   leftDrafts,
   STALE_MS,
@@ -1225,5 +1228,117 @@ describe('B60 r3: a stale second tab takes a crashed queue after a reload (teste
     expect(srv.log).toEqual(['six', 'seven']);
     expect(srv.revision).toBe(3);
     expect(parkedQueue(storage, 'p1')).toBeNull();
+  });
+});
+
+describe('B60 F1: a tab without the lock (a peer) that dies is taken by the lock holder', () => {
+  const live = (storage: KeyValueStorage, srv: Server) => {
+    const a = page(storage, srv, { id: 'p1', revision: 1 });
+    a.q.useLocks();
+    a.q.claim();
+    const b = page(storage, srv, { id: 'p1', revision: 1 });
+    b.q.useLocks();
+    return { a, b };
+  };
+  const cmds = (q: StoredQueue | null) => (q ? q.entries.map((x) => x.command) : null);
+
+  it('a peer stores its unsent edit under a key of its own; the holder never removes it', async () => {
+    const storage = memoryStorage();
+    const srv = savedProject();
+    const { a, b } = live(storage, srv);
+    b.q.markPageLive();
+    srv.drop = true;
+    b.q.push({ entries: [e('b1')], project: P(1) });
+    await b.c.advance(1000);
+    expect(srv.log).toEqual([]);
+    const key = peerKey('p1', b.q.ownerId);
+    expect(cmds(storedQueue(storage, key))).toEqual(['b1']);
+    expect(storedQueue(storage, queueKey('p1'))).toBeNull();
+    // The holder edits and saves: its own key comes and goes, the peer's stays.
+    srv.drop = false;
+    a.q.push({ entries: [e('a1')], project: P(2) });
+    await a.c.advance(1000);
+    expect(srv.log).toEqual(['a1']);
+    expect(cmds(storedQueue(storage, key))).toEqual(['b1']);
+    expect(peerQueueKeys([key, queueKey('p1'), peerKey('p2', 'x')], 'p1', a.q.ownerId)).toEqual([
+      { key, pageId: b.q.ownerId },
+    ]);
+    expect(peerQueueKeys([key], 'p1', b.q.ownerId)).toEqual([]);
+  });
+
+  it('before its page lock is held a peer stores nothing (never mistaken for a gone one)', async () => {
+    const storage = memoryStorage();
+    const srv = savedProject();
+    const { b } = live(storage, srv);
+    srv.drop = true;
+    b.q.push({ entries: [e('b1')], project: P(1) });
+    await b.c.advance(1000);
+    expect(storedQueue(storage, peerKey('p1', b.q.ownerId))).toBeNull();
+    b.q.markPageLive();
+    expect(cmds(storedQueue(storage, peerKey('p1', b.q.ownerId)))).toEqual(['b1']);
+  });
+
+  it('the peer is gone: its edit is parked once (offered), never dropped or merged', async () => {
+    const storage = memoryStorage();
+    const srv = savedProject();
+    const { a, b } = live(storage, srv);
+    b.q.markPageLive();
+    srv.drop = true;
+    b.q.push({ entries: [e('b1')], project: P(1) });
+    await b.c.advance(1000);
+    b.q.dispose(); // crash
+    srv.drop = false;
+    // The holder saved in between: the peer's base is behind, still parked whole.
+    a.q.push({ entries: [e('a1')], project: P(2) });
+    await a.c.advance(1000);
+    const key = peerKey('p1', b.q.ownerId);
+    expect(takePeerQueue(storage, key, 'p1', { revision: srv.revision, lastSaveId: srv.lastSaveId })).toBe(true);
+    expect(cmds(parkedQueue(storage, 'p1'))).toEqual(['b1']);
+    expect(storedQueue(storage, key)).toBeNull();
+    // A second sweep finds nothing: parked exactly once.
+    expect(takePeerQueue(storage, key, 'p1', null)).toBe(false);
+    expect(cmds(parkedQueue(storage, 'p1'))).toEqual(['b1']);
+    expect(srv.log).toEqual(['a1']);
+  });
+
+  it('a peer whose save reached the server (answer lost): only what came after is parked', async () => {
+    const storage = memoryStorage();
+    const srv = savedProject();
+    const { b } = live(storage, srv);
+    b.q.markPageLive();
+    srv.lose = true;
+    b.q.push({ entries: [e('b1')], project: P(1) });
+    await b.c.advance(1000);
+    srv.lose = false;
+    srv.drop = true;
+    b.q.push({ entries: [e('b2')], project: P(2) });
+    await b.c.advance(5000);
+    b.q.dispose();
+    expect(srv.log).toEqual(['b1']);
+    const key = peerKey('p1', b.q.ownerId);
+    takePeerQueue(storage, key, 'p1', { revision: srv.revision, lastSaveId: srv.lastSaveId });
+    expect(cmds(parkedQueue(storage, 'p1'))).toEqual(['b2']);
+  });
+
+  it('server unreachable at the sweep: the whole peer queue is parked', () => {
+    const storage = memoryStorage();
+    const q: StoredQueue = { baseRevision: 1, entries: [e('b1')], name: 'Proje', owner: 'pb', at: NOW };
+    storage.setItem(peerKey('p1', 'pb'), JSON.stringify(q));
+    expect(takePeerQueue(storage, peerKey('p1', 'pb'), 'p1', null)).toBe(true);
+    expect(cmds(parkedQueue(storage, 'p1'))).toEqual(['b1']);
+  });
+
+  it('a peer that gets the lock later moves its queue under the project key', async () => {
+    const storage = memoryStorage();
+    const srv = savedProject();
+    const { b } = live(storage, srv);
+    b.q.markPageLive();
+    srv.drop = true;
+    b.q.push({ entries: [e('b1')], project: P(1) });
+    await b.c.advance(1000);
+    b.q.claim();
+    expect(storedQueue(storage, peerKey('p1', b.q.ownerId))).toBeNull();
+    expect(cmds(storedQueue(storage, queueKey('p1')))).toEqual(['b1']);
+    expect(b.q.holdsLock).toBe(true);
   });
 });

@@ -16,8 +16,11 @@ import {
   AutosaveQueue,
   dropParkedQueue,
   markParkedApplying,
+  pageLockName,
   parkedQueue,
+  peerQueueKeys,
   queueKey,
+  takePeerQueue,
   takeOverQueue,
   storedQueue,
   takeUnsentQueue,
@@ -29,7 +32,7 @@ import {
   type SendResult,
   type ServerState,
 } from './autosave';
-import { holdQueueLocks, type LockApi } from './queue-lock';
+import { holdLock, holdQueueLocks, type LockApi } from './queue-lock';
 import { FALLBACK_TOOL_DIAMETER } from './draft-project';
 import type { ProjectDetail, SaveResponse } from './projects-api';
 
@@ -64,6 +67,9 @@ export const KEEPALIVE_MAX_BYTES = 60_000;
 function byteLength(body: string): number {
   return new TextEncoder().encode(body).length;
 }
+
+/** B60 F1: how often the queue lock holder looks for queues of gone peer tabs. */
+const PEER_SWEEP_MS = 10_000;
 
 /** The address parameter that names a new project's draft (T305, D-094). */
 export const DRAFT_PARAM = 'taslak';
@@ -178,6 +184,37 @@ async function serverState(id: string): Promise<ServerState | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * B60 F2: the draft of the address (`?taslak=`) already became a project. A page left offline
+ * with unsent edits (e.g. "+ Yeni proje" offline, then online and Back) may still have saved them
+ * itself before it went away; its queue is gone then, and the project carries the draft's id
+ * (D-030). Returns that project's id, so the wizard opens it instead of an empty draft; null when
+ * the draft still has a stored queue (it is replayed as before) or no such project exists.
+ */
+export async function createdFromDraft(
+  draft: string | null | undefined,
+  deps: {
+    storage?: KeyValueStorage | null;
+    exists?: (id: string) => Promise<boolean>;
+  } = {},
+): Promise<string | null> {
+  const id = validDraft(draft);
+  if (!id) return null;
+  const store = deps.storage === undefined ? queueStore() : deps.storage;
+  if (storedQueue(store, queueKey(null, id))) return null;
+  const exists =
+    deps.exists ??
+    (async (pid: string) => {
+      try {
+        const res = await fetch(`/api/projects/${encodeURIComponent(pid)}`, { cache: 'no-store' });
+        return res.ok;
+      } catch {
+        return false;
+      }
+    });
+  return (await exists(id)) ? id : null;
 }
 
 /** B60 r3: "Uygula" asked for before a reload that brings this tab up to the server. */
@@ -376,6 +413,66 @@ export function useProjectSession({
       recovering.current = false;
       setRecovered(true);
     };
+    // B60 F1: the page lock says this page is alive; a queue it stores as a peer (another live tab
+    // holds the project's lock) is taken by that tab once this page is gone.
+    let pageRelease: (() => void) | null = null;
+    holdLock(locks, pageLockName(queue.ownerId), {}).then(
+      (release) => {
+        if (!alive) {
+          release?.();
+          return;
+        }
+        pageRelease = release;
+        queue.markPageLive();
+      },
+      () => undefined,
+    );
+    // B60 F1: the lock holder takes the queues of peers that are gone (crashed or closed tabs that
+    // never held the lock), at once and then on storage events, focus and every 10 s, and parks
+    // them for the user ("Uygula"). A live peer's page lock is held, so its queue is left alone.
+    let sweeping = false;
+    const sweep = async () => {
+      const id = queue.projectId;
+      if (!alive || sweeping || !store || id === null || !queue.holdsLock) return;
+      let keys: string[];
+      try {
+        keys = Object.keys(store as Storage);
+      } catch {
+        return;
+      }
+      const peers = peerQueueKeys(keys, id, queue.ownerId);
+      if (peers.length === 0) return;
+      sweeping = true;
+      try {
+        let server: ServerState | null | undefined;
+        let parkedAny = false;
+        for (const peer of peers) {
+          const free = await holdLock(locks, pageLockName(peer.pageId), { ifAvailable: true });
+          if (!free) continue; // alive
+          try {
+            if (server === undefined) server = await serverState(id);
+            if (takePeerQueue(store, peer.key, id, server)) parkedAny = true;
+          } finally {
+            free();
+          }
+        }
+        if (alive && parkedAny) setParked(parkedQueue(store, id));
+      } catch {
+        // Locks refused: tried again on the next trigger.
+      } finally {
+        sweeping = false;
+      }
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key && e.key.startsWith('nittcam.unsent.peer.')) void sweep();
+    };
+    const onLook = () => {
+      if (document.visibilityState === 'visible') void sweep();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', onLook);
+    document.addEventListener('visibilitychange', onLook);
+    const sweepTimer = window.setInterval(() => void sweep(), PEER_SWEEP_MS);
     const holder = holdQueueLocks(
       locks,
       { id: initial.id, ...(boot.newId ? { newId: boot.newId } : {}) },
@@ -420,6 +517,7 @@ export function useProjectSession({
           if (id) setParked(parkedQueue(store, id));
           queue.claim();
           done();
+          void sweep();
           // "Uygula" pressed before the reload that brought this tab up to the server.
           if (id && applyAfterReload(id) && parkedQueue(store, id)) void applyRef.current();
         },
@@ -438,6 +536,7 @@ export function useProjectSession({
           queue.adopt();
           const id = queue.projectId;
           if (id) setParked(parkedQueue(store, id));
+          void sweep();
         },
         onError: done,
       },
@@ -447,6 +546,11 @@ export function useProjectSession({
       alive = false;
       lockHolder.current = null;
       holder.dispose();
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', onLook);
+      document.removeEventListener('visibilitychange', onLook);
+      window.clearInterval(sweepTimer);
+      pageRelease?.();
     };
     // Once per page: the lock follows the queue the page was opened with (and its project).
     // eslint-disable-next-line react-hooks/exhaustive-deps

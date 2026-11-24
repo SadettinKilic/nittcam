@@ -1780,6 +1780,7 @@ From: `.team/usta2-rapor.md` (a rectangle drawn ~1 s before closing, "Kaydediliy
 - [x] save units with a client `saveId`; `projects.last_save_id` (migration 0014); a repeated save/create is answered, never applied twice; revision lock unchanged
 - [x] pagehide: keepalive send (≤ 60 000 bytes), the unit on the way resent with the same id; beforeunload prompt while unsaved; Projeler offers a draft closed before the server had it
 - [x] tests: db `projects.test.ts`, route `projects.route.test.ts`, web `autosave-close.test.ts`, `send-save.test.ts`; e2e `t326-save-on-close.spec.ts` (written, not run locally yet: PC memory, PO hold)
+- [x] fix round 4: F1 peer tabs keep their queue under an own key; the lock holder parks a gone peer's queue (grant, storage, focus, 10 s); F2 Back onto a draft that became a project opens it; tests `autosave-close.test.ts`, `created-from-draft.test.ts`, e2e r4 + `t305-tester`
 
 ### Batch B62: T330–T332 (field rehearsal 2026-11-23, blockers before the machine; Dev 2)
 

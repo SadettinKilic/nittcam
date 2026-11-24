@@ -18,7 +18,12 @@ import { pickableMachines, type MachineDetail, type MachineListItem } from '../.
 import { ParkedChangesNotice } from './parked-changes';
 import type { Messages } from '../../lib/messages';
 import { MessagesContext } from '../../lib/messages-context';
-import { DRAFT_PARAM, useProjectSession, type SessionInit } from '../../lib/project-session';
+import {
+  DRAFT_PARAM,
+  createdFromDraft,
+  useProjectSession,
+  type SessionInit,
+} from '../../lib/project-session';
 import { STEP_REQUEST_EVENT } from '../../lib/step-request';
 import { leavingLinkHref, onNavigationStart } from '../../lib/navigation-guard';
 import { nextFailing, saveBannerKind } from '../../lib/save-banner';
@@ -274,6 +279,7 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
   // The URL's step when the wizard mounts (keyed by project); later steps are the session's own.
   const urlStepRef = useRef(step);
   const [attempt, setAttempt] = useState(0);
+  const router = useRouter();
   // A new project gets its id from the first save; "+ Yeni proje" afterwards starts another one.
   const pathname = usePathname();
   const [created, setCreated] = useState<string | null>(null);
@@ -291,6 +297,10 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
   // T305: "+ Yeni proje" while a draft (not saved yet) is open keeps the path but drops the draft
   // from the address: that is another new project too, not the same draft.
   const draftParam = useSearchParams().get(DRAFT_PARAM);
+  const draftRef = useRef(draftParam);
+  useEffect(() => {
+    draftRef.current = draftParam;
+  }, [draftParam]);
   const [lastDraft, setLastDraft] = useState(draftParam);
   if (draftParam !== lastDraft) {
     setLastDraft(draftParam);
@@ -342,6 +352,12 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
             });
           }
         } else {
+          // B60 F2: Back onto a draft that its own (left) page saved meanwhile opens that project.
+          const became = await createdFromDraft(draftRef.current);
+          if (became) {
+            if (live) router.replace(stepUrl(became, urlStepRef.current ?? 'parcalar'));
+            return;
+          }
           const first = pickableMachines(machines.body)[0];
           if (first) {
             firstDetail = (await getJson<MachineDetail>(`/api/machines/${first.id}`)).body;
@@ -372,7 +388,8 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
     return () => {
       live = false;
     };
-  }, [projectId, attempt, t.defaultName]);
+    // router is stable; the draft is read when the loader runs (draftRef).
+  }, [projectId, attempt, t.defaultName, router]);
 
   const reload = useCallback(() => {
     setLoaded({ status: 'loading' });

@@ -17,9 +17,9 @@ import { KITCHEN, openNewProject, paste, projectId, saved, wizardReady } from '.
  * first save, a second browser context, and the single-tab basics. Every test ends with "each part
  * exactly once on the server, revision as expected".
  *
- * ROUND 4 PARTIAL (paydos 2026-11-23): all tests ran on d7ec4ac. Every one passes except
- * "a second tab (not the lock holder) crashes with an unsent edit", which FAILS on purpose: it
- * reproduces a real loss (finding F1 on PR #192). Remove the console.log in row 6 when finishing.
+ * ROUND 4 PARTIAL (paydos 2026-11-23): all tests ran on d7ec4ac. "a second tab (not the lock
+ * holder) crashes with an unsent edit" reproduced a real loss (finding F1 on PR #192); fixed in
+ * fix round 4 (peer queues, see D-117), with a dev test for the live holder's offer next to it.
  */
 
 interface Server {
@@ -120,7 +120,10 @@ async function crashAfterEdit(page: Page, id: string, w: number, h: number) {
 const settle = () => new Promise((r) => setTimeout(r, 2500));
 
 async function otherBrowser(browser: Browser, baseURL: string | undefined) {
-  return browser.newContext({ viewport: { width: 1440, height: 900 }, baseURL });
+  return browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    ...(baseURL ? { baseURL } : {}),
+  });
 }
 
 /** Saves one drawn part from a second browser (another computer): the server moves on. */
@@ -361,6 +364,29 @@ test.describe('T326 tester r4: state table rows with real tabs', () => {
     expect(countDim(s, 625, 325)).toBe(1);
     expect(countDim(s, 624, 324), 'B crashed edit').toBe(1);
     expect(s.revision).toBeGreaterThanOrEqual(r0 + 2);
+  });
+
+  test('B60 F1 (dev): the live lock holder is offered the edit of a crashed peer tab; apply adds it once', async ({
+    page,
+    context,
+  }) => {
+    const id = await savedProject(page); // A creates the project and holds its lock
+    const b = await open(context, id);
+    await saved(b);
+    const r0 = (await server(context, id)).revision;
+    await crashAfterEdit(b, id, 626, 326); // B: blocked edit, then B crashes
+    // A takes B's queue on focus (or within ~10 s) and offers it.
+    await page.bringToFront();
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(page.getByTestId('parked-changes')).toBeVisible({ timeout: 15_000 });
+    expect(countDim(await server(context, id), 626, 326)).toBe(0);
+    await page.getByTestId('parked-apply').click();
+    await saved(page);
+    await settle();
+    const s = await server(context, id);
+    expect(countDim(s, 626, 326), 'B crashed edit').toBe(1);
+    expect(s.revision).toBe(r0 + 1);
+    await expect(page.getByTestId('parked-changes')).toHaveCount(0);
   });
 
   test('row 7: taking tab has its own unsent edit → park (never merged); apply later adds once', async ({
