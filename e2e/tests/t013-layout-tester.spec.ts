@@ -10,9 +10,14 @@ const t = tr.cutList;
 const p = t.paste;
 const l = tr.layout;
 const URL = '/projeler/yeni/parcalar';
-/** Draft sheet 2800 × 2070, margin 10, clearance 0.1 (T313, D-104), example tool 8 mm → spacing 8.1 mm. */
+/**
+ * Draft sheet 2800 × 2070, stored margin 10 and clearance 0.1 (T313, D-104), example tool 8 mm.
+ * D-129: a new project cuts with tabs, so placement keeps the effective margin Ø + 3 = 11 mm and
+ * the effective pay Ø + 3.1 → spacing 19.1 mm between parts.
+ */
 const SHEET = { width: 2800, height: 2070 };
-const MARGIN = 10;
+const MARGIN = 11;
+const SPACING = '19,1';
 
 const fill = (text: string, values: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? String(values[k]) : m));
@@ -169,7 +174,9 @@ test.describe('T013 tester: margin edge', () => {
     expect(problems).toEqual([]);
   });
 
-  test('left margin: exact 10 mm accepted, 9 mm refused (keyboard)', async ({ page }) => {
+  test('bottom margin: exact effective 11 mm accepted, 10 mm refused (keyboard)', async ({
+    page,
+  }) => {
     await nestShelf(page);
     const before = await info(page, TOP);
     await page.getByTestId('layout-canvas').scrollIntoViewIfNeeded();
@@ -210,7 +217,7 @@ test.describe('T013 tester: refusals and undo/redo', () => {
     const alert = page.locator('p[role=alert]', { hasText: 'Buraya bırakılamaz' });
     await expect(alert).toHaveCount(1);
     await expect(alert).toContainText('2.1');
-    await expect(alert).toContainText("8,1 mm'den yakın");
+    await expect(alert).toContainText(`${SPACING} mm'den yakın`);
     expect(await info(page, TOP)).toEqual(before);
     // the single undo step is still the nesting: one click removes the whole layout
     await page.getByTestId('wizard-undo').click();
@@ -296,10 +303,11 @@ test.describe('T013 tester: sheet tabs', () => {
     await paste(page, KITCHEN, 5);
     await runDiz(page);
     const tabs = page.getByRole('tab');
-    // T313 (D-104): with tool + 0.1 mm the kitchen set needs 2 sheets (3 with the old 16 mm).
-    await expect(tabs).toHaveCount(2);
+    // T313 (D-104): with tool + 0.1 mm the kitchen set needed 2 sheets. D-129: a new project cuts
+    // with tabs, so nesting keeps tool Ø + 3.1 between parts (19.1 mm) and the set needs 3.
+    await expect(tabs).toHaveCount(3);
     const sums: number[] = [];
-    for (let i = 0; i < 2; i += 1) {
+    for (let i = 0; i < 3; i += 1) {
       const tab = tabs.nth(i);
       await tab.click();
       await expect(tab).toHaveAttribute('aria-selected', 'true');
