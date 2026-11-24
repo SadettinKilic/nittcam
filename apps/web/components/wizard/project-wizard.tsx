@@ -15,7 +15,6 @@ import {
 import { findMaterialParams, findTool, minSheetMargin, type ValidationIssue } from '@nittcam/core';
 import { fill, newProject, pocketToolDiameterFor, toolDiameterFor } from '../../lib/draft-project';
 import { pickableMachines, type MachineDetail, type MachineListItem } from '../../lib/machines-api';
-import { ParkedChangesNotice } from './parked-changes';
 import type { Messages } from '../../lib/messages';
 import { MessagesContext } from '../../lib/messages-context';
 import {
@@ -37,9 +36,11 @@ import { splitOffProject, type SplitTarget } from '../../lib/split-project';
 import { ProjectLinksBar } from './project-links';
 import type { SimMachine } from '../simulation/simulation-view';
 import {
+  CuttingSettings,
   DrawingBoard,
   ExportStep,
   LayoutStep,
+  ParkedChangesNotice,
   SimulationView,
   preloadWizardSteps,
 } from './lazy-steps';
@@ -56,7 +57,6 @@ import { profileChanges } from '../../lib/profile-version';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
 import { HoleIssuesContext, holeErrors } from '../editor/hole-issues';
 import { ValidationPanel } from './validation-panel';
-import { CuttingSettings } from '../simulation/cutting-settings';
 import {
   STEPS,
   saveIndicator,
@@ -352,8 +352,18 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
             });
           }
         } else {
+          // The company's projects: the "Adsız proje" counter (T194a) and the draft check below;
+          // a failed list only drops both.
+          const listed = await getJson<ProjectListItem[]>('/api/projects').then(
+            (r) => r.body ?? [],
+            () => [] as ProjectListItem[],
+          );
           // B60 F2: Back onto a draft that its own (left) page saved meanwhile opens that project.
-          const became = await createdFromDraft(draftRef.current);
+          // Looked up in the list, not by GET /api/projects/<draft id>: a draft that never reached
+          // the server would log a 404 on every new-project page.
+          const became = await createdFromDraft(draftRef.current, {
+            exists: async (pid) => listed.some((p) => p.id === pid),
+          });
           if (became) {
             if (live) router.replace(stepUrl(became, urlStepRef.current ?? 'parcalar'));
             return;
@@ -362,11 +372,7 @@ function WizardBody({ messages, projectId, step }: ProjectWizardProps) {
           if (first) {
             firstDetail = (await getJson<MachineDetail>(`/api/machines/${first.id}`)).body;
           }
-          // "Adsız proje" + counter (T194a); a failed list only drops the counter.
-          const names = await getJson<ProjectListItem[]>('/api/projects').then(
-            (r) => (r.body ?? []).map((p) => p.name),
-            () => [],
-          );
+          const names = listed.map((p) => p.name);
           // T259: a new project starts on the library's first entry the machine can cut.
           const library = firstDetail ? ((await fetchMaterials()) ?? []) : [];
           // T182: the company's project defaults (Ayarlar); built-ins when they cannot be read.
@@ -699,7 +705,8 @@ function WizardSession({
       new URLSearchParams(window.location.search).get(LATEST_PARAM) === LATEST_VALUE,
   );
   useEffect(() => {
-    if (!takeLatest || !detail) return;
+    // B60: wait until a left queue is taken over (`run` refuses edits until then).
+    if (!takeLatest || !detail || session.recovering) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTakeLatest(false);
     const pinned = session.project.machine;

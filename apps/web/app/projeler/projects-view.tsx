@@ -38,9 +38,8 @@ import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from
 import { PageHeader, focusRing, pageContainer } from '../../components/page/page-header';
 import { fill } from '../../lib/fill';
 import { OffcutStock } from './offcut-stock';
-import { discardLeftDraft, leftDrafts, type LeftDraft } from '../../lib/autosave';
+import { DRAFT_PARAM, discardLeftDraft, leftDrafts, type LeftDraft } from '../../lib/autosave';
 import { LeftDraftNotice } from './left-draft-notice';
-import { DRAFT_PARAM } from '../../lib/project-session';
 import type { Messages } from '../../lib/messages';
 import {
   NO_FILTERS,

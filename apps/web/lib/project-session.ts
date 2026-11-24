@@ -14,6 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AutosaveQueue,
+  dropCorruptQueue,
   dropParkedQueue,
   markParkedApplying,
   pageLockName,
@@ -72,7 +73,7 @@ function byteLength(body: string): number {
 const PEER_SWEEP_MS = 10_000;
 
 /** The address parameter that names a new project's draft (T305, D-094). */
-export const DRAFT_PARAM = 'taslak';
+export { DRAFT_PARAM } from './autosave';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The draft id from the address, when it is a well-formed UUID. */
@@ -288,6 +289,9 @@ export function useProjectSession({
     // B60: with Web Locks the shared queue is taken only once this page holds its lock (below);
     // without them, here by the age rule (T326).
     const locked = webLocks() !== null;
+    // T020: a corrupt value under the address's draft key never survives (with locks this page
+    // takes a new draft id below and would never look at that key again).
+    if (draftId !== undefined) dropCorruptQueue(queueStore(), queueKey(null, draftId));
     const stored =
       (locked ? null : takeUnsentQueue(queueStore(), initial.id, server, draftId)) ??
       takeUnsentQueue(legacyStore(), initial.id, server, draftId);
@@ -315,7 +319,7 @@ export function useProjectSession({
   // B60: until this page knows (by its Web Lock) whether the page that left a queue is gone, edits
   // wait: a left queue is replayed before the first local edit. Only where the browser has locks.
   const recovering = useRef(webLocks() !== null);
-  const [, setRecovered] = useState(false);
+  const [recovered, setRecovered] = useState(() => webLocks() === null);
   // B60: changes left by an earlier page that no longer fit the server: the user applies or
   // deletes them (never dropped silently).
   const [parked, setParked] = useState<StoredQueue | null>(() =>
@@ -709,6 +713,8 @@ export function useProjectSession({
     /** The draft id of a project not created yet (T305: `?taslak=` in the address). */
     draftId,
     restoredCount,
+    /** B60: a left queue is still being taken over; `run` refuses edits until it is done. */
+    recovering: !recovered,
     /** B60: changes an earlier page left that no longer fit the server (count), or 0. */
     parkedCount: parked?.entries.length ?? 0,
     applyParked,

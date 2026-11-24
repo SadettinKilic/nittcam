@@ -1057,6 +1057,23 @@ export function discardLeftDraft(
   }
 }
 
+/**
+ * T020 under B60: a value under `key` that is not a queue is removed (no page ever writes one, so
+ * no live page loses anything). A page that peeks before it holds the lock calls this, since it
+ * may never take that key over (a new draft id when the address's draft has no queue).
+ */
+export function dropCorruptQueue(storage: KeyValueStorage | null | undefined, key: string): void {
+  try {
+    if (storage?.getItem(key) != null && !readQueue(storage, key)) forget(storage, key);
+  } catch {
+    // Storage is a convenience.
+  }
+}
+
+/** The address parameter that names a new project's draft (T305, D-094). Kept here, not in
+ * `project-session.ts`, so /projeler does not pull the wizard's session code (B42 budget). */
+export const DRAFT_PARAM = 'taslak';
+
 /** The stored queue under `key`, or null (B60: a page peeks before it holds the lock). */
 export function storedQueue(
   storage: KeyValueStorage | null | undefined,

@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AutosaveQueue,
   defaultRetryMs,
+  dropCorruptQueue,
   queueKey,
   discardLeftDraft,
   leftKey,
@@ -1292,7 +1293,9 @@ describe('B60 F1: a tab without the lock (a peer) that dies is taken by the lock
     a.q.push({ entries: [e('a1')], project: P(2) });
     await a.c.advance(1000);
     const key = peerKey('p1', b.q.ownerId);
-    expect(takePeerQueue(storage, key, 'p1', { revision: srv.revision, lastSaveId: srv.lastSaveId })).toBe(true);
+    expect(
+      takePeerQueue(storage, key, 'p1', { revision: srv.revision, lastSaveId: srv.lastSaveId }),
+    ).toBe(true);
     expect(cmds(parkedQueue(storage, 'p1'))).toEqual(['b1']);
     expect(storedQueue(storage, key)).toBeNull();
     // A second sweep finds nothing: parked exactly once.
@@ -1322,7 +1325,13 @@ describe('B60 F1: a tab without the lock (a peer) that dies is taken by the lock
 
   it('server unreachable at the sweep: the whole peer queue is parked', () => {
     const storage = memoryStorage();
-    const q: StoredQueue = { baseRevision: 1, entries: [e('b1')], name: 'Proje', owner: 'pb', at: NOW };
+    const q: StoredQueue = {
+      baseRevision: 1,
+      entries: [e('b1')],
+      name: 'Proje',
+      owner: 'pb',
+      at: NOW,
+    };
     storage.setItem(peerKey('p1', 'pb'), JSON.stringify(q));
     expect(takePeerQueue(storage, peerKey('p1', 'pb'), 'p1', null)).toBe(true);
     expect(cmds(parkedQueue(storage, 'p1'))).toEqual(['b1']);
@@ -1340,5 +1349,20 @@ describe('B60 F1: a tab without the lock (a peer) that dies is taken by the lock
     expect(storedQueue(storage, peerKey('p1', b.q.ownerId))).toBeNull();
     expect(cmds(storedQueue(storage, queueKey('p1')))).toEqual(['b1']);
     expect(b.q.holdsLock).toBe(true);
+  });
+});
+
+describe('T020 under B60: a corrupt draft queue never survives', () => {
+  it('drops a value that is not a queue and keeps a real queue', () => {
+    const s = memoryStorage();
+    for (const bad of ['{not json', '{"a":1}', 'null', '[]', '"x"']) {
+      s.setItem(queueKey(null, 'd1'), bad);
+      dropCorruptQueue(s, queueKey(null, 'd1'));
+      expect(s.getItem(queueKey(null, 'd1'))).toBeNull();
+    }
+    const good = JSON.stringify({ baseRevision: 0, entries: [], name: 'P', newId: 'd1' });
+    s.setItem(queueKey(null, 'd1'), good);
+    dropCorruptQueue(s, queueKey(null, 'd1'));
+    expect(s.getItem(queueKey(null, 'd1'))).toBe(good);
   });
 });
