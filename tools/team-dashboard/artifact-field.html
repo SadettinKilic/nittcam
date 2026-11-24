@@ -1,0 +1,102 @@
+<style>
+/* claude.ai only: "Saha testi" tab (owner 2026-11-24). Content from db doc field/guide (PO), ticks in field/checks, owner notes in field/notes. */
+#saha{display:none}
+body.saha-mode #saha{display:grid}
+body.saha-mode .wrap > :not(header):not(#saha){display:none!important}
+#saha{gap:14px;padding-block:4px 32px;max-width:900px}
+#saha .s-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:grid;gap:8px;min-width:0}
+#saha h2{margin:0;font-size:15px;font-weight:600;text-wrap:balance}
+#saha .s-sum{border-color:var(--ok);background:var(--ok-subtle)}
+#saha .s-sum.no{border-color:var(--bad-border);background:var(--bad-subtle)}
+#saha .s-sum b{font-size:16px}
+#saha .s-meta{color:var(--muted);font-size:12px;font-family:var(--f-mono)}
+#saha .s-prog{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+#saha .s-prog i{display:block;height:100%;background:var(--ok)}
+#saha ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+#saha li{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;line-height:1.45;min-width:0}
+#saha li.warn{color:var(--bad)}
+#saha li.plain{grid-template-columns:12px 1fr}
+#saha li.plain::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--subtle);margin-top:7px}
+#saha input[type=checkbox]{width:18px;height:18px;margin:1px 0 0;accent-color:var(--ok)}
+#saha li.done label{color:var(--muted);text-decoration:line-through}
+#saha details > summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+#saha details > summary::-webkit-details-marker{display:none}
+#saha details > summary span{color:var(--muted);font-size:12px;font-family:var(--f-mono);white-space:nowrap}
+#saha details[open] > summary{margin-bottom:8px}
+#saha textarea{width:100%;min-height:140px;box-sizing:border-box;font:inherit;padding:8px;border-radius:8px;border:1px solid var(--border-strong);background:var(--bg);color:var(--fg);resize:vertical}
+#saha .s-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+#saha .s-btn{font:inherit;padding:6px 12px;border-radius:6px;border:1px solid var(--accent-border);background:var(--accent-subtle);color:var(--accent-text);cursor:pointer}
+#saha .s-btn:focus-visible,#sahaBtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#saha code{font-family:var(--f-mono);font-size:.92em;background:var(--surface-2);padding:0 4px;border-radius:4px;overflow-wrap:anywhere}
+#sahaBtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+</style>
+<script>
+(() => {
+  const MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => MAP[c]);
+  const rich = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  let G = null, C = {}, db = null, notesVer = '', saving = false;
+  function mount() {
+    const wrap = document.querySelector('.wrap'), hud = document.querySelector('header.top .hud');
+    if (!wrap || !hud) return setTimeout(mount, 200);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tbtn'; b.id = 'sahaBtn'; b.textContent = 'Saha testi';
+    hud.insertBefore(b, hud.firstChild);
+    const sec = document.createElement('section'); sec.id = 'saha'; sec.setAttribute('aria-label', 'Saha testi');
+    sec.innerHTML = '<div class="s-card"><b>Saha testi notları yükleniyor…</b><span class="s-meta">Veri PO tarafından gönderilir.</span></div>';
+    wrap.appendChild(sec);
+    const set = (on) => { document.body.classList.toggle('saha-mode', on); b.classList.toggle('on', on); b.textContent = on ? '← Ofis' : 'Saha testi'; };
+    b.addEventListener('click', () => { const on = !document.body.classList.contains('saha-mode'); set(on); try { history.replaceState(null, '', on ? '#saha' : location.pathname); } catch (e) {} });
+    window.addEventListener('hashchange', () => set(location.hash === '#saha'));
+    set(location.hash === '#saha');
+  }
+  function render() {
+    const sec = document.getElementById('saha'); if (!sec || !G) return;
+    let total = 0, done = 0;
+    (G.sections || []).forEach((s) => (s.items || []).forEach((it) => { if (s.check) { total++; if (C[it.id]) done++; } }));
+    const pct = total ? Math.round(done * 100 / total) : 0;
+    const first = !sec.querySelector('details');
+    const open = new Set([...sec.querySelectorAll('details[open]')].map((d) => d.dataset.id));
+    const ta0 = document.getElementById('sahaNotes'); const cur = ta0 ? ta0.value : null;
+    let h = '<div class="s-card s-sum' + (G.ready ? '' : ' no') + '"><b>' + rich(G.headline) + '</b><div>' + rich(G.summary) + '</div>' +
+      '<span class="s-meta">PO notu · ' + esc(G.updated) + ' · main ' + esc(G.main) + '</span></div>';
+    h += '<div class="s-card"><div class="s-row"><h2>İlerleme</h2><span class="s-meta">' + done + '/' + total + ' adım</span></div><div class="s-prog"><i style="width:' + pct + '%"></i></div></div>';
+    (G.sections || []).forEach((s) => {
+      const items = s.items || [], d = s.check ? items.filter((it) => C[it.id]).length : 0;
+      const isOpen = first ? !!s.open : open.has(s.id);
+      h += '<details class="s-card" data-id="' + esc(s.id) + '"' + (isOpen ? ' open' : '') + '><summary><h2>' + rich(s.title) + '</h2><span>' + (s.check ? d + '/' + items.length : items.length) + '</span></summary>';
+      if (s.note) h += '<div style="color:var(--muted)">' + rich(s.note) + '</div>';
+      h += '<ul>' + items.map((it) => s.check
+        ? '<li class="' + (C[it.id] ? 'done' : '') + (it.warn ? ' warn' : '') + '"><input type="checkbox" id="c-' + esc(it.id) + '" data-id="' + esc(it.id) + '"' + (C[it.id] ? ' checked' : '') + (db ? '' : ' disabled') + '><label for="c-' + esc(it.id) + '">' + rich(it.text) + '</label></li>'
+        : '<li class="plain' + (it.warn ? ' warn' : '') + '"><span>' + rich(it.text) + '</span></li>').join('') + '</ul></details>';
+    });
+    h += '<div class="s-card"><h2>Notlarım</h2><span style="color:var(--muted)">Makinenin başında gördüklerini yaz: dosya, satır numarası, ölçüler, ne oldu. PO dönüşte buradan okur.</span>' +
+      '<textarea id="sahaNotes"' + (db ? '' : ' disabled') + ' placeholder="Örn. Air cut tamam, spindle 5 sn bekledi. Test parçası X 200,12 Y 199,95…"></textarea>' +
+      '<div class="s-row"><span class="s-meta" id="sahaSaved">' + esc(notesVer) + '</span><button type="button" class="s-btn" id="sahaSave"' + (db ? '' : ' disabled') + '>Notu kaydet</button></div></div>';
+    sec.innerHTML = h;
+    document.getElementById('sahaNotes').value = cur != null ? cur : (window.__sahaNotes || '');
+    sec.querySelectorAll('input[type=checkbox]').forEach((x) => x.addEventListener('change', async () => {
+      const prev = C; C = Object.assign({}, C, { [x.dataset.id]: x.checked }); render();
+      try { await db.doc('field/checks').set(C); } catch (e) { C = prev; render(); }
+    }));
+    document.getElementById('sahaSave').addEventListener('click', async () => {
+      if (saving) return; saving = true; const v = document.getElementById('sahaNotes').value; const out = document.getElementById('sahaSaved');
+      try { await db.doc('field/notes').set({ text: v.slice(0, 20000), at: new Date().toISOString() }); window.__sahaNotes = v; out.textContent = 'Kaydedildi'; }
+      catch (e) { out.textContent = 'Kaydedilemedi, tekrar dene'; }
+      saving = false;
+    });
+  }
+  mount();
+  (async () => {
+    db = window.claude && window.claude.use ? await window.claude.use('db') : null;
+    if (!db) return;
+    db.doc('field/guide').onSnapshot((s) => { if (s.exists) { G = s.data(); render(); } }, () => {});
+    db.doc('field/checks').onSnapshot((s) => { C = s.exists ? Object.assign({}, s.data()) : {}; render(); }, () => {});
+    db.doc('field/notes').onSnapshot((s) => {
+      if (!s.exists) return; const d = s.data(); window.__sahaNotes = d.text || '';
+      notesVer = d.at ? 'Son kayıt ' + new Date(d.at).toLocaleString('tr-TR') : '';
+      const ta = document.getElementById('sahaNotes'); if (ta && document.activeElement !== ta) ta.value = window.__sahaNotes;
+      const sv = document.getElementById('sahaSaved'); if (sv) sv.textContent = notesVer;
+    }, () => {});
+  })();
+})();
+</script>
