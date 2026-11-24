@@ -44,7 +44,7 @@ test('B12a tester: unverified row from the fix flow, 1440/1024/390, light/dark',
   const name = `B12a test ${Date.now()}`;
   await newMachine(request, name);
 
-  // Fix flow for 4 mm acrylic: the step-down starts at 4, not 6.
+  // Fix flow for 4 mm acrylic: the step-down never exceeds the sheet (T265).
   await openNewProject(page, 'makine');
   await chooseMachine(page, name);
   await pickOption(page.getByTestId('wizard-material'), tr.materials.acrylic);
@@ -66,7 +66,8 @@ test('B12a tester: unverified row from the fix flow, 1440/1024/390, light/dark',
     Number((await row.locator(sel).inputValue()).replace(/\./g, '').replace(',', '.'));
   const thickness = await n('[id$="-thickness"]');
   expect(thickness).toBe(4);
-  expect(await n('[id$="-stepDown"]')).toBe(4);
+  // T328 (D-120): table start for acrylic with the Ø6 two-flute tool = 0,5 × D = 3 mm (≤ 4).
+  expect(await n('[id$="-stepDown"]')).toBe(3);
 
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
