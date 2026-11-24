@@ -16,6 +16,7 @@ import {
 } from './shape';
 import type { Rect } from './types';
 import { toCutSizes } from '../schema/cut-size';
+import { effectiveSpacing } from './tool';
 
 /** A part copy on a sheet. */
 export interface CopyRef {
@@ -84,7 +85,8 @@ export function checkPlacement(
   const r = placementRect(candidate, sizes);
   if (!r) return { outsideSheet: true, inMargin: false, conflicts: [] };
   const { width, height } = sheetSizeOf(project, sheetIndex);
-  const { margin, gap } = project.nesting;
+  // D-129: the same effective clearance and margin as the placers.
+  const { margin, gap } = effectiveSpacing(project, options.toolDiameter);
   const outsideSheet =
     r.x < -EPS || r.y < -EPS || r.x + r.w > width + EPS || r.y + r.h > height + EPS;
   const inMargin =

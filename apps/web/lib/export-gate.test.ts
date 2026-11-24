@@ -90,6 +90,26 @@ describe('downloadBlocker (§6.6 checklist, §7.2 rules 9–10)', () => {
     expect(downloadBlocker(p(base), ALL, false)).toBeNull();
   });
 
+  it('T338: parts with tabs left out need the hold-down line ticked', () => {
+    const checklist = {
+      origin: {
+        corner: 'frontLeft' as const,
+        xPositive: 'right' as const,
+        yPositive: 'back' as const,
+        sheetOffset: { x: 0, y: 0 },
+      },
+      zReference: 'materialTop' as const,
+      tools: [],
+      toolChanges: 0,
+      rezeroZ: false,
+      parkOff: false,
+      tabsNotHeld: 3,
+    };
+    const p = { ok: true, files: [FILE], needsAcceptance: false, checklist };
+    expect(downloadBlocker(p, ALL, false)).toBe('checklist');
+    expect(downloadBlocker(p, { ...ALL, tabsHeld: true }, false)).toBeNull();
+  });
+
   it('manual tool changes need their own confirmation (T274)', () => {
     const checklist = {
       origin: {

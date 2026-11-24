@@ -18,6 +18,8 @@ export interface ChecklistState {
   stale?: boolean;
   /** The vacuum is switched on by hand (T336); only asked when the program writes no code. */
   vacuum?: boolean;
+  /** T338: fewer tabs on some parts (they would not hold); the operator checks the hold-down. */
+  tabsHeld?: boolean;
 }
 
 export const EMPTY_CHECKLIST: ChecklistState = {
@@ -49,6 +51,7 @@ export function downloadBlocker(
   if ((preview.checklist?.highFeeds?.length ?? 0) > 0 && !checklist.feeds) return 'checklist';
   if (preview.checklist?.staleProfile && !checklist.stale) return 'checklist';
   if (preview.checklist?.vacuumByHand && !checklist.vacuum) return 'checklist';
+  if ((preview.checklist?.tabsNotHeld ?? 0) > 0 && !checklist.tabsHeld) return 'checklist';
   if (preview.needsAcceptance && !accepted) return 'accept';
   return null;
 }

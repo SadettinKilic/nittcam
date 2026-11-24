@@ -174,7 +174,9 @@ export function extendedTestProject(set: MaterialParams, toolDiameter: number): 
         },
       ],
     },
-    cutting: { tabs: { auto: false }, leadIn: 'arc', direction: 'climb' },
+    // T339 (CTO #13 M2): tabs on every part, 4 on the outer contour (straight edges only, never on
+    // the R20 arcs, T272), so the part stays on the scrap sheet until the operator frees it.
+    cutting: { tabs: { auto: true, count: 4 }, leadIn: 'arc', direction: 'climb' },
     settings: { dimensionMode: 'cut' },
   };
 }

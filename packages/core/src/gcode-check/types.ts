@@ -99,6 +99,14 @@ export interface ExpectedPart {
    */
   holes?: readonly { cx: number; cy: number }[];
   /**
+   * T338 (D-129, rule PART_NOT_HELD): the placed outline as a polygon (sheet frame, arcs sampled),
+   * whether it is a small part (default thresholds) and whether the project holds small parts with
+   * a thin skin. Omitted = the hold rule is not checked for this part.
+   */
+  outline?: readonly { x: number; y: number }[];
+  small?: boolean;
+  skin?: boolean;
+  /**
    * Its blind contour pockets (T325): inner contour index, the pocket boundary in the sheet frame
    * (a closed polygon, arcs sampled) and the declared depth (mm, positive). Every cutting move
    * inside must keep the tool inside the boundary and stay above the depth. Omitted = none.

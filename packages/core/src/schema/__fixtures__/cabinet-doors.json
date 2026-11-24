@@ -212,32 +212,32 @@
           {
             "partId": "door-left",
             "index": 0,
-            "x": 10,
-            "y": 10,
+            "x": 11,
+            "y": 11,
             "rot": 0,
             "locked": false
           },
           {
             "partId": "door-left",
             "index": 1,
-            "x": 422,
-            "y": 10,
+            "x": 427,
+            "y": 11,
             "rot": 0,
             "locked": false
           },
           {
             "partId": "door-right",
             "index": 0,
-            "x": 834,
-            "y": 10,
+            "x": 843,
+            "y": 11,
             "rot": 0,
             "locked": true
           },
           {
             "partId": "door-right",
             "index": 1,
-            "x": 1246,
-            "y": 10,
+            "x": 1259,
+            "y": 11,
             "rot": 180,
             "locked": false
           }

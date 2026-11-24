@@ -201,7 +201,8 @@ describe('nest: fixtures and edge cases', () => {
     expect(inp.locked).toEqual([
       [{ partId: 'side', index: 0, x: 12, y: 12, rot: 0, locked: true }],
     ]);
-    expect(inp.gap).toBe(10);
+    // D-129: with tabs the effective clearance is Ø + 3.1 = 11.1 (stored 10); margin 12 ≥ Ø + 3
+    expect(inp.gap).toBeCloseTo(11.1, 9);
     expect(inp.margin).toBe(12);
     expect(inp.mode).toBe('fastest');
   });

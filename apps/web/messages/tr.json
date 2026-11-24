@@ -391,6 +391,7 @@
         "vacuumOn": "Vakum aç kodu",
         "vacuumOff": "Vakum kapat kodu",
         "mCodeHelp": "Boş bırakılabilir. Örnek: M7",
+        "mCodeHelpOff": "Boş bırakılabilir. Örnek: M9",
         "postId": "Post ayarı",
         "postVersion": "Post sürümü",
         "postHelp": "Makinenizin kontrol ünitesine uyan G-code biçimi. İki post da saha testine kadar doğrulanmadı.",
@@ -1186,7 +1187,9 @@
       "openCutting": "Kesim ayarlarına git",
       "openSkin": "Tabaka kalınlığına git",
       "marginHint": "Sebep büyük olasılıkla kenar payı: {margin} mm, Ø{tool} takım için en az {min} mm olmalı.",
-      "openMargin": "Kenar payına git"
+      "openMargin": "Kenar payına git",
+      "holdHint": "Küçük parçanın köprüleri tutmuyor: komşu kesim ya da plaka kenarı köprünün arkasındaki malzemeyi alıyor. Parça arası payı en az takım Ø + 3 mm yap ya da ince tabakayı aç.",
+      "openGap": "Parça arası paya git"
     },
     "rules": {
       "R1": "Kural 1 · Birim, mutlak koordinat, düzlem ve iş ofseti baştan yazılır",
@@ -1223,6 +1226,7 @@
       "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
       "NO_OPERATIONS": "Kesilecek parça yok.",
       "DEPTH_EXCEEDS_FLUTE_LENGTH": "Kesim derinliği takımın kesici boyunu aşıyor.",
+      "SMALL_PART_NOT_HELD": "Küçük parçanın en az 2 köprüsü tutmuyor: komşu kesim ya da plaka kenarı köprünün arkasındaki 3 mm malzemeyi alıyor; kesilince serbest kalır. Parça arası payı en az takım Ø + 3 mm yap ya da ince tabakayı aç.",
       "SMALL_PART_UNSECURED": "Küçük parçaya köprü sığmıyor (köprü genişliği ya da sayısı bu parçaya fazla); kesilince serbest kalır. Kesim ayarlarında köprüyü küçültün ya da “Köprü: Kapalı” seçin (küçük parçalar ince tabakayla tutulur).",
       "INVALID_SKIN": "İnce tabaka kalınlığı 0’dan büyük ve malzeme kalınlığından az olmalı.",
       "SMALL_SLUG_UNSECURED": "İç kesimden düşecek küçük parçaya (göbek) 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin (delik içi tamamen boşaltılır, göbek kalmaz).",
@@ -1309,6 +1313,7 @@
       "SMALL_PART_SKIN": "Küçük parçanın altında ince tabaka bırakıldı; plakanın sonunda temizleme pasosuyla kesilir.",
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
       "TABS_REDUCED": "Köprü sayısı azaltıldı.",
+      "TABS_NOT_HELD": "Köprülerin bir kısmı tutmuyor: komşu kesim ya da plaka kenarı köprünün arkasındaki 3 mm malzemeyi alıyor, bu köprüler bırakıldı (G-code başlığı da yazar). Parça arası payı en az takım Ø + 3 mm yap ya da ince tabakayı aç.",
       "TABS_REDUCED_RAMP": "Köprü sayısı azaltıldı: rampa girişi köprülerin yerini kaplıyor (G-code başlığı da yazar). Tüm köprüler için Kesim ayarlarında girişi düz dalmaya alın.",
       "TABS_NOT_PLACED": "Köprüler yerleştirilemedi.",
       "UNPLACED_COPIES": "Bazı parçalar plakaya yerleşmedi ve kesilmeyecek.",
@@ -1968,7 +1973,8 @@
       "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
       "noParts": "Önce Parçalar adımında parça ekleyin.",
       "marginWarning": "Kenar payı Ø{tool} takım için en az {min} mm olmalı; yoksa takım plakanın dışına çıkar.",
-      "gapNote": "Parça arası boşluk: takım Ø{tool} + pay {gap} = {clear} mm."
+      "gapNote": "Parça arası boşluk: takım Ø{tool} + pay {gap} = {clear} mm.",
+      "tabSpacingNote": "Köprü açıkken parça arası pay en az takım Ø + 3 mm ({gap} mm), kenar payı en az takım Ø + 3 mm ({margin} mm) kullanılır."
     },
     "simulation": {
       "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında “Diz” ile parçaları yerleştirin.",
@@ -2040,6 +2046,7 @@
         "materials": "kesim ayarları",
         "other": "diğer ayarlar"
       },
+      "checkTabsNotHeld": "{count} parçada köprü az: komşu kesim ya da plaka kenarı köprünün arkasındaki malzemeyi alıyor (G-code başlığı da yazar). Bu parçaların vakumla ya da elle tutulduğunu doğruladım.",
       "checkVacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
       "checkFeeds": "İlerleme önerilenin çok üstünde: {tools}. Fazladan sıfır olmadığını kontrol ettim; bu değerler bilerek girildi.",
       "checkFeedsTool": "T{tool} ilerleme {feed} (önerilen {recFeed}), dalma {plunge} (önerilen {recPlunge}) mm/dk",
@@ -2400,6 +2407,7 @@
       "title": "Makine günü 2: test kesimi",
       "steps": [
         "Fire plakayı tablaya sabitleyin; plakanın köşesi program sıfırında olsun.",
+        "Kıskaç ya da vidaları yalnızca plakanın dış 30 mm bandına koyun, parçaların ve kesim yolunun dışında; hiçbiri güvenli Z’ye (malzemenin 20 mm üstü) kadar yükselmesin. Parçalar köprüyle plakaya bağlı kalır.",
         "Z sıfırını plakada profildeki yönteme göre ({zref}) yeniden alın; air cut için tablaya aldığınız sıfırla kesmeyin. Takımın değişmediğini kontrol edin.",
         "Önce 200 × 200 test parçasını kesin; ölçüleri uygulamadaki ölçü formuna girin (uygulama toleransa bakar, düzeltme önerir).",
         "Sonra genişletilmiş test parçasını kesin ({width} × {height} mm). Parçayı çıkarın, tozunu alın.",
@@ -2411,6 +2419,7 @@
       "intro": "İlk çalıştırmayı bozabilecek Mach3 ayarları. Her satırı makinede bakıp işaretleyin; bir ayar farklıysa değiştirmeden önce fotoğrafını çekin.",
       "items": [
         "Config > General Config: \"G04 Dwell param in milliseconds\" İŞARETSİZ olmalı. Dosya G4 P5.0 yazar (5 sn); işaretliyse spindle 5 ms bekler, devrini almadan kesime girer.",
+        "M3 spindle’ı gerçekten açıyor mu (röle, inverter)? Air cut başında spindle’ın döndüğünü görün; dönmüyorsa kesime geçmeyin.",
         "Help > About: lisans. Demo sürüm 500 satırda durur; büyük dosya yarıda kalır.",
         "Config > Spindle Setup, Flood Mist Control ve Ports & Pins > Output Signals: M7 hangi çıkışı açıyor? Profil vakumu M7 / M9 ile açıp kapatır; Mach3'te M7 varsayılan olarak soğutma (mist) çıkışıdır.",
         "Config > Spindle Setup: devri programdaki S mi ayarlıyor, yoksa inverter panelinden elle mi? Elle ise paneli dosya başlığındaki DEVIR değerine getirin.",
@@ -2428,7 +2437,7 @@
     },
     "extended": {
       "title": "Genişletilmiş test parçası",
-      "text": "Tek parçada üretimdeki bütün işlemler: yay köşeli dış kontur, iç pencere, iki delik, kör cep ve halka kanal. Normal işlerle aynı takım yolu, post ve kontrollerden geçer.",
+      "text": "Tek parçada üretimdeki bütün işlemler: yay köşeli dış kontur, iç pencere, iki delik, kör cep ve halka kanal. Normal işlerle aynı takım yolu, post ve kontrollerden geçer. Parça dış konturda 4 köprüyle plakaya bağlı kalır (yay köşelerde köprü yok); kesimden sonra köprüleri kesip parçayı çıkarın.",
       "blocked": "Test kesimi dosyası air cut onaylandıktan sonra açılır.",
       "airCut": "Genişletilmiş air cut",
       "testCut": "Genişletilmiş test parçası",

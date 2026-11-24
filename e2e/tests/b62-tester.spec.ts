@@ -1,11 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { goStep, openNewProject, pasteAndNest, saved } from './wizard-helpers';
+import { goStep, openThinSkinProject, pasteAndNest, saved } from './wizard-helpers';
 
 /**
  * B62 tester (T331, D-123): on the Mach3 example machine (Ø8), a sheet margin below the tool Ø
  * (here 6: above the radius, below the diameter) must never reach a downloadable file: the
  * outside contour's cutter then runs 2 mm past the sheet edge at full depth.
+ * D-129: with tabs the effective margin is Ø + 3, so the stored 6 cannot reach the cut; the case
+ * stays reachable with thin skin, where the stored margin counts. The test runs there.
  */
 
 async function commit(page: Page, testId: string, value: string) {
@@ -17,7 +19,7 @@ async function commit(page: Page, testId: string, value: string) {
 test('margin 6 with Ø8 on the Mach3 example: export is blocked', async ({ page }) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await openNewProject(page, 'parcalar');
+  await openThinSkinProject(page);
   await pasteAndNest(page, 'Ad\tEn\tBoy\tAdet\nYan\t560\t720\t1\nRaf\t540\t300\t2', 2);
   await saved(page);
   await commit(page, 'layout-margin', '6');

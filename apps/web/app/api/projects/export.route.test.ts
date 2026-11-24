@@ -356,8 +356,10 @@ describe('POST /api/projects/:id/export', () => {
     expect(r.status).toBe(422);
     const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
     expect(e.stage).toBe('toolpath');
-    expect(e.violations).toHaveLength(1);
-    expect(e.violations[0]).toMatchObject({
+    // D-129 spacing lets the free nest turn both kapak copies to 90°: the other copy may add
+    // its own grain error; every violation is a grain one and the edited copy is among them.
+    expect(e.violations.every((v) => /PLACEMENT_GRAIN$/.test(v.code))).toBe(true);
+    expect(e.violations.find((v) => v.code === 'LOCKED_PLACEMENT_GRAIN')).toMatchObject({
       code: 'LOCKED_PLACEMENT_GRAIN',
       severity: 'error',
       sheet: 0,
@@ -399,8 +401,10 @@ describe('POST /api/projects/:id/export', () => {
     expect(r.status).toBe(422);
     const e = (await r.json()) as Extract<ExportApiError, { error: 'export_failed' }>;
     expect(e.stage).toBe('toolpath');
-    expect(e.violations).toHaveLength(1);
-    expect(e.violations[0]).toMatchObject({
+    // D-129 spacing lets the free nest turn both kapak copies to 90°: the other copy may add
+    // its own grain error; every violation is a grain one and the edited copy is among them.
+    expect(e.violations.every((v) => /PLACEMENT_GRAIN$/.test(v.code))).toBe(true);
+    expect(e.violations.find((v) => v.code === 'PLACEMENT_GRAIN')).toMatchObject({
       code: 'PLACEMENT_GRAIN',
       severity: 'error',
       sheet: 0,

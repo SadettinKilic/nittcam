@@ -57,7 +57,7 @@ describe.each(POSTS)('adversarial mutations (%s)', (post) => {
       'G0 X206.000 Y-5.000',
     ]) {
       const l = lines(g);
-      l[idx(l, /^G0 X206/)] = bad;
+      l[idx(l, /^G0 X207/)] = bad;
       mustFail(g, text(l), /R6\/OUT_OF_ENVELOPE/);
     }
   });
@@ -188,7 +188,7 @@ describe.each(POSTS)('adversarial mutations (%s)', (post) => {
     const ctx = { ...g.context, profile: structuredClone(g.context.profile) };
     const env = ctx.profile.workEnvelope.x; // front-left, X+ right, zero offset
     const l = lines(g);
-    const i = idx(l, /^G0 X206/);
+    const i = idx(l, /^G0 X207/);
     const at = (v: string) => {
       const m = [...l];
       m[i] = `G0 X${v} Y268.000`;

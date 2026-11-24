@@ -47,7 +47,8 @@ function base(placements: Placement[]): Project {
     parts: [part('a', 100, 50, 2), part('b', 60, 60), part('c', 200, 40)],
     nesting: { mode: 'minWaste', gap: GAP, margin: MARGIN },
     layout: { sheets: [{ placements }] },
-    cutting: { tabs: { auto: true }, leadIn: 'arc', direction: 'climb' },
+    // thin skin: the stored gap and margin apply as they are (D-129 raises them only with tabs)
+    cutting: { tabs: { auto: true }, leadIn: 'arc', direction: 'climb', skin: { thickness: 0.5 } },
     settings: { dimensionMode: 'cut' },
   });
 }

@@ -102,8 +102,13 @@ export function tabsShortHeaders(ops: readonly Operation[]): string[] {
   const counts = short.map((o) => o.tabs.length);
   const min = Math.min(...counts);
   const same = counts.every((n) => n === min);
-  const ramp = short.some((o) => o.tabsRamp) ? ', rampa nedeniyle' : '';
-  return [`KÖPRÜ AZ: ${short.length} parçada ${same ? '' : 'en az '}${min} köprü${ramp}`];
+  // T338 (D-129): tabs dropped because they would not hold (a neighbour's kerf, the sheet edge).
+  const causes = [
+    ...(short.some((o) => o.tabsRamp) ? ['rampa'] : []),
+    ...(short.some((o) => o.tabsFacing) ? ['komşu kesim ya da plaka kenarı'] : []),
+  ];
+  const why = causes.length > 0 ? `, ${causes.join(', ')} nedeniyle` : '';
+  return [`KÖPRÜ AZ: ${short.length} parçada ${same ? '' : 'en az '}${min} köprü${why}`];
 }
 
 /**

@@ -252,7 +252,7 @@ test.describe('T020 tester: simulation UX', () => {
     await page.getByTestId('wizard-back').click();
     await wizardReady(page, 'dizilim');
     await expect(page.getByTestId('layout-canvas')).toBeVisible();
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
   });
 
   // Was a known bug in round 1 (an empty editor saved over the stored draft); fixed (D-028).
@@ -264,7 +264,7 @@ test.describe('T020 tester: simulation UX', () => {
     await expect(page.getByTestId('layout-canvas')).toBeVisible();
     await page.reload();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 8_000 });
-    await expect(page.getByTestId('nesting-sheets')).toHaveText('2');
+    await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
   });
 
   test('no autoplay on load, with and without reduced motion', async ({ page }) => {

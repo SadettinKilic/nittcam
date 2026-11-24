@@ -27,6 +27,10 @@ test('server down mid-edit: banner counts the queue, Tekrar dene and recovery ke
   await page.setViewportSize({ width: 1440, height: 900 });
   await openGrainedProject(page, 'parcalar');
   await paste(page, KITCHEN, 5);
+  // The paste re-renders in a transition (T304): wait for its rows, so saved() sees the paste save.
+  await expect(page.getByTestId('cut-list-count')).toHaveText(
+    fill(tr.cutList.count, { rows: 5, pieces: 30 }),
+  );
   await saved(page);
   const id = await projectId(page);
   await goStep(page, 'makine');

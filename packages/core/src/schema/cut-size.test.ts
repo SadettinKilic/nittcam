@@ -155,6 +155,8 @@ describe('nesting and toolpath read the cut size', () => {
       ...p,
       stock: { ...p.stock, sheet: { ...p.stock.sheet, width: 616, height: 416 } },
       nesting: { ...p.nesting, margin: 10 },
+      // D-129: the stored margin counts with skin (tabs lift it to Ø + 3)
+      cutting: { ...p.cutting, skin: { thickness: 0.5 } },
     };
     expect(nestProject(tight, { toolDiameter: 8 }).unplaced).toHaveLength(0);
     expect(
@@ -166,7 +168,11 @@ describe('nesting and toolpath read the cut size', () => {
   it('placement check uses the cut footprint', () => {
     const p = banded(band);
     const r = checkPlacement(
-      { ...p, stock: { ...p.stock, sheet: { ...p.stock.sheet, width: 616, height: 416 } } },
+      {
+        ...p,
+        stock: { ...p.stock, sheet: { ...p.stock.sheet, width: 616, height: 416 } },
+        cutting: { ...p.cutting, skin: { thickness: 0.5 } }, // D-129: stored margin with skin
+      },
       0,
       { partId: 'a', index: 0, x: 10, y: 10, rot: 0, locked: false },
       { toolDiameter: 8 },

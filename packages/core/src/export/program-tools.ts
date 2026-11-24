@@ -27,6 +27,11 @@ export interface ProgramTools {
   manualChanges: number;
   /** True when a manual change has no tool length offset: Z must be re-zeroed after each change. */
   rezeroZ: boolean;
+  /**
+   * T338 (D-129): outer contours that got fewer tabs because some would not hold (a neighbour's
+   * kerf or the sheet edge takes the web behind them). 0 = none.
+   */
+  tabsNotHeld: number;
 }
 
 export function programTools(
@@ -51,5 +56,8 @@ export function programTools(
   const manualChanges = mode === 'manual' ? changes : 0;
   const offset =
     post !== null && post.toolChange.lengthOffset && profile.toolChanger.lengthCompensation;
-  return { sheets, mode, manualChanges, rezeroZ: manualChanges > 0 && !offset };
+  const tabsNotHeld = toolpath.operations.filter(
+    (o) => o.kind === 'outerContour' && o.tabsFacing === true,
+  ).length;
+  return { sheets, mode, manualChanges, rezeroZ: manualChanges > 0 && !offset, tabsNotHeld };
 }

@@ -125,6 +125,8 @@ describe('B62 r2: margin below the tool is refused on every post', () => {
   function withMargin(margin: number): Project {
     const json = JSON.parse(JSON.stringify(cabinetDoors));
     json.nesting.margin = margin;
+    // D-129: with tabs the placer lifts the margin to Ø + 3; the stored margin counts with skin
+    json.cutting.skin = { thickness: 0.5 };
     const r = parseProject(json);
     if (!r.ok) throw new Error(JSON.stringify(r.issues));
     return r.project;

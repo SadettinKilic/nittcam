@@ -873,28 +873,35 @@ function WizardSession({
   );
   // T298: "Tabaka kalınlığına git" opens step 1 on the thin-skin field.
   // T300: "Kenar payına git" from a Simülasyon finding back to the Dizilim field.
-  const openMargin = useCallback(() => {
-    go('dizilim');
-    let tries = 0;
-    const focus = () => {
-      const el = document.querySelector<HTMLInputElement>('[data-testid="layout-margin"]');
-      // B47 tester round 1: below lg the settings panel can start closed; open it first so the
-      // field is visible and can take focus.
-      if (el && el.getClientRects().length === 0) {
-        const toggle = document.querySelector<HTMLButtonElement>(
-          '[data-testid="workspace-left-toggle"][aria-expanded="false"]',
-        );
-        if (toggle) toggle.click();
-        if (++tries < 30) requestAnimationFrame(focus);
-        return;
-      }
-      if (el) {
-        el.scrollIntoView({ block: 'nearest' });
-        el.focus();
-      } else if (++tries < 30) requestAnimationFrame(focus);
-    };
-    requestAnimationFrame(focus);
-  }, [go]);
+  // T338 (D-129): "Parça arası paya git" for parts whose tabs would not hold.
+  const openNestField = useCallback(
+    (testId: string) => {
+      go('dizilim');
+      let tries = 0;
+      const focus = () => {
+        const el = document.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`);
+        // B47 tester round 1: below lg the settings panel can start closed; open it first so the
+        // field is visible and can take focus.
+        if (el && el.getClientRects().length === 0) {
+          const toggle = document.querySelector<HTMLButtonElement>(
+            '[data-testid="workspace-left-toggle"][aria-expanded="false"]',
+          );
+          if (toggle) toggle.click();
+          if (++tries < 30) requestAnimationFrame(focus);
+          return;
+        }
+        if (el) {
+          el.scrollIntoView({ block: 'nearest' });
+          el.focus();
+        } else if (++tries < 30) requestAnimationFrame(focus);
+      };
+      requestAnimationFrame(focus);
+    },
+    [go],
+  );
+  const openMargin = useCallback(() => openNestField('layout-margin'), [openNestField]);
+  const openGap = useCallback(() => openNestField('layout-gap'), [openNestField]);
+  const holdLink = { hint: messages.simulation.blocked.holdHint, onOpen: openGap };
   const marginLow = session.issues.some((i) => i.code === 'MARGIN_BELOW_TOOL_RADIUS');
   const marginLink = marginLow
     ? {
@@ -1314,6 +1321,7 @@ function WizardSession({
         onOpenRow={openRow}
         onOpenSkin={openSkin}
         margin={marginLink}
+        hold={holdLink}
         header={{
           projectName: session.name,
           revision: session.revision,

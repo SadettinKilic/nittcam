@@ -137,6 +137,8 @@ export interface Operation {
   tabsWanted?: number;
   /** T334: the ramp entry took the room of the missing tabs. */
   tabsRamp?: true;
+  /** T338 (D-129): tabs were left out because they would not hold (a neighbour's cut, the edge). */
+  tabsFacing?: true;
   /** Approach, lead-in, passes (one per depth), lead-out, retract. Starts and ends at safe Z. */
   segments: MoveSegment[];
 }
@@ -207,6 +209,8 @@ export type ToolpathCode =
   | 'SMALL_SLUG_AUTO_TABS'
   | 'TABS_REDUCED'
   | 'TABS_NOT_PLACED'
+  | 'TABS_NOT_HELD'
+  | 'SMALL_PART_NOT_HELD'
   | 'TABS_TOO_SMALL'
   | 'POCKET_PLUNGE_ENTRY';
 
@@ -296,6 +300,11 @@ export interface CutOrderSummary {
 
 export interface ToolpathOptions {
   tabs?: TabOptions;
+  /**
+   * T338 (D-129): `false` places tabs without the holding rule (the old, unfiltered output).
+   * Low-level hook for tests (the checker's rejection test); the app never sets it.
+   */
+  tabHold?: false;
   order?: CutOrderOptionsInput;
   /** Default: `project.cutting.leadIn`. */
   lead?: LeadType;
