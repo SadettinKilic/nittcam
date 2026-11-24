@@ -15,6 +15,7 @@ import {
   needsUnverifiedAcceptance,
   parsePostConfig,
   unverifiedReasons,
+  vacuumByHand,
   unverifiedTemplateNames,
   type ExportNcResult,
   type PostFile,
@@ -246,6 +247,8 @@ export async function runExportOf(
     needsAcceptance: needsUnverifiedAcceptance(pv, cfg.config),
     unverifiedReasons: unverifiedReasons(pv, cfg.config),
     checklist: {
+      // T336 (D-128): a vacuum machine whose program writes no vacuum code: a line to tick.
+      ...(vacuumByHand(machine.profile, cfg.config) ? { vacuumByHand: true as const } : {}),
       ...checklistOf(machine, data, r.tools, {
         names: r.files.map((x) => x.name),
         latestLimit:

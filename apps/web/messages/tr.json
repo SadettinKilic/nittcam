@@ -382,7 +382,7 @@
         "capacity": "Takım kapasitesi",
         "g43": "Takım boyu telafisi var (G43)",
         "park": "Takım değişiminde park noktasına git",
-        "parkHelp": "Takım değiştirirken makine buraya gelsin: önce güvenli Z'ye çıkar, sonra makine koordinatındaki bu X/Y'ye (G53) gider ve durur. İş sıfırından bağımsızdır.",
+        "parkHelp": "Takım değiştirirken makine buraya gelsin: önce güvenli Z'ye çıkar, sonra makine koordinatındaki bu X/Y'ye (G53) gider ve durur. Program bitince de spindle durduktan sonra buraya gider, plaka boşaltmaya hazır olur. İş sıfırından bağımsızdır.",
         "parkX": "Park X (mm)",
         "parkY": "Park Y (mm)",
         "parkXYHelp": "Makine koordinatı (G53): kumandanın makine/mutlak ekranındaki değer, makine sıfırına (home) göre. Eksen hareket alanının içinde olmalı.",
@@ -1258,7 +1258,7 @@
       "TOOL_CHANGE_BELOW_SAFE_Z": "Takım değişimi güvenli Z'nin altında.",
       "NO_SAFE_Z_AFTER_TOOL_CHANGE": "Takım değişiminden sonra önce güvenli Z'ye kalkılmıyor.",
       "FEED_FROM_UNKNOWN_POSITION": "Kesim, bilinmeyen bir konumdan başlıyor.",
-      "MACHINE_MOVE": "Makine koordinatında (G53) bir hareket var ama makine profilindeki park noktası değil (ya da güvenli Z'de, spindle kapalıyken ve hemen ardından duraklama ile değil).",
+      "MACHINE_MOVE": "Makine koordinatında (G53) bir hareket var ama makine profilindeki park noktası değil (ya da güvenli Z'de, spindle kapalıyken ve hemen ardından duraklama veya program sonu ile değil).",
       "PLUNGE_TOO_FAST": "Dalma, dalma beslemesinden hızlı.",
       "FEED_ABOVE_MACHINE": "İlerleme makinenin sınırının üstünde.",
       "RAMP_OUTSIDE_KERF": "Rampa, girdiği kesim çizgisinin dışına çıkıyor.",
@@ -1309,6 +1309,7 @@
       "SMALL_PART_SKIN": "Küçük parçanın altında ince tabaka bırakıldı; plakanın sonunda temizleme pasosuyla kesilir.",
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
       "TABS_REDUCED": "Köprü sayısı azaltıldı.",
+      "TABS_REDUCED_RAMP": "Köprü sayısı azaltıldı: rampa girişi köprülerin yerini kaplıyor (G-code başlığı da yazar). Tüm köprüler için Kesim ayarlarında girişi düz dalmaya alın.",
       "TABS_NOT_PLACED": "Köprüler yerleştirilemedi.",
       "UNPLACED_COPIES": "Bazı parçalar plakaya yerleşmedi ve kesilmeyecek.",
       "CLEARANCE_CLAMPED": "Yaklaşma yüksekliği güvenli Z ile sınırlandı.",
@@ -2024,6 +2025,7 @@
         "materials": "kesim ayarları",
         "other": "diğer ayarlar"
       },
+      "checkVacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
       "checkFeeds": "İlerleme önerilenin çok üstünde: {tools}. Fazladan sıfır olmadığını kontrol ettim; bu değerler bilerek girildi.",
       "checkFeedsTool": "T{tool} ilerleme {feed} (önerilen {recFeed}), dalma {plunge} (önerilen {recPlunge}) mm/dk",
       "hingeHandle": "Kulp delikleri menteşe ile aynı kenarda ({names}). Kulp menteşe tarafında olamaz; kenarı kontrol edin.",
@@ -2330,6 +2332,7 @@
     "fieldKitLink": "Saha testi kiti"
   },
   "fieldKit": {
+    "vacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
     "title": "Saha testi kiti",
     "subtitle": "{machine} · profil v{version} · post {post}",
     "metaTitle": "Saha testi kiti",
@@ -2404,7 +2407,7 @@
     "park": {
       "title": "Not: takım değişimi ve park konumu",
       "text": "Elle takım değişiminde makine malzemenin 20 mm üstünde durur; ayrı bir park konumu yok. Takımı değiştirmeden önce spindle’ın durduğunu görün, gerekirse Z’yi elle kaldırın. Bu yükseklik sizin makinenizde yeterli mi, not alın.",
-      "on": "Elle takım değişiminde makine önce güvenli Z'ye (malzemenin 20 mm üstü) çıkar, sonra makine koordinatında X {x} / Y {y} park noktasına gider (G53) ve durur. Park noktası makine koordinatıdır: makine açıldıktan sonra referanslanmış (home) olmalı; değilse park hareketi sınır anahtarına gidebilir. Makinenizde home anahtarı yoksa ilk air cut için park noktasını kapatın. Takımı değiştirmeden önce spindle'ın durduğunu görün; park noktasının sizin makinenizde rahat bir yer olduğunu not alın.",
+      "on": "Elle takım değişiminde makine önce güvenli Z'ye (malzemenin 20 mm üstü) çıkar, sonra makine koordinatında X {x} / Y {y} park noktasına gider (G53) ve durur. Program bitince de makine spindle durduktan sonra park noktasına gider; plaka boşaltmaya hazır olur. Park noktası makine koordinatıdır: makine açıldıktan sonra referanslanmış (home) olmalı; değilse park hareketi sınır anahtarına gidebilir. Makinenizde home anahtarı yoksa ilk air cut için park noktasını kapatın. Takımı değiştirmeden önce spindle'ın durduğunu görün; park noktasının sizin makinenizde rahat bir yer olduğunu not alın.",
       "off": "Uyarı: park noktası kapalı. Takım değişiminde takım plakanın üstünde kalır; park noktası ayarlayın.",
       "hint": "Park noktası makine profilinde açılabilir: Makineler › makine › Takım değiştirici › “Takım değişiminde park noktasına git” (makine koordinatı, G53)."
     },
@@ -3296,6 +3299,20 @@
     "parts": "{count} parça",
     "legend": "Parça no: satır.kopya · Ok: damar yönü · Ölçüler mm (kesim ölçüsü) · Kesikli çizgi: kör cep",
     "pocketDepth": "Cep {d}",
+    "ncFile": "NC dosyası: {names}",
+    "ncFiles": "NC dosyaları ({count}, bu sırayla): {names}",
+    "ncNone": "NC dosyası: bu revizyon için henüz dışa aktarılmadı. Dışa aktar adımında NC üretince PDF'yi yeniden alın.",
+    "ncNoFile": "NC dosyası: bu plakada kesilecek iş yok.",
+    "toolOrder": "Takım sırası: {order}",
+    "toolOrderManual": "Takım sırası: {order} · elle değişim",
+    "toolRun": "{n}. T{tool} Ø{d} {type}",
+    "toolTypes": {
+      "flatEndMill": "düz freze",
+      "ballEndMill": "küresel freze",
+      "compression": "kompresyon freze",
+      "vBit": "V uç",
+      "drill": "matkap"
+    },
     "empty": "Dizilim yok. Önce Dizilim adımında yerleştirme yapın.",
     "listTitle": "Parça listesi",
     "listDetails": "{rows} satır · {pieces} parça",

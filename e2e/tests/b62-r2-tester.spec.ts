@@ -164,7 +164,11 @@ test('T332 park on: homing in the checklist, the NC and the field kit; mach3 blo
   }
   const pauses = lines.filter((l) => /^M0?0\b/.test(l.trim())).length;
   expect(pauses).toBeGreaterThan(0);
-  expect(parks).toBe(pauses);
+  // One park per manual pause, plus the end park (T335, D-127: the program ends at the park point).
+  expect(parks).toBe(pauses + 1);
+  const code = lines.filter((l) => l.trim() !== '' && !l.startsWith('('));
+  expect(code.slice(-3)[0]).toMatch(/^G53 /);
+  expect(code.slice(-2)).toEqual(['M9', 'M30']);
 
   // A generic-post machine: no Mach3 block in its field kit.
   const g = structuredClone(profile);

@@ -3,6 +3,10 @@
  * one operation to the next count only on the same sheet (each sheet is its own program); the very
  * first rapid of a sheet starts at an unknown position and is not counted. Acceleration, tool
  * changes and the spindle warm-up are ignored. Pure.
+ *
+ * T335 (field rehearsal N4, D-127): a feed move never counts faster than the machine runs it: its
+ * feed is clamped at the machine's ceiling (`cap`: cutting feed, or plunge feed for a move going
+ * down into the material; `machineFeedLimits`) and at the rapid rate.
  */
 import { segmentLength } from '../geometry/segment';
 import { operationMoves } from './safety';
@@ -24,7 +28,26 @@ export function moveLength(from: Pos, m: Move): number {
   return Math.hypot(m.x - from.x, m.y - from.y, dz);
 }
 
-export function summarizeToolpath(tp: Toolpath, rapidFeed: number): ToolpathSummary {
+/** Machine feed ceiling of the time estimate, mm/min (T335). */
+export interface FeedCap {
+  feed: number;
+  plunge: number;
+}
+
+/** The feed a move really runs at: programmed, clamped at the ceiling and the rapid rate. */
+export function effectiveFeed(
+  feed: number,
+  fromZ: number,
+  toZ: number,
+  rapidFeed: number,
+  cap?: FeedCap,
+): number {
+  const down = toZ < fromZ - 1e-9 && toZ < -1e-9;
+  const ceiling = cap ? (down ? cap.plunge : cap.feed) : Number.POSITIVE_INFINITY;
+  return Math.min(feed, ceiling, rapidFeed);
+}
+
+export function summarizeToolpath(tp: Toolpath, rapidFeed: number, cap?: FeedCap): ToolpathSummary {
   let cutLength = 0;
   let rapidLength = 0;
   let minutes = 0;
@@ -43,7 +66,7 @@ export function summarizeToolpath(tp: Toolpath, rapidFeed: number): ToolpathSumm
           minutes += len / rapidFeed;
         } else {
           cutLength += len;
-          minutes += len / m.feed;
+          minutes += len / effectiveFeed(m.feed, prev.z, m.z, rapidFeed, cap);
         }
       }
       prev = { x: m.x, y: m.y, z: m.z };

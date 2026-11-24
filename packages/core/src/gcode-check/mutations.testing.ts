@@ -304,10 +304,13 @@ export const MUTATIONS: readonly Mutation[] = [
     rule: 'R5',
     code: 'FEED_NOT_EXPLICIT',
     posts: BOTH,
-    what: "drop F of the second part's plunge",
+    what: "drop F of the second block's first feed move (plunge, or the Z0 approach of a ramp)",
     apply: (l) => {
+      // The first G1 after the block's rapid is the move R5 guards. With straight entry it is the
+      // plunge (G1 Z-.. F); with ramp entry it is the approach to the top (G1 Z0 F) and the deeper
+      // Z moves come mid-contour (ramp legs, tab climbs), where the feed is rightly modal (T334).
       const s = opBlocks(l)[1]?.[0] ?? 0;
-      return edit(l, find(l, /^G1 Z-.* F1500$/, s), (t) => t.replace(' F1500', ''));
+      return edit(l, find(l, /^G1 /, s), (t) => t.replace(/ F[\d.]+$/, ''));
     },
   },
   // R6 envelope
