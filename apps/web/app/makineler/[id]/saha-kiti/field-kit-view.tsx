@@ -221,6 +221,16 @@ function Kit({
       <Section title={t.cut.title} testId="field-kit-cut">
         <Checklist items={f(t.cut.steps)} ordered />
       </Section>
+      {data.vacuumByHand ? (
+        // T336 (D-128): vacuum hold-down, but the programs write no vacuum code.
+        <p
+          className="flex items-start gap-1.5 text-sm font-medium text-warning-text"
+          data-testid="field-kit-vacuum-by-hand"
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t.vacuumByHand}
+        </p>
+      ) : null}
       <Section title={t.park.title} testId="field-kit-park">
         <p className="text-sm text-fg">
           {data.park

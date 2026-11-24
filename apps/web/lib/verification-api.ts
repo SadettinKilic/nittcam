@@ -59,6 +59,8 @@ export interface VerificationOverview {
   park: { x: number; y: number } | null;
   /** T321: a manual tool changer without a usable park point (the tool stops over the sheet). */
   parkOff: boolean;
+  /** T336: vacuum hold-down but the programs write no vacuum code: switch it on by hand. */
+  vacuumByHand?: true;
   programs: { airCut: TestProgramPreview; testCut: TestProgramPreview };
   /** T191: the extended field-test part (holes, pocket, groove, arcs, inner contour). */
   extended: {

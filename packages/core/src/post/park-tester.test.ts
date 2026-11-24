@@ -46,8 +46,8 @@ const errorCodes = (t: string) =>
     .map((v) => v.code);
 const lines = text.split('\r\n');
 const join = (ls: string[]) => ls.join('\r\n');
-/** Index of the last park line (the real tool change T2 → T3). */
-const parkAt = lines.lastIndexOf(G53);
+/** Index of the last tool-change park line (T2 → T3); T335 adds an end park after it. */
+const parkAt = lines.lastIndexOf(G53, lines.lastIndexOf('M0'));
 const pauseAt = lines.indexOf('M0', parkAt);
 
 /** Replace the lines [from, to) after the last park with `insert`. */

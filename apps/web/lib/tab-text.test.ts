@@ -18,4 +18,15 @@ describe('tabTextCode (B44, T293 wording)', () => {
     ).toBeNull();
     expect(tabTextCode('TABS_REDUCED', 'x')).toBeNull();
   });
+  it('T334: a tab shortfall from the ramp entry has its own text', () => {
+    expect(
+      tabTextCode(
+        'TABS_REDUCED',
+        'Only 3 of 4 tabs fit: the ramp entry takes the room of the others.',
+      ),
+    ).toBe('TABS_REDUCED_RAMP');
+    expect(
+      tabTextCode('TABS_REDUCED', 'Only 3 of 4 tabs fit away from corners, arcs and the lead.'),
+    ).toBeNull();
+  });
 });

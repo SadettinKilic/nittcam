@@ -249,6 +249,12 @@ test.describe('B7 r3: touch', () => {
     await page.goto(URL);
     await pasteMany(page, 60);
     // T248 cards are ~92 px (were ~196): scroll about 12 cards so row 20 stays mounted.
+    // A wheel goes to whatever is under the pointer. After the paste the pointer is still
+    // where "Uygula" was, which at 390 px is where the "60 satır eklendi" toast shows up;
+    // a wheel there scrolls the page, not the list. Put the pointer on the list first.
+    const list = await page.getByTestId('cut-list-scroll').boundingBox();
+    if (!list) throw new Error('cut-list-scroll has no box');
+    await page.mouse.move(list.x + list.width / 2, list.y + 40);
     await page.mouse.wheel(0, 1100);
     await page.waitForTimeout(400);
     const input = cell(page, 20, t.columns.name);

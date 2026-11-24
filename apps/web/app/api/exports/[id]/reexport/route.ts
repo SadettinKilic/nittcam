@@ -75,7 +75,8 @@ export async function POST(request: Request, ctx: RouteContext<'/api/exports/[id
       const settings =
         type === 'etiket' ? parseLabelQuery(new URLSearchParams(labels ?? '')) : undefined;
       if (settings === null) return apiError({ error: 'snapshot_missing' }, 410);
-      const doc = await buildDocument(scope, source, type, settings);
+      // T333: a PDF names the NC export of its revision; the one that existed when it was made.
+      const doc = await buildDocument(scope, source, type, settings, row.createdAt);
       const stored = await storeDocument(scope, source, type, doc, labels);
       if (stored.kind === 'noMachine') {
         return apiError({ error: 'export_failed', stage: 'profile', violations: [] }, 422);

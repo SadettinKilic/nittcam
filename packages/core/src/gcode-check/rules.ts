@@ -283,10 +283,13 @@ export function motionRules(
       case 'machineMove': {
         // T309 (D-097): a G53 move is only the profile's park point: G0, X and Y both given and
         // equal to the park, at safe Z, spindle off, and a pause follows before any move.
+        // T335 (N2): or it is the end park: no move after it and the program end follows.
         const park = d.park;
-        const pauseFollows = events.some(
-          (x) => x.kind === 'pause' && x.moveIndex === e.moveIndex && x.line >= e.line,
-        );
+        const pauseFollows =
+          events.some(
+            (x) => x.kind === 'pause' && x.moveIndex === e.moveIndex && x.line >= e.line,
+          ) ||
+          (e.moveIndex >= sm.length && events.some((x) => x.kind === 'end' && x.line > e.line));
         const ok =
           park !== null &&
           e.motion === 'G0' &&
@@ -306,7 +309,7 @@ export function motionRules(
             e.line,
             park === null
               ? 'G53 (machine coordinates) move, but the profile has no park point for this post.'
-              : `G53 move is not the profile's park move (G0 X${park.x} Y${park.y} at safe Z, spindle off, then a pause).`,
+              : `G53 move is not the profile's park move (G0 X${park.x} Y${park.y} at safe Z, spindle off, then a pause or the program end).`,
           );
         }
         return;
