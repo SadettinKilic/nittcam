@@ -300,6 +300,11 @@ export interface CutOrderSummary {
 
 export interface ToolpathOptions {
   tabs?: TabOptions;
+  /**
+   * T338 (D-129): `false` places tabs without the holding rule (the old, unfiltered output).
+   * Low-level hook for tests (the checker's rejection test); the app never sets it.
+   */
+  tabHold?: false;
   order?: CutOrderOptionsInput;
   /** Default: `project.cutting.leadIn`. */
   lead?: LeadType;

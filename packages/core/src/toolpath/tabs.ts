@@ -235,11 +235,19 @@ export function placeTabs(
     o.noCornerArcs ?? false,
   );
   const held = o.holding ? o.holding(allowed) : allowed;
+  // Spread only when the holding rule removed positions; else the old even spacing alone (T334).
+  const narrowed =
+    held.length !== allowed.length ||
+    held.some(
+      (h, i) =>
+        Math.abs(h.lo - (allowed[i]?.lo ?? NaN)) > EPS ||
+        Math.abs(h.hi - (allowed[i]?.hi ?? NaN)) > EPS,
+    );
   for (let n = o.count; n >= Math.max(1, o.minCount); n--) {
     // neighbouring raised spans must not touch (n = 1 has no neighbour)
     if (n > 1 && total / n <= 2 * half + EPS) continue;
     const centres =
-      evenTabCentres(held, total, n) ?? (o.holding ? spreadTabCentres(held, total, n, half) : null);
+      evenTabCentres(held, total, n) ?? (narrowed ? spreadTabCentres(held, total, n, half) : null);
     if (!centres) continue;
     return centres.map((c) => {
       const start = c - half;

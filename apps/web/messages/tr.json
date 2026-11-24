@@ -1953,7 +1953,8 @@
       "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
       "noParts": "Önce Parçalar adımında parça ekleyin.",
       "marginWarning": "Kenar payı Ø{tool} takım için en az {min} mm olmalı; yoksa takım plakanın dışına çıkar.",
-      "gapNote": "Parça arası boşluk: takım Ø{tool} + pay {gap} = {clear} mm."
+      "gapNote": "Parça arası boşluk: takım Ø{tool} + pay {gap} = {clear} mm.",
+      "tabSpacingNote": "Köprü açıkken parça arası pay en az takım Ø + 3 mm ({gap} mm), kenar payı en az takım Ø + 3 mm ({margin} mm) kullanılır."
     },
     "simulation": {
       "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında “Diz” ile parçaları yerleştirin.",

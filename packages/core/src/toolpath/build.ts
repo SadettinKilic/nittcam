@@ -104,7 +104,7 @@ import type {
   ToolpathSeverity,
 } from './types';
 import { toCutSizes } from '../schema/cut-size';
-import { holdingCentres, type CutterIndex } from './tab-hold';
+import { cutterIndex, cuttersOf, holdingCentres, type CutterIndex } from './tab-hold';
 
 /** Defaults of the toolpath options (D-021). */
 export const TOOLPATH_DEFAULTS = {
@@ -1750,6 +1750,36 @@ export function buildToolpath(
   });
 
   // 3. Operations in cut order, built for the chosen start (leads and tabs follow it).
+  // T338 (D-129): two phases. Phase A builds every operation without the holding rule (its issue
+  // sinks are thrown away); its cutting moves per sheet are what a tab must keep clear of. Phase A
+  // tabs count as cuts too (raised spans sit at the tab top), so the index errs on the safe side.
+  // Phase B is the real build: tabs (slug tabs too, so `unsecuredSlugs` follows) only where they hold.
+  for (const o of order.sequence) {
+    const k = itemCtx[o.item];
+    if (itemHole[o.item] || k === undefined) continue;
+    (prepared[k] as OperationContext).startEdge = (edges[k] as number[])[o.start] ?? -1;
+  }
+  const holdBySheet = new Map<number, CutterIndex>();
+  if (options.tabHold !== false) {
+    const phaseA = new Map<number, Operation[]>();
+    const cleanA: Operation[] = [];
+    for (const o of order.sequence) {
+      let op = itemHole[o.item];
+      if (!op) {
+        const ctx = prepared[itemCtx[o.item] as number] as OperationContext;
+        const sheet = sheetSizeOf(project, ctx.sheetIndex);
+        op = buildOuterOperation(ctx, { ...paramsOf(ctx), sheet }, [], [], new Set(), cleanA);
+      }
+      const list = phaseA.get(op.sheet) ?? [];
+      list.push(op);
+      phaseA.set(op.sheet, list);
+    }
+    for (const op of cleanA) phaseA.get(op.sheet)?.push(op);
+    for (const [sheet, ops] of phaseA) {
+      const index = cutterIndex(cuttersOf(ops, params.tabs.top), sheetSizeOf(project, sheet));
+      holdBySheet.set(sheet, index);
+    }
+  }
   const operations: Operation[] = [];
   const cleanups: Operation[] = [];
   const smallWarned = new Set<string>();
@@ -1761,12 +1791,15 @@ export function buildToolpath(
     }
     const k = itemCtx[o.item] as number;
     const ctx = prepared[k] as (typeof prepared)[number];
-    ctx.startEdge = (edges[k] as number[])[o.start] ?? -1;
     operations.push(
       buildOuterOperation(
         ctx,
         // each sheet's own size bounds its leads (T164, several stock sizes)
-        { ...paramsOf(ctx), sheet: sheetSizeOf(project, ctx.sheetIndex) },
+        {
+          ...paramsOf(ctx),
+          sheet: sheetSizeOf(project, ctx.sheetIndex),
+          hold: holdBySheet.get(ctx.sheetIndex),
+        },
         ctx.warnings,
         ctx.errors,
         smallWarned,

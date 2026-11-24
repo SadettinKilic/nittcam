@@ -496,7 +496,8 @@ describe('hand-computed cases', () => {
       placements: [[P('a', 0, 0, 0)]],
     });
     for (const lead of ['arc', 'line'] as const) {
-      const res = buildToolpath(project, mkMachine({}), { lead, leadLength: 10 });
+      // leads at the sheet edge, not tab holding (D-129)
+      const res = buildToolpath(project, mkMachine({}), { lead, leadLength: 10, tabHold: false });
       expect(res.ok).toBe(true);
       expect(
         codes(res, 'warnings').some((c) => c === 'LEAD_SHORTENED' || c === 'LEAD_REMOVED'),

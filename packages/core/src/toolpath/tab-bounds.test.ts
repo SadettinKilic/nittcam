@@ -49,7 +49,7 @@ function project(thickness = 18, cutting: Record<string, unknown> = {}): Project
 
 describe('tab size bounds (T293)', () => {
   it('tabSizeProblem: width ≥ 3, height 1 … t − 1', () => {
-    expect(TAB_BOUNDS).toEqual({ minWidth: 3, minHeight: 1, belowThickness: 1 });
+    expect(TAB_BOUNDS).toEqual({ minWidth: 3, minHeight: 1, belowThickness: 1, minAnchor: 3 });
     expect(maxTabHeight(18)).toBe(17);
     expect(tabSizeProblem(3, 1, 18)).toBeNull();
     expect(tabSizeProblem(3, 17, 18)).toBeNull();

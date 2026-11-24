@@ -5,6 +5,7 @@
  * wins ties, so the same input gives a byte-identical result.
  */
 import { allowedRotations, rotationPolicyOf } from '../geometry/grain';
+import { effectiveSpacing } from './tool';
 import { contour, signedArea } from '../geometry/polyline';
 import { isQuarterTurn } from '../geometry/transform';
 import {
@@ -866,6 +867,7 @@ export function nestingInputFromProject(
 ): NestingInput {
   // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
   const project = toCutSizes(entered);
+  const spacing = effectiveSpacing(project, options.toolDiameter);
   const locked = project.layout.sheets.map((sheet) => sheet.placements.filter((p) => p.locked));
   while (locked.length > 0 && locked[locked.length - 1]?.length === 0) locked.pop();
   // T164: several stock sizes only when the project lists them (absent = the single-size path).
@@ -912,8 +914,9 @@ export function nestingInputFromProject(
         .filter((_, k) => innerOperation(part, k).kind === 'inside')
         .map((c) => contour(c)),
     })),
-    gap: project.nesting.gap,
-    margin: project.nesting.margin,
+    // D-129: with tabs, pay ≥ 3 mm and margin ≥ Ø + 3 mm (the stored values stay).
+    gap: spacing.gap,
+    margin: spacing.margin,
     toolDiameter: options.toolDiameter,
     mode: project.nesting.mode,
     locked,
