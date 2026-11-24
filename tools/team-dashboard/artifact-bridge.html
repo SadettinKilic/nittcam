@@ -1,0 +1,25 @@
+<script>
+// claude.ai artifact data bridge: serves the local dashboard's endpoints from the artifact db (doc team/feed, pushed by the PO).
+(() => {
+  let FEED = null; const realFetch = window.fetch.bind(window); let db = null;
+  const ok = (body) => new Response(body, { status: 200, headers: { 'content-type': 'application/json' } });
+  window.fetch = async (u, opt) => {
+    const p = String(u);
+    if (p.startsWith('api/answer')) {
+      if (!db) throw new Error('db yok');
+      const b = JSON.parse((opt && opt.body) || '{}');
+      await db.doc('answers/' + b.id).set({ answer: String(b.answer || '').slice(0, 1000), at: new Date().toISOString() });
+      return ok('{"ok":true}');
+    }
+    const key = p.startsWith('state.json') ? 'state' : p.startsWith('api/roadmap') ? 'roadmap' : p.startsWith('api/prs') ? 'prs' : p.startsWith('api/ci') ? 'ci' : null;
+    if (!key) return realFetch(u, opt);
+    if (!FEED || !FEED[key]) throw new Error('veri yok');
+    return ok(FEED[key]);
+  };
+  (async () => {
+    db = await window.claude?.use?.('db');
+    if (!db) return;
+    db.doc('team/feed').onSnapshot((s) => { if (s.exists) FEED = s.data(); }, () => {});
+  })();
+})();
+</script>

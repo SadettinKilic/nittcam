@@ -19,7 +19,7 @@
 3. **Vakum kodu:** vakumu programdan açıp kapatmıyorsanız (çoğu atölyede vana ya da şalterle açılır) "Vakum aç / kapat kodu" alanlarını **boş** bırakın. M7, Mach3'te çoğu makinede soğutma çıkışıdır.
 4. Doğrulama sayfasından `AIRCUT_S1.tap`, saha kitinden `AIRCUT_GENIS_S1.tap` dosyalarını indirin. Test parçası dosyaları air cut onayından sonra açılır; onları makinenin başında indireceksiniz (telefon ya da dizüstü gerekir).
 5. Dolap işini hazırlayın: Parçalar → Dolap ekle (MDF 18) → Kapak → Çizim → Şablon ekle: "Menteşe çukuru Ø35 (2 menteşe)" ve "Kulp deliği 128 mm".
-6. **Dizilim adımında iki değeri değiştirin: "Parça arası pay" = 8, "Kenar payı" = 16.** Sonra "Diz". Sebep: hazır değerle (0,1) yan yana duran parçaların köprüleri komşu kesimde silinir; bu iş için 24 köprünün 10'u boşa gider (inceleme #13, bulgu F1). 8 / 16 ile bütün köprüler tutar, plaka sayısı değişmez.
+6. **Dizilim adımında köprü açık kalsın; payları elle değiştirmeyin.** Uygulama köprü açıkken parça arası payı en az takım Ø + 3,1 mm (Ø8: parçalar arası 19,1 mm), kenar payını en az Ø + 3 mm kullanır ve bunu Dizilim'de bir notla söyler (D-129). Böylece her köprünün arkasında 3 mm malzeme kalır ve köprü parçayı tutar. Dosya başlığında `KOPRU AZ` satırı varsa bazı parçalar istenenden az tutan köprüyle kesilir: Simülasyon'daki uyarıya bakın, dışa aktarmadaki köprü satırını işaretlemeden indirme açılmaz. Küçük parça yeterli köprü alamıyorsa uygulama dosyayı hiç vermez.
 7. Simülasyon → Kesim ayarları: Köprü "Her parçada" kalsın. İlerleme ve dalma değerlerine dokunmayın ("önerilen").
 8. Saha kitini ve dolap işinin A4 PDF'ini yazdırın. USB'ye yalnızca bugünün dosyalarını koyun.
 
@@ -78,7 +78,7 @@ Fotoğrafları ve örnek dosyaları dönüşte `docs/machines/<makine-adı>/` al
 
 ### D. Genişletilmiş test parçası (isteğe bağlı)
 
-`TESTPARCA_GENIS_S1.tap` bugünkü sürümde 300 × 200 dış konturu **köprüsüz** keser (inceleme #13, bulgu F2). Yalnızca şu iki durumdan birinde çalıştırın: vakum parçayı tek başına tutuyor, ya da düzeltme inmiş ve dosya başlığında `kopru her parcada` yazıyor. Aksi halde atlayın; delik, cep, yay ve menteşe çukurunu dolap işi zaten dener.
+`TESTPARCA_GENIS_S1.tap` 300 × 200 dış konturu 4 köprüyle keser (düz kenarlarda; R20 yaylarda köprü yok). Dosya başlığında `kopru her parcada 4 adet` yazmalı. İç pencere (80 × 50) 3 köprüyle kesilir; Uyarılar'daki `TABS_REDUCED` bundandır, normaldir. Zaman yoksa atlayın; delik, cep, yay ve menteşe çukurunu dolap işi zaten dener.
 
 ### E. İlk gerçek iş: dolap (iki takım)
 

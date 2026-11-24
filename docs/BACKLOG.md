@@ -1848,6 +1848,23 @@ Spec: §7.3 · Depends: T191 · From: CTO review #13 M2
 - [x] tabs on every part of the extended test program: 4 on the outer contour, none on the R20 arcs; field-kit text says so
 - [x] test: no test program has a through outer contour without tabs (and none uses skin)
 
+## After field test 1: findings from 2026-11-24 (PO; first batch after the field test)
+
+### T373 Tab hold counts the neighbour's lead-in/out   [status: todo]
+Source: B64 dev (property seed 1094944943), T193 report known issue 1 (job C header "KOPRU AZ: 2 parcada 3 kopru" while all 4 Takoz have 3 holding). A neighbour's lead dive can cut into the 3 mm web behind a tab. Today: safe side (SMALL_PART_NOT_HELD / fewer holding tabs), but the header count is optimistic and the fix text ("pay ≥ Ø + 3") is already met. Acceptance: hold predicate and header use the final lead moves; leads facing a tab are shortened or moved first; the fix text names the lead.
+
+### T374 Below 1024 px a fast "Diz" click cancels the auto-nest   [status: todo]
+Source: B64 round-37 fallout (t023 at 320/390 px). "Diz" and "İptal" share one button; a click during the T261 auto-nest cancels it. Acceptance: the state change is visible and clicks are ignored for ~300 ms after the switch, or "İptal" moves.
+
+### T375 Renderer crash right after drawing may lose the last edit   [status: todo]
+Source: B60 round-38 dev (t326-tester:108, ~2/10 locally, green in CI). The last edit is neither on the server nor parked; localStorage is empty after an immediate reopen. Investigate (localStorage commit lost in the dying renderer?) and fix, or document the limit in D-117. UX note: after a crash the reopened tab usually needs a manual "Uygula".
+
+### T376 Test the Simülasyon "Parça arası paya git" link   [status: todo]
+Source: B64 tester. `violation-open-gap` cannot be reached from the UI (the layout refuses the placement); add a component test.
+
+### T377 Flaky save timing in b13a-tester:77   [status: todo]
+Source: round 36 and the B60 dev. The NC header was read before the save ("REVIZYON: kaydedilince"); B60 made the test wait for the save. If it repeats, look at the header refresh after a save.
+
 ## Field test 1 (owner)   [status: todo]
 Spec: §12.1, §12.3 · Depends: T193 (old "Saha 1" and "Saha 2" merged)
 - [ ] machine info (§12.3) in `docs/machines/<machine>/` with 2–3 working NC files per machine
