@@ -60,6 +60,19 @@ export async function openNewProject(page: Page, step: StepKey = 'makine') {
 }
 
 /**
+ * D-129: with tabs on (no thin skin) nesting keeps an effective margin Ø + 3 and pay Ø + 3.1.
+ * Specs about the stored margin / pay mechanics open the project with thin skin on ("Köprü:
+ * Kapalı"), where the stored values count (D-104), then go to the given step.
+ */
+export async function openThinSkinProject(page: Page, step: StepKey = 'parcalar') {
+  await openNewProject(page, 'makine');
+  const sw = page.getByTestId('thin-skin-switch');
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  if (step !== 'makine') await goStep(page, step);
+}
+
+/**
  * Step 1: gives the sheet a grain of 0° when it has none (D-046: a new project starts on library
  * MDF 18, which has no grain). For specs about the sheet grain dial or grain rules. The click is
  * one command (one undo step) and the first edit, so it also creates the project.

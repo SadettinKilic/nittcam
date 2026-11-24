@@ -2,6 +2,7 @@
 
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 import {
+  effectiveSpacing,
   checkPlacement,
   nestingEngineOf,
   partNumber,
@@ -320,16 +321,19 @@ function LayoutViewImpl({
     (c: PlacementCheck): string => {
       if (c.outsideSheet) return t.drop.outsideSheet;
       if (c.inMargin)
-        return fill(t.drop.inMargin, { margin: mmFormat.format(project.nesting.margin) });
+        // D-129: the effective values checkPlacement uses (with tabs: margin Ø + 3, pay Ø + 3.1)
+        return fill(t.drop.inMargin, {
+          margin: mmFormat.format(effectiveSpacing(project, toolDiameter).margin),
+        });
       const others = c.conflicts
         .map((r) => byKey.get(copyKey(r))?.label ?? `${r.partId}`)
         .join(', ');
       return fill(t.drop.conflict, {
         others,
-        spacing: mmFormat.format(toolDiameter + project.nesting.gap),
+        spacing: mmFormat.format(toolDiameter + effectiveSpacing(project, toolDiameter).gap),
       });
     },
-    [t, project.nesting, toolDiameter, byKey],
+    [t, project, toolDiameter, byKey],
   );
 
   /** Commits a move (drop or Enter). Returns false when refused. */
@@ -415,12 +419,12 @@ function LayoutViewImpl({
         y,
         parts.filter((o) => o.key !== part.key),
         {
-          spacing: toolDiameter + project.nesting.gap,
+          spacing: toolDiameter + effectiveSpacing(project, toolDiameter).gap,
           // A few screen pixels, but never more than 10 mm: a drop meant to stay free stays free.
           tolerance: view ? Math.min(6 / view.scale, 10) : 0,
         },
       );
-  }, [parts, toolDiameter, project.nesting.gap, view]);
+  }, [parts, toolDiameter, project, view]);
 
   const onDragMove = useCallback(
     (key: string, x: number, y: number, free?: boolean) => {
@@ -909,7 +913,11 @@ function LayoutViewImpl({
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" side="top" className="w-auto max-w-80">
-            <Legend t={t} margin={project.nesting.margin} grain={stock.grain} />
+            <Legend
+              t={t}
+              margin={effectiveSpacing(project, toolDiameter).margin}
+              grain={stock.grain}
+            />
           </PopoverContent>
         </Popover>
         {project.layout.sheets.length >= MINIMAP_FROM ? (
@@ -1001,7 +1009,7 @@ function LayoutViewImpl({
               width={width}
               height={height}
               sheet={stock}
-              margin={project.nesting.margin}
+              margin={effectiveSpacing(project, toolDiameter).margin}
               parts={shownParts}
               view={view}
               colors={colors}

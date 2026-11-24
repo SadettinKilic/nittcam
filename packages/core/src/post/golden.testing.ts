@@ -165,6 +165,10 @@ export const GOLDEN_OP_FIXTURES: readonly {
   revision: number;
   parts: OpPart[];
   cutting: OpCutting;
+  /** Default: 2800 × 2070. */
+  sheet?: { width: number; height: number };
+  /** Default: gap 10, margin 12. */
+  nesting?: { gap: number; margin: number };
 }[] = [
   {
     id: 'true-shape',
@@ -306,6 +310,20 @@ export const GOLDEN_OP_FIXTURES: readonly {
       tools: { outer: 1 },
     },
   },
+  {
+    id: 'small-rows',
+    name: 'İki sıra küçük parça',
+    revision: 1,
+    /**
+     * T338 (D-129): eight small 150 × 80 parts in two rows on a 700 × 400 sheet at the default
+     * clearance (pay 0.1, margin 10) with tabs. Nesting lifts the pay to Ø + 3.1 and the margin
+     * to Ø + 3, so every tab keeps a 3 mm web and every part is held.
+     */
+    sheet: { width: 700, height: 400 },
+    nesting: { gap: 0.1, margin: 10 },
+    parts: [{ id: 'small', name: 'Küçük', qty: 8, rect: { w: 150, h: 80, r: 0 } }],
+    cutting: { tabs: { auto: false }, leadIn: 'arc', direction: 'climb' },
+  },
 ];
 
 /** The nested project of an operation fixture (MDF 18, 2800 × 2070, sheet grain 0°). */
@@ -319,7 +337,7 @@ export function opFixtureProject(
     stock: {
       material: 'mdf',
       thickness: 18,
-      sheet: { width: 2800, height: 2070, grain: 0 },
+      sheet: { ...(fx.sheet ?? { width: 2800, height: 2070 }), grain: 0 },
       useOffcuts: false,
     },
     parts: fx.parts.map((p) => ({
@@ -335,7 +353,7 @@ export function opFixtureProject(
       edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
       templates: [],
     })),
-    nesting: { mode: 'minWaste', gap: 10, margin: 12 },
+    nesting: { mode: 'minWaste', ...(fx.nesting ?? { gap: 10, margin: 12 }) },
     layout: { sheets: [] },
     cutting: structuredClone(fx.cutting),
   });

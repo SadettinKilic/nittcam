@@ -7,6 +7,7 @@ import {
   goStep,
   nest,
   openNewProject,
+  openThinSkinProject,
   paste,
   pasteAndNest,
   projectId,
@@ -96,7 +97,8 @@ test('T321: warnings make the summary amber; Uyarılar box agrees; quantity chan
 }) => {
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await openNewProject(page, 'parcalar');
+  // D-129: with tabs the clearance is lifted to Ø + 3,1, so gap 0 only bites with thin skin.
+  await openThinSkinProject(page, 'parcalar');
   await paste(page, 'Ad\tEn\tBoy\tAdet\nYan\t560\t720\t6\nRaf\t564\t300\t6', 2);
   await saved(page);
   const id = await projectId(page);

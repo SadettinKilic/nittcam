@@ -216,7 +216,10 @@ function setUp(c: Case) {
     thickness: c.thickness,
   });
   const height = c.heightFrac * c.thickness;
+  // Hand layouts at margin/gap 0: these properties are about tab shape, not holding (D-129 has its
+  // own tests in tab-hold.test.ts), so the holding rule is off.
   const options: ToolpathOptions = {
+    tabHold: false,
     lead: c.lead,
     plunge: c.plunge,
     direction: c.direction,

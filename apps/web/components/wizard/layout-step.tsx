@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  effectiveSpacing,
   minSheetMargin,
   partClearDistance,
   usableOffcuts,
@@ -439,6 +440,7 @@ function NestSettings({
   const t = messages.wizard.layout;
   const nt = messages.cutList.nesting;
   const errors = messages.wizard.machine.errors;
+  const spacing = effectiveSpacing(project, toolDiameter);
   const modeLabelId = useId();
   const rotationLabelId = useId();
   const rotationHintId = useId();
@@ -523,13 +525,14 @@ function NestSettings({
             min={-1}
             errors={errors}
             onCommit={(gap) => run('setNestingOptions', { gap })}
+            testId="layout-gap"
             note={
               toolDiameter > 0
                 ? {
                     text: fill(t.gapNote, {
                       tool: mmText.format(toolDiameter),
-                      gap: mmText.format(project.nesting.gap),
-                      clear: mmText.format(partClearDistance(toolDiameter, project.nesting.gap)),
+                      gap: mmText.format(spacing.gap),
+                      clear: mmText.format(partClearDistance(toolDiameter, spacing.gap)),
                     }),
                     tone: 'muted',
                     testId: 'layout-gap-note',
@@ -545,7 +548,8 @@ function NestSettings({
             onCommit={(margin) => run('setNestingOptions', { margin })}
             note={
               // T300 (CTO #12 E1, D-085): below the tool radius the cutter leaves the sheet.
-              project.nesting.margin < minSheetMargin(toolDiameter) - 1e-3
+              // D-129: with tabs the effective margin (Ø + 3) is what the placer keeps.
+              spacing.margin < minSheetMargin(toolDiameter) - 1e-3
                 ? {
                     text: fill(t.marginWarning, {
                       tool: mmText.format(toolDiameter),
@@ -559,6 +563,15 @@ function NestSettings({
             testId="layout-margin"
           />
         </div>
+        {toolDiameter > 0 && (spacing.raised.gap || spacing.raised.margin) ? (
+          // D-129: tabs hold only with a 3 mm web, so with tabs the clearance and margin are lifted.
+          <p className="text-xs text-fg-muted" data-testid="layout-tab-spacing-note">
+            {fill(t.tabSpacingNote, {
+              gap: mmText.format(spacing.gap),
+              margin: mmText.format(spacing.margin),
+            })}
+          </p>
+        ) : null}
         <div className="flex flex-col gap-1.5">
           <span id={rotationLabelId} className="text-sm font-medium text-fg">
             {t.rotation}

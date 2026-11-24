@@ -30,6 +30,8 @@ export interface ProjectSpec {
   placements?: { partId: string; index: number; x: number; y: number; rot: number }[][];
   leadIn?: 'arc' | 'line';
   direction?: 'climb' | 'conventional';
+  /** Thin skin thickness, mm (absent = tabs). D-129: with skin the stored gap and margin count. */
+  skin?: number;
 }
 
 export function projectOf(spec: ProjectSpec): Project {
@@ -64,6 +66,7 @@ export function projectOf(spec: ProjectSpec): Project {
       tabs: { auto: false },
       leadIn: spec.leadIn ?? 'arc',
       direction: spec.direction ?? 'climb',
+      ...(spec.skin === undefined ? {} : { skin: { thickness: spec.skin } }),
     },
   });
   if (!r.ok) throw new Error(JSON.stringify(r.issues));

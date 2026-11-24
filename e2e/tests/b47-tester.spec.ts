@@ -5,6 +5,7 @@ import {
   fill,
   goStep,
   openNewProject,
+  openThinSkinProject,
   pasteAndNest,
   projectId,
   saved,
@@ -244,8 +245,8 @@ test.describe('B47 tester: T300 margin rule', () => {
   // T331 (D-123): the minimum margin is the tool diameter (8), no longer the radius (4).
   test('margin 0 / 3 / 4 / 8 / 10 and gap 0 / 2 / 8 with Ø8', async ({ page }) => {
     test.setTimeout(240_000);
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await openNewProject(page, 'parcalar');
+    await openThinSkinProject(page); // D-129: the stored margin counts with thin skin
+    await openThinSkinProject(page); // D-129: stored margin counts with thin skin;
     await pasteAndNest(page, 'Ad\tEn\tBoy\tAdet\nYan\t560\t720\t1\nRaf\t540\t300\t2', 2);
     await saved(page);
     const warn = page.getByTestId('layout-margin-warning');
@@ -298,7 +299,7 @@ test.describe('B47 tester: T300 margin rule', () => {
       test.setTimeout(180_000);
       await applyTheme(page, theme);
       await page.setViewportSize({ width: 1440, height: 900 });
-      await openNewProject(page, 'parcalar');
+      await openThinSkinProject(page);
       await pasteAndNest(page, ROWS1, 1);
       await commit(page, 'layout-margin', '0');
       await page.getByRole('button', { name: tr.layout.renest, exact: true }).first().click();

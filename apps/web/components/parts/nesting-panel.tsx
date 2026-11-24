@@ -1,6 +1,12 @@
 'use client';
 
-import { partClearDistance, summarizeLayout, usedOffcutIds, type Project } from '@nittcam/core';
+import {
+  effectiveSpacing,
+  partClearDistance,
+  summarizeLayout,
+  usedOffcutIds,
+  type Project,
+} from '@nittcam/core';
 import { useMemo } from 'react';
 import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
@@ -64,9 +70,12 @@ export function NestingPanel({
             <PopoverContent align="end" className="flex w-72 flex-col gap-2 text-sm">
               <p className="text-fg">
                 {fill(t.help, {
-                  gap: mm.format(project.nesting.gap),
-                  clear: mm.format(partClearDistance(toolDiameter, project.nesting.gap)),
-                  margin: mm.format(project.nesting.margin),
+                  // D-129: the values the placer uses (with tabs: Ø + 3 margin, Ø + 3.1 pay)
+                  gap: mm.format(effectiveSpacing(project, toolDiameter).gap),
+                  clear: mm.format(
+                    partClearDistance(toolDiameter, effectiveSpacing(project, toolDiameter).gap),
+                  ),
+                  margin: mm.format(effectiveSpacing(project, toolDiameter).margin),
                   tool: mm.format(toolDiameter),
                 })}
               </p>

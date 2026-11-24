@@ -72,7 +72,7 @@ test('T332: the field kit shows the Mach3 pre-check for the mach3 example machin
   await page.goto(`/makineler/${first.id}/saha-kiti`);
   const block = page.getByTestId('field-kit-mach3');
   await expect(block).toBeVisible({ timeout: 30_000 });
-  await expect(block.getByTestId('field-kit-mach3-item')).toHaveCount(7);
+  await expect(block.getByTestId('field-kit-mach3-item')).toHaveCount(8);
   await expect(block).toContainText('G04 Dwell');
   // The air-cut Z-zero step is unambiguous (no material in an air cut).
   await expect(page.getByTestId('field-kit-air')).toContainText('fedakâr tabla');

@@ -19,7 +19,7 @@ describe('blocker 1: the active tool on Mach3 (no T word) comes from the job', (
   it('a hand-edited Mach3 cutting move past the sheet edge is CUTTER_OFF_SHEET', () => {
     const g = golden('mach3', 'cabinet-doors');
     const lines = g.text.split('\r\n');
-    const i = lines.indexOf('G1 X10.0000');
+    const i = lines.indexOf('G1 X11.0000');
     expect(i).toBeGreaterThan(0);
     lines[i] = 'G1 X2.0000';
     const r = checkGcode(lines.join('\r\n'), g.context);

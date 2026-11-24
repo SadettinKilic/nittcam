@@ -372,7 +372,9 @@ type Case = typeof caseArb extends fc.Arbitrary<infer T> ? T : never;
 function run(c: Case) {
   const project = mkProject(c.w, c.h, c.r, c.thickness, c.auto);
   const machine = mkMachine({ tool: c.tool, spoil: c.spoil, pass: c.pass, thickness: c.thickness });
+  // Single parts on a sheet of their own size: tab shape review, not holding (tab-hold.test.ts).
   const options: ToolpathOptions = {
+    tabHold: false,
     lead: c.leadIn,
     direction: c.direction,
     tabs: { auto: c.auto, count: c.count, width: c.width, height: c.height },
@@ -423,7 +425,9 @@ describe('tab hand cases', () => {
       ...(o.tool !== undefined ? { tool: o.tool } : {}),
       ...(o.pass !== undefined ? { pass: o.pass } : {}),
     });
-    return { project, res: buildToolpath(project, machine, o.tabs ? { tabs: o.tabs } : {}) };
+    // tab sizes, not holding (D-129 has tab-hold.test.ts)
+    const opts = { tabHold: false as const, ...(o.tabs ? { tabs: o.tabs } : {}) };
+    return { project, res: buildToolpath(project, machine, opts) };
   };
   const ctxOf = (w: number, h: number, thickness = 18, tool = 6): Ctx => ({
     tool,
