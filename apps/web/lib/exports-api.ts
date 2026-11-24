@@ -54,6 +54,11 @@ export interface ExportChecklistInfo {
    * Absent = the program switches the vacuum (or the machine does not use one).
    */
   vacuumByHand?: true;
+  /**
+   * T338 (D-129): parts that got fewer tabs because some would not hold; the line must be ticked.
+   * Absent = every part has its tabs.
+   */
+  tabsNotHeld?: number;
   /** T322: file-name length against the machine limit (the checker blocks names over it). */
   fileNames?: FileNameInfo;
   /**

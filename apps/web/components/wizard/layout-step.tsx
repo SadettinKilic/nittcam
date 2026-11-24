@@ -525,6 +525,7 @@ function NestSettings({
             min={-1}
             errors={errors}
             onCommit={(gap) => run('setNestingOptions', { gap })}
+            testId="layout-gap"
             note={
               toolDiameter > 0
                 ? {

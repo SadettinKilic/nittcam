@@ -44,6 +44,11 @@ export interface PartLinks {
    * sheet-edge error then names the margin and links to the Dizilim field, not to Makineler.
    */
   margin?: { hint: string; onOpen: () => void } | undefined;
+  /**
+   * T338 (D-129): a small part whose tabs would not hold (SMALL_PART_NOT_HELD): the hint and a
+   * link to the Dizilim clearance field.
+   */
+  hold?: { hint: string; onOpen: () => void } | undefined;
 }
 
 /** T300: errors a too-small sheet margin causes (the tool leaves the sheet or the envelope). */
@@ -276,6 +281,7 @@ export function Violations({
   onOpenRow,
   onOpenSkin,
   margin,
+  hold,
 }: {
   t: SimText;
   result: SimulateResult;
@@ -290,6 +296,7 @@ export function Violations({
   // T270 / T275: the Makineler hint only for an error whose fix may be on the machine.
   // T300: when the margin explains an envelope error, that error points to the margin instead.
   const marginHint = margin && errors.some((f) => MARGIN_CODES.has(f.code)) ? margin : null;
+  const holdHint = hold && errors.some((f) => f.code === 'SMALL_PART_NOT_HELD') ? hold : null;
   const machineHint = errors.some(
     (f) => machineRelated(f) && !(marginHint && MARGIN_CODES.has(f.code)),
   );
@@ -336,6 +343,19 @@ export function Violations({
             className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             {t.blocked.openMargin}
+          </button>
+        </p>
+      ) : null}
+      {holdHint ? (
+        <p className="text-sm" data-testid="sim-hold-hint">
+          {holdHint.hint}{' '}
+          <button
+            type="button"
+            data-testid="violation-open-gap"
+            onClick={holdHint.onOpen}
+            className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            {t.blocked.openGap}
           </button>
         </p>
       ) : null}

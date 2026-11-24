@@ -424,7 +424,7 @@ function LayoutViewImpl({
           tolerance: view ? Math.min(6 / view.scale, 10) : 0,
         },
       );
-  }, [parts, toolDiameter, project.nesting.gap, view]);
+  }, [parts, toolDiameter, project, view]);
 
   const onDragMove = useCallback(
     (key: string, x: number, y: number, free?: boolean) => {
@@ -913,7 +913,11 @@ function LayoutViewImpl({
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" side="top" className="w-auto max-w-80">
-            <Legend t={t} margin={project.nesting.margin} grain={stock.grain} />
+            <Legend
+              t={t}
+              margin={effectiveSpacing(project, toolDiameter).margin}
+              grain={stock.grain}
+            />
           </PopoverContent>
         </Popover>
         {project.layout.sheets.length >= MINIMAP_FROM ? (
@@ -1005,7 +1009,7 @@ function LayoutViewImpl({
               width={width}
               height={height}
               sheet={stock}
-              margin={project.nesting.margin}
+              margin={effectiveSpacing(project, toolDiameter).margin}
               parts={shownParts}
               view={view}
               colors={colors}

@@ -113,6 +113,15 @@ export function ExportChecklist({
           label={t.checkVacuumByHand}
         />
       ) : null}
+      {checklist?.tabsNotHeld ? (
+        // T338 (D-129): some tabs were left out because they would not hold.
+        <ChecklistItem
+          testId={`${testIdPrefix}-check-tabs-held`}
+          checked={checks.tabsHeld ?? false}
+          onChange={(v) => set({ tabsHeld: v })}
+          label={fill(t.checkTabsNotHeld, { count: checklist.tabsNotHeld })}
+        />
+      ) : null}
       {checklist?.parkOff ? (
         // T321 (usta 2): a manual change without a park point stops with the tool over the sheet.
         <p

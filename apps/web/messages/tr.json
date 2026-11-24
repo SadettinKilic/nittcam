@@ -1186,7 +1186,9 @@
       "openCutting": "Kesim ayarlarına git",
       "openSkin": "Tabaka kalınlığına git",
       "marginHint": "Sebep büyük olasılıkla kenar payı: {margin} mm, Ø{tool} takım için en az {min} mm olmalı.",
-      "openMargin": "Kenar payına git"
+      "openMargin": "Kenar payına git",
+      "holdHint": "Küçük parçanın köprüleri tutmuyor: komşu kesim ya da plaka kenarı köprünün arkasındaki malzemeyi alıyor. Parça arası payı en az takım Ø + 3 mm yap ya da ince tabakayı aç.",
+      "openGap": "Parça arası paya git"
     },
     "rules": {
       "R1": "Kural 1 · Birim, mutlak koordinat, düzlem ve iş ofseti baştan yazılır",
@@ -1223,6 +1225,7 @@
       "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
       "NO_OPERATIONS": "Kesilecek parça yok.",
       "DEPTH_EXCEEDS_FLUTE_LENGTH": "Kesim derinliği takımın kesici boyunu aşıyor.",
+      "SMALL_PART_NOT_HELD": "Küçük parçanın en az 2 köprüsü tutmuyor: komşu kesim ya da plaka kenarı köprünün arkasındaki 3 mm malzemeyi alıyor; kesilince serbest kalır. Parça arası payı en az takım Ø + 3 mm yap ya da ince tabakayı aç.",
       "SMALL_PART_UNSECURED": "Küçük parçaya köprü sığmıyor (köprü genişliği ya da sayısı bu parçaya fazla); kesilince serbest kalır. Kesim ayarlarında köprüyü küçültün ya da “Köprü: Kapalı” seçin (küçük parçalar ince tabakayla tutulur).",
       "INVALID_SKIN": "İnce tabaka kalınlığı 0’dan büyük ve malzeme kalınlığından az olmalı.",
       "SMALL_SLUG_UNSECURED": "İç kesimden düşecek küçük parçaya (göbek) 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin (delik içi tamamen boşaltılır, göbek kalmaz).",
@@ -1309,6 +1312,7 @@
       "SMALL_PART_SKIN": "Küçük parçanın altında ince tabaka bırakıldı; plakanın sonunda temizleme pasosuyla kesilir.",
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
       "TABS_REDUCED": "Köprü sayısı azaltıldı.",
+      "TABS_NOT_HELD": "Köprülerin bir kısmı tutmuyor: komşu kesim ya da plaka kenarı köprünün arkasındaki 3 mm malzemeyi alıyor, bu köprüler bırakıldı (G-code başlığı da yazar). Parça arası payı en az takım Ø + 3 mm yap ya da ince tabakayı aç.",
       "TABS_REDUCED_RAMP": "Köprü sayısı azaltıldı: rampa girişi köprülerin yerini kaplıyor (G-code başlığı da yazar). Tüm köprüler için Kesim ayarlarında girişi düz dalmaya alın.",
       "TABS_NOT_PLACED": "Köprüler yerleştirilemedi.",
       "UNPLACED_COPIES": "Bazı parçalar plakaya yerleşmedi ve kesilmeyecek.",
@@ -2026,6 +2030,7 @@
         "materials": "kesim ayarları",
         "other": "diğer ayarlar"
       },
+      "checkTabsNotHeld": "{count} parçada köprü az: komşu kesim ya da plaka kenarı köprünün arkasındaki malzemeyi alıyor (G-code başlığı da yazar). Bu parçaların vakumla ya da elle tutulduğunu doğruladım.",
       "checkVacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
       "checkFeeds": "İlerleme önerilenin çok üstünde: {tools}. Fazladan sıfır olmadığını kontrol ettim; bu değerler bilerek girildi.",
       "checkFeedsTool": "T{tool} ilerleme {feed} (önerilen {recFeed}), dalma {plunge} (önerilen {recPlunge}) mm/dk",
