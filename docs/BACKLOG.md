@@ -1441,7 +1441,7 @@ CTO #12 on T295 / T296. Acceptance: the NC file name respects the machine file-n
 ### T304 2 000-row paste without a frozen page (rider)   [status: done]
 B42 perf budget (D-079): pasting / applying 2 000 cut-list rows blocks the main thread ~8–9 s, while core import + validation take < 50 ms, so the cost is in the React render path. Acceptance: batch / defer / virtualise so that no single main-thread task exceeds 200 ms and the whole apply takes < 2 s locally; the 20 s guard in the perf spec is tightened to these numbers.
 
-### T306 Nesting positions without nudge residue   [status: in-review]
+### T306 Nesting positions without nudge residue   [status: done]
 Spec: §6.2 · From: CTO #8, B51 (D-091)
 The true-shape placer starts candidates 1e-4 mm off a neighbour (`nesting/trueshape.ts`, `NUDGE`), so positions such as 522.0001 reach the 4-decimal Mach3 output (`X522.0001`, `Y117.9999`). Acceptance:
 - [x] placements carry no residue near the 0.001 mm grid (e.g. a clean candidate grid, or a final tidy pass over finished sheets that never creates an overlap): B60 tidy pass in `packTrueShape` puts every new position on the 0.001 mm grid (nearest, else the other side) where the moved footprint stays on the sheet and overlaps nothing
@@ -1773,7 +1773,7 @@ Tester focus: fresh company gets the three sets; an old company's machine is unc
 
 ### Batch B60: T326, T306 (before the field test; Dev 1)
 
-### T326 Nothing drawn is lost when the tab closes   [status: in-review]
+### T326 Nothing drawn is lost when the tab closes   [status: done]
 From: `.team/usta2-rapor.md` (a rectangle drawn ~1 s before closing, "Kaydediliyor", was gone) · D-117 · related T305 / D-094
 - [x] facts: queue in sessionStorage (gone with the tab), close-time save a plain fetch, a save on the way not resent, no close warning → reproducible by design for edits in the debounce window or after a save on the way
 - [x] unsent queue in localStorage with page owner / closed / age; taken by the next page in any tab; another live page's queue left alone
