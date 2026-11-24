@@ -155,8 +155,17 @@ test.describe('T326 tester: save on close attacks', () => {
     await saved(p2);
     await new Promise((r) => setTimeout(r, 16_000));
     await p2.close();
-    await reopen(context, id);
+    const p3 = await reopen(context, id);
     await new Promise((r) => setTimeout(r, 1500));
+    // On a slow runner the browser frees the crashed page's lock only after the reloaded tab has
+    // its own edit: the crashed edit is then parked and offered (D-117), never dropped. Apply it.
+    const parked = p3.getByTestId('parked-changes');
+    if (await parked.isVisible()) {
+      console.log('[crash-reload] crashed edit was parked; applying it');
+      await p3.getByTestId('parked-apply').click();
+      await expect(parked).toHaveCount(0, { timeout: 15_000 });
+      await saved(p3);
+    }
     const end = await server(context, id);
     console.log(
       `[crash-reload] end parts=${end.parts.length} rev ${before.revision}->${end.revision}`,
@@ -341,7 +350,8 @@ test.describe('T326 tester: save on close attacks', () => {
     // Really offline: page.route does not see the keepalive create sent on close.
     await openNewProject(page, 'parcalar');
     await context.setOffline(true);
-    await paste(page, 'Ad\tEn\tBoy\tAdet\nSilinecek\t400\t300\t1', 1);
+    const part = `Silinecek ${Math.random().toString(36).slice(2, 8)}`;
+    await paste(page, `Ad\tEn\tBoy\tAdet\n${part}\t400\t300\t1`, 1);
     await page.close();
     await context.setOffline(false);
     const list = await context.newPage();
@@ -362,8 +372,13 @@ test.describe('T326 tester: save on close attacks', () => {
       Object.keys(localStorage).filter((k) => k.startsWith('nittcam.unsent.')),
     );
     expect(keys).toEqual([]);
+    // Other workers create projects in the same company meanwhile: look at the new ones only.
     const after = (await (await context.request.get('/api/projects')).json()) as { id: string }[];
-    expect(after.length).toBe(before.length);
+    const known = new Set(before.map((p) => p.id));
+    for (const p of after.filter((x) => !known.has(x.id))) {
+      const body = await (await context.request.get(`/api/projects/${p.id}`)).text();
+      expect(body, p.id).not.toContain(part);
+    }
   });
 
   test('close prompt: none after a completed save', async ({ page }) => {

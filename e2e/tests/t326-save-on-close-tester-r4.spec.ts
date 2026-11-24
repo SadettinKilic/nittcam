@@ -7,7 +7,15 @@ import {
   type Page,
 } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { KITCHEN, openNewProject, paste, projectId, saved, wizardReady } from './wizard-helpers';
+import {
+  KITCHEN,
+  crashedLocksFreed,
+  openNewProject,
+  paste,
+  projectId,
+  saved,
+  wizardReady,
+} from './wizard-helpers';
 
 /**
  * T326 tester round 4 (B60, fix d7ec4ac: the takeover decides against the server's revision and
@@ -459,6 +467,8 @@ test.describe('T326 tester r4: state table rows with real tabs', () => {
     expect(draftUrl).toMatch(/taslak=/);
     await crash(page);
     const b = await context.newPage();
+    // "Opened after the crash": once the browser has freed the dead page's locks (CI is slow to).
+    await crashedLocksFreed(b);
     await b.goto(draftUrl);
     const id = await projectId(b);
     await saved(b);
@@ -531,7 +541,11 @@ test.describe('T326 tester r4: parked flow, many tabs, two browsers, single tab'
     await saved(c);
     const r0 = (await server(context, id)).revision;
     await crashAfterEdit(page, id, 640, 340);
-    await expect.poll(async () => countDim(await server(context, id), 640, 340)).toBe(1);
+    // The browser frees the crashed page's locks when it notices (slow on a busy runner), and a
+    // queue A stored as a peer is swept every 10 s (PEER_SWEEP_MS): allow both.
+    await expect
+      .poll(async () => countDim(await server(context, id), 640, 340), { timeout: 20_000 })
+      .toBe(1);
     await settle();
     // The other live tab is now stale; it edits: a conflict or a reload, never a lost part.
     await saved(b);

@@ -264,3 +264,23 @@ export async function openCutListAction(
   if ((page.viewportSize()?.width ?? 1280) < 640) await page.getByTestId('cut-list-more').click();
   await page.getByTestId(testId).click();
 }
+
+/**
+ * B60: after `chrome://crash` the browser frees the crashed page's Web Locks only once it notices
+ * the dead renderer (instant locally, up to seconds on a busy CI runner). Opens `page` on a light
+ * same-origin page and waits until no NittCam lock is held, so "opened after the crash" means
+ * after the browser knows. Only for contexts whose other pages hold no NittCam lock.
+ */
+export async function crashedLocksFreed(page: Page) {
+  await page.goto('/');
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const q = await navigator.locks.query();
+          return (q.held ?? []).filter((l) => l.name?.startsWith('nittcam-')).length;
+        }),
+      { timeout: 20_000 },
+    )
+    .toBe(0);
+}
