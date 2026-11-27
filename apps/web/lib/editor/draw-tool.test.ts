@@ -8,6 +8,9 @@ import {
   hintFor,
   parseTyped,
   preview,
+  parseDrawOptions,
+  DEFAULT_DRAW_OPTIONS,
+  trackSweep,
   type DrawDraft,
   type DrawStep,
   type DrawTool,
@@ -152,7 +155,7 @@ describe('draw tool state machine (T127–T129)', () => {
       [200, 0],
     ]);
     expect(s.draft).toMatchObject({ kind: 'path', pending: { x: 200, y: 0 } });
-    expect(fieldsFor('arc', s.draft)).toEqual(['r']);
+    expect(fieldsFor('arc', s.draft)).toEqual(['r', 'angle']);
     expect(hintFor('arc', s.draft, null)).toBe('arcBend');
     s = clickAt('arc', s.draft, { x: 100, y: -100 }); // below the chord = CCW half circle
     expect(s.draft?.kind === 'path' && s.draft.pts[0]?.bulge).toBeCloseTo(1, 9);
@@ -185,5 +188,118 @@ describe('draw tool state machine (T127–T129)', () => {
     expect(hintFor('circle', null, null)).toBe('circleStart');
     expect(hintFor('line', null, null)).toBe('lineStart');
     expect(hintFor('arc', null, null)).toBe('arcStart');
+  });
+});
+
+describe('flexible arc tool (T382)', () => {
+  const bulge = { arcMode: 'bulge', tangent: false } as const;
+  const three = { arcMode: '3pt', tangent: true } as const;
+  const centre = { arcMode: 'centre', tangent: true } as const;
+  const tangent = { arcMode: 'bulge', tangent: true } as const;
+  const sweepOf = (v: Vertex | undefined) => (4 * Math.atan(v?.bulge ?? 0) * 180) / Math.PI;
+
+  it('sehim mode: a cursor close to an end point gives a shallow arc, not a near circle', () => {
+    const s = clicks('arc', [
+      [0, 0],
+      [200, 0],
+    ]);
+    const v = preview('arc', s.draft, { x: 190, y: -10 }, {}, false, bulge);
+    // The old 3-point-through-cursor rule gave ~174° here; the sagitta rule gives ~23°.
+    expect(v?.arc?.sweep).toBeCloseTo(22.84, 1);
+    expect(v?.arc?.chord).toBe(200);
+    expect(v?.live.angle).toBe(v?.arc?.sweep);
+    const done = clickAt('arc', s.draft, { x: 100, y: 150 }, {}, false, bulge);
+    const p = done.draft?.kind === 'path' ? done.draft.pts : [];
+    expect(sweepOf(p[0])).toBeLessThan(-180); // left of the chord: CW, past the half circle
+  });
+
+  it('sehim mode: a typed sweep fixes the angle (any value up to 359°)', () => {
+    const s = clicks('arc', [
+      [0, 0],
+      [100, 0],
+    ]);
+    expect(fieldsFor('arc', s.draft, bulge)).toEqual(['r', 'angle']);
+    const done = enter('arc', s.draft, { x: 50, y: -5 }, { angle: 300 }, false, bulge);
+    const p = done.draft?.kind === 'path' ? done.draft.pts : [];
+    expect(sweepOf(p[0])).toBeCloseTo(300, 6);
+  });
+
+  it('3-point mode: start, a point on the arc, end', () => {
+    let s = clicks('arc', [[0, 0]]);
+    s = clickAt('arc', s.draft, { x: 50, y: 50 }, {}, false, three);
+    expect(s.draft).toMatchObject({ pending: { x: 50, y: 50 } });
+    expect(hintFor('arc', s.draft, null, three)).toBe('arcVia2');
+    expect(fieldsFor('arc', s.draft, three)).toEqual([]);
+    s = clickAt('arc', s.draft, { x: 100, y: 0 }, {}, false, three);
+    const p = s.draft?.kind === 'path' ? s.draft.pts : [];
+    expect(p).toHaveLength(2);
+    const arc = arcOf(p[0] as Vertex, p[1] as Vertex, (p[0] as Vertex).bulge);
+    expect(arc?.radius).toBeCloseTo(50, 9);
+    expect(sweepOf(p[0])).toBeCloseTo(-180, 6); // over the top from left to right: CW
+  });
+
+  it('centre mode: the sweep follows the mouse past 180°', () => {
+    let s = clicks('arc', [[10, 0]]);
+    s = clickAt('arc', s.draft, { x: 0, y: 0 }, {}, false, centre);
+    expect(hintFor('arc', s.draft, null, centre)).toBe('arcSweep');
+    let d = s.draft;
+    for (let deg = 10; deg <= 270; deg += 10) {
+      const r = (deg * Math.PI) / 180;
+      d = trackSweep('arc', d, { x: 10 * Math.cos(r), y: 10 * Math.sin(r) }, centre);
+    }
+    const done = clickAt('arc', d, { x: 0, y: -10 }, {}, false, centre);
+    const p = done.draft?.kind === 'path' ? done.draft.pts : [];
+    expect(sweepOf(p[0])).toBeCloseTo(270, 6);
+    expect(p[1]).toMatchObject({ x: 0, y: -10 });
+    expect(trackSweep('line', d, { x: 1, y: 1 }, centre)).toBe(d);
+  });
+
+  it('tangent at a line end: one click places an arc that leaves along the line', () => {
+    const s = clicks('line', [
+      [0, 0],
+      [100, 0],
+    ]);
+    expect(hintFor('arc', s.draft, null, tangent)).toBe('arcTangent');
+    expect(fieldsFor('arc', s.draft, tangent)).toEqual(['r', 'angle']);
+    const done = clickAt('arc', s.draft, { x: 150, y: 50 }, {}, false, tangent);
+    const p = done.draft?.kind === 'path' ? done.draft.pts : [];
+    expect(p).toHaveLength(3);
+    expect(p[2]).toMatchObject({ x: 150, y: 50 });
+    const arc = arcOf(p[1] as Vertex, p[2] as Vertex, (p[1] as Vertex).bulge);
+    expect(arc?.center.x).toBeCloseTo(100, 6); // centre straight above the line end
+    expect(arc?.radius).toBeCloseTo(50, 6);
+    // Toggle off: the arc tool asks for the end, then the bulge, as after an arc.
+    expect(hintFor('arc', s.draft, null, bulge)).toBe('arcEnd');
+    expect(hintFor('arc', done.draft, null, tangent)).toBe('arcEnd');
+  });
+
+  it('kuş kanadı: two arcs of different radius meeting at a point close into a part', () => {
+    let s = clicks('arc', [
+      [0, 0],
+      [300, 0],
+    ]);
+    s = clickAt('arc', s.draft, { x: 150, y: 60 }, {}, false, tangent);
+    s = clickAt('arc', s.draft, { x: 0, y: 0 }, {}, false, tangent);
+    s = clickAt('arc', s.draft, { x: 150, y: 20 }, {}, false, tangent);
+    expect(s.commit?.shape.kind).toBe('outline');
+    if (s.commit?.shape.kind !== 'outline') return;
+    const vs = s.commit.shape.vertices;
+    expect(vs).toHaveLength(2);
+    expect(vs.every((v) => v.bulge !== 0)).toBe(true);
+    const r0 = arcOf(vs[0] as Vertex, vs[1] as Vertex, (vs[0] as Vertex).bulge)?.radius ?? 0;
+    const r1 = arcOf(vs[1] as Vertex, vs[0] as Vertex, (vs[1] as Vertex).bulge)?.radius ?? 0;
+    expect(Math.abs(r0 - r1)).toBeGreaterThan(50);
+  });
+});
+
+describe('arc options storage (T382)', () => {
+  it('reads stored options and falls back on anything unreadable', () => {
+    expect(parseDrawOptions(null)).toEqual(DEFAULT_DRAW_OPTIONS);
+    expect(parseDrawOptions('{"arcMode":"3pt","tangent":false}')).toEqual({
+      arcMode: '3pt',
+      tangent: false,
+    });
+    expect(parseDrawOptions('{"arcMode":"spiral"}')).toEqual(DEFAULT_DRAW_OPTIONS);
+    expect(parseDrawOptions('not json')).toEqual(DEFAULT_DRAW_OPTIONS);
   });
 });

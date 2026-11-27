@@ -17,6 +17,7 @@ import {
   type Project,
   type SnapKind,
   defaultSheet,
+  withVertexAt,
 } from '@nittcam/core';
 import { Button, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
@@ -52,15 +53,20 @@ import { onThemeChange } from '../../lib/canvas-theme';
 import { fill } from '../../lib/fill';
 import { newPartId } from '../../lib/part-id';
 import {
+  ARC_MODES,
   backspace,
   clickAt,
   enter,
   fieldsFor,
   hintFor,
   isDrawTool,
+  loadDrawOptions,
   parseTyped,
   preview,
+  saveDrawOptions,
+  trackSweep,
   type DraftView,
+  type DrawOptions,
   type DrawDraft,
   type DrawStep,
   type DrawTool,
@@ -182,7 +188,15 @@ type Gesture =
   /** Dragging a segment's bend handle (T129). */
   | { kind: 'bend'; id: string; index: number; p0: Pt; p1: Pt; bulge: number }
   /** B52: pressing a hole or cut-out of the selected part (click picks, drag moves). */
-  | { kind: 'item'; id: string; item: PartItem; start: Pt; startScreen: Pt; moved: boolean };
+  | { kind: 'item'; id: string; item: PartItem; start: Pt; startScreen: Pt; moved: boolean }
+  /** T382: dragging an arc's end point (corner node next to an arc); the arcs keep their sweep. */
+  | { kind: 'vertex'; id: string; index: number };
+
+/** True when vertex `i` of the outline is an end of an arc segment (T382). */
+function arcEnd(outline: readonly { bulge: number }[], i: number): boolean {
+  const n = outline.length;
+  return (outline[i]?.bulge ?? 0) !== 0 || (outline[(i - 1 + n) % n]?.bulge ?? 0) !== 0;
+}
 
 /** Line direction per arrow key while drawing (B52, D-096), degrees CCW from +X. */
 const ARROW_ANGLES: Record<string, number> = {
@@ -320,6 +334,18 @@ export function DrawingBoard({
   // values of the dynamic input chip. All UI state; a finished shape is one `drawPart` command.
   const drawTool: DrawTool | null = isDrawTool(state.tool) ? state.tool : null;
   const [draft, setDraft] = useState<DrawDraft | null>(null);
+  // T383: points taken back inside the chain (Ctrl+Z / Backspace), re-added by Ctrl+Y.
+  const [chainRedo, setChainRedo] = useState<DrawDraft[]>([]);
+  // T382: arc mode and "tangent at a line end", remembered across sessions.
+  // The options bar shows only once the arc tool is picked (client side), so no hydration gap.
+  const [drawOpts, setDrawOptsState] = useState<DrawOptions>(loadDrawOptions);
+  const setDrawOpts = useCallback((next: DrawOptions) => {
+    setDrawOptsState(next);
+    saveDrawOptions(next);
+    // A new mode reads the second point differently: drop it, keep what is drawn.
+    setDraft((d) => (d?.kind === 'path' && d.pending ? backspace(d) : d));
+    setTyped(NO_TYPED);
+  }, []);
   const [typed, setTyped] = useState<{ values: string[]; active: number }>(NO_TYPED);
   const [drawAt, setDrawAt] = useState<Pt | null>(null);
   const [lock, setLock] = useState(false);
@@ -362,7 +388,7 @@ export function DrawingBoard({
           live: {},
         }
       : null;
-  const fields = drawTool ? fieldsFor(drawTool, draft) : [];
+  const fields = drawTool ? fieldsFor(drawTool, draft, drawOpts) : [];
   const typedValues: Typed = {};
   fields.forEach((f, i) => {
     const v = parseTyped(typed.values[i] ?? '');
@@ -378,14 +404,22 @@ export function DrawingBoard({
           ? (draft.pts.at(-1) ?? null)
           : null);
   const draftView =
-    drawTool && drawCursor ? preview(drawTool, draft, drawCursor, typedValues, lock) : null;
+    drawTool && drawCursor
+      ? preview(drawTool, draft, drawCursor, typedValues, lock, drawOpts)
+      : null;
   const draftLabel = !draftView
     ? null
     : draft?.kind === 'rect' && draftView.live.w !== undefined && draftView.live.h !== undefined
       ? sizeText(draftView.live.w, draftView.live.h)
       : draft?.kind === 'circle' && draftView.live.r !== undefined && draftView.live.r > 0
         ? `R ${formatMm(draftView.live.r)}`
-        : null;
+        : draftView.arc
+          ? fill(t.draw.arcLabel, {
+              r: formatMm(draftView.arc.r),
+              a: formatMm(draftView.arc.sweep),
+              c: formatMm(draftView.arc.chord),
+            })
+          : null;
 
   const selected = useMemo(() => parts.filter((p) => selection.has(p.id)), [parts, selection]);
   const summary = useMemo(
@@ -434,6 +468,25 @@ export function DrawingBoard({
       live: { r: arc ? tidy(arc.radius) : 0 },
     };
   }, [bend, parts]);
+
+  // T382: an arc end point being dragged (board mm); the outline preview follows it.
+  const [vdrag, setVdrag] = useState<{ id: string; index: number; at: Pt } | null>(null);
+  const vertexView = useMemo((): DraftView | null => {
+    if (!vdrag) return null;
+    const part = parts.find((x) => x.id === vdrag.id);
+    const moved = part ? withVertexAt(part.outline, vdrag.index, vdrag.at) : undefined;
+    if (!moved?.ok) return null;
+    return {
+      vertices: moved.vertices,
+      closed: true,
+      rubber: null,
+      nodes: [vdrag.at],
+      closing: false,
+      open: false,
+      centre: null,
+      live: {},
+    };
+  }, [vdrag, parts]);
 
   // Properties panel (T130): a segment or vertex of the single selected part. It is dropped when
   // the selection changes; an index past the outline (after an edit or undo) shows nothing.
@@ -600,8 +653,13 @@ export function DrawingBoard({
     setSnapMark(null);
     setDimA(null);
     setDraft((d) =>
-      d?.kind === 'path' && (tool === 'line' || tool === 'arc') ? { ...d, pending: null } : null,
+      d?.kind === 'path' && (tool === 'line' || tool === 'arc')
+        ? d.pending
+          ? backspace(d)
+          : d
+        : null,
     );
+    if (tool !== 'line' && tool !== 'arc') setChainRedo([]);
   }, []);
 
   // A closed shape drawn inside a part (T134): ask "iç kesim olarak ekle?" first.
@@ -645,6 +703,7 @@ export function DrawingBoard({
 
   function applyStep(step: DrawStep) {
     setDraft(step.draft);
+    setChainRedo([]);
     setTyped(NO_TYPED);
     if (step.commit) commitShape(step.commit);
   }
@@ -686,26 +745,53 @@ export function DrawingBoard({
     return { point: res.kind === 'none' ? w : res.point, kind: res.kind };
   }
 
+  /** T383: one point back inside the chain (the tool stays active); the chain ends when empty. */
+  function chainBack(d: DrawDraft) {
+    if (d.kind === 'path') setChainRedo((r) => [...r, d]);
+    setDraft(d.kind === 'path' ? backspace(d) : null);
+    setTyped(NO_TYPED);
+  }
+
   // Drawing keys (capture phase, before the board and edit shortcuts): digits fill the chip,
-  // Tab / ; switch fields, Enter commits, Backspace edits or drops the last vertex, Esc cancels.
+  // Tab / ; switch fields, Enter commits, Backspace edits or drops the last vertex, Esc ends.
+  // T383: Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) inside a chain take back / re-add its last point, so the
+  // wizard's undo (whole commands) never sees them; with no chain they fall through to it.
   useEffect(() => {
     if (!drawTool) return;
     const tool = drawTool;
     function onKey(e: KeyboardEvent) {
-      if (typing(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (typing(e.target) || e.altKey) return;
       // B50 tester round 1: keys typed inside an open dialog (e.g. "İç kesim olarak ekle?")
       // belong to that dialog, never to the drawing tool behind it.
       if (e.target instanceof Element && e.target.closest('[role="dialog"], [role="alertdialog"]'))
         return;
       if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"]'))
         return;
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key.toLowerCase();
+        const undoKey = key === 'z' && !e.shiftKey;
+        const redoKey = key === 'y' || (key === 'z' && e.shiftKey);
+        if (undoKey && draft) chainBack(draft);
+        else if (redoKey && chainRedo.length > 0) {
+          setDraft(chainRedo[chainRedo.length - 1] ?? null);
+          setChainRedo(chainRedo.slice(0, -1));
+          setTyped(NO_TYPED);
+        } else {
+          // Leaving the chain: its taken-back points can no longer come back.
+          if (undoKey && chainRedo.length > 0) setChainRedo([]);
+          return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
       const k = e.key;
       const n = fields.length;
       const turn = ARROW_ANGLES[k];
       if (turn !== undefined) {
         // B52 (D-096): an arrow key sets the direction of the next line (the typed length keeps
         // it); without one the mouse decides. Never nudges the selection while drawing.
-        const ai = fields.indexOf('angle');
+        const ai = fields.includes('length') ? fields.indexOf('angle') : -1;
         if (ai >= 0) {
           setTyped((t) => {
             const values = [...t.values];
@@ -725,7 +811,7 @@ export function DrawingBoard({
         setTyped((t) => ({ ...t, active: (t.active + (e.shiftKey ? n - 1 : 1)) % n }));
       } else if (k === 'Enter') {
         if (!drawCursor) return;
-        applyStep(enter(tool, draft, drawCursor, typedValues, lock));
+        applyStep(enter(tool, draft, drawCursor, typedValues, lock, drawOpts));
       } else if (k === 'Backspace') {
         const cur = typed.values[typed.active] ?? '';
         if (cur !== '') {
@@ -735,15 +821,21 @@ export function DrawingBoard({
             return { ...t, values };
           });
         } else if (draft) {
-          setDraft(backspace(draft));
-          setTyped(NO_TYPED);
+          chainBack(draft);
         } else return;
       } else if (k === 'Delete') {
         if (!draft) return;
       } else if (k === 'Escape') {
+        // T383: Esc ends the chain keeping what is drawn: an arc's unfinished second point goes,
+        // a path of 2+ points stays as an open shape ("kapalı değil"); a second Esc drops it.
         if (typed.values.some((v) => v !== '')) setTyped(NO_TYPED);
-        else if (draft) setDraft(null);
-        else setTool('select');
+        else if (draft?.kind === 'path' && draft.pending) setDraft(backspace(draft));
+        else if (draft?.kind === 'path' && !draft.open && draft.pts.length >= 2)
+          setDraft({ ...draft, open: true });
+        else if (draft) {
+          setDraft(null);
+          setChainRedo([]);
+        } else setTool('select');
       } else return;
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -1141,6 +1233,7 @@ export function DrawingBoard({
       if (holeOn && holeDraft && !holeLive && dist(w, holeDraft.c) * view.scale > 2 * DRAG_PX)
         setHoleLive(true);
       setDrawAt(r.point);
+      if (drawTool) setDraft((d) => trackSweep(drawTool, d, r.point, drawOpts));
       setLock(e.shiftKey);
       setSnapMark(
         r.kind === 'none' || r.kind === 'close' ? null : { kind: r.kind, point: r.point },
@@ -1176,6 +1269,15 @@ export function DrawingBoard({
     } else if (g.kind === 'press') {
       // A press that moves becomes a move of the selection (the pressed part joins it).
       if (dist(s, g.startScreen) < DRAG_PX) return;
+      const owner = g.corner !== undefined ? parts.find((p) => p.id === g.id) : undefined;
+      if (owner && g.corner !== undefined && arcEnd(owner.outline, g.corner)) {
+        // T382: an arc's end node drags that end; the arc stays an arc (its sweep is kept).
+        const { point, kind } = drawPoint(w, e.altKey);
+        gesture.current = { kind: 'vertex', id: g.id, index: g.corner };
+        setVdrag({ id: g.id, index: g.corner, at: point });
+        setSnapMark(kind === 'none' || kind === 'close' ? null : { kind, point });
+        return;
+      }
       const ids = selection.has(g.id) ? state.selection : [g.id];
       if (!selection.has(g.id)) dispatch({ type: 'select', ids });
       const move = { kind: 'move' as const, ids, start: g.start, anchor: anchorOf(g.id, g.start) };
@@ -1183,6 +1285,10 @@ export function DrawingBoard({
       setDrag(snapMove(move, w, e.altKey));
     } else if (g.kind === 'bend') {
       setBend({ id: g.id, index: g.index, bulge: bulgeFromSagitta(g.p0, g.p1, w), at: w });
+    } else if (g.kind === 'vertex') {
+      const { point, kind } = drawPoint(w, e.altKey);
+      setVdrag({ id: g.id, index: g.index, at: point });
+      setSnapMark(kind === 'none' || kind === 'close' ? null : { kind, point });
     } else if (g.kind === 'move') {
       setDrag(snapMove(g, w, e.altKey));
     } else if (g.kind === 'marquee') {
@@ -1209,7 +1315,7 @@ export function DrawingBoard({
       if (g.placed && !moved) return;
       const { point } = drawPoint(toWorld(view, local(e)), e.altKey);
       setDrawAt(point);
-      applyStep(clickAt(drawTool, draft, point, typedValues, e.shiftKey));
+      applyStep(clickAt(drawTool, draft, point, typedValues, e.shiftKey, drawOpts));
       return;
     }
     if (g.kind === 'bend') {
@@ -1224,6 +1330,21 @@ export function DrawingBoard({
       } else {
         // A click on the segment middle (no bend) picks the segment for the properties panel.
         setSub({ kind: 'segment', index: g.index });
+      }
+      return;
+    }
+    if (g.kind === 'vertex') {
+      const v = vdrag;
+      setVdrag(null);
+      setSnapMark(null);
+      const part = parts.find((p) => p.id === g.id);
+      setSub({ kind: 'vertex', index: g.index });
+      if (v && part) {
+        const x = tidy(v.at.x - part.at.x);
+        const y = tidy(v.at.y - part.at.y);
+        if (!run('moveVertex', { id: g.id, index: g.index, x, y })) {
+          notify.error(t.inspector.errors.degenerate);
+        }
       }
       return;
     }
@@ -1527,6 +1648,47 @@ export function DrawingBoard({
         <span aria-hidden className="mx-2 my-0.5 h-px bg-border" />
         {railTool('dim', t.tools.dim, 'D', <Ruler aria-hidden />)}
       </div>
+      {state.tool === 'arc' ? (
+        // T382: arc tool options next to the rail; the choice is remembered.
+        <div
+          role="toolbar"
+          aria-label={t.draw.arcOptions.label}
+          className={`${floating} absolute z-10 flex flex-wrap items-center gap-0.5 p-0.5`}
+          style={{
+            top: RULER_PX + 8 + (viewSwitch ? BAND_PX : 0),
+            left: RAIL_LEFT + railSize.w + 8,
+            maxWidth: Math.max(160, size.w - RAIL_LEFT - railSize.w - 16),
+          }}
+          data-testid="arc-options"
+        >
+          {ARC_MODES.map((mode) => (
+            <Tooltip key={mode} content={t.draw.arcOptions.tips[mode]}>
+              <Button
+                size="sm"
+                variant={drawOpts.arcMode === mode ? 'primary' : 'ghost'}
+                aria-pressed={drawOpts.arcMode === mode}
+                data-testid={`arc-mode-${mode}`}
+                onClick={() => setDrawOpts({ ...drawOpts, arcMode: mode })}
+              >
+                {t.draw.arcOptions.modes[mode]}
+              </Button>
+            </Tooltip>
+          ))}
+          <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
+          <Tooltip content={t.draw.arcOptions.tangentTip}>
+            <Button
+              size="sm"
+              variant={drawOpts.tangent && drawOpts.arcMode === 'bulge' ? 'secondary' : 'ghost'}
+              aria-pressed={drawOpts.tangent}
+              disabled={drawOpts.arcMode !== 'bulge'}
+              data-testid="arc-tangent"
+              onClick={() => setDrawOpts({ ...drawOpts, tangent: !drawOpts.tangent })}
+            >
+              {t.draw.arcOptions.tangent}
+            </Button>
+          </Tooltip>
+        </div>
+      ) : null}
       {viewSwitch ? (
         <div
           className={`${floating} absolute z-10 p-0.5`}
@@ -1641,7 +1803,7 @@ export function DrawingBoard({
           onFocusField={(i) => setTyped((s0) => ({ ...s0, active: i }))}
           onCommit={() => {
             if (drawTool && drawCursor) {
-              applyStep(enter(drawTool, draft, drawCursor, typedValues, lock));
+              applyStep(enter(drawTool, draft, drawCursor, typedValues, lock, drawOpts));
             }
           }}
           onCancel={() => {
@@ -1746,7 +1908,7 @@ export function DrawingBoard({
                 : null
             }
             colors={colors}
-            draft={bendView ?? holeView ?? draftView}
+            draft={bendView ?? vertexView ?? holeView ?? draftView}
             ghost={ghost}
             draftLabel={
               bendView
@@ -1856,7 +2018,7 @@ export function DrawingBoard({
                 : holeOn
                   ? t.holeHint
                   : drawTool
-                    ? t.draw.hints[hintFor(drawTool, draft, draftView)]
+                    ? t.draw.hints[hintFor(drawTool, draft, draftView, drawOpts)]
                     : dimTool
                       ? dimA
                         ? t.dim.hintSecond

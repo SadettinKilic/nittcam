@@ -53,6 +53,8 @@ test.describe('T137 editor end-to-end: draw → nest → simulate → NC (M4 exi
     await segment(page, 300, 90);
     // The arc tool continues the same outline: chord 300 mm to the left, bent to R 200.
     await page.keyboard.press('a');
+    // B66 (T382): an arc at a line end is tangent by default; this chord-and-R arc is not.
+    await page.getByTestId('arc-tangent').click();
     await segment(page, 300, 180);
     await expect(page.getByTestId('editor-hint')).toHaveText(tr.editor.draw.hints.arcBend);
     await page.keyboard.type('200');

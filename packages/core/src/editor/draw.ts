@@ -142,6 +142,151 @@ export function bulgeFromRadius(
   return right ? b : -b;
 }
 
+/** Smallest and largest sweep the arc tool draws (T382): 1° … 359°. */
+export const ARC_MIN_SWEEP = Math.PI / 180;
+export const ARC_MAX_SWEEP = 2 * Math.PI - ARC_MIN_SWEEP;
+
+/** Clamps a signed sweep (radians) to ±[1°, 359°], keeping its sign; 0 stays 0 (a line). */
+export function clampSweep(sweep: number): number {
+  if (!Number.isFinite(sweep) || sweep === 0) return 0;
+  const m = Math.min(ARC_MAX_SWEEP, Math.max(ARC_MIN_SWEEP, Math.abs(sweep)));
+  return sweep < 0 ? -m : m;
+}
+
+/** A bulge whose sweep is clamped to ±[1°, 359°] (T382); 0 stays a line. */
+export function clampBulge(bulge: number): number {
+  if (bulge === 0) return 0;
+  return Math.tan(clampSweep(4 * Math.atan(bulge)) / 4);
+}
+
+/**
+ * Free arc p0 → p1 bent by the cursor m (T382 "sehim" mode): the arc's middle follows m's signed
+ * distance from the chord, so any sweep 1°–359° on either side can be dragged. A typed radius
+ * (`r`, minor arc unless the cursor is past the half circle) or sweep (`sweep`, degrees, its
+ * magnitude; the cursor gives the side) overrides the cursor. Undefined: no arc.
+ */
+export function bulgeFree(
+  p0: Point,
+  p1: Point,
+  m: Point,
+  typed: { r?: number; sweep?: number } = {},
+): number | undefined {
+  const c = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+  if (c < EPS) return undefined;
+  const drag = bulgeFromSagitta(p0, p1, m);
+  // Right of the chord (CCW, bulge > 0) when the cursor is; on the chord: right.
+  const right = drag >= 0;
+  if (typed.sweep !== undefined) {
+    const s = clampSweep((Math.abs(typed.sweep) * Math.PI) / 180);
+    return s === 0 ? undefined : right ? Math.tan(s / 4) : -Math.tan(s / 4);
+  }
+  if (typed.r !== undefined) {
+    const minor = bulgeFromRadius(p0, p1, typed.r, right);
+    if (minor === undefined) return undefined;
+    // Past the half circle (|bulge| > 1) the cursor asks for the major arc of that radius.
+    return Math.abs(drag) > 1 && Math.abs(minor) > MIN_BULGE ? clampBulge(1 / minor) : minor;
+  }
+  return drag === 0 ? undefined : clampBulge(drag);
+}
+
+/** An arc that starts at a point with a given tangent (T382): its end point and bulge. */
+export interface TangentArc {
+  end: Point;
+  bulge: number;
+  center: Point;
+  radius: number;
+}
+
+/**
+ * Arc from p leaving along the direction `dir` (tangent continuation of a line, T382) towards the
+ * cursor q: the circle tangent to `dir` at p through q. A typed radius `r` keeps the cursor's side;
+ * a typed sweep (degrees, magnitude) keeps the cursor's turn direction. Sweep ±[1°, 359°].
+ * Undefined when q is on the tangent line (no arc) or `dir` is zero.
+ */
+export function tangentArc(
+  p: Point,
+  dir: Point,
+  q: Point,
+  typed: { r?: number; sweep?: number } = {},
+): TangentArc | undefined {
+  const len = Math.hypot(dir.x, dir.y);
+  if (len < EPS) return undefined;
+  const tx = dir.x / len;
+  const ty = dir.y / len;
+  // Left normal: a centre on the left turns left (CCW, bulge > 0).
+  const nx = -ty;
+  const ny = tx;
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const h = dx * nx + dy * ny;
+  const d2 = dx * dx + dy * dy;
+  const side = h >= 0 ? 1 : -1;
+  let rho: number;
+  if (typed.r !== undefined && typed.r > EPS) rho = side * typed.r;
+  else {
+    if (Math.abs(h) < EPS) return undefined;
+    rho = d2 / (2 * h);
+  }
+  const center = { x: p.x + nx * rho, y: p.y + ny * rho };
+  const ux = p.x - center.x;
+  const uy = p.y - center.y;
+  let sweep: number;
+  if (typed.sweep !== undefined) sweep = side * Math.abs((typed.sweep * Math.PI) / 180);
+  else {
+    const vx = q.x - center.x;
+    const vy = q.y - center.y;
+    sweep = Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+    if (rho > 0 && sweep < 0) sweep += 2 * Math.PI;
+    if (rho < 0 && sweep > 0) sweep -= 2 * Math.PI;
+  }
+  sweep = clampSweep(sweep);
+  if (sweep === 0) return undefined;
+  const cs = Math.cos(sweep);
+  const sn = Math.sin(sweep);
+  const end = { x: tidy(center.x + ux * cs - uy * sn), y: tidy(center.y + ux * sn + uy * cs) };
+  return { end, bulge: Math.tan(sweep / 4), center, radius: Math.abs(rho) };
+}
+
+/**
+ * Unwraps the sweep of a centre-mode arc (T382): the signed angle from `start` to the cursor seen
+ * from `center`, continued from the previous sweep so the arc grows past 180° and either turn
+ * direction follows the mouse. Radians, ±[0, 359°].
+ */
+export function unwrapSweep(center: Point, start: Point, cursor: Point, prev: number): number {
+  const ux = start.x - center.x;
+  const uy = start.y - center.y;
+  const vx = cursor.x - center.x;
+  const vy = cursor.y - center.y;
+  if (Math.hypot(vx, vy) < EPS || Math.hypot(ux, uy) < EPS) return prev;
+  const a = Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+  let best = a;
+  for (const c of [a - 2 * Math.PI, a + 2 * Math.PI]) {
+    if (Math.abs(c - prev) < Math.abs(best - prev)) best = c;
+  }
+  return Math.max(-ARC_MAX_SWEEP, Math.min(ARC_MAX_SWEEP, best));
+}
+
+/**
+ * Arc around `center` from `start` with a signed sweep (radians; T382 centre mode): end point and
+ * bulge. Undefined for a zero radius or sweep.
+ */
+export function arcAround(
+  center: Point,
+  start: Point,
+  sweep: number,
+): { end: Point; bulge: number } | undefined {
+  const ux = start.x - center.x;
+  const uy = start.y - center.y;
+  const s = clampSweep(sweep);
+  if (Math.hypot(ux, uy) < EPS || s === 0) return undefined;
+  const cs = Math.cos(s);
+  const sn = Math.sin(s);
+  return {
+    end: { x: tidy(center.x + ux * cs - uy * sn), y: tidy(center.y + ux * sn + uy * cs) },
+    bulge: Math.tan(s / 4),
+  };
+}
+
 /** Radius of a segment's arc, or undefined for a line. */
 export function arcRadius(p0: Point, p1: Point, bulge: number): number | undefined {
   return arcOf(p0, p1, bulge)?.radius;

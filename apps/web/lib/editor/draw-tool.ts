@@ -6,8 +6,9 @@
  */
 import {
   EPS,
+  arcAround,
   arcOf,
-  bulgeFromRadius,
+  bulgeFree,
   bulgeThrough,
   circleOutline,
   closePath,
@@ -16,7 +17,9 @@ import {
   rectFromCorners,
   rectFromSize,
   segmentMidpoint,
+  tangentArc,
   tidy,
+  unwrapSweep,
   type Vertex,
 } from '@nittcam/core';
 import type { Pt } from './viewport';
@@ -24,6 +27,22 @@ import type { Pt } from './viewport';
 export type DrawTool = 'rect' | 'circle' | 'line' | 'arc';
 
 export const DRAW_TOOLS: readonly DrawTool[] = ['rect', 'circle', 'line', 'arc'];
+
+/**
+ * Arc construction (T382): 'bulge' = start, end, then drag the bulge (sehim) freely; '3pt' = start,
+ * a point on the arc, end; 'centre' = start, centre, then the sweep around it.
+ */
+export type ArcMode = 'bulge' | '3pt' | 'centre';
+
+export const ARC_MODES: readonly ArcMode[] = ['bulge', '3pt', 'centre'];
+
+/** Arc tool options (T382): the mode and "tangent at a line end" (bulge mode). */
+export interface DrawOptions {
+  arcMode: ArcMode;
+  tangent: boolean;
+}
+
+export const DEFAULT_DRAW_OPTIONS: DrawOptions = { arcMode: 'bulge', tangent: true };
 
 export function isDrawTool(tool: string): tool is DrawTool {
   return (DRAW_TOOLS as readonly string[]).includes(tool);
@@ -36,8 +55,13 @@ export type DrawDraft =
   | {
       kind: 'path';
       pts: Vertex[];
-      /** Arc tool: the chosen end point, waiting for the point on the arc (or a typed R). */
+      /**
+       * Arc tool, second point (T382): the end ('bulge' mode), the point on the arc ('3pt') or the
+       * centre ('centre'); null while the next click is that point.
+       */
       pending: Pt | null;
+      /** Centre mode: the sweep so far (radians), unwrapped from the mouse path. */
+      sweep?: number;
       /** Finished with Enter while not closed: shown as "kapalı değil" until resumed or Esc. */
       open: boolean;
     };
@@ -70,12 +94,22 @@ export function parseTyped(s: string): number | undefined {
 }
 
 /** Chip fields for the current tool and draft (empty: nothing to type yet). */
-export function fieldsFor(tool: DrawTool, draft: DrawDraft | null): DrawField[] {
+export function fieldsFor(
+  tool: DrawTool,
+  draft: DrawDraft | null,
+  opts: DrawOptions = DEFAULT_DRAW_OPTIONS,
+): DrawField[] {
   if (!draft) return [];
   if (draft.kind === 'rect') return ['w', 'h'];
   if (draft.kind === 'circle') return ['r'];
   if (draft.open) return [];
-  if (tool === 'arc' && draft.pending) return ['r'];
+  if (tool === 'arc' && draft.pending) {
+    // In arc states 'angle' is the sweep (T382).
+    if (opts.arcMode === 'bulge') return ['r', 'angle'];
+    if (opts.arcMode === 'centre') return ['angle'];
+    return [];
+  }
+  if (tool === 'arc' && tangentFrom(draft.pts, opts)) return ['r', 'angle'];
   return ['length', 'angle'];
 }
 
@@ -91,9 +125,63 @@ function pos(v: number | undefined): number | undefined {
   return v !== undefined && v > EPS ? v : undefined;
 }
 
-/** True when `p` lies right of the chord a → b (the side of a positive bulge). */
-function rightOf(a: Pt, b: Pt, p: Pt): boolean {
-  return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) < 0;
+/**
+ * Direction a tangent arc continues (T382): the last segment of the path when it is a straight
+ * line and the arc tool is in 'bulge' mode with "tangent" on; undefined otherwise.
+ */
+export function tangentFrom(pts: readonly Vertex[], opts: DrawOptions): Pt | undefined {
+  if (opts.arcMode !== 'bulge' || !opts.tangent || pts.length < 2) return undefined;
+  const a = pts[pts.length - 2] as Vertex;
+  const b = last(pts);
+  if (a.bulge !== 0) return undefined;
+  const d = { x: b.x - a.x, y: b.y - a.y };
+  return Math.hypot(d.x, d.y) > EPS ? d : undefined;
+}
+
+/** The arc the path would get with the cursor at `p` (T382), or undefined (no arc yet). */
+function arcAt(
+  draft: Extract<DrawDraft, { kind: 'path' }>,
+  p: Pt,
+  typed: Typed,
+  opts: DrawOptions,
+): { end: Pt; bulge: number } | undefined {
+  const from = last(draft.pts);
+  const r = pos(typed.r);
+  const sweep = typed.angle !== undefined && Math.abs(typed.angle) > EPS ? typed.angle : undefined;
+  const fixed = { ...(r !== undefined ? { r } : {}), ...(sweep !== undefined ? { sweep } : {}) };
+  if (!draft.pending) {
+    const dir = tangentFrom(draft.pts, opts);
+    const t = dir ? tangentArc(from, dir, p, fixed) : undefined;
+    return t ? { end: t.end, bulge: t.bulge } : undefined;
+  }
+  if (opts.arcMode === 'bulge') {
+    const bulge = bulgeFree(from, draft.pending, p, fixed);
+    return bulge === undefined ? undefined : { end: draft.pending, bulge };
+  }
+  if (opts.arcMode === '3pt') {
+    const end = { x: tidy(p.x), y: tidy(p.y) };
+    const bulge = bulgeThrough(from, draft.pending, end);
+    return bulge === 0 ? undefined : { end, bulge };
+  }
+  const turn = unwrapSweep(draft.pending, from, p, draft.sweep ?? 0);
+  const s = sweep !== undefined ? (Math.abs(sweep) * Math.PI * (turn < 0 ? -1 : 1)) / 180 : turn;
+  return arcAround(draft.pending, from, s);
+}
+
+/**
+ * Centre mode (T382): follows the mouse so the sweep unwraps past 180° and either turn direction
+ * works. Call on every cursor move; returns the same draft when nothing changes.
+ */
+export function trackSweep(
+  tool: DrawTool,
+  draft: DrawDraft | null,
+  p: Pt,
+  opts: DrawOptions,
+): DrawDraft | null {
+  if (tool !== 'arc' || opts.arcMode !== 'centre' || draft?.kind !== 'path' || !draft.pending)
+    return draft;
+  const sweep = unwrapSweep(draft.pending, last(draft.pts), p, draft.sweep ?? 0);
+  return sweep === draft.sweep ? draft : { ...draft, sweep };
 }
 
 /** Next path point from the last vertex: typed length/angle, Shift lock, else the cursor. */
@@ -135,6 +223,7 @@ export function clickAt(
   p: Pt,
   typed: Typed = {},
   lock = false,
+  opts: DrawOptions = DEFAULT_DRAW_OPTIONS,
 ): DrawStep {
   const at = { x: tidy(p.x), y: tidy(p.y) };
   if (tool === 'rect') {
@@ -176,17 +265,11 @@ export function clickAt(
     return { draft: { kind: 'path', pts: [{ ...at, bulge: 0 }], pending: null, open: false } };
   }
   const pts = draft.pts;
-  if (tool === 'arc' && draft.pending) {
-    const from = last(pts);
-    const end = draft.pending;
-    const r = pos(typed.r);
-    const bulge =
-      r !== undefined
-        ? bulgeFromRadius(from, end, r, rightOf(from, end, at))
-        : bulgeThrough(from, at, end);
-    if (bulge === undefined || bulge === 0) return { draft };
-    const bent = pts.map((v, i) => (i === pts.length - 1 ? { ...v, bulge } : v));
-    return addVertex(bent, end);
+  if (tool === 'arc' && (draft.pending || tangentFrom(pts, opts))) {
+    const arc = arcAt(draft, at, typed, opts);
+    if (!arc || dist(arc.end, last(pts)) < EPS) return { draft };
+    const bent = pts.map((v, i) => (i === pts.length - 1 ? { ...v, bulge: arc.bulge } : v));
+    return addVertex(bent, arc.end);
   }
   const next = pathPoint(pts, at, typed, lock);
   if (dist(next, last(pts)) < EPS) return { draft: { ...draft, open: false } };
@@ -203,9 +286,10 @@ export function enter(
   cursor: Pt,
   typed: Typed,
   lock = false,
+  opts: DrawOptions = DEFAULT_DRAW_OPTIONS,
 ): DrawStep {
   const any = Object.values(typed).some((v) => v !== undefined);
-  if (any) return clickAt(tool, draft, cursor, typed, lock);
+  if (any) return clickAt(tool, draft, cursor, typed, lock, opts);
   if (draft?.kind === 'path' && draft.pts.length >= 2) {
     return { draft: { ...draft, pending: null, open: true } };
   }
@@ -215,7 +299,7 @@ export function enter(
 /** Backspace: drops the arc end point, else the last vertex (the path ends when empty). */
 export function backspace(draft: DrawDraft | null): DrawDraft | null {
   if (draft?.kind !== 'path') return draft;
-  if (draft.pending) return { ...draft, pending: null };
+  if (draft.pending) return { kind: 'path', pts: draft.pts, pending: null, open: draft.open };
   const pts = draft.pts.slice(0, -1);
   if (pts.length === 0) return null;
   const end = pts.length - 1;
@@ -239,6 +323,8 @@ export interface DraftView {
   centre: Pt | null;
   /** Live values per chip field (same order as `fieldsFor`). */
   live: Partial<Record<DrawField, number>>;
+  /** Arc being placed (T382): radius, sweep (degrees, unsigned) and chord for the canvas label. */
+  arc?: { r: number; sweep: number; chord: number };
 }
 
 /** Preview of the draft with the cursor at `p` (snapped). */
@@ -248,6 +334,7 @@ export function preview(
   p: Pt,
   typed: Typed = {},
   lock = false,
+  opts: DrawOptions = DEFAULT_DRAW_OPTIONS,
 ): DraftView | null {
   if (!draft) return null;
   const base = { rubber: null, nodes: [], closing: false, open: false, centre: null };
@@ -290,23 +377,25 @@ export function preview(
   if (draft.open) {
     return { ...base, vertices: pts, closed: false, nodes, open: true, live: {} };
   }
-  if (tool === 'arc' && draft.pending) {
-    const end = draft.pending;
-    const r = pos(typed.r);
-    const bulge =
-      (r !== undefined
-        ? bulgeFromRadius(from, end, r, rightOf(from, end, p))
-        : bulgeThrough(from, p, end)) ?? 0;
+  if (tool === 'arc' && (draft.pending || tangentFrom(pts, opts))) {
+    const placed = arcAt(draft, p, typed, opts);
+    const pending = draft.pending;
+    // Without an arc yet (cursor on the chord): a straight rubber band to where the end would be.
+    const end = placed?.end ?? (opts.arcMode === 'bulge' && pending ? pending : p);
+    const bulge = placed?.bulge ?? 0;
     const arc = arcOf(from, end, bulge);
+    const sweep = arc ? tidy(Math.abs((arc.sweep * 180) / Math.PI)) : 0;
+    const shown = pending ? [...nodes, pending] : nodes;
     return {
       ...base,
       vertices: pts,
       closed: false,
-      nodes: [...nodes, end],
+      nodes: opts.arcMode === 'bulge' || !pending ? shown : [...shown, end],
       rubber: { from, to: end, bulge },
       closing: closesAt(pts[0] as Vertex, end) && pts.length >= 2,
-      centre: arc?.center ?? null,
-      live: { r: arc ? tidy(arc.radius) : 0 },
+      centre: arc?.center ?? (opts.arcMode === 'centre' ? pending : null),
+      live: { r: arc ? tidy(arc.radius) : 0, angle: sweep },
+      ...(arc ? { arc: { r: tidy(arc.radius), sweep, chord: tidy(dist(from, end)) } } : {}),
     };
   }
   const next = pathPoint(pts, p, typed, lock);
@@ -344,16 +433,65 @@ export type DrawHint =
   | 'arcStart'
   | 'arcEnd'
   | 'arcBend'
+  | 'arcTangent'
+  | 'arcVia'
+  | 'arcVia2'
+  | 'arcCentre'
+  | 'arcSweep'
   | 'open';
 
-export function hintFor(tool: DrawTool, draft: DrawDraft | null, view: DraftView | null): DrawHint {
+export function hintFor(
+  tool: DrawTool,
+  draft: DrawDraft | null,
+  view: DraftView | null,
+  opts: DrawOptions = DEFAULT_DRAW_OPTIONS,
+): DrawHint {
   if (tool === 'rect') return draft ? 'rectEnd' : 'rectStart';
   if (tool === 'circle') return draft ? 'circleEnd' : 'circleStart';
   if (draft?.kind === 'path' && draft.open) return 'open';
   if (view?.closing) return 'lineClose';
   if (tool === 'arc') {
     if (draft?.kind !== 'path') return 'arcStart';
-    return draft.pending ? 'arcBend' : 'arcEnd';
+    const mode = opts.arcMode;
+    if (draft.pending)
+      return mode === 'bulge' ? 'arcBend' : mode === '3pt' ? 'arcVia2' : 'arcSweep';
+    if (tangentFrom(draft.pts, opts)) return 'arcTangent';
+    return mode === 'bulge' ? 'arcEnd' : mode === '3pt' ? 'arcVia' : 'arcCentre';
   }
   return draft?.kind === 'path' ? 'lineNext' : 'lineStart';
+}
+
+/** localStorage key of the arc tool options (T382: "last used mode remembered"). */
+export const DRAW_OPTIONS_KEY = 'nittcam.drawOptions';
+
+/** Stored arc options; anything unreadable falls back to the defaults. */
+export function parseDrawOptions(raw: string | null): DrawOptions {
+  if (!raw) return DEFAULT_DRAW_OPTIONS;
+  try {
+    const v = JSON.parse(raw) as Partial<DrawOptions>;
+    return {
+      arcMode: ARC_MODES.includes(v.arcMode as ArcMode)
+        ? (v.arcMode as ArcMode)
+        : DEFAULT_DRAW_OPTIONS.arcMode,
+      tangent: typeof v.tangent === 'boolean' ? v.tangent : DEFAULT_DRAW_OPTIONS.tangent,
+    };
+  } catch {
+    return DEFAULT_DRAW_OPTIONS;
+  }
+}
+
+export function loadDrawOptions(): DrawOptions {
+  try {
+    return parseDrawOptions(window.localStorage.getItem(DRAW_OPTIONS_KEY));
+  } catch {
+    return DEFAULT_DRAW_OPTIONS;
+  }
+}
+
+export function saveDrawOptions(opts: DrawOptions): void {
+  try {
+    window.localStorage.setItem(DRAW_OPTIONS_KEY, JSON.stringify(opts));
+  } catch {
+    // Blocked storage: the choice lasts for this page only.
+  }
 }
