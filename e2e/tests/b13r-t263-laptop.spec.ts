@@ -1,14 +1,14 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { KITCHEN, goStep, openNewProject, paste } from './wizard-helpers';
 
 // T263 (CTO review #4, D-045): laptop widths. Below 1440 px the workspace steps (board, Dizilim,
 // Simülasyon) open with the sidebar as the icon rail; the user's own toggle wins and is
 // remembered. The canvases meet the budget; Ayarlar → Malzemeler fits at 1024.
 
+// T378: the stepper's own full-width row costs ~45 px of height (budgets lowered by that much).
 const BUDGET = {
-  1280: { board: [640, 520], layout: [640, 520], sim: [640, 380] },
-  1024: { board: [580, 480], layout: [580, 480], sim: [580, 300] },
+  1280: { board: [640, 480], layout: [640, 480], sim: [640, 340] },
+  1024: { board: [580, 430], layout: [580, 430], sim: [580, 260] },
 } as const;
 const HEIGHT = { 1280: 800, 1024: 768 } as const;
 
@@ -71,7 +71,11 @@ for (const width of [1280, 1024] as const) {
     const left = page.getByTestId('workspace-left');
     const wasClosed = (await left.getAttribute('data-state')) === 'closed';
     if (wasClosed) await page.getByTestId('workspace-left-toggle').click();
-    await left.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+    await left
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     if (wasClosed) await page.getByTestId('workspace-left-toggle').click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
     expect(await sidebarWidth(page)).toBe(64);
@@ -81,7 +85,8 @@ for (const width of [1280, 1024] as const) {
     if (width === 1280) {
       const header = await size(page.getByTestId('wizard-head-row'));
       info.annotations.push({ type: 'header', description: `${header.w}×${header.h}` });
-      expect.soft(header.h).toBeLessThan(60);
+      // T378: two rows (name + chip + undo/redo, then the full-width stepper).
+      expect.soft(header.h).toBeLessThan(110);
     }
     for (const k of ['board', 'layout', 'sim'] as const) {
       const [w, h] = BUDGET[width][k];

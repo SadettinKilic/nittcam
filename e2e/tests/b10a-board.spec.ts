@@ -96,20 +96,23 @@ for (const [w, h] of [
 }
 
 test.describe('T241 desktop canvas budget', () => {
-  test('1440 × 900: canvas ≥ 640 × 660 with both panels, switch in the header row', async ({
+  // T378: the stepper's own full-width row costs ~45 px of canvas height (660 → 610).
+  test('1440 × 900: canvas ≥ 640 × 610 with both panels, switch in the header row', async ({
     page,
   }) => {
     const canvas = await openBoard(page, 1440, 900);
     const c = await box(canvas);
     expect(c.width).toBeGreaterThanOrEqual(640);
-    expect(c.height).toBeGreaterThanOrEqual(660);
+    expect(c.height).toBeGreaterThanOrEqual(610);
     expect((await box(page.getByTestId('workspace-left'))).width).toBe(232);
     expect((await box(page.getByTestId('workspace-right'))).width).toBe(264);
-    // The switch shares the row with the stepper.
+    // T378: the switch shares the first row with the name; the stepper sits on its own row below.
     const sw = await box(page.getByTestId('wizard-view-switch'));
+    const name = await box(page.getByTestId('project-name'));
     const steps = await box(page.getByTestId('wizard-steps'));
-    expect(sw.x + sw.width).toBeLessThanOrEqual(steps.x);
-    expect(Math.abs(sw.y + sw.height / 2 - (steps.y + steps.height / 2))).toBeLessThan(24);
+    expect(name.x + name.width).toBeLessThanOrEqual(sw.x);
+    expect(Math.abs(sw.y + sw.height / 2 - (name.y + name.height / 2))).toBeLessThan(24);
+    expect(steps.y).toBeGreaterThanOrEqual(sw.y + sw.height);
     // The collapse buttons sit in their panel header rows (title / count).
     for (const side of ['left', 'right'] as const) {
       const head = await box(page.getByTestId(`workspace-${side}-header`));

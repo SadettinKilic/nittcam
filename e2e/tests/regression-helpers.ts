@@ -15,7 +15,11 @@ const w = tr.wizard;
 /** "Diz" on the Dizilim step; returns the sheet count the step shows. */
 export async function nestNow(page: Page): Promise<number> {
   await goStep(page, 'dizilim');
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   const sheets = page.getByTestId('nesting-sheets');
   await expect(sheets).toHaveText(/^\d+$/, { timeout: 20_000 });

@@ -66,7 +66,11 @@ test('Dizilim small job: opens on the job, Tümünü göster / İşe sığdır, 
 
   // Part-in-hole on with plain rectangles: "İç boşluğa 0 parça".
   await page.getByTestId('layout-part-in-hole').click();
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   await expect(page.getByTestId('layout-part-in-hole-result')).toHaveText(
     tr.wizard.layout.partInHoleNone,
     { timeout: 30_000 },
@@ -265,7 +269,11 @@ for (const [w, h] of [
     const left = page.getByTestId('workspace-left');
     const wasClosed = (await left.getAttribute('data-state')) === 'closed';
     if (wasClosed) await page.getByTestId('workspace-left-toggle').click();
-    await left.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+    await left
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     if (wasClosed) await page.getByTestId('workspace-left-toggle').click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 30_000 });
     await page.screenshot({ path: `${SHOTS}/dizilim-cabinet-labels-${w}.png` });
@@ -292,7 +300,11 @@ test('45° kazanç yok: default 90° nest, then 45° with the same result (B44 i
   await expect(page.getByTestId('layout-rotation-gain')).toHaveCount(0);
   const w = tr.wizard.layout;
   await page.getByRole('radio', { name: w.rotations.step45, exact: true }).click();
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   // Same sheet count and waste (waste = sheet − part area): no gain.
   await expect(page.getByTestId('layout-rotation-gain')).toHaveText(
     fill(w.rotationNoGain, { angle: 45 }),

@@ -67,7 +67,7 @@ import {
   type DrawnShape,
   type Typed,
 } from '../../lib/editor/draw-tool';
-import { claimPageGroup, claimPageKeys } from '../../lib/shortcuts';
+import { claimPageGroup, claimPageKeys, withShortcut } from '../../lib/shortcuts';
 import { EditorTour } from './editor-tour';
 import { HoleIssuesContext } from './hole-issues';
 import { useMediaQuery } from '../../lib/use-media-query';
@@ -1570,7 +1570,7 @@ export function DrawingBoard({
           </IconButton>
         </Tooltip>
         <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
-        <Tooltip content={t.view.zoomOut}>
+        <Tooltip content={withShortcut(t.view.zoomOut, 'boardZoomOut')}>
           <IconButton
             size="sm"
             variant="ghost"
@@ -1581,7 +1581,7 @@ export function DrawingBoard({
             <ZoomOut aria-hidden />
           </IconButton>
         </Tooltip>
-        <Tooltip content={t.view.zoomIn}>
+        <Tooltip content={withShortcut(t.view.zoomIn, 'boardZoomIn')}>
           <IconButton
             size="sm"
             variant="ghost"
@@ -1592,7 +1592,7 @@ export function DrawingBoard({
             <ZoomIn aria-hidden />
           </IconButton>
         </Tooltip>
-        <Tooltip content={`${t.view.fit} · F`}>
+        <Tooltip content={withShortcut(t.view.fit, 'boardFit')}>
           <IconButton
             size="sm"
             variant="ghost"

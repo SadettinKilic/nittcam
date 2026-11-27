@@ -45,7 +45,11 @@ test.describe('B23 Dizilim options', () => {
     await page.keyboard.press('Space');
     await expect(inHole).toHaveAttribute('data-state', 'unchecked');
     await inHole.click();
-    await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     await expect(page.getByTestId('nesting-sheets')).toBeVisible({ timeout: 30_000 });
     await axeClean(page);
     expect(problems).toEqual([]);

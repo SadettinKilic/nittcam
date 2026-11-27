@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { sheetSizeOf, type Project } from '@nittcam/core';
 import dynamic from 'next/dynamic';
+import { isTypingTarget, withShortcut } from '../../lib/shortcuts';
 import {
   Component,
   useEffect,
@@ -179,6 +180,19 @@ export function Preview3D({
     () => jobBox(copies, sheetSizeOf(project, sheet)) !== null,
     [copies, project, sheet],
   );
+  // T381: F frames the whole sheet, as on the 2D canvases (never while typing).
+  const preset = command.preset;
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTypingTarget(e.target as HTMLElement | null)) return;
+      if (e.key !== 'f' && e.key !== 'F') return;
+      e.preventDefault();
+      onPreset(preset, true);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onPreset, preset]);
   // A new sheet (or a new layout) starts at rest (state reset during render, no effect).
   const [restFor, setRestFor] = useState({ sheet, layout: project.layout });
   if (restFor.sheet !== sheet || restFor.layout !== project.layout) {
@@ -356,13 +370,14 @@ export function Preview3D({
           </IconButton>
         </Tooltip>
         {smallJob ? (
-          <Tooltip content={t.fitSheet}>
+          <Tooltip content={withShortcut(t.fitSheet, 'canvasFit')}>
             <IconButton
               size="sm"
               variant="ghost"
               className="size-7"
               aria-label={t.fitSheet}
               data-testid="preview3d-fit-sheet"
+              aria-keyshortcuts="F"
               onClick={() => onPreset(command.preset, true)}
             >
               <Maximize aria-hidden />

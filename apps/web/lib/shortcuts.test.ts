@@ -10,6 +10,7 @@ import {
   formatShortcut,
   isPageClaimedKey,
   isTypingTarget,
+  withShortcut,
   shortcutText,
   type KeyLike,
 } from './shortcuts';
@@ -47,6 +48,22 @@ describe('shortcutText (T242)', () => {
     expect(shortcutText('boardDuplicate', false)).toBe('Ctrl+D');
     expect(shortcutText('boardDuplicate', true)).toBe('⌘D');
     expect(shortcutText('boardDelete', false)).toBe('Delete');
+  });
+
+  it('T381: zoom tooltips carry the canvas keys', () => {
+    expect(withShortcut('Yakınlaştır', 'canvasZoomIn')).toBe('Yakınlaştır · +');
+    expect(withShortcut('Uzaklaştır', 'canvasZoomOut')).toBe('Uzaklaştır · -');
+    expect(withShortcut('Tümünü göster', 'canvasFit')).toBe('Tümünü göster · F');
+    expect(withShortcut('İşe sığdır', 'canvasFitJob')).toBe('İşe sığdır · 0');
+    expect(withShortcut('Yakınlaştır', 'boardZoomIn')).toBe('Yakınlaştır · +');
+  });
+
+  it('T381: canvas zoom keys never reach the global matcher', () => {
+    const match = createShortcutMatcher(SHORTCUTS, false);
+    for (const key of ['+', '-', 'f', '0']) {
+      const e = { key, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false };
+      expect(match(e, false, 0)).toBeFalsy();
+    }
   });
 
   it('board shortcuts never reach the global matcher', () => {

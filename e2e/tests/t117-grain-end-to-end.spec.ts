@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
-import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import {
   buildToolpath,
   checkGcodeFiles,
@@ -49,7 +48,11 @@ test('T117 grain end to end: 0° / 90° / 30° parts → nesting → simulation 
   await setGrain(page, 3, 30);
 
   await goStep(page, 'dizilim');
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   await expect(page.getByTestId('layout-canvas')).toHaveAttribute('data-part-count', '3', {
     timeout: 20_000,
   });

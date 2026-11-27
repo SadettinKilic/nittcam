@@ -27,6 +27,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
+import { withShortcut } from '../../lib/shortcuts';
 import {
   Button,
   InspectorRow,
@@ -553,6 +554,10 @@ function LayoutViewImpl({
     } else if (e.key === '0') {
       e.preventDefault();
       fitHome();
+    } else if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // T381: F fits the sheet on every canvas.
+      e.preventDefault();
+      fit();
     }
   }
 
@@ -831,7 +836,7 @@ function LayoutViewImpl({
                     <Grid3x3 aria-hidden />
                   </IconButton>
                 </Tooltip>
-                <Tooltip content={t.zoomOut}>
+                <Tooltip content={withShortcut(t.zoomOut, 'canvasZoomOut')}>
                   <IconButton
                     size="sm"
                     variant="ghost"
@@ -842,7 +847,7 @@ function LayoutViewImpl({
                     <ZoomOut aria-hidden />
                   </IconButton>
                 </Tooltip>
-                <Tooltip content={t.zoomIn}>
+                <Tooltip content={withShortcut(t.zoomIn, 'canvasZoomIn')}>
                   <IconButton
                     size="sm"
                     variant="ghost"
@@ -854,7 +859,7 @@ function LayoutViewImpl({
                   </IconButton>
                 </Tooltip>
                 {job ? (
-                  <Tooltip content={t.fitJob}>
+                  <Tooltip content={withShortcut(t.fitJob, 'canvasFitJob')}>
                     <IconButton
                       size="sm"
                       variant="ghost"
@@ -867,13 +872,13 @@ function LayoutViewImpl({
                     </IconButton>
                   </Tooltip>
                 ) : null}
-                <Tooltip content={t.fit}>
+                <Tooltip content={withShortcut(t.fit, 'canvasFit')}>
                   <IconButton
                     size="sm"
                     variant="ghost"
                     aria-label={t.fit}
                     onClick={fit}
-                    aria-keyshortcuts={job ? undefined : '0'}
+                    aria-keyshortcuts={job ? 'F' : 'F 0'}
                   >
                     <Maximize aria-hidden />
                   </IconButton>

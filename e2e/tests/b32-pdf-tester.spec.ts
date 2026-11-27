@@ -2,7 +2,6 @@ import AxeBuilder from '@axe-core/playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { goStep, openNewProject, paste, saved, watchConsole } from './wizard-helpers';
-import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 
 // B32 tester (T172–T174): PDFs from the export step with Turkish names, all four edge bands and a
 // long name; stale revision / bad params; axe on the changed export step. The PDFs are written to
@@ -21,7 +20,11 @@ async function toExport(page: Page): Promise<string> {
   await openNewProject(page, 'parcalar');
   await paste(page, LIST, 3);
   await goStep(page, 'dizilim');
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   const waste = page.getByTestId('nesting-waste').first();
   const wasteText = (await waste.count()) ? ((await waste.textContent()) ?? '') : '';
