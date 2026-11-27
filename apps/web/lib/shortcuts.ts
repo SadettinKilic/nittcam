@@ -34,9 +34,13 @@ export type ShortcutId =
   | 'boardDelete'
   | 'boardMirrorH'
   | 'boardMirrorV'
-  | 'boardRotate';
+  | 'boardRotate'
+  | 'canvasZoomIn'
+  | 'canvasZoomOut'
+  | 'canvasFit'
+  | 'canvasFitJob';
 
-export type ShortcutGroup = 'general' | 'navigation' | 'project' | 'board';
+export type ShortcutGroup = 'general' | 'navigation' | 'project' | 'board' | 'canvas';
 
 export interface Shortcut {
   id: ShortcutId;
@@ -90,6 +94,11 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'boardMirrorH', keys: 'shift+x', group: 'board', page: true },
   { id: 'boardMirrorV', keys: 'shift+y', group: 'board', page: true },
   { id: 'boardRotate', keys: 'shift+r', group: 'board', page: true },
+  // T381: the same zoom keys on the Dizilim, Simülasyon and 3D canvases (never while typing).
+  { id: 'canvasZoomIn', keys: 'plus', group: 'canvas', page: true },
+  { id: 'canvasZoomOut', keys: '-', group: 'canvas', page: true },
+  { id: 'canvasFit', keys: 'f', group: 'canvas', page: true },
+  { id: 'canvasFitJob', keys: '0', group: 'canvas', page: true },
 ];
 
 export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
@@ -97,6 +106,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   'navigation',
   'project',
   'board',
+  'canvas',
 ];
 
 /**
@@ -133,6 +143,11 @@ export function shortcutText(id: ShortcutId, isMac: boolean): string {
   return formatShortcut(shortcutById(id).keys, isMac)
     .map((step) => step.join(isMac ? '' : '+'))
     .join(' ');
+}
+
+/** T381: a control's tooltip with its shortcut, e.g. "Yakınlaştır · +" (same form as the board, T242). */
+export function withShortcut(label: string, id: ShortcutId, isMac = false): string {
+  return `${label} · ${shortcutText(id, isMac)}`;
 }
 
 export function shortcutById(id: ShortcutId): Shortcut {
