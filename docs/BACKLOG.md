@@ -1848,12 +1848,72 @@ Spec: §7.3 · Depends: T191 · From: CTO review #13 M2
 - [x] tabs on every part of the extended test program: 4 on the outer contour, none on the R20 arcs; field-kit text says so
 - [x] test: no test program has a through outer contour without tabs (and none uses skin)
 
+## Owner requests 2026-11-28 (before field test 1; PO, D-130)
+
+Owner list of 2026-11-28 (paralellik off, tempo low). Order: B65 → B66 → metal (MB1… mapped by D-130) → assembly (T386+) → 3D CNC backlog (docs). Golden G-code of the existing materials stays byte-identical in every task here unless the task says otherwise.
+
+### Batch B65: T378–T380 + rider T381 (wizard and Dizilim polish)
+
+### T378 Wizard stepper readable on desktop   [status: todo]
+Source: owner ("üst menüde adımlar çok sıkışık, monitörden bakınca bile okunmuyor"). At 1920 × 1080 the labels are cut ("Parça…", "Önizl…") because project name, stepper and profile chip share one row.
+Acceptance:
+- [ ] at 1280, 1440 and 1920 every step label is shown in full (no ellipsis); at 1024 the active step's label is full and the others may shorten only with a tooltip carrying the full name
+- [ ] layout: project name + profile chip + undo/redo on one row, the stepper on its own full-width row below it (or an equivalent that gives the stepper ≥ 640 px); connectors flex, labels never shrink
+- [ ] locked steps keep the lock icon and the "henüz hazır değil" reason as tooltip/aria; keyboard and screen reader behaviour unchanged
+- [ ] 390 px: no horizontal page scroll, current step visible (compact form is fine)
+Tester focus: 1024/1440/1920 screenshots of steps 1 and 3; axe.
+
+### T379 Dizilim: one click per goal, no separate "Diz"   [status: todo]
+Source: owner ("Mod seçiyoruz sonra Diz'e basıyoruz; En az fire'ye bastığımda dizilmiş olsun, tek tıkla"). Also closes T374 (Diz/İptal shared button).
+Acceptance:
+- [ ] the mode choices become action buttons (e.g. "En az fire", "Hızlı kesim", …: today's mode names); clicking one nests with that mode at once; the active result's mode is shown selected; clicking the selected one again re-nests
+- [ ] the separate "Diz" button is removed; while nesting runs the clicked button shows progress and an "İptal" control appears in a separate place (never the same hit area as a mode button); clicks on mode buttons during a run restart with the new mode instead of cancelling silently
+- [ ] auto-nest on entering the step (T261) keeps working with the last used mode
+- [ ] the summary under the buttons (fire, kullanım oranı, plaka) stays; with a result over several sheets it reads "N plaka" and the sheet tabs/thumbnails let the user switch sheets (verify multi-sheet works end to end with a part list that needs 2+ sheets; add an e2e)
+- [ ] T374 marked done by this task
+Tester focus: one-click nest per mode, cancel, re-click, multi-sheet (2 and 3 sheets), 1024 px, 390 px smoke.
+
+### T380 Dizilim: spacing fields and their notes laid out together   [status: todo]
+Source: owner ("parça arası pay yanında kenar payı var ama not sadece parça arasının altında; olgun durmuyor").
+Acceptance:
+- [ ] "Parça arası pay (mm)" and "Kenar payı (mm)" sit in one aligned group with equal input widths; each field has its own short hint under it (pay: resulting clear distance "boşluk = Ø + pay"; kenar: minimum for the tool), same baseline and height so the row looks balanced
+- [ ] the D-129 tabs note (Köprü açıkken …) appears once under the group, not under one field; validation messages appear under the field they belong to
+- [ ] text in tr.json; light/dark; 1024 px wraps cleanly
+Tester focus: screenshot at 1440 and 1024, tabs on/off, invalid values.
+
+### T381 Zoom buttons show their shortcuts   [status: todo]   (rider)
+Source: owner ("uzaklaştır/yakınlaştır kısayolu var mı? varsa imleçle üzerine gelince yazsın").
+Acceptance:
+- [ ] every zoom control (drawing board, Dizilim, Simülasyon, 3D) has a tooltip with its name and shortcut (e.g. "Yakınlaştır (+ / Ctrl + tekerlek)", "Sığdır (F)"); where no shortcut exists, add `+`, `-`, `0` (100 %) / `F` (sığdır) consistently, ignored while typing in an input
+- [ ] shortcuts listed in the command palette / help shortcuts list
+Tester focus: hover each control; keys work on each canvas and not inside inputs.
+
+### Batch B66: T382–T383 (drawing tools)
+
+### T382 Flexible arc tool   [status: todo]
+Source: owner ("yay hep daire oluşturacak gibi açı veriyor; kuş kanadı gibi farklı açı vermek istiyorum, daha esnek olsun").
+Acceptance:
+- [ ] arc tool offers modes in its tool options: **3 nokta** (start, a point on the arc, end), **Başlangıç–bitiş–sehim/yarıçap** (drag the bulge freely, any sweep 1°–359°, either side) and today's centre mode; last used mode remembered
+- [ ] live preview while dragging shows radius, sweep angle and chord; typing a value (R or angle) during the drag fixes it (numeric entry like the line tool)
+- [ ] after drawing, an arc's handles can be dragged: end points (radius recomputed, stays an arc) and a mid "sehim" handle (changes bulge); inspector shows R, sweep, start/end and lets them be edited
+- [ ] arcs chain with lines: starting an arc at a line end is tangent by default (toggle), so a "kuş kanadı" profile (two arcs of different radius meeting at a point) can be drawn in a few clicks
+- [ ] geometry stays exact arcs in the model (no polyline), snap/undo work; core tests for the 3-point and bulge constructions (fast-check: points lie on the circle, sweep sign)
+Tester focus: draw a wing profile, edit handles, nest it, NC arcs (G2/G3) checked by the checker.
+
+### T383 Undo inside the line tool removes the last segment   [status: todo]
+Source: owner ("çizgi aracıyla 3 nokta koydum, 3. kenarı yanlış koyduğumu fark edip Ctrl+Z yapınca önceki parçayı seçiyor, kenar silinmiyor").
+Acceptance:
+- [ ] while a line/polyline (and arc chain) is being drawn, Ctrl+Z removes the last placed point/segment and keeps the tool active from the previous point; repeated Ctrl+Z walks back to the first point, then cancels the chain; Ctrl+Y / Ctrl+Shift+Z re-adds
+- [ ] Backspace does the same while drawing; Esc ends the chain keeping what is drawn
+- [ ] after the chain is finished, one Ctrl+Z undoes the whole chain step as today; selection is not changed by undo inside a chain
+Tester focus: square with a wrong third side, undo/redo during and after the chain, e2e.
+
 ## After field test 1: findings from 2026-11-24 (PO; first batch after the field test)
 
 ### T373 Tab hold counts the neighbour's lead-in/out   [status: todo]
 Source: B64 dev (property seed 1094944943), T193 report known issue 1 (job C header "KOPRU AZ: 2 parcada 3 kopru" while all 4 Takoz have 3 holding). A neighbour's lead dive can cut into the 3 mm web behind a tab. Today: safe side (SMALL_PART_NOT_HELD / fewer holding tabs), but the header count is optimistic and the fix text ("pay ≥ Ø + 3") is already met. Acceptance: hold predicate and header use the final lead moves; leads facing a tab are shortened or moved first; the fix text names the lead.
 
-### T374 Below 1024 px a fast "Diz" click cancels the auto-nest   [status: todo]
+### T374 Below 1024 px a fast "Diz" click cancels the auto-nest   [status: todo] (closed by T379)
 Source: B64 round-37 fallout (t023 at 320/390 px). "Diz" and "İptal" share one button; a click during the T261 auto-nest cancels it. Acceptance: the state change is visible and clicks are ignored for ~300 ms after the switch, or "İptal" moves.
 
 ### T375 Renderer crash right after drawing may lose the last edit   [status: todo]
