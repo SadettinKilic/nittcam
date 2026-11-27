@@ -975,3 +975,11 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Visibility: `acm` (Alüminyum kompozit) and `aluminium` (Alüminyum levha) are shown in the material picker, the library (Ayarlar → Malzemeler), parts, drawing, nesting, simulation, PDF, labels and DXF **without** the `NITTCAM_METAL` flag; the picker groups them under "Metal ve kompozit". Brass stays an outline (T370). Steel and stainless stay permanently out (D-118).
 - NC: ACM NC may be downloaded with the researched starting values, marked like an unverified profile: NC header line "DOGRULANMAMIS MALZEME: ACM" and a required export checklist item "Önce hava kesimi ve hurda parçada deneme". Aluminium NC download stays disabled with the reason "Alüminyum için rampa giriş, kademe ve talaş sınırları (T358, T359) gelmeden G-code verilmez" until MB7 lands; DXF/PDF/labels work. The owner's machine tests T357/T369 still gate the "doğrulandı" mark.
 - Starting values come from `docs/materials/kesim-degerleri-arastirma.md` and `docs/metal/metal-analizi.md` §4.2; where they disagree the more conservative value wins and the row carries "doğrulanacak".
+
+## D-131 Montaj tezgâhı: a free 3D assembly for every project (2026-11-28, owner request, PO decision)
+- The read-only cabinet "Montaj görünümü" (T158) becomes a per-project workbench: every part copy can be placed, turned freely (15°/90° snaps), mated face to face, checked for overlap, gaps and hole alignment, exploded and sectioned. Stored in the project (`assembly`), display only: it never changes nesting, toolpath or NC.
+- Metal: ACM trays get a fold preview along their V-grooves (after T352); aluminium and wood parts can be mixed. Tasks T386–T391 (M-Montaj), after B65, B66 and MB1–MB4.
+
+## D-132 3D machining plan (2026-11-28, owner request, PO decision)
+- Tiers: 3D-A V-carve first (from existing contours), 3D-B relief from image and STL (heightfield + own drop-cutter, Z-level roughing + raster finishing, scallop-based stepover, time estimate), 3D-C two-sided, 3D-D rotary later. Material-removal simulation and checker rules R20–R24 come before any 3D NC ships; the owner's machine test T416 gates release.
+- No OpenCAMLib (LGPL); compute is our own pure core code in workers. Plan `docs/3d/3d-cnc-plani.md`, tasks T400–T421 (M-3D). Starts after field test 1 and M-Metal tier A unless the owner moves it.
