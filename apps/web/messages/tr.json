@@ -1499,7 +1499,7 @@
         "count": "1–20 arası tam sayı girin.",
         "width": "En az {min} mm.",
         "height": "{min}–{max} mm arası olmalı.",
-        "heightHigh": "Çok yüksek: en fazla {max} mm (kalınlık − 1 mm).",
+        "heightHigh": "Çok yüksek: en fazla {max} mm (kalınlık − {below} mm).",
         "heightNone": "{thickness} mm plakada köprü bırakılamaz (en az {need} mm gerekir); köprüyü kapatın."
       },
       "inUse": "kullanılan: {value}",
@@ -1904,7 +1904,7 @@
         "hint": "Küçük parçalar köprü yerine altta ince bir tabakayla tutulur; tabaka plakanın sonunda temizleme pasosuyla kesilir. Simülasyon → Kesim ayarlarında “Köprü: Kapalı” seçilirse küçük parçalar yine bu tabakayla tutulur.",
         "thickness": "Tabaka kalınlığı",
         "bounds": "{min}–{max} mm arası olmalı.",
-        "none": "{t} mm plakada ince tabaka bırakılamaz (en az {min} mm tabaka, üstünde en az 1 mm kesim)."
+        "none": "{t} mm plakada ince tabaka bırakılamaz (en az {min} mm tabaka, üstünde en az {below} mm kesim)."
       },
       "units": {
         "mm": "mm",

@@ -6,7 +6,8 @@
  * and, for cross-field rules, by `params.key` (see `MachineProfileIssue`).
  */
 import { z } from 'zod';
-import { maxTabHeight, TAB_BOUNDS } from '../toolpath/tabs';
+import { maxTabHeight } from '../toolpath/tabs';
+import { traitsOf } from './material-traits';
 import { MATERIAL_KIND_IDS, type MaterialKind } from './material-kinds';
 
 /** The machine profile schema version this build writes and reads. */
@@ -503,6 +504,9 @@ export function materialTabIssues(
   profile.materials.forEach((m, i) => {
     if (!m.tabs) return;
     const at = (k: string) => `materials[${i}].tabs.${k}`;
+    // T343: the bounds of the set's material kind (its traits row)
+    const limits = traitsOf(m.material);
+    const b = limits.tabs.bounds;
     const small = (k: string, minimum: number) =>
       out.push({
         path: at(k),
@@ -512,14 +516,14 @@ export function materialTabIssues(
         inclusive: true,
         origin: 'number',
       });
-    if (m.tabs.width < TAB_BOUNDS.minWidth) small('width', TAB_BOUNDS.minWidth);
-    if (m.tabs.height < TAB_BOUNDS.minHeight) small('height', TAB_BOUNDS.minHeight);
-    else if (m.tabs.height > maxTabHeight(m.thickness)) {
-      const maximum = maxTabHeight(m.thickness);
+    if (m.tabs.width < b.minWidth) small('width', b.minWidth);
+    if (m.tabs.height < b.minHeight) small('height', b.minHeight);
+    else if (m.tabs.height > maxTabHeight(m.thickness, limits)) {
+      const maximum = maxTabHeight(m.thickness, limits);
       out.push({
         path: at('height'),
         code: 'too_big',
-        message: `height must be at most ${maximum} mm (thickness minus ${TAB_BOUNDS.belowThickness} mm)`,
+        message: `height must be at most ${maximum} mm (thickness minus ${b.belowThickness} mm)`,
         maximum,
         inclusive: true,
         origin: 'number',

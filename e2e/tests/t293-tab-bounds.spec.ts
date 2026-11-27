@@ -32,7 +32,7 @@ test('T293: tab width / height / count outside the bounds are refused with the r
   await height.fill('17,9');
   await height.press('Enter');
   // B44: above the range the message says "çok yüksek" with the top value.
-  await expect(panel.getByText(fill(c.bounds.heightHigh, { max: '17' }))).toBeVisible();
+  await expect(panel.getByText(fill(c.bounds.heightHigh, { max: '17', below: '1' }))).toBeVisible();
   await expect(panel.getByTestId('field-in-use').first()).toBeVisible();
 
   const count = page.getByTestId('sim-cutting-count');

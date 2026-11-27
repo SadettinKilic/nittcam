@@ -14,7 +14,7 @@ import {
   type MaterialKind,
   type Project,
   type ValidationIssue,
-  SKIN_BOUNDS,
+  holdLimitsOf,
   defaultSheet,
   maxSkinThickness,
   stockSheetSizes,
@@ -608,9 +608,12 @@ function ThinSkin({
   const id = useId();
   const skin = project.cutting.skin;
   // T298 (CTO #12 A, D-083): the skin that still holds a part, said in the field.
-  const max = maxSkinThickness(project.stock.thickness);
+  // T343: the bounds of the stock material (traits row)
+  const limits = holdLimitsOf(project.stock.material);
+  const skinMin = limits.skin.min;
+  const max = maxSkinThickness(project.stock.thickness, limits);
   const fmt = (v: number) => String(v).replace('.', ',');
-  const noSkin = max < SKIN_BOUNDS.min;
+  const noSkin = max < skinMin;
   const noneId = useId();
   return (
     <div className="flex flex-col gap-2" data-testid="thin-skin">
@@ -645,7 +648,8 @@ function ThinSkin({
         >
           {fill(t.skin.none, {
             t: fmt(project.stock.thickness),
-            min: fmt(SKIN_BOUNDS.min),
+            min: fmt(skinMin),
+            below: fmt(limits.skin.belowThickness),
           })}
         </p>
       ) : null}
@@ -657,9 +661,9 @@ function ThinSkin({
           testId="thin-skin-thickness"
           errors={errors}
           bounds={{
-            min: SKIN_BOUNDS.min,
+            min: skinMin,
             max,
-            message: fill(t.skin.bounds, { min: fmt(SKIN_BOUNDS.min), max: fmt(max) }),
+            message: fill(t.skin.bounds, { min: fmt(skinMin), max: fmt(max) }),
           }}
           onCommit={(thickness) => run('setThinSkin', { thickness })}
         />

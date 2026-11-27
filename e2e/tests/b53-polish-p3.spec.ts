@@ -192,7 +192,7 @@ test('1 mm sheet with a cutting set: the thin-skin switch cannot turn on and say
   const sw = page.getByTestId('thin-skin-switch');
   await expect(sw).toBeDisabled();
   const why = page.getByTestId('thin-skin-none');
-  await expect(why).toHaveText(fill(tr.wizard.machine.skin.none, { t: '1', min: '0,2' }));
+  await expect(why).toHaveText(fill(tr.wizard.machine.skin.none, { t: '1', min: '0,2', below: '1' }));
   await expect(sw).toHaveAttribute('aria-describedby', (await why.getAttribute('id')) ?? 'x');
 });
 

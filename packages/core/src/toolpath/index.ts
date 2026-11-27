@@ -25,13 +25,15 @@ export {
   maxTabHeight,
   tabSizeProblem,
   defaultTabHeight,
+  holdLimitsOf,
+  DEFAULT_HOLD_LIMITS,
   isSmallPart,
   placeTabs,
   evenTabCentres,
   tabCentreIntervals,
   passMovesWithTabs,
 } from './tabs';
-export type { Interval } from './tabs';
+export type { Interval, HoldLimits } from './tabs';
 export {
   cutOrder,
   mustPrecede,

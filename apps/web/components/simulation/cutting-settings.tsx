@@ -2,13 +2,12 @@
 
 import {
   RAMP_BOUNDS,
-  TAB_BOUNDS,
   cuttingSettingsOf,
   findMaterialParams,
   findTool,
+  holdLimitsOf,
   inheritedTabs,
   materialKindOf,
-  maxTabHeight,
   type MachineProfile,
   type Project,
   type TabMode,
@@ -17,6 +16,7 @@ import Link from 'next/link';
 import { useId } from 'react';
 import { cn } from '@nittcam/ui';
 import { fill } from '../../lib/fill';
+import { tabHeightBounds } from '../../lib/tab-bounds';
 import { paramFixHref } from '../../lib/machine-form';
 import type { Messages } from '../../lib/messages';
 import { NumberField } from '../wizard/number-field';
@@ -89,6 +89,8 @@ export function CuttingSettings({
 }) {
   const c = cuttingSettingsOf(project, machine ?? undefined);
   const own = Object.values(c.tabs.source).includes('project');
+  // T343: tab bounds of the stock material (traits row)
+  const limits = holdLimitsOf(project.stock.material);
   // T302 (CTO #12 E3): the inherited sizes (material set or built-in) are named in the source line
   // and on "Malzeme ayarına dön"; the link opens the machine form at the set's tab fields.
   const base = inheritedTabs(project, machine ?? undefined);
@@ -168,8 +170,10 @@ export function CuttingSettings({
               inRow
               errors={errors}
               bounds={{
-                min: TAB_BOUNDS.minWidth,
-                message: fill(t.bounds.width, { min: mmFormat.format(TAB_BOUNDS.minWidth) }),
+                min: limits.tabs.bounds.minWidth,
+                message: fill(t.bounds.width, {
+                  min: mmFormat.format(limits.tabs.bounds.minWidth),
+                }),
               }}
               inUse={fill(t.inUse, { value: `${mmFormat.format(c.tabs.width)} mm` })}
               onCommit={(width) => run('setTabs', { width })}
@@ -180,7 +184,7 @@ export function CuttingSettings({
               testId="sim-cutting-height"
               inRow
               errors={errors}
-              bounds={heightBounds(t, project.stock.thickness)}
+              bounds={tabHeightBounds(t, project.stock.thickness, limits)}
               inUse={fill(t.inUse, { value: `${mmFormat.format(c.tabs.height)} mm` })}
               onCommit={(height) => run('setTabs', { height })}
             />
@@ -249,29 +253,6 @@ export function CuttingSettings({
       <p className="text-xs text-fg-muted">{t.note}</p>
     </section>
   );
-}
-
-/**
- * Tab height range for the field (T293, B44): "çok yüksek" above the top; on a sheet thinner than
- * min + 1 mm no height holds, so the range is never shown reversed ("1–0,5 mm").
- */
-function heightBounds(t: Text, thickness: number) {
-  const min = TAB_BOUNDS.minHeight;
-  const max = maxTabHeight(thickness);
-  const f = (v: number) => mmFormat.format(v);
-  if (max < min) {
-    const none = fill(t.bounds.heightNone, {
-      thickness: f(thickness),
-      need: f(min + TAB_BOUNDS.belowThickness),
-    });
-    return { min, max: min - 1, message: none, highMessage: none };
-  }
-  return {
-    min,
-    max,
-    message: fill(t.bounds.height, { min: f(min), max: f(max) }),
-    highMessage: fill(t.bounds.heightHigh, { max: f(max) }),
-  };
 }
 
 /**

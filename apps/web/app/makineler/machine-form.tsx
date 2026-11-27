@@ -8,8 +8,7 @@ import {
   materialTabIssues,
   maxTabHeight,
   parseMachineProfile,
-  TAB_BOUNDS,
-  TAB_DEFAULTS,
+  traitsOf,
   TOOLPATH_DEFAULTS,
   defaultMachineProfile,
   type MachineProfile,
@@ -1323,10 +1322,14 @@ function MaterialTabsDetail({
 }) {
   const path = (k: string) => `materials[${index}].tabs${k ? `.${k}` : ''}`;
   const thickness = Number.isFinite(set.thickness) && set.thickness > 0 ? set.thickness : 0;
+  // T343: defaults and bounds of the set's material kind (traits row)
+  const limits = traitsOf(set.material);
+  const td = limits.tabs.defaults;
+  const tb = limits.tabs.bounds;
   const builtIn = {
-    count: TAB_DEFAULTS.count,
-    width: TAB_DEFAULTS.width,
-    height: thickness > 0 ? defaultTabHeight(thickness) : TAB_DEFAULTS.materialLeft,
+    count: td.count,
+    width: td.width,
+    height: thickness > 0 ? defaultTabHeight(thickness, limits) : td.materialLeft,
   };
   const nf = (v: number) => String(Math.round(v * 1000) / 1000).replace('.', ',');
   const tabs = set.tabs;
@@ -1371,7 +1374,7 @@ function MaterialTabsDetail({
           <NumberField
             path={path('width')}
             label={t.width}
-            help={fill(t.widthHelp, { min: nf(TAB_BOUNDS.minWidth) })}
+            help={fill(t.widthHelp, { min: nf(tb.minWidth) })}
             value={tabs.width}
             error={error(path('width'))}
             onParseError={onParseError}
@@ -1381,8 +1384,8 @@ function MaterialTabsDetail({
             path={path('height')}
             label={t.height}
             help={fill(t.heightHelp, {
-              min: nf(TAB_BOUNDS.minHeight),
-              max: nf(Math.max(TAB_BOUNDS.minHeight, maxTabHeight(thickness))),
+              min: nf(tb.minHeight),
+              max: nf(Math.max(tb.minHeight, maxTabHeight(thickness, limits))),
             })}
             value={tabs.height}
             error={error(path('height'))}
