@@ -84,6 +84,8 @@ export {
 export {
   OPERATION_TOOL_KINDS,
   OPERATION_TOOL_TYPES,
+  operationToolTypes,
+  toolTypeAllowed,
   contourPocketTool,
   contourTool,
   effectiveHoleTool,
@@ -102,6 +104,7 @@ export {
 } from './contour-pocket';
 export {
   operationToolProblem,
+  operationToolProblemText,
   operationToolsOf,
   type OperationToolProblem,
   type OperationToolRow,

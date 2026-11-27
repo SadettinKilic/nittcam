@@ -32,6 +32,8 @@ export const PROFILE_BOUNDS = {
   toolDiameter: { max: 50 },
   fluteLength: { max: 200 },
   flutes: { min: 1, max: 8 },
+  /** T344: V-bit included angle, degrees. */
+  vBitAngle: { min: 10, max: 179 },
   tools: { min: 1, max: 99 },
   materialThickness: { max: 200 },
   feed: { min: 100, max: 60_000 },
@@ -209,6 +211,13 @@ export const toolSchema = z.strictObject({
   diameter: lengthUpTo(PROFILE_BOUNDS.toolDiameter.max),
   fluteLength: lengthUpTo(PROFILE_BOUNDS.fluteLength.max),
   flutes: int().min(PROFILE_BOUNDS.flutes.min).max(PROFILE_BOUNDS.flutes.max),
+  /**
+   * T344 (§7.1 "Takım profili"): V-bit included angle, degrees (10–179). Only for `vBit`; optional,
+   * older profiles stay valid (V-groove width and depth use it, M-Metal).
+   */
+  angleDeg: num().min(PROFILE_BOUNDS.vBitAngle.min).max(PROFILE_BOUNDS.vBitAngle.max).optional(),
+  /** T344: V-bit flat tip diameter, mm (≥ 0, below the diameter). Only for `vBit`; optional. */
+  tipDiameter: num().min(0).max(PROFILE_BOUNDS.toolDiameter.max).optional(),
 });
 
 /** Materials of the Oluştur sihirbazı (§3.6). Stone is "yakında" and not listed. */
@@ -349,6 +358,21 @@ export const machineProfileSchema = z
         );
       }
       seen.add(tool.number);
+      // T344: the V-bit geometry belongs to V-bits only; a flat tip is narrower than the bit.
+      if (tool.type !== 'vBit') {
+        for (const k of ['angleDeg', 'tipDiameter'] as const) {
+          if (tool[k] !== undefined) {
+            crossIssue(ctx, ['tools', i, k], 'vBitOnly', `${k} is only for a V-bit`);
+          }
+        }
+      } else if (tool.tipDiameter !== undefined && tool.tipDiameter >= tool.diameter) {
+        crossIssue(
+          ctx,
+          ['tools', i, 'tipDiameter'],
+          'tipNotBelowDiameter',
+          'the tip diameter must be less than the tool diameter',
+        );
+      }
       if (p.toolChanger.type === 'auto' && tool.number > p.toolChanger.capacity) {
         crossIssue(
           ctx,

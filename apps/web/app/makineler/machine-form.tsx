@@ -63,7 +63,14 @@ import {
 } from '../../lib/machine-form';
 import type { Messages } from '../../lib/messages';
 import { CornerPicker } from './corner-picker';
-import { CheckField, fieldId, NumberField, SelectField, TextField } from './fields';
+import {
+  CheckField,
+  fieldId,
+  NumberField,
+  OptionalNumberField,
+  SelectField,
+  TextField,
+} from './fields';
 import { fieldErrors, type FieldErrors } from './issues';
 
 type Text = Messages['machines'];
@@ -934,12 +941,59 @@ export function MachineForm({
                     value={tool.type}
                     options={o.toolType}
                     error={e(path('type'))}
-                    onChange={(v) => set((x) => void (x.type = v))}
+                    onChange={(v) =>
+                      set((x) => {
+                        x.type = v;
+                        // T344: the V-bit geometry belongs to V-bits only
+                        if (v !== 'vBit') {
+                          delete x.angleDeg;
+                          delete x.tipDiameter;
+                        }
+                      })
+                    }
                   />,
                   cell('diameter', f.toolDiameter, u.mm),
                   cell('fluteLength', f.fluteLength, u.mm),
                   cell('flutes', f.flutes),
                 ];
+              }}
+              renderDetail={(i) => {
+                // T344 (§7.1 "Takım profili"): a V-bit's angle and flat tip, both optional
+                const tool = profile.tools[i] as Tool;
+                if (tool.type !== 'vBit') return null;
+                const path = (k: keyof Tool) => `tools[${i}].${k}`;
+                const set = (k: 'angleDeg' | 'tipDiameter', v: number | undefined) =>
+                  update((p) => {
+                    const x = p.tools[i] as Tool;
+                    const { [k]: _old, ...rest } = x;
+                    p.tools[i] = v === undefined ? rest : { ...rest, [k]: v };
+                  });
+                return (
+                  <div
+                    className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-xl"
+                    data-testid={`tool-vbit-${i}`}
+                  >
+                    <OptionalNumberField
+                      path={path('angleDeg')}
+                      label={f.vBitAngle}
+                      help={f.vBitAngleHelp}
+                      value={tool.angleDeg}
+                      error={e(path('angleDeg'))}
+                      onParseError={onParseError}
+                      onChange={(v) => set('angleDeg', v)}
+                    />
+                    <OptionalNumberField
+                      path={path('tipDiameter')}
+                      label={f.vBitTip}
+                      help={f.vBitTipHelp}
+                      unit={u.mm}
+                      value={tool.tipDiameter}
+                      error={e(path('tipDiameter'))}
+                      onParseError={onParseError}
+                      onChange={(v) => set('tipDiameter', v)}
+                    />
+                  </div>
+                );
               }}
             />
           </Section>
@@ -1204,7 +1258,10 @@ function RowTable(props: {
   onAdd: () => void;
   onRemove: (index: number) => void;
   renderRow: (index: number) => ReactNode[];
-  /** T302: a full-width line under each row (the material set's tab defaults). */
+  /**
+   * T302: a full-width line under each row (the material set's tab defaults). T344: `null` = no
+   * line under that row (tools other than a V-bit).
+   */
   renderDetail?: (index: number) => ReactNode;
   /** Narrow cells and wrapping headers (T265, materials table). */
   dense?: boolean;
@@ -1241,51 +1298,55 @@ function RowTable(props: {
           <tbody
             className={`divide-y divide-border-subtle ${m('@max-[52rem]:flex @max-[52rem]:flex-col @max-[52rem]:gap-2 @max-[52rem]:divide-y-0 @max-[52rem]:p-2')}`}
           >
-            {keys.map((key, i) => (
-              <Fragment key={key}>
-                <tr
-                  className={`${props.renderDetail ? 'border-b-0! ' : ''}align-top ${m('@max-[52rem]:grid @max-[52rem]:grid-cols-2 @min-[32rem]:@max-[52rem]:grid-cols-4 @max-[52rem]:gap-x-3 @max-[52rem]:gap-y-2 @max-[52rem]:rounded-lg @max-[52rem]:border @max-[52rem]:border-border-subtle @max-[52rem]:p-2')}`}
-                  data-testid={cards ? `${testId}-row` : undefined}
-                >
-                  {renderRow(i).map((cell, c) => (
-                    <td
-                      key={c}
-                      className={`${pad} py-2 ${m('@max-[52rem]:flex @max-[52rem]:min-w-0 @max-[52rem]:flex-col @max-[52rem]:gap-1 @max-[52rem]:p-0')} ${c === 0 ? m('@max-[52rem]:col-span-2') : ''}`}
-                    >
-                      {cards ? (
-                        <span aria-hidden className="text-2xs text-fg-subtle @min-[52rem]:hidden">
-                          {headers[c]}
-                        </span>
-                      ) : null}
-                      {cell}
-                    </td>
-                  ))}
-                  <td
-                    className={`px-2 py-2 text-right ${m('@max-[52rem]:col-span-full @max-[52rem]:p-0')}`}
+            {keys.map((key, i) => {
+              const detail = props.renderDetail ? props.renderDetail(i) : null;
+              const hasDetail = detail !== null && detail !== undefined;
+              return (
+                <Fragment key={key}>
+                  <tr
+                    className={`${hasDetail ? 'border-b-0! ' : ''}align-top ${m('@max-[52rem]:grid @max-[52rem]:grid-cols-2 @min-[32rem]:@max-[52rem]:grid-cols-4 @max-[52rem]:gap-x-3 @max-[52rem]:gap-y-2 @max-[52rem]:rounded-lg @max-[52rem]:border @max-[52rem]:border-border-subtle @max-[52rem]:p-2')}`}
+                    data-testid={cards ? `${testId}-row` : undefined}
                   >
-                    <IconButton
-                      type="button"
-                      size="sm"
-                      aria-label={`${removeLabel} (${i + 1})`}
-                      onClick={() => onRemove(i)}
-                      className="hover:text-danger-text"
-                    >
-                      <Trash2 aria-hidden />
-                    </IconButton>
-                  </td>
-                </tr>
-                {props.renderDetail ? (
-                  <tr data-detail="" className={m('@max-[52rem]:block')}>
+                    {renderRow(i).map((cell, c) => (
+                      <td
+                        key={c}
+                        className={`${pad} py-2 ${m('@max-[52rem]:flex @max-[52rem]:min-w-0 @max-[52rem]:flex-col @max-[52rem]:gap-1 @max-[52rem]:p-0')} ${c === 0 ? m('@max-[52rem]:col-span-2') : ''}`}
+                      >
+                        {cards ? (
+                          <span aria-hidden className="text-2xs text-fg-subtle @min-[52rem]:hidden">
+                            {headers[c]}
+                          </span>
+                        ) : null}
+                        {cell}
+                      </td>
+                    ))}
                     <td
-                      colSpan={headers.length + 1}
-                      className={`${pad} pt-0 pb-3 ${m('@max-[52rem]:block @max-[52rem]:p-0')}`}
+                      className={`px-2 py-2 text-right ${m('@max-[52rem]:col-span-full @max-[52rem]:p-0')}`}
                     >
-                      {props.renderDetail(i)}
+                      <IconButton
+                        type="button"
+                        size="sm"
+                        aria-label={`${removeLabel} (${i + 1})`}
+                        onClick={() => onRemove(i)}
+                        className="hover:text-danger-text"
+                      >
+                        <Trash2 aria-hidden />
+                      </IconButton>
                     </td>
                   </tr>
-                ) : null}
-              </Fragment>
-            ))}
+                  {hasDetail ? (
+                    <tr data-detail="" className={m('@max-[52rem]:block')}>
+                      <td
+                        colSpan={headers.length + 1}
+                        className={`${pad} pt-0 pb-3 ${m('@max-[52rem]:block @max-[52rem]:p-0')}`}
+                      >
+                        {detail}
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

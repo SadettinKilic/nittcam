@@ -13,11 +13,11 @@ import {
   findMaterialParams,
   findTool,
   machineFeedLimits,
+  materialKindOf,
   type MachineProfile,
 } from '../machine';
 import { feedOverride, jobToolNumbers, rpmInRange, spindleOverride } from './spindle';
 import {
-  OPERATION_TOOL_TYPES,
   contourPocketTool,
   contourTool,
   effectiveHoleTool,
@@ -25,6 +25,7 @@ import {
   operationToolChoice,
   recommendedFeeds,
   recommendedRpm,
+  toolTypeAllowed,
   type OperationToolKind,
 } from './op-tools';
 import { nestingToolDiameter } from '../nesting/tool';
@@ -558,7 +559,9 @@ function buildOuterOperation(
       );
     }
     // Small parts (tabs on or off) need at least 2 tabs; one tab lets the part pivot.
-    const count = small ? Math.max(p.tabs.count, p.limits.tabs.defaults.smallPartMinCount) : p.tabs.count;
+    const count = small
+      ? Math.max(p.tabs.count, p.limits.tabs.defaults.smallPartMinCount)
+      : p.tabs.count;
     const leadIn = leads.leadIn ? leadReach(p.lead, leadLen) : 0;
     const leadOut = leads.leadOut ? leadReach(p.lead, leadLen) : 0;
     const tabOpts = {
@@ -993,11 +996,19 @@ export function buildToolpath(
         `The tool chosen for the ${op} operation (T${n}) ${why}.`,
       ),
     );
+  const materialName = materialKindOf(project.stock.material) ?? project.stock.material;
   for (const op of ['outer', 'inner', 'pocket', 'hole'] as const) {
     const n = operationToolChoice(project, op);
     const t = n === undefined ? undefined : findTool(machine, n);
     if (n === undefined || !t) continue;
-    if (!OPERATION_TOOL_TYPES[op].includes(t.type)) unsuitable(op, n, `is a ${t.type}`);
+    // T344: the allowed types come from the stock material's traits; the message names it.
+    if (!toolTypeAllowed(project.stock.material, op, t.type)) {
+      unsuitable(
+        op,
+        n,
+        `is a ${t.type}, which does not cut the ${op} operation in ${materialName}`,
+      );
+    }
   }
   {
     const n = operationToolChoice(project, 'outer');

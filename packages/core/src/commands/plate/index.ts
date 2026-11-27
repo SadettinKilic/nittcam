@@ -13,7 +13,7 @@ import {
 import { feedInRange, findTool, machineFeedLimits } from '../../machine/profile';
 import { rpmInRange } from '../../toolpath/spindle';
 import { OPERATION_TOOL_KINDS } from '../../toolpath/op-tools';
-import { operationToolProblem } from '../../toolpath/op-tool-choice';
+import { operationToolProblem, operationToolProblemText } from '../../toolpath/op-tool-choice';
 import { SKIN_BOUNDS, holdLimitsOf, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
 
@@ -491,7 +491,7 @@ export const setOperationTool = defineCommand({
     const problem = operationToolProblem(project, machine, p.op, p.tool);
     return problem === null
       ? undefined
-      : `tool T${p.tool} does not suit the ${p.op} operation of this job (${problem})`;
+      : `tool T${p.tool} does not suit the ${p.op} operation of this job (${operationToolProblemText(project, problem)})`;
   },
   apply: (draft, p) => {
     if (p.tool === null) {
