@@ -884,7 +884,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - Verification becomes per material family: a machine verified with MDF is not verified for aluminium or ACM.
 - V-groove depth is entered as remaining thickness and measured from the table side (panel thickness varies ±0.2 mm), per the material research (`docs/materials/kesim-degerleri-arastirma.md`); cutting numbers in the metal plan follow that research where they differ.
 - Edge-band columns are hidden for plastics too, after the field test.
-- Before field test 1 only T340–T342 may start (no visible change, goldens identical). No metal NC leaves the app until that tier's own machine test passed (human gate: the owner runs it); pricing and the legal clause stay with the owner.
+- Before field test 1 only T340–T342 may start (no visible change, goldens identical); superseded by D-130 (MB1–MB4 now). Spec text added by T340 (§2.2, §2.5, §3.6, §4.1, §4.8, §6.2–§6.4, §7.1–§7.3, §9.1, §9.2, §11, §12.1, §14); numbers compared with the material research in `docs/metal/metal-analizi.md` §4.5. No metal NC leaves the app until that tier's own machine test passed (human gate: the owner runs it); pricing and the legal clause stay with the owner.
 
 ## D-117 Save on close: stored queue in localStorage, save units with a client save id (2026-11-23, T326, Dev 1)
 - Finding (usta 2 report, Playwright close): the unsent queue lived in `sessionStorage`, which ends with the tab, so a closed tab (or a crash, or a new tab) never found it. The only close-time action was `visibilitychange` → a normal `fetch`, which the browser may cancel with the page, and a save already on the way was not resent. Edits inside the 1 s debounce window or after a save on the way were lost; there was no close warning in the wizard.

@@ -36,7 +36,7 @@ Order inside a milestone is the order of work. Agents run sequentially. Plan rat
 | M10 Hesap ve çok şirket | T200+ (outline) | – | after field test |
 | M11 AI sohbet | T220+ (outline) | – | after M10; Q001 |
 | M12–M14 Pilot, Ticari, Büyüme | – | – | spec §12.1 |
-| M-Metal Metal ve kompozit (proposal, D-xxx) | T340–T372 (33) | MB1–MB11 | after field test 1 (only T340–T342 may start before); ACM tray and aluminium test part cut on a real machine; existing goldens byte-identical |
+| M-Metal Metal ve kompozit (D-118, D-130) | T340–T372 (33) | MB1–MB11 | MB1–MB4 run now (D-130), the rest after field test 1; ACM tray and aluminium test part cut on a real machine; existing goldens byte-identical |
 
 **Before the field test: 139 tasks in 39 batches** (counted from the task headings with a status, deferred T248 not counted; the mobile UI pass T248 + T255 comes on top. 2026-11-19: + 3 from CTO review #7 (T274–T276, batch B14a), + 3 from CTO review #6 (T269–T271, batch B13a), + T267/T268 (B13) and T272/T273 (B18) from tester/CI findings, T255/T256 now counted. Before that 127 tasks in 37 batches: + 3 from CTO review #5, `docs/reviews/2026-11-19-cto-design-review-5.md`: T264–T266, one new batch B12a; before that 124 tasks in 36 batches: + 7 from CTO review #4, `docs/reviews/2026-11-19-cto-design-review-4.md`: T257–T263, one new batch B11a; T255 and T256 were added on 2026-11-19 and are not in this count; before that: 117 tasks in 35 batches = 94 + 7 from Fable design review #1 + T194b, `docs/reviews/2026-11-18-fable-design-review-1.md`; + 8 from review #2, `docs/reviews/2026-11-18-fable-design-review-2.md`: T240–T247, numbered from T240 because T200+/T220+ are reserved for M10/M11; + 7 from review #3, `docs/reviews/2026-11-19-fable-design-review-3.md`: T248–T254). The "~90 % / field-test ready" line is the end of M9 (T193).
 
@@ -1947,13 +1947,13 @@ As spec §12.1.
 
 ---
 
-## M-Metal: Metal ve kompozit (exit: an ACM tray part with V-grooves and an aluminium test part are cut on a real machine within tolerance; goldens of every existing material byte-identical)   [status: todo, proposal 2026-11-23]
+## M-Metal: Metal ve kompozit (exit: an ACM tray part with V-grooves and an aluminium test part are cut on a real machine within tolerance; goldens of every existing material byte-identical)   [status: in progress, MB1 2026-11-28]
 
-Owner decision 2026-11-23: metal is added to the product (D-xxx, text in `docs/metal/metal-analizi.md` §11). Analysis, scope tiers, setting table, screens and safety rules: `docs/metal/metal-analizi.md`. Scope: tier A1 ACM cut, A2 ACM V-groove, B aluminium sheet/plate, C brass (outline); steel and stainless are permanently out.
+Owner decision 2026-11-23: metal is added to the product (D-118; D-130 starts MB1–MB4 now and shows ACM/aluminium without the flag; text in `docs/metal/metal-analizi.md` §11). Analysis, scope tiers, setting table, screens and safety rules: `docs/metal/metal-analizi.md`. Scope: tier A1 ACM cut, A2 ACM V-groove, B aluminium sheet/plate, C brass (outline); steel and stainless are permanently out.
 
 **Rules for every task in this milestone**
 - Golden files of the existing materials stay byte-identical (acceptance of every task, not repeated below). Metal fixtures get new golden files with the PR label `needs-human`.
-- New kinds are `release: 'flagged'`: invisible without the flag `NITTCAM_METAL`. NC for a tier is released to users only after that tier's machine test (human gate tasks T357, T369, T372).
+- New kinds: `acm` and `aluminium` are shown without the flag (D-130; brass stays flagged/outline). NC for a tier is released to users only after that tier's machine test (human gate tasks T357, T369, T372).
 - No `if metal` branches: behaviour comes from `MaterialTraits` (T341). Numbers in the table are aligned with `docs/materials/kesim-degerleri-arastirma.md` before they are coded.
 - Batches are named MB1…MB11 here; the PO maps them onto the running B numbers.
 
@@ -1979,13 +1979,14 @@ Owner decision 2026-11-23: metal is added to the product (D-xxx, text in `docs/m
 | MB10 | T367–T369 | B | look, labels/PDF, aluminium field kit, **aluminium machine test** |
 | MB11 | T370–T372 | C (outline) | brass kind, V-engrave, machine test |
 
-### T340 Spec and decision update for metal   [status: todo]   (pre-FT, docs only)
+### T340 Spec and decision update for metal   [status: done]   (pre-FT, docs only)
 Spec: §2.2, §2.5, §3.6, §4.1, §4.8, §6.2, §6.3, §6.4, §7.1, §7.2, §7.3, §9.1, §9.2, §11, §12.1, §14  ·  Depends: owner approval of the tier scope  ·  Owner: PO
 Acceptance:
-- [ ] spec edited with the texts of `docs/metal/metal-analizi.md` §10; steel/stainless listed as permanently out
-- [ ] decision entry written from §11 with a real number; BACKLOG summary table has the M-Metal row
-- [ ] the numbers of the setting table (§4.2) and the safety rules (§7) are compared with `docs/materials/kesim-degerleri-arastirma.md`; every difference is settled in the analysis and marked "doğrulanacak" where no source agrees
-- [ ] `docs/machines/_template/README.md` asks: vacuum M code as wired, coolant output and code, clamp height, spindle collet
+- [x] spec edited with the texts of `docs/metal/metal-analizi.md` §10; steel/stainless listed as permanently out
+- [x] decision entry written from §11 with a real number; BACKLOG summary table has the M-Metal row
+- [x] the numbers of the setting table (§4.2) and the safety rules (§7) are compared with `docs/materials/kesim-degerleri-arastirma.md`; every difference is settled in the analysis and marked "doğrulanacak" where no source agrees
+- [x] `docs/machines/_template/README.md` asks: vacuum M code as wired, coolant output and code, clamp height, spindle collet
+Done (MB1): spec edited (D-118/D-130 linked, no new decision entry); research comparison in `docs/metal/metal-analizi.md` §4.5.
 Tester focus: none (docs).
 
 ### T341 Material traits table for the six existing kinds   [status: todo]   (pre-FT)

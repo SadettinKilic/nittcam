@@ -62,7 +62,8 @@ Kurulum gerekmez, tarayıcıdan çalışır. CNC makinesi internete bağlanmaz; 
 | --- | --- | --- |
 | KOBİ mobilya ve panel işleme atölyeleri | Kesim listesi, parametrik parça, şablon, nesting, G-code | Birleştirme (joinery) ve dolap tasarımı yok |
 | Fason CNC kesim işletmeleri | DXF içe aktarma, katmana göre işlem atama, nesting (M7'den itibaren gerçek şekil), G-code | Serbest şekilli cep ve parça-içi-parça sınırlı |
-| Reklam / tabela üreticileri | DXF'ten harf ve şekil kontur kesimi | V-oyma, yazı aracı ve serbest şekilli cep yok; yazı DXF'te eğriye çevrilmiş gelmeli |
+| Reklam / tabela üreticileri | DXF'ten harf ve şekil kontur kesimi; alüminyum kompozit panelde kontur kesimi ve V-kanal (büküm) (M-Metal, D-118) | Yazı V-oyması, yazı aracı ve serbest şekilli cep yok; yazı DXF'te eğriye çevrilmiş gelmeli |
+| Alüminyum sac işleyen fason atölyeler (M-Metal, D-118) | 1–10 mm alüminyumda kontur, cep, delik; metal beyanı yapılmış makinede | Çelik ve paslanmaz yok; 3D yüzey yok |
 
 Başlangıç makine segmenti: düz G-code kullanan routerlar (Mach3, Syntec, NcStudio gibi controller'lar). Kendi program formatı olan makineler (Biesse CIX, Homag woodWOP MPR, SCM Xilog) kapsam dışıdır; bu müşterilere DXF/PDF export ile hizmet verilir.
 
@@ -108,7 +109,9 @@ Başlangıç makine segmenti: düz G-code kullanan routerlar (Mach3, Syntec, NcS
 - 3D CAM, çok eksenli CNC, malzeme kaldırma (voxel) simülasyonu (3D önizleme ve kesim oynatma kapsamda, bölüm 3.8)
 - Mermer/taş malzeme (arayüzde "yakında")
 - DWG içe aktarma; DXF'te yazı, ölçü, tarama ve blok içi blok
-- V-oyma, yazı aracı, serbest şekilli cep boşaltma
+- Yazı V-oyması, yazı aracı, serbest şekilli cep boşaltma (V-kanal büküm kapsamda, bölüm 6.3)
+- Çelik, paslanmaz ve titanyum: kalıcı olarak dışarıda; router buna uygun değil (spindle devri ve torku, gövde sertliği, sıvı soğutma, ahşap tozuyla kıvılcım; D-118)
+- Büküm payı hesabı ve kaset açınımı (açınım kullanıcının çiziminden veya DXF'inden gelir)
 - Birden fazla controller ailesi
 - Kendi formatı olan makineler için doğrudan dosya üretimi
 - Karmaşık birleştirme (joinery), kural tabanlı akıllı şablonlar, genel kısıt çözücü
@@ -175,10 +178,12 @@ Ekranda ikinci bir sol panel (adımlar ve alanlar) ve sağda önizleme bulunur. 
 
 Plaka adımı alanları:
 
-- **Malzeme:** ahşap (MDF, kontrplak, melamin, masif), plastik (akrilik, PVC). Mermer/taş "yakında".
+- **Malzeme:** ahşap (MDF, kontrplak, melamin, masif), plastik (akrilik, PVC), kompozit (alüminyum kompozit panel, ACM), metal (alüminyum levha; pirinç ve bakır "yakında"). Mermer/taş "yakında". Çelik ve paslanmaz desteklenmez (D-118). Kompozit ve alüminyum seçicide "Metal ve kompozit" grubunda görünür (D-130).
+- **Malzeme davranışı (M-Metal, D-118):** her malzeme türü bir davranış tablosu satırıdır (`packages/core`, `MaterialTraits`): aile, yön, işlenen yüz, kenar bandı, izinli takım tipleri, soğutma, giriş, paso ve talaş yükü sınırı, köprü, ince tabaka, finiş, görünüm, etiket alanları, doğrulama ailesi. Ekranlar, takım yolu, doğrulama ve bağımsız denetçi bu tabloyu okur; "metal ise" dalı yazılmaz. Mevcut altı türün satırı bugünkü sabitleri aynen taşır; bilinmeyen tür bugünkü davranışı alır.
 - **Kalınlık:** kesim derinliği ve paso sayısı buna bağlıdır.
+- **İşlenen yüz (M-Metal):** kompozit panel varsayılan olarak arka yüzden işlenir; parçalar aynalanır ve bu her ekranda, etikette ve PDF'te belirtilir.
 - **Ölçü:** hazır plaka ölçüleri (ör. 1220×2440, 2100×2800) ve özel ölçü. Önizleme canlı şekil alır.
-- **Damar yönü:** yalnızca ahşap ve kaplamalı malzemede görünür. **Açı kadranı (v3):** dairesel kadranda tutamaç sürüklenir veya derece yazılır; 0°/45°/90°/135° katlarına ±3° içinde yapışır (Alt ile kapatılır); hızlı butonlar 0° / 45° / 90° / 135°; klavye okları ±1°, Shift ile ±15°. Damar yönsüzdür: 30° ile 210° aynıdır, açı 0–180° aralığında saklanır. Aynı kadran parça başına damar için de kullanılır (bölüm 4.1, 6.2).
+- **Yön (damar yönü):** yalnızca davranış tablosunda yönü olan malzemede görünür. Ahşapta damar (yönsüz), alüminyumda yüzey/hadde yönü (yönsüz, varsayılan kapalı), kompozit panelde film oku (yönlü: 30° ile 210° farklıdır). Aynı kadran ve aynı alan kullanılır; ekrandaki ad malzemeye göre "Damar yönü", "Yüzey yönü" veya "Film oku yönü" olur. **Açı kadranı (v3):** dairesel kadranda tutamaç sürüklenir veya derece yazılır; 0°/45°/90°/135° katlarına ±3° içinde yapışır (Alt ile kapatılır); hızlı butonlar 0° / 45° / 90° / 135°; klavye okları ±1°, Shift ile ±15°. Damar yönsüzdür: 30° ile 210° aynıdır, açı 0–180° aralığında saklanır (yönlü malzemede 180° çevrik parça isteğe bağlı `grain.flip` ile belirtilir, bölüm 9.2). Aynı kadran parça başına damar için de kullanılır (bölüm 4.1, 6.2).
 - **Malzeme = parametre seti:** her malzeme ve kalınlık için besleme, devir, paso derinliği, önerilen takım, tab ayarı varsayılanları. Şirket bunları kendi makinesine göre düzenler.
 
 Önizleme M1'de 2D'dir. M6'da tam 3D önizleme eklenir (bölüm 3.8); 2D/3D arasında geçilir, "İleri" denince kamera yumuşak geçişle kuşbakışı görünüme döner. Düşük performanslı bilgisayarlar için basit mod ve 2D'ye düşüş kalır.
@@ -220,6 +225,7 @@ v3 eklemeleri:
 - Çoğalt, sil, çoklu seçim, toplu düzenleme (adet, damar, kenar bandı, ad öneki); alt bilgide toplam parça, alan ve tahmini plaka sayısı.
 - CSV/XLSX dosyadan içe aktarma ve CSV dışa aktarma; gruplama, arama, sıralama, filtre (yalnızca görünüm, proje sırası değişmez).
 - Damar sütunu: serbest/sabit ve açı; düzenleme açı kadranıyla (bölüm 3.6).
+- Damar ve kenar bandı sütunları malzeme davranışına göre görünür (M-Metal): kenar bandı yalnız ahşap plakada (ve bugünkü haliyle plastikte) vardır; yön sütununun adı malzemeye göre değişir.
 - Malzeme kütüphanesi: malzeme türü, kalınlıklar, stok plaka ölçüleri, varsayılan damar açısı, makineye göre parametre seti (Ayarlar → Malzemeler).
 - **Parametrik dolap kutusu:** en, boy, derinlik, kalınlık, arkalık, raf sayısı, kapak sayısı ve süpürgelik yüksekliğinden yan, üst, alt, raf, arkalık ve kapak parçaları üretilir; damar ve bant varsayılanlarıyla kesim listesine tek adımda eklenir. Birleştirme (joinery) ve kural tabanlı akıllı şablon yoktur (bölüm 2.5).
 
@@ -305,7 +311,7 @@ Tekrar eden işler (menteşe çukuru, kulp deliği, çekmece rayı delikleri, de
 
 ### 4.8 Kenar bandı
 
-Parçanın her kenarına bant kalınlığı atanabilir. Proje ayarı: girilen ölçü bitmiş ölçü mü (bant kalınlığı kesimden düşülür) yoksa kesim ölçüsü mü. PDF parça listesinde bantlı kenarlar işaretlenir.
+Parçanın her kenarına bant kalınlığı atanabilir. Proje ayarı: girilen ölçü bitmiş ölçü mü (bant kalınlığı kesimden düşülür) yoksa kesim ölçüsü mü. PDF parça listesinde bantlı kenarlar işaretlenir. Kenar bandı malzeme davranışına bağlıdır: kompozit ve metalde yoktur (sütunlar gizlenir, var olan değer yok sayılır ve bilgi olarak bildirilir).
 
 ## 5. Komut katmanı ve AI sohbet
 
@@ -380,8 +386,8 @@ Kullanıcı hedef seçer: en az fire, en hızlı üretim (kısa kesim yolu), en 
 
 - **Algoritma:** kendi dikdörtgen yerleştiricimiz (MaxRects ve giyotin sezgileri). Birkaç sıralama ve sezgi denenir, hedef fonksiyonu en düşük olan seçilir. Sonuç deterministiktir: aynı girdi aynı dizilimi verir.
 - **Serbest şekil ve DXF parçaları:** M7'ye kadar sınırlayıcı dikdörtgeniyle, M7'den itibaren gerçek şekille dizilir (v3). Gerçek şekil motoru: parça izi = kontur + takım yarıçapı + boşluk/2; deterministik sol-alt yerleştirme ve kesin çokgen çakışma testi; isteğe bağlı küçük parçayı büyük iç boşluğa yerleştirme. Dikdörtgen ve eksene hizalı işler MaxRects ile kalır.
-- **Boşluklar:** takım çapı, parça arası boşluk ve plaka kenar payı hesaba katılır.
-- **Damar kuralı (v3, serbest açı):** plakanın damar açısı θp (0–180°, yoksa damar yok) ve parçanın kendi çerçevesinde damar açısı θ ve modu (serbest / sabit) vardır. Sabit parça yalnızca (θ + dönüş) ≡ θp (mod 180°) sağlayan iki açıda yerleşir: g = θp − θ ve g + 180°. Serbest parça 0°/90°/180°/270° döner (gerçek şekilde ayarlanabilir adım). Kural motorda uygulanır, AI yalnızca alanı doldurur.
+- **Boşluklar:** takım çapı, parça arası boşluk ve plaka kenar payı hesaba katılır. Varsayılan parça arası pay malzemeye göre gelir (alüminyum: takım Ø + 3 mm; M-Metal).
+- **Damar kuralı (v3, serbest açı):** plakanın damar açısı θp (0–180°, yoksa damar yok) ve parçanın kendi çerçevesinde damar açısı θ ve modu (serbest / sabit) vardır. Sabit parça yalnızca (θ + dönüş) ≡ θp (mod 180°) sağlayan iki açıda yerleşir: g = θp − θ ve g + 180°. Serbest parça 0°/90°/180°/270° döner (gerçek şekilde ayarlanabilir adım). Yönlü malzemede (kompozit panel film oku) sabit parça yalnız g açısında yerleşir, g + 180° yoktur. Kural motorda uygulanır, AI yalnızca alanı doldurur.
 - **Eksene hizalı olmayan açı:** g 90°'nin katı değilse parça döndürülmüş yerleşir. M7'ye kadar döndürülmüş konturun eksene hizalı sınırlayıcı kutusu dizilir ve ek fire bilgi olarak gösterilir; M7'de gerçek şekil motoru kullanılır. Takım yolu, post ve kontroller her açıyı destekler.
 - **Çoklu plaka:** parçalar sığmazsa yeni plaka açılır; plaka sayısı raporlanır.
 - **Artık parça:** aynı malzeme ve kalınlıktaki kayıtlı artıklar önce denenir. Dizilim sonunda eşik üstü (varsayılan 300×300 mm) dikdörtgen artık, kullanıcı onayıyla stoğa kaydedilir.
@@ -390,12 +396,14 @@ Kullanıcı hedef seçer: en az fire, en hızlı üretim (kısa kesim yolu), en 
 ### 6.3 Takım yolu
 
 - **Offset:** takım merkezi yolu parça sınırından takım yarıçapı kadar kaydırılır. Dış kontur dışarıdan, iç kontur ve delik içeriden. Offset yayları yay olarak korur.
-- **İşlem türleri:** dış kesim, iç kesim, çizgi üzerinden, dairesel cep, halka kanal, delme.
+- **İşlem türleri:** dış kesim, iç kesim, çizgi üzerinden, dairesel cep, halka kanal, delme; V-kanal (V uçla, kalan kalınlık bırakarak; yalnız kompozit panel, M-Metal).
 - **Kesim sırası:** önce delik ve cep, sonra iç kontur, en son dış kontur. Küçük parçalar büyüklerden önce kesilir (vakum hâlâ güçlüyken).
 - **Derinlik:** paso derinliğine göre çok paso. Geçme kesimde hedef = kalınlık + fire tabla payı.
-- **Giriş/çıkış:** lead-in ve lead-out (yay veya düz). Dalma düz veya rampalı.
+- **Giriş/çıkış:** lead-in ve lead-out (yay veya düz). Dalma düz veya rampalı. Demir dışı metalde ve kompozit panelde giriş her zaman rampa veya helistir; dik dalma yalnız matkapla. Metal sayıları başlangıç değeridir ve `docs/metal/metal-analizi.md` bölüm 4.5'e göre "doğrulanacak" işaretlidir.
+- **Finiş pasosu (M-Metal):** kaba pasolar konturdan pay kadar uzakta kesilir, son paso payı alır (alüminyumda varsayılan açık).
+- **Soğutma (M-Metal):** takım yolu modeli soğutma aç/kapa olaylarını taşır.
 - **Tab:** tutucu köprüler; adet, genişlik ve yükseklik ayarlanır. Tab köşeye konmaz; düz kenar tercih edilir, düz kenara sığmayan küçük parçada (disk, "O" harfi) tab, yarıçapı takım yarıçapından büyük tek bir yumuşak yayın üstüne konur; köşe yayına (kenarlar arası ≤ 90° yuvarlatma) hiç konmaz (T272, T284, D-058).
-- **Küçük parça güvenliği:** alanı eşiğin altındaki parçaya otomatik tab eklenir. İkinci seçenek: son pasoda ince tabaka bırakıp en sonda temizleme pasosu.
+- **Küçük parça güvenliği:** alanı eşiğin altındaki parçaya otomatik tab eklenir. İkinci seçenek: son pasoda ince tabaka bırakıp en sonda temizleme pasosu. Demir dışı metalde her parça köprü veya ince tabaka ile tutulur.
 - **Yön:** climb / conventional seçimi.
 - **Rapid sıralama:** aynı takımın işlemleri gruplanır; kesimler arası boş hareket en yakın komşu sezgisiyle kısaltılır.
 
@@ -415,6 +423,7 @@ Ayar dosyasının tanımladıkları:
 - Yay: I/J (artımlı veya mutlak) ya da R; tam daire desteği; yay yoksa çizgiye bölme
 - Delik döngüsü desteği (G81/G83) ya da açık hareketlerle delme
 - Vakum ve makineye özel M kodları
+- Soğutma (sis / sıvı / hava) aç ve kapat; elle soğutmada duraklama ve mesaj (M-Metal; yalnız yeni post sürümleri yazar, 1.0.0 postları ve goldenları donuk)
 - Dosya uzantısı, dosya adı uzunluk sınırı, satır sonu (CRLF/LF), dosya boyutu sınırı ve bölme
 
 Her post ayarı sürümlenir (ör. "Syntec – NittCam v1.0"). Her sürümün referans (golden) G-code dosyaları repoda durur; çıktı değişirse test kırılır.
@@ -469,8 +478,11 @@ Her export sunucuda, kaydedilmiş proje revizyonundan yeniden üretilir ve sakla
 | Tutma | Vakum, mengene veya T-slot; vakum M kodları |
 | Program biçimi | Post ayarı ve sürümü (bölüm 6.4) |
 | Kısıtlar | Dosya adı uzunluğu, dosya boyutu, yay desteği, satır numarası, delik döngüsü |
+| Soğutma (M-Metal) | Yok / sis / sıvı / hava; programdan (M kodları) veya elle |
+| Metal kesim (M-Metal) | Beyan; makine sertliği; mengene yüksekliği |
 
-- **Takım profili:** takım no, tip, çap, kesici boyu, ağız sayısı.
+- **Takım profili:** takım no, tip, çap, kesici boyu, ağız sayısı; V uçta uç açısı ve uç düzlüğü.
+- **Vakum ve soğutma kodları çakışamaz** (M7/M8/M9 soğutma kodlarıdır; örnek profillerde vakum M7 ise soğutma başka koda bağlanır).
 - **Kesim parametreleri:** güvenli Z, kesim derinliği, paso derinliği, besleme, dalma hızı, devir. Varsayılanlar malzeme parametre setinden gelir.
 - **Makine kütüphanesi:** marka/model/controller seçilince varsayılan profil dolar, kullanıcı eksikleri doğrular. Kütüphane marka üzerinden değil controller ailesi üzerinden kurulur.
 
@@ -489,9 +501,22 @@ Bu kurallar üreticide uygulanır ve geri okuyucuda ayrıca denetlenir.
 9. Geri okuyucu kontrolleri geçmeyen dosya indirilemez.
 10. Doğrulanmamış profilde dosya başına "DOĞRULANMADI, önce air cut" yorumu eklenir; indirme uyarı ve kabul ister.
 
+11–18 arası kurallar malzeme davranışına bağlıdır; ahşap ve plastikte devreye girmez (M-Metal, D-118; ayrıntı `docs/metal/metal-analizi.md` bölüm 7). Hepsi hatadır, aksi yazılmadıkça.
+
+11. Soğutma şartsa her spindle açılışından sonra, ilk kesimden önce soğutma açıktır; takım değişimi, duraklama ve program sonunda kapalıdır; elle soğutmada ilk kesimden önce duraklama ve mesaj vardır.
+12. Demir dışı metal ve kompozit panelde malzemeye giren iniş tablo sınırından (5°) dik olamaz; matkapla delmede gagalama en çok 1 × Ø.
+13. Ardışık iki kesim seviyesi arası paso, tablo × makine sertliği × takım Ø tavanını aşamaz.
+14. Talaş yükü F / (S × ağız) tablo bandının içindedir (üst sınır ve besleme tabanı).
+15. Demir dışı metalde düşen her parça köprü veya ince tabaka ile tutulur; tablo sınırından küçük parça kesilmez.
+16. Malzemenin izin vermediği takım tipi kesim yapamaz.
+17. Kompozit panelde V uç ön yüz sacına inemez (en az kalan kalınlık tablodan); V-kanal yalnız V uçla, kontur yalnız düz frezeyle; her büküm çizgisinin kanalı programdadır.
+18. Mengene tutmada XY rapid yüksekliği mengene yüksekliği + 5 mm üstündedir; mengene payına yakın kesim uyarıdır.
+
 ### 7.3 Doğrulama sistemi
 
 Platform makinede ne olduğunu göremez. "Doğrulanmış" etiketi kanıta dayalı kullanıcı beyanıdır; platform süreci yönetir ve sonucu kaydeder.
+
+Doğrulama ayrıca **malzeme ailesine** bağlıdır (ahşap plaka, plastik, kompozit, demir dışı metal; M-Metal, D-118). Bir ailede doğrulanan makine diğerinde doğrulanmış sayılmaz. Bugünkü kayıtlar ahşap plaka ailesidir. Aileye göre test parçası kademe testinde tanımlanır (`docs/metal/metal-analizi.md` bölüm 9.2).
 
 Makine profili durumları:
 
@@ -610,13 +635,13 @@ Bedeli: Shapely ve rectpack gibi olgun kütüphaneler yerine offset kütüphanes
 | `machines` | Makine | şirket, marka, model, bakım kaydı |
 | `machine_profile_versions` | Profilin değişmez sürümleri | makine, sürüm no, profil JSON'u, post ayarı ve sürümü |
 | `tools` | Takım seti | makine, takım no, tip, çap |
-| `materials` | Malzeme parametre setleri | şirket, tür, kalınlık, besleme, devir, paso |
+| `materials` | Malzeme parametre setleri | şirket, tür, kalınlık, besleme, devir, paso, özellikler (alaşım, renk kodu, film; M-Metal) |
 | `templates` / `template_versions` | Şablon ve sürümleri | şirket, parametreler, geometri JSON'u |
 | `projects` | Proje | şirket, ad, durum, revizyon no, proje JSON'u (`jsonb`) |
 | `project_commands` | Komut geçmişi | proje, revizyon, komut, yapan (kullanıcı / AI) |
 | `exports` | Üretilen dosyalar | proje revizyonu, profil sürümü, post sürümü, dosya yolu, hash, doğrulama durumu |
-| `validations` | Doğrulama kayıtları | profil sürümü, takım seti, aşama, ölçüm formu, onaylayan |
-| `offcuts` | Artık parça stoğu | şirket, malzeme, kalınlık, ölçü, damar, kaynak proje, durum |
+| `validations` | Doğrulama kayıtları | profil sürümü, takım seti, aşama, ölçüm formu, onaylayan, malzeme ailesi (M-Metal; boş = ahşap plaka) |
+| `offcuts` | Artık parça stoğu | şirket, malzeme, kalınlık, ölçü, damar, kaynak proje, durum, özellikler (M-Metal) |
 | `chat_messages` | Proje sohbet geçmişi | proje, rol, içerik, önerilen komutlar |
 | `ai_usage` | Kota sayacı | şirket, ay, kullanım |
 
@@ -653,6 +678,7 @@ Makine profili düzenlenince yeni sürüm satırı açılır; eski sürüm deği
 - `layout` türetilmiş veridir ama saklanır; kullanıcı elle kilitlediği yerleşimi kaybetmez.
 - Takım yolu ve G-code projede saklanmaz; her seferinde yeniden üretilir. Export edilen dosya ayrıca `exports` tablosunda durur.
 - Şablon projeye kopyalanır; `version` ve `overrides` güncelleme akışındaki çakışma uyarısını besler.
+- **M-Metal isteğe bağlı alanları (şema sürümü 2 kalır):** `stock.machinedFace` (`front` / `back`, yoksa `front`); parça `grain.flip` (yalnız yönlü malzemede); `cutting.coolant` (`mist` / `flood` / `air` / `manual`); `cutting.finish` (`allowance`, isteğe bağlı `feedFactor`); işlem türü `vgroove` (`remaining` isteğe bağlı) ve `cutting.tools.vgroove`. Alan yoksa bugünkü davranış aynen sürer.
 
 ## 10. Repo ve Claude Code düzeni
 
@@ -760,7 +786,7 @@ Yanlış G-code fiziksel hasar demektir; bu yüzden çekirdek paket testle birli
 | --- | --- | --- |
 | Birim | Vitest | Her komut, kural, geometri fonksiyonu beklenen sonucu verir |
 | Özellik tabanlı | fast-check | Rastgele girdide değişmezler bozulmaz |
-| Golden dosya | Vitest + repodaki referans NC dosyaları | Post çıktısı bayt bayt aynı kalır; değişiklik insan onayı ister |
+| Golden dosya | Vitest + repodaki referans NC dosyaları | Post çıktısı bayt bayt aynı kalır; değişiklik insan onayı ister. Metal fixture'ları için ayrı golden dosyalar; mevcut goldenlar M-Metal boyunca bayt bayt aynı kalır |
 | Geri okuma | Kendi okuyucumuz | Üretilen her G-code okunur, takım yolu modeliyle tolerans içinde eşleşir |
 | Güvenlik senaryoları | Vitest | Bilerek bozulmuş G-code (malzemede rapid, sınır aşımı, spindle kapalı kesim) yakalanır |
 | Çok şirketli yapı | Vitest + test veritabanı | Bir şirket diğerinin verisini okuyamaz |
@@ -799,6 +825,7 @@ Tüm özellikler ilk sürümdedir. v3 kararıyla saha testi ürün ~%90 bittiği
 | M8 — Export ve proje yönetimi | PDF (dizilim, parça listesi, fire raporu), etiket, DXF export, tüm export kayıtları, Projeler (arama, kopyalama, durum), Ana sayfa verisi, bakım kaydı, Ayarlar | NC, DXF, PDF ve etiket sunucudan üretilir |
 | M9 — Cila ve saha hazırlığı | İlk kullanım, erişilebilirlik, performans, hata dayanıklılığı, duyarlı tasarım, yeni işlemler için golden ve güvenlik testleri, regresyon senaryoları, saha kiti | **~%90 çizgisi:** sahip onayıyla saha testine hazır |
 | Saha 1 (insan) | Makine bilgisi, post uyarlama, air cut, fire plakada test kesimi: dış kontur, delik, cep, kanal, yay, açılı damarlı parça | İki makinede test kesimi tolerans içinde; "NittCam test etti" kaydı |
+| M-Metal — Metal ve kompozit (D-118, D-130) | Malzeme davranış tablosu; alüminyum kompozit panel (kesim, sonra V-kanal büküm); alüminyum sac ve levha (soğutma, rampa, paso ve talaş yükü sınırı, finiş, her parçada köprü); denetçi kuralları 11–18; malzeme ailesine göre doğrulama. Temel ve ACM/alüminyum türleri saha testi 1'den önce başlar (D-130); metal NC her kademede sahibin makine testine bağlı | ACM tepsi parçası ve alüminyum test parçası makinede kesildi, ölçüler tolerans içinde; mevcut malzemelerin goldenları bayt bayt aynı |
 | M10 — Hesap ve çok şirket | Giriş ekranı ve animasyon, şirket, roller, kullanıcılar, RLS, barındırma kararı | İki rolle uçtan uca akış; şirketler arası yalıtım testi geçer |
 | M11 — AI sohbet | Sohbet paneli, komut önerisi ve onay, uyarı rozeti, şablon güncelleme sorusu, dağınık sipariş okuma, kota (Q001) | AI hiçbir değişikliği onaysız uygulayamaz (testle) |
 | M12 — Pilot | 5–10 pilot atölye, kurucu üye fiyatı, fiyat testi, geri bildirim | En az 3 atölye gerçek iş kesti |
@@ -974,6 +1001,10 @@ Başlamadan önce:
 | Sorumluluk | Fiziksel üretim hukuki risk taşır | Kullanım şartları, sigorta, etiket dili |
 | E-posta teslim edilebilirliği | `.cam` uzantısı filtreye takılabilir | `nittcam.com` birincil |
 | Tek kişi | Destek ve satış yükü | Kurulum ücreti, şablon ve profil kütüphanesiyle destek ihtiyacını azaltma |
+| Yanlış alüminyum değeriyle takım kırılması, parça fırlaması (M-Metal) | Yaralanma, makine hasarı | Sınırlar davranış tablosunda ve denetçide; makine beyanı; aile başına test kesimi; kontrol listesi; "garantili" denmez |
+| Metal işinin saha testi 1'i geciktirmesi (M-Metal) | Ana hedef kayar | Mevcut malzemelerin goldenları her metal görevinde kilitli; metal NC kademe testine kadar kapalı veya doğrulanmamış işaretli (D-130) |
+| Vakum ve soğutma M kodu çakışması (M7) | Vakum düşer, parça oynar | Profil doğrulaması ve denetçi kuralı (vakum program bitmeden kapanamaz) |
+| Metal kesim sayılarının yanlış olması (talaş yükü bandı, paso tavanı, V-kanal kalan kalınlığı) | Ya fazla ya az kısıt | Araştırma dosyasıyla hizalama (`docs/materials/kesim-degerleri-arastirma.md`), "doğrulanacak" işareti, test kesimi; değerler tabloda tek yerde |
 
 ### 14.2 Açık maddeler
 
@@ -1005,9 +1036,18 @@ Marka ve hukuk:
 - [ ] Hukuki yapı (kullanım şartları, şirket, sigorta, KVKK)
 - [ ] İş sözleşmesi kontrolü (yan proje)
 
+Metal (M-Metal; kapsam, sıra, havayla kesim ve beyan modeli D-118 ile kapandı):
+
+- [ ] Metal testi için makine ve malzeme: hangi makine, V uç ve tek ağızlı freze var mı, sis soğutma var mı
+- [ ] Test makinesinde vakum gerçekten `M7` mi; soğutma çıkışı var mı, hangi kod
+- [ ] Plastikte kenar bandı sütunlarının gizlenmesi (saha testinden sonra)
+- [ ] Kullanım şartlarına metal maddesi ve sorumluluk sınırı (hukuk görüşü)
+- [ ] Metal desteğinin hangi pakette olduğu (fiyatlama)
+
 ### 14.3 Sonraki sürümler
 
-- Serbest şekilli cep, V-oyma, yazı aracı
+- Serbest şekilli cep, yazı V-oyması, yazı aracı
+- Pirinç ve bakır; büküm payı hesabı ve kaset açınımı (M-Metal sonrası)
 - DWG içe aktarma, DXF'te yazı ve blok içi blok
 - Kural tabanlı akıllı şablonlar (ör. kapak yüksekliğine göre menteşe adedi)
 - Mermer/taş malzeme desteği

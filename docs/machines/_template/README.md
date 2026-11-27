@@ -38,6 +38,10 @@ Makinede bugün sorunsuz çalışan 2–3 dosyayı `ornek-nc/` klasörüne koyun
 - Tabla ölçüsü (mm) ve eksen hareket sınırları (X, Y, Z):
 - Tabla tutma: vakum / mengene / T-kanal; fire tabla (spoilboard) kalınlığı:
 - Spindle en yüksek devir; devir programdan mı, elle mi:
+- Vakum M kodu (makinede bağlandığı gibi; açma ve kapama, ör. M7 / M9 veya M10 / M11):
+- Soğutma çıkışı var mı (sis / sıvı / hava); hangi M kodu açıp kapatıyor (vakumla aynı kod olmamalı):
+- Mengene veya kenar kıskacı kullanılıyorsa en yüksek noktasının tabladan yüksekliği (mm):
+- Spindle pens (collet) ölçüsü ve tipi (ör. ER20, 1/4" / 6 / 8 mm):
 
 ## 5. Bugünkü yazılım
 - Şu an kullanılan CAM yazılımı ve post processor:
