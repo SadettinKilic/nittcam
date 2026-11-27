@@ -1,0 +1,420 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`material traits (T341) > locks the six rows 1`] = `
+{
+  "acrylic": {
+    "direction": {
+      "defaultOn": false,
+      "kind": "none",
+      "label": "grain",
+    },
+    "family": "plastic",
+    "look": {
+      "noise": 0.008,
+      "roughness": 0.55,
+      "stripes": false,
+      "token": "--color-mat-acrylic",
+    },
+    "release": "released",
+    "sheetPresets": [
+      {
+        "a": 1220,
+        "b": 2440,
+      },
+      {
+        "a": 2100,
+        "b": 2800,
+      },
+      {
+        "a": 2070,
+        "b": 2800,
+      },
+    ],
+    "skin": {
+      "belowThickness": 1,
+      "min": 0.2,
+    },
+    "smallPart": {
+      "area": 50000,
+      "minSide": 100,
+    },
+    "tabs": {
+      "bounds": {
+        "belowThickness": 1,
+        "minAnchor": 3,
+        "minHeight": 1,
+        "minWidth": 3,
+      },
+      "defaults": {
+        "count": 4,
+        "materialLeft": 3,
+        "smallPartMinCount": 2,
+        "width": 10,
+      },
+    },
+    "toolTypes": {
+      "hole": [
+        "drill",
+        "flatEndMill",
+      ],
+      "inner": [
+        "flatEndMill",
+        "compression",
+      ],
+      "outer": [
+        "flatEndMill",
+        "compression",
+      ],
+      "pocket": [
+        "flatEndMill",
+        "compression",
+      ],
+    },
+  },
+  "mdf": {
+    "direction": {
+      "defaultOn": true,
+      "kind": "axial",
+      "label": "grain",
+    },
+    "family": "woodBoard",
+    "look": {
+      "noise": 0.045,
+      "roughness": 0.92,
+      "stripes": false,
+      "token": "--color-mat-mdf",
+    },
+    "release": "released",
+    "sheetPresets": [
+      {
+        "a": 1220,
+        "b": 2440,
+      },
+      {
+        "a": 2100,
+        "b": 2800,
+      },
+      {
+        "a": 2070,
+        "b": 2800,
+      },
+    ],
+    "skin": {
+      "belowThickness": 1,
+      "min": 0.2,
+    },
+    "smallPart": {
+      "area": 50000,
+      "minSide": 100,
+    },
+    "tabs": {
+      "bounds": {
+        "belowThickness": 1,
+        "minAnchor": 3,
+        "minHeight": 1,
+        "minWidth": 3,
+      },
+      "defaults": {
+        "count": 4,
+        "materialLeft": 3,
+        "smallPartMinCount": 2,
+        "width": 10,
+      },
+    },
+    "toolTypes": {
+      "hole": [
+        "drill",
+        "flatEndMill",
+      ],
+      "inner": [
+        "flatEndMill",
+        "compression",
+      ],
+      "outer": [
+        "flatEndMill",
+        "compression",
+      ],
+      "pocket": [
+        "flatEndMill",
+        "compression",
+      ],
+    },
+  },
+  "melamine": {
+    "direction": {
+      "defaultOn": true,
+      "kind": "axial",
+      "label": "grain",
+    },
+    "family": "woodBoard",
+    "look": {
+      "noise": 0.008,
+      "roughness": 0.92,
+      "stripes": false,
+      "token": "--color-mat-melamine",
+    },
+    "release": "released",
+    "sheetPresets": [
+      {
+        "a": 1220,
+        "b": 2440,
+      },
+      {
+        "a": 2100,
+        "b": 2800,
+      },
+      {
+        "a": 2070,
+        "b": 2800,
+      },
+    ],
+    "skin": {
+      "belowThickness": 1,
+      "min": 0.2,
+    },
+    "smallPart": {
+      "area": 50000,
+      "minSide": 100,
+    },
+    "tabs": {
+      "bounds": {
+        "belowThickness": 1,
+        "minAnchor": 3,
+        "minHeight": 1,
+        "minWidth": 3,
+      },
+      "defaults": {
+        "count": 4,
+        "materialLeft": 3,
+        "smallPartMinCount": 2,
+        "width": 10,
+      },
+    },
+    "toolTypes": {
+      "hole": [
+        "drill",
+        "flatEndMill",
+      ],
+      "inner": [
+        "flatEndMill",
+        "compression",
+      ],
+      "outer": [
+        "flatEndMill",
+        "compression",
+      ],
+      "pocket": [
+        "flatEndMill",
+        "compression",
+      ],
+    },
+  },
+  "plywood": {
+    "direction": {
+      "defaultOn": true,
+      "kind": "axial",
+      "label": "grain",
+    },
+    "family": "woodBoard",
+    "look": {
+      "noise": 0.02,
+      "roughness": 0.92,
+      "stripes": true,
+      "token": "--color-mat-plywood",
+    },
+    "release": "released",
+    "sheetPresets": [
+      {
+        "a": 1220,
+        "b": 2440,
+      },
+      {
+        "a": 2100,
+        "b": 2800,
+      },
+      {
+        "a": 2070,
+        "b": 2800,
+      },
+    ],
+    "skin": {
+      "belowThickness": 1,
+      "min": 0.2,
+    },
+    "smallPart": {
+      "area": 50000,
+      "minSide": 100,
+    },
+    "tabs": {
+      "bounds": {
+        "belowThickness": 1,
+        "minAnchor": 3,
+        "minHeight": 1,
+        "minWidth": 3,
+      },
+      "defaults": {
+        "count": 4,
+        "materialLeft": 3,
+        "smallPartMinCount": 2,
+        "width": 10,
+      },
+    },
+    "toolTypes": {
+      "hole": [
+        "drill",
+        "flatEndMill",
+      ],
+      "inner": [
+        "flatEndMill",
+        "compression",
+      ],
+      "outer": [
+        "flatEndMill",
+        "compression",
+      ],
+      "pocket": [
+        "flatEndMill",
+        "compression",
+      ],
+    },
+  },
+  "pvc": {
+    "direction": {
+      "defaultOn": false,
+      "kind": "none",
+      "label": "grain",
+    },
+    "family": "plastic",
+    "look": {
+      "noise": 0.008,
+      "roughness": 0.7,
+      "stripes": false,
+      "token": "--color-mat-pvc",
+    },
+    "release": "released",
+    "sheetPresets": [
+      {
+        "a": 1220,
+        "b": 2440,
+      },
+      {
+        "a": 2100,
+        "b": 2800,
+      },
+      {
+        "a": 2070,
+        "b": 2800,
+      },
+    ],
+    "skin": {
+      "belowThickness": 1,
+      "min": 0.2,
+    },
+    "smallPart": {
+      "area": 50000,
+      "minSide": 100,
+    },
+    "tabs": {
+      "bounds": {
+        "belowThickness": 1,
+        "minAnchor": 3,
+        "minHeight": 1,
+        "minWidth": 3,
+      },
+      "defaults": {
+        "count": 4,
+        "materialLeft": 3,
+        "smallPartMinCount": 2,
+        "width": 10,
+      },
+    },
+    "toolTypes": {
+      "hole": [
+        "drill",
+        "flatEndMill",
+      ],
+      "inner": [
+        "flatEndMill",
+        "compression",
+      ],
+      "outer": [
+        "flatEndMill",
+        "compression",
+      ],
+      "pocket": [
+        "flatEndMill",
+        "compression",
+      ],
+    },
+  },
+  "solidWood": {
+    "direction": {
+      "defaultOn": true,
+      "kind": "axial",
+      "label": "grain",
+    },
+    "family": "woodBoard",
+    "look": {
+      "noise": 0.02,
+      "roughness": 0.92,
+      "stripes": true,
+      "token": "--color-mat-solid-wood",
+    },
+    "release": "released",
+    "sheetPresets": [
+      {
+        "a": 1220,
+        "b": 2440,
+      },
+      {
+        "a": 2100,
+        "b": 2800,
+      },
+      {
+        "a": 2070,
+        "b": 2800,
+      },
+    ],
+    "skin": {
+      "belowThickness": 1,
+      "min": 0.2,
+    },
+    "smallPart": {
+      "area": 50000,
+      "minSide": 100,
+    },
+    "tabs": {
+      "bounds": {
+        "belowThickness": 1,
+        "minAnchor": 3,
+        "minHeight": 1,
+        "minWidth": 3,
+      },
+      "defaults": {
+        "count": 4,
+        "materialLeft": 3,
+        "smallPartMinCount": 2,
+        "width": 10,
+      },
+    },
+    "toolTypes": {
+      "hole": [
+        "drill",
+        "flatEndMill",
+      ],
+      "inner": [
+        "flatEndMill",
+        "compression",
+      ],
+      "outer": [
+        "flatEndMill",
+        "compression",
+      ],
+      "pocket": [
+        "flatEndMill",
+        "compression",
+      ],
+    },
+  },
+}
+`;
