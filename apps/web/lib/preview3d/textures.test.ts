@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FpsWatch } from './fps';
 import {
+  MATERIAL_TOKEN,
   TEXTURE_SIZE,
   effectiveGrain,
   hasStripes,
@@ -33,6 +34,23 @@ describe('procedural material textures (T154)', () => {
     expect(hasStripes('plywood')).toBe(true);
     expect(hasStripes('mdf')).toBe(false);
     expect(surfaceOf('mdf').roughness).toBeGreaterThan(0.8);
+  });
+
+  it('reads the look from the traits with the values it had before (T342)', () => {
+    // An alias is not a kind id: it keeps the MDF look, as the old switch did.
+    expect(materialLook('melamine-chipboard')).toBe('mdf');
+    expect(materialLook('solidWood')).toBe('solidWood');
+    expect(MATERIAL_TOKEN).toEqual({
+      mdf: '--color-mat-mdf',
+      plywood: '--color-mat-plywood',
+      melamine: '--color-mat-melamine',
+      solidWood: '--color-mat-solid-wood',
+      acrylic: '--color-mat-acrylic',
+      pvc: '--color-mat-pvc',
+    });
+    const looks = ['mdf', 'plywood', 'melamine', 'solidWood', 'acrylic', 'pvc'] as const;
+    expect(looks.map((l) => surfaceOf(l).roughness)).toEqual([0.92, 0.92, 0.92, 0.92, 0.55, 0.7]);
+    expect(looks.filter(hasStripes)).toEqual(['plywood', 'solidWood']);
   });
 
   it('parses token colours', () => {

@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  MATERIAL_KINDS,
-  materialHasGrain,
-  materialToneSchema,
-  type MaterialKind,
-} from '@nittcam/core';
+import { MATERIAL_KINDS, traitsOf, materialToneSchema, type MaterialKind } from '@nittcam/core';
 import {
   Button,
   Checkbox,
@@ -67,7 +62,7 @@ export function MaterialDialog({
   const ids = { name: useId(), kind: useId(), tone: useId(), grain: useId() };
   const [d, setD] = useState<MaterialDraft>(initial);
   const [errors, setErrors] = useState<MaterialFormErrors>({});
-  const grainable = materialHasGrain(d.kind);
+  const grainable = traitsOf(d.kind).direction.kind !== 'none';
 
   function submit(e: FormEvent) {
     e.preventDefault();

@@ -8,6 +8,7 @@
  */
 import { EPS } from '../geometry/constants';
 import { MATERIAL_KIND_IDS, type MaterialKind } from './material-kinds';
+import { traitsOf } from './material-traits';
 import type { MachineProfile, MaterialParams } from './profile';
 import type { LibraryMaterial } from './library';
 
@@ -69,11 +70,11 @@ export function materialKindOf(material: string): MaterialKind | null {
 }
 
 /**
- * Grain direction only matters for wood and laminated boards (§3.6 "Damar yönü: yalnızca ahşap ve
- * kaplamalı malzemede görünür"); plastics have none.
+ * Whether the material has a direction (grain) at all (§3.6): read from the behaviour table
+ * (T341); today wood and laminated boards have one, plastics and unknown kinds none.
  */
 export function materialHasGrain(kind: MaterialKind | null): boolean {
-  return kind === 'mdf' || kind === 'plywood' || kind === 'melamine' || kind === 'solidWood';
+  return traitsOf(kind).direction.kind !== 'none';
 }
 
 /**
