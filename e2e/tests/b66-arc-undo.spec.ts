@@ -71,6 +71,8 @@ test.describe('B66 T383: undo inside the line tool', () => {
     if (!b) throw new Error('no canvas');
     await page.keyboard.press('l');
     await page.mouse.click(b.x + b.width * 0.55, b.y + b.height * 0.75);
+    // The cursor leaves the start point (else the hint is "Kapat"); it is above the shape.
+    await page.mouse.move(b.x + b.width * 0.6, b.y + b.height * 0.25);
     await typeSegment(page, 400, 0);
     await typeSegment(page, 300, 90);
     await typeSegment(page, 250, 180); // wrong: should be 400
@@ -106,6 +108,8 @@ test.describe('B66 T383: undo inside the line tool', () => {
     if (!b) throw new Error('no canvas');
     await page.keyboard.press('l');
     await page.mouse.click(b.x + b.width * 0.55, b.y + b.height * 0.75);
+    // The cursor leaves the start point (else the hint is "Kapat"); it is above the shape.
+    await page.mouse.move(b.x + b.width * 0.6, b.y + b.height * 0.25);
     await typeSegment(page, 300, 0);
     await typeSegment(page, 200, 90);
     await page.keyboard.press('Backspace');
@@ -139,6 +143,8 @@ test.describe('B66 T382: flexible arc tool', () => {
     await expect(opts).toBeVisible();
     await expect(page.getByTestId('arc-mode-bulge')).toHaveAttribute('aria-pressed', 'true');
     await page.mouse.click(b.x + b.width * 0.45, b.y + b.height * 0.6);
+    // The cursor leaves the start point (else the hint is "Kapat"); it is above the shape.
+    await page.mouse.move(b.x + b.width * 0.6, b.y + b.height * 0.25);
     await typeSegment(page, 600, 0);
     await expect(hint(page)).toHaveText(hints.arcBend);
     await expect(page.getByTestId('editor-input-angle')).toBeVisible();
@@ -187,6 +193,8 @@ test.describe('B66 T382: flexible arc tool', () => {
     if (!b) throw new Error('no canvas');
     await page.keyboard.press('l');
     await page.mouse.click(b.x + b.width * 0.4, b.y + b.height * 0.8);
+    // The cursor leaves the start point (else the hint is "Kapat"); it is above the shape.
+    await page.mouse.move(b.x + b.width * 0.6, b.y + b.height * 0.25);
     await typeSegment(page, 400, 0);
     await page.keyboard.press('a');
     await expect(page.getByTestId('arc-tangent')).toHaveAttribute('aria-pressed', 'true');

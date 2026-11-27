@@ -276,10 +276,9 @@ describe('T382 flexible arc constructions', () => {
     expect(4 * Math.atan(bulgeFree(a, b, above, { sweep: 90 }) ?? 0)).toBeCloseTo(-Math.PI / 2, 9);
     const r = arcOf(a, b, bulgeFree(a, b, above, { r: 80 }) ?? 0);
     expect(r?.radius).toBeCloseTo(80, 9);
-    // Cursor past the half circle: the major arc of the same radius.
-    const major = bulgeFree(a, b, { x: 50, y: -90 }, { r: 80 }) ?? 0;
-    expect(Math.abs(4 * Math.atan(major))).toBeGreaterThan(Math.PI);
-    expect(arcOf(a, b, major)?.radius).toBeCloseTo(80, 9);
+    // A far cursor still gives the minor arc of a typed radius.
+    const far = bulgeFree(a, b, { x: 50, y: -900 }, { r: 80 }) ?? 0;
+    expect(Math.abs(4 * Math.atan(far))).toBeLessThan(Math.PI);
     expect(bulgeFree(a, b, above, { r: 10 })).toBeUndefined(); // R < chord / 2
     expect(bulgeFree(a, a, above)).toBeUndefined();
     expect(bulgeFree(a, b, { x: 30, y: 0 })).toBeUndefined(); // on the chord: a line

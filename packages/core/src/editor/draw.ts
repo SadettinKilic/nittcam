@@ -162,7 +162,7 @@ export function clampBulge(bulge: number): number {
 /**
  * Free arc p0 → p1 bent by the cursor m (T382 "sehim" mode): the arc's middle follows m's signed
  * distance from the chord, so any sweep 1°–359° on either side can be dragged. A typed radius
- * (`r`, minor arc unless the cursor is past the half circle) or sweep (`sweep`, degrees, its
+ * (`r`, the minor arc) or sweep (`sweep`, degrees, its
  * magnitude; the cursor gives the side) overrides the cursor. Undefined: no arc.
  */
 export function bulgeFree(
@@ -180,12 +180,8 @@ export function bulgeFree(
     const s = clampSweep((Math.abs(typed.sweep) * Math.PI) / 180);
     return s === 0 ? undefined : right ? Math.tan(s / 4) : -Math.tan(s / 4);
   }
-  if (typed.r !== undefined) {
-    const minor = bulgeFromRadius(p0, p1, typed.r, right);
-    if (minor === undefined) return undefined;
-    // Past the half circle (|bulge| > 1) the cursor asks for the major arc of that radius.
-    return Math.abs(drag) > 1 && Math.abs(minor) > MIN_BULGE ? clampBulge(1 / minor) : minor;
-  }
+  // A typed radius gives the minor arc (a major arc: type the sweep or drag past 180°).
+  if (typed.r !== undefined) return bulgeFromRadius(p0, p1, typed.r, right);
   return drag === 0 ? undefined : clampBulge(drag);
 }
 
