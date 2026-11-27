@@ -1055,6 +1055,21 @@ function WizardSession({
     }
   }, [step]);
 
+  // B66: the header buttons send the same keys, so inside an open drawing chain they take back /
+  // re-add its last point (the board's capture listener handles them) and otherwise undo commands.
+  function sendHistoryKey(redoKey: boolean) {
+    // Dispatched on <body> and bubbling, like a real key press (a window-targeted event skips the
+    // board's chain handler).
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: redoKey ? 'y' : 'z',
+        ctrlKey: true,
+        cancelable: true,
+        bubbles: true,
+      }),
+    );
+  }
+
   // Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) outside text fields, in every step.
   const { undo, redo } = session;
   useEffect(() => {
@@ -1435,7 +1450,7 @@ function WizardSession({
           data-testid="wizard-undo"
           data-history=""
           variant="ghost"
-          onClick={session.undo}
+          onClick={() => sendHistoryKey(false)}
           disabled={!session.canUndo}
           aria-keyshortcuts={ariaKeyShortcuts(shortcutById('undo').keys, false)}
         >
@@ -1448,7 +1463,7 @@ function WizardSession({
           data-testid="wizard-redo"
           data-history=""
           variant="ghost"
-          onClick={session.redo}
+          onClick={() => sendHistoryKey(true)}
           disabled={!session.canRedo}
           aria-keyshortcuts={ariaKeyShortcuts(shortcutById('redo').keys, false)}
         >
