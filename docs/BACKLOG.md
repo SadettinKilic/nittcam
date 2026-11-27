@@ -1890,7 +1890,7 @@ Tester focus: hover each control; keys work on each canvas and not inside inputs
 
 ### Batch B66: T382–T383 (drawing tools)
 
-### T382 Flexible arc tool   [status: todo]
+### T382 Flexible arc tool   [status: done]
 Source: owner ("yay hep daire oluşturacak gibi açı veriyor; kuş kanadı gibi farklı açı vermek istiyorum, daha esnek olsun").
 Acceptance:
 - [ ] arc tool offers modes in its tool options: **3 nokta** (start, a point on the arc, end), **Başlangıç–bitiş–sehim/yarıçap** (drag the bulge freely, any sweep 1°–359°, either side) and today's centre mode; last used mode remembered
@@ -1900,7 +1900,7 @@ Acceptance:
 - [ ] geometry stays exact arcs in the model (no polyline), snap/undo work; core tests for the 3-point and bulge constructions (fast-check: points lie on the circle, sweep sign)
 Tester focus: draw a wing profile, edit handles, nest it, NC arcs (G2/G3) checked by the checker.
 
-### T383 Undo inside the line tool removes the last segment   [status: todo]
+### T383 Undo inside the line tool removes the last segment   [status: done]
 Source: owner ("çizgi aracıyla 3 nokta koydum, 3. kenarı yanlış koyduğumu fark edip Ctrl+Z yapınca önceki parçayı seçiyor, kenar silinmiyor").
 Acceptance:
 - [ ] while a line/polyline (and arc chain) is being drawn, Ctrl+Z removes the last placed point/segment and keeps the tool active from the previous point; repeated Ctrl+Z walks back to the first point, then cancels the chain; Ctrl+Y / Ctrl+Shift+Z re-adds
