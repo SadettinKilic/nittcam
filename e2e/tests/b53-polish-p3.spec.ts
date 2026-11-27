@@ -125,29 +125,26 @@ test('step 1 at 1440 × 900: the red "kesim ayarı yok" box keeps Plaka ölçüs
   await pickOption(page.getByTestId('wizard-material'), tr.materials.pvc);
   await expect(page.getByTestId('no-cutting-params')).toBeVisible();
   const sheet = page.getByRole('group', { name: tr.wizard.machine.sheet });
+  // T378: the stepper's own row costs ~45 px, so the group may start below the fold at 900 px;
+  // it must still come fully clear of the sticky footer once scrolled to.
+  await sheet.scrollIntoViewIfNeeded();
   const sheetBox = await sheet.boundingBox();
   const footerBox = await page.getByTestId('wizard-footer').boundingBox();
   expect(sheetBox && footerBox).toBeTruthy();
   expect((sheetBox?.y ?? 0) + (sheetBox?.height ?? 0)).toBeLessThanOrEqual(footerBox?.y ?? 0);
 });
 
-test('wizard header stays one row down to a 1095 px container (CTO #6)', async ({ page }) => {
+// T378 replaced the one-row header (CTO #6): the stepper now has its own full-width row.
+test('T378: the stepper sits on its own row under the name, no horizontal overflow', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openNewProject(page, 'makine');
   const row = page.getByTestId('wizard-head-row');
-  const width = await row.evaluate((el) => el.clientWidth);
-  // Narrow the window until the header container is 1095 px wide.
-  await page.setViewportSize({ width: 1440 - (width - 1095), height: 900 });
-  await expect.poll(() => row.evaluate((el) => el.clientWidth)).toBe(1095);
   const name = await page.getByLabel(tr.wizard.nameLabel).boundingBox();
   const steps = await page.getByTestId('wizard-steps').boundingBox();
   expect(name && steps).toBeTruthy();
-  // One row: the name field and the step list share a line.
-  expect(
-    Math.abs(
-      (name?.y ?? 0) + (name?.height ?? 0) / 2 - ((steps?.y ?? 0) + (steps?.height ?? 0) / 2),
-    ),
-  ).toBeLessThan(24);
+  expect(steps?.y ?? 0).toBeGreaterThanOrEqual((name?.y ?? 0) + (name?.height ?? 0));
   expect(await row.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
 });
 

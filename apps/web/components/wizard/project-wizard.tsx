@@ -1499,10 +1499,10 @@ function WizardSession({
         </>
       ) : (
         <div className="@container" data-testid="wizard-head-row">
-          {/* One header row when the content is as wide as at 1400 px with the sidebar open (T197); a
-              container query (T263), so the 1280 px workspace with the icon rail gets the 1440 px row. */}
-          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3 @min-[1088px]:flex-nowrap @min-[1088px]:items-center">
-            <header className="contents">
+          {/* T378: the project name, the profile chip and undo/redo share the first row; the stepper
+              gets its own full-width row below, so its labels are never cut (owner 2026-11-28). */}
+          <div className="flex min-w-0 flex-col gap-2">
+            <header className="flex min-w-0 items-center justify-between gap-3">
               <NameField
                 label={t.nameLabel}
                 value={session.name}
@@ -1510,29 +1510,22 @@ function WizardSession({
                 defaultBase={t.defaultName}
                 autoSelect={session.projectId === null && step === 'makine'}
               />
-              <div className="order-2 flex items-center gap-1 @min-[1088px]:order-3 @min-[1088px]:shrink-0">
-                {headerActions}
-              </div>
-            </header>
-
-            <div className="order-3 flex w-full min-w-0 items-center gap-3 @min-[1088px]:order-2 @min-[1088px]:w-auto @min-[1088px]:flex-1 @min-[1088px]:@max-[1391px]:min-w-min">
               {step === 'parcalar' && wide ? (
                 <div className="shrink-0" data-testid="wizard-view-switch">
                   {viewSwitch}
                 </div>
               ) : null}
-              <div className="min-w-0 flex-1">
-                <StepIndicator
-                  t={t.steps}
-                  headingRef={heading}
-                  current={step}
-                  statuses={wizardStepStatuses(step, progress)}
-                  progress={progress}
-                  errors={stepErrors}
-                  onGo={go}
-                />
-              </div>
-            </div>
+              <div className="flex shrink-0 items-center gap-1">{headerActions}</div>
+            </header>
+            <StepIndicator
+              t={t.steps}
+              headingRef={heading}
+              current={step}
+              statuses={wizardStepStatuses(step, progress)}
+              progress={progress}
+              errors={stepErrors}
+              onGo={go}
+            />
           </div>
         </div>
       )}
@@ -1716,18 +1709,20 @@ function StepIndicator({
   const StepIcon = STEP_ICONS[current];
   return (
     <div
-      className={`${panelClass} flex flex-col gap-2 px-3 py-2.5 sm:px-4 lg:flex-row lg:items-center lg:gap-6 lg:py-1.5`}
+      className={`${panelClass} flex flex-col gap-2 px-3 py-2.5 sm:px-4 @max-[50rem]:flex-row @max-[50rem]:items-center @max-[50rem]:gap-6 @max-[50rem]:py-1.5 @min-[70rem]:flex-row @min-[70rem]:items-center @min-[70rem]:gap-6 @min-[70rem]:py-1.5`}
     >
-      {/* B4b: on the tightest one-row widths (1400–1479 px) the step icon and "Adım n / 5" yield. */}
-      <div className="flex min-w-0 items-center gap-3 lg:shrink-0">
+      {/* T378: the stepper has its own row (container query on the head row). From 70rem the title
+          and the step list share it; from 50rem to 70rem the title sits above the labelled list;
+          below 50rem the list shows numbers only (full name as tooltip) beside the title. */}
+      <div className="flex min-w-0 shrink-0 items-center gap-3">
         <span
           aria-hidden="true"
-          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text sm:@max-[1087px]:flex @min-[1192px]:flex [&_svg]:size-5"
+          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-accent-border bg-accent-subtle text-accent-text @min-[70rem]:flex [&_svg]:size-5"
         >
           <StepIcon />
         </span>
         <div className="flex min-w-0 flex-col">
-          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase @min-[1088px]:@max-[1191px]:sr-only">
+          <p className="text-2xs font-medium tracking-wide text-fg-subtle uppercase">
             {fill(t.stepOf, { n: index + 1, total: STEPS.length })}
           </p>
           <h1
@@ -1735,26 +1730,20 @@ function StepIndicator({
             tabIndex={-1}
             data-testid="wizard-step-title"
             data-step={current}
-            className="truncate text-lg leading-tight font-semibold tracking-tight text-fg focus:outline-none sm:@max-[1087px]:text-xl @min-[1192px]:text-xl"
+            className="text-lg leading-tight font-semibold tracking-tight whitespace-nowrap text-fg focus:outline-none @min-[70rem]:text-xl"
           >
             {t[current]}
           </h1>
         </div>
       </div>
-      <nav
-        aria-label={t.label}
-        className="min-w-0 lg:flex-1 @min-[1088px]:@max-[1391px]:min-w-[22.75rem]"
-      >
+      <nav aria-label={t.label} className="min-w-0 @max-[50rem]:flex-1 @min-[70rem]:flex-1">
         <ol className="flex items-center gap-1" data-testid="wizard-steps">
           {STEPS.map((s, i) => {
             const status = statuses[i] ?? 'upcoming';
             const active = status === 'current';
             const blocker = stepBlocker(s, progress);
             return (
-              <li
-                key={s}
-                className="flex min-w-10 flex-1 items-center gap-1 last:flex-none sm:min-w-15"
-              >
+              <li key={s} className="flex flex-1 items-center gap-1 last:flex-none">
                 <button
                   type="button"
                   aria-current={active ? 'step' : undefined}
@@ -1769,13 +1758,13 @@ function StepIndicator({
                         : t[s]
                   }
                   onClick={() => onGo(s)}
-                  className={`group flex min-h-10 min-w-8 items-center gap-2 rounded-lg px-0.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:min-w-11 sm:px-2 ${focusRing}`}
+                  className={`group flex min-h-10 min-w-8 shrink-0 items-center gap-2 rounded-lg px-0.5 py-1 text-sm transition-colors duration-(--duration-fast) hover:bg-surface-hover sm:min-w-11 sm:px-2 ${focusRing}`}
                 >
                   <StepDot status={status} n={i + 1} error={Boolean(errors[s])} />
                   {active ? null : (
                     <span
                       aria-hidden="true"
-                      className={`${status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} hidden min-w-0 truncate whitespace-nowrap xl:@max-[1087px]:block @min-[1392px]:block`}
+                      className={`${status === 'blocked' ? 'text-fg-subtle' : 'text-fg-muted group-hover:text-fg'} hidden whitespace-nowrap @min-[50rem]:block`}
                     >
                       {t[s]}
                     </span>
@@ -2016,8 +2005,8 @@ function NameField({
     if (name !== '' && name !== value) onCommit(name.slice(0, 120));
   }
   return (
-    // B4b: in the one-row header (≥ 1400 px) the name yields first, down to 10rem (ellipsis + title).
-    <label className="flex min-w-0 flex-1 flex-col gap-0.5 sm:@max-[1087px]:min-w-64 @min-[1088px]:min-w-40 @min-[1088px]:flex-[0_1_20rem]">
+    // T378: the name shares its row only with the chip and undo/redo; it yields first (ellipsis + title).
+    <label className="flex min-w-0 flex-[0_1_28rem] flex-col gap-0.5">
       {/* T247: from 1280 px the caption goes; the name is the title (the label stays for AT). */}
       <span className="px-2 text-xs font-medium text-fg-subtle lg:sr-only">{label}</span>
       <span className="group/name relative w-full max-w-xl">

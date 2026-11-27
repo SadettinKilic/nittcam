@@ -194,7 +194,8 @@ test.describe('classic scrollbar (Windows)', () => {
         });
         expect.soft(await overflowX(page), `${step} ${w} overflow`).toBeLessThanOrEqual(0);
         if (step === 'dizilim' || step === 'simulasyon') {
-          expect.soft(h, `${step} ${w} header one row`).toBeLessThan(60);
+          // T378: two rows (name row + full-width stepper row).
+          expect.soft(h, `${step} ${w} header two rows`).toBeLessThan(110);
         }
         if (step === 'simulasyon' && (w === 1410 || w === 1280))
           await page.screenshot({ path: `${SHOTS}/b13r-t263-sim-${w}-scrollbar.png` });
