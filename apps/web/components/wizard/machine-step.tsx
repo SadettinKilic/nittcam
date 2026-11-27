@@ -1,13 +1,16 @@
 'use client';
 
 import {
+  MATERIAL_FAMILIES,
   findMaterialParams,
+  kindsOfFamily,
   libraryParamLinks,
-  materialHasGrain,
+  traitsOf,
   materialKindOf,
   profileThicknesses,
   stockFromLibrary,
   type MachineProfile,
+  type MaterialFamily,
   type MaterialKind,
   type Project,
   type ValidationIssue,
@@ -60,15 +63,20 @@ type MaterialText = Messages['materials'];
 const mmFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 const mm = (v: number) => mmFormat.format(v);
 
-/** Sheet presets of §3.6 (short × long); stored with the long side along X. */
-export const SHEET_PRESETS = [
-  { a: 1220, b: 2440 },
-  { a: 2100, b: 2800 },
-  { a: 2070, b: 2800 },
-] as const;
+/**
+ * Sheet presets of §3.6 (short × long); stored with the long side along X. Per material from the
+ * behaviour table (T342); this is the list of an unknown material.
+ */
+export const SHEET_PRESETS = traitsOf(null).sheetPresets;
 
-const WOOD: readonly MaterialKind[] = ['mdf', 'plywood', 'melamine', 'solidWood'];
-const PLASTIC: readonly MaterialKind[] = ['acrylic', 'pvc'];
+/** Picker groups (T342): the families present in the behaviour table, each with its kinds. */
+const GROUP_LABEL: Record<MaterialFamily, 'groupWood' | 'groupPlastic'> = {
+  woodBoard: 'groupWood',
+  plastic: 'groupPlastic',
+};
+const GROUPS = MATERIAL_FAMILIES.map((family) => ({ family, kinds: kindsOfFamily(family) })).filter(
+  (g) => g.kinds.length > 0,
+);
 
 type Preset = { a: number; b: number };
 
@@ -144,7 +152,7 @@ export function MachineFields({
   // T121: a library pick offers its own thicknesses and sheet sizes; else the profile's and §3.6.
   const presets: readonly Preset[] = entry
     ? entry.sheetSizes.map((s) => ({ a: s.height, b: s.width }))
-    : SHEET_PRESETS;
+    : traitsOf(kind).sheetPresets;
   const preset = presetIndex(presets, sheet);
   const [customOpen, setCustomOpen] = useState(false);
   const custom = preset < 0 || customOpen;
@@ -311,31 +319,23 @@ export function MachineFields({
               // T259 (review #4 K7): with a library, the generic kinds sit under one heading.
               <SelectGroup data-testid="wizard-material-generic">
                 <SelectLabel>{t.genericGroup}</SelectLabel>
-                {[...WOOD, ...PLASTIC].map((k) => (
+                {GROUPS.flatMap((g) => g.kinds).map((k) => (
                   <SelectItem key={k} value={k}>
                     {materialName(k)}
                   </SelectItem>
                 ))}
               </SelectGroup>
             ) : (
-              <>
-                <SelectGroup>
-                  <SelectLabel>{materials.groupWood}</SelectLabel>
-                  {WOOD.map((k) => (
+              GROUPS.map((g) => (
+                <SelectGroup key={g.family}>
+                  <SelectLabel>{materials[GROUP_LABEL[g.family]]}</SelectLabel>
+                  {g.kinds.map((k) => (
                     <SelectItem key={k} value={k}>
                       {materialName(k)}
                     </SelectItem>
                   ))}
                 </SelectGroup>
-                <SelectGroup>
-                  <SelectLabel>{materials.groupPlastic}</SelectLabel>
-                  {PLASTIC.map((k) => (
-                    <SelectItem key={k} value={k}>
-                      {materialName(k)}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </>
+              ))
             )}
             <SelectSeparator />
             <SelectItem value="__stone" disabled>
@@ -682,7 +682,7 @@ export function SheetGrain({
   const grainText = useMessages().grainDial;
   const { stock } = project;
   const sheet = defaultSheet(project);
-  if (!materialHasGrain(materialKindOf(stock.material))) {
+  if (traitsOf(materialKindOf(stock.material)).direction.kind === 'none') {
     return (
       <p className="text-xs text-fg-muted" data-testid="sheet-grain-none">
         {t.grainNone}
@@ -767,7 +767,8 @@ export function SheetPreview({
   const cx = off.x + sheet.width / 2;
   const cy = sy(off.y, sheet.height) + sheet.height / 2;
   // T259: no hatch on a sheet without grain (the dial block says so).
-  const showGrain = materialHasGrain(materialKindOf(project.stock.material)) && grain !== null;
+  const showGrain =
+    traitsOf(materialKindOf(project.stock.material)).direction.kind !== 'none' && grain !== null;
   // The 3D sheet step shows the stock alone (a layout may be stale here) with the live grain.
   const sheetOnly = useMemo<Project>(
     () => ({

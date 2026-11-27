@@ -1,5 +1,5 @@
 /** "Artık parça ekle / düzelt" form (T291): values, checks, and the API body. */
-import { materialHasGrain, materialKindOf, type MaterialKind } from '@nittcam/core';
+import { traitsOf, materialKindOf, type MaterialKind } from '@nittcam/core';
 import type { NewOffcut, OffcutItem } from './offcuts-api';
 
 /** Same bounds as the API (`isMm`). */
@@ -20,7 +20,7 @@ export const emptyOffcutForm = (material: MaterialKind = 'mdf'): OffcutFormValue
   thickness: 18,
   width: null,
   height: null,
-  grain: materialHasGrain(material) ? 0 : null,
+  grain: traitsOf(material).direction.kind !== 'none' ? 0 : null,
 });
 
 export function offcutFormOf(o: OffcutItem): OffcutFormValues {
@@ -42,7 +42,7 @@ const mm = (v: number | null): v is number =>
  */
 export function offcutBody(v: OffcutFormValues): Omit<NewOffcut, 'sourceProjectId'> | null {
   if (v.material.trim() === '' || !mm(v.thickness) || !mm(v.width) || !mm(v.height)) return null;
-  const grain = materialHasGrain(materialKindOf(v.material)) ? v.grain : null;
+  const grain = traitsOf(materialKindOf(v.material)).direction.kind !== 'none' ? v.grain : null;
   return {
     material: v.material,
     thickness: v.thickness,

@@ -48,7 +48,7 @@ import {
   playbackRate,
   positionAt,
   exportBlockingIssues,
-  materialHasGrain,
+  traitsOf,
   materialKindOf,
   prevStepTime,
   simPlayheadAt,
@@ -523,7 +523,8 @@ function Player({
   const duration = sim.duration;
   const stock = useMemo(() => sheetSizeOf(project, sim.sheet), [project, sim.sheet]);
   // T259: no grain chip or legend line when the sheet has no grain (or the material has none).
-  const sheetGrain = materialHasGrain(materialKindOf(project.stock.material)) ? stock.grain : null;
+  const sheetGrain =
+    traitsOf(materialKindOf(project.stock.material)).direction.kind !== 'none' ? stock.grain : null;
   const bounds = useMemo(() => simBounds(stock, machine), [stock, machine]);
   // Fit keeps the sheet clear of the floating plate tabs (top) and the grain label (bottom).
   const hasTabs = Boolean(tabs);

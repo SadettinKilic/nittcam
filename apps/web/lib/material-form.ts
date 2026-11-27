@@ -2,7 +2,7 @@
  * Form model of the material library dialog (T121). Pure: the draft keeps `null` for empty or
  * unparsable number fields; `toMaterial` validates and returns the entry or the field errors.
  */
-import { libraryMaterialSchema, materialHasGrain, type LibraryMaterial } from '@nittcam/core';
+import { libraryMaterialSchema, traitsOf, type LibraryMaterial } from '@nittcam/core';
 
 export {
   draftFrom,
@@ -23,7 +23,7 @@ export function toMaterial(
       ? [{ width: s.width, height: s.height, ...(s.qty !== null ? { qty: s.qty } : {}) }]
       : [],
   );
-  const grain = materialHasGrain(d.kind) && d.grainOn ? d.grain : null;
+  const grain = traitsOf(d.kind).direction.kind !== 'none' && d.grainOn ? d.grain : null;
   if (d.name.trim() === '') errors.name = true;
   if (thicknesses.length === 0 || thicknesses.some((t) => !(t > 0 && t <= 200))) {
     errors.thicknesses = true;
@@ -39,7 +39,7 @@ export function toMaterial(
     errors.sheets = true;
   }
   if (
-    materialHasGrain(d.kind) &&
+    traitsOf(d.kind).direction.kind !== 'none' &&
     d.grainOn &&
     (d.grain === null || d.grain < 0 || d.grain >= 180)
   ) {

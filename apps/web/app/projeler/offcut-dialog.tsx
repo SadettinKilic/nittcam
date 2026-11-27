@@ -1,6 +1,6 @@
 'use client';
 
-import { MATERIAL_KINDS, materialHasGrain, materialKindOf } from '@nittcam/core';
+import { MATERIAL_KINDS, traitsOf, materialKindOf } from '@nittcam/core';
 import {
   Button,
   Dialog,
@@ -65,7 +65,7 @@ export function OffcutDialog({
   >({});
   const ids = { material: useId(), grain: useId() };
   const kind = materialKindOf(v.material);
-  const grainable = materialHasGrain(kind);
+  const grainable = traitsOf(kind).direction.kind !== 'none';
   // A stored material that is not a known kind stays selectable as itself.
   const options: string[] = kind || !item ? [...MATERIAL_KINDS] : [v.material, ...MATERIAL_KINDS];
 
@@ -121,7 +121,8 @@ export function OffcutDialog({
                   setV((x) => ({
                     ...x,
                     material: m,
-                    grain: materialHasGrain(materialKindOf(m)) ? (x.grain ?? 0) : null,
+                    grain:
+                      traitsOf(materialKindOf(m)).direction.kind !== 'none' ? (x.grain ?? 0) : null,
                   }))
                 }
               >

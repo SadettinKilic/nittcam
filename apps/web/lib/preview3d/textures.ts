@@ -7,7 +7,10 @@
  * direction of every part. Tileable in both directions (integer frequencies only).
  */
 
-export type MaterialLook = 'mdf' | 'plywood' | 'melamine' | 'solidWood' | 'acrylic' | 'pvc';
+import { MATERIAL_KINDS, MATERIAL_TRAITS, type MaterialKind } from '@nittcam/core';
+
+/** One look per material kind; colour token, roughness, stripes and noise come from the traits (T342). */
+export type MaterialLook = MaterialKind;
 
 /** Texture size in pixels (power of two: mipmaps, repeat wrapping). */
 export const TEXTURE_SIZE = 256;
@@ -15,38 +18,27 @@ export const TEXTURE_SIZE = 256;
 /** Millimetres covered by one texture tile along and across the grain. */
 export const TILE_MM = { along: 1200, across: 300 } as const;
 
-/** Look of a stock material id (`project.stock.material`); unknown kinds read as MDF. */
+/**
+ * Look of a stock material id (`project.stock.material`): a kind id gives its own look, anything
+ * else (aliases included) reads as MDF.
+ */
 export function materialLook(material: string): MaterialLook {
-  switch (material) {
-    case 'plywood':
-    case 'melamine':
-    case 'solidWood':
-    case 'acrylic':
-    case 'pvc':
-      return material;
-    default:
-      return 'mdf';
-  }
+  return MATERIAL_KINDS.find((k) => k === material) ?? 'mdf';
 }
 
 /** Token custom property of a look's base colour (`packages/ui/src/tokens.css`). */
-export const MATERIAL_TOKEN: Record<MaterialLook, string> = {
-  mdf: '--color-mat-mdf',
-  plywood: '--color-mat-plywood',
-  melamine: '--color-mat-melamine',
-  solidWood: '--color-mat-solid-wood',
-  acrylic: '--color-mat-acrylic',
-  pvc: '--color-mat-pvc',
-};
+export const MATERIAL_TOKEN = Object.fromEntries(
+  MATERIAL_KINDS.map((k) => [k, MATERIAL_TRAITS[k].look.token]),
+) as Record<MaterialLook, string>;
 
 /** True when the look carries visible grain stripes. */
 export function hasStripes(look: MaterialLook): boolean {
-  return look === 'plywood' || look === 'solidWood';
+  return MATERIAL_TRAITS[look].look.stripes;
 }
 
 /** Surface parameters: matte everywhere (no glossy "game" look), acrylic a little smoother. */
 export function surfaceOf(look: MaterialLook): { roughness: number } {
-  return { roughness: look === 'acrylic' ? 0.55 : look === 'pvc' ? 0.7 : 0.92 };
+  return { roughness: MATERIAL_TRAITS[look].look.roughness };
 }
 
 /** Parses `#rgb`, `#rrggbb` or `rgb(r, g, b)`; unknown → mid grey. */
@@ -84,7 +76,7 @@ export function materialPixels(look: MaterialLook, base: string, seed = 1): Uint
   const [r0, g0, b0] = parseColor(base);
   const out = new Uint8ClampedArray(N * N * 4);
   const rand = rng(seed);
-  const noiseAmp = look === 'mdf' ? 0.045 : hasStripes(look) ? 0.02 : 0.008;
+  const noiseAmp = MATERIAL_TRAITS[look].look.noise;
   // Stripe layers: integer frequencies across (v) keep the tile seamless; waviness along u too.
   const layers = hasStripes(look)
     ? Array.from({ length: 4 }, (_, i) => ({

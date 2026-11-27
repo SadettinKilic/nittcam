@@ -1989,21 +1989,21 @@ Acceptance:
 Done (MB1): spec edited (D-118/D-130 linked, no new decision entry); research comparison in `docs/metal/metal-analizi.md` §4.5.
 Tester focus: none (docs).
 
-### T341 Material traits table for the six existing kinds   [status: todo]   (pre-FT)
+### T341 Material traits table for the six existing kinds   [status: done]   (pre-FT)
 Spec: §3.6 "Malzeme davranışı" (new)  ·  Depends: –  ·  Owner: dev
 Acceptance:
-- [ ] `packages/core/src/machine/material-traits.ts`: `MaterialFamily`, `MaterialTraits`, `MATERIAL_TRAITS` for `mdf`, `plywood`, `melamine`, `solidWood`, `acrylic`, `pvc`, and `traitsOf(kind | null)` (null = today's behaviour); pure data, no zod
-- [ ] the rows carry today's constants (`TAB_DEFAULTS`, `TAB_BOUNDS`, `SKIN_BOUNDS`, `OPERATION_TOOL_TYPES`, grain yes/no, look); a test asserts equality with those constants, and a snapshot test locks the six rows
-- [ ] `materialHasGrain` delegates to `traitsOf(kind).direction.kind !== 'none'`; nothing else in core changes behaviour
-- [ ] full core test suite and goldens unchanged
+- [x] `packages/core/src/machine/material-traits.ts`: `MaterialFamily`, `MaterialTraits`, `MATERIAL_TRAITS` for `mdf`, `plywood`, `melamine`, `solidWood`, `acrylic`, `pvc`, and `traitsOf(kind | null)` (null = today's behaviour); pure data, no zod
+- [x] the rows carry today's constants (`TAB_DEFAULTS`, `TAB_BOUNDS`, `SKIN_BOUNDS`, `OPERATION_TOOL_TYPES`, grain yes/no, look); a test asserts equality with those constants, and a snapshot test locks the six rows
+- [x] `materialHasGrain` delegates to `traitsOf(kind).direction.kind !== 'none'`; nothing else in core changes behaviour
+- [x] full core test suite and goldens unchanged
 Tester focus: the equality test really compares against the live constants (change one constant locally and the test fails).
 
-### T342 Screens and API read the traits (no visible change)   [status: todo]   (pre-FT)
+### T342 Screens and API read the traits (no visible change)   [status: done]   (pre-FT)
 Spec: §3.6  ·  Depends: T341  ·  Owner: dev
 Acceptance:
-- [ ] the 11 `materialHasGrain` call sites and the kind switches in `lib/preview3d/textures.ts`, `components/wizard/machine-step.tsx` (groups, sheet presets), `lib/material-form.ts`, `lib/offcut-form.ts`, `app/api/offcuts/[id]/route.ts`, `lib/server/pdf/project-pdf.ts` read `traitsOf` (direction, look, group, presets)
-- [ ] the material picker builds its groups from the families present in the table (today: Ahşap, Plastik); the "yakında" row stays
-- [ ] no visual baseline changes; e2e of steps 1–5 unchanged
+- [x] the 11 `materialHasGrain` call sites and the kind switches in `lib/preview3d/textures.ts`, `components/wizard/machine-step.tsx` (groups, sheet presets), `lib/material-form.ts`, `lib/offcut-form.ts`, `app/api/offcuts/[id]/route.ts`, `lib/server/pdf/project-pdf.ts` read `traitsOf` (direction, look, group, presets)
+- [x] the material picker builds its groups from the families present in the table (today: Ahşap, Plastik); the "yakında" row stays
+- [x] no visual baseline changes; e2e of steps 1–5 unchanged
 Tester focus: visual diff of step 1, Parçalar, Dizilim, Ayarlar → Malzemeler, offcut dialog is empty.
 
 ### T343 Tab, skin and small-part limits come from the traits   [status: todo]   (post-FT)
