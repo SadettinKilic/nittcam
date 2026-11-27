@@ -2262,3 +2262,149 @@ Spec: §7.3  ·  Depends: T370, T371  ·  Owner: owner
 Acceptance:
 - [ ] test cut and engraving on brass sheet; release decision
 Tester focus: none (human gate).
+
+---
+
+## M-Montaj: Montaj tezgâhı (exit: any project's parts, wood or metal, can be put together in 3D, turned freely and checked for fit; ACM trays fold along their V-grooves)   [status: todo, D-131]
+
+Owner 2026-11-28: "ahşapta dolap ekle deyince montaj görünümü oluyor; metalde de o tarz bir ihtiyaç olursa diye onu da geliştir; parçaları her şekilde döndürüp oturuyor mu diye bakabilsin". Today (T158, `components/preview3d/assembly-scene.tsx`) only cabinet-generator boards stand in their box, read-only. D-131 turns this into a **montaj tezgâhı**: a per-project 3D workbench. Display only: it never changes nesting, toolpath or NC. Runs after B65, B66 and MB1–MB4.
+
+| Batch | Tasks |
+| --- | --- |
+| B-M1 | T386, T387 |
+| B-M2 | T388, T389 |
+| B-M3 | T390, T391 (T391 after MB5 V-groove) |
+
+### T386 Assembly model in the project   [status: todo]
+Acceptance:
+- [ ] project document gets `assembly: { instances: [{ id, partId, copy, position [x,y,z] mm, rotation quaternion, hidden }], updatedAt }` (zod schema; old projects stay valid with an empty assembly); every copy of a part (quantity) can be placed once
+- [ ] seeding: cabinet-generator parts start in their box positions (today's `assemblyFaceMatrix`); other parts start laid flat in a row ("tezgâh") next to the origin
+- [ ] pure helpers: part solid = outer contour extruded by thickness minus holes/pockets (existing `cachedPartMesh`), world matrix from instance; unit tests (fast-check: rotation keeps volume and bounding size)
+- [ ] part edits keep instances valid (deleted part → instance removed; quantity drop → extra copies removed)
+Tester focus: old projects open; cabinet project seeds as today.
+
+### T387 Montaj tezgâhı screen: move and turn parts freely   [status: todo]
+Acceptance:
+- [ ] "Montaj" opens for every project (not only cabinets): orbit/pan/zoom (same shortcuts as T381), presets Üst/Ön/Sağ/İzometrik, part list on the side (show/hide, isolate, search)
+- [ ] select a part → gizmo to move (axis arrows + plane) and rotate (rings); rotation snaps to 15° (Shift = free, Ctrl = 90°); numeric fields for position and angles; buttons "X/Y/Z etrafında 90° çevir"
+- [ ] **yüzey yüzeye oturt**: pick a face on part A, then a face on part B → B turns and moves so the faces lie flush (normals opposite), then slides on that face; edge/corner snap within 2 mm
+- [ ] undo/redo for every assembly edit; autosave like the rest of the project (D-117 queue)
+- [ ] 300 parts ≥ 45 fps while orbiting (spec §3.8); lazy-loaded chunk
+Tester focus: build a box from 5 free parts with face-to-face; undo; reload keeps the assembly.
+
+### T388 Fit check: "Oturuyor mu?"   [status: todo]
+Acceptance:
+- [ ] overlap check between all visible instances (BVH, `three-mesh-bvh` MIT, in a worker): overlapping pairs turn red with overlap depth in mm; touching (≤ 0.05 mm) counts as fit; gaps ≤ 1 mm listed ("boşluk 0,6 mm")
+- [ ] hole alignment on mating faces (centre distance ≤ 0.2 mm green, else orange with the offset), so dowel/screw positions can be verified
+- [ ] result panel lists issues; clicking one frames the pair; never blocks export
+- [ ] tests for the overlap/gap math on boxes and rotated boxes
+Tester focus: two panels overlapping by 2 mm; misaligned dowel holes.
+
+### T389 Explode, section and measure   [status: todo]
+Acceptance:
+- [ ] explode slider (cabinet: along the box axes)
+- [ ] section plane (X/Y/Z, drag) to look inside joints
+- [ ] measure tool: point-to-point and face-to-face, snapping to vertices/edges
+- [ ] "Montaj görseli" PNG and an optional "Montaj föyü" page in the project PDF (exploded view + numbered part list)
+Tester focus: PDF page, section through a shelf joint.
+
+### T390 Metal parts in the workbench   [status: todo]
+Depends: MB3 (ACM, aluminium kinds)
+Acceptance:
+- [ ] ACM and aluminium parts render with their look and real thickness; materials can be mixed in one assembly (aluminium bracket on a wood panel)
+- [ ] fastener helper: standard screw/rivet marker through aligned holes (display only; counted in the PDF list as "bağlantı elemanı")
+Tester focus: mixed wood + aluminium assembly; PDF list.
+
+### T391 ACM fold preview ("Katla")   [status: todo]
+Depends: T352 (V-groove operation)
+Acceptance:
+- [ ] an ACM part with V-groove lines shows folded: each groove is a hinge line; one slider folds all from 0 to the designed angle (default 90°), or per groove
+- [ ] folded result checked like T388 (overlapping flanges red, corner gap shown): the owner sees before cutting whether a tray closes
+- [ ] inner bend radius from the V angle and remaining skin; flange length uses the groove's bend allowance (documented in `docs/metal/metal-analizi.md`); unit tests on a 4-flange tray
+Tester focus: tray with 4 flanges and corner reliefs folds closed without overlap.
+
+---
+
+## M-3D: 3D işleme (exit: a V-carved sign and a relief panel are cut on a real machine; an STL part is roughed and finished with checked G-code)   [status: todo, D-132; plan `docs/3d/3d-cnc-plani.md`]
+
+Owner 2026-11-28: "3D CNC için de sağlam bir backlog oluştur". Starts after field test 1 and M-Metal tier A unless the owner moves it. Rules for every task: core stays pure and deterministic (golden NC for every new strategy, `needs-human` for new goldens); heavy compute in a Web Worker with progress and cancel; existing goldens byte-identical; no GPL/AGPL/LGPL compute libs (own drop-cutter; three.js STL loader, MIT).
+
+| Batch | Tasks | Tier |
+| --- | --- | --- |
+| 3B1 | T400–T402 | foundation: tool kinds, heightfield, simulation grid |
+| 3B2 | T403–T405 | 3D-A V-carve |
+| 3B3 | T406–T408 | 3D-B input: relief image, STL, placement |
+| 3B4 | T409–T411 | 3D-B roughing, finishing, scallop/time |
+| 3B5 | T412–T414 | checker rules, post streaming, 3D simulation UI |
+| 3B6 | T415–T417 | field kit, machine test (gate), arc fitting |
+| 3B7 | T418–T420 | 3D-C two-sided, rest machining, pencil (outline) |
+| later | T421 | 3D-D rotary axis (outline) |
+
+### T400 Tool kinds for 3D   [status: todo]
+- [ ] tool library gets `ballNose` (Ø), `taperedBall` (tip Ø, angle), `vBit` (angle, tip Ø) with cutting length and holder Ø; forms and validation; existing tools and goldens unchanged
+- [ ] core `toolProfile(tool)` returns the radial profile z(r) used by drop-cutter and simulation; tests per kind
+
+### T401 Heightfield core   [status: todo]
+- [ ] `packages/core/src/3d/heightfield.ts`: tiled float32 grid, bilinear sample, mesh rasteriser (top surface, 3-axis visible from above), from-image (grey → depth, min/max, invert, smoothing), clamp to stock
+- [ ] deterministic; property tests (raster of a box equals its top; constant grey is flat); 1000×600 mm at 0.2 mm in < 3 s in a worker on the dev PC (benchmark, skipped in CI)
+
+### T402 Material-removal simulation grid   [status: todo]
+- [ ] core: stock heightfield lowered by `sweep(tool profile, move)` along G0/G1/G2/G3 from parsed NC (same parser as §6.5)
+- [ ] diff vs target → "kalan malzeme" and "gouge" maps; tests on a known pocket NC
+
+### T403 V-carve toolpath   [status: todo]
+- [ ] core: for closed contours (text, shapes) a medial-axis / offset-based V path: depth = local half-width / tan(angle/2), clamped by max depth (flat area then cleared as a pocket with a flat tool)
+- [ ] G2/G3 kept where the input is arcs; golden NC for text and a star
+
+### T404 V-carve on the board   [status: todo]
+- [ ] select contours/text → "V-oyma" operation (tool, max depth, optional flat clear tool); shaded depth preview; in the operation list and simulation
+
+### T405 Checker rules for V-carve   [status: todo]
+- [ ] R20: V depth ≤ cutting length and ≤ thickness − 1 mm; R21: V angle in the NC matches the tool; Turkish NC header lines; tests
+
+### T406 Relief from an image   [status: todo]
+- [ ] import PNG/JPG (≤ 16 MP) onto a part: size, max depth, base thickness, invert, smooth, crop to contour; shaded 3D preview on the part
+
+### T407 STL import   [status: todo]
+- [ ] binary/ASCII STL (≤ 50 MB; watertight warning; mm/inch), orient (pick top face, 90° steps), scale to thickness, position on the part; stored via the `storage` adapter with hash
+
+### T408 3D operation model and nesting   [status: todo]
+- [ ] project schema `operations3d` per part (source ref, placement, strategies); part nests normally and the ops follow it; order: 3D ops before inner/outer contours; old projects stay valid
+
+### T409 Roughing (Z-level)   [status: todo]
+- [ ] layers by step-down; area above target + allowance cleared with offset/zig-zag of a flat tool, ramp entry; allowance default 0.5 mm; golden NC for a hemisphere and a relief tile
+
+### T410 Finishing (parallel raster)   [status: todo]
+- [ ] drop-cutter of the tool profile on the heightfield along raster lines (0/45/90°), stepover from scallop; boundary = part contour or model silhouette; golden NC
+
+### T411 Scallop, quality presets and time estimate   [status: todo]
+- [ ] Kaba/Orta/İnce → scallop 0.2/0.1/0.05 mm; stepover = 2·√(2Rh − h²); time estimate from feed and the profile's acceleration; shown before export ("≈ 2 sa 40 dk")
+
+### T412 Checker rules R22–R24   [status: todo]
+- [ ] R22 holder collision (holder never below stock top in the cut area); R23 gouge > 0.05 mm is an error; R24 ball/V tools never plunge straight deeper than 1 mm (ramp/helix); tests
+
+### T413 Post: streaming and size   [status: todo]
+- [ ] NC generation streams with progress; > 50 MB warns; Mach3 post handles 1 M lines; server download as today
+
+### T414 3D simulation and review UI   [status: todo]
+- [ ] Simülasyon shows the removal result for 3D ops (grid mesh), playback, rest/gouge colours, roughing/finishing toggle; 2D height-map fallback on weak GPUs
+
+### T415 Field kit for 3D   [status: todo]
+- [ ] runbook page and test files: V-carve plaque, 80×80 relief tile, hemisphere; depth measuring sheet (5 points)
+
+### T416 Machine test: 3D (owner)   [status: todo]   (gate)
+- [ ] air cut, then MDF pieces from T415; depth within ±0.2 mm; "NittCam test etti" for 3D ops
+
+### T417 Arc fitting for 3D paths   [status: todo]
+- [ ] fit G2/G3 to raster/roughing polylines within 0.01 mm to shrink NC 3–10×; goldens
+
+### T418 Two-sided machining (3D-C, outline)   [status: todo]
+Registration pins/holes, flip axis, second-side ops from the model's bottom; checker for pin positions.
+
+### T419 Rest machining (outline)   [status: todo]
+A smaller tool cleans what the bigger one could not reach, from the T402 rest map.
+
+### T420 Pencil / corner cleanup (outline)   [status: todo]
+
+### T421 Rotary 4th axis (3D-D, outline)   [status: todo]
+Wrapped toolpaths for turned legs; needs controller research (A axis) and the owner's machine inventory.
