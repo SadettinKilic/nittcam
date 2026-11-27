@@ -22,7 +22,8 @@ function manyParts(): string {
 }
 
 const mode = (page: Page, m: 'minWaste' | 'fastest' | 'minToolChanges') =>
-  page.getByRole('radio', { name: w.modes[m], exact: true });
+  // T379: the modes are action buttons (a click nests at once).
+  page.getByTestId(`layout-mode-${m}`);
 
 test.describe('B22 nesting options', () => {
   test('mode cards and rotation policy are commands; each card keeps its last result', async ({
@@ -41,13 +42,21 @@ test.describe('B22 nesting options', () => {
 
     await mode(page, 'fastest').click();
     await expect(group).toHaveAttribute('data-value', 'fastest');
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     await expect(page.getByTestId('layout-mode-result-fastest')).toBeVisible({ timeout: 20_000 });
 
     // Back to min waste: its result is reused (no worker run, no progress bar).
     await mode(page, 'minWaste').click();
     await expect(group).toHaveAttribute('data-value', 'minWaste');
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     await expect(page.getByTestId('nesting-progress')).toHaveCount(0);
 
     // Rotation policy: one radio group, default "free".
@@ -96,7 +105,11 @@ test.describe('B22 nesting options', () => {
       g.__obs.observe({ type: 'longtask' });
     });
 
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     const progress = page.getByTestId('nesting-progress');
     await expect(progress).toBeVisible();
     await expect(page.getByRole('progressbar', { name: n.progress })).toBeVisible();
@@ -119,7 +132,11 @@ test.describe('B22 nesting options', () => {
     await expect(page.getByTestId('nesting-waste')).toHaveText(before.waste ?? '');
     await expect(page.getByTestId('layout-mode-result-fastest')).toHaveCount(0);
     // A new run after the cancel works.
-    await page.getByRole('button', { name: n.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     await expect(page.getByTestId('layout-mode-result-fastest')).toBeVisible({ timeout: 60_000 });
     expect(problems).toEqual([]);
   });

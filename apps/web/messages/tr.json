@@ -200,7 +200,8 @@
       "general": "Genel",
       "navigation": "Gezinme",
       "project": "Proje",
-      "board": "Çizim tahtası"
+      "board": "Çizim tahtası",
+      "canvas": "Dizilim, simülasyon ve 3D"
     },
     "items": {
       "palette": "Komut paletini aç",
@@ -235,7 +236,11 @@
       "boardCancel": "Çizimi bırak / seçimi temizle",
       "boardPanHold": "Basılı tut: kaydır",
       "boardZoomIn": "Yakınlaştır",
-      "boardZoomOut": "Uzaklaştır"
+      "boardZoomOut": "Uzaklaştır",
+      "canvasZoomIn": "Yakınlaştır",
+      "canvasZoomOut": "Uzaklaştır",
+      "canvasFit": "Plakayı sığdır",
+      "canvasFitJob": "İşe sığdır (yoksa plakaya)"
     },
     "boardTitle": "Çizim tahtası kısayolları",
     "boardDescription": "Çizerken sayı yazıp Enter'a basın; Esc vazgeçer. Kısayollar metin kutusunda çalışmaz.",
@@ -770,6 +775,7 @@
       "running": "Diziliyor…",
       "runningPercent": "Diziliyor… %{pct}",
       "cancel": "İptal",
+      "renestMode": "{mode} hedefiyle yeniden diz",
       "progress": "Dizilim ilerlemesi",
       "progressText": "{done} / {total} deneme",
       "cancelled": "Dizilim iptal edildi; önceki dizilim aynen duruyor.",
@@ -777,7 +783,7 @@
       "toolNote": "Takım çapı, seçilen makinenin bu malzeme ve kalınlık için önerdiği takımdan gelir.",
       "about": "Dizilim hakkında",
       "toolChip": "Takım Ø{value}",
-      "none": "Henüz dizilim yok. \"Diz\" ile başlatın.",
+      "none": "Henüz dizilim yok. Bir hedefe tıklayın; parçalar hemen dizilir.",
       "sheets": "Plaka",
       "waste": "Fire",
       "utilisation": "Kullanım",
@@ -785,7 +791,7 @@
       "bySizeLabel": "Plaka boylarına göre",
       "bySize": "{w} × {h} mm: {count} plaka, fire {waste}",
       "unplaced": "{count} parça dizilimde yok (plakaya sığmıyor ya da dizilimden sonra eklendi).",
-      "stale": "Dizilim sürerken parçalar değişti; sonuç uygulanmadı. Yeniden \"Diz\"e basın.",
+      "stale": "Dizilim sürerken parçalar değişti; sonuç uygulanmadı. Hedefe yeniden tıklayın.",
       "failed": "Dizilim çalıştırılamadı: {error}",
       "unchanged": "Dizilim zaten güncel.",
       "fromOffcuts": "{count} plaka artık parçadan kesiliyor."
@@ -1158,7 +1164,7 @@
     },
     "empty": {
       "title": "Simüle edilecek dizilim yok",
-      "body": "Önce Parçalar adımında parçaları girin ve \"Diz\" ile plakaya yerleştirin. Simülasyon aynı taslak projeyi kullanır.",
+      "body": "Önce Parçalar adımında parçaları girin, Dizilim adımında bir hedefe tıklayarak plakaya yerleştirin. Simülasyon aynı taslak projeyi kullanır.",
       "action": "Parçalara git"
     },
     "loading": "G-code üretiliyor, kontrol ediliyor ve geri okunuyor…",
@@ -1929,7 +1935,8 @@
     },
     "layout": {
       "options": "Dizilim ayarları",
-      "mode": "Mod",
+      "mode": "Hedef",
+      "modeHelp": "Tıklayınca o hedefle hemen dizer; seçili olana tekrar tıklamak yeniden dizer.",
       "modes": {
         "minWaste": "En az fire",
         "fastest": "En hızlı",
@@ -1970,14 +1977,16 @@
       },
       "gap": "Parça arası pay (mm)",
       "margin": "Kenar payı (mm)",
-      "empty": "Henüz dizilim yok. “Diz” ile parçaları plakaya yerleştirin.",
+      "empty": "Henüz dizilim yok. Soldan bir hedefe tıklayın; parçalar plakaya yerleşir.",
       "noParts": "Önce Parçalar adımında parça ekleyin.",
       "marginWarning": "Kenar payı Ø{tool} takım için en az {min} mm olmalı; yoksa takım plakanın dışına çıkar.",
-      "gapNote": "Parça arası boşluk: takım Ø{tool} + pay {gap} = {clear} mm.",
+      "gapNote": "Boşluk = Ø{tool} + pay {gap} = {clear} mm",
+      "marginHint": "Takım için en az {min} mm",
+      "spacingGroup": "Parça arası ve kenar payı",
       "tabSpacingNote": "Köprü açıkken parça arası pay en az takım Ø + 3 mm ({gap} mm), kenar payı en az takım Ø + 3 mm ({margin} mm) kullanılır."
     },
     "simulation": {
-      "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında “Diz” ile parçaları yerleştirin.",
+      "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında bir hedefe tıklayarak parçaları yerleştirin.",
       "toLayout": "Dizilim adımına git",
       "noMachine": "Simülasyon için önce Makine ve plaka adımında bir makine seçin."
     },
@@ -3406,7 +3415,7 @@
       "items": {
         "makine": "Makineyi, malzemeyi ve plaka ölçüsünü seçin.",
         "parcalar": "Parça listesini yazın, yapıştırın, dolap ekleyin ya da çizin.",
-        "dizilim": "Diz’e basın; parçalar plakaya en az fireyle yerleşir.",
+        "dizilim": "Bir hedefe tıklayın (ör. En az fire); parçalar tek tıkla plakaya yerleşir.",
         "simulasyon": "Takım yolunu ve kesimi adım adım izleyin.",
         "export": "Kontrol listesini onaylayıp G-code’u indirin."
       }
@@ -3582,7 +3591,7 @@
           "Sol menüde ya da Projeler sayfasında “Yeni proje”ye basın. Proje ilk değişiklikte kendiliğinden kaydedilir; ayrıca kaydetmeniz gerekmez.",
           "Makine ve plaka: makineyi, malzemeyi ve plaka ölçüsünü seçin. Makine yoksa önce Makineler sayfasında ekleyin ve doğrulayın (bkz. Air cut).",
           "Parçalar: kesim listesini yazın, Excel’den yapıştırın ya da çizim tahtasında çizin.",
-          "Dizilim: “Diz” parçaları plakalara yerleştirir. Önizleme adımında 3D görünümü ve kesim simülasyonunu izleyin; kontroller geçmeden dışa aktarım açılmaz.",
+          "Dizilim: bir hedefe tıklamak parçaları plakalara yerleştirir. Önizleme adımında 3D görünümü ve kesim simülasyonunu izleyin; kontroller geçmeden dışa aktarım açılmaz.",
           "Dışa aktar: kontrol listesini onaylayın; NC dosyalarını, DXF, PDF ve etiketleri indirin. Çıktılar proje geçmişinde kalır."
         ]
       },

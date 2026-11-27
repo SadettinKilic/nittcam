@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
-import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { openNewProject, paste, saved, wizardReady } from './wizard-helpers';
 
 /** B20a tester: control cabinet without templates (T282 no line) + file name path (T283). */
@@ -33,7 +32,11 @@ for (const vp of [
     await saved(page);
     await page.getByTestId('wizard-next').click();
     await wizardReady(page, 'dizilim');
-    await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
     await saved(page);
     await page.getByTestId('wizard-next').click();

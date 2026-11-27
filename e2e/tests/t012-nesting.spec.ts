@@ -43,7 +43,9 @@ test.describe('T012 nesting', () => {
     const problems = watchConsole(page);
     await page.goto(URL);
     await goStep(page, 'dizilim');
-    const run = page.getByRole('button', { name: n.run, exact: true });
+    const run = page.locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    );
     await expect(run).toBeDisabled();
     await goStep(page, 'parcalar');
     await paste(page, KITCHEN_3, 5);

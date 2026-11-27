@@ -1,13 +1,10 @@
 import { expect, test } from '@playwright/test';
-import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { goStep, openNewProject, paste } from './wizard-helpers';
 
 /**
  * T168: leftovers are proposed after nesting and saved only on confirm; they show in Projeler →
  * Artık parçalar; the next project of the same material nests on the offcut first.
  */
-
-const n = tr.cutList.nesting;
 
 test('offcut proposals → stock → used first by the next nesting', async ({ page }) => {
   await openNewProject(page, 'parcalar');
@@ -38,7 +35,11 @@ test('offcut proposals → stock → used first by the next nesting', async ({ p
   await expect(page.getByTestId('nesting-offcuts')).toHaveCount(0);
   await page.getByTestId('layout-use-offcuts').click();
   await expect(page.getByTestId('layout-offcut-count')).not.toHaveAttribute('data-count', '0');
-  await page.getByRole('button', { name: n.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   await expect(page.getByTestId('nesting-offcuts')).toHaveAttribute('data-count', '1', {
     timeout: 20_000,
   });

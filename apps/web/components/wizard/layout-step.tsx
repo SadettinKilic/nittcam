@@ -44,8 +44,9 @@ import {
   type LockRequest,
   type PlacementRef,
 } from '../layout-view/layout-view';
-import { NestingPanel } from '../parts/nesting-panel';
-import { LayoutGrid } from 'lucide-react';
+import { NestingPanel, RunningLabel } from '../parts/nesting-panel';
+import { LayoutGrid, Loader2 } from 'lucide-react';
+import { focusRing } from '../page/page-header';
 import { Button, cn, RadioGroup, RadioGroupItem, Switch } from '@nittcam/ui';
 import { NumberField } from './number-field';
 import { WorkspaceLayout } from './workspace-layout';
@@ -96,6 +97,14 @@ function useNest(
   useEffect(() => {
     latest.current = { session, params };
   });
+  // T379: a mode click during a run restarts it; only the latest run may report or stop "running".
+  const runId = useRef(0);
+  const runningRef = useRef(false);
+  // The mode of the run in progress (its button shows the progress), null when idle.
+  const [runMode, setRunMode] = useState<NestingMode | null>(null);
+  // Bumped by a mode click: the run starts after the render that carries the new mode (the session
+  // of the click's render is stale once `setNestingMode` ran).
+  const [pendingRun, setPendingRun] = useState(0);
 
   // Stable (T281): passed to the memoised layout view as "Yeniden diz".
   const nest = useCallback(async () => {
@@ -117,6 +126,7 @@ function useNest(
     const { session, params } = latest.current;
     const base = session.project;
     const key = optionSetKey(base, params);
+    const id = ++runId.current;
     setMessage(null);
     const hit = cache.get(key);
     if (hit) {
@@ -124,9 +134,13 @@ function useNest(
       return;
     }
     setRunning(true);
+    runningRef.current = true;
+    setRunMode(base.nesting.mode);
     progress.set(null);
     try {
       const res = await worker.run(base, params, (done, total) => progress.set({ done, total }));
+      // A newer run (mode click during this one) owns the messages and the running state.
+      if (id !== runId.current) return;
       if (!res.ok) {
         if (res.error === NESTING_CANCELLED) setMessage({ kind: 'info', text: t.cancelled });
         else if (res.error !== 'terminated') {
@@ -140,12 +154,37 @@ function useNest(
         setCacheVersion((v) => v + 1);
       }
     } finally {
-      setRunning(false);
-      progress.set(null);
+      if (id === runId.current) {
+        setRunning(false);
+        runningRef.current = false;
+        setRunMode(null);
+        progress.set(null);
+      }
     }
   }, [worker, cache, progress, t]);
+
+  /**
+   * T379: a mode button nests at once with that mode (one click per goal). The selected mode
+   * nests again; a click during a run stops it and restarts with the clicked mode.
+   */
+  const nestMode = useCallback(
+    (mode: NestingMode) => {
+      const { session } = latest.current;
+      if (runningRef.current) worker.cancel();
+      if (session.project.nesting.mode !== mode && !session.run('setNestingMode', { mode })) return;
+      setPendingRun((n) => n + 1);
+    },
+    [worker],
+  );
+  useEffect(() => {
+    // The run must start after the render that carries the new mode (see `pendingRun`).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (pendingRun > 0) void nest();
+  }, [pendingRun, nest]);
   return {
     nest,
+    nestMode,
+    runMode,
     cancel: worker.cancel,
     running,
     progress,
@@ -163,9 +202,13 @@ function useNest(
  */
 interface NestRun {
   running: boolean;
+  /** T379: the mode being nested while running (its button shows the progress). */
+  runMode: NestingMode | null;
   progress: NestProgressStore;
   message: NestMessage;
   nest: () => Promise<void>;
+  /** T379: nest with this mode at once (sets the mode first when it differs). */
+  nestMode: (mode: NestingMode) => void;
   cancel: () => void;
 }
 const NestRunContext = createContext<NestRun | null>(null);
@@ -206,11 +249,18 @@ export function LayoutStep({
     // T168: the stock offcuts go into the command (recorded in the log, so a replay is the same).
     return stock.offcuts.length > 0 ? { ...base, offcuts: stock.offcuts } : base;
   }, [toolDiameter, contourTool, stock.offcuts]);
-  const { nest, cancel, running, progress, message, nested, cache, cacheVersion } = useNest(
-    session,
-    params,
-    nt,
-  );
+  const {
+    nest,
+    nestMode,
+    runMode,
+    cancel,
+    running,
+    progress,
+    message,
+    nested,
+    cache,
+    cacheVersion,
+  } = useNest(session, params, nt);
   const project: Project = session.project;
   // T261 (D-045): entering Dizilim with parts and no layout runs the nesting once by itself (the
   // same command as "Diz", one undo step). An existing layout (or a locked part) is never
@@ -279,8 +329,8 @@ export function LayoutStep({
   }, [cache, cacheVersion, project, params]);
 
   const nestRun = useMemo<NestRun>(
-    () => ({ running, progress, message, nest, cancel }),
-    [running, progress, message, nest, cancel],
+    () => ({ running, runMode, progress, message, nest, nestMode, cancel }),
+    [running, runMode, progress, message, nest, nestMode, cancel],
   );
 
   // T281: elements and callbacks of the memoised layout view stay the same while a run starts
@@ -312,7 +362,12 @@ export function LayoutStep({
     ],
   );
   const hasParts = project.parts.length > 0;
-  const compactNest = useMemo(() => <CompactNest t={nt} hasParts={hasParts} />, [nt, hasParts]);
+  const modeNames = messages.wizard.layout.modes;
+  const currentMode = project.nesting.mode;
+  const compactNest = useMemo(
+    () => <CompactNest t={nt} modes={modeNames} mode={currentMode} hasParts={hasParts} />,
+    [nt, modeNames, currentMode, hasParts],
+  );
   const onLock = useCallback((req: LockRequest) => run('lockPlacement', req), [run]);
   const onLockMany = useCallback(
     (refs: PlacementRef[], locked: boolean) => run('lockPlacements', { refs, locked }),
@@ -388,31 +443,48 @@ export function LayoutStep({
  * Below 1024 px "Diz" stays next to the panel buttons, never scrolled away (T198); while it runs
  * the same place offers "İptal" (T163).
  */
-function CompactNest({ t, hasParts }: { t: Messages['cutList']['nesting']; hasParts: boolean }) {
-  const { running, nest, cancel } = useNestRun();
-  return running ? (
-    <Button
-      variant="outline"
-      onClick={cancel}
-      data-testid="layout-cancel-compact"
-      className="shrink-0"
-    >
-      {t.cancel}
-    </Button>
-  ) : (
-    <Button
-      onClick={() => void nest()}
-      disabled={!hasParts}
-      data-testid="layout-nest-compact"
-      className="shrink-0"
-    >
-      <LayoutGrid aria-hidden />
-      {t.run}
-    </Button>
+function CompactNest({
+  t,
+  modes,
+  mode,
+  hasParts,
+}: {
+  t: Messages['cutList']['nesting'];
+  modes: Messages['wizard']['layout']['modes'];
+  mode: NestingMode;
+  hasParts: boolean;
+}) {
+  const { running, nestMode, cancel } = useNestRun();
+  // T379: no separate "Diz"; below 1024 px the selected goal stays in reach and nests again.
+  // While a run goes it shows a spinner and "İptal" appears beside it, never in its place (T374).
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      <Button
+        onClick={() => nestMode(mode)}
+        disabled={!hasParts}
+        aria-busy={running || undefined}
+        data-testid="layout-nest-compact"
+        aria-label={fill(t.renestMode, { mode: modes[mode] })}
+        className="shrink-0"
+      >
+        {running ? <Loader2 aria-hidden className="animate-spin" /> : <LayoutGrid aria-hidden />}
+        <span className={running ? 'sr-only' : undefined}>{modes[mode]}</span>
+      </Button>
+      {running ? (
+        <Button
+          variant="outline"
+          onClick={cancel}
+          data-testid="layout-cancel-compact"
+          className="shrink-0"
+        >
+          {t.cancel}
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
-/** The options panel of the step: mode cards, gap/margin, rotation, "Diz" and the warnings. */
+/** The options panel of the step: mode buttons (T379), gap/margin, rotation and the warnings. */
 function NestSettings({
   messages,
   project,
@@ -435,7 +507,7 @@ function NestSettings({
   offcutCount: number;
   projectId: string | null;
 }) {
-  const { running, progress, message, nest, cancel } = useNestRun();
+  const { running, runMode, progress, message, nestMode, cancel } = useNestRun();
   const side = useContext(SideContext);
   const t = messages.wizard.layout;
   const nt = messages.cutList.nesting;
@@ -455,40 +527,61 @@ function NestSettings({
           <span id={modeLabelId} className="text-sm font-medium text-fg">
             {t.mode}
           </span>
-          <RadioGroup
-            value={project.nesting.mode}
-            onValueChange={(v) => run('setNestingMode', { mode: v })}
+          <p className="text-xs text-fg-muted">{t.modeHelp}</p>
+          {/* T379: one click per goal. Each mode is an action button that nests at once; the
+              active result's mode is pressed, and clicking it again nests again. */}
+          <div
+            role="group"
             aria-labelledby={modeLabelId}
             data-testid="layout-mode"
             data-value={project.nesting.mode}
-            className="gap-1.5"
-            disabled={running}
+            className="flex flex-col gap-1.5"
           >
             {MODES.map((m) => {
               const selected = project.nesting.mode === m;
+              const busy = running && runMode === m;
               const result = modeResults[m];
               return (
-                <label
+                <button
                   key={m}
+                  type="button"
                   data-testid={`layout-mode-${m}`}
+                  data-running={busy ? '' : undefined}
+                  aria-pressed={selected}
+                  aria-busy={busy || undefined}
+                  aria-describedby={`${modeLabelId}-${m}`}
+                  disabled={project.parts.length === 0}
+                  onClick={() => nestMode(m)}
                   className={cn(
-                    'flex cursor-pointer items-start gap-2.5 rounded-md border px-2.5 py-2',
-                    'transition-colors duration-(--duration-fast)',
+                    'flex w-full cursor-pointer items-start gap-2.5 rounded-md border px-2.5 py-2 text-left',
+                    'transition-colors duration-(--duration-fast) disabled:cursor-not-allowed disabled:opacity-60',
+                    focusRing,
                     selected
                       ? 'border-accent-border bg-accent-subtle'
                       : 'border-border bg-surface hover:bg-surface-hover',
                   )}
                 >
-                  <RadioGroupItem
-                    value={m}
-                    aria-label={t.modes[m]}
-                    aria-describedby={`${modeLabelId}-${m}`}
-                    className="mt-0.5 shrink-0"
-                  />
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full [&_svg]:size-3.5',
+                      selected
+                        ? 'bg-accent text-accent-fg'
+                        : 'border border-border-strong text-fg-muted',
+                    )}
+                  >
+                    {busy ? <Loader2 className="animate-spin" /> : <LayoutGrid />}
+                  </span>
                   <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-sm font-medium text-fg">{t.modes[m]}</span>
-                    {/* B44: only the chosen mode shows its hint (screen readers get all), so
-                        the panel stays short and "Diz" does not move. */}
+                    <span className="text-sm font-medium text-fg">
+                      {t.modes[m]}
+                      {busy ? (
+                        <span className="ml-1.5 text-xs font-normal text-fg-muted">
+                          <RunningLabel t={nt} store={progress} />
+                        </span>
+                      ) : null}
+                    </span>
+                    {/* B44: only the chosen mode shows its hint (screen readers get all). */}
                     <span
                       id={`${modeLabelId}-${m}`}
                       className={selected ? 'text-xs text-fg-muted' : 'sr-only'}
@@ -513,13 +606,21 @@ function NestSettings({
                       </span>
                     ) : null}
                   </span>
-                </label>
+                </button>
               );
             })}
-          </RadioGroup>
+          </div>
         </div>
-        <div className="grid grid-cols-2 items-start gap-3">
+        {/* T380: pay and margin as one aligned group (subgrid rows: label, input, error, hint),
+            equal inputs, each with its own hint; the tabs note once under the group. */}
+        <div
+          role="group"
+          aria-label={t.spacingGroup}
+          data-testid="layout-spacing"
+          className="grid grid-cols-2 gap-x-3 gap-y-1.5"
+        >
           <NumberField
+            inRow
             label={t.gap}
             value={project.nesting.gap}
             min={-1}
@@ -546,6 +647,7 @@ function NestSettings({
             min={-1}
             errors={errors}
             onCommit={(margin) => run('setNestingOptions', { margin })}
+            inRow
             note={
               // T300 (CTO #12 E1, D-085): below the tool radius the cutter leaves the sheet.
               // D-129: with tabs the effective margin (Ø + 3) is what the placer keeps.
@@ -558,7 +660,15 @@ function NestSettings({
                     tone: 'warning',
                     testId: 'layout-margin-warning',
                   }
-                : undefined
+                : toolDiameter > 0
+                  ? {
+                      text: fill(t.marginHint, {
+                        min: mmText.format(minSheetMargin(toolDiameter)),
+                      }),
+                      tone: 'muted',
+                      testId: 'layout-margin-hint',
+                    }
+                  : undefined
             }
             testId="layout-margin"
           />
@@ -647,7 +757,7 @@ function NestSettings({
           </p>
         </div>
       </section>
-      {/* B44: "Diz" stays in reach at the bottom of the panel while the options scroll. */}
+      {/* B44: the result (and "İptal" while a run goes) stays in reach while the options scroll. */}
       <div className="lg:sticky lg:bottom-0 lg:z-10 lg:bg-bg">
         <NestingPanel
           t={nt}
@@ -656,7 +766,6 @@ function NestSettings({
           running={running}
           progress={progress}
           message={message}
-          onRun={() => void nest()}
           onCancel={cancel}
         />
       </div>

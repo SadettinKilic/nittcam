@@ -1,6 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { KITCHEN, STEP_KEYS, goStep, openNewProject, paste } from './wizard-helpers';
 
 // B4 tester (T109–T111): PO findings, keyboard-only wizard, Projeler states.
@@ -15,7 +14,11 @@ test('keyboard only: İleri/Geri with Enter walks all 5 steps and back', async (
   await expect(next).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(title).toHaveAttribute('data-step', 'dizilim');
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).focus();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   await next.focus();
@@ -77,7 +80,11 @@ test('no native <select> in the wizard steps (design-system Select)', async ({ p
   await goStep(page, 'parcalar');
   await paste(page, KITCHEN, 5);
   await goStep(page, 'dizilim');
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   expect(await page.locator('main select:visible').count()).toBe(0);
 });
@@ -89,7 +96,7 @@ test('layout 390 px: plate tabs do not overlap the grid toggle', async ({ page }
   await openNewProject(page, 'parcalar');
   await paste(page, KITCHEN, 5);
   await goStep(page, 'dizilim');
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page.getByTestId('layout-nest-compact').click();
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   const tabs = await page.getByRole('tab').last().boundingBox();
   // T249: the grid is an icon toggle button now (same as the board).

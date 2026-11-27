@@ -122,7 +122,7 @@ test('nesting mode change: no long task over 200 ms', async ({ page }) => {
   await wizardReady(page, 'dizilim');
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   const mode = page.getByTestId('layout-mode');
-  const radios = mode.getByRole('radio');
+  const radios = mode.getByRole('button');
   // The probe itself works: a 120 ms busy loop shows up as a long task.
   await watchLongTasks(page);
   await page.evaluate(() => {
@@ -207,7 +207,11 @@ test('300-part nesting finishes within 10 s and the page stays responsive', asyn
   await goStep(page, 'dizilim');
   await watchLongTasks(page);
   const t0 = Date.now();
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('nesting-sheets')).toHaveText(/^\d+$/, { timeout: 20_000 });
   const nestMs = Date.now() - t0;

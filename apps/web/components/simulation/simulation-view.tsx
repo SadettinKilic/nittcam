@@ -70,6 +70,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { withShortcut } from '../../lib/shortcuts';
 import { fill } from '../../lib/fill';
 import { useReducedMotion } from '../../lib/use-preferences';
 import type { SimulationMeta, SimulationResponse } from '../../lib/simulation-messages';
@@ -605,6 +606,16 @@ function Player({
     if (width > 0 && height > 0 && job)
       setView(fitBounds(job, stock.height, width, height, insets));
   }, [job, stock.height, width, height, insets]);
+  // T381: keyboard zoom around the canvas centre (the buttons use zoomButton below).
+  const zoomBy = useCallback(
+    (factor: number) => {
+      if (width <= 0) return;
+      setView((v) =>
+        v ? clampView(zoomAt(v, factor, width / 2, height / 2), stock, width, height) : v,
+      );
+    },
+    [stock, width, height],
+  );
   // Zoomed past the fit: one finger pans the view; at the fit it scrolls the page on touch (T198).
   const zoomed =
     view !== null &&
@@ -689,12 +700,17 @@ function Player({
       else if (e.key === 'ArrowLeft') stepPrev();
       else if (e.key === 'Home') toStart();
       else if (e.key === 'End') toEnd();
+      // T381: the zoom keys of every canvas (2D view only; ownsKey skips inputs).
+      else if (!show3d && (e.key === '+' || e.key === '=')) zoomBy(1.25);
+      else if (!show3d && e.key === '-') zoomBy(1 / 1.25);
+      else if (!show3d && e.key === '0') (job ? fitHome : fit)();
+      else if (!show3d && (e.key === 'f' || e.key === 'F')) fit();
       else return;
       e.preventDefault();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [reduced, togglePlay, stepNext, stepPrev, toStart, toEnd]);
+  }, [reduced, togglePlay, stepNext, stepPrev, toStart, toEnd, show3d, zoomBy, fitHome, fit, job]);
 
   const ph = simPlayheadAt(sim.steps, time);
   const pos = positionAt(sim, time);
@@ -758,32 +774,35 @@ function Player({
           ) : null}
           {show3d ? null : (
             <>
-              <Tooltip content={t.controls.zoomOut}>
+              <Tooltip content={withShortcut(t.controls.zoomOut, 'canvasZoomOut')}>
                 <IconButton
                   size="sm"
                   variant="ghost"
                   aria-label={t.controls.zoomOut}
+                  aria-keyshortcuts="-"
                   onClick={() => zoomButton(1 / 1.25)}
                 >
                   <ZoomOut aria-hidden />
                 </IconButton>
               </Tooltip>
-              <Tooltip content={t.controls.zoomIn}>
+              <Tooltip content={withShortcut(t.controls.zoomIn, 'canvasZoomIn')}>
                 <IconButton
                   size="sm"
                   variant="ghost"
                   aria-label={t.controls.zoomIn}
+                  aria-keyshortcuts="+"
                   onClick={() => zoomButton(1.25)}
                 >
                   <ZoomIn aria-hidden />
                 </IconButton>
               </Tooltip>
               {job ? (
-                <Tooltip content={t.controls.fitJob}>
+                <Tooltip content={withShortcut(t.controls.fitJob, 'canvasFitJob')}>
                   <IconButton
                     size="sm"
                     variant="ghost"
                     aria-label={t.controls.fitJob}
+                    aria-keyshortcuts="0"
                     data-testid="sim-fit-job"
                     onClick={fitHome}
                   >
@@ -791,8 +810,14 @@ function Player({
                   </IconButton>
                 </Tooltip>
               ) : null}
-              <Tooltip content={t.controls.fit}>
-                <IconButton size="sm" variant="ghost" aria-label={t.controls.fit} onClick={fit}>
+              <Tooltip content={withShortcut(t.controls.fit, 'canvasFit')}>
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  aria-label={t.controls.fit}
+                  aria-keyshortcuts={job ? 'F' : 'F 0'}
+                  onClick={fit}
+                >
                   <Maximize aria-hidden />
                 </IconButton>
               </Tooltip>
