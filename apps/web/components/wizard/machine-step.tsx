@@ -808,7 +808,7 @@ export function SheetPreview({
           role="img"
           aria-label={label}
           viewBox={`${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad}`}
-          className={`h-auto w-full rounded-lg bg-canvas ${footer ? 'max-h-[62vh] lg:max-h-[calc(100dvh-31rem)] lg:min-h-48' : 'max-h-[62vh]'}`}
+          className={`h-auto w-full rounded-lg bg-canvas ${footer ? 'max-h-[62vh] lg:max-h-[calc(100dvh-34rem)] lg:min-h-48' : 'max-h-[62vh]'}`}
         >
           {profile ? (
             <rect
