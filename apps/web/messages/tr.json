@@ -233,7 +233,7 @@
       "boardDim": "Ölçü aracı",
       "boardSnapHold": "Basılı tutun: yapışmayı geçici kapat",
       "boardTypeLength": "Çizerken: yazılan uzunluğu uygula",
-      "boardCancel": "Çizimi bırak / seçimi temizle",
+      "boardCancel": "Çizimi bitir (çizilen kalır; ikinci Esc bırakır) / seçimi temizle",
       "boardPanHold": "Basılı tut: kaydır",
       "boardZoomIn": "Yakınlaştır",
       "boardZoomOut": "Uzaklaştır",
@@ -243,7 +243,7 @@
       "canvasFitJob": "İşe sığdır (yoksa plakaya)"
     },
     "boardTitle": "Çizim tahtası kısayolları",
-    "boardDescription": "Çizerken sayı yazıp Enter'a basın; Esc vazgeçer. Kısayollar metin kutusunda çalışmaz.",
+    "boardDescription": "Çizerken sayı yazıp Enter'a basın; Ctrl+Z ya da Backspace son noktayı geri alır, Ctrl+Y geri getirir; Esc çizimi bitirir. Kısayollar metin kutusunda çalışmaz.",
     "showAll": "Tüm kısayollar",
     "startTour": "Tanıtım turunu başlat"
   },
@@ -2858,6 +2858,10 @@
       "angle": "Açı",
       "keepRight": "Dik açıyı koru",
       "arcRadius": "Yay yarıçapı",
+      "arcSweep": "Yay açısı",
+      "arcStart": "Yay başı",
+      "arcEnd": "Yay sonu",
+      "arcEndEdit": "Bu ucu köşe olarak seçip X / Y değiştirin; tuvalde ucu sürükleyebilirsiniz",
       "straight": "Düz",
       "pickHint": "Tuvalde bir kenarın ortasına ya da bir köşeye tıklayın.",
       "operation": {
@@ -2905,6 +2909,7 @@
         "degenerate": "Bu değerle şekil alanını kaybeder ya da ters döner.",
         "crossing": "Bu değerle şeklin kenarları birbirini keser.",
         "radius": "Yay yarıçapı kenar uzunluğunun yarısından küçük olamaz.",
+        "sweep": "Yay açısı 1° ile 359° arasında olmalı.",
         "rectRadius": "Köşe yarıçapı kısa kenarın yarısını geçemez.",
         "qty": "Adet 1 ya da daha büyük bir tam sayı olmalı.",
         "fillet": "Bu köşe yuvarlatılamaz (iki düz kenar arasında değil).",
@@ -3034,7 +3039,12 @@
         "lineClose": "Tıklayın: şekil kapanır ve parça olur",
         "arcStart": "Yayın başlangıcını tıklayın",
         "arcEnd": "Yayın bitiş noktasını tıklayın",
-        "arcBend": "Yayın üstünde bir nokta tıklayın ya da R yazın",
+        "arcBend": "Kavisi sürükleyip tıklayın ya da R veya açı yazın (her iki yana, 359°'ye kadar)",
+        "arcTangent": "Çizginin devamında teğet yay: bitiş noktasını tıklayın ya da R / açı yazın (Teğet kapalıyken serbest)",
+        "arcVia": "Yayın üstünde bir nokta tıklayın",
+        "arcVia2": "Yayın bitiş noktasını tıklayın",
+        "arcCentre": "Yayın merkezini tıklayın",
+        "arcSweep": "Fareyi yay boyunca gezdirip bitişi tıklayın ya da açı yazın",
         "open": "Kesilemez, kapalı değil: başlangıca bağlayın ya da Esc",
         "bend": "Kavisi sürükleyin; R canlı gösterilir",
         "select": "Bir parçaya tıklayın; bir çizgiye tıklayınca uzunluğu ve açısı sağ panelde açılır (Shift: çoklu seçim)",
@@ -3045,7 +3055,23 @@
       "chip": "Ölçü girişi",
       "apply": "Uygula",
       "cancel": "Vazgeç",
-      "bendHandle": "Kavis tutamağı"
+      "bendHandle": "Kavis tutamağı",
+      "arcLabel": "R {r} · {a}° · kiriş {c}",
+      "arcOptions": {
+        "label": "Yay aracı seçenekleri",
+        "modes": {
+          "bulge": "Sehim",
+          "3pt": "3 nokta",
+          "centre": "Merkez"
+        },
+        "tips": {
+          "bulge": "Başlangıç, bitiş, sonra kavisi serbestçe sürükleyin (1°–359°, iki yana)",
+          "3pt": "Başlangıç, yayın üstünde bir nokta, bitiş",
+          "centre": "Başlangıç, merkez, sonra yay açısı"
+        },
+        "tangent": "Teğet",
+        "tangentTip": "Bir çizginin ucundan başlayan yay çizgiye teğet devam eder (Sehim kipinde)"
+      }
     },
     "actionsBar": "Seçim işlemleri",
     "tour": {

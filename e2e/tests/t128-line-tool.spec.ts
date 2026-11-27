@@ -71,6 +71,9 @@ test.describe('T128 line / polyline tool', () => {
     await expect(hint(page)).toHaveText(tr.editor.draw.hints.lineNext);
     await page.keyboard.press('Delete');
     await expect(partRows(page)).toHaveCount(5);
+    // B66 (T383): Esc ends the chain keeping what is drawn (open), a second Esc drops it
+    await page.keyboard.press('Escape');
+    await expect(hint(page)).toHaveText(tr.editor.draw.hints.open);
     await page.keyboard.press('Escape');
     await expect(hint(page)).toHaveText(tr.editor.draw.hints.lineStart);
     await page.keyboard.press('Escape');

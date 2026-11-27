@@ -796,6 +796,48 @@ export function PartProperties({
                     : t.errors.degenerate;
                 }}
               />
+              {info.radius !== undefined && outline[seg] ? (
+                // T382: an arc's sweep (1°–359°, the side kept) and its two ends.
+                <>
+                  <NumberRow
+                    label={t.arcSweep}
+                    value={tidy(Math.abs((4 * Math.atan(outline[seg].bulge) * 180) / Math.PI))}
+                    unit="°"
+                    testId="prop-seg-sweep"
+                    onCommit={(v) => {
+                      const a = outline[seg];
+                      if (!a) return t.errors.index;
+                      if (v === null || !(v >= 1 && v <= 359)) return t.errors.sweep;
+                      const bulge = Math.sign(a.bulge) * Math.tan((v * Math.PI) / 720);
+                      return run('setSegmentBulge', {
+                        id: part.id,
+                        index: seg,
+                        bulge: Math.round(bulge * 1e9) / 1e9,
+                      })
+                        ? null
+                        : t.errors.degenerate;
+                    }}
+                  />
+                  {[seg, (seg + 1) % n].map((vi, k) => {
+                    const p = outline[vi];
+                    if (!p) return null;
+                    return (
+                      <Row key={k} label={k === 0 ? t.arcStart : t.arcEnd}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-auto px-1 font-mono"
+                          data-testid={k === 0 ? 'prop-seg-arc-start' : 'prop-seg-arc-end'}
+                          title={t.arcEndEdit}
+                          onClick={() => onSub({ kind: 'vertex', index: vi })}
+                        >
+                          {`${formatMm(tidy(p.x - origin.x))} ; ${formatMm(tidy(p.y - origin.y))}`}
+                        </Button>
+                      </Row>
+                    );
+                  })}
+                </>
+              ) : null}
             </>
           ) : (
             <p className="py-1 text-xs text-fg-subtle">{t.pickHint}</p>
