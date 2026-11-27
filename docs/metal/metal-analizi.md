@@ -1,6 +1,6 @@
 # Metal desteği: tasarım analizi (M-Metal)
 
-Tarih: 2026-11-23 · Yazan: CTO · Durum: öneri, sahibin onayını bekler.
+Tarih: 2026-11-23 · Yazan: CTO · Durum: kabul edildi (D-118, D-130; spec T340 ile işlendi, 2026-11-28). D-130 bu belgedeki bayrak ve sıra metinlerinin önüne geçer: `acm` ve `aluminium` bayraksız görünür; ACM NC doğrulanmamış işaretiyle, alüminyum NC MB7 (T358, T359) sonrası verilir. Sayılarda §4.5 (araştırmayla karşılaştırma) §4.2 ve §7'nin önüne geçer.
 Kapsam kararı sahibindir: "ürüne metal eklenir". Bu belge neyin, hangi sırayla ve hangi güvenlik kurallarıyla ekleneceğini anlatır. Kod değişikliği içermez. Görevler `docs/BACKLOG.md` içindeki "M-Metal" bölümündedir (T340–T372).
 
 Bu belgedeki kesim sayıları **başlangıç önerisidir**. Kaynak: genel talaşlı imalat bilgisi ve ACM üreticilerinin işleme kılavuzları. Hiçbiri bizim makinede ölçülmedi. Sayılar `docs/materials/kesim-degerleri-arastirma.md` (ayrı araştırma, bu belge yazılırken henüz yoktu) ve makine testi ile kesinleşir. Belirsiz olan her yer "doğrulanacak" diye işaretlidir.
@@ -168,17 +168,17 @@ Kurallar:
 | Dolap ekle | aynı | aynı | gizli | gizli |
 | Takım tipi (kontur) | düz, sıkıştırma | düz, sıkıştırma (aynı) | yalnız düz (tek ağız önerilir) | yalnız düz, 1–2 ağız; sıkıştırma ve küresel yasak |
 | V-kanal işlemi | yok | yok | **yeni** (V uç, açı 90°/135°) | yok (C kademesinde oyma) |
-| Soğutma | yok | yok (hava önerilir, bilgi) | yok | **şart**: sis veya hava; programdan ya da elle |
-| Giriş (dalma) | dik veya rampa (aynı) | aynı | dik serbest | **rampa/helis şart** (varsayılan 2°, en çok 5°); dik dalma yalnız matkapla |
+| Soğutma | yok | yok (hava önerilir, bilgi) | önerilir: hava (bilgi, kural yok) | **şart**: sis, MQL veya hava; programdan ya da elle |
+| Giriş (dalma) | dik veya rampa (aynı) | aynı | rampa (varsayılan 2°, en çok 5°; §4.5) | **rampa/helis şart** (varsayılan 2°, en çok 5°); dik dalma yalnız matkapla |
 | Paso derinliği tavanı | yok (aynı) | yok (aynı) | yok | ≤ 0,5 × takım Ø (hafif makinede ≤ 0,25 × Ø) |
-| Talaş yükü | yalnız gösterilir | yalnız gösterilir | yalnız gösterilir | **sınır**: Ø ≥ 6: 0,02–0,10; Ø 3–6: 0,01–0,05; Ø < 3: 0,005–0,02 mm/diş |
+| Talaş yükü | yalnız gösterilir | yalnız gösterilir | yalnız gösterilir (araştırma bandıyla uyarı) | **sınır** (§4.5): Ø ≥ 6: 0,04–0,10; Ø 3–6: 0,02–0,05; Ø < 3: 0,005–0,02 mm/diş |
 | Devir | makine aralığı | aynı | aynı | makine aralığı + kesme hızı bandı (uyarı) |
 | Köprü varsayılanı | 4 × 10 × ≤ 3 mm | aynı | 4 × 6 × 1 mm | 4 × 5 × 0,8 mm; **her parçada** |
 | Köprü sınırı | en ≥ 3; yük. 1 … t − 1 | aynı | en ≥ 3; yük. 0,5 … t − 0,5 | en ≥ 3; yük. 0,3 … t − 0,3 |
 | İnce tabaka | 0,2 … t − 1 | aynı | gizli (alt sac zaten ince) | 0,1 … 0,3 (köprünün alternatifi) |
 | Küçük parça eşiği | 0,05 m² / 100 mm | aynı | aynı | yok: her parça tutulur; en küçük kenar 20 mm altı hata |
 | Finiş pasosu | yok | yok | yok | **yeni**, varsayılan açık, pay 0,2 mm |
-| Kesim yönü | aynı | aynı | aynı | aynı alan; varsayılan tırmanma, finişte tırmanma |
+| Kesim yönü | aynı | aynı | aynı alan; varsayılan karşı yön (conventional, §4.5) | aynı alan; varsayılan tırmanma, finişte tırmanma |
 | Lead-in | aynı | aynı | aynı | yay (çizgi seçilemez: iz bırakır) |
 | Parça arası boşluk | takım Ø + 0,1 | aynı | aynı | takım Ø + 3 (ince duvar titrer) |
 | Kenar payı | 10 | aynı | 10 | mengenede en az 25 (mengene bölgesi) |
@@ -209,6 +209,33 @@ Tür tek başına yetmez: 5754 ile 6082 farklı kesilir, ACM'de renk kodu ve fil
 - ACM: `colorCode`, `metallic` (yönlü yüzey açık gelir), `skin` (yüzey sacı kalınlığı 0,3 / 0,5), `fireClass` (bilgi).
 
 Kesim setleri bugünkü gibi makine profilinde, tür + kalınlık ile bağlı kalır (D-029). Alaşım farkı ilk sürümde projede besleme düşürerek karşılanır. Aynı kalınlıkta iki alaşım için ayrı set ihtiyacı açık konudur (bölüm 9).
+
+### 4.5 Araştırma dosyasıyla karşılaştırma (T340, 2026-11-28)
+
+§4.2 ve §7'deki sayılar `docs/materials/kesim-degerleri-arastirma.md` (b.7, b.8, c, d ve "Alüminyum ve ACM" bölümü) ile karşılaştırıldı. Kural (D-130): iki kaynak ayrışırsa **temkinli değer** kazanır; hiçbir kaynağın doğrulamadığı sayı "doğrulanacak" diye işaretlenir. Bu tablo §4.2 ve §7'nin önüne geçer; davranış tablosu (`MaterialTraits`, MB2 sonrası) bu değerleri taşır.
+
+| Konu | Analiz (§4.2 / §7) | Araştırma | Karar | Durum |
+| --- | --- | --- | --- | --- |
+| Alüminyum talaş yükü, Ø ≥ 6 | 0,02–0,10 | c: 1 ağız Ø6 0,076–0,18, Ø8 0,10–0,20; 2 ağız Ø6 0,05–0,155; d başlangıç 0,059–0,100; uyarı tabanı cl_min × 0,8 | **0,04–0,10** (taban = en düşük cl_min 0,05 × 0,8; tavan analizden, araştırmanın başlangıç değerleri içinde kalır) | tavan doğrulanacak |
+| Alüminyum talaş yükü, Ø 3–6 | 0,01–0,05 | c: Ø3–Ø4 0,05–0,133; Sorotec Ø3 0,025 | **0,02–0,05** (taban = 0,025 × 0,8) | tavan doğrulanacak |
+| Alüminyum talaş yükü, Ø < 3 | 0,005–0,02 | kaynak yok | aynı | doğrulanacak |
+| Alüminyum paso tavanı | ≤ 0,5 × Ø (hafif makinede ≤ 0,25 × Ø) | Sorotec en çok 0,5 × D; d başlangıç 0,25 × D | aynı; varsayılan paso 0,25 × Ø | uyumlu |
+| Alüminyum rampa açısı | varsayılan 2°, en çok 5° | üretici sayısı yok; uygulamanın 3° rampası "uygun"; ikincil kaynak 6,1° | **2° / 5°** (ikisi de temkinli tarafta) | doğrulanacak |
+| ACM giriş | dik serbest | "alüminyum gibi rampa"; c: ramp-req | **rampa** (2° / 5°); kural 12 kompozitte de uygulanır | doğrulanacak |
+| ACM kesim yönü | aynı (tırmanma) | Alucobond: karşı yön (conventional) | **karşı yön** varsayılan | uyumlu (kaynaklı) |
+| Alüminyum kesim yönü | tırmanma | Sorotec: boşluksuz makinede tırmanma | aynı | uyumlu |
+| Alüminyum soğutma | şart: sis veya hava | MQL, sis, hava; etanol | **şart**: sis, MQL veya hava (D-118: hava tek başına sıkı sınırla) | uyumlu |
+| ACM soğutma | yok | Dibond: gerekmez; c: hava | **önerilir: hava** (bilgi, kural yok) | uyumlu |
+| Takım tipi | ACM düz tek ağız; alüminyum düz 1–2 ağız, sıkıştırma ve küresel yasak | O-flute tek ağız; 2 ağız ZrN parmak freze | aynı | uyumlu |
+| V-kanal kalan kalınlık | denetçi en az 0,5; test 0,8 ± 0,1 | 0,7–0,8 (Alucobond 0,8; Alucolux 0,8); masa yüzeyinden ölçülür | **varsayılan 0,8, en az 0,7** (denetçi kuralı 17 de 0,7) | uyumlu |
+| V-kanal takımı | V uç 90°/135° | 90°, 108°, 135°, 155°; düz taban (Dibond ≥ 3,2 mm) | 90°/135° ilk sürüm; takım profiline uç düzlüğü | uyumlu |
+| Devir | makine aralığı + kesme hızı bandı (uyarı) | alüminyum 183–305 m/dk; Ø10–Ø12'de 12 000–15 000 rpm | uyarı bandı 183–305 m/dk | doğrulanacak |
+| Köprü (ACM 4 × 6 × 1; alüminyum 4 × 5 × 0,8) | analiz | sayı yok; "ince köprü + çapak alma" | aynı | doğrulanacak |
+| İnce tabaka alüminyum 0,1–0,3 | analiz | sayı yok | aynı | doğrulanacak |
+| Finiş payı 0,2 mm | analiz | "bitiş pasosu gerekir", sayı yok | aynı | doğrulanacak |
+| Parça arası Ø + 3, en küçük kenar 20 mm | analiz | sayı yok | aynı | doğrulanacak |
+| Gagalama ≤ 1 × Ø, ısınma ≥ 3 s, mengene + 5 mm | analiz | sayı yok | aynı | doğrulanacak |
+| Plaka ölçüleri (alüminyum 1000×2000, 1250×2500, 1500×3000; ACM 1250×3200, 1500×3200, 1250×2440) | analiz | alüminyum aynı ("doğrulanmalı"); ACM yok | aynı | doğrulanacak |
 
 ## 5. Ekranlar: ne görünür, ne kaybolur
 
@@ -407,7 +434,7 @@ Hepsi malzeme davranış tablosuna bağlıdır. Ahşap ve plastikte hiçbiri dev
 | R15 | `PART_NOT_HELD` | Demir dışı metalde boydan boya kesilen her dış kontur ve her iç parça (düşen parça) köprü veya ince tabaka ile tutulmalı. Denetçi son seviyede köprü yükselişlerini sayar: en az 2, çevre 600 mm üstünde en az 3. | Serbest kalan metal parça takıma takılır ve fırlar. Vakum küçük ve pürüzsüz metal parçayı tutamaz. |
 | R15 | `PART_TOO_SMALL` | En küçük kenar tablo sınırının (20 mm) altındaysa kesilmez. | Köprü sığmaz; parça tutulamaz. |
 | R16 | `TOOL_TYPE_FORBIDDEN` | Malzemenin izin vermediği takım tipi kesim yapamaz (metalde sıkıştırma ve küresel; kontur kesiminde V uç). | Sıkıştırma freze ahşap içindir; metalde talaşı içeri bastırır ve kırılır. |
-| R17 | `VGROOVE_TOO_DEEP` | ACM'de V uç hiçbir noktada −(kalınlık − en az kalan) altına inemez. En az kalan tablo değeridir (0,5 mm), kullanıcı ayarından bağımsız. | Ön yüz sacı kesilirse panel hurda olur; büküm yerinden kopar. |
+| R17 | `VGROOVE_TOO_DEEP` | ACM'de V uç hiçbir noktada −(kalınlık − en az kalan) altına inemez. En az kalan tablo değeridir (0,7 mm, §4.5), kullanıcı ayarından bağımsız. | Ön yüz sacı kesilirse panel hurda olur; büküm yerinden kopar. |
 | R17 | `VGROOVE_WRONG_TOOL` | V-kanal yalnız V uçla, kontur kesimi yalnız düz frezeyle yapılır. | Düz frezeyle açılan kanal bükülmez; V uçla boydan kesim ucu kırar. |
 | R17 | `VGROOVE_MISSING` | Projedeki her büküm çizgisinin kanalı programda olmalı (LAYOUT kalıbı). | Eksik kanal bükümde fark edilir; panel hurda. |
 | R18 | `SAFE_Z_BELOW_CLAMPS` | Mengene tutmada XY rapid yüksekliği ≥ mengene yüksekliği + 5 mm. | Mengeneye rapid çarpması takımı ve spindle'ı kırar. |
@@ -514,6 +541,8 @@ Spec doğruluk kaynağıdır. Aşağıdaki metinler T340 ile işlenir.
 - **§14.1 Riskler**: bölüm 9.1'in ilk dört satırı. **§14.2 Açık maddeler**: bölüm 9.3. **§14.3 Sonraki sürümler**: "Pirinç ve bakır; yazı V-oyması; büküm payı hesabı".
 
 ## 11. Karar kaydı önerisi (`docs/DECISIONS.md` için)
+
+Kaydedildi: **D-118** (kapsam ve kurallar, 2026-11-23) ve **D-130** (MB1–MB4 saha testinden önce, görünürlük ve NC, 2026-11-28). Aşağıdaki metin özgün öneridir.
 
 ```
 ## D-xxx Metal is added through a material traits table; ACM first, aluminium second, steel never (2026-11-23, owner decision; CTO analysis docs/metal/metal-analizi.md)

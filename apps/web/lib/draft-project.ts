@@ -4,7 +4,7 @@ import {
   contourPocketTool,
   findMaterialParams,
   findTool,
-  materialHasGrain,
+  traitsOf,
   materialKindOf,
   libraryParamLinks,
   nestingToolDiameter,
@@ -153,5 +153,8 @@ export { fill } from './fill';
  * (null, e.g. library MDF) have none (T259, T260).
  */
 export function stockHasGrain(stock: Project['stock']): boolean {
-  return materialHasGrain(materialKindOf(stock.material)) && defaultSheet({ stock }).grain !== null;
+  return (
+    traitsOf(materialKindOf(stock.material)).direction.kind !== 'none' &&
+    defaultSheet({ stock }).grain !== null
+  );
 }

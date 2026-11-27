@@ -1,4 +1,4 @@
-import { materialHasGrain, materialKindOf } from '@nittcam/core';
+import { traitsOf, materialKindOf } from '@nittcam/core';
 import { NextResponse } from 'next/server';
 import { companyScope } from '../../../../lib/server/company';
 import { isUuid, offcutError, readOffcutPatch, toOffcutItem } from '../../../../lib/server/offcuts';
@@ -33,7 +33,10 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       const edit = patch.edit;
       if (edit.grain != null || edit.material !== undefined) {
         const material = edit.material ?? (await scope.offcuts.get(id))?.material;
-        if (material !== undefined && !materialHasGrain(materialKindOf(material))) {
+        if (
+          material !== undefined &&
+          traitsOf(materialKindOf(material)).direction.kind === 'none'
+        ) {
           edit.grain = null;
         }
       }
