@@ -160,7 +160,11 @@ test.describe('B10 tester: stored geometry (T127–T129)', () => {
     );
     // it goes into the layout
     await goStep(page, 'dizilim');
-    await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
     await expect
       .poll(async () =>
@@ -240,7 +244,11 @@ test.describe('B10 tester: stored geometry (T127–T129)', () => {
     await expect(page.getByTestId('editor-hint')).toHaveText(tr.editor.draw.hints.open);
     expect((await stored(page)).parts).toHaveLength(5);
     await goStep(page, 'dizilim');
-    await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
     expect((await stored(page)).parts).toHaveLength(5);
   });

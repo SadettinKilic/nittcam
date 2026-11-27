@@ -98,7 +98,11 @@ async function runFlow(page: Page, mobile: boolean) {
   // --- Step 3: nesting, then lock one part ---------------------------------------------------
   await page.getByTestId('wizard-next').click();
   await wizardReady(page, 'dizilim');
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   // T198: on phones the nesting summary (left) and the part inspector (right) are bottom sheets.
   if (mobile) await openWorkspacePanel(page, 'left');

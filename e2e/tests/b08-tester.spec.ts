@@ -207,7 +207,11 @@ test.describe('B8 tester: T122 three cabinets (D-041)', () => {
 
     // Nesting and export still work with the edited rows.
     await goStep(page, 'dizilim');
-    await page.getByRole('button', { name: t.nesting.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 30_000 });
     await saved(page);
     await goStep(page, 'export');

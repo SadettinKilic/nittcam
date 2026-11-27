@@ -1854,7 +1854,7 @@ Owner list of 2026-11-28 (paralellik off, tempo low). Order: B65 → B66 → met
 
 ### Batch B65: T378–T380 + rider T381 (wizard and Dizilim polish)
 
-### T378 Wizard stepper readable on desktop   [status: todo]
+### T378 Wizard stepper readable on desktop   [status: done]
 Source: owner ("üst menüde adımlar çok sıkışık, monitörden bakınca bile okunmuyor"). At 1920 × 1080 the labels are cut ("Parça…", "Önizl…") because project name, stepper and profile chip share one row.
 Acceptance:
 - [ ] at 1280, 1440 and 1920 every step label is shown in full (no ellipsis); at 1024 the active step's label is full and the others may shorten only with a tooltip carrying the full name
@@ -1863,7 +1863,7 @@ Acceptance:
 - [ ] 390 px: no horizontal page scroll, current step visible (compact form is fine)
 Tester focus: 1024/1440/1920 screenshots of steps 1 and 3; axe.
 
-### T379 Dizilim: one click per goal, no separate "Diz"   [status: todo]
+### T379 Dizilim: one click per goal, no separate "Diz"   [status: done]
 Source: owner ("Mod seçiyoruz sonra Diz'e basıyoruz; En az fire'ye bastığımda dizilmiş olsun, tek tıkla"). Also closes T374 (Diz/İptal shared button).
 Acceptance:
 - [ ] the mode choices become action buttons (e.g. "En az fire", "Hızlı kesim", …: today's mode names); clicking one nests with that mode at once; the active result's mode is shown selected; clicking the selected one again re-nests
@@ -1873,7 +1873,7 @@ Acceptance:
 - [ ] T374 marked done by this task
 Tester focus: one-click nest per mode, cancel, re-click, multi-sheet (2 and 3 sheets), 1024 px, 390 px smoke.
 
-### T380 Dizilim: spacing fields and their notes laid out together   [status: todo]
+### T380 Dizilim: spacing fields and their notes laid out together   [status: done]
 Source: owner ("parça arası pay yanında kenar payı var ama not sadece parça arasının altında; olgun durmuyor").
 Acceptance:
 - [ ] "Parça arası pay (mm)" and "Kenar payı (mm)" sit in one aligned group with equal input widths; each field has its own short hint under it (pay: resulting clear distance "boşluk = Ø + pay"; kenar: minimum for the tool), same baseline and height so the row looks balanced
@@ -1881,7 +1881,7 @@ Acceptance:
 - [ ] text in tr.json; light/dark; 1024 px wraps cleanly
 Tester focus: screenshot at 1440 and 1024, tabs on/off, invalid values.
 
-### T381 Zoom buttons show their shortcuts   [status: todo]   (rider)
+### T381 Zoom buttons show their shortcuts   [status: done]   (rider)
 Source: owner ("uzaklaştır/yakınlaştır kısayolu var mı? varsa imleçle üzerine gelince yazsın").
 Acceptance:
 - [ ] every zoom control (drawing board, Dizilim, Simülasyon, 3D) has a tooltip with its name and shortcut (e.g. "Yakınlaştır (+ / Ctrl + tekerlek)", "Sığdır (F)"); where no shortcut exists, add `+`, `-`, `0` (100 %) / `F` (sığdır) consistently, ignored while typing in an input
@@ -1913,7 +1913,7 @@ Tester focus: square with a wrong third side, undo/redo during and after the cha
 ### T373 Tab hold counts the neighbour's lead-in/out   [status: todo]
 Source: B64 dev (property seed 1094944943), T193 report known issue 1 (job C header "KOPRU AZ: 2 parcada 3 kopru" while all 4 Takoz have 3 holding). A neighbour's lead dive can cut into the 3 mm web behind a tab. Today: safe side (SMALL_PART_NOT_HELD / fewer holding tabs), but the header count is optimistic and the fix text ("pay ≥ Ø + 3") is already met. Acceptance: hold predicate and header use the final lead moves; leads facing a tab are shortened or moved first; the fix text names the lead.
 
-### T374 Below 1024 px a fast "Diz" click cancels the auto-nest   [status: todo] (closed by T379)
+### T374 Below 1024 px a fast "Diz" click cancels the auto-nest   [status: done] (closed by T379)
 Source: B64 round-37 fallout (t023 at 320/390 px). "Diz" and "İptal" share one button; a click during the T261 auto-nest cancels it. Acceptance: the state change is visible and clicks are ignored for ~300 ms after the switch, or "İptal" moves.
 
 ### T375 Renderer crash right after drawing may lose the last edit   [status: todo]

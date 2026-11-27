@@ -58,21 +58,22 @@ test('keyboard only: cut list, nesting, simulation and export', async ({ page })
   // --- Nesting -------------------------------------------------------------------------------
   await next(page);
   await wizardReady(page, 'dizilim');
-  await tabTo(page, page.getByRole('button', { name: t.nesting.run, exact: true }));
+  await tabTo(
+    page,
+    page.locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    ),
+  );
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
-  // The mode is a radio group: arrow keys change it.
+  // T379: the modes are action buttons; Tab to another goal and Enter nests with it at once.
   const mode = page.getByTestId('layout-mode');
-  // Entering Dizilim nests by itself (T261); the group is disabled while a run is going.
-  await expect(mode.getByRole('radio', { checked: true })).toBeEnabled();
   const before = await mode.getAttribute('data-value');
-  await tabTo(page, mode.getByRole('radio', { checked: true }));
-  // Held like a real key press: Radix checks the radio it focuses only while the arrow is down,
-  // and it focuses one tick after keydown (an instant keyup would beat it).
-  await page.keyboard.down('ArrowDown');
-  await page.waitForTimeout(60);
-  await page.keyboard.up('ArrowDown');
+  const other = mode.locator('button[aria-pressed="false"]').first();
+  await tabTo(page, other);
+  await page.keyboard.press('Enter');
   await expect(mode).not.toHaveAttribute('data-value', before ?? '');
+  await expect(page.getByTestId('nesting-cancel')).toHaveCount(0, { timeout: 20_000 });
 
   // --- Simulation ----------------------------------------------------------------------------
   await next(page);

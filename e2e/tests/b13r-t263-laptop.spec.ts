@@ -1,5 +1,4 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 import { KITCHEN, goStep, openNewProject, paste } from './wizard-helpers';
 
 // T263 (CTO review #4, D-045): laptop widths. Below 1440 px the workspace steps (board, Dizilim,
@@ -72,7 +71,11 @@ for (const width of [1280, 1024] as const) {
     const left = page.getByTestId('workspace-left');
     const wasClosed = (await left.getAttribute('data-state')) === 'closed';
     if (wasClosed) await page.getByTestId('workspace-left-toggle').click();
-    await left.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+    await left
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     if (wasClosed) await page.getByTestId('workspace-left-toggle').click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
     expect(await sidebarWidth(page)).toBe(64);

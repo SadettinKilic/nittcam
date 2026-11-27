@@ -48,6 +48,9 @@ export function useNestingWorker(): NestingWorker {
     if (!worker.current) {
       const w = new Worker(new URL('./nesting.worker.ts', import.meta.url), { type: 'module' });
       w.addEventListener('message', (e: MessageEvent<NestingWorkerMessage>) => {
+        // T379: a worker stopped by cancel (a mode click restarts the run) may still report; the
+        // pending requests belong to its successor then.
+        if (worker.current !== w) return;
         const p = pending.current.get(e.data.id);
         if (!p) return;
         if (e.data.kind === 'progress') {
@@ -58,6 +61,7 @@ export function useNestingWorker(): NestingWorker {
         p.resolve(e.data);
       });
       w.addEventListener('error', (e) => {
+        if (worker.current !== w) return;
         for (const [id, p] of pending.current) {
           p.resolve({ id, ok: false, error: e.message || 'worker error' });
         }

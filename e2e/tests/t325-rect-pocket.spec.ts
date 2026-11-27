@@ -101,7 +101,11 @@ test('T325: draw a rectangle → Cep → depth → simulate → the NC passes ev
   // Nest, simulate (checks green), export and download.
   await page.getByTestId('wizard-next').click();
   await wizardReady(page, 'dizilim');
-  await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+  await page
+    .locator(
+      'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+    )
+    .click();
   await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
   await saved(page);
   await page.getByTestId('wizard-next').click();

@@ -12,7 +12,7 @@ import { fill } from '../../lib/fill';
 import type { Messages } from '../../lib/messages';
 import { useNestProgress, type NestProgressStore } from '../../lib/nesting-progress';
 import { Button, IconButton, Popover, PopoverContent, PopoverTrigger, Progress } from '@nittcam/ui';
-import { Info, LayoutGrid, TriangleAlert } from 'lucide-react';
+import { Info, TriangleAlert } from 'lucide-react';
 
 const sizeFormat = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 
@@ -34,7 +34,6 @@ export function NestingPanel({
   running,
   progress = null,
   message,
-  onRun,
   onCancel,
 }: {
   t: Text;
@@ -44,7 +43,6 @@ export function NestingPanel({
   /** Placer candidates done / total while running (T163), read by the bar only. */
   progress?: NestProgressStore | null;
   message: { kind: 'error' | 'info'; text: string } | null;
-  onRun: () => void;
   /** "İptal" while running (T163): stops the worker, the old layout stays. */
   onCancel?: (() => void) | undefined;
 }) {
@@ -95,22 +93,20 @@ export function NestingPanel({
             </li>
           ))}
         </ul>
-        <div className="flex gap-2">
-          <Button
-            onClick={onRun}
-            disabled={running || project.parts.length === 0}
-            aria-busy={running}
-            className="min-w-0 flex-1"
-          >
-            <LayoutGrid aria-hidden />
-            {running ? <RunningLabel t={t} store={progress} /> : t.run}
-          </Button>
-          {running && onCancel ? (
-            <Button variant="outline" onClick={onCancel} data-testid="nesting-cancel">
-              {t.cancel}
-            </Button>
-          ) : null}
-        </div>
+        {/* T379: no "Diz" here; the mode buttons nest. While a run goes, "İptal" sits here, away
+            from the mode buttons (a mode click restarts the run instead). */}
+        {running ? (
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 text-sm text-fg-muted">
+              <RunningLabel t={t} store={progress} />
+            </span>
+            {onCancel ? (
+              <Button variant="outline" onClick={onCancel} data-testid="nesting-cancel">
+                {t.cancel}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         {running ? <NestProgressBar t={t} store={progress} /> : null}
       </div>
 
@@ -203,8 +199,8 @@ export function NestingPanel({
   );
 }
 
-/** "Diziliyor… %40" on the running "Diz" button (B44); "İptal" sits next to it. */
-function RunningLabel({ t, store }: { t: Text; store: NestProgressStore | null }) {
+/** "Diziliyor… %40" (B44): on the running mode button and beside "İptal" (T379). */
+export function RunningLabel({ t, store }: { t: Text; store: NestProgressStore | null }) {
   const progress = useNestProgress(store);
   if (!progress || progress.total <= 0) return <>{t.running}</>;
   const pct = Math.min(100, Math.round((100 * progress.done) / progress.total));

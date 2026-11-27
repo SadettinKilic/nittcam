@@ -130,7 +130,11 @@ test.describe('T023 wizard', () => {
     // Step 3: Diz.
     await page.getByTestId('wizard-next').click();
     await wizardReady(page, 'dizilim');
-    await page.getByRole('button', { name: tr.cutList.nesting.run, exact: true }).click();
+    await page
+      .locator(
+        'button[data-testid^="layout-mode-"][aria-pressed="true"]:visible, [data-testid="layout-nest-compact"]:visible',
+      )
+      .click();
     await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId('nesting-sheets')).toHaveText('3');
     await saved(page);
