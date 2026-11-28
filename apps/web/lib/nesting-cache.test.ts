@@ -37,6 +37,26 @@ function nested(p: Project, toolDiameter = 6): Project {
 }
 
 describe('optionSetKey (T163)', () => {
+  it('T386: the montaj tezgâhı is not part of the key', () => {
+    const p = withParts();
+    const id = p.parts[0]?.id ?? '';
+    const r = applyCommand(p, 'setAssemblyInstances', {
+      instances: [
+        {
+          id: id + '#0',
+          partId: id,
+          copy: 0,
+          position: [1, 2, 3],
+          rotation: [0, 0, 0, 1],
+          hidden: false,
+        },
+      ],
+      updatedAt: '2026-11-28T10:00:00Z',
+    });
+    if (!r.ok) throw new Error(r.error.message);
+    expect(optionSetKey(r.project, { toolDiameter: 6 })).toBe(optionSetKey(p, { toolDiameter: 6 }));
+  });
+
   it('ignores unlocked placements but not locked ones', () => {
     const p = withParts();
     const n = nested(p);

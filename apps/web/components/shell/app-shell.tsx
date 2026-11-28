@@ -320,12 +320,15 @@ export function AppShell({ t, company, children }: AppShellProps) {
           onCloseAutoFocus={helpFocus.onCloseAutoFocus}
         />
         {/* P4 (CTO #8–#10): in the project wizard the toasts sit top-centre just under the wizard
-            header (--wizard-head-bottom), so they never cover the right panel, the canvas scale bar
+            header (--wizard-head-bottom; plus --toast-clear-top, set by a canvas with a top toolbar such as
+            the montaj tezgâhı), so they never cover the right panel, the canvas scale bar
             or the footer actions; a step change closes them. Elsewhere bottom-right as usual. */}
         {wizard && !phone ? (
           <Toaster
             position="top-center"
-            offset={{ top: 'calc(var(--wizard-head-bottom, 56px) + 8px)' }}
+            offset={{
+              top: 'calc(var(--wizard-head-bottom, 56px) + 8px + var(--toast-clear-top, 0px))',
+            }}
           />
         ) : wizard ? (
           // Phones: top-centre would cover the canvas bar (Liste / Çizim, zoom); above the sticky

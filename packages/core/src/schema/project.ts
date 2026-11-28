@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import { normalizeRotation } from '../geometry/grain';
 import { materialPropsSchema } from '../machine/material-props';
+import { assemblyInstanceId, assemblySchema } from './assembly';
 
 /** The schema version this build writes and reads natively. */
 export const LATEST_SCHEMA_VERSION = 2;
@@ -657,6 +658,8 @@ export const projectSchema = z
     layout: layoutSchema,
     cutting: cuttingSchema,
     settings: settingsSchema,
+    /** T386 (D-131): the montaj tezgâhı; absent = empty (display only, never read by CAM). */
+    assembly: assemblySchema.optional(),
   })
   .superRefine((project, ctx) => {
     // Cross-references: unique part ids and hole ids; placements point at existing part copies.
@@ -725,6 +728,30 @@ export const projectSchema = z
         }
         seen.add(key);
       });
+    });
+    // T386: assembly instances point at existing part copies, each copy placed at most once.
+    const instanceIds = new Set<string>();
+    const placedCopies = new Set<string>();
+    project.assembly?.instances.forEach((inst, k) => {
+      const path = ['assembly', 'instances', k];
+      const qty = qtyById.get(inst.partId);
+      if (qty === undefined || inst.copy >= qty) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `assembly instance "${inst.id}" refers to a missing copy ${inst.copy} of part "${inst.partId}"`,
+          path,
+        });
+      }
+      const copy = assemblyInstanceId(inst.partId, inst.copy);
+      if (instanceIds.has(inst.id) || placedCopies.has(copy)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `assembly instance "${inst.id}" is a duplicate`,
+          path,
+        });
+      }
+      instanceIds.add(inst.id);
+      placedCopies.add(copy);
     });
   });
 

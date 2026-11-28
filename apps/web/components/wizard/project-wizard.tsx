@@ -40,6 +40,7 @@ import { ProjectLinksBar } from './project-links';
 import type { SimMachine } from '../simulation/simulation-view';
 import {
   CuttingSettings,
+  AssemblyBench,
   DrawingBoard,
   ExportStep,
   LayoutStep,
@@ -489,7 +490,19 @@ const LEFT_ORDER: Record<StepKey, string> = {
   export: '',
 };
 
-type PartsView = 'list' | 'drawing';
+type PartsView = 'list' | 'drawing' | 'assembly';
+
+const VIEW_PARAM: Record<PartsView, string | null> = {
+  list: null,
+  drawing: 'cizim',
+  assembly: 'montaj',
+};
+/** T387: the view a URL value or a remembered value names (unknown = Liste). */
+function partsViewOf(v: string | null): PartsView | null {
+  if (v === 'cizim' || v === 'drawing') return 'drawing';
+  if (v === 'montaj' || v === 'assembly') return 'assembly';
+  return null;
+}
 
 function WizardSession({
   messages,
@@ -525,10 +538,11 @@ function WizardSession({
   // T290: `?gorunum=cizim` wins; without it a saved project reopens in the view it was left in.
   const [partsView, setPartsViewState] = useState<PartsView>(() => {
     if (typeof window === 'undefined') return 'list';
-    if (new URLSearchParams(window.location.search).get('gorunum') === 'cizim') return 'drawing';
+    const fromUrl = partsViewOf(new URLSearchParams(window.location.search).get('gorunum'));
+    if (fromUrl) return fromUrl;
     if (!init.id) return 'list';
     try {
-      return window.localStorage.getItem(partsViewKey(init.id)) === 'drawing' ? 'drawing' : 'list';
+      return partsViewOf(window.localStorage.getItem(partsViewKey(init.id))) ?? 'list';
     } catch {
       return 'list';
     }
@@ -536,7 +550,8 @@ function WizardSession({
   const setPartsView = useCallback((v: PartsView) => {
     setPartsViewState(v);
     const url = new URL(window.location.href);
-    if (v === 'drawing') url.searchParams.set('gorunum', 'cizim');
+    const param = VIEW_PARAM[v];
+    if (param) url.searchParams.set('gorunum', param);
     else url.searchParams.delete('gorunum');
     window.history.replaceState(window.history.state, '', url);
   }, []);
@@ -546,7 +561,7 @@ function WizardSession({
   const wide = useMediaQuery(WORKSPACE_DESKTOP);
   // T263: the workspace steps (board, Dizilim, Simülasyon) open with the sidebar rail below 1440.
   const railStep =
-    step === 'dizilim' || step === 'simulasyon' || (step === 'parcalar' && partsView === 'drawing');
+    step === 'dizilim' || step === 'simulasyon' || (step === 'parcalar' && partsView !== 'list');
   useEffect(() => {
     setSidebarWorkspace(railStep);
   }, [railStep]);
@@ -1131,7 +1146,9 @@ function WizardSession({
   let partsFullWidth = false;
   // Dizilim and Simülasyon are canvas-first workspaces that fill the viewport (T197).
   const drawing = step === 'parcalar' && partsView === 'drawing';
-  const workspace = step === 'dizilim' || step === 'simulasyon' || drawing;
+  // T387: the Montaj view (montaj tezgâhı) is a canvas-first workspace like the board.
+  const bench = step === 'parcalar' && partsView === 'assembly';
+  const workspace = step === 'dizilim' || step === 'simulasyon' || drawing || bench;
   // Liste / Çizim (T124). D-039: never a row of its own on the board: in the wizard header row
   // on ≥ 1024 px (T241), in the canvas toolbar band below that (T240).
   const viewSwitch = (
@@ -1153,10 +1170,18 @@ function WizardSession({
         >
           {messages.cutList.views.drawing}
         </TabsTrigger>
+        <TabsTrigger
+          value="assembly"
+          className="h-8 px-3"
+          aria-controls="step-content"
+          data-testid="parts-view-assembly"
+        >
+          {messages.cutList.views.assembly}
+        </TabsTrigger>
       </TabsList>
     </Tabs>
   );
-  const switchInCanvas = drawing && !wide;
+  const switchInCanvas = (drawing || bench) && !wide;
   if (step === 'makine') {
     left = (
       <div className="flex min-w-0 flex-col gap-4">
@@ -1214,6 +1239,14 @@ function WizardSession({
             onGrainPreview={setSheetGrainPreview}
           />
         }
+      />
+    );
+  } else if (bench) {
+    both = (
+      <AssemblyBench
+        project={project}
+        run={session.run}
+        viewSwitch={switchInCanvas ? viewSwitch : undefined}
       />
     );
   } else if (drawing) {
@@ -1631,7 +1664,7 @@ function WizardSession({
           />
         ) : null}
 
-        {step === 'parcalar' && !drawing && !wide ? (
+        {step === 'parcalar' && !drawing && !bench && !wide ? (
           <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 lg:-mt-1">
             {viewSwitch}
           </div>
