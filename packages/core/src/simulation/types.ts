@@ -88,6 +88,11 @@ export interface SimSheet {
   zBottom: number;
   /** Tool diameter per tool number found in the program (from the profile). */
   toolDiameters: Record<number, number>;
+  /**
+   * T353: V geometry of the program's V-bits (included angle, flat tip), so a V-groove draws with
+   * its V section (open width = tip + 2 · depth · tan(angle / 2)). Absent = no V-bit in the program.
+   */
+  vBits?: Record<number, { angleDeg: number; tipDiameter: number }>;
 }
 
 /** Machine geometry in the sheet frame, for drawing the table, the travel and the program zero. */

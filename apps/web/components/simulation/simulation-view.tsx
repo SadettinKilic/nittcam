@@ -937,6 +937,7 @@ function Player({
                 setMode('2d');
               }}
               partCount={parts.length}
+              vBit={sim.vBits ? Object.values(sim.vBits)[0] : undefined}
               toolpath={{
                 sim,
                 time,

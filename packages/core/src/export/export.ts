@@ -104,8 +104,12 @@ export function exportNc(
       sheetHeight: defaultSheet(project).height,
       ...ownSheetSizes(project),
     },
-    // one cutting tool per project (D-021): the cut-out loops are offset by its radius
-    layout: expectedLayouts(project, tp.toolpath.operations[0]?.toolDiameter ?? 0),
+    // one cutting tool per project (D-021): the cut-out loops are offset by its radius (T353: the
+    // V-bit of the grooves, cut first, is not that tool)
+    layout: expectedLayouts(
+      project,
+      tp.toolpath.operations.find((o) => o.kind !== 'vgroove')?.toolDiameter ?? 0,
+    ),
   });
 }
 

@@ -108,6 +108,12 @@ export function simulateProject(
   const limits = machineFeedLimits(profile);
   const toolDiameters: Record<number, number> = {};
   for (const tool of profile.tools) toolDiameters[tool.number] = tool.diameter;
+  const vBits: Record<number, { angleDeg: number; tipDiameter: number }> = {};
+  for (const tool of profile.tools) {
+    if (tool.type === 'vBit' && tool.angleDeg !== undefined) {
+      vBits[tool.number] = { angleDeg: tool.angleDeg, tipDiameter: tool.tipDiameter ?? 0 };
+    }
+  }
 
   const bySheet = new Map<number, { name: string; content: string; read: GcodeReadResult }[]>();
   for (const f of files) {
@@ -134,6 +140,7 @@ export function simulateProject(
         rapidFeed,
         feedCap: { feed: limits.feed.max, plunge: limits.plungeFeed.max },
         toolDiameters,
+        vBits,
       });
       return own === frame ? sim : { ...sim, machine: simMachineFrame(profile, own) };
     });

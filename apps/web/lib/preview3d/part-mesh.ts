@@ -20,6 +20,8 @@ import {
   type Part,
   type Placement,
 } from '@nittcam/core';
+import type { VGroove3d } from './vgroove-3d';
+import { vGrooveEdges } from './vgroove-3d';
 import { ShapeUtils, Vector2 } from 'three';
 import { flatten, flattenOpen } from './outlines';
 import { MIN_FLOOR } from './min-floor';
@@ -199,7 +201,7 @@ function blindDepth(hole: Hole, thickness: number): number | null {
  * ring grooves as two walls + an annular floor (spec §4.5). A pocket or groove at least as deep
  * as the stock is drawn as through.
  */
-export function partMesh(part: Part, thickness: number): MeshData {
+export function partMesh(part: Part, thickness: number, vGroove?: VGroove3d): MeshData {
   const T = thickness;
   const b = new Builder();
   const outline = localOutline(part);
@@ -225,6 +227,9 @@ export function partMesh(part: Part, thickness: number): MeshData {
   for (const line of part.lines ?? []) {
     if (line.op.kind === 'online') b.polyline(flattenOpen(line.vertices), T);
   }
+  // T353: V-grooves as their V section in edge lines (the two edges on the machined face, the
+  // groove bottom); an inner contour with a groove is no opening.
+  if (vGroove) b.edges.push(...vGrooveEdges(part, T, vGroove));
 
   const topHoles: number[][] = [...inners];
   const bottomHoles: number[][] = [...inners];
@@ -313,7 +318,7 @@ export function applyTransform(t: PlacementTransform, x: number, y: number): [nu
  * Cache key of a part's shape: parts (and copies) with the same outline, inner contours, holes
  * and thickness share one geometry (instancing). Ids, names, tools and grain do not matter.
  */
-export function shapeKey(part: Part, thickness: number): string {
+export function shapeKey(part: Part, thickness: number, vGroove?: VGroove3d): string {
   const holes = part.holes.map((h) =>
     h.type === 'groove'
       ? ['g', h.d, h.cx, h.cy, h.depth, h.grooveWidth]
@@ -330,6 +335,7 @@ export function shapeKey(part: Part, thickness: number): string {
     band,
     part.ops ?? null,
     part.lines ?? null,
+    vGroove ?? null,
   ]);
 }
 

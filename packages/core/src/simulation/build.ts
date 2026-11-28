@@ -36,6 +36,8 @@ export interface SimSheetInput {
   feedCap?: { feed: number; plunge: number };
   /** Tool diameters of the machine profile by tool number. */
   toolDiameters: Readonly<Record<number, number>>;
+  /** T353: V geometry of the profile's V-bits by tool number. */
+  vBits?: Readonly<Record<number, { angleDeg: number; tipDiameter: number }>>;
 }
 
 /** Splits a program into physical lines the way the reader counts them (CRLF, LF and bare CR). */
@@ -220,5 +222,20 @@ export function buildSimSheet(input: SimSheetInput): SimSheet {
     },
     zBottom,
     toolDiameters,
+    ...vBitsUsed(input.vBits, toolDiameters),
   };
+}
+
+/** T353: the V-bits among the program's tools (none = no field, so other results stay as before). */
+function vBitsUsed(
+  all: SimSheetInput['vBits'],
+  used: Readonly<Record<number, number>>,
+): Pick<SimSheet, 'vBits'> {
+  if (!all) return {};
+  const out: NonNullable<SimSheet['vBits']> = {};
+  for (const k of Object.keys(used)) {
+    const v = all[Number(k)];
+    if (v) out[Number(k)] = v;
+  }
+  return Object.keys(out).length > 0 ? { vBits: out } : {};
 }

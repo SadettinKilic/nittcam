@@ -166,8 +166,8 @@ describe('V-groove tool and validation (T352)', () => {
     // without a material set the rows are empty; with the default profile's sets we get the row
     if (row) expect(row.defaultTool).toBe(7);
     const sm = new CommandStack(s.project, { machine: m });
-    const r8 = sm.execute("setOperationTool", { op: "vgroove", tool: 8 }, at);
-    expect(r8.ok ? "" : JSON.stringify(r8)).toBe("");
+    const r8 = sm.execute('setOperationTool', { op: 'vgroove', tool: 8 }, at);
+    expect(r8.ok ? '' : JSON.stringify(r8)).toBe('');
     expect(vGrooveToolOf(sm.project, m)?.number).toBe(8);
     const flatNo = m.tools.find((t) => t.type === 'flatEndMill')?.number ?? 1;
     expect(sm.execute('setOperationTool', { op: 'vgroove', tool: flatNo }, at).ok).toBe(false);
