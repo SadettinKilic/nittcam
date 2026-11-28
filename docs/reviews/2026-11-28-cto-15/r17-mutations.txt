@@ -1,0 +1,24 @@
+materialTop | unchanged | changed false | download true | 
+materialTop | first groove to remaining 0.65 | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_TOO_DEEP
+materialTop | first groove to remaining 0.69 | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_TOO_DEEP
+materialTop | first groove to remaining 0.4 | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_TOO_DEEP
+materialTop | first groove through (Z -4.2) | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_WRONG_TOOL, R17:VGROOVE_MISSING
+materialTop | all grooves shallow (remaining 2.0) | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_MISSING
+materialTop | groove feed 20000 | changed true | download false | R5:FEED_ABOVE_MACHINE, MODEL:MODEL_MISMATCH
+materialTop | no tool change to T5 | changed true | download false | TOOLS:TOOL_UNKNOWN, TOOLS:TOOL_PAUSE_COUNT, R17:VGROOVE_WRONG_TOOL, LAYOUT:PART_NOT_HELD, R17:VGROOVE_MISSING
+materialTop | extra V cut across the face | changed true | download false | MODEL:MODEL_MISMATCH
+materialTop | unverified material line removed | changed true | download true | 
+materialTop | back face line removed | changed true | download false | LAYOUT:BACK_FACE_HEADER_MISSING
+materialTop | rpm 24000 on V-bit | changed true | download false | MODEL:RPM_MISMATCH
+table | unchanged | changed false | download true | 
+table | first groove to remaining 0.65 | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_TOO_DEEP
+table | first groove to remaining 0.69 | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_TOO_DEEP
+table | first groove to remaining 0.4 | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_TOO_DEEP
+table | first groove through (Z -4.2) | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_WRONG_TOOL, R17:VGROOVE_MISSING
+table | all grooves shallow (remaining 2.0) | changed true | download false | MODEL:MODEL_MISMATCH, R17:VGROOVE_MISSING
+table | groove feed 20000 | changed true | download false | R5:FEED_ABOVE_MACHINE, MODEL:MODEL_MISMATCH
+table | no tool change to T5 | changed true | download false | TOOLS:TOOL_UNKNOWN, TOOLS:TOOL_PAUSE_COUNT, R17:VGROOVE_WRONG_TOOL, LAYOUT:PART_NOT_HELD, R17:VGROOVE_MISSING
+table | extra V cut across the face | changed true | download false | MODEL:MODEL_MISMATCH
+table | unverified material line removed | changed true | download true | 
+table | back face line removed | changed true | download false | LAYOUT:BACK_FACE_HEADER_MISSING
+table | rpm 24000 on V-bit | changed true | download false | MODEL:RPM_MISMATCH
