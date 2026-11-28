@@ -1453,16 +1453,16 @@ Tester focus: true-shape and arc-tabs goldens read back clean; nesting property 
 
 ### Batch B68: T393–T395 + rider T396 (CTO #14 MUSTs)
 
-### T393 Back-face machining stated in the NC header and the export checklist   [status: todo]   (CTO #14 M1)
+### T393 Back-face machining stated in the NC header and the export checklist   [status: done]   (CTO #14 M1)
 Acceptance: the fix list of M1 in the review: NC header line `(PLAKA ARKA YUZU USTTE: PARCALAR AYNALI)` when `machinedFace = back`; required export checklist item "Plakayı arka yüzü üstte (film alta) yatırdım; parçalar aynalı kesilir."; the independent checker asserts the header line for back-face projects; existing goldens unchanged; a new small ACM back-face golden fixture (`needs-human`, PO + tester approve).
 
-### T394 Toasts never cover canvas toolbars   [status: todo]   (CTO #14 M2)
+### T394 Toasts never cover canvas toolbars   [status: done]   (CTO #14 M2)
 Acceptance: the fix list of M2: workspace views (Çizim, Montaj, Dizilim, Simülasyon) put toasts bottom-right clear of every canvas toolbar; switching the parts view dismisses an open undo toast (undo stays on Ctrl+Z); e2e with `elementFromPoint` that the arc options and the bench toolbar are clickable right after a paste at 1440 and 1024. Supersedes the B-M2/B67 toast offsets.
 
-### T395 Aluminium: one honest message, no fixes that cannot work   [status: todo]   (CTO #14 M3)
+### T395 Aluminium: one honest message, no fixes that cannot work   [status: done]   (CTO #14 M3)
 Acceptance: the fix list of M3: while `MATERIAL_NOT_RELEASED` holds it is the only aluminium error (set and metal-machine errors folded under it), step 1 hides the two fix buttons, Simülasyon shows one error; text without task ids; machine form hint "Alüminyum G-code'u henüz kapalı; beyan şimdiden kaydedilir."; no task ids anywhere in `tr.json` (grep test).
 
-### T396 ACM step 1: right sheet, honest set hint, one click for starting values   [status: todo]   (rider; CTO #14 P1–P3)
+### T396 ACM step 1: right sheet, honest set hint, one click for starting values   [status: done]   (rider; CTO #14 P1–P3)
 Acceptance: switching to ACM (or aluminium) switches the sheet to the kind's first preset when the current sheet is not one of its presets (undoable, notice shown); the thickness hint and the "no cutting set" line never contradict each other; when the machine has no ACM set, step 1 offers "Örnek ACM ayarlarını ekle" (the MB4 action) inline.
 
 ### T397 Montaj polish from CTO #14   [status: todo]   (Polish queue; P5–P7)
@@ -1610,6 +1610,9 @@ Source: round 45 (run 46126438790: failed twice in shard 2, green on rerun; 5/5 
 
 ### T399 URL updates lost on the first save (step/view change races the address swap)   [status: todo]
 Source: round 46 (b20-preview3d:111, bm1-assembly-bench:110 flaky in CI). On a new project the first save swaps the address (`created` → `replaceState` to `/projeler/<id>`); a step or parts-view change in the same moment loses its `adim` / `gorunum` query. Make the address swap merge the current query (or serialise URL writes in project-wizard), add a unit test for the race. Also look at T392 (b11a `profil=son`), likely the same family.
+
+### T422 ACM NC follows its own traits: conventional by default, ramp entry   [status: todo]   (before T357; PO golden review B68)
+Source: PO review of golden `acm-back-face_S1.tap` (B68). The header says "yon climb" and the first pass enters with a straight plunge (G1 Z-2.25), while MB1/analysis §4.5 set ACM to conventional by default and ramp entry (rule 12 covers composite). Acceptable for now (soft material, NC marked unverified), but must be right before the ACM machine test T357: pull the ACM part of T358 (ramp-only entry from traits) and the traits' default direction into the toolpath; regenerate the two acm-back-face goldens (`needs-human`, PO + tester); wood goldens byte-identical.
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
