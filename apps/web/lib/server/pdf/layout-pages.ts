@@ -48,6 +48,8 @@ export interface PageHeader {
   revision: number;
   /** "MDF, 18 mm". */
   material: string;
+  /** T347: the wording of the sheet direction ("Damar", "Yüzey yönü", "Film oku"); absent = Damar. */
+  direction?: 'grain' | 'surface' | 'film';
   /** The company (T301): logo left of the project name, name first on the second line. */
   company?: PdfCompany | null;
 }
@@ -498,7 +500,9 @@ export function addLayoutPages(
     const page = doc.addPage([size.width, size.height]);
     const details = [
       fill(t.sheetSize, { w: mm(sheet.width), h: mm(sheet.height) }),
-      sheet.grain === null ? t.noGrain : fill(t.grain, { angle: mm(sheet.grain) }),
+      sheet.grain === null
+        ? t.noGrain
+        : fill(getMessages().direction[head.direction ?? 'grain'].pdf, { angle: mm(sheet.grain) }),
       fill(t.parts, { count: sheet.parts.length }),
       ...(sheet.offcut ? [offcutLine(sheet.offcutId ? offcuts[sheet.offcutId] : undefined)] : []),
     ].join(' · ');

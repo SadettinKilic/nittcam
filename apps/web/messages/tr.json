@@ -1,4 +1,30 @@
 {
+  "direction": {
+    "grain": {
+      "title": "Damar yönü",
+      "short": "Damar",
+      "label": "Damar açısı",
+      "input": "Damar açısı (derece)",
+      "note": "Damarın yönü yoktur: 30° ile 210° aynı damardır.",
+      "pdf": "Damar {angle}°"
+    },
+    "surface": {
+      "title": "Yüzey yönü",
+      "short": "Yüzey yönü",
+      "label": "Yüzey yönü açısı",
+      "input": "Yüzey yönü açısı (derece)",
+      "note": "Yüzey (hadde) yönünün ucu yoktur: 30° ile 210° aynıdır.",
+      "pdf": "Yüzey yönü {angle}°"
+    },
+    "film": {
+      "title": "Film oku yönü",
+      "short": "Film oku",
+      "label": "Film oku açısı",
+      "input": "Film oku açısı (derece)",
+      "note": "Film okunun ucu vardır: 30° ile 210° farklıdır; parçalar okun gösterdiği yöne yerleşir.",
+      "pdf": "Film oku {angle}°"
+    }
+  },
   "grainDial": {
     "label": "Damar açısı",
     "valueText": "{deg} derece",

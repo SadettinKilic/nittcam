@@ -22,6 +22,7 @@ import {
 import { useState } from 'react';
 import { EDGES, bulkParams, type EdgeKey, type GrainChoice } from '../../lib/cut-list-grid';
 import { fill } from '../../lib/fill';
+import { useDirectionText } from '../../lib/direction-context';
 import { grainDialLabels } from '../../lib/grain-labels';
 import { useMessages } from '../../lib/messages-context';
 import type { Text } from './cut-list-cells';
@@ -52,6 +53,7 @@ export function BulkEditSheet({
   onApply: (params: Record<string, unknown>) => boolean;
 }) {
   const grainText = useMessages().grainDial;
+  const direction = useDirectionText();
   const b = t.bulk;
   const [qty, setQty] = useState<number | null>(null);
   const [grain, setGrain] = useState<GrainChoice>('__keep__');
@@ -142,7 +144,7 @@ export function BulkEditSheet({
                   value={angle}
                   onValueChange={setAngle}
                   onValueCommit={setAngle}
-                  labels={grainDialLabels(grainText)}
+                  labels={grainDialLabels(grainText, { direction })}
                   data-testid="bulk-grain-dial"
                 />
               ) : null}

@@ -6,6 +6,7 @@ import {
   layoutDrawing,
   materialKindOf,
   projectReport,
+  traitsOf,
   type PaperSize,
   type Project,
 } from '@nittcam/core';
@@ -73,6 +74,7 @@ export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Arr
     projectName,
     revision,
     material: materialLabel(project),
+    direction: traitsOf(materialKindOf(project.stock.material)).direction.label,
     company: await embedCompany(doc, input.company),
   };
   const sheets = layoutDrawing(project);

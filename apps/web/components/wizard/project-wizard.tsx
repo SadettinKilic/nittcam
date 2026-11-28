@@ -24,6 +24,7 @@ import {
   type SessionInit,
 } from '../../lib/project-session';
 import { useNestingActivity } from '../../lib/use-nesting-worker';
+import { DirectionLabelContext, directionLabelOf } from '../../lib/direction-context';
 import { STEP_REQUEST_EVENT } from '../../lib/step-request';
 import { leavingLinkHref, onNavigationStart } from '../../lib/navigation-guard';
 import { nextFailing, saveBannerKind } from '../../lib/save-banner';
@@ -1486,191 +1487,193 @@ function WizardSession({
   );
 
   return (
-    <main
-      data-workspace={workspace ? '' : undefined}
-      className={`mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col gap-3 px-4 pt-1 sm:gap-5 sm:px-6 sm:pt-5 ${workspace ? 'max-w-none max-sm:gap-2 lg:h-[calc(100dvh-3.5rem)] lg:gap-2 lg:overflow-hidden lg:pt-2' : 'max-w-[96rem] lg:px-8'}`}
-    >
-      {/* T149: a newer version of a template this project uses asks before updating. */}
-      <TemplateUpdatePrompt
-        t={messages.editor.inspector.template}
-        project={project}
-        run={session.run}
-      />
-      {phone ? (
-        <>
-          <header
-            data-testid="wizard-compact-header"
-            className="flex h-14 min-w-0 items-center gap-1"
-          >
-            <CompactStepper
-              t={t.steps}
-              headingRef={heading}
-              current={step}
-              statuses={wizardStepStatuses(step, progress)}
-              progress={progress}
-              errors={stepErrors}
-              onGo={go}
-            />
-            <div className="flex shrink-0 items-center gap-0.5">{headerActions}</div>
-          </header>
-          {/* The name lives in the top-bar title; on step 1 it stays editable here. */}
-          {step === 'makine' ? (
-            <NameField
-              label={t.nameLabel}
-              value={session.name}
-              onCommit={session.rename}
-              defaultBase={t.defaultName}
-              autoSelect={session.projectId === null}
-            />
-          ) : null}
-        </>
-      ) : (
-        <div className="@container" data-testid="wizard-head-row">
-          {/* T378: the project name, the profile chip and undo/redo share the first row; the stepper
-              gets its own full-width row below, so its labels are never cut (owner 2026-11-28). */}
-          <div className="flex min-w-0 flex-col gap-2">
-            <header className="flex min-w-0 items-center justify-between gap-3">
+    <DirectionLabelContext.Provider value={directionLabelOf(project.stock.material)}>
+      <main
+        data-workspace={workspace ? '' : undefined}
+        className={`mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-col gap-3 px-4 pt-1 sm:gap-5 sm:px-6 sm:pt-5 ${workspace ? 'max-w-none max-sm:gap-2 lg:h-[calc(100dvh-3.5rem)] lg:gap-2 lg:overflow-hidden lg:pt-2' : 'max-w-[96rem] lg:px-8'}`}
+      >
+        {/* T149: a newer version of a template this project uses asks before updating. */}
+        <TemplateUpdatePrompt
+          t={messages.editor.inspector.template}
+          project={project}
+          run={session.run}
+        />
+        {phone ? (
+          <>
+            <header
+              data-testid="wizard-compact-header"
+              className="flex h-14 min-w-0 items-center gap-1"
+            >
+              <CompactStepper
+                t={t.steps}
+                headingRef={heading}
+                current={step}
+                statuses={wizardStepStatuses(step, progress)}
+                progress={progress}
+                errors={stepErrors}
+                onGo={go}
+              />
+              <div className="flex shrink-0 items-center gap-0.5">{headerActions}</div>
+            </header>
+            {/* The name lives in the top-bar title; on step 1 it stays editable here. */}
+            {step === 'makine' ? (
               <NameField
                 label={t.nameLabel}
                 value={session.name}
                 onCommit={session.rename}
                 defaultBase={t.defaultName}
-                autoSelect={session.projectId === null && step === 'makine'}
+                autoSelect={session.projectId === null}
               />
-              {step === 'parcalar' && wide ? (
-                <div className="shrink-0" data-testid="wizard-view-switch">
-                  {viewSwitch}
-                </div>
-              ) : null}
-              <div className="flex shrink-0 items-center gap-1">{headerActions}</div>
-            </header>
-            <StepIndicator
-              t={t.steps}
-              headingRef={heading}
-              current={step}
-              statuses={wizardStepStatuses(step, progress)}
-              progress={progress}
-              errors={stepErrors}
-              onGo={go}
-            />
-          </div>
-        </div>
-      )}
-
-      {bannerKind ? (
-        <SaveBanner
-          t={t.saveBanner}
-          kind={bannerKind}
-          unsent={session.unsentCount}
-          saving={session.saveState === 'saving'}
-          onRetry={() => void session.retry()}
-        />
-      ) : null}
-      {session.saveState === 'conflict' ? (
-        <ConflictNotice
-          t={t.conflict}
-          name={session.name}
-          projectId={session.projectId}
-          project={project}
-          onReload={() => {
-            session.discard();
-            onReload();
-          }}
-          onCopied={(id) => {
-            session.discard();
-            router.push(stepUrl(id, step));
-          }}
-        />
-      ) : null}
-      {session.restoredCount > 0 ? (
-        <Callout tone="info" role="status" icon={<Info aria-hidden />}>
-          <p>{fill(t.restored, { count: session.restoredCount })}</p>
-        </Callout>
-      ) : null}
-      {session.parkedCount > 0 ? (
-        <ParkedChangesNotice
-          count={session.parkedCount}
-          t={t}
-          onApply={() => void session.applyParked()}
-          onDrop={session.dropParked}
-        />
-      ) : null}
-
-      {step === 'parcalar' && !drawing && !wide ? (
-        <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 lg:-mt-1">
-          {viewSwitch}
-        </div>
-      ) : null}
-
-      <div
-        id="step-content"
-        className={
-          workspace
-            ? 'min-w-0 lg:min-h-0 lg:flex-1'
-            : // T246: the Parçalar step with no issues has no Uyarılar panel, so the table takes
-              // the full width. Every other step keeps its grid (Dışa aktar has two columns).
-              `grid min-w-0 items-start gap-5 ${partsFullWidth ? '' : GRID[step]}`
-        }
-      >
-        {both ?? (
-          <>
-            <div className={`min-w-0 ${LEFT_ORDER[step]}`}>{left}</div>
-            <div className="min-w-0">{right}</div>
+            ) : null}
           </>
-        )}
-      </div>
-
-      <nav
-        ref={footer}
-        aria-label={t.steps.label}
-        data-testid="wizard-footer"
-        data-wizard-footer=""
-        className={`sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:-mx-6 sm:px-6 ${workspace ? 'lg:py-2' : 'lg:-mx-8 lg:px-8'}`}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <Button
-            variant="outline"
-            data-testid="wizard-back"
-            disabled={index === 0}
-            onClick={() => go(STEPS[index - 1] ?? 'makine')}
-          >
-            <ArrowLeft aria-hidden />
-            {t.back}
-          </Button>
-          <div className="flex min-w-0 items-center gap-3 text-sm">
-            <span aria-hidden className="hidden text-fg-muted tabular-nums sm:inline">
-              {fill(t.steps.counter, { n: index + 1, total: STEPS.length })}
-            </span>
-            <span aria-hidden className="hidden h-4 w-px bg-border sm:inline-block" />
-            <AutosaveIndicator t={t.save.short} state={indicator} />
-            {/* T314 (D-102): AI chat shell (spec §5.2, bottom right); fixed "yakında" reply until M11. */}
-            <AssistantLauncher t={t.assistant} />
+        ) : (
+          <div className="@container" data-testid="wizard-head-row">
+            {/* T378: the project name, the profile chip and undo/redo share the first row; the stepper
+              gets its own full-width row below, so its labels are never cut (owner 2026-11-28). */}
+            <div className="flex min-w-0 flex-col gap-2">
+              <header className="flex min-w-0 items-center justify-between gap-3">
+                <NameField
+                  label={t.nameLabel}
+                  value={session.name}
+                  onCommit={session.rename}
+                  defaultBase={t.defaultName}
+                  autoSelect={session.projectId === null && step === 'makine'}
+                />
+                {step === 'parcalar' && wide ? (
+                  <div className="shrink-0" data-testid="wizard-view-switch">
+                    {viewSwitch}
+                  </div>
+                ) : null}
+                <div className="flex shrink-0 items-center gap-1">{headerActions}</div>
+              </header>
+              <StepIndicator
+                t={t.steps}
+                headingRef={heading}
+                current={step}
+                statuses={wizardStepStatuses(step, progress)}
+                progress={progress}
+                errors={stepErrors}
+                onGo={go}
+              />
+            </div>
           </div>
-          {nextKey ? (
-            <Button
-              data-testid="wizard-next"
-              onClick={() => {
-                // T155: with the 3D view open the camera first eases to the top view (§3.6).
-                const wait = runLeaveTransition();
-                if (wait > 0) window.setTimeout(() => go(nextKey), wait);
-                else go(nextKey);
-              }}
-              title={fill(t.steps.nextStep, { name: t.steps[nextKey] })}
-            >
-              {t.next}
-              <ArrowRight aria-hidden />
-            </Button>
-          ) : (
-            // T250 (D-040): the last step's main action ("İndir") is portalled in here.
-            <div
-              ref={setFooterSlot}
-              data-testid="wizard-footer-action"
-              className="flex min-w-20 shrink items-center justify-end gap-3"
-            />
+        )}
+
+        {bannerKind ? (
+          <SaveBanner
+            t={t.saveBanner}
+            kind={bannerKind}
+            unsent={session.unsentCount}
+            saving={session.saveState === 'saving'}
+            onRetry={() => void session.retry()}
+          />
+        ) : null}
+        {session.saveState === 'conflict' ? (
+          <ConflictNotice
+            t={t.conflict}
+            name={session.name}
+            projectId={session.projectId}
+            project={project}
+            onReload={() => {
+              session.discard();
+              onReload();
+            }}
+            onCopied={(id) => {
+              session.discard();
+              router.push(stepUrl(id, step));
+            }}
+          />
+        ) : null}
+        {session.restoredCount > 0 ? (
+          <Callout tone="info" role="status" icon={<Info aria-hidden />}>
+            <p>{fill(t.restored, { count: session.restoredCount })}</p>
+          </Callout>
+        ) : null}
+        {session.parkedCount > 0 ? (
+          <ParkedChangesNotice
+            count={session.parkedCount}
+            t={t}
+            onApply={() => void session.applyParked()}
+            onDrop={session.dropParked}
+          />
+        ) : null}
+
+        {step === 'parcalar' && !drawing && !wide ? (
+          <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 lg:-mt-1">
+            {viewSwitch}
+          </div>
+        ) : null}
+
+        <div
+          id="step-content"
+          className={
+            workspace
+              ? 'min-w-0 lg:min-h-0 lg:flex-1'
+              : // T246: the Parçalar step with no issues has no Uyarılar panel, so the table takes
+                // the full width. Every other step keeps its grid (Dışa aktar has two columns).
+                `grid min-w-0 items-start gap-5 ${partsFullWidth ? '' : GRID[step]}`
+          }
+        >
+          {both ?? (
+            <>
+              <div className={`min-w-0 ${LEFT_ORDER[step]}`}>{left}</div>
+              <div className="min-w-0">{right}</div>
+            </>
           )}
         </div>
-      </nav>
-    </main>
+
+        <nav
+          ref={footer}
+          aria-label={t.steps.label}
+          data-testid="wizard-footer"
+          data-wizard-footer=""
+          className={`sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:-mx-6 sm:px-6 ${workspace ? 'lg:py-2' : 'lg:-mx-8 lg:px-8'}`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              variant="outline"
+              data-testid="wizard-back"
+              disabled={index === 0}
+              onClick={() => go(STEPS[index - 1] ?? 'makine')}
+            >
+              <ArrowLeft aria-hidden />
+              {t.back}
+            </Button>
+            <div className="flex min-w-0 items-center gap-3 text-sm">
+              <span aria-hidden className="hidden text-fg-muted tabular-nums sm:inline">
+                {fill(t.steps.counter, { n: index + 1, total: STEPS.length })}
+              </span>
+              <span aria-hidden className="hidden h-4 w-px bg-border sm:inline-block" />
+              <AutosaveIndicator t={t.save.short} state={indicator} />
+              {/* T314 (D-102): AI chat shell (spec §5.2, bottom right); fixed "yakında" reply until M11. */}
+              <AssistantLauncher t={t.assistant} />
+            </div>
+            {nextKey ? (
+              <Button
+                data-testid="wizard-next"
+                onClick={() => {
+                  // T155: with the 3D view open the camera first eases to the top view (§3.6).
+                  const wait = runLeaveTransition();
+                  if (wait > 0) window.setTimeout(() => go(nextKey), wait);
+                  else go(nextKey);
+                }}
+                title={fill(t.steps.nextStep, { name: t.steps[nextKey] })}
+              >
+                {t.next}
+                <ArrowRight aria-hidden />
+              </Button>
+            ) : (
+              // T250 (D-040): the last step's main action ("İndir") is portalled in here.
+              <div
+                ref={setFooterSlot}
+                data-testid="wizard-footer-action"
+                className="flex min-w-20 shrink items-center justify-end gap-3"
+              />
+            )}
+          </div>
+        </nav>
+      </main>
+    </DirectionLabelContext.Provider>
   );
 }
 

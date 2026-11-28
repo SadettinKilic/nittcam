@@ -50,6 +50,7 @@ import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 're
 import { formatMm, sizeText } from '../../lib/canvas-labels';
 import { cornerLabels } from '../../lib/editor/corner-labels';
 import { fill } from '../../lib/fill';
+import { useDirectionText } from '../../lib/direction-context';
 import { grainDialLabels } from '../../lib/grain-labels';
 import { useMessages } from '../../lib/messages-context';
 import type { Messages } from '../../lib/messages';
@@ -383,6 +384,7 @@ export function PartProperties({
   afterPart?: ReactNode;
 }) {
   const grainText = useMessages().grainDial;
+  const direction = useDirectionText();
   const outline = deriveOutline(part);
   const n = outline.length;
   const seg = sub?.kind === 'segment' && sub.index < n ? sub.index : null;
@@ -536,7 +538,7 @@ export function PartProperties({
               if (a !== part.grain.angle)
                 run('setPartGrain', { id: part.id, mode: 'fixed', angle: a });
             }}
-            labels={grainDialLabels(grainText, { note: false })}
+            labels={grainDialLabels(grainText, { note: false, direction })}
             className="self-center"
             data-testid="prop-grain-dial"
           />

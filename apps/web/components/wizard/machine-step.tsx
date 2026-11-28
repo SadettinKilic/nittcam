@@ -30,6 +30,7 @@ import type { TableSpec } from '../../lib/preview3d/stage';
 import { useView3d } from '../../lib/preview3d/view-memory';
 import { fill } from '../../lib/fill';
 import { fillRich } from '../../lib/fill-rich';
+import { useDirectionText } from '../../lib/direction-context';
 import { grainDialLabels } from '../../lib/grain-labels';
 import { useMessages } from '../../lib/messages-context';
 import { paramFixHref } from '../../lib/machine-form';
@@ -711,6 +712,7 @@ export function SheetGrain({
   onGrainPreview?: (angle: number | null) => void;
 }) {
   const grainText = useMessages().grainDial;
+  const direction = useDirectionText();
   const { stock } = project;
   const sheet = defaultSheet(project);
   if (traitsOf(materialKindOf(stock.material)).direction.kind === 'none') {
@@ -738,7 +740,7 @@ export function SheetGrain({
   }
   return (
     <fieldset className="flex flex-col gap-2" data-testid="sheet-grain">
-      <legend className="mb-1.5 text-sm font-medium text-fg">{t.grain}</legend>
+      <legend className="mb-1.5 text-sm font-medium text-fg">{direction.title}</legend>
       <GrainDial
         value={sheet.grain}
         onValueChange={(a) => onGrainPreview?.(a)}
@@ -746,7 +748,7 @@ export function SheetGrain({
           onGrainPreview?.(null);
           if (a !== sheet.grain) run('setGrain', { grain: a });
         }}
-        labels={grainDialLabels(grainText)}
+        labels={grainDialLabels(grainText, { direction })}
         data-testid="sheet-grain-dial"
       />
     </fieldset>

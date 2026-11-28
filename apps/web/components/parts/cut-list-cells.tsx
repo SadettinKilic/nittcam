@@ -34,6 +34,7 @@ import {
   type Validated,
 } from '../../lib/cut-list-grid';
 import { fill } from '../../lib/fill';
+import { useDirectionText } from '../../lib/direction-context';
 import { grainDialLabels } from '../../lib/grain-labels';
 import { useMessages } from '../../lib/messages-context';
 import type { Messages } from '../../lib/messages';
@@ -395,6 +396,7 @@ export function GrainCell({
   navigate?: Navigate | undefined;
 }) {
   const grainText = useMessages().grainDial;
+  const direction = useDirectionText();
   const g = t.grainCell;
   const n = row + 1;
   const fixed = part.grain.mode === 'fixed';
@@ -444,7 +446,7 @@ export function GrainCell({
                 run('setPartGrain', { id: part.id, mode: 'fixed', angle: a });
               }
             }}
-            labels={grainDialLabels(grainText)}
+            labels={grainDialLabels(grainText, { direction })}
             data-testid={`grain-dial-${n}`}
           />
           {allIds().length > 1 ? (
