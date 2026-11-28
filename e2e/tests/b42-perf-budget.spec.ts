@@ -18,7 +18,7 @@ import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
 
 const JS_BUDGET_KB = 250;
 /** The project wizard runs the command layer and validation on load (D-079). */
-const WIZARD_JS_BUDGET_KB = 450;
+const WIZARD_JS_BUDGET_KB = 460; // D-133 (was 450, D-079)
 const LCP_BUDGET_MS = 2_500;
 
 test.describe.configure({ mode: 'serial' });
@@ -66,7 +66,7 @@ test.beforeAll(async ({ browser }) => {
 });
 
 // fixme until T186 brings the routes under budget (now ~440 kB, wizard ~680 kB; see PR #141).
-test('initial JS ≤ 250 kB gzip (wizard ≤ 450 kB, D-079) and LCP ≤ 2.5 s per route', async ({
+test('initial JS ≤ 250 kB gzip (wizard ≤ 460 kB, D-079, D-133) and LCP ≤ 2.5 s per route', async ({
   browser,
 }) => {
   test.setTimeout(120_000);

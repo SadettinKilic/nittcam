@@ -983,3 +983,8 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-132 3D machining plan (2026-11-28, owner request, PO decision)
 - Tiers: 3D-A V-carve first (from existing contours), 3D-B relief from image and STL (heightfield + own drop-cutter, Z-level roughing + raster finishing, scallop-based stepover, time estimate), 3D-C two-sided, 3D-D rotary later. Material-removal simulation and checker rules R20–R24 come before any 3D NC ships; the owner's machine test T416 gates release.
 - No OpenCAMLib (LGPL); compute is our own pure core code in workers. Plan `docs/3d/3d-cnc-plani.md`, tasks T400–T421 (M-3D). Starts after field test 1 and M-Metal tier A unless the owner moves it.
+
+## D-133 Wizard initial-JS budget 450 → 460 kB; the paste panel loads with the page (2026-11-28, round 44, PO decision)
+- MB4 made the paste panel lazy to stay under 450 kB; offline drafts (D-117) then broke: a user who goes offline right after opening a project could not paste (the chunk cannot load, the page shows the error boundary). Pasting offline is a promise of D-117, so `PastePanel` is a static import again.
+- With it the wizard routes ship 450.8 kB gzip. The wizard budget moves to **460 kB** (other routes stay at 250 kB). Metal (MB1–MB4) and the assembly bench added real features; the bench itself stays in a lazy chunk.
+- Follow-up T385 (Polish queue): slim the wizard's first load (route-split `tr.json` messages, check what else loads eagerly) and bring it back under 450 kB.
