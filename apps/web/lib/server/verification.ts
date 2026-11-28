@@ -6,6 +6,8 @@
 import {
   canRecordVerification,
   evaluateTestCut,
+  evaluateTrayCut,
+  trayTestProgram,
   extendedTestProgram,
   parsePostConfig,
   testCutStage,
@@ -15,8 +17,11 @@ import {
   type ExtendedProgramResult,
   type PostConfig,
   type TestCutMeasurements,
+  type TestCutSuggestion,
   type TestProgramKind,
   type TestProgramResult,
+  type TrayProgramResult,
+  type VerificationFamily,
   type VerificationStage,
 } from '@nittcam/core';
 import type { CompanyScope, MachineWithProfile } from '@nittcam/db';
@@ -44,14 +49,34 @@ export const PROGRAM_KINDS: readonly ProgramKind[] = [
   'testCut',
   'extAirCut',
   'extTestCut',
+  'acmAirCut',
+  'acmTestCut',
 ];
+
+/** T356: the verification families the page and the API offer (aluminium's part comes with MB7). */
+export const PAGE_FAMILIES = [
+  'woodBoard',
+  'composite',
+] as const satisfies readonly VerificationFamily[];
+export type PageFamily = (typeof PAGE_FAMILIES)[number];
+
+export function isPageFamily(v: unknown): v is PageFamily {
+  return (PAGE_FAMILIES as readonly unknown[]).includes(v);
+}
+
+/** T356: the family a program kind verifies (`acm*` = composite; the rest = wood board). */
+export function familyOfKind(kind: ProgramKind): PageFamily {
+  return kind === 'acmAirCut' || kind === 'acmTestCut' ? 'composite' : 'woodBoard';
+}
 
 export function isProgramKind(v: string): v is ProgramKind {
   return (PROGRAM_KINDS as readonly string[]).includes(v);
 }
 
 export interface MachineContext {
+  /** `state` is the machine's state in `family` (T356). */
   machine: MachineWithProfile;
+  family: PageFamily;
   /** Raw post config (the generator validates it again) and its parsed form, or null if unknown. */
   rawPost: unknown;
   post: PostConfig | null;
@@ -61,17 +86,23 @@ export interface MachineContext {
 export async function loadMachine(
   scope: CompanyScope,
   machineId: string,
+  family: PageFamily = 'woodBoard',
 ): Promise<MachineContext | null> {
-  const machine = await scope.machines.getWithProfile(machineId);
-  if (!machine) return null;
+  const found = await scope.machines.getWithProfile(machineId);
+  if (!found) return null;
+  const machine = { ...found, state: found.families[family] };
   const rawPost = POST_CONFIGS[machine.profile.post.id];
   const parsed = rawPost === undefined ? null : parsePostConfig(rawPost);
-  return { machine, rawPost, post: parsed?.ok ? parsed.config : null };
+  return { machine, family, rawPost, post: parsed?.ok ? parsed.config : null };
 }
 
 /** The §7.3 program kind behind a program kind (the extended part has the same two). */
 function baseKind(kind: ProgramKind): TestProgramKind {
-  return kind === 'extAirCut' ? 'airCut' : kind === 'extTestCut' ? 'testCut' : kind;
+  return kind === 'extAirCut' || kind === 'acmAirCut'
+    ? 'airCut'
+    : kind === 'extTestCut' || kind === 'acmTestCut'
+      ? 'testCut'
+      : kind;
 }
 
 function profileVersionOf(ctx: MachineContext) {
@@ -88,7 +119,11 @@ export function runProgram(ctx: MachineContext, kind: TestProgramKind): TestProg
 export function runAnyProgram(
   ctx: MachineContext,
   kind: ProgramKind,
-): TestProgramResult | ExtendedProgramResult {
+): TestProgramResult | ExtendedProgramResult | TrayProgramResult {
+  if (kind === 'acmAirCut' || kind === 'acmTestCut') {
+    // T356: the ACM tray, with the machine's composite family state (header and acceptance).
+    return trayTestProgram(baseKind(kind), profileVersionOf(ctx), ctx.rawPost);
+  }
   return kind === 'extAirCut' || kind === 'extTestCut'
     ? extendedTestProgram(baseKind(kind), profileVersionOf(ctx), ctx.rawPost)
     : runProgram(ctx, kind);
@@ -185,9 +220,11 @@ export async function overview(
   ctx: MachineContext,
 ): Promise<VerificationOverview> {
   const m = ctx.machine;
-  const air = preview(ctx, 'airCut');
-  const cut = preview(ctx, 'testCut');
-  const info = runProgram(ctx, 'testCut').info;
+  const tray = ctx.family === 'composite';
+  const air = preview(ctx, tray ? 'acmAirCut' : 'airCut');
+  const cut = preview(ctx, tray ? 'acmTestCut' : 'testCut');
+  const info = tray ? null : runProgram(ctx, 'testCut').info;
+  const trayInfo = tray ? runAnyProgram(ctx, 'acmTestCut').info : null;
   const history = await scope.machines.verificationHistory(m.machine.id);
   const downloads = (await scope.machines.testDownloads(m.machine.id)) ?? [];
   return {
@@ -196,6 +233,9 @@ export async function overview(
     profileVersionId: m.version.id,
     version: m.version.version,
     state: m.state,
+    family: ctx.family,
+    families: { woodBoard: m.families.woodBoard, composite: m.families.composite },
+    tray: trayInfo && 'foldedOuter' in trayInfo ? trayInfo : null,
     example: m.profile.example,
     post: ctx.post ? { id: ctx.post.id, version: ctx.post.version, name: ctx.post.name } : null,
     unverifiedReasons: unverifiedReasons({ profile: m.profile, verification: m.state }, ctx.post),
@@ -212,17 +252,33 @@ export async function overview(
       testCut: preview(ctx, 'extTestCut'),
     },
     downloads: downloads.map((d) => ({ ...d, kind: d.kind as ProgramKind })),
-    history: history.map(historyItem),
+    // T356: the history of this family only (wood board: the records without a family).
+    history: history
+      .filter((h) => (h.validation.materialFamily ?? 'woodBoard') === ctx.family)
+      .map(historyItem),
   };
 }
 
 /** Evaluates a test-cut form for the machine's test part; null when the part cannot be made. */
-export function evaluate(
-  ctx: MachineContext,
-  measurements: Partial<Record<keyof TestCutMeasurements, unknown>>,
-) {
+export function evaluate(ctx: MachineContext, measurements: Record<string, unknown>) {
+  if (ctx.family === 'composite') {
+    // T356: the ACM tray: remaining skin and folded outer size.
+    const r = runAnyProgram(ctx, 'acmTestCut');
+    const info = r.info && 'foldedOuter' in r.info ? r.info : null;
+    if (!info) return null;
+    const ev = evaluateTrayCut(measurements, info);
+    const evaluation = { ...ev, suggestions: [] as TestCutSuggestion[] };
+    return { info, evaluation, stage: testCutStage(ev.inTolerance), keys: TRAY_KEYS };
+  }
   const info = runProgram(ctx, 'testCut').info;
   if (!info) return null;
-  const evaluation = evaluateTestCut(measurements, info);
-  return { info, evaluation, stage: testCutStage(evaluation.inTolerance) };
+  const evaluation = evaluateTestCut(
+    measurements as Partial<Record<keyof TestCutMeasurements, unknown>>,
+    info,
+  );
+  return { info, evaluation, stage: testCutStage(evaluation.inTolerance), keys: BOARD_KEYS };
 }
+
+/** The measurement keys stored with a recorded test cut, per family. */
+const BOARD_KEYS = ['edgeX', 'edgeY', 'diagonal', 'holeDiameter', 'pocketDepth', 'thickness'];
+const TRAY_KEYS = ['remaining', 'outerX', 'outerY'];

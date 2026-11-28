@@ -22,6 +22,11 @@ export interface PostMeta {
     sheetWidth: number;
     sheetHeight: number;
     /**
+     * T355: identifying properties of the stock (alloy, temper, ACM colour code) the "MALZEME:"
+     * header line names after the thickness. Absent or empty = no words (today's programs).
+     */
+    detail?: string;
+    /**
      * Own size of a sheet, keyed by toolpath sheet index (T164, D-056). A sheet without an entry
      * (or no `sheets` at all) has `sheetWidth` × `sheetHeight`, so single-size output is unchanged.
      */

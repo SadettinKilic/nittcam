@@ -15,7 +15,7 @@ import type { Project } from '../schema/project';
 import { innerOperation } from '../schema/operations';
 import { sheetSizeOf } from '../schema/sheet-size';
 import { placedHoleCentre } from '../toolpath/holes';
-import { placedInners, placedOutline } from '../toolpath/build';
+import { placedInners, placedLines, placedOutline } from '../toolpath/build';
 
 /** One placed part copy as drawn on a layout page. */
 export interface DrawnSheetPart {
@@ -36,6 +36,11 @@ export interface DrawnSheetPart {
   inners: number[][];
   /** Blind contour pockets (T325) in the same frame, with their depth (mm). */
   pockets: { ring: number[]; depth: number }[];
+  /**
+   * T355: V-grooves (fold lines, T352) in the same frame, flat [x, y, …], arcs sampled; drawn
+   * dashed and never as a through cut. Absent when the part has none (drawings unchanged).
+   */
+  grooves?: { points: number[]; closed: boolean }[];
   /** Holes (incl. template instances): centre and radius. */
   holes: { x: number; y: number; r: number }[];
   /** Sheet-frame grain line angle, degrees [0, 180); null = free grain. */
@@ -86,6 +91,25 @@ export function flattenRing(poly: Polyline, steps = ARC_STEPS): number[] {
   return out;
 }
 
+/** An open polyline as a flat [x, y, …] list, arcs sampled, rounded to 1 µm (T355). */
+export function flattenLine(poly: Polyline, steps = ARC_STEPS): number[] {
+  const out: number[] = [];
+  const vs = poly.vertices;
+  for (let i = 0; i < vs.length; i++) {
+    const v = vs[i];
+    if (!v) continue;
+    const next = vs[i + 1];
+    if (!next || v.bulge === 0) {
+      out.push(round3(v.x), round3(v.y));
+      continue;
+    }
+    for (const p of sampleSegment(v, next, v.bulge, steps).slice(0, -1)) {
+      out.push(round3(p.x), round3(p.y));
+    }
+  }
+  return out;
+}
+
 /**
  * The drawing of every layout sheet, in layout order; placements of unknown parts are skipped.
  * Parts on a sheet are ordered by part number (cut-list row, then copy) so the page reads the same
@@ -114,13 +138,15 @@ export function layoutDrawing(entered: Project): SheetDrawing[] {
           height: round3(shape.h),
           box: { x: round3(pl.x), y: round3(pl.y), w: round3(foot.w), h: round3(foot.h) },
           outline: flattenRing(placedOutline(part, pl)),
-          inners: placedInners(part, pl).flatMap((c, k) =>
-            innerOperation(part, k).kind === 'pocket' ? [] : [flattenRing(c)],
-          ),
+          inners: placedInners(part, pl).flatMap((c, k) => {
+            const kind = innerOperation(part, k).kind;
+            return kind === 'pocket' || kind === 'vgroove' ? [] : [flattenRing(c)];
+          }),
           pockets: placedInners(part, pl).flatMap((c, k) => {
             const op = innerOperation(part, k);
             return op.kind === 'pocket' ? [{ ring: flattenRing(c), depth: op.depth }] : [];
           }),
+          ...groovesOf(part, pl),
           holes: part.holes.map((hole) => {
             const c = placedHoleCentre(part, pl, hole);
             return { x: round3(c.x), y: round3(c.y), r: hole.d / 2 };
@@ -142,6 +168,23 @@ export function layoutDrawing(entered: Project): SheetDrawing[] {
       parts: parts.map((p) => p.part),
     };
   });
+}
+
+/** T355: the part's V-grooves in the sheet frame, as `{ grooves }` only when there are any. */
+function groovesOf(
+  part: Project['parts'][number],
+  pl: Project['layout']['sheets'][number]['placements'][number],
+): Pick<DrawnSheetPart, 'grooves'> {
+  const grooves: { points: number[]; closed: boolean }[] = [];
+  placedInners(part, pl).forEach((c, k) => {
+    if (innerOperation(part, k).kind === 'vgroove') {
+      grooves.push({ points: flattenRing(c), closed: true });
+    }
+  });
+  for (const l of placedLines(part, pl)) {
+    if (l.op.kind === 'vgroove') grooves.push({ points: flattenLine(l.poly), closed: false });
+  }
+  return grooves.length > 0 ? { grooves } : {};
 }
 
 /** Paper sizes of the PDF (spec §6.6), landscape, in PDF points (1/72 in). */

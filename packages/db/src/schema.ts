@@ -467,10 +467,19 @@ export const validations = pgTable(
     /** Caliper measurement form (edges, diagonal, hole diameter, pocket depth). */
     measurements: jsonb('measurements').$type<Record<string, unknown>>().notNull().default({}),
     approvedBy: uuid('approved_by'),
+    /**
+     * T356 (§7.3, D-118, D-138): the material family the step was done in. Null = wood board (every
+     * record before T356, and wood and plastic jobs today); `composite` (ACM), `nonFerrous`.
+     */
+    materialFamily: text('material_family').$type<'composite' | 'nonFerrous'>(),
     createdAt: createdAt(),
   },
   (t) => [
     index('validations_company_mpv_idx').on(t.companyId, t.machineProfileVersionId),
+    check(
+      'validations_material_family_known',
+      sql`${t.materialFamily} is null or ${t.materialFamily} in ('composite', 'nonFerrous')`,
+    ),
     foreignKey({
       name: 'validations_mpv_fk',
       columns: [t.companyId, t.machineProfileVersionId],

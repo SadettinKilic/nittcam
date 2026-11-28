@@ -4,6 +4,7 @@ import { fileBytes, sha256Hex } from '../../../../../../../lib/server/exports';
 import { UUID } from '../../../../../../../lib/server/projects';
 import {
   apiError,
+  familyOfKind,
   isProgramKind,
   loadMachine,
   programAllowed,
@@ -28,7 +29,8 @@ export async function GET(
   if (!UUID.test(id) || !isProgramKind(kind)) return apiError({ error: 'not_found' }, 404);
   try {
     const scope = await companyScope();
-    const m = await loadMachine(scope, id);
+    // T356: the ACM tray programs run with the machine's composite family state.
+    const m = await loadMachine(scope, id, familyOfKind(kind));
     if (!m) return apiError({ error: 'not_found' }, 404);
     if (!programAllowed(m, kind)) {
       return apiError({ error: 'not_allowed', state: m.machine.state }, 409);

@@ -171,6 +171,13 @@ export interface GcodeCheckContext {
    * silent (materials without a V-groove).
    */
   vGroove?: { minRemaining: number };
+  /**
+   * T356 rider (CTO #15): the stock's kind ships NC with unverified starting values and the job's
+   * material family has no recorded test cut (D-130, D-138): the header must carry the comment
+   * "DOGRULANMAMIS MALZEME: <name>" (R10/UNVERIFIED_MATERIAL_HEADER_MISSING). Derived from the
+   * project's traits by the caller, never from the generator's meta. Omitted = not checked.
+   */
+  unverifiedMaterial?: string;
   tolerance?: GcodeCheckTolerance;
 }
 

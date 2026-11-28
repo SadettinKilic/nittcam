@@ -131,6 +131,34 @@ export function ExportChecklist({
           label={t.checkBackFace}
         />
       ) : null}
+      {checklist?.vGroove ? (
+        // T355 (analysis §5.6): V-grooves: the V-bit, then the remaining skin on scrap first.
+        <>
+          <ChecklistItem
+            testId={`${testIdPrefix}-check-vbit`}
+            checked={checks.vBit ?? false}
+            onChange={(v) => set({ vBit: v })}
+            label={
+              checklist.vGroove.tool === null
+                ? t.checkVBitNone
+                : fill(checklist.vGroove.angle === null ? t.checkVBitNoAngle : t.checkVBit, {
+                    tool: checklist.vGroove.tool,
+                    angle: checklist.vGroove.angle ?? '',
+                  })
+            }
+          />
+          <ChecklistItem
+            testId={`${testIdPrefix}-check-vremaining`}
+            checked={checks.vRemaining ?? false}
+            onChange={(v) => set({ vRemaining: v })}
+            label={fill(t.checkVRemaining, {
+              mm: checklist.vGroove.remaining
+                .map((r) => r.toLocaleString('tr-TR', { maximumFractionDigits: 2 }))
+                .join(' / '),
+            })}
+          />
+        </>
+      ) : null}
       {checklist?.tabsNotHeld ? (
         // T338 (D-129): some tabs were left out because they would not hold.
         <ChecklistItem

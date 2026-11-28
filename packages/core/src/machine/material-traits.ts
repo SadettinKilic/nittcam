@@ -17,6 +17,19 @@ import type { ToolType } from './profile';
 /** Family of a kind: shared defaults, the picker group and (later) the verification family. */
 export type MaterialFamily = 'woodBoard' | 'plastic' | 'composite' | 'nonFerrous';
 
+/**
+ * T356: the families a machine is verified in (§7.3). Plastic is verified with the wood board
+ * record (D-138), so it is not one of them.
+ */
+export type VerificationFamily = 'woodBoard' | 'composite' | 'nonFerrous';
+
+/** T356: every verification family, board first (the record without a family, null in the db). */
+export const VERIFICATION_FAMILIES: readonly VerificationFamily[] = [
+  'woodBoard',
+  'composite',
+  'nonFerrous',
+];
+
 /** Every family in picker order. */
 export const MATERIAL_FAMILIES: readonly MaterialFamily[] = [
   'woodBoard',
@@ -56,6 +69,13 @@ export interface MaterialTraits {
    * the back (parts mirrored); every other kind from the front (today).
    */
   machinedFace: 'front' | 'back';
+  /**
+   * T356 (§7.3, D-118): the verification family a job of this kind needs a passed test cut in, and
+   * the test part of its field kit. Wood and plastic share the board record (today's verifications,
+   * `validations.material_family` null) and the 200 × 200 board part; ACM needs its own test cut
+   * with the V-groove tray; aluminium its own (its test part comes with MB7, until then the board).
+   */
+  verification: { family: VerificationFamily; testPart: 'board' | 'tray' };
   /** Tool types each operation may cut with (`vgroove`: empty where the kind has no V-groove). */
   toolTypes: Readonly<Record<TraitsOperation, readonly ToolType[]>>;
   /**
@@ -201,6 +221,7 @@ const BOARD = {
   nc: 'released',
   ncName: '',
   machinedFace: 'front',
+  verification: { family: 'woodBoard', testPart: 'board' },
   toolTypes: WOOD_TOOLS,
   vGroove: null,
   tabs: TABS,
@@ -320,6 +341,7 @@ export const MATERIAL_TRAITS: Readonly<Record<MaterialKind, MaterialTraits>> = {
     nc: 'unverified',
     ncName: 'ACM',
     machinedFace: 'back',
+    verification: { family: 'composite', testPart: 'tray' },
     toolTypes: ACM_TOOLS,
     // T352 (analysis §4.5): remaining 0,8 default, 0,7 minimum, 1,2 ceiling; one pass up to 3 mm deep
     // (3 mm ACM: 2,2 mm; 4 mm: 3,2 mm → two passes). "doğrulanacak" until the machine test T357.
@@ -366,6 +388,7 @@ export const MATERIAL_TRAITS: Readonly<Record<MaterialKind, MaterialTraits>> = {
     family: 'nonFerrous',
     nc: 'blocked',
     ncName: 'ALUMINYUM',
+    verification: { family: 'nonFerrous', testPart: 'board' },
     toolTypes: METAL_TOOLS,
     direction: { kind: 'axial', label: 'surface', defaultOn: false },
     tabs: {
@@ -418,6 +441,11 @@ export function traitsOf(kind: MaterialKind | null): MaterialTraits {
 }
 
 /** Kinds of a family in menu order (`MATERIAL_KIND_IDS`), released kinds only. */
+/** T356: the verification family of a material kind (unknown kinds: the board family). */
+export function verificationFamilyOf(kind: MaterialKind | null): VerificationFamily {
+  return traitsOf(kind).verification.family;
+}
+
 export function kindsOfFamily(family: MaterialFamily): MaterialKind[] {
   return MATERIAL_KIND_IDS.filter(
     (k) => MATERIAL_TRAITS[k].family === family && MATERIAL_TRAITS[k].release === 'released',

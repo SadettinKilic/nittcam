@@ -166,7 +166,7 @@ export function right(
 
 /**
  * A double-headed arrow (grain is an undirected line, D-034) of `length` points centred on (cx, cy)
- * at `angle` degrees CCW from +X.
+ * at `angle` degrees CCW from +X. `directed` (T355, ACM film arrow): one head at the `angle` end.
  */
 export function grainArrow(
   page: PDFPage,
@@ -175,6 +175,7 @@ export function grainArrow(
   angle: number,
   length: number,
   color = ACCENT,
+  directed = false,
 ): void {
   const a = (angle * Math.PI) / 180;
   const dx = (Math.cos(a) * length) / 2;
@@ -184,10 +185,13 @@ export function grainArrow(
   const thickness = Math.max(0.6, length / 30);
   page.drawLine({ start, end, thickness, color });
   const head = Math.min(5, length / 4);
-  for (const [tip, dir] of [
-    [end, a],
-    [start, a + Math.PI],
-  ] as const) {
+  const tips = directed
+    ? ([[end, a]] as const)
+    : ([
+        [end, a],
+        [start, a + Math.PI],
+      ] as const);
+  for (const [tip, dir] of tips) {
     for (const side of [0.5, -0.5]) {
       page.drawLine({
         start: tip,
