@@ -5,12 +5,17 @@
  */
 import { describe, expect, it } from 'vitest';
 import { canDownload, checkGcode } from './check';
-import { golden, GOLDEN_IDS, type PostId } from './check.testing';
+import { golden, GOLDEN_IDS, goldenTray, type PostId } from './check.testing';
 import { MUTATIONS } from './mutations.testing';
 import { GCODE_CHECK_RULES } from './types';
 
 const POSTS: PostId[] = ['generic', 'mach3'];
-const CASES = POSTS.flatMap((p) => GOLDEN_IDS.map((f) => golden(p, f)));
+// T354: the ACM tray (V-grooves, rule 17) runs with the wood fixtures; a mutation names the
+// fixtures it applies to (default: the wood fixtures).
+const CASES = [
+  ...POSTS.flatMap((p) => GOLDEN_IDS.map((f) => golden(p, f))),
+  ...POSTS.map((p) => goldenTray(p)),
+];
 
 describe('golden files pass every check', () => {
   it.each(CASES.map((g) => [g.post, g.fixture, g] as const))('%s %s', (_p, _f, g) => {
@@ -31,9 +36,9 @@ describe('the mutation catalogue', () => {
   });
 
   const runs = MUTATIONS.flatMap((m) =>
-    CASES.filter((g) => m.posts.includes(g.post)).map(
-      (g) => [m.id, g.post, g.fixture, m, g] as const,
-    ),
+    CASES.filter(
+      (g) => m.posts.includes(g.post) && (m.fixtures ?? GOLDEN_IDS).includes(g.fixture),
+    ).map((g) => [m.id, g.post, g.fixture, m, g] as const),
   );
   it.each(runs)('%s is caught (%s %s)', (_id, _p, _f, m, g) => {
     const lines = g.text.split('\r\n');

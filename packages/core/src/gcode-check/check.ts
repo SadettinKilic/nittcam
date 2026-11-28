@@ -9,6 +9,7 @@ import { deepCuts, partHoldRule, type DeepCut } from './hold';
 import { cutLoops, expectedLoopCount, matchLayout, matchModel, type CutLoop } from './match';
 import { toSheetMoves, type SheetMove } from './path';
 import { pocketMoveRule, pocketNotCutRule } from './pocket';
+import { vGrooveMissingRule, vGrooveMoveRule } from './vgroove';
 import {
   activeTools,
   floorRule,
@@ -75,6 +76,8 @@ interface Analysis {
   events: readonly GcodeEvent[];
   /** B62 fix r1: the active tool of every read move (null = unknown). */
   tools: (number | null)[];
+  /** T354: fold-line samples covered by V-bit cuts at depth, per groove key. */
+  grooves: Map<string, Set<number>>;
 }
 
 function read(text: string, d: Derived): GcodeReadResult {
@@ -89,7 +92,12 @@ function read(text: string, d: Derived): GcodeReadResult {
 }
 
 /** All rules on one file. `prefix`: the file may end early at an operation boundary (split). */
-function analyse(text: string, d: Derived, prefix: boolean): Analysis {
+function analyse(
+  text: string,
+  d: Derived,
+  prefix: boolean,
+  expected: readonly ExpectedPart[] | null | undefined = null,
+): Analysis {
   const { violations, push } = collector();
   const r = read(text, d);
   readerFindings(r, push);
@@ -109,7 +117,10 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
   const rawLines = text.split(/\r\n|\r|\n/);
   toolRules(r, rawLines, m.ok ? d.ops.slice(0, m.consumed) : d.ops, d, push);
   const loops = cutLoops(sm, d, push);
+  // T354: rule 17 (depth floor from stock + traits, V-bit only, fold-line coverage).
+  const grooves = vGrooveMoveRule(sm, expected, d, push, tools);
   return {
+    grooves,
     violations,
     push,
     consumed: m.consumed,
@@ -145,6 +156,7 @@ function finish(
     // T338 (D-129): tabs that hold, from the read material
     partHoldRule(layout, deepCuts(a.sm, a.tools, d), d, a.push);
     pocketNotCutRule(layout, pocketMoveRule(a.sm, a.events, layout, d, a.push, a.tools), a.push);
+    vGrooveMissingRule(layout, a.grooves, d, a.push);
   }
   const ok = !a.violations.some((v) => v.severity === 'error');
   return {
@@ -178,7 +190,7 @@ export function checkGcode(text: string, context: GcodeCheckContext): GcodeCheck
       },
     ]);
   }
-  return finish(analyse(text, dr.d, false), context.layout, dr.d);
+  return finish(analyse(text, dr.d, false, context.layout), context.layout, dr.d);
 }
 
 /**
@@ -224,6 +236,7 @@ export function checkGcodeFiles(
     const loops: CutLoop[] = [];
     const sheetLayout = context.layout?.get(sheet);
     const pocketsReached = new Set<string>();
+    const groovesCovered = new Map<string, Set<number>>();
     const deep: DeepCut[] = [];
     let lastResult: { analysis: Analysis; d: Derived; index: number } | null = null;
     group.forEach((file, gi) => {
@@ -250,7 +263,12 @@ export function checkGcodeFiles(
         out.push({ name: file.name, sheet, result: res });
         return;
       }
-      const a = analyse(file.content, dr.d, !isLast);
+      const a = analyse(file.content, dr.d, !isLast, sheetLayout);
+      for (const [k, set] of a.grooves) {
+        const all = groovesCovered.get(k) ?? new Set<number>();
+        for (const i of set) all.add(i);
+        groovesCovered.set(k, all);
+      }
       if (sheetLayout) {
         for (const k of pocketMoveRule(a.sm, a.events, sheetLayout, dr.d, a.push, a.tools)) {
           pocketsReached.add(k);
@@ -269,6 +287,7 @@ export function checkGcodeFiles(
       matchLayout(loops, layout, lr.d, lr.analysis.push);
       partHoldRule(layout, deep, lr.d, lr.analysis.push);
       pocketNotCutRule(layout, pocketsReached, lr.analysis.push);
+      vGrooveMissingRule(layout, groovesCovered, lr.d, lr.analysis.push);
       const entry = out[lr.index];
       if (entry && lr.analysis.violations.length > before) {
         entry.result = finish(lr.analysis, null, lr.d);

@@ -97,6 +97,8 @@ export function exportNc(
     ...cuttingMeta(project, profile),
     // T393: the checker reads the face from the project itself, not from the post meta.
     machinedFace: project.stock.machinedFace === 'back' ? 'back' : 'front',
+    // T354: rule 17 reads the floor from the stock's traits, never from the toolpath.
+    ...vGrooveCheckOf(project),
     stock: {
       material: project.stock.material,
       thickness: project.stock.thickness,
@@ -111,6 +113,12 @@ export function exportNc(
       tp.toolpath.operations.find((o) => o.kind !== 'vgroove')?.toolDiameter ?? 0,
     ),
   });
+}
+
+/** T354: rule 17's context for a material that folds (`traits.vGroove`), else nothing. */
+export function vGrooveCheckOf(project: Project): { vGroove?: { minRemaining: number } } {
+  const t = traitsOf(materialKindOf(project.stock.material)).vGroove;
+  return t ? { vGroove: { minRemaining: t.minRemaining } } : {};
 }
 
 /**
@@ -212,6 +220,8 @@ export interface PostAndCheckMeta extends PostMeta {
    * is required, front = it is refused); omitted = not checked (test programs).
    */
   machinedFace?: 'front' | 'back';
+  /** T354: rule 17's minimum remaining skin from the stock's traits (omitted = rule silent). */
+  vGroove?: { minRemaining: number };
 }
 
 /**
@@ -232,7 +242,7 @@ export function postAndCheck(
   const base = { files: [], postErrors: [], postWarnings: [], check: null, tools };
   // An invalid config is refused by the generator itself; the checks only need its declarations.
   const expectations: GcodeCheckPostExpectations | undefined = cfg.ok ? cfg.config : undefined;
-  const { layout, zFloor, machinedFace, ...postMeta } = meta;
+  const { layout, zFloor, machinedFace, vGroove, ...postMeta } = meta;
   const stock = {
     thickness: meta.stock.thickness,
     sheetWidth: meta.stock.sheetWidth,
@@ -254,6 +264,7 @@ export function postAndCheck(
       : {}),
     ...(zFloor !== undefined ? { zFloor } : {}),
     ...(machinedFace ? { machinedFace } : {}),
+    ...(vGroove ? { vGroove } : {}),
   };
   let checked: { files: readonly PostFile[]; result: GcodeCheckFilesResult } | null = null;
   const run = (files: readonly PostFile[]) => {
