@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 import { normalizeRotation } from '../geometry/grain';
+import { materialPropsSchema } from '../machine/material-props';
 
 /** The schema version this build writes and reads natively. */
 export const LATEST_SCHEMA_VERSION = 2;
@@ -435,6 +436,12 @@ export const stockSchema = z.strictObject({
   machinedFace: z
     .enum(['front', 'back'], { error: 'machined face must be "front" or "back"' })
     .optional(),
+  /**
+   * T350 (§3.4, §9.1): the kind-specific properties of the library entry the stock was picked from
+   * (aluminium alloy, ACM colour code, ...): the PDF header and the offcut match read them. Absent =
+   * none (today's projects, wood and plastic).
+   */
+  props: materialPropsSchema.optional(),
 });
 
 /** Nesting goal (spec §6.2). */

@@ -228,6 +228,11 @@ export const materials = pgTable(
       .$type<{ width: number; height: number; qty?: number | undefined }[]>()
       .notNull()
       .default([]),
+    /**
+     * T350 (§3.4, analysis §4.4): kind-specific properties (`MaterialProps` of core: aluminium
+     * alloy / temper / finish / film, ACM colour code / metallic / skin). `{}` for every other kind.
+     */
+    props: jsonb('props').$type<Record<string, unknown>>().notNull().default({}),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -497,6 +502,8 @@ export const offcuts = pgTable(
      * same id, so a layout that cuts from it keeps its link. Null = in stock.
      */
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+    /** T350: the props of the sheet it came from (alloy, colour code; `MaterialProps`), `{}` = none. */
+    props: jsonb('props').$type<Record<string, unknown>>().notNull().default({}),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

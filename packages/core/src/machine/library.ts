@@ -9,11 +9,25 @@
 import { z } from 'zod';
 import { EPS } from '../geometry/constants';
 import { grainAngleSchema } from '../schema/project';
+import { cleanProps, materialPropsSchema, type MaterialProps } from './material-props';
 import { materialKindSchema } from './profile';
 
 /** Colour / texture keys of a board (drives the swatch; the 3D materials of M6 reuse them). */
 export const materialToneSchema = z.enum(
-  ['natural', 'oak', 'walnut', 'white', 'grey', 'anthracite', 'black', 'clear'],
+  // T350: aluminium, silver (ACM metallic) and brass for the metal kinds
+  [
+    'natural',
+    'oak',
+    'walnut',
+    'white',
+    'grey',
+    'anthracite',
+    'black',
+    'clear',
+    'aluminium',
+    'silver',
+    'brass',
+  ],
   { error: 'unknown colour / texture' },
 );
 export type MaterialTone = z.infer<typeof materialToneSchema>;
@@ -43,27 +57,34 @@ export type StockSheetSize = z.infer<typeof stockSheetSizeSchema>;
 export const LIBRARY_MAX_THICKNESSES = 12;
 export const LIBRARY_MAX_SHEET_SIZES = 8;
 
-export const libraryMaterialSchema = z.strictObject({
-  kind: materialKindSchema,
-  name: z
-    .string({ error: 'must be a string' })
-    .trim()
-    .min(1, { error: 'name is required' })
-    .max(60, { error: 'at most 60 characters' }),
-  thicknesses: z
-    .array(mm.max(200, { error: 'at most 200 mm' }))
-    .min(1, { error: 'give at least one thickness' })
-    .max(LIBRARY_MAX_THICKNESSES, { error: `at most ${LIBRARY_MAX_THICKNESSES} thicknesses` })
-    .transform(uniqueSorted),
-  tone: materialToneSchema,
-  /** Default sheet grain in degrees [0, 180); `null` = no grain. */
-  grain: grainAngleSchema.nullable(),
-  sheetSizes: z
-    .array(stockSheetSizeSchema)
-    .min(1, { error: 'give at least one sheet size' })
-    .max(LIBRARY_MAX_SHEET_SIZES, { error: `at most ${LIBRARY_MAX_SHEET_SIZES} sheet sizes` })
-    .transform(uniqueSizes),
-});
+export const libraryMaterialSchema = z
+  .strictObject({
+    kind: materialKindSchema,
+    name: z
+      .string({ error: 'must be a string' })
+      .trim()
+      .min(1, { error: 'name is required' })
+      .max(60, { error: 'at most 60 characters' }),
+    thicknesses: z
+      .array(mm.max(200, { error: 'at most 200 mm' }))
+      .min(1, { error: 'give at least one thickness' })
+      .max(LIBRARY_MAX_THICKNESSES, { error: `at most ${LIBRARY_MAX_THICKNESSES} thicknesses` })
+      .transform(uniqueSorted),
+    tone: materialToneSchema,
+    /** Default sheet grain in degrees [0, 180); `null` = no grain. */
+    grain: grainAngleSchema.nullable(),
+    sheetSizes: z
+      .array(stockSheetSizeSchema)
+      .min(1, { error: 'give at least one sheet size' })
+      .max(LIBRARY_MAX_SHEET_SIZES, { error: `at most ${LIBRARY_MAX_SHEET_SIZES} sheet sizes` })
+      .transform(uniqueSizes),
+    /**
+     * T350 (§3.4, analysis §4.4): kind-specific properties (`MaterialProps`); absent = `{}`. Fields
+     * the kind does not use are dropped (an entry whose kind changed keeps no stale alloy).
+     */
+    props: materialPropsSchema.default({}),
+  })
+  .transform((m) => ({ ...m, props: cleanProps(m.kind, m.props) as MaterialProps }));
 export type LibraryMaterial = z.output<typeof libraryMaterialSchema>;
 export type LibraryMaterialInput = z.input<typeof libraryMaterialSchema>;
 
@@ -106,6 +127,7 @@ export const DEFAULT_LIBRARY: readonly LibraryMaterial[] = (
   tone,
   grain,
   sheetSizes: SEED_SIZES.map((s) => ({ ...s })),
+  props: {},
 }));
 
 /**
@@ -116,7 +138,15 @@ export const DEFAULT_LIBRARY: readonly LibraryMaterial[] = (
 export function stockFromLibrary(
   material: LibraryMaterial,
   current: { thickness: number; sheet: { width: number; height: number } },
-): { material: string; thickness: number; width: number; height: number; grain: number | null } {
+): {
+  material: string;
+  thickness: number;
+  width: number;
+  height: number;
+  grain: number | null;
+  /** T350: the entry's properties, only when it has any (wood and plastic entries give none). */
+  props?: MaterialProps;
+} {
   const thickness =
     material.thicknesses.find((t) => Math.abs(t - current.thickness) <= EPS) ??
     material.thicknesses[0] ??
@@ -135,5 +165,8 @@ export function stockFromLibrary(
     width: size.width,
     height: size.height,
     grain: material.grain,
+    ...(material.props && Object.keys(material.props).length > 0
+      ? { props: { ...material.props } }
+      : {}),
   };
 }
