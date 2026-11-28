@@ -14,13 +14,18 @@ test('ACM at step 1: ACM sheet with a notice and Ctrl+Z, honest chips, example s
   await page.setViewportSize({ width: 1440, height: 900 });
   await openNewProject(page, 'makine');
   const select = page.getByTestId('wizard-material');
+  const woodThickness = await page.getByTestId('wizard-thickness').inputValue();
   const woodSheet = page.getByRole('radio', { checked: true });
   const woodLabel = await woodSheet.evaluate((e) => e.parentElement?.textContent ?? '');
 
   await pickOption(select, tr.materials.acm);
   // P2: the first ACM preset is pressed, and a notice says so.
   await expect(page.getByLabel(preset('1.250', '3.200'))).toBeChecked();
-  await expect(page.locator('[data-sonner-toast]').filter({ hasText: '1.250' })).toBeVisible();
+  // PO: the wood thickness does not stay either: ACM's default 4 mm, in the same notice.
+  await expect(page.getByTestId('wizard-thickness')).toHaveValue(/^4/);
+  const notice = page.locator('[data-sonner-toast]').filter({ hasText: '1.250' });
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText(w.switchedThickness.replace('{t}', '4'));
 
   // P1: the chips are the material's thicknesses; none has a set on the seeded machine, and the
   // red box below agrees.
@@ -39,6 +44,7 @@ test('ACM at step 1: ACM sheet with a notice and Ctrl+Z, honest chips, example s
   await page.getByRole('heading', { level: 1 }).first().click();
   await page.keyboard.press('ControlOrMeta+z');
   await expect(select).not.toContainText(tr.materials.acm);
+  await expect(page.getByTestId('wizard-thickness')).toHaveValue(woodThickness);
   await expect(page.getByRole('radio', { checked: true })).toHaveCount(1);
   expect(
     await page

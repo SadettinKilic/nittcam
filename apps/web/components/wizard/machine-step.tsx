@@ -17,6 +17,7 @@ import {
   type ValidationIssue,
   holdLimitsOf,
   kindSheetDefault,
+  kindThicknessDefault,
   defaultSheet,
   maxSkinThickness,
   stockSheetSizes,
@@ -293,11 +294,19 @@ export function MachineFields({
             } else {
               // T396 (CTO #14 P2): the command also takes the kind's sheet; say so (Ctrl+Z undoes).
               const sheetTo = kindSheetDefault(project, v);
-              if (run('setMaterial', { material: v }) && sheetTo) {
-                notify.info(
-                  fill(t.sheetSwitched, { w: mm(sheetTo.width), h: mm(sheetTo.height) }),
-                  { id: 'sheet-switched' },
-                );
+              const thicknessTo = kindThicknessDefault(project, v);
+              const changes = [
+                ...(sheetTo
+                  ? [fill(t.switchedSheet, { w: mm(sheetTo.width), h: mm(sheetTo.height) })]
+                  : []),
+                ...(thicknessTo !== null
+                  ? [fill(t.switchedThickness, { t: mm(thicknessTo) })]
+                  : []),
+              ];
+              if (run('setMaterial', { material: v }) && changes.length > 0) {
+                notify.info(fill(t.materialSwitched, { list: changes.join(', ') }), {
+                  id: 'sheet-switched',
+                });
               }
             }
           }}

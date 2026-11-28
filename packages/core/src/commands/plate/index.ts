@@ -22,7 +22,7 @@ import { operationToolProblem, operationToolProblemText } from '../../toolpath/o
 import { SKIN_BOUNDS, holdLimitsOf, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
 import { materialKindOf } from '../../machine/material';
-import { traitsOf } from '../../machine/material-traits';
+import { defaultThicknessOf, traitsOf } from '../../machine/material-traits';
 
 /** Selects the machine profile the project uses. Selecting is allowed for AI; editing a profile is not. */
 export const setMachine = defineCommand({
@@ -41,11 +41,13 @@ export const setMaterial = defineCommand({
   area: 'plate',
   description:
     'Set the stock material id (for example "mdf" or "melamine-chipboard"). A kind with other ' +
-    'sheet sizes (ACM, aluminium) also takes its first preset sheet unless the sheet is one of them.',
+    'sheet sizes (ACM, aluminium) also takes its first preset sheet unless the sheet is one of them, ' +
+    'and its default thickness unless the thickness is one of its presets.',
   aiTool: true,
   params: z.strictObject({ material: stockSchema.shape.material }),
   apply: (draft, params) => {
     const sheet = kindSheetDefault(draft as Project, params.material);
+    const thickness = kindThicknessDefault(draft as Project, params.material);
     draft.stock.material = params.material;
     // A hand-picked material no longer comes from a library entry (T121), nor its props (T350).
     delete draft.stock.libraryId;
@@ -53,6 +55,8 @@ export const setMaterial = defineCommand({
     applyFaceDefault(draft);
     // T396 (CTO #14 P2): a wood sheet does not stay under an ACM job (and the reverse).
     if (sheet) applySheetSize(draft, sheet.width, sheet.height);
+    // T396 (PO): nor a wood thickness (18 mm ACM): the kind's default thickness, same step.
+    if (thickness !== null) draft.stock.thickness = thickness;
   },
 });
 
@@ -73,6 +77,23 @@ export function kindSheetDefault(
   const { width, height } = project.stock.sheet;
   if (to.some((p) => p.b === width && p.a === height)) return null;
   return { width: first.b, height: first.a };
+}
+
+/**
+ * T396 (PO decision): the thickness a material change switches to: on a preset-family change
+ * (as `kindSheetDefault`), the new kind's default thickness (`defaultThicknessOf`: ACM 4 mm,
+ * aluminium 1,5 mm) when the current one is not among its presets; null = keep (same family, a
+ * preset already, or a kind without thickness presets such as wood).
+ */
+export function kindThicknessDefault(
+  project: Pick<Project, 'stock'>,
+  material: string,
+): number | null {
+  const from = traitsOf(materialKindOf(project.stock.material));
+  const to = traitsOf(materialKindOf(material));
+  if (samePresets(from.sheetPresets, to.sheetPresets)) return null;
+  if (to.thicknessPresets.includes(project.stock.thickness)) return null;
+  return defaultThicknessOf(to);
 }
 
 function samePresets(

@@ -45,6 +45,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   MATERIAL_KINDS,
   MATERIAL_TRAITS,
+  defaultThicknessOf,
   materialKindOf,
   type MaterialKind,
   type Project,
@@ -915,7 +916,7 @@ function LookFields({
           // A metal part starts at its kind's first common thickness unless it has its own.
           const presets = MATERIAL_TRAITS[kind].thicknessPresets;
           const keep = item.ownLook || presets.length === 0 || presets.includes(thickness);
-          onLook(kind, keep ? thickness : (presets[presets.length > 1 ? 1 : 0] ?? thickness));
+          onLook(kind, keep ? thickness : (defaultThicknessOf(MATERIAL_TRAITS[kind]) ?? thickness));
         }}
       >
         <SelectTrigger size="sm" aria-label={t.inspector.material} data-testid="bench-material">

@@ -4,6 +4,7 @@ export {
   setMachine,
   setMaterial,
   kindSheetDefault,
+  kindThicknessDefault,
   applyLibraryMaterial,
   setThickness,
   setThinSkin,
