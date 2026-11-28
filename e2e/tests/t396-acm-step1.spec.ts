@@ -60,4 +60,16 @@ test('ACM at step 1: ACM sheet with a notice and Ctrl+Z, honest chips, example s
   await expect(page.getByTestId('machine-dirty')).toBeVisible();
   // Both example sets are in the form now, so its own button is gone.
   await expect(page.getByTestId('materials-add-acm')).toHaveCount(0);
+  // T425 (CTO #15 M3): every example set starts filled from the table (sample O-flute cutter),
+  // so "Kaydet" works without typing a number; the sets stay unverified.
+  const sources = page.getByTestId('material-starting-source');
+  await expect(sources.first()).toBeVisible();
+  for (const s of await sources.all()) await expect(s).toHaveAttribute('data-kind', 'table');
+  await page.getByRole('button', { name: tr.machines.form.save, exact: true }).click();
+  const saved = page.getByTestId('param-fix-saved');
+  await expect(saved).toBeVisible({ timeout: 30_000 });
+  await saved.getByTestId('param-fix-return').click();
+  await expect(page.getByTestId('no-cutting-params')).toContainText(w.unverifiedParams.slice(-40), {
+    timeout: 30_000,
+  });
 });

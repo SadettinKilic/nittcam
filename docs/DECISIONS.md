@@ -988,3 +988,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - MB4 made the paste panel lazy to stay under 450 kB; offline drafts (D-117) then broke: a user who goes offline right after opening a project could not paste (the chunk cannot load, the page shows the error boundary). Pasting offline is a promise of D-117, so `PastePanel` is a static import again.
 - With it the wizard routes ship 450.8 kB gzip. The wizard budget moves to **460 kB** (other routes stay at 250 kB). Metal (MB1–MB4) and the assembly bench added real features; the bench itself stays in a lazy chunk.
 - Follow-up T385 (Polish queue): slim the wizard's first load (route-split `tr.json` messages, check what else loads eagerly) and bring it back under 450 kB.
+
+## D-140 Typing never confirms a cutting set; example ACM sets come with a sample O-flute cutter (2026-11-28, B74 T425, CTO #15 M3)
+- An unverified set (starting values, `unverified: true`) stays unverified when the user types into it (values, family or tab fields); only "Değerleri doğruladım" clears the mark. Supersedes the D-046 / T265 rule "an edited row is the user's own" for the mark (the copied-from mark still goes on edit). A typed row no longer follows the table on a kind / thickness / tool change (`followsStartingValues`).
+- "Örnek ACM ayarlarını ekle" adds a sample single-flute O-flute Ø6 (flute length 12) when no tool of the machine has an ACM starting row, before the example sets, so every set starts filled from the table (Ø6 z1: 2000 / 500 / 18 000 / 4; 3 mm: step-down 3). Verified rows are not re-marked when edited.
