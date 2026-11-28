@@ -31,7 +31,10 @@ export function useTabSheetHint(
   // many renders, and restarting on each one terminated the worker while its script was still
   // loading (the request never finished, the page never reached network idle).
   const latest = useRef({ probe, params });
-  latest.current = { probe, params };
+  // Runs before the worker effect below (effects run in order), so it always sees the latest pair.
+  useEffect(() => {
+    latest.current = { probe, params };
+  });
   useEffect(() => {
     const { probe: p, params: prm } = latest.current;
     if (!p || !key || known || typeof Worker === 'undefined') return;
