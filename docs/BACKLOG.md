@@ -1506,6 +1506,38 @@ Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
 - Smoke result at 390 × 844: no page-level horizontal scroll on home, Malzemeler, steps 1–5 and the cabinet dialog; "İleri" / "İndir" reachable on every step.
 - CTO review #5 (2026-11-19) smoke at 390 × 844: no page-level horizontal scroll on home, step 1, the board, the cut list, the cabinet dialog, Malzemeler and the machine form; "İleri" reachable. For the pass: the machine form's "Malzeme parametreleri" table needs a card layout on phones (7 columns behind a horizontal scroll).
 
+## CTO review #15 must-fix and follow-ups (2026-11-28; PO triage D-047)
+
+Source: `docs/reviews/2026-11-28-cto-design-review-15.md`. T423–T425 (MUST) land before the ACM machine test T357. MB7 change: T358 also covers tab exits and V-groove entries; T362 moves directly after T358/T359, ahead of T364. 3D: at most the pure-core T400–T402 before field test 1 reports.
+
+### T423 No straight plunge in ACM: V-groove entry and tab exits ramp; checker catches it   [status: todo]   (MUST M1; before T357)
+Spec: §7.2 rule 12, §6.3  ·  Owner: dev
+Acceptance:
+- [ ] when `traits.entry.straightPlunge = false`, the V-groove entry and every tab up/down move descend on a ramp (angle from traits); no vertical feed move into material
+- [ ] checker rule for composite pulled forward from T362: `STRAIGHT_PLUNGE_IN_METAL` (descent angle of every feed move entering material, from the read path) for ACM; mutation test puts a straight plunge back
+- [ ] wood/plastic goldens byte-identical; ACM goldens change (`needs-human`, PO + tester)
+
+### T424 V-bit feed from its own research row   [status: todo]   (MUST M2; before T357)
+Spec: §6.3  ·  Owner: dev
+Acceptance:
+- [ ] the V-groove row of `docs/materials/kesim-degerleri-arastirma.md` goes into the starting-value table; V-groove passes use the V-bit's own feed/rpm, chip load ≤ 0,05 mm/tooth
+- [ ] tray golden updated (no more F6000 on the groove), `needs-human`
+
+### T425 "Örnek ACM ayarlarını ekle" fills every required field; guesses are not "confirmed"   [status: todo]   (MUST M3; before T357)
+Owner: dev
+Acceptance:
+- [ ] on the seeded example machine the button fills all required fields from starting values; no empty required field after it
+- [ ] values the user types without confirming keep the "başlangıç değeri, makinede doğrulayın" state; confirmation is an explicit action
+
+### T426 ACM Z-zero warning (panel tolerance vs remaining skin)   [status: todo]   (SHOULD; with MB7 or before T357)
+Acceptance: with Z zero on the material top, a ±0,2 mm panel can leave up to 0,6 mm skin: step 5 checklist line + Kesim ayarları note recommending the spoilboard zero or a measured thickness; field kit asks for the measured panel thickness.
+
+### T427 Fold preview: status texts and the tray fixture clash   [status: todo]   (SHOULD)
+Acceptance: "Kapanıyor" not shown at 0 %, "Çakışma var" only where a real clash exists; fix the tray fixture geometry so our own sample folds without a clash.
+
+### T428 Hint when tabs cause an extra sheet   [status: todo]   (SHOULD)
+Acceptance: when the third MDF sheet is filled ~95 % only because tab spacing (D-129) grew the gaps, step 3 says so and offers "ince tabaka" or a smaller pay where it holds.
+
 ## Polish queue (M9; D-047)
 
 Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by screen. Source in brackets (#5 = CTO review 5, T = tester). The M9 polish phase takes **one group per batch** (P1–P5), not item by item; inside a group the dev may skip an item that costs more than an hour and note it. Items marked ★ were seen in 2+ reviews: do them first.
