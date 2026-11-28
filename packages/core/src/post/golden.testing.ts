@@ -6,6 +6,7 @@
 import genericPost from '../../../machines/generic/v1/post.json';
 import mach3Post from '../../../machines/mach3/v1/post.json';
 import { defaultMachineProfile, type MachineProfile } from '../machine';
+import { traitsOf } from '../machine/material-traits';
 import { nestProject } from '../nesting';
 import { parseProject, type Project } from '../schema';
 import cabinetDoors from '../schema/__fixtures__/cabinet-doors.json';
@@ -478,7 +479,9 @@ export function goldenCases(): GoldenCase[] {
  * T393 (CTO #14 M1): ACM 4 mm machined from the back face (T348): an L part and a narrow strip on a
  * small sheet, so the mirrored layout and the header lines "DOGRULANMAMIS MALZEME: ACM" and
  * "PLAKA ARKA YUZU USTTE: PARCALAR AYNALI" are pinned byte for byte. The profile gets an ACM 4 set
- * copied from its MDF 18 set (same tool), step-down limited to the thickness.
+ * copied from its MDF 18 set (same tool), step-down limited to the thickness. T422: the cut
+ * direction is the ACM traits default (conventional, what `setMaterial` gives) and the contours ramp
+ * in at the traits angle (no straight plunge in ACM).
  */
 export const GOLDEN_BACK_FACE_FIXTURE = {
   id: 'acm-back-face',
@@ -525,7 +528,7 @@ export function backFaceFixtureProject(toolDiameter: number): Project {
     ],
     nesting: { mode: 'minWaste', gap: 10, margin: 12 },
     layout: { sheets: [] },
-    cutting: structuredClone(DEFAULT_CUTTING),
+    cutting: { ...structuredClone(DEFAULT_CUTTING), direction: traitsOf('acm').cutDirection },
   });
   if (!parsed.ok) throw new Error(`back-face fixture invalid: ${JSON.stringify(parsed.issues)}`);
   const nested = nestProject(parsed.project, { toolDiameter });

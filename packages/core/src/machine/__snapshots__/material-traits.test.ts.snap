@@ -25,6 +25,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "enforce": "warn",
     },
     "coolant": "recommended",
+    "cutDirection": "conventional",
     "direction": {
       "defaultOn": false,
       "kind": "directed",
@@ -119,6 +120,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "cabinet": true,
     "chipLoad": null,
     "coolant": "none",
+    "cutDirection": "climb",
     "direction": {
       "defaultOn": false,
       "kind": "none",
@@ -228,6 +230,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "enforce": "limit",
     },
     "coolant": "required",
+    "cutDirection": "climb",
     "direction": {
       "defaultOn": false,
       "kind": "axial",
@@ -329,6 +332,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "cabinet": true,
     "chipLoad": null,
     "coolant": "none",
+    "cutDirection": "climb",
     "direction": {
       "defaultOn": true,
       "kind": "axial",
@@ -419,6 +423,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "cabinet": true,
     "chipLoad": null,
     "coolant": "none",
+    "cutDirection": "climb",
     "direction": {
       "defaultOn": true,
       "kind": "axial",
@@ -509,6 +514,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "cabinet": true,
     "chipLoad": null,
     "coolant": "none",
+    "cutDirection": "climb",
     "direction": {
       "defaultOn": true,
       "kind": "axial",
@@ -599,6 +605,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "cabinet": true,
     "chipLoad": null,
     "coolant": "none",
+    "cutDirection": "climb",
     "direction": {
       "defaultOn": false,
       "kind": "none",
@@ -689,6 +696,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "cabinet": true,
     "chipLoad": null,
     "coolant": "none",
+    "cutDirection": "climb",
     "direction": {
       "defaultOn": true,
       "kind": "axial",

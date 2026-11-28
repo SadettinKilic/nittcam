@@ -22,6 +22,7 @@ import { operationToolProblem, operationToolProblemText } from '../../toolpath/o
 import { SKIN_BOUNDS, holdLimitsOf, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
 import { materialKindOf } from '../../machine/material';
+import type { MaterialKind } from '../../machine/material-kinds';
 import { defaultThicknessOf, traitsOf } from '../../machine/material-traits';
 
 /** Selects the machine profile the project uses. Selecting is allowed for AI; editing a profile is not. */
@@ -48,11 +49,13 @@ export const setMaterial = defineCommand({
   apply: (draft, params) => {
     const sheet = kindSheetDefault(draft as Project, params.material);
     const thickness = kindThicknessDefault(draft as Project, params.material);
+    const before = materialKindOf(draft.stock.material);
     draft.stock.material = params.material;
     // A hand-picked material no longer comes from a library entry (T121), nor its props (T350).
     delete draft.stock.libraryId;
     delete draft.stock.props;
     applyFaceDefault(draft);
+    applyDirectionDefault(draft, before);
     // T396 (CTO #14 P2): a wood sheet does not stay under an ACM job (and the reverse).
     if (sheet) applySheetSize(draft, sheet.width, sheet.height);
     // T396 (PO): nor a wood thickness (18 mm ACM): the kind's default thickness, same step.
@@ -127,6 +130,7 @@ export const applyLibraryMaterial = defineCommand({
     props: stockSchema.shape.props,
   }),
   apply: (draft, params) => {
+    const before = materialKindOf(draft.stock.material);
     draft.stock.libraryId = params.libraryId;
     if (params.props && Object.keys(params.props).length > 0) draft.stock.props = params.props;
     else delete draft.stock.props;
@@ -138,8 +142,20 @@ export const applyLibraryMaterial = defineCommand({
     // The size list belonged to the previous stock: the library entry gives one size (T164).
     delete draft.stock.sheets;
     applyFaceDefault(draft);
+    applyDirectionDefault(draft, before);
   },
 });
+
+/**
+ * T422 (analysis §4.5): a new material kind takes its kind's cut direction (ACM: conventional)
+ * unless the project's direction was chosen by hand, i.e. differs from the previous kind's default.
+ * Same kind of default (wood ↔ plastic ↔ aluminium): nothing changes.
+ */
+function applyDirectionDefault(draft: Draft<Project>, before: MaterialKind | null): void {
+  const was = traitsOf(before).cutDirection;
+  const now = traitsOf(materialKindOf(draft.stock.material)).cutDirection;
+  if (was !== now && draft.cutting.direction === was) draft.cutting.direction = now;
+}
 
 /**
  * T348: a new material takes its kind's machined face (ACM: back). Front is stored as absent, so a

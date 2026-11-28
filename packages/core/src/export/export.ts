@@ -31,7 +31,7 @@ import { programTools, type ProgramTools } from './program-tools';
 import { materialKindOf } from '../machine/material';
 import { traitsOf } from '../machine/material-traits';
 import { unverifiedTemplateNames } from '../template';
-import { cuttingSettingsOf } from '../toolpath/cutting-settings';
+import { contourEntryOf, cuttingSettingsOf } from '../toolpath/cutting-settings';
 import { feedOverridesOf, spindleOverridesOf } from '../toolpath/spindle';
 import { operationToolChoice, operationsInJob } from '../toolpath/op-tools';
 
@@ -141,13 +141,9 @@ export function cuttingMeta(
   // T323 / T324: per-tool feeds and the ramp entry, again only when set.
   const feeds = feedOverridesOf(project, profile);
   if (feeds.length > 0) cutting.feeds = feeds;
-  const entry = project.cutting.entry;
-  if (entry) {
-    cutting.entry =
-      entry.length === undefined
-        ? { angleDeg: entry.angleDeg }
-        : { angleDeg: entry.angleDeg, length: entry.length };
-  }
+  // T422: also the traits' ramp of a kind without a straight plunge (ACM), as the toolpath cuts.
+  const entry = contourEntryOf(project);
+  if (entry) cutting.entry = entry;
   return { cutting };
 }
 

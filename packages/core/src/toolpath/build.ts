@@ -73,6 +73,7 @@ import {
   contourPocketStart,
 } from './contour-pocket';
 import { partInHoleHosts } from './enclose';
+import { contourEntryOf } from './cutting-settings';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
 
 import {
@@ -1043,8 +1044,9 @@ export function buildToolpath(
     return fail(clearanceZ);
   }
   // T324: the project's contour entry (absent = straight plunge); a ramp leg is at least the
-  // project's length, else the cutting tool's diameter (set per tool below).
-  const entry = project.cutting.entry;
+  // project's length, else the cutting tool's diameter (set per tool below). T422: a kind without
+  // a straight plunge (ACM) ramps in at its traits angle when the project sets none.
+  const entry = contourEntryOf(project);
   const plunge: PlungeOption =
     options.plunge ??
     (entry
