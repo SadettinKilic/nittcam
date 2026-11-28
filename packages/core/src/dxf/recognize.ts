@@ -219,8 +219,7 @@ export function recognizeParts(
         line.vgroove === true && contourDistance(p, vs) <= GROOVE_EDGE_SLACK;
       const slack = line.vgroove === true ? GROOVE_EDGE_SLACK : 0;
       return (
-        boxInside(shrink(box, slack), node.box) &&
-        pts.every((p) => insideContour(p, vs) || near(p))
+        boxInside(shrink(box, slack), node.box) && pts.every((p) => insideContour(p, vs) || near(p))
       );
     });
     const part = owner === undefined ? undefined : partOf.get(owner);
