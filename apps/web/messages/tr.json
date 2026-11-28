@@ -885,7 +885,8 @@
     "views": {
       "label": "Parça görünümü",
       "list": "Liste",
-      "drawing": "Çizim"
+      "drawing": "Çizim",
+      "assembly": "Montaj"
     },
     "bandCell": {
       "edit": "Satır {n}: kenar bandı, {sides}",
@@ -1828,8 +1829,12 @@
     "changedTitle": "Üretildikten sonra değişti (Rev. {current}; son NC Rev. {nc})"
   },
   "materialHead": {
-    "names": { "acm": "Kompozit panel" },
-    "alloyNames": { "aluminium": "Alüminyum {alloy}" }
+    "names": {
+      "acm": "Kompozit panel"
+    },
+    "alloyNames": {
+      "aluminium": "Alüminyum {alloy}"
+    }
   },
   "materials": {
     "mdf": "MDF",
@@ -3302,7 +3307,11 @@
         "temperPlaceholder": "ör. H22",
         "finish": "Yüzey",
         "finishNone": "Belirtilmedi",
-        "finishes": { "raw": "Ham", "brushed": "Fırçalı (satine)", "anodized": "Eloksallı" },
+        "finishes": {
+          "raw": "Ham",
+          "brushed": "Fırçalı (satine)",
+          "anodized": "Eloksallı"
+        },
         "film": "Koruyucu film var",
         "colorCode": "Renk kodu",
         "colorCodePlaceholder": "ör. RAL 9006",
@@ -3886,5 +3895,95 @@
         ]
       }
     ]
+  },
+  "bench": {
+    "title": "Montaj tezgâhı",
+    "workspace": {
+      "left": "Parçalar",
+      "right": "Konum",
+      "collapseLeft": "Parça listesini gizle",
+      "expandLeft": "Parça listesini göster",
+      "collapseRight": "Konum panelini gizle",
+      "expandRight": "Konum panelini göster",
+      "openLeft": "Parçalar",
+      "openRight": "Konum",
+      "close": "Kapat"
+    },
+    "canvasLabel": "Montaj tezgâhı, {count} parça. Parçayı tıklayıp seçin; fareyle döndürün, sağ tuşla kaydırın, tekerlekle yakınlaştırın.",
+    "displayOnly": "Yalnızca görünüm: dizilim, takım yolu ve G-kodu değişmez.",
+    "empty": "Montaj için önce parça ekleyin.",
+    "loading": "Tezgâh hazırlanıyor…",
+    "modes": {
+      "label": "Araç",
+      "move": "Taşı",
+      "rotate": "Döndür",
+      "mate": "Yüzey yüzeye oturt"
+    },
+    "modeTips": {
+      "move": "Taşı: okları ya da düzlem karelerini sürükleyin",
+      "rotate": "Döndür: halkaları sürükleyin (15° adım)",
+      "mate": "Yüzey yüzeye oturt: önce sabit parçanın, sonra oturacak parçanın yüzeyini tıklayın"
+    },
+    "views": {
+      "label": "Görünüm",
+      "top": "Üst",
+      "front": "Ön",
+      "right": "Sağ",
+      "iso": "İzometrik"
+    },
+    "viewTip": "{view} görünüm",
+    "fit": "Tümünü sığdır",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır",
+    "savePng": "Görüntü kaydet",
+    "hints": {
+      "select": "Bir parçayı tıklayıp seçin. W taşı, E döndür, M yüzey yüzeye oturt.",
+      "move": "Okla bir eksende, kareyle bir düzlemde taşıyın. Shift: serbest (1 mm adım kapalı).",
+      "rotate": "Halkayla döndürün: 15° adım. Shift basılı: serbest, Ctrl basılı: 90°.",
+      "mateA": "1/2 · Sabit kalacak parçada bir yüzey tıklayın.",
+      "mateB": "2/2 · Şimdi oturacak parçanın yüzeyini tıklayın. Esc: vazgeç.",
+      "mateSame": "Aynı parçanın iki yüzü oturtulamaz; başka bir parça seçin.",
+      "slide": "Oturdu. Parçayı sürükleyerek yüzey üzerinde kaydırın; kenarlar 2 mm içinde yakalanır. Esc: bitir.",
+      "snapped": "Kenara oturdu"
+    },
+    "list": {
+      "search": "Parça ara",
+      "searchLabel": "Parçalarda ara",
+      "count": "{shown}/{total} parça",
+      "copy": "{n}. adet",
+      "show": "Göster",
+      "hide": "Gizle",
+      "isolate": "Yalnız bunu göster",
+      "isolateOff": "Hepsini göster",
+      "isolated": "Yalnız seçili parça gösteriliyor",
+      "noMatch": "Eşleşen parça yok",
+      "moved": "Taşındı",
+      "cabinet": "{group} · {role}"
+    },
+    "inspector": {
+      "none": "Konumunu değiştirmek için bir parça seçin.",
+      "size": "Ölçü",
+      "position": "Konum (merkez)",
+      "angles": "Açılar",
+      "x": "X",
+      "y": "Y",
+      "z": "Z",
+      "posLabel": "{axis} konumu",
+      "angleLabel": "{axis} ekseni açısı",
+      "turn": "90° çevir",
+      "turnTip": "{axis} etrafında 90° çevir",
+      "turnX": "X etrafında 90° çevir",
+      "turnY": "Y etrafında 90° çevir",
+      "turnZ": "Z etrafında 90° çevir",
+      "floor": "Yere indir",
+      "floorTip": "Parçanın altını zemine (Y = 0) indirir",
+      "reset": "Başa al",
+      "resetTip": "Parçayı ilk yerine (dolap kutusu ya da tezgâh) geri koyar",
+      "resetAll": "Tümünü başa al",
+      "resetAllTip": "Bütün parçaları ilk yerlerine geri koyar (Ctrl+Z ile geri alınır)",
+      "hide": "Gizle",
+      "show": "Göster"
+    },
+    "refused": "Bu konum kaydedilemedi."
   }
 }

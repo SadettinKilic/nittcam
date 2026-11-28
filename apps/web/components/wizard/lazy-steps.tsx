@@ -32,6 +32,11 @@ export const LayoutStep = dynamic(() => loadLayoutStep().then((m) => m.LayoutSte
 export const SimulationView = dynamic(() => loadSimulationView().then((m) => m.SimulationView), {
   loading: StepLoading,
 });
+/** T387: the montaj tezgâhı (three + the bench) loads only when the Montaj view opens; not preloaded. */
+export const AssemblyBench = dynamic(
+  () => import('../assembly/assembly-bench').then((m) => m.AssemblyBench),
+  { loading: StepLoading, ssr: false },
+);
 export const ExportStep = dynamic(() => loadExportStep().then((m) => m.ExportStep), {
   loading: StepLoading,
 });
