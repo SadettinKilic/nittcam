@@ -124,6 +124,10 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "minRemaining": 0.7,
       "step": 3,
     },
+    "verification": {
+      "family": "composite",
+      "testPart": "tray",
+    },
   },
   "acrylic": {
     "cabinet": true,
@@ -217,6 +221,10 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "vgroove": [],
     },
     "vGroove": null,
+    "verification": {
+      "family": "woodBoard",
+      "testPart": "board",
+    },
   },
   "aluminium": {
     "cabinet": false,
@@ -340,6 +348,10 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "vgroove": [],
     },
     "vGroove": null,
+    "verification": {
+      "family": "nonFerrous",
+      "testPart": "board",
+    },
   },
   "mdf": {
     "cabinet": true,
@@ -433,6 +445,10 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "vgroove": [],
     },
     "vGroove": null,
+    "verification": {
+      "family": "woodBoard",
+      "testPart": "board",
+    },
   },
   "melamine": {
     "cabinet": true,
@@ -526,6 +542,10 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "vgroove": [],
     },
     "vGroove": null,
+    "verification": {
+      "family": "woodBoard",
+      "testPart": "board",
+    },
   },
   "plywood": {
     "cabinet": true,
@@ -619,6 +639,10 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "vgroove": [],
     },
     "vGroove": null,
+    "verification": {
+      "family": "woodBoard",
+      "testPart": "board",
+    },
   },
   "pvc": {
     "cabinet": true,
@@ -712,6 +736,10 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "vgroove": [],
     },
     "vGroove": null,
+    "verification": {
+      "family": "woodBoard",
+      "testPart": "board",
+    },
   },
   "solidWood": {
     "cabinet": true,
@@ -805,6 +833,10 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "vgroove": [],
     },
     "vGroove": null,
+    "verification": {
+      "family": "woodBoard",
+      "testPart": "board",
+    },
   },
 }
 `;

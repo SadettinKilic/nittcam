@@ -30,6 +30,7 @@ import {
 import { programTools, type ProgramTools } from './program-tools';
 import { materialKindOf } from '../machine/material';
 import { traitsOf } from '../machine/material-traits';
+import type { VerificationState } from '../machine/verification';
 import { propsNcDetail } from '../machine/material-props-fields';
 import { unverifiedTemplateNames } from '../template';
 import { contourEntryOf, cuttingSettingsOf } from '../toolpath/cutting-settings';
@@ -93,7 +94,8 @@ export function exportNc(
     ...(options.fileStem ? { fileStem: options.fileStem } : {}),
     ...(options.revisionInFileName ? { revisionInFileName: true } : {}),
     ...unverifiedTemplatesMeta(project),
-    ...unverifiedMaterialMeta(project),
+    ...unverifiedMaterialMeta(project, profileVersion.verification),
+    ...unverifiedMaterialCheckOf(project, profileVersion.verification),
     ...backFaceMeta(project),
     ...cuttingMeta(project, profile),
     // T393: the checker reads the face from the project itself, not from the post meta.
@@ -172,9 +174,38 @@ export function cuttingMeta(
  * D-130 / T346: a kind whose NC ships with unverified starting values (ACM) names itself in the
  * header; nothing for today's kinds, so their programs stay byte-identical.
  */
-export function unverifiedMaterialMeta(project: Project): Pick<PostMeta, 'unverifiedMaterial'> {
+export function unverifiedMaterialMeta(
+  project: Project,
+  /** T356: the machine's state in the job's material family; `verified` = a passed test cut. */
+  familyState?: VerificationState,
+): Pick<PostMeta, 'unverifiedMaterial'> {
+  const name = unverifiedMaterialName(project, familyState);
+  return name === undefined ? {} : { unverifiedMaterial: name };
+}
+
+/**
+ * T356 (D-138): the header name of a kind with unverified starting values (ACM) while the machine
+ * has no passed test cut in the job's material family; `undefined` otherwise (today's kinds).
+ */
+export function unverifiedMaterialName(
+  project: Pick<Project, 'stock'>,
+  familyState?: VerificationState,
+): string | undefined {
   const traits = traitsOf(materialKindOf(project.stock.material));
-  return traits.nc === 'unverified' ? { unverifiedMaterial: traits.ncName } : {};
+  if (traits.nc !== 'unverified' || familyState === 'verified') return undefined;
+  return traits.ncName;
+}
+
+/**
+ * T356 rider (CTO #15): the checker's own expectation of the "DOGRULANMAMIS MALZEME" line, derived
+ * from the project and the family state (not from the generator meta).
+ */
+export function unverifiedMaterialCheckOf(
+  project: Pick<Project, 'stock'>,
+  familyState?: VerificationState,
+): { unverifiedMaterialCheck?: string } {
+  const name = unverifiedMaterialName(project, familyState);
+  return name === undefined ? {} : { unverifiedMaterialCheck: name };
 }
 
 /**
@@ -231,6 +262,8 @@ export interface PostAndCheckMeta extends PostMeta {
   machinedFace?: 'front' | 'back';
   /** T354: rule 17's minimum remaining skin from the stock's traits (omitted = rule silent). */
   vGroove?: { minRemaining: number };
+  /** T356 rider: the header line "DOGRULANMAMIS MALZEME: <name>" the checker requires (omitted = none). */
+  unverifiedMaterialCheck?: string;
 }
 
 /**
@@ -251,7 +284,7 @@ export function postAndCheck(
   const base = { files: [], postErrors: [], postWarnings: [], check: null, tools };
   // An invalid config is refused by the generator itself; the checks only need its declarations.
   const expectations: GcodeCheckPostExpectations | undefined = cfg.ok ? cfg.config : undefined;
-  const { layout, zFloor, machinedFace, vGroove, ...postMeta } = meta;
+  const { layout, zFloor, machinedFace, vGroove, unverifiedMaterialCheck, ...postMeta } = meta;
   const stock = {
     thickness: meta.stock.thickness,
     sheetWidth: meta.stock.sheetWidth,
@@ -274,6 +307,9 @@ export function postAndCheck(
     ...(zFloor !== undefined ? { zFloor } : {}),
     ...(machinedFace ? { machinedFace } : {}),
     ...(vGroove ? { vGroove } : {}),
+    ...(unverifiedMaterialCheck !== undefined
+      ? { unverifiedMaterial: unverifiedMaterialCheck }
+      : {}),
   };
   let checked: { files: readonly PostFile[]; result: GcodeCheckFilesResult } | null = null;
   const run = (files: readonly PostFile[]) => {

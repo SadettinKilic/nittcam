@@ -100,6 +100,36 @@ export function headerRule(text: string, d: Derived, push: Push): void {
   }
 }
 
+/**
+ * T356 rider (CTO #15): a job whose material is unverified for the machine states it in the header
+ * block (the comments before the first code line): "DOGRULANMAMIS MALZEME: <name>", compared after
+ * folding. A hand edit that removes the line makes the file fail (rule 9: no download).
+ */
+export function unverifiedMaterialHeaderRule(text: string, d: Derived, push: Push): void {
+  const name = d.ctx.unverifiedMaterial;
+  if (name === undefined) return;
+  const want = foldText(name);
+  let firstCode = 0;
+  const lines = text.split(/\r\n|\r|\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const l = (lines[i] ?? '').trim();
+    if (l === '' || l === '%') continue;
+    if (!(l.startsWith('(') || l.startsWith(';'))) {
+      firstCode = i + 1;
+      break;
+    }
+    const folded = foldText(l);
+    const at = folded.indexOf('DOGRULANMAMIS MALZEME:');
+    if (at >= 0 && folded.slice(at).includes(want)) return;
+  }
+  push(
+    'R10',
+    'UNVERIFIED_MATERIAL_HEADER_MISSING',
+    firstCode,
+    `Unverified material: the header must carry the comment "DOGRULANMAMIS MALZEME: ${name}".`,
+  );
+}
+
 /** R1: explicit modal state before the first motion, and it never changes to inch/incremental. */
 /** T393: words of the back-face header line, compared after folding (independent of the post). */
 const BACK_FACE_MARKERS = ['ARKA YUZU USTTE', 'AYNALI'] as const;

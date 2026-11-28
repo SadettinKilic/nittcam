@@ -1402,6 +1402,7 @@
       "NUMBER_FORMAT": "Sayı biçimi hatalı (üslü sayı veya geçersiz değer).",
       "NUMBER_INVALID": "Geçersiz sayı üretildi.",
       "UNVERIFIED_HEADER_MISSING": "Doğrulanmamış profil için \"DOĞRULANMADI, önce air cut\" başlığı yok.",
+      "UNVERIFIED_MATERIAL_HEADER_MISSING": "Bu malzeme bu makinede doğrulanmadı ama dosyada \"DOGRULANMAMIS MALZEME\" başlığı yok. Program indirilemez.",
       "MODEL_MISMATCH": "Okunan yol, takım yolu modelinden ayrılıyor.",
       "RPM_MISMATCH": "Okunan devir modeldekiyle aynı değil.",
       "PART_COUNT": "Kesilen parça sayısı dizilimle uyuşmuyor.",
