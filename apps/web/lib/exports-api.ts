@@ -65,6 +65,11 @@ export interface ExportChecklistInfo {
    */
   backFace?: true;
   /**
+   * T355 (analysis §5.6): the job cuts V-grooves (ACM folds): two required lines, "V uç takılı" with
+   * the V-bit and its angle, and "Kalan kalınlık …; önce fire parçada deneyin". Absent without grooves.
+   */
+  vGroove?: { tool: number | null; angle: number | null; remaining: number[] };
+  /**
    * T338 (D-129): parts that got fewer tabs because some would not hold; the line must be ticked.
    * Absent = every part has its tabs.
    */

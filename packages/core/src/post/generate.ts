@@ -800,7 +800,7 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
     `PLAKA ${plan.sheetIndex}/${plan.sheetCount}${parts > 1 ? ` - BÖLÜM ${part}/${parts}` : ''}`,
   );
   lines.push(
-    `MALZEME: ${meta.stock.material} ${f3(meta.stock.thickness)} mm, plaka ${f3(c.sheetSize.sheetWidth)} x ${f3(c.sheetSize.sheetHeight)}`,
+    `MALZEME: ${meta.stock.material} ${f3(meta.stock.thickness)} mm${meta.stock.detail ? `, ${meta.stock.detail}` : ''}, plaka ${f3(c.sheetSize.sheetWidth)} x ${f3(c.sheetSize.sheetHeight)}`,
   );
   lines.push(
     `ORİJİN: ${CORNER_LABEL[profile.origin.corner] ?? profile.origin.corner}, X+ ${profile.origin.xPositive === 'right' ? 'sağ' : 'sol'}, Y+ ${profile.origin.yPositive === 'back' ? 'arka' : 'ön'}, plaka ofseti ${f3(profile.origin.sheetOffset.x)} / ${f3(profile.origin.sheetOffset.y)}`,
@@ -948,6 +948,7 @@ export function generateGcode(
     meta.revision < 0 ||
     !st ||
     typeof st.material !== 'string' ||
+    (st.detail !== undefined && typeof st.detail !== 'string') ||
     !pos(st.thickness) ||
     !pos(st.sheetWidth) ||
     !pos(st.sheetHeight) ||

@@ -24,6 +24,10 @@ export interface ChecklistState {
   material?: boolean;
   /** T393: the sheet lies back face up (film down), the parts are mirrored; only asked then. */
   backFace?: boolean;
+  /** T355: the V-bit named in the line is in the spindle; only asked for a job with V-grooves. */
+  vBit?: boolean;
+  /** T355: the remaining skin is tried on scrap first; only asked for a job with V-grooves. */
+  vRemaining?: boolean;
 }
 
 export const EMPTY_CHECKLIST: ChecklistState = {
@@ -58,6 +62,7 @@ export function downloadBlocker(
   if ((preview.checklist?.tabsNotHeld ?? 0) > 0 && !checklist.tabsHeld) return 'checklist';
   if (preview.checklist?.unverifiedMaterial && !checklist.material) return 'checklist';
   if (preview.checklist?.backFace && !checklist.backFace) return 'checklist';
+  if (preview.checklist?.vGroove && (!checklist.vBit || !checklist.vRemaining)) return 'checklist';
   if (preview.needsAcceptance && !accepted) return 'accept';
   return null;
 }

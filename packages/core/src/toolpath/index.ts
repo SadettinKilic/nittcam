@@ -119,9 +119,11 @@ export {
   vGroovePassDepths,
   vGrooveRemaining,
   vGrooveRemainingProblem,
+  vGrooveChecklistOf,
   vGrooveToolOf,
   vGrooveTraitsOf,
   vGrooveWidth,
+  type VGrooveChecklist,
   type VGrooveLine,
   type VGrooveTraits,
 } from './vgroove';

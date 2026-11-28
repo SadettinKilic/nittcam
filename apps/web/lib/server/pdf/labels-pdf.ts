@@ -85,7 +85,10 @@ function partGlyph(
       color: ACCENT,
     });
   }
-  if (label.grain !== null) {
+  if (label.filmArrow !== undefined) {
+    // T355: ACM film arrow, one head (directed: 30° ≠ 210°).
+    grainArrow(page, x + w / 2, y + h / 2, label.filmArrow, Math.min(w, h) * 0.75, INK, true);
+  } else if (label.grain !== null) {
     grainArrow(page, x + w / 2, y + h / 2, label.grain, Math.min(w, h) * 0.75, INK);
   }
 }
@@ -138,8 +141,17 @@ function drawLabel(
   text(page, label.number, x + pad, line, fonts.bold, numSize);
   const placedOn = label.sheet === null ? t.noSheet : fill(t.sheet, { n: label.sheet });
   // T348 (§3.6): the face that was up on the machine, next to the sheet number.
-  const sheet = face ? `${placedOn} · ${t.faceUp[face]}` : placedOn;
-  right(page, sheet, x + w - pad, line, fonts.bold, 8.5 * k, label.sheet === null ? ACCENT : INK);
+  // T355: "YÜZ AŞAĞI KESİLDİ" is long; with a face the line is fitted beside the part number.
+  const sheetSize = 8.5 * k;
+  const sheet = face
+    ? fitText(
+        `${placedOn} · ${t.faceUp[face]}`,
+        fonts.bold,
+        sheetSize,
+        textW - fonts.bold.widthOfTextAtSize(label.number, numSize) - 6 * k,
+      )
+    : placedOn;
+  right(page, sheet, x + w - pad, line, fonts.bold, sheetSize, label.sheet === null ? ACCENT : INK);
 
   // Line 2: name.
   const nameSize = 9 * k;
@@ -181,6 +193,13 @@ function drawLabel(
       7 * k,
       MUTED,
     );
+  }
+
+  // T355: the number of folds (V-grooves) of an ACM part, when a line fits above the foot.
+  if (label.folds !== undefined && line - 9 * k > y + pad + 7 * k) {
+    line -= 7 * k + 2 * k;
+    const folds = fill(t.folds, { n: label.folds });
+    text(page, fitText(folds, fonts.bold, 7 * k, sideW), x + pad, line, fonts.bold, 7 * k, INK);
   }
 
   // Bottom line: project name, then the company (T301) when there is room.

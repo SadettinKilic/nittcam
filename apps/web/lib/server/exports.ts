@@ -19,6 +19,7 @@ import {
   unverifiedTemplateNames,
   isBackFace,
   materialNcStatus,
+  vGrooveChecklistOf,
   type ExportNcResult,
   type PostFile,
   type ProgramTools,
@@ -331,7 +332,17 @@ function checklistOf(
       : {}),
     // T393 (CTO #14 M1): a back-face stock is cut mirrored; a required line to tick.
     ...(isBackFace(data) ? { backFace: true as const } : {}),
+    // T355 (analysis §5.6): a job with V-grooves names the V-bit and the remaining skin.
+    ...vGrooveChecklist(data, p),
   };
+}
+
+function vGrooveChecklist(
+  data: ProjectRow['data'],
+  profile: MachineWithProfile['profile'],
+): Pick<ExportChecklistInfo, 'vGroove'> {
+  const v = vGrooveChecklistOf(data, profile);
+  return v ? { vGroove: v } : {};
 }
 
 export function profileInfo(run: ExportRun): ExportProfileInfo | null {

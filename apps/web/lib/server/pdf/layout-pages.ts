@@ -233,6 +233,26 @@ function ringPath(
   return `${d}Z`;
 }
 
+/** T355: an open line (or a closed ring when `closed`) as an SVG path. */
+function linePath(
+  points: readonly number[],
+  closed: boolean,
+  map: (x: number, y: number) => [number, number],
+): string {
+  if (closed) return ringPath(points, map);
+  let d = '';
+  for (let i = 0; i + 1 < points.length; i += 2) {
+    const [px, py] = map(points[i] ?? 0, points[i + 1] ?? 0);
+    d += `${i === 0 ? 'M' : 'L'}${px.toFixed(2)} ${py.toFixed(2)} `;
+  }
+  return d.trimEnd();
+}
+
+/** T355: whether any part of the sheets carries a V-groove (the legend then names it). */
+export function sheetsHaveGrooves(sheets: readonly SheetDrawing[]): boolean {
+  return sheets.some((sh) => sh.parts.some((p) => (p.grooves?.length ?? 0) > 0));
+}
+
 function drawSheet(
   page: PDFPage,
   fonts: PdfFonts,
@@ -350,6 +370,16 @@ function drawSheet(
           MUTED,
         );
       }
+    }
+    // T355: V-grooves (fold lines), dash-dot in the accent colour; never drawn as a through cut.
+    for (const groove of part.grooves ?? []) {
+      page.drawSvgPath(linePath(groove.points, groove.closed, svg), {
+        x: 0,
+        y: pageH,
+        borderColor: ACCENT,
+        borderWidth: 0.6,
+        borderDashArray: [4, 1.5, 1, 1.5],
+      });
     }
     for (const hole of part.holes) {
       page.drawCircle({
@@ -498,6 +528,7 @@ export function addLayoutPages(
   nc: PdfNc | null = null,
 ): PDFPage[] {
   const size = PAPER_SIZES[paper];
+  const grooves = sheetsHaveGrooves(sheets);
   return sheets.map((sheet, i) => {
     const page = doc.addPage([size.width, size.height]);
     const details = [
@@ -517,7 +548,8 @@ export function addLayoutPages(
       details,
       pageOffset + i + 1,
       pageCount,
-      t.legend,
+      // T355: the V-groove line style is named only on documents that have one.
+      grooves ? `${t.legend} · ${t.grooveLegend}` : t.legend,
     );
     drawSheet(page, fonts, sheet, machine, sheetNcLines(nc, i));
     if (sheet.grain !== null) {

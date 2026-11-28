@@ -67,6 +67,22 @@ export function propsMatch(
 }
 
 /**
+ * T355 (analysis §5.6 "G-code başlığı"): the identifying properties the NC header line "MALZEME:"
+ * adds after the thickness: the aluminium alloy and temper ("5754 H22"), the ACM colour code. Only
+ * the fields the kind uses and only when set; `''` otherwise (wood and plastic: always `''`, so
+ * their programs stay byte-identical).
+ */
+export function propsNcDetail(material: string, props: MaterialProps | undefined): string {
+  if (!props) return '';
+  const fields = propsFieldsOf(materialKindOf(material));
+  return (['alloy', 'temper', 'colorCode'] as const)
+    .filter((k) => fields.includes(k))
+    .map((k) => props[k]?.trim().replace(/\s+/g, ' ') ?? '')
+    .filter((v) => v !== '')
+    .join(' ');
+}
+
+/**
  * The words a header adds to the kind name (§9.1, analysis §4.2 "PDF başlığı"): the aluminium
  * alloy ("5754"), else nothing. The caller words the kind name itself.
  */

@@ -2211,6 +2211,10 @@
       },
       "checkTabsNotHeld": "{count} parçada köprü az: komşu kesim ya da plaka kenarı köprünün arkasındaki malzemeyi alıyor (G-code başlığı da yazar). Bu parçaların vakumla ya da elle tutulduğunu doğruladım.",
       "checkUnverifiedMaterial": "Önce hava kesimi ve hurda parçada deneme: bu malzemenin kesim değerleri doğrulanmamış başlangıç değerleri (G-code başlığı da yazar). Bunu yapacağım.",
+      "checkVBit": "V uç takılı: T{tool}, {angle}°.",
+      "checkVBitNoAngle": "V uç takılı: T{tool}.",
+      "checkVBitNone": "V uç takılı (makinede V uç tanımlı değil).",
+      "checkVRemaining": "Kalan kalınlık {mm} mm; önce fire parçada deneyin.",
       "checkBackFace": "Plakayı arka yüzü üstte (film alta) yatırdım; parçalar aynalı kesilir.",
       "checkVacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
       "checkFeeds": "İlerleme önerilenin çok üstünde: {tools}. Fazladan sıfır olmadığını kontrol ettim; bu değerler bilerek girildi.",
@@ -3559,6 +3563,7 @@
     "page": "Sayfa {n} / {total}",
     "parts": "{count} parça",
     "legend": "Parça no: satır.kopya · Ok: damar yönü · Ölçüler mm (kesim ölçüsü) · Kesikli çizgi: kör cep",
+    "grooveLegend": "Turuncu kesik-noktalı çizgi: V-kanal (büküm), kesilmez",
     "pocketDepth": "Cep {d}",
     "ncFile": "NC dosyası: {names}",
     "ncFiles": "NC dosyaları ({count}, bu sırayla): {names}",
@@ -3619,9 +3624,10 @@
       "size": "{w} × {h} mm",
       "cut": "Kesim {w} × {h}",
       "pockets": "Cep ×{n}, {d} mm derin",
+      "folds": "Büküm: {n}",
       "faceUp": {
         "front": "Ön yüz",
-        "back": "Arka yüz"
+        "back": "YÜZ AŞAĞI KESİLDİ"
       }
     },
     "assembly": {

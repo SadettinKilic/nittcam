@@ -30,6 +30,7 @@ import {
 import { programTools, type ProgramTools } from './program-tools';
 import { materialKindOf } from '../machine/material';
 import { traitsOf } from '../machine/material-traits';
+import { propsNcDetail } from '../machine/material-props-fields';
 import { unverifiedTemplateNames } from '../template';
 import { contourEntryOf, cuttingSettingsOf } from '../toolpath/cutting-settings';
 import { feedOverridesOf, spindleOverridesOf } from '../toolpath/spindle';
@@ -102,6 +103,8 @@ export function exportNc(
     stock: {
       material: project.stock.material,
       thickness: project.stock.thickness,
+      // T355: alloy / temper / ACM colour code after the thickness; nothing for wood and plastic.
+      ...stockDetailMeta(project),
       sheetWidth: defaultSheet(project).width,
       sheetHeight: defaultSheet(project).height,
       ...ownSheetSizes(project),
@@ -113,6 +116,12 @@ export function exportNc(
       tp.toolpath.operations.find((o) => o.kind !== 'vgroove')?.toolDiameter ?? 0,
     ),
   });
+}
+
+/** T355: the "MALZEME:" header words from the stock's properties, only when there are any. */
+function stockDetailMeta(project: Project): { detail?: string } {
+  const detail = propsNcDetail(project.stock.material, project.stock.props);
+  return detail ? { detail } : {};
 }
 
 /** T354: rule 17's context for a material that folds (`traits.vGroove`), else nothing. */

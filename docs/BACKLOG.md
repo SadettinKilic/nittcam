@@ -2154,7 +2154,7 @@ Acceptance:
 - [ ] rules are silent for jobs without `traits.vGroove`
 Tester focus: G-code safety review of the tray golden; hand-edited NC with a deeper Z is refused for download.
 
-### T355 ACM on labels, PDF and export checklist   [status: todo]   (post-FT)
+### T355 ACM on labels, PDF and export checklist   [status: done]   (post-FT)
 Spec: §6.6  ·  Depends: T353  ·  Owner: dev
 Acceptance:
 - [ ] label: film arrow, "YÜZ AŞAĞI KESİLDİ", "Büküm: n"; no band marks
