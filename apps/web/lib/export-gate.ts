@@ -22,6 +22,8 @@ export interface ChecklistState {
   tabsHeld?: boolean;
   /** D-130 / T346: air cut and a scrap trial first (unverified material); only asked then. */
   material?: boolean;
+  /** T393: the sheet lies back face up (film down), the parts are mirrored; only asked then. */
+  backFace?: boolean;
 }
 
 export const EMPTY_CHECKLIST: ChecklistState = {
@@ -55,6 +57,7 @@ export function downloadBlocker(
   if (preview.checklist?.vacuumByHand && !checklist.vacuum) return 'checklist';
   if ((preview.checklist?.tabsNotHeld ?? 0) > 0 && !checklist.tabsHeld) return 'checklist';
   if (preview.checklist?.unverifiedMaterial && !checklist.material) return 'checklist';
+  if (preview.checklist?.backFace && !checklist.backFace) return 'checklist';
   if (preview.needsAcceptance && !accepted) return 'accept';
   return null;
 }

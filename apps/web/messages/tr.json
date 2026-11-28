@@ -2190,6 +2190,7 @@
       },
       "checkTabsNotHeld": "{count} parçada köprü az: komşu kesim ya da plaka kenarı köprünün arkasındaki malzemeyi alıyor (G-code başlığı da yazar). Bu parçaların vakumla ya da elle tutulduğunu doğruladım.",
       "checkUnverifiedMaterial": "Önce hava kesimi ve hurda parçada deneme: bu malzemenin kesim değerleri doğrulanmamış başlangıç değerleri (G-code başlığı da yazar). Bunu yapacağım.",
+      "checkBackFace": "Plakayı arka yüzü üstte (film alta) yatırdım; parçalar aynalı kesilir.",
       "checkVacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
       "checkFeeds": "İlerleme önerilenin çok üstünde: {tools}. Fazladan sıfır olmadığını kontrol ettim; bu değerler bilerek girildi.",
       "checkFeedsTool": "T{tool} ilerleme {feed} (önerilen {recFeed}), dalma {plunge} (önerilen {recPlunge}) mm/dk",

@@ -49,6 +49,8 @@ import type {
 
 /** Header line of an unverified profile or post (§7.2 rule 10). Transliterated when ASCII-only. */
 export const UNVERIFIED_HEADER = 'DOĞRULANMADI, önce air cut';
+/** T393 (CTO #14 M1): header line of a back-face program (the parts are cut mirrored). */
+export const BACK_FACE_HEADER = 'PLAKA ARKA YUZU USTTE: PARCALAR AYNALI';
 
 /**
  * T288 (K3): "KESİM: köprü her parçada 4 adet 10 x 3 mm, giriş yay, yön climb". No parentheses
@@ -782,6 +784,7 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
   if (meta.unverifiedTemplates?.length)
     lines.push(unverifiedTemplateHeader(meta.unverifiedTemplates));
   if (meta.unverifiedMaterial) lines.push(`DOGRULANMAMIS MALZEME: ${meta.unverifiedMaterial}`);
+  if (meta.backFace) lines.push(BACK_FACE_HEADER);
   lines.push(`PROJE: ${meta.projectName}`);
   lines.push(`REVİZYON: ${meta.revision}`);
   lines.push(
@@ -938,6 +941,7 @@ export function generateGcode(
       (!Array.isArray(meta.unverifiedTemplates) ||
         !meta.unverifiedTemplates.every((n) => typeof n === 'string'))) ||
     (meta.unverifiedMaterial !== undefined && typeof meta.unverifiedMaterial !== 'string') ||
+    (meta.backFace !== undefined && typeof meta.backFace !== 'boolean') ||
     !Number.isInteger(meta.revision) ||
     meta.revision < 0 ||
     !st ||

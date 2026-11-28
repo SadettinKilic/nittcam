@@ -17,6 +17,7 @@ import {
   unverifiedReasons,
   vacuumByHand,
   unverifiedTemplateNames,
+  isBackFace,
   materialNcStatus,
   type ExportNcResult,
   type PostFile,
@@ -328,6 +329,8 @@ function checklistOf(
     ...(materialNcStatus(data.stock.material) === 'unverified'
       ? { unverifiedMaterial: true as const }
       : {}),
+    // T393 (CTO #14 M1): a back-face stock is cut mirrored; a required line to tick.
+    ...(isBackFace(data) ? { backFace: true as const } : {}),
   };
 }
 

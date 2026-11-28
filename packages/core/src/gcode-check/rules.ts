@@ -101,6 +101,47 @@ export function headerRule(text: string, d: Derived, push: Push): void {
 }
 
 /** R1: explicit modal state before the first motion, and it never changes to inch/incremental. */
+/** T393: words of the back-face header line, compared after folding (independent of the post). */
+const BACK_FACE_MARKERS = ['ARKA YUZU USTTE', 'AYNALI'] as const;
+
+/**
+ * T393 (CTO #14 M1): a back-face project's program states it in the header (the comment block
+ * before the first code line), so an operator never lays the sheet the usual way and gets
+ * mirrored parts; a front-face program must not say it.
+ */
+export function backFaceHeaderRule(text: string, d: Derived, push: Push): void {
+  const face = d.ctx.machinedFace;
+  if (face === undefined) return;
+  let found = 0;
+  let firstCode = 0;
+  const lines = text.split(/\r\n|\r|\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const l = (lines[i] ?? '').trim();
+    if (l === '' || l === '%') continue;
+    if (!(l.startsWith('(') || l.startsWith(';'))) {
+      firstCode = i + 1;
+      break;
+    }
+    const folded = foldText(l);
+    if (found === 0 && BACK_FACE_MARKERS.every((m) => folded.includes(m))) found = i + 1;
+  }
+  if (face === 'back' && found === 0) {
+    push(
+      'LAYOUT',
+      'BACK_FACE_HEADER_MISSING',
+      firstCode,
+      'Back-face project: the header must say the sheet lies back face up and the parts are mirrored.',
+    );
+  } else if (face === 'front' && found > 0) {
+    push(
+      'LAYOUT',
+      'BACK_FACE_HEADER_UNEXPECTED',
+      found,
+      'Front-face project: the header says back face up (mirrored parts).',
+    );
+  }
+}
+
 export function modalRule(read: GcodeReadResult, d: Derived, push: Push): void {
   const first = read.moves[0];
   if (!first) {

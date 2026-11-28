@@ -13,6 +13,7 @@ import {
   activeTools,
   floorRule,
   rampRule,
+  backFaceHeaderRule,
   headerRule,
   modalRule,
   motionRules,
@@ -93,6 +94,7 @@ function analyse(text: string, d: Derived, prefix: boolean): Analysis {
   const r = read(text, d);
   readerFindings(r, push);
   headerRule(text, d, push);
+  backFaceHeaderRule(text, d, push);
   modalRule(r, d, push);
   const sm = toSheetMoves(r.moves, d.frame, r.events);
   // B62 fix r1: the active tool comes from this file's own operations (a split or per-tool file

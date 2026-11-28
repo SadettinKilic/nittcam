@@ -150,6 +150,12 @@ export interface GcodeCheckContext {
    * else `R3/AIR_CUT_BELOW_FLOOR`. Omitted = no floor (normal cutting programs).
    */
   zFloor?: number;
+  /**
+   * T393 (CTO #14 M1): the face the project says is machined (T348). `back`: the program header must
+   * state that the sheet lies back face up and the parts are mirrored (LAYOUT/BACK_FACE_HEADER_MISSING);
+   * `front`: that statement must not appear (LAYOUT/BACK_FACE_HEADER_UNEXPECTED). Omitted = not checked.
+   */
+  machinedFace?: 'front' | 'back';
   tolerance?: GcodeCheckTolerance;
 }
 
