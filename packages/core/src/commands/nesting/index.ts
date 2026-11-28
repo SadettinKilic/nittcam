@@ -12,6 +12,7 @@ import {
   nestingRotationSchema,
   nestingSchema,
   placementSchema,
+  toCutSizes,
   type Project,
 } from '../../schema';
 import { defineCommand } from '../types';
@@ -217,10 +218,12 @@ export const lockPlacement = defineCommand({
     if (!placed) return `copy ${params.index} of part "${params.partId}" is not placed`;
     if (params.rot !== undefined) {
       // The grain rule (D-034): only rotations from `allowedRotations` may be set by hand.
-      const part = project.parts.find((p) => p.id === params.partId);
+      // T348: placements live in the machined frame (mirrored parts on a back-face stock).
+      const cut = toCutSizes(project);
+      const part = cut.parts.find((p) => p.id === params.partId);
       const policy = rotationPolicyOf(project.nesting);
-      if (!part || !rotationAllowed(part, grainSheetOf(project), params.rot, policy)) {
-        const allowed = part ? allowedRotations(part, grainSheetOf(project), policy) : [];
+      if (!part || !rotationAllowed(part, grainSheetOf(cut), params.rot, policy)) {
+        const allowed = part ? allowedRotations(part, grainSheetOf(cut), policy) : [];
         return `rotation ${params.rot}° is not allowed for part "${params.partId}" (allowed: ${allowed.join(', ')})`;
       }
     }

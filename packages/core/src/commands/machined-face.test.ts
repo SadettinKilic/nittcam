@@ -40,4 +40,23 @@ describe('machined face (T348)', () => {
     expect(parseProject({ ...p, stock: { ...p.stock, machinedFace: 'back' } }).ok).toBe(true);
     expect(parseProject({ ...p, stock: { ...p.stock, machinedFace: 'top' } }).ok).toBe(false);
   });
+
+  it('a face change turns the stored layout over with the sheet; undo restores it', () => {
+    const s = new CommandStack(
+      projectOf({
+        parts: [{ id: 'a', w: 100, h: 50, qty: 1 }],
+        placements: [[{ partId: 'a', index: 0, x: 20, y: 30, rot: 90 }]],
+      }),
+    );
+    const before = s.project.layout;
+    expect(s.execute('setMachinedFace', { face: 'back' }, at).ok).toBe(true);
+    // 90° turned, the part is 50 wide: x = 2440 − 20 − 50.
+    expect(s.project.layout.sheets[0]?.placements[0]).toMatchObject({ x: 2370, y: 30, rot: 270 });
+    // Same face again: nothing changes.
+    expect(s.execute('setMachinedFace', { face: 'back' }, at).ok).toBe(true);
+    expect(s.project.layout.sheets[0]?.placements[0]).toMatchObject({ x: 2370, rot: 270 });
+    s.undo();
+    s.undo();
+    expect(s.project.layout).toEqual(before);
+  });
 });
