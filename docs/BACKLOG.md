@@ -1608,6 +1608,9 @@ Source: round 44. Wizard routes ship ~451 kB gzip (budget raised to 460 by D-133
 ### T392 Flaky in CI: b11a T258 keeps `?profil=son` after "Kesim ayarı ekle" → back   [status: todo]
 Source: round 45 (run 46126438790: failed twice in shard 2, green on rerun; 5/5 locally). After saving the new cutting set and coming back, the URL still had `profil=son` on the slower CI runner. Look at the order of the profile adoption and the URL clean-up (B60 touched `?profil=son` during takeover); fix the race, not the wait.
 
+### T399 URL updates lost on the first save (step/view change races the address swap)   [status: todo]
+Source: round 46 (b20-preview3d:111, bm1-assembly-bench:110 flaky in CI). On a new project the first save swaps the address (`created` → `replaceState` to `/projeler/<id>`); a step or parts-view change in the same moment loses its `adim` / `gorunum` query. Make the address swap merge the current query (or serialise URL writes in project-wizard), add a unit test for the race. Also look at T392 (b11a `profil=son`), likely the same family.
+
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
 ### Batch B29: T184–T186 (onboarding, accessibility, performance)
@@ -2345,7 +2348,7 @@ Acceptance:
 - [ ] "Montaj görseli" PNG and an optional "Montaj föyü" page in the project PDF (exploded view + numbered part list)
 Tester focus: PDF page, section through a shelf joint.
 
-### T390 Metal parts in the workbench   [status: todo]
+### T390 Metal parts in the workbench   [status: done]
 Depends: MB3 (ACM, aluminium kinds)
 Acceptance:
 - [ ] ACM and aluminium parts render with their look and real thickness; materials can be mixed in one assembly (aluminium bracket on a wood panel)
