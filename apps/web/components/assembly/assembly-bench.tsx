@@ -19,6 +19,7 @@ import {
   Move3d,
   RotateCcw,
   Rotate3d,
+  Ruler,
   ScanSearch,
   Search,
   ZoomIn,
@@ -75,6 +76,7 @@ import {
   type Section,
 } from '../../lib/preview3d/assembly-explode';
 import { useFitCheck } from './use-fit-check';
+import { measure, snapPick, type MeasurePick } from '../../lib/preview3d/assembly-measure';
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 
 const BenchScene = dynamic(() => import('./bench-scene'), {
@@ -114,6 +116,7 @@ export interface AssemblyBenchProps {
 }
 
 const now = () => new Date().toISOString();
+const MM1 = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 
 export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) {
   const messages = useMessages();
@@ -204,10 +207,14 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
     setCamera((prev) => ({ ...c, n: prev.n + 1 }) as CameraCmd);
   }, []);
 
+  // Measure tool (T389): up to two snapped picks on the displayed (maybe exploded) parts.
+  const [picks, setPicks] = useState<MeasurePick[]>([]);
+
   const endMate = useCallback(() => {
     setMateA(null);
     setSlide(null);
     setSnapped(false);
+    setPicks([]);
   }, []);
 
   const changeMode = useCallback(
@@ -274,8 +281,9 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
       if (k === 'w') changeMode('move');
       else if (k === 'e') changeMode('rotate');
       else if (k === 'm') changeMode('mate');
+      else if (k === 'u') changeMode('measure');
       else if (k === 'escape') {
-        if (mateA || slide) endMate();
+        if (mateA || slide || picks.length > 0) endMate();
         else setSelectedId(null);
       } else if (k === 'h' && selected) commit(selected.id, selected.pose, !selected.hidden);
       else if (k === 'f') cam({ kind: 'fit' });
@@ -294,21 +302,39 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onUp);
     };
-  }, [changeMode, endMate, mateA, slide, selected, commit, cam]);
+  }, [changeMode, endMate, mateA, slide, picks, selected, commit, cam]);
 
-  const hint = slide
-    ? snapped
-      ? `${t.hints.snapped} · ${t.hints.slide}`
-      : t.hints.slide
-    : mode === 'mate'
-      ? mateA
-        ? t.hints.mateB
-        : t.hints.mateA
-      : !selected
-        ? t.hints.select
-        : mode === 'rotate'
-          ? t.hints.rotate
-          : t.hints.move;
+  const pickPoints = useMemo(() => picks.map((p) => p.point), [picks]);
+  const measured = picks.length === 2 && picks[0] && picks[1] ? measure(picks[0], picks[1]) : null;
+  const hint = measured
+    ? [
+        fill(t.measure.distance, { mm: MM1.format(measured.distance) }),
+        fill(t.measure.delta, {
+          x: MM1.format(Math.abs(measured.delta[0])),
+          y: MM1.format(Math.abs(measured.delta[1])),
+          z: MM1.format(Math.abs(measured.delta[2])),
+        }),
+        ...(measured.faceGap !== null
+          ? [fill(t.measure.faceGap, { mm: MM1.format(measured.faceGap) })]
+          : []),
+      ].join(' · ')
+    : mode === 'measure'
+      ? picks.length === 1
+        ? t.hints.measureB
+        : t.hints.measureA
+      : slide
+        ? snapped
+          ? `${t.hints.snapped} · ${t.hints.slide}`
+          : t.hints.slide
+        : mode === 'mate'
+          ? mateA
+            ? t.hints.mateB
+            : t.hints.mateA
+          : !selected
+            ? t.hints.select
+            : mode === 'rotate'
+              ? t.hints.rotate
+              : t.hints.move;
 
   const host = useRef<HTMLDivElement>(null);
   // Perf read-out straight to the DOM (no React render per frame), like the 3D preview (T159).
@@ -337,6 +363,9 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
       data-placed={placed}
       data-view={view}
       data-explode={explode}
+      data-measure={measured ? measured.distance.toFixed(2) : ''}
+      data-face-gap={measured?.faceGap != null ? measured.faceGap.toFixed(2) : ''}
+      data-picks={picks.map((p) => p.kind).join(',')}
       data-section={
         section ? `${'xyz'[section.axis]}:${section.at}${section.flip ? ':flip' : ''}` : ''
       }
@@ -361,6 +390,18 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             marks={marks}
             section={section}
             locked={locked}
+            measurePoints={pickPoints}
+            onMeasure={(id, normal, point, tol) => {
+              const it = display.find((i) => i.id === id);
+              if (!it) return;
+              const p = snapPick(
+                { id, pose: it.pose, box: it.box, edges: it.mesh.edges },
+                point,
+                normal,
+                tol,
+              );
+              setPicks((prev) => (prev.length >= 2 ? [p] : [...prev, p]));
+            }}
             rotationStep={step.rot}
             moveStep={step.move}
             camera={camera}
@@ -392,6 +433,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
               ['move', Move3d, 'benchMove'],
               ['rotate', Rotate3d, 'benchRotate'],
               ['mate', Magnet, 'benchMate'],
+              ['measure', Ruler, 'benchMeasure'],
             ] as const
           ).map(([m, Icon, key]) => (
             <Tooltip key={m} content={withShortcut(t.modeTips[m], key)}>

@@ -62,7 +62,7 @@ import { installThreeConsole } from '../../lib/preview3d/three-console';
 
 installThreeConsole();
 
-export type BenchMode = 'move' | 'rotate' | 'mate';
+export type BenchMode = 'move' | 'rotate' | 'mate' | 'measure';
 export type BenchView = 'top' | 'front' | 'right' | 'iso';
 export type CameraCmd =
   | { kind: 'view'; view: BenchView; n: number }
@@ -108,6 +108,10 @@ export interface BenchSceneProps {
   section?: Section | null;
   /** Exploded view (T389): poses are display-only, so no gizmo, mate or slide. */
   locked?: boolean;
+  /** Measure tool (T389): a click on a part with a snap tolerance in mm (grows with distance). */
+  onMeasure?: (id: string, normal: V3, point: V3, tol: number) => void;
+  /** Measured points (0–2) drawn as dots and a line. */
+  measurePoints?: readonly V3[];
   /** Rotation snap in degrees; 0 = free (Shift). */
   rotationStep: number;
   /** Move snap in mm; 0 = free (Shift). */
@@ -210,6 +214,8 @@ function BenchContent({
   marks,
   section = null,
   locked = false,
+  onMeasure,
+  measurePoints,
   rotationStep,
   moveStep,
   camera: cmd,
@@ -374,6 +380,13 @@ function BenchContent({
     e.stopPropagation();
     // A click that ends a gizmo drag (or lands on the gizmo) is not a pick.
     if (performance.now() - lastDrag.current < 250 || gizmoHot(tc.current)) return;
+    if (mode === 'measure') {
+      const n = worldNormal(e);
+      // About 1.2 % of the viewing distance: a few pixels on screen at any zoom.
+      const tol = Math.max(0.5, cam.position.distanceTo(e.point) * 0.012);
+      if (n) onMeasure?.(item.id, n, [e.point.x, e.point.y, e.point.z], tol);
+      return;
+    }
     if (mode === 'mate' && !locked) {
       const n = worldNormal(e);
       if (n) onPick(item.id, n, [e.point.x, e.point.y, e.point.z]);
@@ -547,7 +560,10 @@ function BenchContent({
       {mode === 'mate' && hover && byId.get(hover.id) ? (
         <FaceMark item={byId.get(hover.id) as BenchItem} face={hover.face} color={colors.hover} />
       ) : null}
-      {selObj && selectedItem && mode !== 'mate' && !slide && !locked ? (
+      {measurePoints && measurePoints.length > 0 ? (
+        <MeasureMarks points={measurePoints} span={span} color={colors.selection} />
+      ) : null}
+      {selObj && selectedItem && mode !== 'mate' && mode !== 'measure' && !slide && !locked ? (
         <TransformControls
           ref={tc}
           object={selObj}
@@ -638,6 +654,41 @@ function FaceMark({ item, face, color }: { item: BenchItem; face: BoxFace; color
         depthWrite={false}
       />
     </mesh>
+  );
+}
+
+/** Measure dots and the line between them (T389), drawn over the parts. */
+function MeasureMarks({
+  points,
+  span,
+  color,
+}: {
+  points: readonly V3[];
+  span: number;
+  color: string;
+}) {
+  const r = Math.max(1.5, span * 0.004);
+  const line = useMemo(() => {
+    if (points.length < 2) return null;
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(new Float32Array(points.flat()), 3));
+    return g;
+  }, [points]);
+  useEffect(() => () => line?.dispose(), [line]);
+  return (
+    <group renderOrder={3}>
+      {points.map((p, i) => (
+        <mesh key={i} position={p} raycast={() => null} renderOrder={3}>
+          <sphereGeometry args={[r, 16, 12]} />
+          <meshBasicMaterial color={color} depthTest={false} transparent />
+        </mesh>
+      ))}
+      {line ? (
+        <lineSegments geometry={line} raycast={() => null} renderOrder={3}>
+          <lineBasicMaterial color={color} depthTest={false} transparent />
+        </lineSegments>
+      ) : null}
+    </group>
   );
 }
 

@@ -42,6 +42,7 @@ export type ShortcutId =
   | 'benchMove'
   | 'benchRotate'
   | 'benchMate'
+  | 'benchMeasure'
   | 'benchHide'
   | 'benchCancel';
 
@@ -108,6 +109,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'benchMove', keys: 'w', group: 'bench', page: true },
   { id: 'benchRotate', keys: 'e', group: 'bench', page: true },
   { id: 'benchMate', keys: 'm', group: 'bench', page: true },
+  { id: 'benchMeasure', keys: 'u', group: 'bench', page: true },
   { id: 'benchHide', keys: 'h', group: 'bench', page: true },
   { id: 'benchCancel', keys: 'escape', group: 'bench', page: true },
 ];

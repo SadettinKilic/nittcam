@@ -271,6 +271,7 @@
       "benchMove": "Taşı",
       "benchRotate": "Döndür",
       "benchMate": "Yüzey yüzeye oturt",
+      "benchMeasure": "Ölç",
       "benchHide": "Seçili parçayı gizle / göster",
       "benchCancel": "Oturtmayı bitir / seçimi kaldır"
     },
@@ -3923,12 +3924,14 @@
       "label": "Araç",
       "move": "Taşı",
       "rotate": "Döndür",
-      "mate": "Yüzey yüzeye oturt"
+      "mate": "Yüzey yüzeye oturt",
+      "measure": "Ölç"
     },
     "modeTips": {
       "move": "Taşı: okları ya da düzlem karelerini sürükleyin",
       "rotate": "Döndür: halkaları sürükleyin (15° adım)",
-      "mate": "Yüzey yüzeye oturt: önce sabit parçanın, sonra oturacak parçanın yüzeyini tıklayın"
+      "mate": "Yüzey yüzeye oturt: önce sabit parçanın, sonra oturacak parçanın yüzeyini tıklayın",
+      "measure": "Ölç: iki nokta ya da iki yüzey tıklayın; köşe ve kenarlara yakalanır"
     },
     "views": {
       "label": "Görünüm",
@@ -3950,7 +3953,9 @@
       "mateB": "2/2 · Şimdi oturacak parçanın yüzeyini tıklayın. Esc: vazgeç.",
       "mateSame": "Aynı parçanın iki yüzü oturtulamaz; başka bir parça seçin.",
       "slide": "Oturdu. Parçayı sürükleyerek yüzey üzerinde kaydırın; kenarlar 2 mm içinde yakalanır. Esc: bitir.",
-      "snapped": "Kenara oturdu"
+      "snapped": "Kenara oturdu",
+      "measureA": "1/2 · Ölçünün ilk noktasını tıklayın (köşe ve kenarlar yakalanır).",
+      "measureB": "2/2 · İkinci noktayı tıklayın. Esc: temizle."
     },
     "list": {
       "search": "Parça ara",
@@ -4023,6 +4028,17 @@
       "sectionOff": "Kapalı",
       "sectionAt": "Kesit konumu",
       "flip": "Diğer yarıyı göster"
+    },
+    "measure": {
+      "distance": "Mesafe {mm} mm",
+      "delta": "ΔX {x} · ΔY {y} · ΔZ {z}",
+      "faceGap": "Yüzeyler arası {mm} mm",
+      "kinds": {
+        "vertex": "köşe",
+        "edge": "kenar",
+        "face": "yüzey"
+      },
+      "from": "{a} → {b}"
     }
   }
 }

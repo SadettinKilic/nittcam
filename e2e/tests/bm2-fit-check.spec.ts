@@ -98,3 +98,43 @@ test('explode and section are display only (T389)', async ({ page }) => {
   await expect(bench).toHaveAttribute('data-section', '');
   expect(errors).toEqual([]);
 });
+
+test('measure: two face points, distance and face gap (T389)', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __nittcamBenchHook: boolean }).__nittcamBenchHook = true;
+  });
+  const errors = watchConsole(page);
+  const bench = await openBench(page);
+  const ids = await page
+    .getByTestId('bench-part')
+    .evaluateAll((rows) => rows.map((r) => r.getAttribute('data-id') ?? ''));
+  const point = async (id: string) => {
+    const p = await page.evaluate(
+      (i) =>
+        (
+          window as unknown as {
+            __nittcamBench?: { point: (id: string, lift: number) => [number, number] | null };
+          }
+        ).__nittcamBench?.point(i, 9) ?? null,
+      id,
+    );
+    if (!p) throw new Error(`no point for ${id}`);
+    return p;
+  };
+  await page.getByTestId('bench-mode-measure').click();
+  await expect(page.getByTestId('bench-hint')).toHaveText(tr.bench.hints.measureA);
+  const [ax, ay] = await point(ids[0] ?? '');
+  await page.mouse.click(ax, ay);
+  await expect(page.getByTestId('bench-hint')).toHaveText(tr.bench.hints.measureB);
+  const [bx, by] = await point(ids[1] ?? '');
+  await page.mouse.click(bx, by);
+  // Taban's top centre (250, 18, 200) to Yan's (750, 18, 150): √(500² + 50²) ≈ 502,5 mm.
+  await expect(bench).toHaveAttribute('data-picks', 'face,face');
+  const d = Number(await bench.getAttribute('data-measure'));
+  expect(Math.abs(d - 502.49)).toBeLessThan(3);
+  await expect(bench).toHaveAttribute('data-face-gap', '0.00');
+  await expect(page.getByTestId('bench-hint')).toContainText('Yüzeyler arası 0 mm');
+  await page.keyboard.press('Escape');
+  await expect(bench).toHaveAttribute('data-picks', '');
+  expect(errors).toEqual([]);
+});
