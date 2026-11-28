@@ -109,6 +109,12 @@ test('T321: warnings make the summary amber; Uyarılar box agrees; quantity chan
   await page.goto(`/projeler/${id}?adim=dizilim`);
   await wizardReady(page, 'dizilim');
   await nest(page);
+  // The run lives in a worker that leaving Dizilim terminates: wait for the layout and for no mode
+  // still running, else a slow (cold) run is dropped and Simülasyon has no layout (flaky on main).
+  await expect(page.getByTestId('layout-canvas')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('[data-testid^="layout-mode-"][data-running]')).toHaveCount(0, {
+    timeout: 30_000,
+  });
   await saved(page);
   await goStep(page, 'simulasyon');
   const status = page.getByTestId('sim-check-status');
