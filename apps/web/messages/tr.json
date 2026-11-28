@@ -1350,6 +1350,8 @@
       "POCKET_SPLIT": "Cep dar bir boğazla ikiye ayrılıyor; tek girişle boşaltılamıyor. Boğazı genişletin ya da iki ayrı cep çizin.",
       "POCKET_DEPTH_INVALID": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
       "POCKET_PLUNGE_ENTRY": "Cep rampaya yetmeyecek kadar küçük; takım düz dalıyor (dalma ilerlemesiyle).",
+      "ENTRY_RAMP_REQUIRED": "Kontur, bu malzemenin istediği rampa girişine yetmeyecek kadar kısa; metalde dik dalma takım kırar. Konturu büyütün ya da daha ince bir takımla kesin.",
+      "HOLE_SMALLER_THAN_ENTRY": "Delik ya da cep, bu malzemenin istediği helis girişine yetmeyecek kadar küçük; metalde dik dalma takım kırar. Kendi çapında bir matkapla delin ya da daha ince bir takım seçin.",
       "POCKET_OUTSIDE_BOUNDARY": "Takım cebin dışına (ya da duvarına takım yarıçapından yakın) çıkıyor.",
       "POCKET_TOO_DEEP": "Takım cebin derinliğinden aşağı iniyor.",
       "POCKET_NOT_CUT": "Bir cep programda boşaltılmıyor.",

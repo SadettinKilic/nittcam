@@ -63,7 +63,13 @@ import {
   type PathSeg,
 } from './path';
 import { toolpathSafetyViolations } from './safety';
-import { buildHoleOperation, holeOperationKind, holeStart, placedHoleCentre } from './holes';
+import {
+  buildHoleOperation,
+  holeHelixFits,
+  holeOperationKind,
+  holeStart,
+  placedHoleCentre,
+} from './holes';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { grooveChain, grooveLeavesPart, lineLeavesPart } from '../editor/lines';
 import { summarizeToolpath } from './stats';
@@ -84,6 +90,7 @@ import {
 } from './contour-pocket';
 import { partInHoleHosts } from './enclose';
 import { contourEntryOf, descentOf } from './cutting-settings';
+import { ENTRY_MIN_CONTOUR, zigzagDescent } from './descent';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
 
 import {
@@ -528,9 +535,27 @@ function buildOuterOperation(
   }
 
   let rampLeg = 0;
+  // T358 (D-149): a kind without a straight plunge whose contour is shorter than the ramp leg goes
+  // down on more zig-zag legs over the whole contour, never steeper; too many legs: refused.
+  let shortRamp: number | null = null;
   if (ramp) {
     rampLeg = rampLegLength(ramp, Math.abs(firstDepth));
-    if (rampLeg > perimeter) {
+    if (rampLeg > perimeter && p.descent) {
+      const angle = ramp.angleDeg ?? p.descent.angleDeg;
+      if (!(perimeter >= ENTRY_MIN_CONTOUR - EPS)) {
+        errors.push(
+          issue(
+            'ENTRY_RAMP_REQUIRED',
+            'error',
+            partId,
+            `${isInner ? `Inner contour ${(ctx.inner ?? 0) + 1}` : 'Outer contour'}: too short for the ${angle}° ramp entry this material requires (it never plunges straight in). Make the contour larger or cut it with a smaller tool.`,
+            isInner ? { ...where, inner: ctx.inner as number } : where,
+          ),
+        );
+      }
+      shortRamp = angle;
+      rampLeg = perimeter;
+    } else if (rampLeg > perimeter) {
       rampLeg = perimeter;
       warnings.push(
         issue(
@@ -727,7 +752,9 @@ function buildOuterOperation(
   p.passDepths.forEach((z, i) => {
     const moves: Move[] = [];
     const zPrev = i === 0 ? leadInZ : (p.passDepths[i - 1] as number);
-    if (ramp) {
+    if (ramp && shortRamp !== null) {
+      moves.push(...(zigzagDescent(segs, zPrev, z, shortRamp, p.plungeFeed) ?? []));
+    } else if (ramp) {
       const zMid = (zPrev + z) / 2;
       moves.push(...pathMoves(rampFwd, zPrev, zMid, p.plungeFeed));
       moves.push(...pathMoves(rampBack, zMid, z, p.plungeFeed));
@@ -1066,12 +1093,15 @@ export function buildToolpath(
   // project's length, else the cutting tool's diameter (set per tool below). T422: a kind without
   // a straight plunge (ACM) ramps in at its traits angle when the project sets none.
   const entry = contourEntryOf(project);
+  // T358 (D-149): a kind without a straight plunge never ramps steeper than its traits maximum,
+  // whatever angle the project asks for.
+  const metalEntry = options.plunge === undefined ? descentOf(project, machine) : null;
   const plunge: PlungeOption =
     options.plunge ??
     (entry
       ? {
           type: 'ramp',
-          angleDeg: entry.angleDeg,
+          angleDeg: metalEntry ? metalEntry.angleDeg : entry.angleDeg,
           ...(entry.length === undefined ? {} : { minLength: entry.length }),
         }
       : { type: 'straight' });
@@ -1246,7 +1276,7 @@ export function buildToolpath(
     lead: options.lead ?? project.cutting.leadIn,
     leadLength,
     plunge: plungeFor(tool.diameter),
-    descent: options.plunge === undefined ? descentOf(project) : null,
+    descent: metalEntry,
     // CW spindle (M3): climb on an outer contour = CW travel around the part (D-021).
     travel: direction === 'climb' ? 'cw' : 'ccw',
     sheet: defaultSheet(project),
@@ -1555,11 +1585,20 @@ export function buildToolpath(
         );
         continue;
       }
-      holeTools.set(`${part.id}/${h.id}`, {
-        tool: ht.number,
-        diameter: ht.diameter,
-        depths: passDepths(depth, passDepth),
-      });
+      // T358 (D-149): without a straight plunge only a drill pecks straight down, each peck at
+      // most 1 × Ø (a rapid to the clearance height between pecks clears the chips); every other
+      // hole enters on a helix at most the traits angle steep, or is refused.
+      const drills = ht.type === 'drill' && holeOperationKind(h, ht.diameter) === 'drill';
+      const holeStep = metalEntry && drills ? Math.min(passDepth, ht.diameter) : passDepth;
+      const depths = passDepths(depth, holeStep);
+      if (metalEntry && !drills && !holeHelixFits(h, ht.diameter)) {
+        bad(
+          'HOLE_SMALLER_THAN_ENTRY',
+          `too small for the ${metalEntry.angleDeg}° helix entry this material requires (it never plunges straight in). Drill it with a drill of its size or cut it with a smaller tool.`,
+        );
+        continue;
+      }
+      holeTools.set(`${part.id}/${h.id}`, { tool: ht.number, diameter: ht.diameter, depths });
     }
   }
 
@@ -1705,6 +1744,8 @@ export function buildToolpath(
           clearanceZ,
           // Climb inside a pocket (CW spindle) = CCW travel (D-021), like the hole pockets.
           travel: direction === 'climb' ? 'ccw' : 'cw',
+          // T358: no straight plunge into the pocket floor (§7.2 rule 12)
+          ...(params.descent ? { ramp: params.descent } : {}),
         });
         if (!res.ok) {
           opErrors.push(issue(res.code, 'error', x.part.id, res.message, { ...where, inner: k }));
@@ -1757,6 +1798,8 @@ export function buildToolpath(
           clearanceZ,
           // Climb inside a hole (CW spindle) = CCW travel (D-021).
           travel: direction === 'climb' ? 'ccw' : 'cw',
+          // T358: no straight plunge: the helix at most the traits angle steep
+          ...(params.descent ? { helix: params.descent } : {}),
         });
         items.push({
           sheet: sheetIndex,

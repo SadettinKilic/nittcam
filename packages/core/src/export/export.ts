@@ -121,7 +121,9 @@ export function exportNc(
  * T423 (spec §7.2 rule 12): the checker's descent limit for a kind without a straight plunge
  * (ACM, aluminium: `traits.entry.rampDeg.max`), else nothing (wood, plastic: rule silent).
  */
-export function plungeCheckOf(project: Project): { noStraightPlunge?: { maxDeg: number } } {
+export function plungeCheckOf(project: { stock: Pick<Project['stock'], 'material'> }): {
+  noStraightPlunge?: { maxDeg: number };
+} {
   const e = traitsOf(materialKindOf(project.stock.material)).entry;
   return !e.straightPlunge && e.rampDeg ? { noStraightPlunge: { maxDeg: e.rampDeg.max } } : {};
 }

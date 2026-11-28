@@ -32,6 +32,26 @@ export const HOLE_DEFAULTS = {
   minHelixRadius: 0.5,
 } as const;
 
+/**
+ * T358 (D-149): whether a hole of this kind can be entered on a helix at most `angleDeg` steep
+ * (a kind without a straight plunge): a hole the cutter fills (`drill` kind: with a drill tool
+ * it is pecked instead) or a ring below `minHelixRadius` has no helix. Otherwise the helix takes
+ * as many turns as the angle needs (never steeper). Pure.
+ */
+export function holeHelixFits(hole: Hole, toolDiameter: number): boolean {
+  if (holeOperationKind(hole, toolDiameter) === 'drill') return false;
+  return holeEntryRadius(hole, toolDiameter) >= HOLE_DEFAULTS.minHelixRadius - EPS;
+}
+
+/** Radius of the ring the helix enters on (the first pocket ring, or the groove centreline). */
+function holeEntryRadius(hole: Hole, toolDiameter: number): number {
+  const radii =
+    hole.type === 'groove'
+      ? grooveRings(hole.d / 2, hole.grooveWidth, toolDiameter)
+      : pocketRings(hole.d / 2 - toolDiameter / 2, toolDiameter);
+  return radii[0] as number;
+}
+
 export type HoleOperationKind = Extract<OperationKind, 'drill' | 'pocket' | 'groove'>;
 
 /** Which operation cuts a hole with a tool of `toolDiameter` (spec §4.5). */
@@ -74,6 +94,11 @@ export interface HoleOperationInput {
   clearanceZ: number;
   /** Climb inside a hole with a CW spindle = CCW travel (D-021). */
   travel: 'cw' | 'ccw';
+  /**
+   * T358: a kind without a straight plunge: the helix is at most this steep, with as many turns
+   * as that takes (`holeHelixFits` refuses the hole first when it needs too many).
+   */
+  helix?: { angleDeg: number };
 }
 
 /** Ring radii of a pocket: first ring (≤ tool radius, so the centre is cut) out to `wall`. */
@@ -152,7 +177,9 @@ export function buildHoleOperation(input: HoleOperationInput): Operation {
     half(rr, 1, z, input.feed),
   ];
   const helix = entry >= HOLE_DEFAULTS.minHelixRadius - EPS;
-  const pitchMax = 2 * Math.PI * entry * Math.tan((HOLE_DEFAULTS.helixAngleDeg * Math.PI) / 180);
+  const helixDeg = input.helix?.angleDeg ?? HOLE_DEFAULTS.helixAngleDeg;
+  const maxTurns = input.helix ? Infinity : HOLE_DEFAULTS.maxHelixTurns;
+  const pitchMax = 2 * Math.PI * entry * Math.tan((helixDeg * Math.PI) / 180);
 
   segments.push({
     role: 'approach',
@@ -174,7 +201,7 @@ export function buildHoleOperation(input: HoleOperationInput): Operation {
     if (helix) {
       const drop = zPrev - z;
       const turns = Math.min(
-        HOLE_DEFAULTS.maxHelixTurns,
+        maxTurns,
         Math.max(1, Math.ceil(drop / Math.max(pitchMax, EPS) - 1e-9)),
       );
       for (let k = 1; k <= 2 * turns; k++) {

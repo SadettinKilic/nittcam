@@ -216,10 +216,9 @@ describe('B73 tester: small ACM parts are held or blocked/warned, never silently
 });
 
 describe('B73 tester: test cut on an ACM set', () => {
-  // Tester B73 bug 1: testProgram → postAndCheck gets no `noStraightPlunge`, so the ACM test cut
-  // plunges straight into the panel (pocket entries) and R12 never refuses it. Flip to `it` once
-  // the test-cut path is refused (or ramps) for a material without a straight plunge.
-  it.fails('has no straight plunge into the panel', () => {
+  // Tester B73 bug 1, fixed in B76 (T429): the test cut's pockets enter on a helix and the test
+  // program runs rule 12 like every export.
+  it('has no straight plunge into the panel', () => {
     const profile = backFaceProfile('mach3');
     const idx = profile.materials.findIndex((m) => m.material === 'acm');
     const r = testProgram(

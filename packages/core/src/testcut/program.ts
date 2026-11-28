@@ -9,13 +9,14 @@
  * part of what the air cut shows). Both go through the same post processor and the same automatic
  * checks as every export (`postAndCheck`). Pure: same input, same output.
  */
-import { postAndCheck, type ExportNcResult } from '../export/export';
+import { plungeCheckOf, postAndCheck, type ExportNcResult } from '../export/export';
 import type { ExpectedPart } from '../gcode-check';
 import { findTool, type MachineProfile, type MaterialParams } from '../machine';
 import type { PostProfileVersion } from '../post';
 import type { Project } from '../schema';
 import {
   buildToolpath,
+  descentOf,
   passDepths,
   throughCutTarget,
   toolpathSafetyViolations,
@@ -173,6 +174,11 @@ interface PocketSpec {
  * (the last one = finished radius − tool radius), each a full circle in two half arcs, back to the
  * centre, next pass. Climb milling on the wall (CCW with a CW spindle, D-021). Every move that goes
  * down is a plunge at the plunge feed; XY rapids only at safe Z.
+ *
+ * T429 (D-149, rule 12): with `helix` (a kind without a straight plunge: ACM, aluminium) the tool
+ * comes down to the material top on the first ring and descends on that ring as a helix at most
+ * `helix.angleDeg` steep (as many turns as that takes), never straight down; the rings follow as
+ * before. Without it (wood, plastic) the moves are exactly today's.
  */
 function pocketOperation(
   spec: PocketSpec,
@@ -180,6 +186,7 @@ function pocketOperation(
   toolDiameter: number,
   safeZ: number,
   clearanceZ: number,
+  helix?: { angleDeg: number },
 ): Operation {
   const r = toolDiameter / 2;
   const finalRing = spec.radius - r;
@@ -190,17 +197,47 @@ function pocketOperation(
   );
   const { cx, cy } = spec;
   const feed = set.feed;
+  const ring = radii[0] as number;
+  const startX = helix ? cx + ring : cx;
   const segments: MoveSegment[] = [
     {
       role: 'approach',
       moves: [
-        { kind: 'rapid', x: cx, y: cy, z: safeZ },
-        { kind: 'rapid', x: cx, y: cy, z: clearanceZ },
+        { kind: 'rapid', x: startX, y: cy, z: safeZ },
+        { kind: 'rapid', x: startX, y: cy, z: clearanceZ },
+        // T429: down to the material top at the plunge feed (still in the air)
+        ...(helix
+          ? [{ kind: 'plunge' as const, x: startX, y: cy, z: 0, feed: set.plungeFeed }]
+          : []),
       ],
     },
   ];
+  const pitch = helix ? 2 * Math.PI * ring * Math.tan((helix.angleDeg * Math.PI) / 180) : 0;
+  let zPrev = 0;
   spec.depths.forEach((z, pass) => {
-    const moves: Move[] = [{ kind: 'plunge', x: cx, y: cy, z, feed: set.plungeFeed }];
+    const moves: Move[] = [];
+    if (helix) {
+      if (pass > 0) moves.push({ kind: 'linear', x: startX, y: cy, z: zPrev, feed });
+      const turns = Math.max(1, Math.ceil((zPrev - z) / pitch - 1e-9));
+      for (let k = 1; k <= 2 * turns; k++) {
+        const side = k % 2 === 1 ? -1 : 1;
+        const zk = zPrev - ((zPrev - z) * k) / (2 * turns);
+        moves.push({
+          kind: 'arc',
+          x: cx + side * ring,
+          y: cy,
+          z: zk,
+          cx,
+          cy,
+          direction: 'ccw',
+          bulge: 1,
+          feed: set.plungeFeed,
+        });
+      }
+    } else {
+      moves.push({ kind: 'plunge', x: cx, y: cy, z, feed: set.plungeFeed });
+    }
+    zPrev = z;
     for (const rr of radii) {
       moves.push({ kind: 'linear', x: cx + rr, y: cy, z, feed });
       moves.push({ kind: 'arc', x: cx - rr, y: cy, z, cx, cy, direction: 'ccw', bulge: 1, feed });
@@ -284,6 +321,8 @@ export function testPartToolpath(
 
   const { safeZ, clearanceZ } = outer.toolpath;
   const c = partCentre();
+  // T429: the pockets enter on a helix in a kind without a straight plunge (rule 12)
+  const helix = descentOf(project, profile) ?? undefined;
   const pocket = pocketOperation(
     {
       id: 'test-pocket',
@@ -296,6 +335,7 @@ export function testPartToolpath(
     tool.diameter,
     safeZ,
     clearanceZ,
+    helix,
   );
   const hole = pocketOperation(
     {
@@ -312,6 +352,7 @@ export function testPartToolpath(
     tool.diameter,
     safeZ,
     clearanceZ,
+    helix,
   );
   const toolpath: Toolpath = {
     ...outer.toolpath,
@@ -441,6 +482,8 @@ export function testProgram(
       sheetHeight: TEST_PART.sheet.height,
     },
     layout: kind === 'testCut' ? new Map([[0, tp.layout]]) : null,
+    // T429: rule 12 for a kind without a straight plunge, as every export
+    ...plungeCheckOf({ stock: { material: tp.info.material } }),
     // The air cut never comes below the gap: the checks refuse the file otherwise (D-031).
     ...(kind === 'airCut' ? { zFloor: AIR_CUT_GAP } : {}),
   });

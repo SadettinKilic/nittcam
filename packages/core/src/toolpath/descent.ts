@@ -19,6 +19,14 @@ import type { FeedMove } from './types';
 export const DESCENT_MIN_ROOM = 0.05;
 
 /**
+ * T358 (D-149): shortest contour a kind without a straight plunge zig-zags into, mm: the length of
+ * the smallest helix ring (radius `HOLE_DEFAULTS.minHelixRadius` 0,5 mm). Shorter contours are
+ * refused (`ENTRY_RAMP_REQUIRED`), never plunged or steepened; longer ones take as many legs as
+ * the angle needs.
+ */
+export const ENTRY_MIN_CONTOUR = Math.PI;
+
+/**
  * Moves from the start of `room` at `zFrom` down to the same point at `zTo`, every move at most
  * `angleDeg` steep (descent over XY travel). Empty when there is nothing to descend. Null when the
  * room is too short for any ramp (the caller must not plunge there).

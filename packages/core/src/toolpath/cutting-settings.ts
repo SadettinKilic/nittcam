@@ -131,10 +131,13 @@ export function contourEntryOf(project: Project): ContourEntry | null {
  * contour entry's angle, never steeper than the traits' maximum. Null = straight plunges are
  * allowed (wood and plastic: unchanged).
  */
-export function descentOf(project: Project): { angleDeg: number } | null {
+export function descentOf(project: Project, machine?: MachineProfile): { angleDeg: number } | null {
   const entry = traitsOf(materialKindOf(project.stock.material)).entry;
   if (entry.straightPlunge || entry.rampDeg === null) return null;
+  // T358 (D-149): the project's angle, else the material set's (T351 `rampDeg`), else the traits'.
   const own = project.cutting.entry?.angleDeg;
-  const angle = own !== undefined && own > 0 ? own : entry.rampDeg.default;
+  const set = machine ? findMaterialParams(machine, project.stock)?.rampDeg : undefined;
+  const angle =
+    own !== undefined && own > 0 ? own : set !== undefined && set > 0 ? set : entry.rampDeg.default;
   return { angleDeg: Math.min(angle, entry.rampDeg.max) };
 }

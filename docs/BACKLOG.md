@@ -1541,6 +1541,13 @@ Acceptance: "Kapanıyor" not shown at 0 %, "Çakışma var" only where a real cl
 ### T428 Hint when tabs cause an extra sheet   [status: todo]   (SHOULD)
 Acceptance: when the third MDF sheet is filled ~95 % only because tab spacing (D-129) grew the gaps, step 3 says so and offers "ince tabaka" or a smaller pay where it holds.
 
+### T429 Test cut follows the entry traits; rule 12 on the test program   [status: review]   (MUST, PO rider in B76; before T357)
+Source: B73 tester bug 1 (pinned `it.fails` in `plunge.tester.test.ts`). The field-kit air cut / test cut plunged straight into ACM at the pocket centres (`G1 Z-2.0/-2.25/-4.5 F1500`) and the checker did not refuse it.
+Acceptance:
+- [x] in a kind without a straight plunge the test cut's pockets enter on a helix at the entry angle (same rule as T358, D-149); the test program runs rule 12 like every export
+- [x] the pinned tester test passes as `it`; a hand-made straight plunge in the ACM test cut is refused by R12
+- [x] wood test-cut output byte-identical (test-cut goldens unchanged)
+
 ## Polish queue (M9; D-047)
 
 Cleaned up 2026-11-20 (owner): duplicates merged, done items removed, grouped by screen. Source in brackets (#5 = CTO review 5, T = tester). The M9 polish phase takes **one group per batch** (P1–P5), not item by item; inside a group the dev may skip an item that costs more than an hour and note it. Items marked ★ were seen in 2+ reviews: do them first.
@@ -2215,7 +2222,7 @@ Acceptance:
 - [ ] owner releases tier A to users (flag per company)
 Tester focus: none (human gate).
 
-### T358 Entry rule from the traits: ramp or helix only in metal   [status: todo]   (post-FT)
+### T358 Entry rule from the traits: ramp or helix only in metal   [status: review]   (post-FT)
 Spec: §6.3 "Giriş/çıkış"  ·  Depends: T346  ·  Owner: dev
 Acceptance:
 - [ ] `traits.entry.straightPlunge = false`: contours always ramp (default and maximum angle from traits); "Dalma (konturda)" shows "Rampa" locked with the reason; `ENTRY_RAMP_REQUIRED` when a ramp does not fit (part too short) instead of falling back to a plunge

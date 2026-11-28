@@ -153,13 +153,19 @@ export interface ContourPocketInput {
   safeZ: number;
   clearanceZ: number;
   travel: 'cw' | 'ccw';
+  /**
+   * T358 (D-149): a kind without a straight plunge: the entry ramps at most this steep, never
+   * plunges (a ring too short for it is refused, `HOLE_SMALLER_THAN_ENTRY`), and each later pass
+   * ramps down from the material top again instead of plunging to the cleared floor.
+   */
+  ramp?: { angleDeg: number };
 }
 
 export type ContourPocketBuild =
   | { ok: true; operation: Operation; plungeEntry: boolean; arcCollapsed: boolean }
   | {
       ok: false;
-      code: Extract<ToolpathCode, 'POCKET_TOO_SMALL' | 'POCKET_SPLIT'>;
+      code: Extract<ToolpathCode, 'POCKET_TOO_SMALL' | 'POCKET_SPLIT' | 'HOLE_SMALLER_THAN_ENTRY'>;
       message: string;
     };
 
@@ -182,7 +188,8 @@ export function buildContourPocketOperation(input: ContourPocketInput): ContourP
   loops[0] = entrySegs;
   const entry = entrySegs[0]?.p0 ?? { x: 0, y: 0 };
   const entryLen = pathLength(entrySegs);
-  const tan = Math.tan((CONTOUR_POCKET_DEFAULTS.rampAngleDeg * Math.PI) / 180);
+  const metal = input.ramp;
+  const tan = Math.tan(((metal?.angleDeg ?? CONTOUR_POCKET_DEFAULTS.rampAngleDeg) * Math.PI) / 180);
   // Never steeper than rampAngleDeg: when the deepest pass cannot be reached within
   // maxRampLaps on the entry ring, fall back to a straight plunge (POCKET_PLUNGE_ENTRY).
   let maxDrop = 0;
@@ -192,8 +199,17 @@ export function buildContourPocketOperation(input: ContourPocketInput): ContourP
     zLast = z;
   }
   const ramp =
-    rampFits(entryLen, input.toolDiameter) &&
-    maxDrop <= CONTOUR_POCKET_DEFAULTS.maxRampLaps * entryLen * tan + EPS;
+    !!metal ||
+    (rampFits(entryLen, input.toolDiameter) &&
+      maxDrop <= CONTOUR_POCKET_DEFAULTS.maxRampLaps * entryLen * tan + EPS);
+  // T358: never steeper, as many laps as the angle needs; only a ring too short is refused.
+  if (metal && !rampFits(entryLen, input.toolDiameter)) {
+    return {
+      ok: false,
+      code: 'HOLE_SMALLER_THAN_ENTRY',
+      message: `too small for the ${metal.angleDeg}° ramp entry this material requires (it never plunges straight in).`,
+    };
+  }
   const { safeZ, clearanceZ, plungeFeed, feed } = input;
   const last = input.passDepths.length - 1;
   const segments: MoveSegment[] = [
@@ -216,12 +232,20 @@ export function buildContourPocketOperation(input: ContourPocketInput): ContourP
       moves.push({ kind: 'rapid', x: pos.x, y: pos.y, z: safeZ });
       moves.push({ kind: 'rapid', x: entry.x, y: entry.y, z: safeZ });
       moves.push({ kind: 'rapid', x: entry.x, y: entry.y, z: clearanceZ });
-      moves.push({ kind: 'plunge', x: entry.x, y: entry.y, z: zPrev, feed: plungeFeed });
+      // T358: without a straight plunge only to the top; the ramp below goes down from there.
+      moves.push({
+        kind: 'plunge',
+        x: entry.x,
+        y: entry.y,
+        z: metal ? 0 : zPrev,
+        feed: plungeFeed,
+      });
+      if (metal) zPrev = 0;
     }
     if (ramp) {
       const drop = zPrev - z;
       const laps = Math.min(
-        CONTOUR_POCKET_DEFAULTS.maxRampLaps,
+        metal ? Infinity : CONTOUR_POCKET_DEFAULTS.maxRampLaps,
         Math.max(1, Math.ceil(drop / Math.max(entryLen * tan, EPS) - 1e-9)),
       );
       for (let k = 1; k <= laps; k++) {
