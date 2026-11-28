@@ -68,6 +68,7 @@ import {
   withParamSet,
   type FormSection,
 } from '../../lib/machine-form';
+import { withSampleVBit } from '../../lib/sample-vbit';
 import type { Messages } from '../../lib/messages';
 import { CornerPicker } from './corner-picker';
 import {
@@ -194,9 +195,14 @@ export function MachineForm({
   const u = t.form.units;
   const router = useRouter();
   const [initial] = useState(() => initialProp ?? newMachineProfile());
-  const [start] = useState(() =>
-    addParams ? (addParams.examples ? withAcmExamples : withParamSet)(initial, addParams) : null,
-  );
+  const [start] = useState(() => {
+    if (!addParams) return null;
+    if (!addParams.examples) return withParamSet(initial, addParams);
+    // B70 rider: the example ACM sets come with a V-bit when the machine has none.
+    const r = withAcmExamples(initial, addParams);
+    const v = withSampleVBit(r.profile);
+    return { ...r, profile: v.profile, added: r.added || v.added };
+  });
   const [profile, setProfile] = useState<MachineProfile>(start?.profile ?? initial);
   const [submitted, setSubmitted] = useState(false);
   const [serverIssues, setServerIssues] = useState<MachineProfileIssue[]>([]);
@@ -210,7 +216,7 @@ export function MachineForm({
   const [leaving, setLeaving] = useState<{ href: string | null | 'back' } | null>(null);
   // Set right before a confirmed navigation, so the history guard does not undo it.
   const leavingNow = useRef(false);
-  const toolRows = useRowKeys(initial.tools.length);
+  const toolRows = useRowKeys((start?.profile ?? initial).tools.length);
   const materialRows = useRowKeys((start?.profile ?? initial).materials.length);
   const active = useActiveSection();
   const formRef = useRef<HTMLFormElement>(null);
@@ -1346,8 +1352,12 @@ export function MachineForm({
                   onClick={() => {
                     const missing = ACM_EXAMPLES.filter((th) => !hasParamSet(profile, 'acm', th));
                     missing.forEach(() => materialRows.add());
+                    // B70 rider: plus the example V-bit when the machine has none.
+                    const vBit = withSampleVBit(profile).added;
+                    if (vBit) toolRows.add();
                     update((p) => {
                       for (const th of missing) p.materials.push(newParamSet(p, 'acm', th));
+                      if (vBit) p.tools = withSampleVBit(p).profile.tools;
                     });
                   }}
                 >

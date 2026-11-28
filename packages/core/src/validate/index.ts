@@ -37,7 +37,7 @@ import {
 } from '../schema';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
-import { grooveLeavesPart, lineLeavesPart } from '../editor/lines';
+import { grooveChain, grooveLeavesPart, lineLeavesPart } from '../editor/lines';
 import { contour } from '../geometry/polyline';
 import { contourPocketRings } from '../toolpath/contour-pocket';
 import { unsecuredSlugs } from '../toolpath/slug-check';
@@ -785,9 +785,17 @@ export const innerContourRules: ValidationRule = (project, context) => {
   project.parts.forEach((part, i) => {
     if (part.inners.length === 0) return;
     const outline = deriveOutline(part);
+    // B70: a closed V-groove is a fold line, not an opening (checked in vGrooveRules).
+    const cut = (j: number) => innerOperation(part, j).kind !== 'vgroove';
     part.inners.forEach((inner, k) => {
+      if (!cut(k)) return;
       const path = formatPath(['parts', i, 'inners', k]);
-      const err = checkInnerContour(outline, part.inners.slice(0, k), inner, 0);
+      const err = checkInnerContour(
+        outline,
+        part.inners.slice(0, k).filter((_, j) => cut(j)),
+        inner,
+        0,
+      );
       if (err) {
         issues.push({
           code: 'INNER_CONTOUR_INVALID',
@@ -941,7 +949,7 @@ export const vGrooveRules: ValidationRule = (project, context) => {
           message: `${what}: ${bad}`,
         });
       }
-      if (g.type === 'line' && grooveLeavesPart(outline, g.vertices)) {
+      if (grooveLeavesPart(outline, grooveChain(g))) {
         issues.push({
           code: 'VGROOVE_OUTSIDE_PART',
           severity: 'error',

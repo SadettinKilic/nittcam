@@ -63,6 +63,11 @@ export interface BenchItem {
   look: MaterialKind;
   /** T390: true when the part is shown in its own material (not the stock's). */
   ownLook: boolean;
+  /**
+   * T391: folded along its V-grooves (view state): the mesh key for the fit-check worker and the
+   * base's holes (flange holes turn out of the face plane and are left out of the hole check).
+   */
+  fold?: { key: string; holes: { cx: number; cy: number; d: number; through: boolean }[] };
 }
 
 const boxes = new WeakMap<MeshData, LocalBox>();

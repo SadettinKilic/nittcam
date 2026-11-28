@@ -237,6 +237,42 @@ Kesim setleri bugünkü gibi makine profilinde, tür + kalınlık ile bağlı ka
 | Gagalama ≤ 1 × Ø, ısınma ≥ 3 s, mengene + 5 mm | analiz | sayı yok | aynı | doğrulanacak |
 | Plaka ölçüleri (alüminyum 1000×2000, 1250×2500, 1500×3000; ACM 1250×3200, 1500×3200, 1250×2440) | analiz | alüminyum aynı ("doğrulanmalı"); ACM yok | aynı | doğrulanacak |
 
+### 4.6 Katlama hesabı (T391, Montaj tezgâhı "Katla")
+
+Yalnızca görünüm: dizilim, takım yolu ve NC değişmez. Kod: `apps/web/lib/preview3d/acm-fold.ts`.
+
+**Girdiler (kanal başına):** kalan kalınlık `s` (kanalın kendi değeri, yoksa malzeme varsayılanı 0,8 mm), V-bıçağın açısı `α` ve uç düzlüğü `b` (makinedeki V-bıçak; yoksa 90° ve sivri uç), hedef katlama açısı `θ` (varsayılan 90°), plaka kalınlığı `T`.
+
+**Büküm modeli.** Kanal tabanındaki düz kısım (genişliği `b`) bükülen yay olur; kalan kabuk bundan daha dar bükülemez:
+
+| Büyüklük | Formül | 4 mm ACM, s = 0,8, 90° V, b = 0,2, θ = 90° |
+| --- | --- | --- |
+| Nötr yarıçap | r_n = max(s / 2, b / θ) | 0,4 mm |
+| İç yarıçap (kanal tarafı) | r_i = r_n − s / 2 | 0 mm |
+| Dış yarıçap (dekor yüzü) | r_o = r_n + s / 2 | 0,8 mm |
+| Büküm payı (nötr yay boyu) | BA = θ · r_n (θ radyan) | 0,63 mm |
+| Kapanma sınırı | V duvarları θ = α'da birbirine değer; θ > α ise duvarlar ezilir (uyarı) | 90° |
+
+**Ölçüler (90° katlama).** Kanal merkezi flanşın düz boyunu `F` (kanal merkezi → kenar) ayırır:
+
+- dış flanş boyu (tabanın dış yüzünden flanş kenarına) H = F + r_o − BA / 2
+- düz boy (istenen dış boy için) F = H − r_o + BA / 2
+- tava dış ölçüsü = kanal merkezleri arası + 2 · (r_o − BA / 2)
+
+Örnek: 30 mm düz flanş → dış flanş boyu 30 + 0,8 − 0,31 = **30,49 mm**; kanal merkezleri arası 400 mm → dış ölçü **400,97 mm**.
+
+**3B'de katlama.** Parça kanal merkez çizgilerinden taban ve flanşlara bölünür (taban = dış hattın ağırlık merkezini tutan parça; orta noktası başka bir flanşta kalan kanal o flanşın üstündeki dudaktır). Her flanş önce bükülen payı (BA) kadar tabana doğru kayar, sonra büküm merkezi çevresinde (kanal çizgisinde, nötr liflerden r_n kadar kanal tarafında) kanal yüzüne doğru döner; dudak kendi flanşıyla birlikte döner. Kanal açılan yüz `machinedFace`'tir (ACM: arka yüz).
+
+**Kontrol.** Parçalar dışbükey prizma kabul edilip ayırıcı eksen testiyle karşılaştırılır (bir flanş ile bağlı olduğu parça bükümde buluştuğu için karşılaştırılmaz):
+
+- düz hâlde iki flanş aynı malzemeyi paylaşıyorsa: **köşe boşaltması yok** (kırmızı);
+- katlanmış hâlde 0,05 mm'den fazla iç içe geçme: **çakışma** (kırmızı, parça 3B'de kırmızı);
+- komşu (paralel olmayan) iki flanş arası: **köşe boşluğu**; 1 mm'ye kadar "Kapanıyor", üstü "Köşe boşluğu var".
+
+**Yan flanşlar köşelerde plaka kalınlığı kadar geri çekilmelidir; düz 25 × 25 köşe boşaltmasında katlanan flanşlar köşede iç içe girer ve kontrol bunu kırmızı gösterir.** Kural pratiği: köşe boşaltması kanal kesişiminde biterse katlanmış flanşlar köşede T − (r_o − BA / 2) kadar çakışır; boşaltmayı bir flanş yönünde plaka kalınlığı kadar uzatmak köşeyi kapatır (boşluk r_o − BA / 2 ≈ 0,49 mm). Birim testleri: `acm-fold.test.ts` (4 flanşlı tava).
+
+**Sınırlar (ilk sürüm).** Kanal çizgisinin (açık ya da kapalı) her düz kenarı bir menteşedir: köşelerde birleşen dört kanal çizgisi içe aktarmada tek kapalı kontura bağlansa da dört menteşe olarak katlanır; yay kenarlar sayılır, katlanmaz. Kapalı V-kanal bir açıklık değil katlama çizgisidir: dış hatta değebilir, iç kontur kuralına (INNER_CONTOUR_INVALID) girmez, dış hattan çıkarsa VGROOVE_OUTSIDE_PART verir; kanal sonsuz doğru gibi bölünür (kenardan kenara kanal varsayılır); flanşlardaki delikler 3B'de görünür ama delik hizası kontrolüne yalnız tabandaki delikler girer. Model başlangıç değeridir; ilk gerçek tavada ölçüp doğrulayın.
+
 ## 5. Ekranlar: ne görünür, ne kaybolur
 
 Masaüstü önce. Her ekran dört iş malzemesi için anlatılır. "Ahşap" ve "Plastik" sütunları bugünküyle aynıdır; yazılanlar yalnız karşılaştırma içindir.
