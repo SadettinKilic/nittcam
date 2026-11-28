@@ -996,3 +996,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-141 The fold verdict is computed at the designed angles (2026-11-28, B74 T427, CTO #15 S5)
 - Montaj → Katla: the part's state ("Hedef açıda kapanıyor / köşe boşluğu var / çakışıyor") and its issues are always checked at the target angles; the sliders only move the picture. The red tint on the bench still follows the pose shown. The overlap line names the fix ("flanş uçlarını X mm kısaltın ya da köşe boşaltmasını büyütün").
 - The `acm-tray` golden fixture (square reliefs only up to the groove crossing) clashes by design of its geometry; changing it regenerates the ACM goldens, so it waits for the PO (T427 fixture part).
+
+## D-142 Dizilim probes thin skin when tabs leave a nearly empty last sheet (2026-11-28, B74 T428, CTO #15 S6)
+- After a tab layout (no thin skin, D-129 spacing raised) whose last sheet is under 15 % used, with every copy placed, step 3 nests the same project once with thin skin (0,5 mm, as the switch) in its own short-lived worker (the page's nesting worker never waits for it). When that needs fewer sheets, the options panel says so ("İnce tabakayla N plakaya sığdır"); one click sets thin skin and nests again (two undo steps).
+- "A smaller pay where it holds" is the same probe: with thin skin the stored, smaller clearance counts again; with tabs D-129's minimum stays, so no separate pay suggestion. ACM (no thin skin) never gets the hint. No placer change.

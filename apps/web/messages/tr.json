@@ -2135,7 +2135,9 @@
       "gapNoteDetail": "Ø{tool} + pay {gap} = {clear} mm",
       "marginHint": "En az {min} mm",
       "spacingGroup": "Parça arası ve kenar payı",
-      "tabSpacingNote": "Köprü açıkken parça arası pay en az takım Ø + {anchor} mm ({gap} mm), kenar payı en az takım Ø + {anchor} mm ({margin} mm) kullanılır."
+      "tabSpacingNote": "Köprü açıkken parça arası pay en az takım Ø + {anchor} mm ({gap} mm), kenar payı en az takım Ø + {anchor} mm ({margin} mm) kullanılır.",
+      "tabExtraSheet": "Köprüler için açılan pay bir plaka ekledi: son plaka neredeyse boş. İnce tabakayla parça arası pay {gap} mm kalır ve iş {n} plakaya sığar.",
+      "tabExtraSheetApply": "İnce tabakayla {n} plakaya sığdır"
     },
     "simulation": {
       "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında bir hedefe tıklayarak parçaları yerleştirin.",
