@@ -13,8 +13,8 @@ import {
 import { feedInRange, findTool, machineFeedLimits } from '../../machine/profile';
 import { rpmInRange } from '../../toolpath/spindle';
 import { OPERATION_TOOL_KINDS } from '../../toolpath/op-tools';
-import { operationToolProblem } from '../../toolpath/op-tool-choice';
-import { SKIN_BOUNDS, TAB_BOUNDS, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
+import { operationToolProblem, operationToolProblemText } from '../../toolpath/op-tool-choice';
+import { SKIN_BOUNDS, holdLimitsOf, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
 
 /** Selects the machine profile the project uses. Selecting is allowed for AI; editing a profile is not. */
@@ -161,19 +161,27 @@ export const setGrain = defineCommand({
 export const setThinSkin = defineCommand({
   name: 'setThinSkin',
   area: 'plate',
-  description: `Hold small parts with a thin skin instead of tabs (thickness in mm, at least ${SKIN_BOUNDS.min} mm and at most the stock thickness minus ${SKIN_BOUNDS.belowThickness} mm); null = tabs.`,
+  description: `Hold small parts with a thin skin instead of tabs (thickness in mm, for wood and plastic at least ${SKIN_BOUNDS.min} mm and at most the stock thickness minus ${SKIN_BOUNDS.belowThickness} mm; the bounds follow the stock material); null = tabs.`,
   aiTool: false,
   params: z.strictObject({
     thickness: z
       .number({ error: 'thickness must be a finite number (mm)' })
-      // T298 (CTO #12 A, D-083): a thinner skin does not hold the part.
-      .min(SKIN_BOUNDS.min, { error: `thickness must be at least ${SKIN_BOUNDS.min} mm` })
+      .positive({ error: 'thickness must be greater than 0 mm' })
       .nullable(),
   }),
-  check: (project, p) =>
-    p.thickness !== null && p.thickness > maxSkinThickness(project.stock.thickness) + 1e-9
-      ? `skin thickness ${p.thickness} mm must be at most ${maxSkinThickness(project.stock.thickness)} mm (stock thickness ${project.stock.thickness} mm minus ${SKIN_BOUNDS.belowThickness} mm)`
-      : undefined,
+  // T298 (CTO #12 A, D-083): a skin outside the bounds does not hold the part. T343: the bounds
+  // are the stock material's (traits row).
+  check: (project, p) => {
+    if (p.thickness === null) return undefined;
+    const limits = holdLimitsOf(project.stock.material);
+    const t = project.stock.thickness;
+    if (p.thickness < limits.skin.min - 1e-9) {
+      return `thickness must be at least ${limits.skin.min} mm`;
+    }
+    return p.thickness > maxSkinThickness(t, limits) + 1e-9
+      ? `skin thickness ${p.thickness} mm must be at most ${maxSkinThickness(t, limits)} mm (stock thickness ${t} mm minus ${limits.skin.belowThickness} mm)`
+      : undefined;
+  },
   apply: (draft, p) => {
     if (p.thickness === null) delete draft.cutting.skin;
     else draft.cutting.skin = { thickness: p.thickness };
@@ -231,22 +239,28 @@ export const setTabs = defineCommand({
         .min(1, { error: 'count must be at least 1' })
         .max(20, { error: 'count must be at most 20' }),
     ),
-    // T293 (CTO #11 A, D-069): a bridge below these sizes does not hold the part.
     width: tabOverride(
-      z
-        .number({ error: 'width must be a number' })
-        .min(TAB_BOUNDS.minWidth, { error: `width must be at least ${TAB_BOUNDS.minWidth} mm` }),
+      z.number({ error: 'width must be a number' }).positive({ error: 'width must be > 0 mm' }),
     ),
     height: tabOverride(
-      z
-        .number({ error: 'height must be a number' })
-        .min(TAB_BOUNDS.minHeight, { error: `height must be at least ${TAB_BOUNDS.minHeight} mm` }),
+      z.number({ error: 'height must be a number' }).positive({ error: 'height must be > 0 mm' }),
     ),
   }),
-  check: (project, p) =>
-    p.height !== undefined && p.height !== null && p.height > maxTabHeight(project.stock.thickness)
-      ? `tab height ${p.height} mm must be at most ${maxTabHeight(project.stock.thickness)} mm (stock thickness ${project.stock.thickness} mm minus ${TAB_BOUNDS.belowThickness} mm)`
-      : undefined,
+  // T293 (CTO #11 A, D-069): a bridge below these sizes does not hold the part. T343: the bounds
+  // are the stock material's (traits row).
+  check: (project, p) => {
+    const limits = holdLimitsOf(project.stock.material);
+    const b = limits.tabs.bounds;
+    const t = project.stock.thickness;
+    if (p.width !== undefined && p.width !== null && p.width < b.minWidth) {
+      return `width must be at least ${b.minWidth} mm`;
+    }
+    if (p.height === undefined || p.height === null) return undefined;
+    if (p.height < b.minHeight) return `height must be at least ${b.minHeight} mm`;
+    return p.height > maxTabHeight(t, limits)
+      ? `tab height ${p.height} mm must be at most ${maxTabHeight(t, limits)} mm (stock thickness ${t} mm minus ${b.belowThickness} mm)`
+      : undefined;
+  },
   apply: (draft, p) => {
     const tabs = draft.cutting.tabs;
     if (p.mode !== undefined) {
@@ -477,7 +491,7 @@ export const setOperationTool = defineCommand({
     const problem = operationToolProblem(project, machine, p.op, p.tool);
     return problem === null
       ? undefined
-      : `tool T${p.tool} does not suit the ${p.op} operation of this job (${problem})`;
+      : `tool T${p.tool} does not suit the ${p.op} operation of this job (${operationToolProblemText(project, problem)})`;
   },
   apply: (draft, p) => {
     if (p.tool === null) {

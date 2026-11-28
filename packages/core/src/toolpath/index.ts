@@ -25,13 +25,15 @@ export {
   maxTabHeight,
   tabSizeProblem,
   defaultTabHeight,
+  holdLimitsOf,
+  DEFAULT_HOLD_LIMITS,
   isSmallPart,
   placeTabs,
   evenTabCentres,
   tabCentreIntervals,
   passMovesWithTabs,
 } from './tabs';
-export type { Interval } from './tabs';
+export type { Interval, HoldLimits } from './tabs';
 export {
   cutOrder,
   mustPrecede,
@@ -82,6 +84,8 @@ export {
 export {
   OPERATION_TOOL_KINDS,
   OPERATION_TOOL_TYPES,
+  operationToolTypes,
+  toolTypeAllowed,
   contourPocketTool,
   contourTool,
   effectiveHoleTool,
@@ -100,6 +104,7 @@ export {
 } from './contour-pocket';
 export {
   operationToolProblem,
+  operationToolProblemText,
   operationToolsOf,
   type OperationToolProblem,
   type OperationToolRow,

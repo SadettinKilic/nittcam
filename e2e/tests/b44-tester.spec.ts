@@ -155,7 +155,7 @@ test('Simülasyon and 3D small job: framed on the job, fit buttons, one-row Kesi
   await height.fill('17,9');
   await height.press('Enter');
   await expect(
-    panel.getByText(fill(tr.simulation.cutting.bounds.heightHigh, { max: '17' })),
+    panel.getByText(fill(tr.simulation.cutting.bounds.heightHigh, { max: '17', below: '1' })),
   ).toBeVisible();
   await expect(panel.getByTestId('field-in-use').first()).toBeVisible();
   await panel.scrollIntoViewIfNeeded();

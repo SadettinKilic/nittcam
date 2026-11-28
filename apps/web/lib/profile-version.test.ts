@@ -32,3 +32,13 @@ describe('profileChanges (T332)', () => {
     ]);
   });
 });
+
+describe('profileChanges: coolant and metal (T345)', () => {
+  it('a coolant, metal or clamp-height change counts as a limits change', () => {
+    const a = { holdDown: { type: 'clamp' } };
+    expect(profileChanges(a, { ...a, coolant: { type: 'mist' } })).toEqual(['limits']);
+    expect(profileChanges(a, { ...a, metal: { enabled: true } })).toEqual(['limits']);
+    expect(profileChanges(a, { holdDown: { type: 'clamp', clampHeight: 25 } })).toEqual(['limits']);
+    expect(profileChanges(a, { ...a })).toEqual([]);
+  });
+});

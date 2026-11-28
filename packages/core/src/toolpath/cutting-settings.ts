@@ -5,7 +5,7 @@
  */
 import { findMaterialParams, type MachineProfile } from '../machine';
 import type { Project } from '../schema';
-import { TAB_DEFAULTS, defaultTabHeight } from './tabs';
+import { defaultTabHeight, holdLimitsOf } from './tabs';
 
 export type TabMode = 'all' | 'small' | 'off';
 /** Where a tab value comes from. */
@@ -17,7 +17,7 @@ export interface CuttingSettings {
   tabs: {
     /** Per part. */
     count: number;
-    /** T294: what a small part really gets: at least `TAB_DEFAULTS.smallPartMinCount`. */
+    /** T294: what a small part really gets: at least the traits' `smallPartMinCount`. */
     smallCount: number;
     width: number;
     height: number;
@@ -38,6 +38,9 @@ export function tabModeOf(project: Project): TabMode {
 export function cuttingSettingsOf(project: Project, machine?: MachineProfile): CuttingSettings {
   const set = machine ? findMaterialParams(machine, project.stock) : undefined;
   const pt = project.cutting.tabs;
+  // T343: built-in defaults of the stock's traits row
+  const limits = holdLimitsOf(project.stock.material);
+  const td = limits.tabs.defaults;
   const pick = (
     own: number | undefined,
     mat: number | undefined,
@@ -48,18 +51,18 @@ export function cuttingSettingsOf(project: Project, machine?: MachineProfile): C
       : mat !== undefined
         ? [mat, 'material']
         : [builtIn, 'default'];
-  const [count, countSrc] = pick(pt.count, set?.tabs?.count, TAB_DEFAULTS.count);
-  const [width, widthSrc] = pick(pt.width, set?.tabs?.width, TAB_DEFAULTS.width);
+  const [count, countSrc] = pick(pt.count, set?.tabs?.count, td.count);
+  const [width, widthSrc] = pick(pt.width, set?.tabs?.width, td.width);
   const [height, heightSrc] = pick(
     pt.height,
     set?.tabs?.height,
-    defaultTabHeight(project.stock.thickness),
+    defaultTabHeight(project.stock.thickness, limits),
   );
   return {
     tabMode: tabModeOf(project),
     tabs: {
       count,
-      smallCount: Math.max(count, TAB_DEFAULTS.smallPartMinCount),
+      smallCount: Math.max(count, td.smallPartMinCount),
       width,
       height,
       source: { count: countSrc, width: widthSrc, height: heightSrc },

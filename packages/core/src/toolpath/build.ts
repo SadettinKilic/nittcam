@@ -13,11 +13,11 @@ import {
   findMaterialParams,
   findTool,
   machineFeedLimits,
+  materialKindOf,
   type MachineProfile,
 } from '../machine';
 import { feedOverride, jobToolNumbers, rpmInRange, spindleOverride } from './spindle';
 import {
-  OPERATION_TOOL_TYPES,
   contourPocketTool,
   contourTool,
   effectiveHoleTool,
@@ -25,6 +25,7 @@ import {
   operationToolChoice,
   recommendedFeeds,
   recommendedRpm,
+  toolTypeAllowed,
   type OperationToolKind,
 } from './op-tools';
 import { nestingToolDiameter } from '../nesting/tool';
@@ -76,10 +77,10 @@ import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from
 
 import {
   TAB_BOUNDS,
-  SKIN_BOUNDS,
   maxSkinThickness,
   skinThicknessOk,
-  TAB_DEFAULTS,
+  holdLimitsOf,
+  type HoldLimits,
   defaultTabHeight,
   isSmallPart,
   maxTabHeight,
@@ -278,6 +279,8 @@ interface Params {
   travel: 'cw' | 'ccw';
   sheet: { width: number; height: number };
   tabs: TabParams;
+  /** T343: tab, skin and small-part limits of the stock material (its traits row). */
+  limits: HoldLimits;
   /**
    * Thin skin (T143, §6.3 "ince tabaka"): null = small parts are held by tabs. Otherwise small
    * parts stop `thickness` mm above the material bottom (`z`, `depths`) and a cleanup pass
@@ -556,7 +559,9 @@ function buildOuterOperation(
       );
     }
     // Small parts (tabs on or off) need at least 2 tabs; one tab lets the part pivot.
-    const count = small ? Math.max(p.tabs.count, TAB_DEFAULTS.smallPartMinCount) : p.tabs.count;
+    const count = small
+      ? Math.max(p.tabs.count, p.limits.tabs.defaults.smallPartMinCount)
+      : p.tabs.count;
     const leadIn = leads.leadIn ? leadReach(p.lead, leadLen) : 0;
     const leadOut = leads.leadOut ? leadReach(p.lead, leadLen) : 0;
     const tabOpts = {
@@ -565,7 +570,7 @@ function buildOuterOperation(
       toolDiameter: p.toolDiameter,
       keepFwd: Math.max(leadOut, rampLeg) + toolRadius,
       keepBack: leadIn + toolRadius,
-      minCount: small ? TAB_DEFAULTS.smallPartMinCount : 1,
+      minCount: small ? p.limits.tabs.defaults.smallPartMinCount : 1,
       z: p.tabs.top,
     };
     // T338 (D-129): only where the tab holds (the loop is CCW unless the travel reversed it).
@@ -606,7 +611,7 @@ function buildOuterOperation(
           'SMALL_PART_NOT_HELD',
           'error',
           partId,
-          `Small part: fewer than ${TAB_DEFAULTS.smallPartMinCount} of its tabs would hold; the others face a neighbour's cut or the sheet edge, so it would be cut free. Raise the clearance between parts to at least the tool diameter + ${TAB_BOUNDS.minAnchor} mm, or turn on the thin skin.`,
+          `Small part: fewer than ${p.limits.tabs.defaults.smallPartMinCount} of its tabs would hold; the others face a neighbour's cut or the sheet edge, so it would be cut free. Raise the clearance between parts to at least the tool diameter + ${TAB_BOUNDS.minAnchor} mm, or turn on the thin skin.`,
           where,
         ),
       );
@@ -618,8 +623,8 @@ function buildOuterOperation(
           'error',
           partId,
           isInner
-            ? `${what}: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs; it would be cut free. Make the opening larger or clear it as a pocket.`
-            : `Small part: no room for ${TAB_DEFAULTS.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free. Turn on the thin skin option ("son pasoda ince tabaka bırak").`,
+            ? `${what}: no room for ${p.limits.tabs.defaults.smallPartMinCount} tabs; it would be cut free. Make the opening larger or clear it as a pocket.`
+            : `Small part: no room for ${p.limits.tabs.defaults.smallPartMinCount} tabs away from corners, arcs and the lead; it would be cut free. Turn on the thin skin option ("son pasoda ince tabaka bırak").`,
           isInner ? { ...where, inner: ctx.inner as number } : where,
         ),
       );
@@ -671,7 +676,7 @@ function buildOuterOperation(
     if (tabs.length > 0 && p.tabs.sizeProblem && !smallWarned.has(sizeKey)) {
       smallWarned.add(sizeKey);
       const size = `${p.tabs.width} × ${p.tabs.height} mm`;
-      const bounds = `width ≥ ${TAB_BOUNDS.minWidth} mm, height ${TAB_BOUNDS.minHeight}–${p.tabs.maxHeight} mm`;
+      const bounds = `width ≥ ${p.limits.tabs.bounds.minWidth} mm, height ${p.limits.tabs.bounds.minHeight}–${p.tabs.maxHeight} mm`;
       if (small) {
         errors.push(
           issue(
@@ -739,7 +744,7 @@ function buildOuterOperation(
   if (skinned && p.skin) {
     // T298 (CTO #12 A, D-083): a skin outside the holding bounds does not hold the small part
     // (too thin: it is cut free on the last pass). An error, whatever project the value came from.
-    if (!skinThicknessOk(p.skin.thickness, p.skin.stock)) {
+    if (!skinThicknessOk(p.skin.thickness, p.skin.stock, p.limits)) {
       if (!smallWarned.has(`${partId}/skin-bounds`)) {
         smallWarned.add(`${partId}/skin-bounds`);
         errors.push(
@@ -747,7 +752,7 @@ function buildOuterOperation(
             'SMALL_PART_SKIN_OUT_OF_BOUNDS',
             'error',
             partId,
-            `Small part: the ${p.skin.thickness} mm thin skin cannot hold it (${SKIN_BOUNDS.min}–${maxSkinThickness(p.skin.stock)} mm); it would be cut free.`,
+            `Small part: the ${p.skin.thickness} mm thin skin cannot hold it (${p.limits.skin.min}–${maxSkinThickness(p.skin.stock, p.limits)} mm); it would be cut free.`,
           ),
         );
       }
@@ -991,11 +996,19 @@ export function buildToolpath(
         `The tool chosen for the ${op} operation (T${n}) ${why}.`,
       ),
     );
+  const materialName = materialKindOf(project.stock.material) ?? project.stock.material;
   for (const op of ['outer', 'inner', 'pocket', 'hole'] as const) {
     const n = operationToolChoice(project, op);
     const t = n === undefined ? undefined : findTool(machine, n);
     if (n === undefined || !t) continue;
-    if (!OPERATION_TOOL_TYPES[op].includes(t.type)) unsuitable(op, n, `is a ${t.type}`);
+    // T344: the allowed types come from the stock material's traits; the message names it.
+    if (!toolTypeAllowed(project.stock.material, op, t.type)) {
+      unsuitable(
+        op,
+        n,
+        `is a ${t.type}, which does not cut the ${op} operation in ${materialName}`,
+      );
+    }
   }
   {
     const n = operationToolChoice(project, 'outer');
@@ -1087,11 +1100,15 @@ export function buildToolpath(
   const to = options.tabs ?? {};
   const pt = project.cutting.tabs;
   const thickness = project.stock.thickness;
-  const tabCount = to.count ?? pt.count ?? set?.tabs?.count ?? TAB_DEFAULTS.count;
-  const tabWidth = to.width ?? pt.width ?? set?.tabs?.width ?? TAB_DEFAULTS.width;
-  const tabHeight = to.height ?? pt.height ?? set?.tabs?.height ?? defaultTabHeight(thickness);
-  const smallPartArea = to.smallPartArea ?? TAB_DEFAULTS.smallPartArea;
-  const smallPartMinSide = to.smallPartMinSide ?? TAB_DEFAULTS.smallPartMinSide;
+  // T343: the built-in defaults and the holding bounds come from the stock's traits row.
+  const limits = holdLimitsOf(project.stock.material);
+  const td = limits.tabs.defaults;
+  const tabCount = to.count ?? pt.count ?? set?.tabs?.count ?? td.count;
+  const tabWidth = to.width ?? pt.width ?? set?.tabs?.width ?? td.width;
+  const tabHeight =
+    to.height ?? pt.height ?? set?.tabs?.height ?? defaultTabHeight(thickness, limits);
+  const smallPartArea = to.smallPartArea ?? limits.smallPart.area;
+  const smallPartMinSide = to.smallPartMinSide ?? limits.smallPart.minSide;
   if (!(Number.isInteger(tabCount) && tabCount >= 1) || !positive(tabWidth)) {
     errors.push(
       issue('INVALID_TAB', 'error', null, 'Tab count must be a whole number ≥ 1 and width > 0.'),
@@ -1226,9 +1243,10 @@ export function buildToolpath(
       sizeProblem:
         to.width !== undefined || to.height !== undefined
           ? null
-          : tabSizeProblem(tabWidth, tabHeight, thickness),
-      maxHeight: maxTabHeight(thickness),
+          : tabSizeProblem(tabWidth, tabHeight, thickness, limits),
+      maxHeight: maxTabHeight(thickness, limits),
     },
+    limits,
   };
 
   // T308: inner contours cut with their own tool (the same as the outer one by default).
