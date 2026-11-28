@@ -1311,6 +1311,18 @@ function rowOfTarget(target: EventTarget | null): number | null {
  * the Excel/CSV paste. It never changes the project itself: every edit runs a command through
  * `run` (command layer), so undo/redo, autosave and validation see it.
  */
+/**
+ * T394 (CTO #14 M2): ids of the cut-list toasts that carry "Geri al". Switching the parts view
+ * (Liste / Çizim / Montaj) closes them, so their undo never sits on the next view's tools; the
+ * undo stays on Ctrl+Z.
+ */
+export const CUT_LIST_UNDO_TOASTS = [
+  'cut-list-rows',
+  'cut-list-paste',
+  'cut-list-cabinet',
+  'cut-list-dxf',
+] as const;
+
 export function CutListEditor({
   t,
   project,

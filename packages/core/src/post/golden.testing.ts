@@ -539,7 +539,13 @@ export function backFaceProfile(postId: 'generic' | 'mach3'): MachineProfile {
   if (!base) throw new Error('golden profile has no MDF 18 set');
   p.materials = [
     ...p.materials,
-    { ...base, material: 'acm', thickness: 4, stepDown: Math.min(base.stepDown, 4), tabs: undefined },
+    {
+      ...base,
+      material: 'acm',
+      thickness: 4,
+      stepDown: Math.min(base.stepDown, 4),
+      tabs: undefined,
+    },
   ];
   return p;
 }

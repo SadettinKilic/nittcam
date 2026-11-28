@@ -22,6 +22,7 @@ import {
 import { useMediaQuery, WORKSPACE_DESKTOP } from '../../lib/use-media-query';
 import { useId, useState, type ReactNode } from 'react';
 import { readPanelOpen, writePanelOpen, type PanelSide } from '../../lib/workspace-panels';
+import { useToastDock } from '../../lib/toast-dock';
 
 export interface WorkspaceLabels {
   /** Accessible name of the left settings panel ("Ayarlar"). */
@@ -94,6 +95,9 @@ export function WorkspaceLayout({
       return !o;
     });
   };
+  // T394 (CTO #14 M2): toasts dock at the canvas's bottom-right, above its bottom toolbars.
+  const [dockEl, setDockEl] = useState<HTMLDivElement | null>(null);
+  useToastDock(dockEl);
   const hasLeft = left !== undefined && left !== null;
   const hasRight = right !== undefined && right !== null;
 
@@ -105,7 +109,7 @@ export function WorkspaceLayout({
         extra,
       )}
     >
-      <div className={cn('relative min-w-0 flex-1', canvasMin)}>
+      <div ref={setDockEl} className={cn('relative min-w-0 flex-1', canvasMin)}>
         {canvas}
         {canvasOverlay}
       </div>

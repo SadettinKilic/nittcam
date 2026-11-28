@@ -154,8 +154,11 @@ const SNAP_PX = 10;
 /** Pointer movement that turns a click into a drag, px. */
 const DRAG_PX = 3;
 
-/** Hole tool toasts sit under the canvas, off the properties panel (T276, like T266). */
-const HOLE_TOAST = { position: 'bottom-center', id: 'board-hole' } as const;
+/**
+ * Hole tool toasts (T276): one id, so a new refusal replaces the last. T394: they dock at the
+ * canvas bottom-right like every workspace toast, which keeps them off the properties panel.
+ */
+const HOLE_TOAST = { id: 'board-hole' } as const;
 
 /** No typed values: every chip field shows its live value. */
 const NO_TYPED = { values: [] as string[], active: 0 };

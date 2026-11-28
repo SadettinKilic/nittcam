@@ -48,6 +48,7 @@ export function DynamicInput(p: DynamicInputProps) {
         aria-label={p.t.chip}
         data-testid="editor-dynamic-input"
         data-docked="true"
+        data-toast-avoid=""
         className="pointer-events-auto absolute inset-x-2 bottom-2 z-20 flex items-center gap-1.5 rounded-lg border border-border bg-surface/95 p-1.5 shadow-sm backdrop-blur-sm"
       >
         {p.fields.map((f, i) => (

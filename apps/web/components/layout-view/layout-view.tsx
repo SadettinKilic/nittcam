@@ -901,6 +901,7 @@ function LayoutViewImpl({
       ) : null}
       {/* B4b: on phones the sticky panel bar may cover the canvas foot until the page scrolls. */}
       <div
+        data-toast-avoid=""
         className={cn(
           'pointer-events-none absolute bottom-2 left-2 z-10 max-sm:bottom-8',
           show3d && 'hidden',
@@ -965,6 +966,7 @@ function LayoutViewImpl({
       <div
         className={`${floating} pointer-events-none absolute right-2 bottom-2 z-10 hidden items-center gap-3 px-2.5 py-1.5 font-mono text-2xs text-fg-muted tabular-nums ${show3d ? '' : 'sm:flex'}`}
         data-testid="layout-readout"
+        data-toast-avoid=""
       >
         <span ref={cursor} title={t.cursor} className="min-w-[9.5rem] text-right">
           –

@@ -34,7 +34,7 @@ import { SaveBanner } from './save-banner';
 import { TemplateUpdatePrompt } from '../editor/template-update';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
 import { isUntitledName, untitledName } from '../../lib/untitled-name';
-import { CutListEditor } from '../parts/cut-list-editor';
+import { CUT_LIST_UNDO_TOASTS, CutListEditor } from '../parts/cut-list-editor';
 import { splitOffProject, type SplitTarget } from '../../lib/split-project';
 import { ProjectLinksBar } from './project-links';
 import type { SimMachine } from '../simulation/simulation-view';
@@ -595,6 +595,14 @@ function WizardSession({
     shownStep.current = step;
     notify.dismiss();
   }, [step]);
+
+  // T394 (CTO #14 M2): a parts-view switch closes an open undo toast (undo stays on Ctrl+Z).
+  const shownView = useRef(partsView);
+  useEffect(() => {
+    if (shownView.current === partsView) return;
+    shownView.current = partsView;
+    for (const id of CUT_LIST_UNDO_TOASTS) notify.dismiss(id);
+  }, [partsView]);
 
   // P4: publish the bottom edge of the wizard header, so the toasts sit just under it (top-centre)
   // and never over the right panel or the canvas scale bar (see AppShell's Toaster).
