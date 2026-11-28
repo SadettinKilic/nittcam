@@ -4072,11 +4072,13 @@
       "gap": "{a} ↔ {b}: boşluk {mm} mm",
       "holeOff": "{a} ↔ {b}: delik {mm} mm kayık",
       "holeOk": "{a} ↔ {b}: {count} delik hizalı",
+      "loose": "Değmeyen parça: {name}",
       "frameTip": "Bu iki parçayı göster",
       "counts": {
         "overlap": "{count} çakışma",
         "holeOff": "{count} kayık delik",
-        "gap": "{count} boşluk"
+        "gap": "{count} boşluk",
+        "loose": "{count} değmeyen parça"
       },
       "rules": "Temas: ±0,05 mm. Boşluk: 1 mm'ye kadar listelenir. Delik: merkezler 0,2 mm içinde hizalı."
     },

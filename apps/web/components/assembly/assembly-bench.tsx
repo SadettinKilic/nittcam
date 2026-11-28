@@ -322,6 +322,8 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
       if (e.type !== 'keydown' || e.altKey || mod) return;
       if (isTypingTarget(e.target as HTMLElement | null)) return;
       const k = e.key.toLowerCase();
+      // T397 (CTO #14 P6): exploded parts cannot be moved; the editing tools stay off.
+      if (locked && (k === 'w' || k === 'e' || k === 'm')) return;
       if (k === 'w') changeMode('move');
       else if (k === 'e') changeMode('rotate');
       else if (k === 'm') changeMode('mate');
@@ -346,7 +348,7 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onUp);
     };
-  }, [changeMode, endMate, mateA, slide, picks, selected, commit, cam]);
+  }, [changeMode, endMate, mateA, slide, picks, selected, commit, cam, locked]);
 
   const pickPoints = useMemo(() => picks.map((p) => p.point), [picks]);
   const measured = picks.length === 2 && picks[0] && picks[1] ? measure(picks[0], picks[1]) : null;
@@ -366,19 +368,21 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
       ? picks.length === 1
         ? t.hints.measureB
         : t.hints.measureA
-      : slide
-        ? snapped
-          ? `${t.hints.snapped} · ${t.hints.slide}`
-          : t.hints.slide
-        : mode === 'mate'
-          ? mateA
-            ? t.hints.mateB
-            : t.hints.mateA
-          : !selected
-            ? t.hints.select
-            : mode === 'rotate'
-              ? t.hints.rotate
-              : t.hints.move;
+      : locked
+        ? t.tools.locked
+        : slide
+          ? snapped
+            ? `${t.hints.snapped} · ${t.hints.slide}`
+            : t.hints.slide
+          : mode === 'mate'
+            ? mateA
+              ? t.hints.mateB
+              : t.hints.mateA
+            : !selected
+              ? t.hints.select
+              : mode === 'rotate'
+                ? t.hints.rotate
+                : t.hints.move;
 
   const host = useRef<HTMLDivElement>(null);
   // Perf read-out straight to the DOM (no React render per frame), like the 3D preview (T159).
@@ -428,7 +432,7 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
             items={display}
             colors={colors}
             simple={simple}
-            mode={mode}
+            mode={locked && mode !== 'measure' ? 'move' : mode}
             selectedId={selectedId}
             pickedFace={mateA ? { id: mateA.id, face: mateA.face } : null}
             slide={slideFrame}
@@ -465,6 +469,38 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
     </div>
   );
 
+  // T397 (CTO #14 P7): the fit results float over the canvas's lower-left corner (above the
+  // hint), so the selected part's position fields in the right column stay in view.
+  const fitPanel = checkOn ? (
+    <FitPanel
+      className="pointer-events-auto min-h-0 w-80 max-w-full overflow-y-auto bg-surface/95 shadow-md backdrop-blur-sm"
+      t={t}
+      state={fit}
+      byId={byId}
+      onClose={() => setCheckOn(false)}
+      onFrame={(a, b) => {
+        const ia = byId.get(a);
+        const ib = byId.get(b);
+        if (!ia || !ib) return;
+        const ba = worldBounds(ia.pose, ia.box);
+        const bb = worldBounds(ib.pose, ib.box);
+        cam({
+          kind: 'frame',
+          min: [
+            Math.min(ba.min[0], bb.min[0]),
+            Math.min(ba.min[1], bb.min[1]),
+            Math.min(ba.min[2], bb.min[2]),
+          ],
+          max: [
+            Math.max(ba.max[0], bb.max[0]),
+            Math.max(ba.max[1], bb.max[1]),
+            Math.max(ba.max[2], bb.max[2]),
+          ],
+        });
+      }}
+    />
+  ) : null;
+
   const overlay = (
     <>
       {/* B67: leaves room for the zoom group on the right (from 640 px it shares the row), so
@@ -487,26 +523,38 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
               ['mate', Magnet, 'benchMate'],
               ['measure', Ruler, 'benchMeasure'],
             ] as const
-          ).map(([m, Icon, key]) => (
-            <Tooltip key={m} content={withShortcut(t.modeTips[m], key)}>
-              <Button
-                role="radio"
-                aria-checked={mode === m}
-                variant="ghost"
-                size="sm"
-                data-testid={`bench-mode-${m}`}
-                aria-keyshortcuts={ariaKeyShortcuts(shortcutById(key).keys, false)}
-                onClick={() => changeMode(m)}
-                className={cn(
-                  'gap-1.5 px-2.5',
-                  mode === m && 'bg-accent-subtle text-accent-text hover:text-accent-text',
-                )}
-              >
-                <Icon aria-hidden />
-                <span className="max-md:sr-only">{t.modes[m]}</span>
-              </Button>
-            </Tooltip>
-          ))}
+          ).map(([m, Icon, key]) => {
+            // T397 (CTO #14 P6): exploded parts cannot move, so Taşı / Döndür / Oturt are off
+            // (aria-disabled keeps the reason reachable as a tooltip); Ölç still works. At 0 %
+            // the tool chosen before is active again.
+            const off = locked && m !== 'measure';
+            const on = mode === m && !off;
+            return (
+              <Tooltip key={m} content={off ? t.tools.locked : withShortcut(t.modeTips[m], key)}>
+                <Button
+                  role="radio"
+                  aria-checked={on}
+                  aria-disabled={off || undefined}
+                  variant="ghost"
+                  size="sm"
+                  data-testid={`bench-mode-${m}`}
+                  aria-keyshortcuts={ariaKeyShortcuts(shortcutById(key).keys, false)}
+                  onClick={() => {
+                    if (!off) changeMode(m);
+                  }}
+                  className={cn(
+                    'gap-1.5 px-2.5',
+                    on && 'bg-accent-subtle text-accent-text hover:text-accent-text',
+                    off &&
+                      'cursor-not-allowed text-fg-disabled hover:bg-transparent hover:text-fg-disabled',
+                  )}
+                >
+                  <Icon aria-hidden />
+                  <span className="max-md:sr-only">{t.modes[m]}</span>
+                </Button>
+              </Tooltip>
+            );
+          })}
         </div>
         <Tooltip content={t.check.tip}>
           <Button
@@ -594,18 +642,23 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
           </Tooltip>
         ))}
       </div>
-      <p
-        role="status"
-        aria-live="polite"
-        data-testid="bench-hint"
+      <div
         data-toast-avoid=""
-        className={cn(
-          'pointer-events-none absolute bottom-2 left-2 z-10 max-w-[calc(100%-1rem)] sm:max-w-[min(36rem,calc(100%-21rem))] rounded-lg border bg-surface/95 px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm max-sm:bottom-2',
-          snapped ? 'border-success-border text-success-text' : 'border-border text-fg-muted',
-        )}
+        className="pointer-events-none absolute bottom-2 left-2 z-10 flex max-h-[calc(100%-7rem)] max-w-[calc(100%-1rem)] flex-col items-start gap-2 sm:max-w-[min(36rem,calc(100%-21rem))]"
       >
-        {hint}
-      </p>
+        {fitPanel}
+        <p
+          role="status"
+          aria-live="polite"
+          data-testid="bench-hint"
+          className={cn(
+            'shrink-0 rounded-lg border bg-surface/95 px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm',
+            snapped ? 'border-success-border text-success-text' : 'border-border text-fg-muted',
+          )}
+        >
+          {hint}
+        </p>
+      </div>
     </>
   );
 
@@ -668,34 +721,6 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
               focusPartId={selected?.partId ?? null}
               vAngle={foldTool.angleDeg}
               noTool={!vGroove?.tool}
-            />
-          ) : null}
-          {checkOn ? (
-            <FitPanel
-              t={t}
-              state={fit}
-              byId={byId}
-              onClose={() => setCheckOn(false)}
-              onFrame={(a, b) => {
-                const ia = byId.get(a);
-                const ib = byId.get(b);
-                if (!ia || !ib) return;
-                const ba = worldBounds(ia.pose, ia.box);
-                const bb = worldBounds(ib.pose, ib.box);
-                cam({
-                  kind: 'frame',
-                  min: [
-                    Math.min(ba.min[0], bb.min[0]),
-                    Math.min(ba.min[1], bb.min[1]),
-                    Math.min(ba.min[2], bb.min[2]),
-                  ],
-                  max: [
-                    Math.max(ba.max[0], bb.max[0]),
-                    Math.max(ba.max[1], bb.max[1]),
-                    Math.max(ba.max[2], bb.max[2]),
-                  ],
-                });
-              }}
             />
           ) : null}
           <Inspector

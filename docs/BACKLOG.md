@@ -1465,7 +1465,7 @@ Acceptance: the fix list of M3: while `MATERIAL_NOT_RELEASED` holds it is the on
 ### T396 ACM step 1: right sheet, honest set hint, one click for starting values   [status: done]   (rider; CTO #14 P1–P3)
 Acceptance: switching to ACM (or aluminium) switches the sheet to the kind's first preset when the current sheet is not one of its presets (undoable, notice shown); the thickness hint and the "no cutting set" line never contradict each other; when the machine has no ACM set, step 1 offers "Örnek ACM ayarlarını ekle" (the MB4 action) inline.
 
-### T397 Montaj polish from CTO #14   [status: todo]   (Polish queue; P5–P7)
+### T397 Montaj polish from CTO #14   [status: done]   (Polish queue; P5–P7)
 P5: the fit check never says "Her şey oturuyor" while a visible part touches nothing (list "temas yok" parts); P6: mate mode turns off while exploded; P7: the fit results open as an overlay/drawer so the part position fields stay in view.
 
 ### T398 Text and table polish from CTO #14   [status: todo]   (Polish queue; P8–P11)
