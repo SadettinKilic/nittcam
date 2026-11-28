@@ -10,6 +10,7 @@
  * world = position + R · (local − centre).
  */
 import { z } from 'zod';
+import { MATERIAL_KIND_IDS } from '../machine/material-kinds';
 
 /** Largest coordinate a placed part may have, mm (a 100 m workbench). */
 export const ASSEMBLY_COORD_MAX = 100_000;
@@ -44,8 +45,33 @@ export const assemblyInstanceSchema = z.strictObject({
   hidden: z.boolean({ error: 'must be true or false' }),
 });
 
+/** Thinnest and thickest display thickness of a part in the assembly, mm (T390). */
+export const ASSEMBLY_THICKNESS_MIN = 0.1;
+export const ASSEMBLY_THICKNESS_MAX = 200;
+
+/**
+ * T390 (D-131): a part shown in another material than the project's stock (an aluminium bracket on
+ * a wood panel), with its real thickness. Display only: nesting, toolpath and NC keep the stock.
+ */
+export const assemblyPartLookSchema = z.strictObject({
+  partId: z.string({ error: 'must be a string' }).min(1, { error: 'must not be empty' }),
+  material: z.enum(MATERIAL_KIND_IDS, { error: 'unknown material' }),
+  thickness: z
+    .number({ error: 'must be a number (mm)' })
+    .min(ASSEMBLY_THICKNESS_MIN, { error: `must be at least ${ASSEMBLY_THICKNESS_MIN} mm` })
+    .max(ASSEMBLY_THICKNESS_MAX, { error: `must be at most ${ASSEMBLY_THICKNESS_MAX} mm` }),
+});
+
 export const assemblySchema = z.strictObject({
   instances: z.array(assemblyInstanceSchema).max(ASSEMBLY_INSTANCES_MAX),
+  /** T390: per-part material and thickness for the display (mixed materials); absent = stock. */
+  parts: z
+    .array(assemblyPartLookSchema)
+    .max(ASSEMBLY_INSTANCES_MAX)
+    .refine((list) => new Set(list.map((p) => p.partId)).size === list.length, {
+      error: 'a part is given twice',
+    })
+    .optional(),
   /** T389: add the "Montaj föyü" page (exploded view + numbered part list) to the project PDF. */
   sheet: z.boolean({ error: 'must be true or false' }).optional(),
   /** Last edit (ISO 8601), passed in by the caller (core has no clock). */
@@ -54,6 +80,7 @@ export const assemblySchema = z.strictObject({
 
 export type AssemblyInstance = z.infer<typeof assemblyInstanceSchema>;
 export type Assembly = z.infer<typeof assemblySchema>;
+export type AssemblyPartLook = z.infer<typeof assemblyPartLookSchema>;
 
 /** The id the app gives the instance of one part copy. */
 export function assemblyInstanceId(partId: string, copy: number): string {
@@ -67,10 +94,20 @@ export function assemblyInstanceId(partId: string, copy: number): string {
  */
 export function pruneAssembly(project: {
   parts: readonly { id: string; qty: number }[];
-  assembly?: { instances: readonly AssemblyInstance[] } | undefined;
+  assembly?:
+    | { instances: readonly AssemblyInstance[]; parts?: readonly AssemblyPartLook[] | undefined }
+    | undefined;
 }): void {
   const assembly = project.assembly;
-  if (!assembly || assembly.instances.length === 0) return;
+  if (!assembly) return;
+  // T390: looks of deleted parts go too (only when one is stale, so no patch otherwise).
+  const partIds = assembly.parts ? new Set(project.parts.map((p) => p.id)) : null;
+  if (assembly.parts && partIds && assembly.parts.some((p) => !partIds.has(p.partId))) {
+    const kept = assembly.parts.filter((p) => partIds.has(p.partId));
+    if (kept.length > 0) assembly.parts = kept;
+    else delete assembly.parts;
+  }
+  if (assembly.instances.length === 0) return;
   const qty = new Map(project.parts.map((p) => [p.id, p.qty]));
   const ids = new Set<string>();
   const copies = new Set<string>();

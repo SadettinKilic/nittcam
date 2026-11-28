@@ -34,6 +34,7 @@ import {
   MeshStandardMaterial,
   NeutralToneMapping,
   Plane,
+  Quaternion,
   Raycaster,
   Vector2,
   Vector3,
@@ -41,6 +42,9 @@ import {
 import { Capture, type CaptureFn } from '../preview3d/capture';
 import type { MeshData } from '../../lib/preview3d/part-mesh';
 import type { BenchItem } from '../../lib/preview3d/assembly-model';
+import { surfaceOf } from '../../lib/preview3d/textures';
+import type { Fastener } from '../../lib/preview3d/fasteners';
+import { MATERIAL_KINDS, type MaterialKind } from '@nittcam/core';
 import { sectionPlane, type Section } from '../../lib/preview3d/assembly-explode';
 import {
   boxCentre,
@@ -75,7 +79,10 @@ export type CameraCmd =
 export type BenchMark = 'danger' | 'warning';
 
 export interface BenchColors {
+  /** The stock's colour (selection and fit-check tints). */
   base: string;
+  /** T390: base colour of every material look (mixed materials in one assembly). */
+  looks: Record<MaterialKind, string>;
   stroke: string;
   floor: string;
   grid: string;
@@ -106,6 +113,8 @@ export interface BenchSceneProps {
   marks?: ReadonlyMap<string, BenchMark>;
   /** Section plane (T389); null = whole parts. */
   section?: Section | null;
+  /** Fastener markers through aligned holes (T390), display only. */
+  fasteners?: readonly Fastener[] | undefined;
   /** Exploded view (T389): poses are display-only, so no gizmo, mate or slide. */
   locked?: boolean;
   /** Measure tool (T389): a click on a part with a snap tolerance in mm (grows with distance). */
@@ -212,6 +221,7 @@ function BenchContent({
   pickedFace,
   slide,
   marks,
+  fasteners,
   section = null,
   locked = false,
   onMeasure,
@@ -320,31 +330,32 @@ function BenchContent({
   // the selected or dragged copy is drawn on its own (gizmo, highlight). ----
   const loneId = dragPose?.id ?? null;
   const { batches, single } = useMemo(() => {
-    const map = new Map<
-      MeshData,
-      { key: string; mesh: MeshData; door: boolean; items: BenchItem[] }
-    >();
+    // Keyed by shape and look (T390: two parts of one shape may differ in material).
+    type B = { key: string; mesh: MeshData; door: boolean; look: MaterialKind; items: BenchItem[] };
+    const map = new Map<MeshData, Map<MaterialKind, B>>();
     const lone: BenchItem[] = [];
-    const doors = new Map<
-      MeshData,
-      { key: string; mesh: MeshData; door: boolean; items: BenchItem[] }
-    >();
+    const doors = new Map<MeshData, Map<MaterialKind, B>>();
     for (const it of items) {
       if (it.id === selectedId || it.id === loneId || marks?.has(it.id)) {
         lone.push(it);
         continue;
       }
       const into = it.door ? doors : map;
-      const b = into.get(it.mesh) ?? {
+      const byLook = into.get(it.mesh) ?? new Map<MaterialKind, B>();
+      const b = byLook.get(it.look) ?? {
         key: `${it.door ? 'd' : 's'}:${it.id}`,
         mesh: it.mesh,
         door: it.door,
+        look: it.look,
         items: [],
       };
       b.items.push(it);
-      into.set(it.mesh, b);
+      byLook.set(it.look, b);
+      into.set(it.mesh, byLook);
     }
-    return { batches: [...map.values(), ...doors.values()], single: lone };
+    const flat = (m: Map<MeshData, Map<MaterialKind, B>>) =>
+      [...m.values()].flatMap((x) => [...x.values()]);
+    return { batches: [...flat(map), ...flat(doors)], single: lone };
   }, [items, selectedId, loneId, marks]);
   const edges = useMemo(
     () => mergedEdges(batches.flatMap((b) => (simple && !b.door ? [] : b.items))),
@@ -526,7 +537,7 @@ function BenchContent({
             key={b.key}
             data={b.mesh}
             items={b.items}
-            material={b.door ? mats.door : mats.solid}
+            material={mats[`${b.door ? 'd' : 's'}:${b.look}`]}
           />
         ))}
         {edges ? <lineSegments geometry={edges} material={mats.edge} raycast={() => null} /> : null}
@@ -541,7 +552,11 @@ function BenchContent({
               item={item}
               pose={pose}
               material={
-                selected ? mats.selected : mark ? mats[mark] : item.door ? mats.door : mats.solid
+                selected
+                  ? mats.selected
+                  : mark
+                    ? mats[mark]
+                    : mats[`${item.door ? 'd' : 's'}:${item.look}`]
               }
               edgeMaterial={selected ? mats.edgeSelected : mark ? mats[`${mark}Edge`] : mats.edge}
               edges={!simple || selected || item.door || mark !== undefined}
@@ -559,6 +574,9 @@ function BenchContent({
       ) : null}
       {mode === 'mate' && hover && byId.get(hover.id) ? (
         <FaceMark item={byId.get(hover.id) as BenchItem} face={hover.face} color={colors.hover} />
+      ) : null}
+      {fasteners && fasteners.length > 0 ? (
+        <FastenerMarks list={fasteners} color={colors.stroke} />
       ) : null}
       {measurePoints && measurePoints.length > 0 ? (
         <MeasureMarks points={measurePoints} span={span} color={colors.selection} />
@@ -692,21 +710,77 @@ function MeasureMarks({
   );
 }
 
+/** At most this many fastener markers are drawn (the list still counts all). */
+const FASTENER_DRAW_MAX = 400;
+const UP = new Vector3(0, 1, 0);
+
+/**
+ * Fastener markers (T390): a shaft from head to tip and a head disc (screw: flat, 2 × d; rivet:
+ * low dome-like disc, 1.8 × d). Display only: never picked.
+ */
+function FastenerMarks({ list, color }: { list: readonly Fastener[]; color: string }) {
+  const material = useMemo(
+    () => new MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.4 }),
+    [color],
+  );
+  useEffect(() => () => material.dispose(), [material]);
+  return (
+    <group>
+      {list.slice(0, FASTENER_DRAW_MAX).map((f, i) => {
+        const head = new Vector3(...f.head);
+        const dir = new Vector3(...f.tip).sub(head);
+        const length = dir.length();
+        if (length <= 0) return null;
+        dir.normalize();
+        const q = new Quaternion().setFromUnitVectors(UP, dir);
+        const mid = head.clone().addScaledVector(dir, length / 2);
+        const headH = Math.max(0.6, f.d * (f.kind === 'rivet' ? 0.45 : 0.6));
+        const headR = (f.d * (f.kind === 'rivet' ? 1.8 : 2)) / 2;
+        const cap = head.clone().addScaledVector(dir, -headH / 2);
+        return (
+          <group key={i} raycast={() => null}>
+            <mesh position={mid} quaternion={q} material={material} raycast={() => null}>
+              <cylinderGeometry args={[f.d * 0.45, f.d * 0.45, length, 12]} />
+            </mesh>
+            <mesh position={cap} quaternion={q} material={material} raycast={() => null}>
+              <cylinderGeometry args={[headR, headR, headH, 16]} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 /** True while the pointer is on a gizmo handle (its `axis` is set; private in the typings). */
 function gizmoHot(controls: unknown): boolean {
   return Boolean((controls as { axis?: string | null } | null)?.axis);
 }
 
-/** Shared materials of one colour set (one per state). */
+type LookKey = `${'s' | 'd'}:${MaterialKind}`;
+
+/**
+ * Shared materials of one colour set (one per state), plus a solid and a see-through door material
+ * per material look (T390): wood stays matte, aluminium metallic, ACM its flat painted skin.
+ */
 function benchMaterials(colors: BenchColors, simple: boolean) {
-  const solid = new MeshStandardMaterial({ color: colors.base, roughness: simple ? 1 : 0.7 });
-  const door = new MeshStandardMaterial({
-    color: colors.base,
-    roughness: simple ? 1 : 0.7,
-    transparent: true,
-    opacity: DOOR_OPACITY,
-    depthWrite: false,
-  });
+  const looks = {} as Record<LookKey, MeshStandardMaterial>;
+  for (const kind of MATERIAL_KINDS) {
+    const surface = surfaceOf(kind);
+    // Wood keeps today's bench roughness (0.7); simple mode drops every highlight.
+    const base = {
+      color: colors.looks[kind],
+      roughness: simple ? 1 : surface.metalness > 0 ? surface.roughness : 0.7,
+      metalness: simple ? 0 : surface.metalness,
+    };
+    looks[`s:${kind}`] = new MeshStandardMaterial(base);
+    looks[`d:${kind}`] = new MeshStandardMaterial({
+      ...base,
+      transparent: true,
+      opacity: DOOR_OPACITY,
+      depthWrite: false,
+    });
+  }
   const selected = new MeshStandardMaterial({
     color: new Color(colors.base).lerp(new Color(colors.selection), 0.35),
     emissive: colors.selection,
@@ -729,7 +803,7 @@ function benchMaterials(colors: BenchColors, simple: boolean) {
   const warning = markMat(colors.picked);
   const dangerEdge = new LineBasicMaterial({ color: colors.danger });
   const warningEdge = new LineBasicMaterial({ color: colors.picked });
-  return { solid, door, selected, edge, edgeSelected, danger, warning, dangerEdge, warningEdge };
+  return { ...looks, selected, edge, edgeSelected, danger, warning, dangerEdge, warningEdge };
 }
 
 /** Frame-rate read-out (spec §3.8 budget check): reported to the host after every frame. */

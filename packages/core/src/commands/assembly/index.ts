@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import {
   ASSEMBLY_INSTANCES_MAX,
+  assemblyPartLookSchema,
   assemblyInstanceId,
   assemblyInstanceSchema,
   type AssemblyInstance,
@@ -86,8 +87,8 @@ export const resetAssembly = defineCommand({
     const assembly = draft.assembly;
     if (!assembly) return;
     if (!params.ids) {
-      // The PDF page choice (T389) survives "Tümünü başa al".
-      if (assembly.sheet) {
+      // The PDF page choice (T389) and the part looks (T390) survive "Tümünü başa al".
+      if (assembly.sheet || assembly.parts) {
         if (assembly.instances.length === 0) return;
         assembly.instances = [];
         assembly.updatedAt = params.updatedAt;
@@ -123,11 +124,63 @@ export const setAssemblySheet = defineCommand({
       return;
     }
     if (!assembly) return;
-    if (assembly.instances.length === 0) {
+    if (assembly.instances.length === 0 && !assembly.parts) {
       delete draft.assembly;
       return;
     }
     delete assembly.sheet;
+    assembly.updatedAt = params.updatedAt;
+  },
+});
+
+/**
+ * T390 (D-131): shows a part in another material and thickness in the assembly (an aluminium
+ * bracket on a wood panel), or back in the stock material with `material: null`. Display only:
+ * nesting, toolpath and NC keep the project's stock.
+ */
+export const setAssemblyPartLook = defineCommand({
+  name: 'setAssemblyPartLook',
+  area: 'assembly',
+  description:
+    'Show a part in another material and thickness in the 3D assembly (null = stock). Display only.',
+  aiTool: false,
+  params: z.strictObject({
+    partId: z.string().min(1),
+    material: assemblyPartLookSchema.shape.material.nullable(),
+    thickness: assemblyPartLookSchema.shape.thickness.optional(),
+    updatedAt,
+  }),
+  check: (project, params) => {
+    if (!project.parts.some((p) => p.id === params.partId))
+      return `unknown part "${params.partId}"`;
+    if (params.material !== null && params.thickness === undefined)
+      return 'thickness is required with a material';
+    return undefined;
+  },
+  apply: (draft, params) => {
+    const list = draft.assembly?.parts ?? [];
+    const at = list.findIndex((p) => p.partId === params.partId);
+    if (params.material === null) {
+      const assembly = draft.assembly;
+      if (!assembly || at < 0) return;
+      if (list.length === 1) delete assembly.parts;
+      else list.splice(at, 1);
+      if (assembly.instances.length === 0 && !assembly.sheet && !assembly.parts)
+        delete draft.assembly;
+      else assembly.updatedAt = params.updatedAt;
+      return;
+    }
+    const look = {
+      partId: params.partId,
+      material: params.material,
+      thickness: params.thickness ?? 0,
+    };
+    const old = list[at];
+    if (old && old.material === look.material && old.thickness === look.thickness) return;
+    const assembly = (draft.assembly ??= { instances: [], updatedAt: params.updatedAt });
+    const parts = (assembly.parts ??= []);
+    if (at >= 0) parts[at] = look;
+    else parts.push(look);
     assembly.updatedAt = params.updatedAt;
   },
 });

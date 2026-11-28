@@ -7,7 +7,21 @@
  * `resetAssembly` command (undo/redo and autosave come with the project session); nesting,
  * toolpath and NC never read it.
  */
-import { Badge, Button, IconButton, Input, Measure, NumberInput, Tooltip, cn } from '@nittcam/ui';
+import {
+  Badge,
+  Button,
+  IconButton,
+  Input,
+  Measure,
+  NumberInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  cn,
+} from '@nittcam/ui';
 import {
   Box,
   Eye,
@@ -28,7 +42,13 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { Project } from '@nittcam/core';
+import {
+  MATERIAL_KINDS,
+  MATERIAL_TRAITS,
+  materialKindOf,
+  type MaterialKind,
+  type Project,
+} from '@nittcam/core';
 import { WorkspaceLayout } from '../wizard/workspace-layout';
 import type { Messages } from '../../lib/messages';
 import { useMessages } from '../../lib/messages-context';
@@ -44,7 +64,12 @@ import {
 import { readSimple3d } from '../../lib/preferences';
 import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
 import { exportPng } from '../../lib/preview3d/png';
-import { benchItems, instanceOf, type BenchItem } from '../../lib/preview3d/assembly-model';
+import {
+  benchItems,
+  instanceOf,
+  stockLook,
+  type BenchItem,
+} from '../../lib/preview3d/assembly-model';
 import {
   boxSize,
   eulerDeg,
@@ -76,6 +101,7 @@ import {
   type Section,
 } from '../../lib/preview3d/assembly-explode';
 import { useFitCheck } from './use-fit-check';
+import { fastenerRows, fastenersOf } from '../../lib/preview3d/fasteners';
 import { measure, snapPick, type MeasurePick } from '../../lib/preview3d/assembly-measure';
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 
@@ -104,8 +130,8 @@ const COLOR_TOKENS = {
 function readColors(material: string): BenchColors {
   const style = getComputedStyle(document.documentElement);
   const flat = readTokenColors(COLOR_TOKENS, style);
-  const mats = readTokenColors(MATERIAL_TOKEN, style);
-  return { ...flat, base: mats[materialLook(material)] };
+  const looks = readTokenColors(MATERIAL_TOKEN, style);
+  return { ...flat, base: looks[materialLook(materialKindOf(material) ?? material)], looks };
 }
 
 export interface AssemblyBenchProps {
@@ -190,6 +216,11 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
   }, [shown, explode]);
   const displayBounds = useMemo(() => boundsOf(display), [display]);
   const locked = explode > 0;
+  // Bağlantı elemanı (T390): markers through aligned holes of the shown parts, at their real
+  // places (left out while exploded: the parts move apart).
+  const [fastenersOn, setFastenersOn] = useState(true);
+  const fasteners = useMemo(() => fastenersOf(shown), [shown]);
+  const rows = useMemo(() => fastenerRows(fasteners), [fasteners]);
 
   const commit = useCallback(
     (id: string, pose: Pose, hidden?: boolean) => {
@@ -258,14 +289,36 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
   }, [slide, byId]);
 
   // Wizard toasts sit top-centre under the header: keep them below the bench toolbar
-  // (B-M1 tester note: "N satır eklendi" covered it).
+  // (B-M1 tester note: "N satır eklendi" covered it). B67: measured, not a fixed 48 px: the
+  // toolbar sits below the canvas top and wraps to two rows on a narrow canvas.
+  const toolbar = useRef<HTMLDivElement>(null);
+  const tools = useRef<HTMLDivElement>(null);
+  const hasParts = items.length > 0;
   useEffect(() => {
-    const root = document.documentElement.style;
-    root.setProperty('--toast-clear-top', '48px');
-    return () => {
-      root.removeProperty('--toast-clear-top');
+    const root = document.documentElement;
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const bottom = Math.max(
+          toolbar.current?.getBoundingClientRect().bottom ?? 0,
+          tools.current?.getBoundingClientRect().bottom ?? 0,
+        );
+        const head = Number.parseFloat(root.style.getPropertyValue('--wizard-head-bottom')) || 56;
+        root.style.setProperty('--toast-clear-top', `${Math.max(48, Math.ceil(bottom - head))}px`);
+      });
     };
-  }, []);
+    measure();
+    const ro = new ResizeObserver(measure);
+    for (const el of [toolbar.current, tools.current]) if (el) ro.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+      root.style.removeProperty('--toast-clear-top');
+    };
+  }, [hasParts]);
 
   // "?" opens the bench's own shortcut sheet first (T136 pattern).
   useEffect(() => claimPageGroup('bench'), []);
@@ -388,6 +441,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             pickedFace={mateA ? { id: mateA.id, face: mateA.face } : null}
             slide={slideFrame}
             marks={marks}
+            fasteners={fastenersOn && !locked ? fasteners : undefined}
             section={section}
             locked={locked}
             measurePoints={pickPoints}
@@ -421,7 +475,13 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
 
   const overlay = (
     <>
-      <div className="absolute top-2 left-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-2">
+      {/* B67: leaves room for the zoom group on the right (from 640 px it shares the row), so
+          "Oturuyor mu?" wraps to a second row instead of sliding under the zoom buttons. */}
+      <div
+        ref={toolbar}
+        data-testid="bench-toolbar"
+        className="absolute top-2 left-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 sm:max-w-[calc(100%-11rem)]"
+      >
         {viewSwitch}
         <div
           role="radiogroup"
@@ -473,7 +533,11 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
           </Button>
         </Tooltip>
       </div>
-      <div className="absolute top-2 right-2 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm max-sm:top-14">
+      <div
+        ref={tools}
+        data-testid="bench-zoom"
+        className="absolute top-2 right-2 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm max-sm:top-14"
+      >
         <Tooltip content={withShortcut(t.zoomIn, 'canvasZoomIn')}>
           <IconButton aria-label={t.zoomIn} size="sm" onClick={() => cam({ kind: 'zoom', dir: 1 })}>
             <ZoomIn aria-hidden />
@@ -598,6 +662,9 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             bounds={displayBounds}
             sheet={project.assembly?.sheet === true}
             onSheet={(on) => run('setAssemblySheet', { on, updatedAt: now() })}
+            fasteners={fastenersOn}
+            onFasteners={setFastenersOn}
+            fastenerRows={rows}
           />
           {checkOn ? (
             <FitPanel
@@ -629,6 +696,17 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
           ) : null}
           <Inspector
             t={t}
+            materials={messages.materials}
+            stock={stockLook(project)}
+            onLook={(material, thickness) =>
+              selected &&
+              run('setAssemblyPartLook', {
+                partId: selected.partId,
+                material,
+                ...(material ? { thickness } : {}),
+                updatedAt: now(),
+              })
+            }
             item={selected}
             onPose={(pose) => selected && commit(selected.id, pose)}
             onHide={() => selected && commit(selected.id, selected.pose, !selected.hidden)}
@@ -831,8 +909,81 @@ function CommitField({
   );
 }
 
+const STOCK = 'stock';
+
+/**
+ * T390 (D-131): material and real thickness of the selected part in the assembly, so an aluminium
+ * bracket can sit on a wood panel. Display only: nesting, toolpath and NC keep the stock.
+ */
+function LookFields({
+  t,
+  materials,
+  stock,
+  item,
+  thickness,
+  onLook,
+}: {
+  t: T;
+  materials: Messages['materials'];
+  stock: MaterialKind;
+  item: BenchItem;
+  thickness: number;
+  onLook: (material: MaterialKind | null, thickness: number) => void;
+}) {
+  const value = item.ownLook ? item.look : STOCK;
+  return (
+    <fieldset className="flex flex-col gap-1.5" data-testid="bench-look">
+      <legend className="mb-1 text-xs font-medium text-fg-muted">{t.inspector.material}</legend>
+      <Select
+        value={value}
+        onValueChange={(v) => {
+          if (v === value) return;
+          if (v === STOCK) return onLook(null, thickness);
+          const kind = v as MaterialKind;
+          // A metal part starts at its kind's first common thickness unless it has its own.
+          const presets = MATERIAL_TRAITS[kind].thicknessPresets;
+          const keep = item.ownLook || presets.length === 0 || presets.includes(thickness);
+          onLook(kind, keep ? thickness : (presets[presets.length > 1 ? 1 : 0] ?? thickness));
+        }}
+      >
+        <SelectTrigger size="sm" aria-label={t.inspector.material} data-testid="bench-material">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={STOCK}>
+            {fill(t.inspector.stock, { name: materials[stock] })}
+          </SelectItem>
+          {MATERIAL_KINDS.map((k) => (
+            <SelectItem key={k} value={k}>
+              {materials[k]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {item.ownLook ? (
+        <label className="grid grid-cols-[auto_1fr] items-center gap-2 text-sm">
+          <span className="text-fg-muted">{t.inspector.thickness}</span>
+          <CommitField
+            label={t.inspector.thickness}
+            value={thickness}
+            unit="mm"
+            testId="bench-thickness"
+            onCommit={(v) => {
+              if (v >= 0.1 && v <= 200) onLook(item.look, v);
+            }}
+          />
+        </label>
+      ) : null}
+      {item.ownLook ? <p className="text-xs text-fg-subtle">{t.inspector.lookHint}</p> : null}
+    </fieldset>
+  );
+}
+
 function Inspector({
   t,
+  materials,
+  stock,
+  onLook,
   item,
   onPose,
   onHide,
@@ -841,6 +992,10 @@ function Inspector({
   anyPlaced,
 }: {
   t: T;
+  materials: Messages['materials'];
+  stock: MaterialKind;
+  /** T390: show the part in another material (null = the stock's) and thickness. */
+  onLook: (material: MaterialKind | null, thickness: number) => void;
   item: BenchItem | null;
   onPose: (pose: Pose) => void;
   onHide: () => void;
@@ -902,6 +1057,14 @@ function Inspector({
           {t.inspector.size}: <Measure value={[size[0], size[1], size[2]]} unit="mm" />
         </p>
       </div>
+      <LookFields
+        t={t}
+        materials={materials}
+        stock={stock}
+        item={item}
+        thickness={size[2]}
+        onLook={onLook}
+      />
       <fieldset className="flex flex-col gap-1.5">
         <legend className="mb-1 text-xs font-medium text-fg-muted">{t.inspector.position}</legend>
         {axes.map((a, k) => (

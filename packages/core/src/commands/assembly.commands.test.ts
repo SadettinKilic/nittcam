@@ -197,3 +197,71 @@ describe('setAssemblySheet (T389)', () => {
     expect(stack.project).toEqual(before);
   });
 });
+
+describe('setAssemblyPartLook (T390)', () => {
+  const alu = { partId: 'door-left', material: 'aluminium', thickness: 3, updatedAt: at };
+
+  it('stores a look (valid project), replaces it, and null restores the project', () => {
+    const p0 = load();
+    let p = applied(p0, 'setAssemblyPartLook', alu);
+    expect(p.assembly?.parts).toEqual([
+      { partId: 'door-left', material: 'aluminium', thickness: 3 },
+    ]);
+    expect(projectSchema.safeParse(p).success).toBe(true);
+    p = applied(p, 'setAssemblyPartLook', { ...alu, material: 'acm', thickness: 4 });
+    expect(p.assembly?.parts).toEqual([{ partId: 'door-left', material: 'acm', thickness: 4 }]);
+    p = applied(p, 'setAssemblyPartLook', { partId: 'door-left', material: null, updatedAt: at });
+    expect(p).toEqual(p0);
+  });
+
+  it('never touches parts, nesting, layout or the stock', () => {
+    const p0 = load();
+    const p = applied(p0, 'setAssemblyPartLook', alu);
+    expect(p.parts).toEqual(p0.parts);
+    expect(p.stock).toEqual(p0.stock);
+    expect(p.nesting).toEqual(p0.nesting);
+    expect(p.layout).toEqual(p0.layout);
+  });
+
+  it('rejects unknown parts, unknown kinds, a missing thickness and odd thicknesses', () => {
+    for (const bad of [
+      { ...alu, partId: 'nope' },
+      { ...alu, material: 'steel' },
+      { partId: 'door-left', material: 'acm', updatedAt: at },
+      { ...alu, thickness: 0 },
+      { ...alu, thickness: 500 },
+    ])
+      expect(applyCommand(load(), 'setAssemblyPartLook', bad).ok).toBe(false);
+  });
+
+  it('the same look again is no undo step; one undo step otherwise', () => {
+    const stack = new CommandStack(load());
+    const before = stack.project;
+    expect(stack.execute('setAssemblyPartLook', alu, user).ok).toBe(true);
+    const once = stack.project;
+    stack.execute('setAssemblyPartLook', alu, user);
+    expect(stack.project).toBe(once);
+    stack.undo();
+    expect(stack.project).toEqual(before);
+  });
+
+  it('reset all and sheet off keep the looks; a deleted part loses its look', () => {
+    let p = applied(load(), 'setAssemblyPartLook', alu);
+    p = applied(p, 'setAssemblyInstances', { instances: [inst('door-right', 0)], updatedAt: at });
+    p = applied(p, 'resetAssembly', { updatedAt: at });
+    expect(p.assembly?.parts).toHaveLength(1);
+    p = applied(p, 'setAssemblySheet', { on: true, updatedAt: at });
+    p = applied(p, 'setAssemblySheet', { on: false, updatedAt: at });
+    expect(p.assembly?.parts).toHaveLength(1);
+    p = applied(p, 'removePart', { id: 'door-left' });
+    expect(p.assembly?.parts).toBeUndefined();
+    expect(projectSchema.safeParse(p).success).toBe(true);
+  });
+
+  it('schema: a part given twice is refused', () => {
+    const p = applied(load(), 'setAssemblyPartLook', alu);
+    const look = p.assembly?.parts?.[0];
+    const twice = { ...p, assembly: { ...p.assembly, parts: [look, look] } };
+    expect(projectSchema.safeParse(twice).success).toBe(false);
+  });
+});

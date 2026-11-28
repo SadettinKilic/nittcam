@@ -1090,6 +1090,8 @@
     "hint3": "R: döndür · Shift+tık ya da Boşluk: çoklu seçim · Alt: yapışmadan sürükle",
     "canvasLabel": "Plaka {n} dizilimi: {count} parça. Seçili parçayı ok tuşlarıyla 1 mm (Shift ile 10 mm) kaydırın, R ile döndürün, Enter ile uygulayın, Esc ile vazgeçin.",
     "sheetTabs": "Plakalar",
+    "sheetTabsPrev": "Önceki plakalar",
+    "sheetTabsNext": "Sonraki plakalar",
     "unplacedChip": "{count} parça dizilimde yok",
     "sheetTab": "Plaka {n}",
     "sheetTabWaste": "fire %{waste}",
@@ -1483,6 +1485,8 @@
     "meters": "{value} m",
     "meterUnit": "m",
     "sheetTabs": "Plakalar",
+    "sheetTabsPrev": "Önceki plakalar",
+    "sheetTabsNext": "Sonraki plakalar",
     "sheetTab": "Plaka {n}",
     "sheetTabTime": "≈ {time}",
     "controls": {
@@ -2106,8 +2110,9 @@
       "empty": "Henüz dizilim yok. Soldan bir hedefe tıklayın; parçalar plakaya yerleşir.",
       "noParts": "Önce Parçalar adımında parça ekleyin.",
       "marginWarning": "Kenar payı Ø{tool} takım için en az {min} mm olmalı; yoksa takım plakanın dışına çıkar.",
-      "gapNote": "Boşluk = Ø{tool} + pay {gap} = {clear} mm",
-      "marginHint": "Takım için en az {min} mm",
+      "gapNote": "Boşluk {clear} mm",
+      "gapNoteDetail": "Ø{tool} + pay {gap} = {clear} mm",
+      "marginHint": "En az {min} mm",
       "spacingGroup": "Parça arası ve kenar payı",
       "tabSpacingNote": "Köprü açıkken parça arası pay en az takım Ø + {anchor} mm ({gap} mm), kenar payı en az takım Ø + {anchor} mm ({margin} mm) kullanılır."
     },
@@ -3591,7 +3596,13 @@
       "size": "Ölçü (mm)",
       "qty": "Adet",
       "more": "… ve {count} parça daha (tam liste: Parça listesi sayfası)",
-      "note": "Montaj tezgâhındaki yerleşimden çizilmiştir; yalnızca görünüm."
+      "note": "Montaj tezgâhındaki yerleşimden çizilmiştir; yalnızca görünüm.",
+      "material": "Malzeme",
+      "fastener": "Bağlantı elemanı: {name}",
+      "fastenerKinds": {
+        "screw": "vida Ø{d} × {length} mm",
+        "rivet": "perçin Ø{d} × {length} mm"
+      }
     }
   },
   "onboarding": {
@@ -4003,7 +4014,11 @@
       "resetAll": "Tümünü başa al",
       "resetAllTip": "Bütün parçaları ilk yerlerine geri koyar (Ctrl+Z ile geri alınır)",
       "hide": "Gizle",
-      "show": "Göster"
+      "show": "Göster",
+      "material": "Malzeme",
+      "stock": "Proje malzemesi ({name})",
+      "thickness": "Kalınlık",
+      "lookHint": "Yalnızca montajda: dizilim ve G-kodu proje malzemesiyle kalır."
     },
     "refused": "Bu konum kaydedilemedi.",
     "check": {
@@ -4039,7 +4054,15 @@
       "sectionAt": "Kesit konumu",
       "flip": "Diğer yarıyı göster",
       "sheet": "Montaj föyünü proje PDF'ine ekle",
-      "sheetHint": "PDF'in sonuna patlatılmış görünüm ve numaralı parça listesi sayfası eklenir (gizli parçalar hariç)."
+      "sheetHint": "PDF'in sonuna patlatılmış görünüm ve numaralı parça listesi sayfası eklenir (gizli parçalar hariç).",
+      "fasteners": "Bağlantı elemanları",
+      "fastenersHint": "Hizalı deliklerden geçen vida ya da perçin işareti (yalnızca görünüm). Föyde parça listesinde sayılır.",
+      "fastenersNone": "Hizalı delik çifti yok. İki parçanın delikleri üst üste gelince vida ya da perçin işareti çıkar.",
+      "fastenerRow": "{qty} × {name}",
+      "fastenerKinds": {
+        "screw": "Vida Ø{d} × {length}",
+        "rivet": "Perçin Ø{d} × {length}"
+      }
     },
     "measure": {
       "distance": "Mesafe {mm} mm",
