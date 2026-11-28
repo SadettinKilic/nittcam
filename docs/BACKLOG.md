@@ -2127,7 +2127,7 @@ Acceptance:
 - [ ] example ACM 3 and 4 mm sets can be added with one action, marked `unverified`
 Tester focus: wood rows have no new cells and save unchanged; an aluminium row at 5 000 mm/min, 18 000 rpm, 2 flutes is refused.
 
-### T352 V-groove operation in the model and on the board   [status: todo]   (post-FT)
+### T352 V-groove operation in the model and on the board   [status: done]   (post-FT)
 Spec: §6.3 "V-kanal", §4.6  ·  Depends: T344, T348  ·  Owner: dev
 Acceptance:
 - [ ] operation kind `vgroove { remaining? }` on open lines and inner contours, only where `traits.vGroove` exists; `setOperation` accepts it; `cutting.tools.vgroove`
@@ -2136,7 +2136,7 @@ Acceptance:
 - [ ] validation where drawn: `VGROOVE_TOOL_MISSING`, `VGROOVE_DEPTH_INVALID`, groove outside the part
 Tester focus: the operation is not offered on MDF or aluminium; undo restores the previous operation.
 
-### T353 V-groove toolpath and simulation   [status: todo]   (post-FT)
+### T353 V-groove toolpath and simulation   [status: done]   (post-FT)
 Spec: §6.3  ·  Depends: T352  ·  Owner: dev
 Acceptance:
 - [ ] centre-line path at depth = thickness − remaining, corrected for the tip flat; one pass (two when deeper than the traits step); grooves run before any contour of the same part; plunge at the plunge feed, never a rapid into material
@@ -2145,7 +2145,7 @@ Acceptance:
 - [ ] new fixture "ACM tray 200×200, 25 mm folds" with golden files (`needs-human`)
 Tester focus: remaining 0,8 on 3 mm and 4 mm; groove crossing another groove; groove to the sheet edge.
 
-### T354 Checker rule R17: V-groove   [status: todo]   (post-FT)
+### T354 Checker rule R17: V-groove   [status: done]   (post-FT)
 Spec: §7.2 (R17)  ·  Depends: T353  ·  Owner: dev
 Acceptance:
 - [ ] `VGROOVE_TOO_DEEP`: with a V-bit active no move goes below −(thickness − traits minimum), derived from stock and traits in the check context, not from the toolpath
