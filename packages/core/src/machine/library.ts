@@ -9,7 +9,8 @@
 import { z } from 'zod';
 import { EPS } from '../geometry/constants';
 import { grainAngleSchema } from '../schema/project';
-import { cleanProps, materialPropsSchema, type MaterialProps } from './material-props';
+import { materialPropsSchema, type MaterialProps } from './material-props';
+import { cleanProps } from './material-props-fields';
 import { materialKindSchema } from './profile';
 
 /** Colour / texture keys of a board (drives the swatch; the 3D materials of M6 reuse them). */

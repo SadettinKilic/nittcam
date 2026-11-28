@@ -19,6 +19,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<'/projele
     <ProjectsView
       t={messages.projects}
       materials={messages.materials}
+      materialHead={messages.materialHead}
       initialTab={projectTabOf(sekme)}
     />
   );

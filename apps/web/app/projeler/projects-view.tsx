@@ -40,11 +40,9 @@ import { fill } from '../../lib/fill';
 import { OffcutStock } from './offcut-stock';
 import { DRAFT_PARAM, discardLeftDraft, leftDrafts, type LeftDraft } from '../../lib/autosave';
 import { LeftDraftNotice } from './left-draft-notice';
-import { getMessages, type Messages } from '../../lib/messages';
+import type { Messages } from '../../lib/messages';
 import { materialHeadName } from '../../lib/material-head';
 
-/** T350: header names of the metal kinds (Kompozit panel, Alüminyum 5754). */
-const materialHead = getMessages().materialHead;
 import {
   NO_FILTERS,
   NO_MACHINE,
@@ -95,10 +93,13 @@ const ALL = '__all__';
 export function ProjectsView({
   t,
   materials,
+  materialHead,
   initialTab = 'projects',
 }: {
   t: Text;
   materials: Messages['materials'];
+  /** T350: header names of the metal kinds (Kompozit panel, Alüminyum 5754); passed from the server page so the client bundle does not carry tr.json. */
+  materialHead: Messages['materialHead'];
   initialTab?: ProjectTab;
 }) {
   const [tab, setTab] = useState<ProjectTab>(initialTab);
@@ -292,6 +293,7 @@ export function ProjectsView({
           <ProjectList
             t={t}
             materials={materials}
+            materialHead={materialHead}
             mode="live"
             list={list}
             onRetry={() => void load()}
@@ -339,6 +341,7 @@ export function ProjectsView({
           <ProjectList
             t={t}
             materials={materials}
+            materialHead={materialHead}
             mode="deleted"
             list={deletedList}
             onRetry={() => void loadDeleted()}
@@ -370,6 +373,7 @@ export function ProjectsView({
 function ProjectList({
   t,
   materials,
+  materialHead,
   mode,
   list,
   onRetry,
@@ -377,6 +381,7 @@ function ProjectList({
 }: {
   t: Text;
   materials: Messages['materials'];
+  materialHead: Messages['materialHead'];
   mode: 'live' | 'deleted';
   list: ListState;
   onRetry: () => void;

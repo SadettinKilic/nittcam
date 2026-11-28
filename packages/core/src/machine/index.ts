@@ -8,3 +8,4 @@ export * from './controller-library';
 export * from './maintenance';
 export * from './starting-values';
 export * from './material-props';
+export * from './material-props-fields';

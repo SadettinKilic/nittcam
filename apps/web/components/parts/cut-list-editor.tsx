@@ -114,7 +114,7 @@ import {
 } from '../../lib/cut-list-view';
 import { fill, newPartId, stockHasGrain } from '../../lib/draft-project';
 import type { SplitTarget } from '../../lib/split-project';
-import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
+import { cabinetRows, nextCabinetName } from '../../lib/cabinet-rows';
 import type { Messages } from '../../lib/messages';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
@@ -135,12 +135,15 @@ import {
   type Text,
 } from './cut-list-cells';
 import { BulkEditSheet } from './cut-list-bulk';
-import { PastePanel } from './paste-panel';
 import { IssuesOkChip } from '../wizard/issues-ok-chip';
 import { IssueJumpContext } from '../wizard/validation-panel';
 
 /** The DXF dialog and its parser load when the dialog opens (T186). */
 const DxfImportDialog = dynamic(() => import('./dxf-import-dialog').then((m) => m.DxfImportDialog));
+/** "Dolap ekle" opens on demand, so its dialog loads then, not with every wizard page (T186). */
+const CabinetDialog = dynamic(() => import('./cabinet-dialog').then((m) => m.CabinetDialog));
+/** "Yapıştır / içe aktar" likewise (T186). */
+const PastePanel = dynamic(() => import('./paste-panel').then((m) => m.PastePanel));
 
 export type { Run } from './cut-list-cells';
 

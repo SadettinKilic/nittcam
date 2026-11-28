@@ -6,7 +6,8 @@
  * - `usableOffcuts`: the stored offcuts a project can nest on (same material and thickness,
  *   available, grain matching the sheet grain), as sheets in the sheet frame.
  */
-import { propsMatch, type MaterialProps } from '../machine/material-props';
+import type { MaterialProps } from '../machine/material-props';
+import { propsMatch } from '../machine/material-props-fields';
 import { z } from 'zod';
 import { defaultSheet, sheetSizeOf, type Project } from '../schema';
 import { toCutSizes } from '../schema/cut-size';

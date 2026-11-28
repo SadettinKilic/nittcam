@@ -3,7 +3,7 @@ import { applyCommand } from '../commands';
 import { usableOffcuts, type OffcutRow } from '../nesting/offcuts';
 import { projectOf } from '../toolpath/toolpath.testing';
 import { DEFAULT_LIBRARY, libraryMaterialSchema, stockFromLibrary } from './library';
-import { cleanProps, propsFieldsOf, propsHeadSuffix, propsMatch } from './material-props';
+import { cleanProps, propsFieldsOf, propsHeadSuffix, propsMatch } from './material-props-fields';
 
 // T350: kind-specific library / stock / offcut properties.
 
