@@ -44,7 +44,13 @@ export interface FoldPart {
   angles: number[];
   targets: number[];
   bends: Bend[];
+  /**
+   * T427 (CTO #15 S5): the verdict, always at the designed angles (the sliders only move the
+   * picture), so a flat part never reads "Kapanıyor" when it would clash once folded.
+   */
   check: FoldCheck;
+  /** True when the pieces clash in the pose shown now (the bench tints those parts red). */
+  clashNow: boolean;
 }
 
 /** The fold tool of the project: the V-bit's angle and tip (90°, sharp when none). */
@@ -103,6 +109,10 @@ export function applyFold(
             Math.round(((targets[i] ?? DEFAULT_FOLD_DEG) * state.pct) / 100),
         );
         const rigid = foldTransforms(plan, it.thickness, tool, angles, targets);
+        const atTarget = angles.every((a, i) => a === targets[i])
+          ? rigid
+          : foldTransforms(plan, it.thickness, tool, targets, targets);
+        const check = foldCheck(plan, it.thickness, atTarget);
         parts.set(it.partId, {
           partId: it.partId,
           name: it.part.name,
@@ -113,7 +123,11 @@ export function applyFold(
           bends: plan.hinges.map((h, i) =>
             bendOf(Math.min(h.remaining, it.thickness), tool, targets[i] ?? DEFAULT_FOLD_DEG),
           ),
-          check: foldCheck(plan, it.thickness, rigid),
+          check,
+          clashNow:
+            rigid === atTarget
+              ? check.state === 'clash'
+              : foldCheck(plan, it.thickness, rigid).state === 'clash',
         });
         if (angles.some((a) => a !== 0)) {
           const key = `fold:${it.partId}:${it.thickness}:${tool.face}:${tool.angleDeg}:${tool.tipDiameter}:${angles.join(',')}:${targets.join(',')}`;

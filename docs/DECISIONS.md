@@ -992,3 +992,7 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 ## D-140 Typing never confirms a cutting set; example ACM sets come with a sample O-flute cutter (2026-11-28, B74 T425, CTO #15 M3)
 - An unverified set (starting values, `unverified: true`) stays unverified when the user types into it (values, family or tab fields); only "Değerleri doğruladım" clears the mark. Supersedes the D-046 / T265 rule "an edited row is the user's own" for the mark (the copied-from mark still goes on edit). A typed row no longer follows the table on a kind / thickness / tool change (`followsStartingValues`).
 - "Örnek ACM ayarlarını ekle" adds a sample single-flute O-flute Ø6 (flute length 12) when no tool of the machine has an ACM starting row, before the example sets, so every set starts filled from the table (Ø6 z1: 2000 / 500 / 18 000 / 4; 3 mm: step-down 3). Verified rows are not re-marked when edited.
+
+## D-141 The fold verdict is computed at the designed angles (2026-11-28, B74 T427, CTO #15 S5)
+- Montaj → Katla: the part's state ("Hedef açıda kapanıyor / köşe boşluğu var / çakışıyor") and its issues are always checked at the target angles; the sliders only move the picture. The red tint on the bench still follows the pose shown. The overlap line names the fix ("flanş uçlarını X mm kısaltın ya da köşe boşaltmasını büyütün").
+- The `acm-tray` golden fixture (square reliefs only up to the groove crossing) clashes by design of its geometry; changing it regenerates the ACM goldens, so it waits for the PO (T427 fixture part).

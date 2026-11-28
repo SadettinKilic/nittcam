@@ -218,10 +218,9 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
         for (const id of [x.a, x.b]) if (!m.has(id)) m.set(id, 'warning');
       }
     }
-    // T391: a folded part whose flanges clash (or miss a corner relief) is red.
-    const clash = new Set(
-      folded.parts.filter((p) => p.check.state === 'clash').map((p) => p.partId),
-    );
+    // T391: a folded part whose flanges clash (or miss a corner relief) is red; T427: in the
+    // pose shown now (the panel's verdict is at the designed angles).
+    const clash = new Set(folded.parts.filter((p) => p.clashNow).map((p) => p.partId));
     if (clash.size > 0) for (const it of shown) if (clash.has(it.partId)) m.set(it.id, 'danger');
     return m;
   }, [fit.result, folded.parts, shown]);

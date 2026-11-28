@@ -4115,13 +4115,13 @@
       "noTool": "Makinede açılı V-bıçak yok; 90° ve sivri uç varsayıldı.",
       "skipped": "{n} eğri kanal parçası katlanmaz; yalnız düz kanallar menteşe olur.",
       "states": {
-        "closed": "Kapanıyor",
-        "gap": "Köşe boşluğu var",
-        "clash": "Çakışma var"
+        "closed": "Hedef açıda kapanıyor",
+        "gap": "Hedef açıda köşe boşluğu var",
+        "clash": "Hedef açıda çakışıyor"
       },
       "issues": {
         "relief": "{a} ile {b} köşede aynı malzemeyi paylaşıyor: köşe boşaltması gerekli.",
-        "overlap": "{a} ile {b} çakışıyor ({mm} mm).",
+        "overlap": "{a} ile {b} çakışıyor ({mm} mm): flanş uçlarını {mm} mm kısaltın ya da köşe boşaltmasını büyütün.",
         "corner": "{a} ile {b} arası köşe boşluğu {mm} mm."
       }
     },
