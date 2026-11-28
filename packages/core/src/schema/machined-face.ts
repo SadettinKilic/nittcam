@@ -23,7 +23,9 @@ import type { Layout, Part, Project, Vertex } from './project';
 
 /** True when the stock is machined from its back face (absent = front). */
 export function isBackFace(project: Pick<Project, 'stock'>): boolean {
-  return project.stock.machinedFace === 'back';
+  // Partial projects (tests, older callers) may lack the stock: absent = front.
+  const stock = project.stock as Project['stock'] | undefined;
+  return stock?.machinedFace === 'back';
 }
 
 /** Width of a part's local bounding box after turning it by `rot` (the placed footprint width). */
