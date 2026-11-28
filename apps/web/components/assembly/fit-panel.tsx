@@ -25,18 +25,22 @@ export function benchLabel(item: BenchItem | undefined, t: T): string {
 
 export interface FitRow {
   key: string;
-  tone: 'danger' | 'warning' | 'muted' | 'success';
-  kind: FitIssue['kind'] | 'holeOk';
+  tone: 'danger' | 'warning' | 'muted' | 'info' | 'success';
+  kind: FitIssue['kind'] | 'holeOk' | 'loose';
   a: string;
   b: string;
   text: string;
 }
 
-/** Issues → panel rows (aligned holes of one pair grouped into one row). */
+/**
+ * Issues → panel rows (aligned holes of one pair grouped into one row). T397 (CTO #14 P5): parts
+ * that touch nothing follow as info rows, before the aligned holes.
+ */
 export function fitRows(
   issues: readonly FitIssue[],
   byId: ReadonlyMap<string, BenchItem>,
   t: T,
+  loose: readonly string[] = [],
 ): FitRow[] {
   const c = t.check;
   const rows: FitRow[] = [];
@@ -73,6 +77,16 @@ export function fitRows(
       ok.set(k, g);
     }
   });
+  for (const id of loose) {
+    rows.push({
+      key: `loose:${id}`,
+      kind: 'loose',
+      tone: 'info',
+      a: id,
+      b: id,
+      text: fill(c.loose, { name: name(id) }),
+    });
+  }
   for (const g of ok.values()) {
     rows.push({
       key: `ok:${g.a}:${g.b}`,
@@ -90,6 +104,7 @@ const DOT: Record<FitRow['tone'], string> = {
   danger: 'bg-danger',
   warning: 'bg-warning',
   muted: 'bg-fg-subtle',
+  info: 'bg-info',
   success: 'bg-success',
 };
 
@@ -99,26 +114,33 @@ export function FitPanel({
   byId,
   onFrame,
   onClose,
+  className,
 }: {
   t: T;
   state: FitState;
   byId: ReadonlyMap<string, BenchItem>;
   onFrame: (a: string, b: string) => void;
   onClose: () => void;
+  className?: string;
 }) {
   const c = t.check;
   const { result, busy, failed } = state;
-  const rows = useMemo(() => (result ? fitRows(result.issues, byId, t) : []), [result, byId, t]);
+  const rows = useMemo(
+    () => (result ? fitRows(result.issues, byId, t, result.loose) : []),
+    [result, byId, t],
+  );
   const counts = useMemo(() => {
-    const n = { overlap: 0, holeOff: 0, gap: 0 };
+    const n = { overlap: 0, holeOff: 0, gap: 0, loose: 0 };
     for (const r of rows) {
       if (r.kind === 'overlap') n.overlap++;
       else if (r.kind === 'hole') n.holeOff++;
       else if (r.kind === 'gap') n.gap++;
+      else if (r.kind === 'loose') n.loose++;
     }
     return n;
   }, [rows]);
-  const bad = counts.overlap + counts.holeOff + counts.gap;
+  // "Her şey oturuyor" only when every shown part touches another (T397, CTO #14 P5).
+  const bad = counts.overlap + counts.holeOff + counts.gap + counts.loose;
   return (
     <section
       aria-label={c.title}
@@ -127,8 +149,12 @@ export function FitPanel({
       data-overlaps={counts.overlap}
       data-holes-off={counts.holeOff}
       data-gaps={counts.gap}
+      data-loose={counts.loose}
       data-touching={result?.touching ?? ''}
-      className="mb-3 flex flex-col gap-2 rounded-lg border border-border bg-surface p-2"
+      className={cn(
+        'flex flex-col gap-2 rounded-lg border border-border bg-surface p-2',
+        className,
+      )}
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-semibold text-fg text-sm">{c.title}</h3>
@@ -151,6 +177,7 @@ export function FitPanel({
                 ...(counts.overlap ? [fill(c.counts.overlap, { count: counts.overlap })] : []),
                 ...(counts.holeOff ? [fill(c.counts.holeOff, { count: counts.holeOff })] : []),
                 ...(counts.gap ? [fill(c.counts.gap, { count: counts.gap })] : []),
+                ...(counts.loose ? [fill(c.counts.loose, { count: counts.loose })] : []),
               ].join(' · ')}
         {busy && result ? ` · ${c.busy}` : null}
       </p>

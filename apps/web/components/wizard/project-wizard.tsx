@@ -47,10 +47,12 @@ import {
   ParkedChangesNotice,
   SimulationView,
   preloadWizardSteps,
+  MachineFields,
+  SheetGrain,
+  SheetPreview,
 } from './lazy-steps';
 import { runLeaveTransition } from '../../lib/preview3d/leave';
 import { tableSpecOf } from '../../lib/preview3d/stage';
-import { MachineFields, SheetGrain, SheetPreview } from './machine-step';
 import { IssuesOkChip } from './issues-ok-chip';
 import { fetchMaterials, type MaterialItem } from '../../lib/materials-api';
 import { fetchProjectDefaults } from '../../lib/settings-api';

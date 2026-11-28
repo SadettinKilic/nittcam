@@ -1465,10 +1465,10 @@ Acceptance: the fix list of M3: while `MATERIAL_NOT_RELEASED` holds it is the on
 ### T396 ACM step 1: right sheet, honest set hint, one click for starting values   [status: done]   (rider; CTO #14 P1–P3)
 Acceptance: switching to ACM (or aluminium) switches the sheet to the kind's first preset when the current sheet is not one of its presets (undoable, notice shown); the thickness hint and the "no cutting set" line never contradict each other; when the machine has no ACM set, step 1 offers "Örnek ACM ayarlarını ekle" (the MB4 action) inline.
 
-### T397 Montaj polish from CTO #14   [status: todo]   (Polish queue; P5–P7)
+### T397 Montaj polish from CTO #14   [status: done]   (Polish queue; P5–P7)
 P5: the fit check never says "Her şey oturuyor" while a visible part touches nothing (list "temas yok" parts); P6: mate mode turns off while exploded; P7: the fit results open as an overlay/drawer so the part position fields stay in view.
 
-### T398 Text and table polish from CTO #14   [status: todo]   (Polish queue; P8–P11)
+### T398 Text and table polish from CTO #14   [status: done]   (Polish queue; P8–P11)
 P8: Kenar payı helper follows D-129 (effective margin with tabs); P9: "Tüm program" chips not in code style; P10: no research hedges ("doğrulanacak") in UI texts, use a single "başlangıç değeri, makinede doğrulayın" badge; P11: Ayarlar → Malzemeler list gets column names.
 
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
@@ -1637,7 +1637,7 @@ Done in B51 (#155, D-091); goldens approved per D-051.
 - Manual tool change 20 mm above the material, no park position → field-test list.
 - Removed as done or covered: project name appending (T283), holes in Dizilim (B24), multi-file "İndir" label (T176 zip), Çizim view remembered (T290).
 
-### T385 Slim the wizard's first load back under 450 kB   [status: todo]   (D-133)
+### T385 Slim the wizard's first load back under 450 kB   [status: done]   (D-133)
 Source: round 44. Wizard routes ship ~451 kB gzip (budget raised to 460 by D-133). Acceptance: route-split the `tr.json` messages (each route gets only its namespaces) or an equivalent; find other eager imports that can load on demand without breaking offline drafts (D-117: paste stays static); wizard ≤ 450 kB again and the budget returned to 450.
 
 ### T392 Flaky in CI: b11a T258 keeps `?profil=son` after "Kesim ayarı ekle" → back   [status: done]

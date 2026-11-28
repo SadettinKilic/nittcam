@@ -105,6 +105,17 @@ describe('checkFit (T388)', () => {
     expect(r.touching).toBe(2);
     expect(r.parts).toBe(5);
   });
+  it('T397 P5: lists the parts that touch or overlap nothing; none for a lone part', () => {
+    const a = part('a', panel, [0, 0, 0]);
+    const r = checkFit([a, part('b', panel, [500, 0, 0]), part('c', panel, [5000, 0, 0])]);
+    expect(r.touching).toBe(1);
+    expect(r.loose).toEqual(['c']);
+    // An overlap is contact too (it is listed as an overlap, not as a loose part).
+    expect(checkFit([a, part('b', panel, [498, 0, 0])]).loose).toEqual([]);
+    // A small gap does not touch: the gap row and the loose rows both show.
+    expect(checkFit([a, part('b', panel, [500.6, 0, 0])]).loose).toEqual(['a', 'b']);
+    expect(checkFit([a]).loose).toEqual([]);
+  });
   it('within ±0,05 mm counts as touching', () => {
     const a = part('a', panel, [0, 0, 0]);
     expect(checkFit([a, part('b', panel, [500.04, 0, 0])]).touching).toBe(1);

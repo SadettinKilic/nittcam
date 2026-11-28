@@ -77,4 +77,12 @@ describe('fitRows (T388)', () => {
       ['holeOk', 'success', 'A (1. adet) ↔ A (2. adet): 2 delik hizalı'],
     ]);
   });
+  it('T397 P5: a part that touches nothing gets an info row before the aligned holes', () => {
+    const issues: FitIssue[] = [{ kind: 'hole', a: a0, b: a1, offset: 0, ok: true, at: [0, 0, 0] }];
+    const rows = fitRows(issues, byId, tr.bench, [l]);
+    expect(rows.map((r) => [r.kind, r.tone, r.text, r.a, r.b])).toEqual([
+      ['loose', 'info', 'Değmeyen parça: L', l, l],
+      ['holeOk', 'success', 'A (1. adet) ↔ A (2. adet): 1 delik hizalı', a0, a1],
+    ]);
+  });
 });
