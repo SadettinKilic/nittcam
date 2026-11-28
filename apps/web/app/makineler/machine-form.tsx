@@ -1335,6 +1335,8 @@ export function MachineForm({
                   type="button"
                   variant="outline"
                   size="sm"
+                  // 320 px: the label wraps instead of widening the page.
+                  className="h-auto max-w-full py-1.5 text-left whitespace-normal"
                   data-testid="materials-add-acm"
                   onClick={() => {
                     const missing = ACM_EXAMPLES.filter((th) => !hasSet(profile, 'acm', th));
