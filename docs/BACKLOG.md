@@ -1888,6 +1888,14 @@ Acceptance:
 - [ ] shortcuts listed in the command palette / help shortcuts list
 Tester focus: hover each control; keys work on each canvas and not inside inputs.
 
+### T384 Leaving Dizilim while a nesting run is busy loses the result   [status: todo]   (must-fix, found in round 41)
+Source: MB1 integration (b58-tester T321 flaky 1/6 on main). Leaving the step closes the nesting worker; a run that is still busy (cold start, big lists) is dropped and no layout is stored, so a user who clicks a mode and then at once "İleri" or a stepper step lands on an empty Simülasyon.
+Acceptance:
+- [ ] a running nesting finishes and its result is stored even when the user leaves Dizilim (worker kept alive until done, or the step change waits with "Diziliyor… %n" and an İptal); never a silent loss
+- [ ] Simülasyon / Dışa aktar opened during a run show "Dizilim hesaplanıyor" and update when it lands
+- [ ] e2e: click a mode, immediately go to Simülasyon → layout present; the shared `nest()` helper keeps working for the 32 specs (no blind waits)
+Tester focus: big list (1500 copies) → mode click → İleri at once; İptal path.
+
 ### Batch B66: T382–T383 (drawing tools)
 
 ### T382 Flexible arc tool   [status: done]
