@@ -644,7 +644,7 @@ export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBen
       </div>
       <div
         data-toast-avoid=""
-        className="pointer-events-none absolute bottom-2 left-2 z-10 flex max-h-[calc(100%-7rem)] max-w-[calc(100%-1rem)] flex-col items-start gap-2 sm:max-w-[min(36rem,calc(100%-21rem))]"
+        className="pointer-events-none absolute bottom-2 left-2 z-10 flex max-h-[calc(100%-7rem)] max-w-[calc(100%-1rem)] flex-col items-start gap-2 sm:max-w-[max(min(36rem,calc(100%-21rem)),min(18rem,calc(100%-1rem)))]"
       >
         {fitPanel}
         <p
