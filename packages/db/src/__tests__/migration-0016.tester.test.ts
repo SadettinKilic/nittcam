@@ -34,10 +34,12 @@ function before0016(): string {
   return dir;
 }
 
+// `url: ''` keeps this on its own PGlite copy even when DATABASE_URL points at the CI Postgres
+// (that one is already migrated to the latest, so the pre-0016 state cannot be built there).
 describe('migration 0016 on an existing database (tester)', () => {
   it('old verifications stay the wood board state; ACM draft; unknown family refused', async () => {
     const data = join(work, 'pglite');
-    const old = await createDb({ pglite: data, migrationsFolder: before0016() });
+    const old = await createDb({ url: '', pglite: data, migrationsFolder: before0016() });
     await old.migrate();
     const company = await companies.create(old.db, { name: `M0016 ${randomUUID().slice(0, 6)}` });
     const scope = forCompany(old.db, company.id);
@@ -59,7 +61,7 @@ describe('migration 0016 on an existing database (tester)', () => {
     expect(JSON.stringify(cols)).not.toContain('material_family');
     await old.close();
 
-    const now = await createDb({ pglite: data });
+    const now = await createDb({ url: '', pglite: data });
     await now.migrate();
     try {
       const s = forCompany(now.db, company.id);
