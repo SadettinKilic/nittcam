@@ -20,7 +20,7 @@ test('ACM at step 1: ACM sheet with a notice and Ctrl+Z, honest chips, example s
 
   await pickOption(select, tr.materials.acm);
   // P2: the first ACM preset is pressed, and a notice says so.
-  await expect(page.getByLabel(preset('1.250', '3.200'))).toBeChecked();
+  await expect(page.getByLabel(preset('1.250', '2.440'))).toBeChecked();
   // PO: the wood thickness does not stay either: ACM's default 4 mm, in the same notice.
   await expect(page.getByTestId('wizard-thickness')).toHaveValue(/^4/);
   const notice = page.locator('[data-sonner-toast]').filter({ hasText: '1.250' });
