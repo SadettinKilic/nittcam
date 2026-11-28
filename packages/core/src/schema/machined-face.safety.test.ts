@@ -71,10 +71,7 @@ describe('T348 back-face safety (tester)', () => {
     expect(bo.map((o) => o.kind).sort()).toEqual(fo.map((o) => o.kind).sort());
     expect(fo.map((o) => o.kind)).toEqual(expect.arrayContaining(['outerContour', 'pocket']));
     const outer = bbox(
-      passLoop(
-        fo.find((o) => o.kind === 'outerContour')!,
-        0,
-      ),
+      passLoop(fo.find((o) => o.kind === 'outerContour') as (typeof fo)[number], 0),
     );
     const axis = outer.minX + outer.maxX;
     let checked = 0;
@@ -94,11 +91,11 @@ describe('T348 back-face safety (tester)', () => {
         );
       });
       expect(match, `${o.kind} ${o.holeId ?? ''} has a mirrored twin`).toBeDefined();
-      const bl = passLoop(match!, 0);
+      const bl = passLoop(match as (typeof bo)[number], 0);
       // Same winding sign: the mirror must not silently turn climb into conventional.
       expect(Math.sign(signedArea(bl)), `${o.kind} winding`).toBe(Math.sign(signedArea(fl)));
-      expect(o.feed).toBe(match!.feed);
-      expect(o.rpm).toBe(match!.rpm);
+      expect(o.feed).toBe((match as (typeof bo)[number]).feed);
+      expect(o.rpm).toBe((match as (typeof bo)[number]).rpm);
       checked++;
     }
     expect(checked).toBeGreaterThanOrEqual(3);
