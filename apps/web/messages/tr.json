@@ -1817,6 +1817,10 @@
     "unknown": "{id} (tanınmayan malzeme)"
   },
   "wizard": {
+    "faceBadge": {
+      "drawing": "Ön yüzden çiziyorsunuz · makinede aynalanır",
+      "machined": "Arka yüz görünümü"
+    },
     "assistant": {
       "open": "Asistan",
       "openLabel": "Asistanı aç",
@@ -1975,6 +1979,10 @@
         "thickness": "Tabaka kalınlığı",
         "bounds": "{min}–{max} mm arası olmalı.",
         "none": "{t} mm plakada ince tabaka bırakılamaz (en az {min} mm tabaka, üstünde en az {below} mm kesim)."
+      },
+      "face": {
+        "label": "Arka yüzden işle",
+        "hint": "Plaka yüzü alta gelecek şekilde yatırılır; parçalar makinede aynalanır. Çizimde ön yüzü görmeye devam edersiniz."
       },
       "units": {
         "mm": "mm",
@@ -3416,6 +3424,10 @@
     "sheetSize": "{w} × {h} mm",
     "material": "{material}, {thickness} mm",
     "grain": "Damar {angle}°",
+    "faceUp": {
+      "front": "Ön yüz üstte",
+      "back": "Arka yüz üstte · parçalar aynalı"
+    },
     "noGrain": "Damarsız plaka",
     "offcut": "Artık parçadan",
     "offcutInfo": "Artık parçadan: {w} × {h} · {material} · {source} · kayıt {ref}",
@@ -3490,7 +3502,11 @@
       "noSheet": "Dizilmedi",
       "size": "{w} × {h} mm",
       "cut": "Kesim {w} × {h}",
-      "pockets": "Cep ×{n}, {d} mm derin"
+      "pockets": "Cep ×{n}, {d} mm derin",
+      "faceUp": {
+        "front": "Ön yüz",
+        "back": "Arka yüz"
+      }
     }
   },
   "onboarding": {

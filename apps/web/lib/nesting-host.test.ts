@@ -41,7 +41,7 @@ describe('nesting host (T384)', () => {
     const seen: number[] = [];
     const result = host.run(project, params, (done) => seen.push(done));
     release(); // the user left Dizilim while the run is busy
-    const w = workers[0]!;
+    const w = workers[0] as FakeWorker;
     expect(w.terminated).toBe(false);
     w.reply({ id: 1, kind: 'progress', done: 3, total: 9 });
     w.reply({ id: 1, ok: false, error: 'boom' });
@@ -54,11 +54,11 @@ describe('nesting host (T384)', () => {
     const { host, workers } = setup();
     const release = host.acquire();
     const first = host.run(project, params);
-    workers[0]!.reply({ id: 1, ok: false, error: 'x' });
+    (workers[0] as FakeWorker).reply({ id: 1, ok: false, error: 'x' });
     await first;
-    expect(workers[0]!.terminated).toBe(false);
+    expect((workers[0] as FakeWorker).terminated).toBe(false);
     release();
-    expect(workers[0]!.terminated).toBe(true);
+    expect((workers[0] as FakeWorker).terminated).toBe(true);
     void host.run(project, params);
     expect(workers).toHaveLength(2);
   });
@@ -68,8 +68,8 @@ describe('nesting host (T384)', () => {
     const a = host.run(project, params);
     host.cancel();
     await expect(a).resolves.toMatchObject({ ok: false, error: NESTING_CANCELLED });
-    workers[0]!.reply({ id: 1, ok: false, error: 'late' }); // ignored
-    expect(workers[0]!.terminated).toBe(true);
+    (workers[0] as FakeWorker).reply({ id: 1, ok: false, error: 'late' }); // ignored
+    expect((workers[0] as FakeWorker).terminated).toBe(true);
   });
 
   it('activity: only the latest token ends it; the snapshot is stable for subscribers', () => {

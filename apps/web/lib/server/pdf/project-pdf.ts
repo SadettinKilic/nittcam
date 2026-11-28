@@ -3,6 +3,7 @@
  * revision; the same project, revision and paper always give the same bytes.
  */
 import {
+  faceUpOf,
   layoutDrawing,
   materialKindOf,
   projectReport,
@@ -75,6 +76,7 @@ export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Arr
     revision,
     material: materialLabel(project),
     direction: traitsOf(materialKindOf(project.stock.material)).direction.label,
+    face: faceUpOf(project),
     company: await embedCompany(doc, input.company),
   };
   const sheets = layoutDrawing(project);

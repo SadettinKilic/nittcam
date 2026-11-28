@@ -160,3 +160,13 @@ export function turnLayoutOver(
     })),
   };
 }
+
+/**
+ * The face to name on the PDF and labels (T348): `back` on a back-face stock, `front` on a
+ * material machined from the back by default but set to front, null otherwise (wood, plastic:
+ * nothing to say, documents unchanged).
+ */
+export function faceUpOf(project: Pick<Project, 'stock'>): 'front' | 'back' | null {
+  if (isBackFace(project)) return 'back';
+  return traitsOf(materialKindOf(project.stock.material)).machinedFace === 'back' ? 'front' : null;
+}

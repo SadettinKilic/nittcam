@@ -50,6 +50,8 @@ export interface PageHeader {
   material: string;
   /** T347: the wording of the sheet direction ("Damar", "Yüzey yönü", "Film oku"); absent = Damar. */
   direction?: 'grain' | 'surface' | 'film';
+  /** T348: the face that was up on the machine (`faceUpOf`); absent = not named (wood, plastic). */
+  face?: 'front' | 'back' | null;
   /** The company (T301): logo left of the project name, name first on the second line. */
   company?: PdfCompany | null;
 }
@@ -504,6 +506,7 @@ export function addLayoutPages(
         ? t.noGrain
         : fill(getMessages().direction[head.direction ?? 'grain'].pdf, { angle: mm(sheet.grain) }),
       fill(t.parts, { count: sheet.parts.length }),
+      ...(head.face ? [t.faceUp[head.face]] : []),
       ...(sheet.offcut ? [offcutLine(sheet.offcutId ? offcuts[sheet.offcutId] : undefined)] : []),
     ].join(' · ');
     drawFrame(

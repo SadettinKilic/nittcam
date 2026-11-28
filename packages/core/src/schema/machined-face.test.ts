@@ -7,7 +7,7 @@ import { bbox, contour } from '../geometry/polyline';
 import { buildToolpath, placedOutline } from '../toolpath';
 import { passLoop, projectOf } from '../toolpath/toolpath.testing';
 import { toCutSizes } from './cut-size';
-import { machinedProject, mirrorPartForBack, turnLayoutOver } from './machined-face';
+import { faceUpOf, machinedProject, mirrorPartForBack, turnLayoutOver } from './machined-face';
 import { deriveOutline } from './outline';
 import type { Part, Project } from './project';
 
@@ -179,5 +179,13 @@ describe('machinedProject (T348)', () => {
     const back = expectedLayout(p, 0)[0];
     const front = expectedLayout({ ...p, stock: { ...p.stock, machinedFace: undefined } }, 0)[0];
     expect(back?.outline).not.toEqual(front?.outline);
+  });
+});
+
+describe('faceUpOf (T348)', () => {
+  it('back on a back-face stock, front on ACM set to front, null on wood', () => {
+    expect(faceUpOf(lProject('acm', 'back'))).toBe('back');
+    expect(faceUpOf(lProject('acm', 'front'))).toBe('front');
+    expect(faceUpOf(lProject('mdf', 'front'))).toBeNull();
   });
 });

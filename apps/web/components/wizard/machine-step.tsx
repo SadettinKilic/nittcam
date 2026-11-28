@@ -457,6 +457,7 @@ export function MachineFields({
         {set || project.cutting.skin ? (
           <ThinSkin t={t} project={project} errors={errors} run={run} />
         ) : null}
+        <MachinedFace t={t} project={project} run={run} />
       </div>
 
       <fieldset className="flex flex-col gap-2">
@@ -618,6 +619,38 @@ function SheetSizesPick({
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * T348 (§3.6 "İşlenen yüz"): "Arka yüzden işle". Shown for materials machined from the back by
+ * default (composite panels) and whenever a project is already set to the back face.
+ */
+function MachinedFace({ t, project, run }: { t: Text; project: Project; run: Run }) {
+  const id = useId();
+  const hintId = useId();
+  const back = project.stock.machinedFace === 'back';
+  if (!back && traitsOf(materialKindOf(project.stock.material)).machinedFace !== 'back') {
+    return null;
+  }
+  return (
+    <div className="flex flex-col gap-2" data-testid="machined-face">
+      <div className="flex items-center gap-2">
+        <Switch
+          id={id}
+          checked={back}
+          aria-describedby={hintId}
+          data-testid="machined-face-switch"
+          onCheckedChange={(on) => run('setMachinedFace', { face: on ? 'back' : 'front' })}
+        />
+        <label htmlFor={id} className="text-sm text-fg">
+          {t.face.label}
+        </label>
+      </div>
+      <p id={hintId} className="text-xs text-fg-muted">
+        {t.face.hint}
+      </p>
     </div>
   );
 }

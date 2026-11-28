@@ -1421,8 +1421,28 @@ function WizardSession({
   const indicator = saveIndicator(session.saveState, session.projectId !== null);
   const nextKey = STEPS[index + 1];
 
+  // T348 (§3.6): on a back-face stock every working view says which face it shows.
+  const backFace = session.project.stock.machinedFace === 'back';
+  const faceText = !backFace
+    ? null
+    : drawing
+      ? t.faceBadge.drawing
+      : step === 'dizilim' || step === 'simulasyon'
+        ? t.faceBadge.machined
+        : null;
   const headerActions = (
     <>
+      {faceText ? (
+        <Badge
+          variant="info"
+          data-testid="face-badge"
+          data-face={drawing ? 'front' : 'back'}
+          title={faceText}
+          className="max-w-full min-w-0 shrink"
+        >
+          <span className="truncate">{faceText}</span>
+        </Badge>
+      ) : null}
       {simMachine ? (
         <ProfileStatusChip
           t={t.profileStatus}
