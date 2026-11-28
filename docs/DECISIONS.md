@@ -988,3 +988,9 @@ The owner answered Q009 (T257, CTO review #4 K1): yes.
 - MB4 made the paste panel lazy to stay under 450 kB; offline drafts (D-117) then broke: a user who goes offline right after opening a project could not paste (the chunk cannot load, the page shows the error boundary). Pasting offline is a promise of D-117, so `PastePanel` is a static import again.
 - With it the wizard routes ship 450.8 kB gzip. The wizard budget moves to **460 kB** (other routes stay at 250 kB). Metal (MB1–MB4) and the assembly bench added real features; the bench itself stays in a lazy chunk.
 - Follow-up T385 (Polish queue): slim the wizard's first load (route-split `tr.json` messages, check what else loads eagerly) and bring it back under 450 kB.
+
+## D-134 Wizard first load back under 450 kB: the Makine step and the shell overlays load on demand (2026-11-28, T385, Dev 1)
+- Measured with `e2e/tests/b42-perf-budget.spec.ts` (gzip JS that starts before the `load` event, fresh context per route). Before: wizard routes 458.5 kB, `/` 226.9, `/projeler` 247.9. After: wizard 427.1 kB, `/` 219.7, `/projeler` 239.7. The wizard budget is **450 kB** again (D-079); other routes stay at 250.
+- `tr.json` was not split: its client chunk (~57 kB gzip) already loads after `load` (the lazy step chunks pull it), so splitting it per route would not move the first-load number. Kept as one file (209 e2e specs import it).
+- What moved: the Makine step body (`MachineFields`, `SheetPreview`, `SheetGrain`, with the 3D preview wrapper) joins the lazy wizard steps (`lazy-steps.tsx`), and the shell's Ctrl/⌘+K palette (cmdk), shortcuts sheet and "Yenilikler" dialog load through `components/shell/lazy-overlays.tsx`.
+- Offline (D-117): both groups are fetched right after `load` (`preloadWizardSteps`, `preloadShellOverlays`, the T186 pattern), so a page that has loaded keeps working offline. The paste panel stays a static import (D-133).

@@ -43,11 +43,15 @@ import {
   subscribeSidebar,
   syncSidebar,
 } from '../../lib/sidebar-state';
-import { CommandMenu, type CommandActions } from './command-menu';
+import type { CommandActions } from './command-menu';
+import {
+  CommandMenu,
+  ShortcutsDialog,
+  WhatsNewDialog,
+  preloadShellOverlays,
+} from './lazy-overlays';
 import { ShortcutKeys, useIsMac } from './keys';
 import { ShellProvider } from './shell-context';
-import { ShortcutsDialog } from './shortcuts-dialog';
-import { WhatsNewDialog } from './whats-new-dialog';
 import { OPEN_WHATS_NEW_EVENT, rememberReleaseSeen } from '../../lib/help';
 import { useReturnFocus } from './use-return-focus';
 import { SearchButton } from './search-button';
@@ -123,6 +127,9 @@ export function AppShell({ t, company, children }: AppShellProps) {
     }),
     [router, setTheme, resolvedTheme, toggleSidebar, rememberHelp, rememberWhatsNew],
   );
+
+  // T385: the palette and dialogs load after the page; fetch them once it has loaded (offline-safe).
+  useEffect(() => preloadShellOverlays(), []);
 
   // T192: the help page opens "Yenilikler" too; opening it marks the newest release as seen.
   useEffect(() => {

@@ -18,6 +18,7 @@ function StepLoading() {
   );
 }
 
+const loadMachineStep = () => import('./machine-step');
 const loadDrawingBoard = () => import('../editor/drawing-board');
 const loadLayoutStep = () => import('./layout-step');
 const loadSimulationView = () => import('../simulation/simulation-view');
@@ -32,6 +33,17 @@ export const LayoutStep = dynamic(() => loadLayoutStep().then((m) => m.LayoutSte
 export const SimulationView = dynamic(() => loadSimulationView().then((m) => m.SimulationView), {
   loading: StepLoading,
 });
+/**
+ * T385 (D-134): the Makine step loads like the other steps, so the parts list and a project's
+ * later steps do not carry the machine form, the sheet preview and its 3D switch in their first load.
+ */
+export const MachineFields = dynamic(() => loadMachineStep().then((m) => m.MachineFields), {
+  loading: StepLoading,
+});
+export const SheetPreview = dynamic(() => loadMachineStep().then((m) => m.SheetPreview), {
+  loading: () => <Skeleton className="h-96 w-full rounded-xl" />,
+});
+export const SheetGrain = dynamic(() => loadMachineStep().then((m) => m.SheetGrain));
 /** T387: the montaj tezgâhı (three + the bench) loads only when the Montaj view opens; not preloaded. */
 export const AssemblyBench = dynamic(
   () => import('../assembly/assembly-bench').then((m) => m.AssemblyBench),
@@ -62,7 +74,13 @@ export function preloadWizardSteps(): void {
   if (preloaded || typeof window === 'undefined') return;
   preloaded = true;
   const run = () => {
-    for (const load of [loadLayoutStep, loadSimulationView, loadExportStep, loadDrawingBoard]) {
+    for (const load of [
+      loadMachineStep,
+      loadLayoutStep,
+      loadSimulationView,
+      loadExportStep,
+      loadDrawingBoard,
+    ]) {
       void load().catch(() => undefined);
     }
   };
