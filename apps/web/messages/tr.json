@@ -3990,6 +3990,29 @@
       "hide": "Gizle",
       "show": "Göster"
     },
-    "refused": "Bu konum kaydedilemedi."
+    "refused": "Bu konum kaydedilemedi.",
+    "check": {
+      "button": "Oturuyor mu?",
+      "tip": "Görünen parçalar arasında çakışma, boşluk ve delik hizasını kontrol eder (yalnızca görünüm, dışa aktarmayı engellemez)",
+      "title": "Oturuyor mu?",
+      "close": "Kontrolü kapat",
+      "busy": "Kontrol ediliyor…",
+      "failed": "Kontrol yapılamadı. Bir parçayı oynatıp yeniden deneyin.",
+      "summary": "{parts} parça · {touching} temas",
+      "allGood": "Her şey oturuyor: çakışma, 1 mm altı boşluk ya da kayık delik yok.",
+      "noIssues": "Sorun yok",
+      "listLabel": "Kontrol sonuçları",
+      "overlap": "{a} ↔ {b}: {mm} mm çakışıyor",
+      "gap": "{a} ↔ {b}: boşluk {mm} mm",
+      "holeOff": "{a} ↔ {b}: delik {mm} mm kayık",
+      "holeOk": "{a} ↔ {b}: {count} delik hizalı",
+      "frameTip": "Bu iki parçayı göster",
+      "counts": {
+        "overlap": "{count} çakışma",
+        "holeOff": "{count} kayık delik",
+        "gap": "{count} boşluk"
+      },
+      "rules": "Temas: ±0,05 mm. Boşluk: 1 mm'ye kadar listelenir. Delik: merkezler 0,2 mm içinde hizalı."
+    }
   }
 }

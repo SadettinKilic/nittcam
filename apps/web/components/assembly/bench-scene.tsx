@@ -65,7 +65,12 @@ export type BenchView = 'top' | 'front' | 'right' | 'iso';
 export type CameraCmd =
   | { kind: 'view'; view: BenchView; n: number }
   | { kind: 'fit'; n: number }
-  | { kind: 'zoom'; dir: 1 | -1; n: number };
+  | { kind: 'zoom'; dir: 1 | -1; n: number }
+  /** Frame these world bounds from the current viewing direction (fit-check row, T388). */
+  | { kind: 'frame'; min: V3; max: V3; n: number };
+
+/** Fit-check marks (T388): red = overlap, orange = off-centre hole. */
+export type BenchMark = 'danger' | 'warning';
 
 export interface BenchColors {
   base: string;
@@ -77,6 +82,8 @@ export interface BenchColors {
   picked: string;
   /** Face under the pointer in mate mode / snapped edge. */
   hover: string;
+  /** Fit check: overlapping parts. */
+  danger: string;
 }
 
 export interface BenchSlide {
@@ -93,6 +100,8 @@ export interface BenchSceneProps {
   /** Mate step 1 done: A's picked face is highlighted. */
   pickedFace: { id: string; face: BoxFace } | null;
   slide: BenchSlide | null;
+  /** Fit-check marks by item id (T388). */
+  marks?: ReadonlyMap<string, BenchMark>;
   /** Rotation snap in degrees; 0 = free (Shift). */
   rotationStep: number;
   /** Move snap in mm; 0 = free (Shift). */
@@ -191,6 +200,7 @@ function BenchContent({
   selectedId,
   pickedFace,
   slide,
+  marks,
   rotationStep,
   moveStep,
   camera: cmd,
@@ -287,7 +297,7 @@ function BenchContent({
       { key: string; mesh: MeshData; door: boolean; items: BenchItem[] }
     >();
     for (const it of items) {
-      if (it.id === selectedId || it.id === loneId) {
+      if (it.id === selectedId || it.id === loneId || marks?.has(it.id)) {
         lone.push(it);
         continue;
       }
@@ -302,7 +312,7 @@ function BenchContent({
       into.set(it.mesh, b);
     }
     return { batches: [...map.values(), ...doors.values()], single: lone };
-  }, [items, selectedId, loneId]);
+  }, [items, selectedId, loneId, marks]);
   const edges = useMemo(
     () => mergedEdges(batches.flatMap((b) => (simple && !b.door ? [] : b.items))),
     [batches, simple],
@@ -370,7 +380,7 @@ function BenchContent({
   }, [bounds]);
   const viewRef = useRef<BenchView>('iso');
   useEffect(() => {
-    const b = boundsRef.current;
+    const b = cmd.kind === 'frame' ? { min: cmd.min, max: cmd.max } : boundsRef.current;
     if (!b || !controls || size.width <= 0) return;
     const target: Vec3 = [
       (b.min[0] + b.max[0]) / 2,
@@ -389,7 +399,7 @@ function BenchContent({
     } else {
       if (cmd.kind === 'view') viewRef.current = cmd.view;
       let dir = VIEW_DIRS[viewRef.current];
-      if (cmd.kind === 'fit' && cmd.n > 0) {
+      if ((cmd.kind === 'fit' || cmd.kind === 'frame') && cmd.n > 0) {
         const p = cam.position.clone().sub(controls.target).normalize();
         dir = [p.x, p.y, p.z];
       }
@@ -483,15 +493,18 @@ function BenchContent({
         {single.map((item) => {
           const selected = item.id === selectedId;
           const pose = dragPose?.id === item.id ? dragPose.pose : item.pose;
+          const mark = marks?.get(item.id);
           return (
             <Instance
               key={item.id}
               ref={selected ? setSelObj : undefined}
               item={item}
               pose={pose}
-              material={selected ? mats.selected : item.door ? mats.door : mats.solid}
-              edgeMaterial={selected ? mats.edgeSelected : mats.edge}
-              edges={!simple || selected || item.door}
+              material={
+                selected ? mats.selected : mark ? mats[mark] : item.door ? mats.door : mats.solid
+              }
+              edgeMaterial={selected ? mats.edgeSelected : mark ? mats[`${mark}Edge`] : mats.edge}
+              edges={!simple || selected || item.door || mark !== undefined}
               door={item.door}
             />
           );
@@ -624,7 +637,21 @@ function benchMaterials(colors: BenchColors, simple: boolean) {
   });
   const edge = new LineBasicMaterial({ color: colors.stroke });
   const edgeSelected = new LineBasicMaterial({ color: colors.selection });
-  return { solid, door, selected, edge, edgeSelected };
+  // Fit check (T388): tinted towards the status colour, see-through enough to show the overlap.
+  const markMat = (c: string) =>
+    new MeshStandardMaterial({
+      color: new Color(colors.base).lerp(new Color(c), 0.6),
+      emissive: c,
+      emissiveIntensity: 0.25,
+      roughness: 0.6,
+      transparent: true,
+      opacity: 0.85,
+    });
+  const danger = markMat(colors.danger);
+  const warning = markMat(colors.picked);
+  const dangerEdge = new LineBasicMaterial({ color: colors.danger });
+  const warningEdge = new LineBasicMaterial({ color: colors.picked });
+  return { solid, door, selected, edge, edgeSelected, danger, warning, dangerEdge, warningEdge };
 }
 
 /** Frame-rate read-out (spec §3.8 budget check): reported to the host after every frame. */

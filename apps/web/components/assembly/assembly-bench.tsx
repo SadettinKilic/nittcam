@@ -19,6 +19,7 @@ import {
   Move3d,
   RotateCcw,
   Rotate3d,
+  ScanSearch,
   Search,
   ZoomIn,
   ZoomOut,
@@ -57,7 +58,16 @@ import {
   type V3,
 } from '../../lib/preview3d/assembly-math';
 import type { CaptureFn } from '../preview3d/capture';
-import type { BenchColors, BenchMode, BenchSlide, BenchView, CameraCmd } from './bench-scene';
+import type {
+  BenchColors,
+  BenchMark,
+  BenchMode,
+  BenchSlide,
+  BenchView,
+  CameraCmd,
+} from './bench-scene';
+import { FitPanel } from './fit-panel';
+import { useFitCheck } from './use-fit-check';
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 
 const BenchScene = dynamic(() => import('./bench-scene'), {
@@ -67,7 +77,10 @@ const BenchScene = dynamic(() => import('./bench-scene'), {
 
 type T = Messages['bench'];
 type CameraReq =
-  { kind: 'view'; view: BenchView } | { kind: 'fit' } | { kind: 'zoom'; dir: 1 | -1 };
+  | { kind: 'view'; view: BenchView }
+  | { kind: 'fit' }
+  | { kind: 'zoom'; dir: 1 | -1 }
+  | { kind: 'frame'; min: V3; max: V3 };
 
 const COLOR_TOKENS = {
   stroke: '--color-part-stroke',
@@ -76,6 +89,7 @@ const COLOR_TOKENS = {
   selection: '--color-accent',
   picked: '--color-warning',
   hover: '--color-success',
+  danger: '--color-danger',
 } as const;
 
 function readColors(material: string): BenchColors {
@@ -140,6 +154,22 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
     [items, isolated],
   );
 
+  // "Oturuyor mu?" (T388): re-checks the visible parts after every edit while on.
+  const [checkOn, setCheckOn] = useState(false);
+  const fit = useFitCheck(shown, checkOn);
+  const marks = useMemo(() => {
+    const m = new Map<string, BenchMark>();
+    for (const x of fit.result?.issues ?? []) {
+      if (x.kind === 'overlap') {
+        m.set(x.a, 'danger');
+        m.set(x.b, 'danger');
+      } else if (x.kind === 'hole' && !x.ok) {
+        for (const id of [x.a, x.b]) if (!m.has(id)) m.set(id, 'warning');
+      }
+    }
+    return m;
+  }, [fit.result]);
+
   const commit = useCallback(
     (id: string, pose: Pose, hidden?: boolean) => {
       const item = byId.get(id);
@@ -201,6 +231,16 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
     if (!a || !byId.has(slide.id)) return null;
     return { id: slide.id, frame: faceFrame(a.pose, a.box, slide.face) };
   }, [slide, byId]);
+
+  // Wizard toasts sit top-centre under the header: keep them below the bench toolbar
+  // (B-M1 tester note: "N satır eklendi" covered it).
+  useEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty('--toast-clear-top', '48px');
+    return () => {
+      root.removeProperty('--toast-clear-top');
+    };
+  }, []);
 
   // "?" opens the bench's own shortcut sheet first (T136 pattern).
   useEffect(() => claimPageGroup('bench'), []);
@@ -278,6 +318,9 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
       data-shown={shown.length}
       data-placed={placed}
       data-view={view}
+      data-check={checkOn ? (fit.result && !fit.busy ? 'done' : 'busy') : ''}
+      // An empty bench has no scene to report a frame: it is ready at once (B-M1 tester note).
+      {...(total === 0 ? { 'data-ready': 'true' } : {})}
     >
       {total === 0 ? (
         <div className="flex h-full items-center justify-center p-6 text-center text-sm text-fg-muted">
@@ -293,6 +336,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             selectedId={selectedId}
             pickedFace={mateA ? { id: mateA.id, face: mateA.face } : null}
             slide={slideFrame}
+            marks={marks}
             rotationStep={step.rot}
             moveStep={step.move}
             camera={camera}
@@ -346,6 +390,22 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             </Tooltip>
           ))}
         </div>
+        <Tooltip content={t.check.tip}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={checkOn}
+            data-testid="bench-check-toggle"
+            onClick={() => setCheckOn((v) => !v)}
+            className={cn(
+              'gap-1.5 bg-surface/95 px-2.5 shadow-sm backdrop-blur-sm',
+              checkOn && 'bg-accent-subtle text-accent-text hover:text-accent-text',
+            )}
+          >
+            <ScanSearch aria-hidden />
+            <span className="max-md:sr-only">{t.check.button}</span>
+          </Button>
+        </Tooltip>
       </div>
       <div className="absolute top-2 right-2 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm max-sm:top-14">
         <Tooltip content={withShortcut(t.zoomIn, 'canvasZoomIn')}>
@@ -459,15 +519,47 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
       }
       rightHeader={<h2 className="truncate font-semibold text-fg">{t.workspace.right}</h2>}
       right={
-        <Inspector
-          t={t}
-          item={selected}
-          onPose={(pose) => selected && commit(selected.id, pose)}
-          onHide={() => selected && commit(selected.id, selected.pose, !selected.hidden)}
-          onReset={() => selected && run('resetAssembly', { ids: [selected.id], updatedAt: now() })}
-          onResetAll={() => run('resetAssembly', { updatedAt: now() })}
-          anyPlaced={placed > 0}
-        />
+        <>
+          {checkOn ? (
+            <FitPanel
+              t={t}
+              state={fit}
+              byId={byId}
+              onClose={() => setCheckOn(false)}
+              onFrame={(a, b) => {
+                const ia = byId.get(a);
+                const ib = byId.get(b);
+                if (!ia || !ib) return;
+                const ba = worldBounds(ia.pose, ia.box);
+                const bb = worldBounds(ib.pose, ib.box);
+                cam({
+                  kind: 'frame',
+                  min: [
+                    Math.min(ba.min[0], bb.min[0]),
+                    Math.min(ba.min[1], bb.min[1]),
+                    Math.min(ba.min[2], bb.min[2]),
+                  ],
+                  max: [
+                    Math.max(ba.max[0], bb.max[0]),
+                    Math.max(ba.max[1], bb.max[1]),
+                    Math.max(ba.max[2], bb.max[2]),
+                  ],
+                });
+              }}
+            />
+          ) : null}
+          <Inspector
+            t={t}
+            item={selected}
+            onPose={(pose) => selected && commit(selected.id, pose)}
+            onHide={() => selected && commit(selected.id, selected.pose, !selected.hidden)}
+            onReset={() =>
+              selected && run('resetAssembly', { ids: [selected.id], updatedAt: now() })
+            }
+            onResetAll={() => run('resetAssembly', { updatedAt: now() })}
+            anyPlaced={placed > 0}
+          />
+        </>
       }
       canvas={canvas}
       canvasOverlay={total > 0 ? overlay : null}
