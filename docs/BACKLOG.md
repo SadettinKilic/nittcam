@@ -1605,13 +1605,13 @@ Done in B51 (#155, D-091); goldens approved per D-051.
 ### T385 Slim the wizard's first load back under 450 kB   [status: todo]   (D-133)
 Source: round 44. Wizard routes ship ~451 kB gzip (budget raised to 460 by D-133). Acceptance: route-split the `tr.json` messages (each route gets only its namespaces) or an equivalent; find other eager imports that can load on demand without breaking offline drafts (D-117: paste stays static); wizard ≤ 450 kB again and the budget returned to 450.
 
-### T392 Flaky in CI: b11a T258 keeps `?profil=son` after "Kesim ayarı ekle" → back   [status: todo]
+### T392 Flaky in CI: b11a T258 keeps `?profil=son` after "Kesim ayarı ekle" → back   [status: done]
 Source: round 45 (run 46126438790: failed twice in shard 2, green on rerun; 5/5 locally). After saving the new cutting set and coming back, the URL still had `profil=son` on the slower CI runner. Look at the order of the profile adoption and the URL clean-up (B60 touched `?profil=son` during takeover); fix the race, not the wait.
 
-### T399 URL updates lost on the first save (step/view change races the address swap)   [status: todo]
+### T399 URL updates lost on the first save (step/view change races the address swap)   [status: done]
 Source: round 46 (b20-preview3d:111, bm1-assembly-bench:110 flaky in CI). On a new project the first save swaps the address (`created` → `replaceState` to `/projeler/<id>`); a step or parts-view change in the same moment loses its `adim` / `gorunum` query. Make the address swap merge the current query (or serialise URL writes in project-wizard), add a unit test for the race. Also look at T392 (b11a `profil=son`), likely the same family.
 
-### T422 ACM NC follows its own traits: conventional by default, ramp entry   [status: todo]   (before T357; PO golden review B68)
+### T422 ACM NC follows its own traits: conventional by default, ramp entry   [status: done]   (before T357; PO golden review B68)
 Source: PO review of golden `acm-back-face_S1.tap` (B68). The header says "yon climb" and the first pass enters with a straight plunge (G1 Z-2.25), while MB1/analysis §4.5 set ACM to conventional by default and ramp entry (rule 12 covers composite). Acceptable for now (soft material, NC marked unverified), but must be right before the ACM machine test T357: pull the ACM part of T358 (ramp-only entry from traits) and the traits' default direction into the toolpath; regenerate the two acm-back-face goldens (`needs-human`, PO + tester); wood goldens byte-identical.
 
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
