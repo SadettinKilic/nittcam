@@ -1583,6 +1583,9 @@ Done in B51 (#155, D-091); goldens approved per D-051.
 ### T385 Slim the wizard's first load back under 450 kB   [status: todo]   (D-133)
 Source: round 44. Wizard routes ship ~451 kB gzip (budget raised to 460 by D-133). Acceptance: route-split the `tr.json` messages (each route gets only its namespaces) or an equivalent; find other eager imports that can load on demand without breaking offline drafts (D-117: paste stays static); wizard ≤ 450 kB again and the budget returned to 450.
 
+### T392 Flaky in CI: b11a T258 keeps `?profil=son` after "Kesim ayarı ekle" → back   [status: todo]
+Source: round 45 (run 46126438790: failed twice in shard 2, green on rerun; 5/5 locally). After saving the new cutting set and coming back, the URL still had `profil=son` on the slower CI runner. Look at the order of the profile adoption and the URL clean-up (B60 touched `?profil=son` during takeover); fix the race, not the wait.
+
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
 ### Batch B29: T184–T186 (onboarding, accessibility, performance)
@@ -2287,7 +2290,7 @@ Owner 2026-11-28: "ahşapta dolap ekle deyince montaj görünümü oluyor; metal
 | B-M2 | T388, T389 |
 | B-M3 | T390, T391 (T391 after MB5 V-groove) |
 
-### T386 Assembly model in the project   [status: todo]
+### T386 Assembly model in the project   [status: done]
 Acceptance:
 - [ ] project document gets `assembly: { instances: [{ id, partId, copy, position [x,y,z] mm, rotation quaternion, hidden }], updatedAt }` (zod schema; old projects stay valid with an empty assembly); every copy of a part (quantity) can be placed once
 - [ ] seeding: cabinet-generator parts start in their box positions (today's `assemblyFaceMatrix`); other parts start laid flat in a row ("tezgâh") next to the origin
@@ -2295,7 +2298,7 @@ Acceptance:
 - [ ] part edits keep instances valid (deleted part → instance removed; quantity drop → extra copies removed)
 Tester focus: old projects open; cabinet project seeds as today.
 
-### T387 Montaj tezgâhı screen: move and turn parts freely   [status: todo]
+### T387 Montaj tezgâhı screen: move and turn parts freely   [status: done]
 Acceptance:
 - [ ] "Montaj" opens for every project (not only cabinets): orbit/pan/zoom (same shortcuts as T381), presets Üst/Ön/Sağ/İzometrik, part list on the side (show/hide, isolate, search)
 - [ ] select a part → gizmo to move (axis arrows + plane) and rotate (rings); rotation snaps to 15° (Shift = free, Ctrl = 90°); numeric fields for position and angles; buttons "X/Y/Z etrafında 90° çevir"
@@ -2304,7 +2307,7 @@ Acceptance:
 - [ ] 300 parts ≥ 45 fps while orbiting (spec §3.8); lazy-loaded chunk
 Tester focus: build a box from 5 free parts with face-to-face; undo; reload keeps the assembly.
 
-### T388 Fit check: "Oturuyor mu?"   [status: todo]
+### T388 Fit check: "Oturuyor mu?"   [status: done]
 Acceptance:
 - [ ] overlap check between all visible instances (BVH, `three-mesh-bvh` MIT, in a worker): overlapping pairs turn red with overlap depth in mm; touching (≤ 0.05 mm) counts as fit; gaps ≤ 1 mm listed ("boşluk 0,6 mm")
 - [ ] hole alignment on mating faces (centre distance ≤ 0.2 mm green, else orange with the offset), so dowel/screw positions can be verified
@@ -2312,7 +2315,7 @@ Acceptance:
 - [ ] tests for the overlap/gap math on boxes and rotated boxes
 Tester focus: two panels overlapping by 2 mm; misaligned dowel holes.
 
-### T389 Explode, section and measure   [status: todo]
+### T389 Explode, section and measure   [status: done]
 Acceptance:
 - [ ] explode slider (cabinet: along the box axes)
 - [ ] section plane (X/Y/Z, drag) to look inside joints
