@@ -24,3 +24,12 @@ describe('translation files carry no task ids (T395)', () => {
     });
   }
 });
+
+// T398 (CTO #14 P10): no research hedges in the UI; say what the user should do instead
+// ("Başlangıç değeri; deneme kesimiyle ayarlayın").
+describe('translation files carry no research hedges (T398)', () => {
+  it('tr.json', () => {
+    const all = strings(JSON.parse(readFileSync(join(DIR, 'tr.json'), 'utf8')), '', []);
+    expect(all.filter(([, s]) => /doğrulanacak/i.test(s))).toEqual([]);
+  });
+});

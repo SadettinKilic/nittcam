@@ -34,13 +34,17 @@ test('overlap 2 mm red with depth, 0,6 mm gap listed, touching fits', async ({ p
   await page.getByTestId('bench-check-toggle').click();
   const panel = page.getByTestId('bench-check');
   await expect(bench).toHaveAttribute('data-check', 'done');
-  // Seeded flat in a row 50 mm apart: nothing near.
+  // Seeded flat in a row 50 mm apart: nothing near, so every part is listed as touching nothing
+  // (T397, CTO #14 P5: never "Her şey oturuyor" while a shown part is loose).
   await expect(panel).toHaveAttribute('data-overlaps', '0');
-  await expect(panel).toContainText(c.allGood);
+  await expect(panel).toHaveAttribute('data-loose', '3');
+  await expect(panel).not.toContainText(c.allGood);
 
   // Taban spans x 0…500 (centre 250); Yan (400 wide) centred at 698 overlaps it by 2 mm.
   await setX(page, 1, '698');
   await expect(panel).toHaveAttribute('data-overlaps', '1');
+  // T397 (CTO #14 P7): the results float over the canvas; the position fields stay in view.
+  await expect(page.getByTestId('bench-pos-x')).toBeInViewport();
   const row = page.getByTestId('bench-check-row').first();
   await expect(row).toHaveAttribute('data-kind', 'overlap');
   await expect(row).toContainText('2 mm çakışıyor');
@@ -54,7 +58,12 @@ test('overlap 2 mm red with depth, 0,6 mm gap listed, touching fits', async ({ p
   await setX(page, 1, '700');
   await expect(panel).toHaveAttribute('data-gaps', '0');
   await expect(panel).toHaveAttribute('data-touching', '1');
-  await expect(panel).toContainText(c.allGood);
+  // The second Yan still touches nothing: an info row, no "Her şey oturuyor".
+  await expect(panel).toHaveAttribute('data-loose', '1');
+  await expect(page.getByTestId('bench-check-row').last()).toHaveText(
+    c.loose.replace('{name}', 'Yan (2. adet)'),
+  );
+  await expect(panel).not.toContainText(c.allGood);
 
   await page.getByTestId('bench-check-close').click();
   await expect(panel).toHaveCount(0);
@@ -80,11 +89,24 @@ test('explode and section are display only (T389)', async ({ page }) => {
   await thumb.press('End');
   await expect(bench).toHaveAttribute('data-explode', '100');
   await expect(page.getByTestId('bench-tools')).toContainText(tr.bench.tools.locked);
+  // T397 (CTO #14 P6): Taşı / Döndür / Oturt are off while exploded, with the reason as the hint;
+  // a click does not start a mate; Ölç stays available.
+  for (const m of ['move', 'rotate', 'mate']) {
+    await expect(page.getByTestId('bench-mode-' + m)).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('bench-mode-' + m)).toHaveAttribute('aria-checked', 'false');
+  }
+  await expect(page.getByTestId('bench-mode-measure')).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByTestId('bench-hint')).toHaveText(tr.bench.tools.locked);
+  await page.getByTestId('bench-mode-mate').click({ force: true });
+  await expect(bench).toHaveAttribute('data-mode', 'move');
   // The stored place does not change; the bench still counts one moved part.
   await expect(x).toHaveValue('700');
   await expect(bench).toHaveAttribute('data-placed', '1');
   await thumb.press('Home');
   await expect(bench).toHaveAttribute('data-explode', '0');
+  // Back at 0 %: the tool chosen before (Taşı) is active again.
+  await expect(page.getByTestId('bench-mode-move')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('bench-mode-move')).not.toHaveAttribute('aria-disabled', 'true');
 
   await page.getByTestId('bench-section-y').click();
   await expect(bench).toHaveAttribute('data-section', /^y:\d+$/);

@@ -434,7 +434,7 @@
         "metalEnabled": "Bu makine alüminyum kesebilir",
         "metalEnabledHelp": "Açık beyan. Alüminyum G-code'u henüz kapalı; beyan şimdiden kaydedilir. Kompozit panel (ACM) bu beyanı istemez.",
         "rigidity": "Makine sertliği",
-        "rigidityHelp": "Paso tavanını ölçekler; doğrulanacak.",
+        "rigidityHelp": "Paso tavanını ölçekler. Başlangıç değeri; deneme kesimiyle ayarlayın.",
         "coolantType": "Soğutma",
         "coolantControl": "Soğutma kontrolü",
         "coolantOn": "Soğutma aç kodu",
@@ -1281,7 +1281,6 @@
       },
       "warnings": "Uyarılar ({count})",
       "line": "Satır {line}",
-      "wholeProgram": "Tüm program",
       "detail": "Teknik ayrıntı: {message}",
       "machinesHint": "Makine ayarlarını Makineler sayfasından düzeltebilirsiniz.",
       "innerPlace": "{name} · İç kesim {n}",
@@ -2134,6 +2133,7 @@
       "gapNote": "Boşluk {clear} mm",
       "gapNoteDetail": "Ø{tool} + pay {gap} = {clear} mm",
       "marginHint": "En az {min} mm",
+      "marginHintTabs": "Köprüyle en az Ø{tool} + {anchor} = {min} mm",
       "spacingGroup": "Parça arası ve kenar payı",
       "tabSpacingNote": "Köprü açıkken parça arası pay en az takım Ø + {anchor} mm ({gap} mm), kenar payı en az takım Ø + {anchor} mm ({margin} mm) kullanılır."
     },
@@ -3128,8 +3128,8 @@
         "empty": "Henüz şablon yok. Bir parçanın deliklerini seçip \"Şablon olarak kaydet\" ile oluşturun.",
         "loadError": "Şablonlar yüklenemedi.",
         "instance": "{name} · sürüm {v}",
-        "readyUnverified": "Hazır şablon · ölçüler üretici verisiyle doğrulanacak",
-        "instanceUnverified": "Doğrulanacak",
+        "readyUnverified": "Hazır şablon · başlangıç değeri, ürününüzle karşılaştırın",
+        "instanceUnverified": "Başlangıç değeri",
         "hingeEdge": "Kulp menteşe kenarında. Kulp delikleri menteşenin karşı kenarına gelmeli.",
         "count": "Adet",
         "spacing": "Aralık",
@@ -3289,13 +3289,14 @@
     "loading": "Malzemeler yükleniyor",
     "loadError": "Malzemeler yüklenemedi.",
     "retry": "Tekrar dene",
+    "metalHint": "ACM ve alüminyum için “Malzeme ekle” ile bir malzeme ekleyin.",
     "emptyTitle": "Kütüphane boş",
     "empty": "Kullandığınız plakaları ekleyin; sihirbazın ilk adımında tek tıkla seçilir.",
     "columns": {
       "name": "Malzeme",
       "thicknesses": "Kalınlıklar",
       "sheets": "Plaka ölçüleri",
-      "grain": "Damar",
+      "grain": "Damar / yön",
       "params": "Kesim ayarı"
     },
     "grainNone": "Yok",
@@ -3485,7 +3486,7 @@
     "subtitle": "Şirket şablonları ve hazır kütüphane. Düzenlemek yeni sürüm oluşturur; şablonu kullanan projeler kendi kopyalarını korur.",
     "company": "Şirket şablonları",
     "ready": "Hazır kütüphane",
-    "readyNote": "Hazır şablonların ölçüleri üretici verisiyle doğrulanacak. Kullanmadan önce kendi ürününüzle karşılaştırın.",
+    "readyNote": "Hazır şablonların ölçüleri başlangıç değeridir. Kullanmadan önce kendi ürününüzle karşılaştırın.",
     "empty": "Henüz şirket şablonu yok. Çizimde delikleri seçip \"Şablon olarak kaydet\" ile oluşturun ya da hazır bir şablonu kopyalayın.",
     "showArchived": "Arşivi göster",
     "loading": "Şablonlar yükleniyor…",
@@ -3495,7 +3496,7 @@
     "summary": "{count} adet · aralık {spacing} mm · kenardan {edge} mm",
     "badges": {
       "ready": "Hazır",
-      "unverified": "Doğrulanacak",
+      "unverified": "Başlangıç değeri",
       "archived": "Arşivde"
     },
     "actions": {
@@ -4072,11 +4073,13 @@
       "gap": "{a} ↔ {b}: boşluk {mm} mm",
       "holeOff": "{a} ↔ {b}: delik {mm} mm kayık",
       "holeOk": "{a} ↔ {b}: {count} delik hizalı",
+      "loose": "Değmeyen parça: {name}",
       "frameTip": "Bu iki parçayı göster",
       "counts": {
         "overlap": "{count} çakışma",
         "holeOff": "{count} kayık delik",
-        "gap": "{count} boşluk"
+        "gap": "{count} boşluk",
+        "loose": "{count} değmeyen parça"
       },
       "rules": "Temas: ±0,05 mm. Boşluk: 1 mm'ye kadar listelenir. Delik: merkezler 0,2 mm içinde hizalı."
     },
