@@ -4,11 +4,11 @@ import { immer } from '../immer';
 import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../../geometry/grain';
+import { grainSheetOf } from '../../nesting/grain-sheet';
 import { nestProject, type NestHooks } from '../../nesting/nest';
 import type { ObjectiveCost } from '../../nesting/types';
 import { offcutSheetSchema } from '../../nesting/offcuts';
 import {
-  defaultSheet,
   nestingRotationSchema,
   nestingSchema,
   placementSchema,
@@ -219,8 +219,8 @@ export const lockPlacement = defineCommand({
       // The grain rule (D-034): only rotations from `allowedRotations` may be set by hand.
       const part = project.parts.find((p) => p.id === params.partId);
       const policy = rotationPolicyOf(project.nesting);
-      if (!part || !rotationAllowed(part, defaultSheet(project), params.rot, policy)) {
-        const allowed = part ? allowedRotations(part, defaultSheet(project), policy) : [];
+      if (!part || !rotationAllowed(part, grainSheetOf(project), params.rot, policy)) {
+        const allowed = part ? allowedRotations(part, grainSheetOf(project), policy) : [];
         return `rotation ${params.rot}° is not allowed for part "${params.partId}" (allowed: ${allowed.join(', ')})`;
       }
     }

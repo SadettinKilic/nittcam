@@ -34,7 +34,16 @@ export function normalizeRotation(deg: number): number {
 
 /** A part's grain as `allowedRotations` reads it (schema v2 `part.grain`). */
 export interface GrainOfPart {
-  grain: { mode: 'free' | 'fixed'; angle: number };
+  grain: { mode: 'free' | 'fixed'; angle: number; flip?: boolean | undefined };
+}
+
+/**
+ * The sheet as the grain rule reads it: its direction, and (T347) whether the material is
+ * directed (ACM film arrow: 30° ≠ 210°). Absent `directed` = axial, today's behaviour.
+ */
+export interface GrainOfSheet {
+  grain: number | null;
+  directed?: boolean;
 }
 
 /** Rotation policy for parts without a grain rule (step policies T166). */
@@ -74,19 +83,21 @@ function stepRotations(step: number): number[] {
  * The rotations (CCW degrees, [0, 360), 3 decimals, ascending) at which a part may be placed on a
  * sheet (D-034). The single source for the placer, layout drag and validation.
  * - fixed grain on a sheet with grain: exactly g and g + 180 with g = sheet − part (mod 360), so
- *   (part angle + rot) ≡ sheet angle (mod 180);
+ *   (part angle + rot) ≡ sheet angle (mod 180); on a directed sheet (T347) only g, or g + 180
+ *   when the part is flipped (`grain.flip`);
  * - free grain, or a sheet without grain (`null`): the policy's free rotations (0/90/180/270).
  */
 export function allowedRotations(
   part: GrainOfPart,
-  sheet: { grain: number | null },
+  sheet: GrainOfSheet,
   policy: RotationPolicy = {},
 ): number[] {
   const free = policy.freeRotations ?? QUARTER_TURNS;
-  const raw =
-    part.grain.mode === 'fixed' && sheet.grain !== null
-      ? [sheet.grain - part.grain.angle, sheet.grain - part.grain.angle + 180]
-      : free;
+  let raw: readonly number[] = free;
+  if (part.grain.mode === 'fixed' && sheet.grain !== null) {
+    const g = sheet.grain - part.grain.angle;
+    raw = sheet.directed === true ? [part.grain.flip === true ? g + 180 : g] : [g, g + 180];
+  }
   return [...new Set(raw.map(normalizeRotation))].sort((a, b) => a - b);
 }
 
@@ -96,7 +107,7 @@ export function allowedRotations(
  */
 export function rotationAllowed(
   part: GrainOfPart,
-  sheet: { grain: number | null },
+  sheet: GrainOfSheet,
   rot: number,
   policy: RotationPolicy = {},
 ): boolean {

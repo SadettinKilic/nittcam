@@ -309,6 +309,11 @@ export const partOperationsSchema = z.strictObject({
 export const partGrainSchema = z.strictObject({
   mode: z.enum(['free', 'fixed'], { error: 'grain mode must be "free" or "fixed"' }),
   angle: grainAngleSchema,
+  /**
+   * T347 (§3.6, §9.2): on a directed material (ACM film arrow) the part's arrow points the other
+   * way (angle + 180°). Absent = not flipped; ignored on axial materials (30° = 210° there).
+   */
+  flip: z.boolean({ error: 'must be true or false' }).optional(),
 });
 
 const partBase = {
