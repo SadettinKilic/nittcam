@@ -9,6 +9,7 @@ import { deepCuts, partHoldRule, type DeepCut } from './hold';
 import { cutLoops, expectedLoopCount, matchLayout, matchModel, type CutLoop } from './match';
 import { toSheetMoves, type SheetMove } from './path';
 import { pocketMoveRule, pocketNotCutRule } from './pocket';
+import { straightPlungeRule } from './plunge';
 import { vGrooveMissingRule, vGrooveMoveRule } from './vgroove';
 import {
   activeTools,
@@ -119,6 +120,8 @@ function analyse(
   const loops = cutLoops(sm, d, push);
   // T354: rule 17 (depth floor from stock + traits, V-bit only, fold-line coverage).
   const grooves = vGrooveMoveRule(sm, expected, d, push, tools);
+  // T423: rule 12 (no descent steeper than the stock's limit; drills excepted).
+  straightPlungeRule(sm, d, push, tools);
   return {
     grooves,
     violations,

@@ -19,6 +19,8 @@ export interface Mutation {
 const BOTH = ['generic', 'mach3'] as const;
 /** T354: the ACM tray golden (V-grooves). */
 const TRAY = ['acm-tray'] as const;
+/** T423: the ACM back-face golden (tabs on the parts, no straight plunge). */
+const BACK_FACE = ['acm-back-face'] as const;
 
 /** Index of the first line matching, or throws (a catalogue entry must change something). */
 function find(lines: readonly string[], re: RegExp, from = 0): number {
@@ -482,7 +484,8 @@ export const MUTATIONS: readonly Mutation[] = [
     posts: BOTH,
     fixtures: TRAY,
     what: 'one groove pass 0.4 mm deeper (remaining 0.4 < 0.7)',
-    apply: (l) => edit(l, find(l, /^G1 Z-3\.20+ /), (s) => s.replace(/Z-3\.2(0+)/, 'Z-3.6$1')),
+    // T423: the final pass ramps in; its second leg ends at the groove depth
+    apply: (l) => edit(l, find(l, /^G1 \S+ Z-3\.20+\b/), (s) => s.replace(/Z-3\.2(0+)/, 'Z-3.6$1')),
   },
   {
     id: 'R17-dropped',
@@ -492,8 +495,9 @@ export const MUTATIONS: readonly Mutation[] = [
     fixtures: TRAY,
     what: 'the final pass of the first groove leaves out (stays at the first pass depth)',
     apply: (l) => {
-      const i = find(l, /^G1 Z-3\.20+ /);
-      return remove(remove(l, i + 1), i);
+      // T423: both ramp legs and the pass itself
+      const i = find(l, /^G1 \S+ Z-3\.20+\b/);
+      return remove(remove(remove(l, i + 1), i), i - 1);
     },
   },
   {
@@ -513,6 +517,25 @@ export const MUTATIONS: readonly Mutation[] = [
     fixtures: TRAY,
     what: 'the outline cut with the V-bit T7 instead of T2',
     apply: (l) => edit(l, find(l, /^T2 M6$/), () => 'T7 M6'),
+  },
+  // R12 no straight plunge into ACM (T423, CTO #15 M1)
+  {
+    id: 'R12-groove-plunge',
+    rule: 'R12',
+    code: 'STRAIGHT_PLUNGE_IN_METAL',
+    posts: BOTH,
+    fixtures: TRAY,
+    what: 'the first V-groove entry plunges straight to the first pass depth again',
+    apply: (l) => edit(l, find(l, /^G1 Z0\.0+ /), (s) => s.replace(/Z0\.0(0*)/, 'Z-1.6$1')),
+  },
+  {
+    id: 'R12-tab-plunge',
+    rule: 'R12',
+    code: 'STRAIGHT_PLUNGE_IN_METAL',
+    posts: BOTH,
+    fixtures: BACK_FACE,
+    what: 'after the first tab the tool plunges straight back down (first ramp leg removed)',
+    apply: (l) => remove(l, find(l, /^G1 [XY]\S+ Z-3\.750*\b/)),
   },
   // MODEL
   {

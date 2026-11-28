@@ -23,7 +23,8 @@ describe('checker rule 17 (T354)', () => {
 
   it('a hand-deepened groove is refused for download', () => {
     const g = goldenTray('mach3');
-    const text = g.text.replace('G1 Z-3.2000 F1500', 'G1 Z-3.6000 F1500');
+    // T423: the final pass ramps in; its last leg ends at the groove depth
+    const text = g.text.replace(/Z-3\.2000/, 'Z-3.6000');
     expect(text).not.toBe(g.text);
     const r = checkGcode(text, g.context);
     expect(r.violations.map((v) => v.code)).toContain('VGROOVE_TOO_DEEP');
@@ -34,7 +35,7 @@ describe('checker rule 17 (T354)', () => {
     const g = goldenTray('generic');
     const ctx = { ...g.context };
     delete ctx.vGroove;
-    const deep = g.text.replace('G1 Z-3.200 F1500', 'G1 Z-3.600 F1500');
+    const deep = g.text.replace(/Z-3\.200/, 'Z-3.600');
     expect(r17(deep, ctx)).toEqual([]);
   });
 

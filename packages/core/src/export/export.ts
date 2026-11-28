@@ -99,6 +99,8 @@ export function exportNc(
     machinedFace: project.stock.machinedFace === 'back' ? 'back' : 'front',
     // T354: rule 17 reads the floor from the stock's traits, never from the toolpath.
     ...vGrooveCheckOf(project),
+    // T423: rule 12 reads the steepest descent from the stock's traits, never from the toolpath.
+    ...plungeCheckOf(project),
     stock: {
       material: project.stock.material,
       thickness: project.stock.thickness,
@@ -113,6 +115,15 @@ export function exportNc(
       tp.toolpath.operations.find((o) => o.kind !== 'vgroove')?.toolDiameter ?? 0,
     ),
   });
+}
+
+/**
+ * T423 (spec §7.2 rule 12): the checker's descent limit for a kind without a straight plunge
+ * (ACM, aluminium: `traits.entry.rampDeg.max`), else nothing (wood, plastic: rule silent).
+ */
+export function plungeCheckOf(project: Project): { noStraightPlunge?: { maxDeg: number } } {
+  const e = traitsOf(materialKindOf(project.stock.material)).entry;
+  return !e.straightPlunge && e.rampDeg ? { noStraightPlunge: { maxDeg: e.rampDeg.max } } : {};
 }
 
 /** T354: rule 17's context for a material that folds (`traits.vGroove`), else nothing. */
@@ -222,6 +233,8 @@ export interface PostAndCheckMeta extends PostMeta {
   machinedFace?: 'front' | 'back';
   /** T354: rule 17's minimum remaining skin from the stock's traits (omitted = rule silent). */
   vGroove?: { minRemaining: number };
+  /** T423: rule 12's steepest descent into material from the stock's traits (omitted = silent). */
+  noStraightPlunge?: { maxDeg: number };
 }
 
 /**
@@ -242,7 +255,7 @@ export function postAndCheck(
   const base = { files: [], postErrors: [], postWarnings: [], check: null, tools };
   // An invalid config is refused by the generator itself; the checks only need its declarations.
   const expectations: GcodeCheckPostExpectations | undefined = cfg.ok ? cfg.config : undefined;
-  const { layout, zFloor, machinedFace, vGroove, ...postMeta } = meta;
+  const { layout, zFloor, machinedFace, vGroove, noStraightPlunge, ...postMeta } = meta;
   const stock = {
     thickness: meta.stock.thickness,
     sheetWidth: meta.stock.sheetWidth,
@@ -265,6 +278,7 @@ export function postAndCheck(
     ...(zFloor !== undefined ? { zFloor } : {}),
     ...(machinedFace ? { machinedFace } : {}),
     ...(vGroove ? { vGroove } : {}),
+    ...(noStraightPlunge ? { noStraightPlunge } : {}),
   };
   let checked: { files: readonly PostFile[]; result: GcodeCheckFilesResult } | null = null;
   const run = (files: readonly PostFile[]) => {
