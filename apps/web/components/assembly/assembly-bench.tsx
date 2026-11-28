@@ -447,10 +447,11 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
   const overlay = (
     <>
       {/* B67: leaves room for the zoom group on the right (from 640 px it shares the row), so
-          "Oturuyor mu?" wraps to a second row instead of sliding under the zoom buttons. */}
+          "Oturuyor mu?" wraps to a second row instead of sliding under the zoom buttons.
+          The empty part of a wrapped row lets canvas drags (orbit) through. */}
       <div
         data-testid="bench-toolbar"
-        className="absolute top-2 left-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 sm:max-w-[calc(100%-11rem)]"
+        className="absolute top-2 left-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 sm:max-w-[calc(100%-11rem)] pointer-events-none [&>*]:pointer-events-auto"
       >
         {viewSwitch}
         <div
