@@ -4,6 +4,10 @@ import dynamic from 'next/dynamic';
 import { useDirectionText } from '../../lib/direction-context';
 import {
   cutListToCsv,
+  effectiveDimensionMode,
+  materialKindOf,
+  projectNotices,
+  traitsOf,
   cutSize,
   hasBandDeduction,
   partBoxSize,
@@ -52,6 +56,7 @@ import {
   Copy,
   Download,
   FileUp,
+  Info,
   Keyboard,
   Layers,
   MoreHorizontal,
@@ -109,7 +114,7 @@ import {
 } from '../../lib/cut-list-view';
 import { fill, newPartId, stockHasGrain } from '../../lib/draft-project';
 import type { SplitTarget } from '../../lib/split-project';
-import { CabinetDialog, cabinetRows, nextCabinetName } from './cabinet-dialog';
+import { cabinetRows, nextCabinetName } from '../../lib/cabinet-rows';
 import type { Messages } from '../../lib/messages';
 import { activateAt } from '../../lib/light-press';
 import { useMediaQuery } from '../../lib/use-media-query';
@@ -130,12 +135,15 @@ import {
   type Text,
 } from './cut-list-cells';
 import { BulkEditSheet } from './cut-list-bulk';
-import { PastePanel } from './paste-panel';
 import { IssuesOkChip } from '../wizard/issues-ok-chip';
 import { IssueJumpContext } from '../wizard/validation-panel';
 
 /** The DXF dialog and its parser load when the dialog opens (T186). */
 const DxfImportDialog = dynamic(() => import('./dxf-import-dialog').then((m) => m.DxfImportDialog));
+/** "Dolap ekle" opens on demand, so its dialog loads then, not with every wizard page (T186). */
+const CabinetDialog = dynamic(() => import('./cabinet-dialog').then((m) => m.CabinetDialog));
+/** "Yapıştır / içe aktar" likewise (T186). */
+const PastePanel = dynamic(() => import('./paste-panel').then((m) => m.PastePanel));
 
 export type { Run } from './cut-list-cells';
 
@@ -154,6 +162,8 @@ interface GridContext {
   navigate: Navigate;
   allIds: () => readonly string[];
   issuesOf: (index: number) => readonly ValidationIssue[];
+  /** T349: the stock kind has edge band (phone cards show the band only then). */
+  bands: () => boolean;
   /** Row menu and shortcuts: act on the selection when the row is in it, else on the row. */
   rowAction: (row: number, action: RowAction) => void;
   isSelected: (id: string) => boolean;
@@ -529,6 +539,7 @@ function buildColumns(
   ctx: { current: GridContext },
   finished = false,
   directionShort: string = t.columns.grainHeader,
+  bands = true,
 ) {
   const c = () => ctx.current;
   const size = (normal: number, small: number) => (narrow ? small : normal);
@@ -594,43 +605,46 @@ function buildColumns(
         <GrainColumnCell ctx={c()} part={info.row.original} row={info.row.index} narrow={narrow} />
       ),
     }),
-    ...(wideBands
-      ? EDGES.map((edge) =>
-          column.display({
-            id: `edge-${edge}`,
-            header: fill(t.edgeHeader, { edge: t.edge[edge] }),
-            size: 78,
-            minSize: 60,
-            cell: (info) => (
-              <EdgeInput
-                t={c().t}
-                part={info.row.original}
-                row={info.row.index}
-                edge={edge}
-                run={c().run}
-                navigate={c().navigate}
-              />
-            ),
-          }),
-        )
-      : [
-          column.display({
-            id: 'band',
-            header: t.columns.band,
-            size: size(72, 44),
-            minSize: size(64, 44),
-            cell: (info) => (
-              <BandCell
-                t={c().t}
-                part={info.row.original}
-                row={info.row.index}
-                run={c().run}
-                navigate={c().navigate}
-                glyphOnly={narrow}
-              />
-            ),
-          }),
-        ]),
+    // T349: a kind without edge band (ACM, aluminium) shows no band column.
+    ...(!bands
+      ? []
+      : wideBands
+        ? EDGES.map((edge) =>
+            column.display({
+              id: `edge-${edge}`,
+              header: fill(t.edgeHeader, { edge: t.edge[edge] }),
+              size: 78,
+              minSize: 60,
+              cell: (info) => (
+                <EdgeInput
+                  t={c().t}
+                  part={info.row.original}
+                  row={info.row.index}
+                  edge={edge}
+                  run={c().run}
+                  navigate={c().navigate}
+                />
+              ),
+            }),
+          )
+        : [
+            column.display({
+              id: 'band',
+              header: t.columns.band,
+              size: size(72, 44),
+              minSize: size(64, 44),
+              cell: (info) => (
+                <BandCell
+                  t={c().t}
+                  part={info.row.original}
+                  row={info.row.index}
+                  run={c().run}
+                  navigate={c().navigate}
+                  glyphOnly={narrow}
+                />
+              ),
+            }),
+          ]),
     column.display({
       id: 'note',
       header: t.columns.note,
@@ -905,6 +919,7 @@ function Grid({
   ctx,
   wideBands,
   finished = false,
+  bands = true,
   narrow,
   scrollRef,
   scrollToRow,
@@ -923,6 +938,8 @@ function Grid({
   narrow: boolean;
   /** T169: entered sizes are finished sizes; adds the read-only cut size column. */
   finished?: boolean;
+  /** T349: the stock kind has edge band (`traits.edgeBand`). */
+  bands?: boolean;
   scrollRef: { current: HTMLDivElement | null };
   /** Scrolls a part (project index) into view. */
   scrollToRow: { current: ((row: number) => void) | null };
@@ -936,8 +953,8 @@ function Grid({
 }) {
   const directionShort = useDirectionText().short;
   const columns = useMemo(
-    () => buildColumns(t, wideBands, narrow, ctx, finished, directionShort),
-    [t, wideBands, narrow, ctx, finished, directionShort],
+    () => buildColumns(t, wideBands, narrow, ctx, finished, directionShort, bands),
+    [t, wideBands, narrow, ctx, finished, directionShort, bands],
   );
   const table = useTable({
     features,
@@ -1235,7 +1252,7 @@ function Cards({
                 </div>
                 <div className="ml-auto flex min-w-0 shrink items-center gap-0.5 font-sans">
                   <GrainColumnCell ctx={c} part={part} row={row} narrow />
-                  {bandedEdges(part).length > 0 ? (
+                  {c.bands() && bandedEdges(part).length > 0 ? (
                     <BandCell
                       t={t}
                       part={part}
@@ -1405,8 +1422,13 @@ export function CutListEditor({
 
   const parts = project.parts;
   const summary = cutListSummary(toCutSizes(project));
-  const finished = project.settings.dimensionMode === 'finished';
-  const cols = useMemo(() => navColumns(wideBands, !narrow), [wideBands, narrow]);
+  // T349: a kind without edge band reads sizes as cut sizes and hides the band columns.
+  const traits = traitsOf(materialKindOf(project.stock.material));
+  const bands = traits.edgeBand;
+  const cabinet = traits.cabinet;
+  const bandNotice = projectNotices(project).some((n) => n.code === 'EDGE_BAND_IGNORED');
+  const finished = effectiveDimensionMode(project) === 'finished';
+  const cols = useMemo(() => navColumns(wideBands, !narrow, bands), [wideBands, narrow, bands]);
 
   // T123: the view (search, sort, filter, groups). It never changes the project order.
   const [query, setQuery] = useState('');
@@ -1626,6 +1648,7 @@ export function CutListEditor({
     parts,
     order,
     issuesOf,
+    bands,
     act,
     targetIds,
     selectClick,
@@ -1638,6 +1661,7 @@ export function CutListEditor({
     parts,
     order,
     issuesOf,
+    bands,
     act,
     targetIds,
     selectClick,
@@ -1657,6 +1681,7 @@ export function CutListEditor({
           latest.current.navigate(row, col, dir, enter)) as Navigate,
         allIds: () => latest.current.parts.map((p) => p.id),
         issuesOf: (index: number) => latest.current.issuesOf(index),
+        bands: () => latest.current.bands,
         rowAction: (row: number, action: RowAction) =>
           latest.current.act(action, latest.current.targetIds(row)),
         isSelected: (id: string) => latest.current.selectedSet.has(id),
@@ -1787,6 +1812,17 @@ export function CutListEditor({
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
+      {/* T349 (analysis §5.2): band values kept but not used on this kind (EDGE_BAND_IGNORED). */}
+      {bandNotice ? (
+        <p
+          role="note"
+          data-testid="edge-band-ignored"
+          className="flex items-start gap-2 rounded-lg border border-info-border bg-info-subtle px-3 py-2 text-xs text-info-text"
+        >
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>{t.edgeBandIgnored}</span>
+        </p>
+      ) : null}
       {pasteOpen ? (
         <PastePanel
           t={t.paste}
@@ -1928,18 +1964,21 @@ export function CutListEditor({
               </Button>
               {phone ? null : (
                 <>
-                  <Tooltip content={t.cabinet.openHint}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCabinetOpen((n) => n + 1)}
-                      data-testid="cabinet-open"
-                      aria-label={phone ? t.cabinet.open : undefined}
-                    >
-                      <Archive aria-hidden />
-                      <span className="max-sm:sr-only">{t.cabinet.open}</span>
-                    </Button>
-                  </Tooltip>
+                  {/* T349: "Dolap ekle" only for kinds with a cabinet (`traits.cabinet`). */}
+                  {cabinet ? (
+                    <Tooltip content={t.cabinet.openHint}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCabinetOpen((n) => n + 1)}
+                        data-testid="cabinet-open"
+                        aria-label={phone ? t.cabinet.open : undefined}
+                      >
+                        <Archive aria-hidden />
+                        <span className="max-sm:sr-only">{t.cabinet.open}</span>
+                      </Button>
+                    </Tooltip>
+                  ) : null}
                   {dxfText ? (
                     <Tooltip content={dxfText.openHint}>
                       <Button
@@ -1986,13 +2025,15 @@ export function CutListEditor({
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={() => setCabinetOpen((n) => n + 1)}
-                      data-testid="cabinet-open"
-                    >
-                      <Archive aria-hidden />
-                      {t.cabinet.open}
-                    </DropdownMenuItem>
+                    {cabinet ? (
+                      <DropdownMenuItem
+                        onSelect={() => setCabinetOpen((n) => n + 1)}
+                        data-testid="cabinet-open"
+                      >
+                        <Archive aria-hidden />
+                        {t.cabinet.open}
+                      </DropdownMenuItem>
+                    ) : null}
                     {dxfText ? (
                       <DropdownMenuItem
                         onSelect={() => setDxfOpen((n) => n + 1)}
@@ -2257,6 +2298,7 @@ export function CutListEditor({
                 ctx={ctx}
                 wideBands={wideBands}
                 finished={finished}
+                bands={bands}
                 narrow={narrow}
                 scrollRef={scrollRef}
                 scrollToRow={scrollToRow}
@@ -2290,18 +2332,21 @@ export function CutListEditor({
               </span>
             </Tooltip>
             <span className="flex-1" />
-            <Tooltip content={t.dimensionMode.hint}>
-              <label className="inline-flex cursor-pointer items-center gap-1.5 text-fg">
-                <Checkbox
-                  checked={finished}
-                  onCheckedChange={(v) =>
-                    run('setDimensionMode', { mode: v === true ? 'finished' : 'cut' })
-                  }
-                  data-testid="dimension-mode"
-                />
-                {t.dimensionMode.label}
-              </label>
-            </Tooltip>
+            {/* T349: no band, no finished sizes (a kind without edge band). */}
+            {bands ? (
+              <Tooltip content={t.dimensionMode.hint}>
+                <label className="inline-flex cursor-pointer items-center gap-1.5 text-fg">
+                  <Checkbox
+                    checked={finished}
+                    onCheckedChange={(v) =>
+                      run('setDimensionMode', { mode: v === true ? 'finished' : 'cut' })
+                    }
+                    data-testid="dimension-mode"
+                  />
+                  {t.dimensionMode.label}
+                </label>
+              </Tooltip>
+            ) : null}
             <Tooltip content={t.shortcuts}>
               <IconButton
                 size="sm"

@@ -1,5 +1,6 @@
 /** Cabinet generator rows for the cut list (T122, T260), shared by the dialog and T292. */
 import { enteredSize, type CabinetPart, type DimensionMode } from '@nittcam/core';
+import { fill } from './fill';
 import type { Messages } from './messages';
 
 const nf = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
@@ -31,4 +32,13 @@ export function cabinetRows(
     params: { ...enteredSize(p, p.edgeBand, mode), r: 0 },
     edgeBand: p.edgeBand,
   }));
+}
+
+/** "Dolap N" with the first N not used as a group yet. */
+export function nextCabinetName(pattern: string, groups: readonly (string | undefined)[]): string {
+  const used = new Set(groups);
+  for (let n = 1; ; n++) {
+    const name = fill(pattern, { n });
+    if (!used.has(name)) return name;
+  }
 }

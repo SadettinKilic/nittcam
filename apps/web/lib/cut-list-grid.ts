@@ -20,14 +20,14 @@ export const EDGES: readonly EdgeKey[] = ['top', 'bottom', 'left', 'right'];
  * separate cells; otherwise one "Bant" cell opens the four inputs (compact density, T118). The
  * "Grup" column (T123) is left out of the narrow (tablet) grid.
  */
-export function navColumns(wideBands: boolean, group = true): string[] {
+export function navColumns(wideBands: boolean, group = true, bands = true): string[] {
   return [
     'name',
     'w',
     'h',
     'qty',
     'grain',
-    ...(wideBands ? EDGES.map((e) => `edge-${e}`) : ['band']),
+    ...(!bands ? [] : wideBands ? EDGES.map((e) => `edge-${e}`) : ['band']),
     'note',
     ...(group ? ['group'] : []),
     'actions',

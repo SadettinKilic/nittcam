@@ -1,5 +1,6 @@
 'use client';
 
+import { holdTextValues } from '../../lib/hold-text';
 import { SimFindingsContext } from './sim-findings-context';
 import { cuttingSummary } from './cutting-settings';
 import { CanvasBoundary } from '../feedback/canvas-boundary';
@@ -301,6 +302,7 @@ export function SimulationView({
         onOpenSkin={onOpenSkin}
         margin={margin}
         hold={hold}
+        textValues={holdTextValues(project.stock.material)}
       />
     );
   } else if (sim) {
@@ -320,7 +322,13 @@ export function SimulationView({
           errorCount={errors.length}
           warnings={warnings}
           errors={errors}
-          links={{ parts: project.parts, onOpenPart, onOpenRow, onOpenSkin }}
+          links={{
+            parts: project.parts,
+            onOpenPart,
+            onOpenRow,
+            onOpenSkin,
+            textValues: holdTextValues(project.stock.material),
+          }}
         />
       </>
     );

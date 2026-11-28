@@ -52,6 +52,8 @@ export function OffcutsPanel({
       height: o.height,
       grain: o.grain,
       sourceProjectId: projectId,
+      // T350: the alloy / colour code of the stock travels with its offcuts
+      ...(project.stock.props ? { props: project.stock.props } : {}),
     }));
     setState({ key: layoutKey, kind: 'saving', n: offcuts.length });
     try {

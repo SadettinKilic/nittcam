@@ -1,4 +1,4 @@
-import { traitsOf, materialKindOf } from '@nittcam/core';
+import { traitsOf, materialKindOf, cleanProps, type MaterialProps } from '@nittcam/core';
 import { NextResponse } from 'next/server';
 import { companyScope } from '../../../../lib/server/company';
 import { isUuid, offcutError, readOffcutPatch, toOffcutItem } from '../../../../lib/server/offcuts';
@@ -38,6 +38,17 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
           traitsOf(materialKindOf(material)).direction.kind === 'none'
         ) {
           edit.grain = null;
+        }
+      }
+      // T350: only the material's own props (a kind change drops a stale alloy / colour code)
+      if (edit.props !== undefined || edit.material !== undefined) {
+        const stored = await scope.offcuts.get(id);
+        const material = edit.material ?? stored?.material;
+        if (material !== undefined) {
+          edit.props = cleanProps(
+            materialKindOf(material),
+            edit.props ?? (stored?.props as MaterialProps | undefined),
+          );
         }
       }
     }

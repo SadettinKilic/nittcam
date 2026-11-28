@@ -44,8 +44,9 @@ export const setMaterial = defineCommand({
   params: z.strictObject({ material: stockSchema.shape.material }),
   apply: (draft, params) => {
     draft.stock.material = params.material;
-    // A hand-picked material no longer comes from a library entry (T121).
+    // A hand-picked material no longer comes from a library entry (T121), nor its props (T350).
     delete draft.stock.libraryId;
+    delete draft.stock.props;
     applyFaceDefault(draft);
   },
 });
@@ -70,9 +71,13 @@ export const applyLibraryMaterial = defineCommand({
     width: stockSchema.shape.sheet.shape.width,
     height: stockSchema.shape.sheet.shape.height,
     grain: stockSchema.shape.sheet.shape.grain,
+    /** T350: the entry's kind-specific properties (absent = none). */
+    props: stockSchema.shape.props,
   }),
   apply: (draft, params) => {
     draft.stock.libraryId = params.libraryId;
+    if (params.props && Object.keys(params.props).length > 0) draft.stock.props = params.props;
+    else delete draft.stock.props;
     draft.stock.material = params.material;
     draft.stock.thickness = params.thickness;
     draft.stock.sheet.width = params.width;

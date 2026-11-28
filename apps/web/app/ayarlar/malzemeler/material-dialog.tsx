@@ -1,6 +1,14 @@
 'use client';
 
-import { MATERIAL_KINDS, traitsOf, materialToneSchema, type MaterialKind } from '@nittcam/core';
+import {
+  ALUMINIUM_FINISHES,
+  MATERIAL_KINDS,
+  propsFieldsOf,
+  traitsOf,
+  materialToneSchema,
+  type MaterialKind,
+  type MaterialProps,
+} from '@nittcam/core';
 import {
   Button,
   Checkbox,
@@ -24,6 +32,7 @@ import { Plus, X } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
 import { MaterialSwatch } from '../../../components/materials/swatch';
 import { fill } from '../../../lib/fill';
+import { getMessages } from '../../../lib/messages';
 import {
   toMaterial,
   type MaterialDraft,
@@ -62,7 +71,19 @@ export function MaterialDialog({
   const ids = { name: useId(), kind: useId(), tone: useId(), grain: useId() };
   const [d, setD] = useState<MaterialDraft>(initial);
   const [errors, setErrors] = useState<MaterialFormErrors>({});
-  const grainable = traitsOf(d.kind).direction.kind !== 'none';
+  const traits = traitsOf(d.kind);
+  const grainable = traits.direction.kind !== 'none';
+  // T350: the direction wording of the kind (Damar / Yüzey yönü / Film oku yönü)
+  const dir = getMessages().direction[traits.direction.label];
+  const woodWords = traits.direction.label === 'grain';
+  const fields = propsFieldsOf(d.kind);
+  const p = f.props;
+  const setProp = <K extends keyof MaterialProps>(k: K, v: MaterialProps[K] | undefined) =>
+    setD((x) => {
+      const empty = v === undefined || v === '' || v === false;
+      const rest = Object.fromEntries(Object.entries(x.props).filter(([key]) => key !== k));
+      return { ...x, props: empty ? rest : { ...rest, [k]: v } };
+    });
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -277,8 +298,126 @@ export function MaterialDialog({
             ) : null}
           </fieldset>
 
+          {/* T350 (analysis §4.4): the kind's own properties (aluminium alloy, ACM colour code). */}
+          {fields.length > 0 ? (
+            <fieldset className="flex flex-col gap-2" data-testid="material-props">
+              <legend className="mb-1.5 text-sm font-medium text-fg">{p.title}</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {fields.includes('alloy') ? (
+                  <FormField label={p.alloy} id={`${ids.name}-alloy`}>
+                    <Input
+                      id={`${ids.name}-alloy`}
+                      data-testid="material-alloy"
+                      value={d.props.alloy ?? ''}
+                      maxLength={20}
+                      placeholder={p.alloyPlaceholder}
+                      onChange={(e) => setProp('alloy', e.target.value)}
+                    />
+                  </FormField>
+                ) : null}
+                {fields.includes('temper') ? (
+                  <FormField label={p.temper} id={`${ids.name}-temper`}>
+                    <Input
+                      id={`${ids.name}-temper`}
+                      data-testid="material-temper"
+                      value={d.props.temper ?? ''}
+                      maxLength={10}
+                      placeholder={p.temperPlaceholder}
+                      onChange={(e) => setProp('temper', e.target.value)}
+                    />
+                  </FormField>
+                ) : null}
+                {fields.includes('finish') ? (
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor={`${ids.name}-finish`} className="text-sm font-medium text-fg">
+                      {p.finish}
+                    </label>
+                    <Select
+                      value={d.props.finish ?? 'none'}
+                      onValueChange={(v) =>
+                        setProp(
+                          'finish',
+                          v === 'none' ? undefined : (v as NonNullable<MaterialProps['finish']>),
+                        )
+                      }
+                    >
+                      <SelectTrigger id={`${ids.name}-finish`} data-testid="material-finish">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{p.finishNone}</SelectItem>
+                        {ALUMINIUM_FINISHES.map((x) => (
+                          <SelectItem key={x} value={x}>
+                            {p.finishes[x]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+                {fields.includes('colorCode') ? (
+                  <FormField label={p.colorCode} id={`${ids.name}-colorCode`}>
+                    <Input
+                      id={`${ids.name}-colorCode`}
+                      data-testid="material-color-code"
+                      value={d.props.colorCode ?? ''}
+                      maxLength={30}
+                      placeholder={p.colorCodePlaceholder}
+                      onChange={(e) => setProp('colorCode', e.target.value)}
+                    />
+                  </FormField>
+                ) : null}
+                {fields.includes('skin') ? (
+                  <FormField label={p.skin} id={`${ids.name}-skin`}>
+                    <NumberInput
+                      id={`${ids.name}-skin`}
+                      data-testid="material-skin"
+                      inputSize="sm"
+                      unit="mm"
+                      value={d.props.skin ?? null}
+                      min={0.1}
+                      max={2}
+                      maxDecimals={2}
+                      onValueChange={(n) => setProp('skin', n ?? undefined)}
+                    />
+                  </FormField>
+                ) : null}
+                {fields.includes('film') ? (
+                  <label className="flex items-center gap-2 text-sm text-fg sm:col-span-2">
+                    <Checkbox
+                      data-testid="material-film"
+                      checked={d.props.film === true}
+                      onCheckedChange={(c) => setProp('film', c === true)}
+                    />
+                    {p.film}
+                  </label>
+                ) : null}
+                {fields.includes('metallic') ? (
+                  <label className="flex items-center gap-2 text-sm text-fg sm:col-span-2">
+                    <Checkbox
+                      data-testid="material-metallic"
+                      checked={d.props.metallic === true}
+                      onCheckedChange={(c) => setProp('metallic', c === true)}
+                    />
+                    {p.metallic}
+                  </label>
+                ) : null}
+              </div>
+              {fields.includes('skin') ? (
+                <p className="text-xs text-fg-muted">{p.skinHint}</p>
+              ) : null}
+              {errors.props ? (
+                <p role="alert" className="text-xs text-danger-text">
+                  {p.invalid}
+                </p>
+              ) : null}
+            </fieldset>
+          ) : null}
+
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1.5 text-sm font-medium text-fg">{f.grain}</legend>
+            <legend className="mb-1.5 text-sm font-medium text-fg">
+              {woodWords ? f.grain : dir.title}
+            </legend>
             {grainable ? (
               <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2 text-sm text-fg">
@@ -287,12 +426,12 @@ export function MaterialDialog({
                     checked={d.grainOn}
                     onCheckedChange={(c) => setD((x) => ({ ...x, grainOn: c === true }))}
                   />
-                  {f.grainOn}
+                  {woodWords ? f.grainOn : fill(f.directionOn, { direction: dir.title })}
                 </label>
                 {d.grainOn ? (
                   <NumberInput
                     id={ids.grain}
-                    aria-label={f.grainAngle}
+                    aria-label={woodWords ? f.grainAngle : dir.label}
                     data-testid="material-grain"
                     className="w-28"
                     inputSize="sm"
@@ -304,7 +443,10 @@ export function MaterialDialog({
                     onValueChange={(n) => setD((x) => ({ ...x, grain: n }))}
                   />
                 ) : null}
-                <p className="w-full text-xs text-fg-muted">{f.grainHint}</p>
+                <p className="w-full text-xs text-fg-muted">
+                  {f.grainHint}
+                  {woodWords ? null : ` ${dir.note}`}
+                </p>
               </div>
             ) : (
               <p className="text-xs text-fg-muted">{f.grainPlastic}</p>

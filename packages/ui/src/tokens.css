@@ -176,6 +176,7 @@
   --color-mat-pvc: #dfe1e4;
   --color-mat-acm: #c9ced3;
   --color-mat-aluminium: #b8bec4;
+  --color-mat-brass: #c9a957;
   --color-mat-band: var(--color-brand-500);
   --color-mat-shadow: #2a2620;
   --color-selection: var(--color-brand-600);
@@ -365,6 +366,7 @@
   --color-mat-pvc: #a3a7ac;
   --color-mat-acm: #8d949b;
   --color-mat-aluminium: #8a9097;
+  --color-mat-brass: #9a7d3c;
   --color-mat-band: var(--color-brand-400);
   --color-mat-shadow: #050506;
   --color-selection: var(--color-brand-400);

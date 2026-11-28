@@ -94,6 +94,7 @@ function baseProject(
       material: pick.material,
       thickness: pick.thickness,
       sheet: { width: pick.width, height: pick.height, grain: pick.grain },
+      ...(pick.props ? { props: pick.props } : {}),
     };
     return base;
   }

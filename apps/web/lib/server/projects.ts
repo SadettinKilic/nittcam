@@ -56,6 +56,7 @@ export function toListItem(
     updatedAt: row.updatedAt.toISOString(),
     machine: machineNames.get(p.machine.machineId) ?? null,
     material: p.stock.material,
+    ...(p.stock.props ? { materialProps: p.stock.props } : {}),
     thickness: p.stock.thickness,
     sheet: { width: defaultSheet(p).width, height: defaultSheet(p).height },
     pieces: p.parts.reduce((sum, part) => sum + part.qty, 0),

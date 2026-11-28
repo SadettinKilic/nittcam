@@ -40,7 +40,7 @@ const materialIds = [...TODAY, 'MDF', 'kontrplak', 'unknown-stuff', ''];
 describe('hold limits from the traits (T343)', () => {
   it('the default limits are the old constants', () => {
     expect(DEFAULT_HOLD_LIMITS.tabs.bounds).toEqual(TAB_BOUNDS);
-    expect(DEFAULT_HOLD_LIMITS.skin).toEqual(SKIN_BOUNDS);
+    expect(DEFAULT_HOLD_LIMITS.skin).toEqual({ ...SKIN_BOUNDS, offered: true });
     expect(DEFAULT_HOLD_LIMITS.smallPart).toEqual({
       area: TAB_DEFAULTS.smallPartArea,
       minSide: TAB_DEFAULTS.smallPartMinSide,

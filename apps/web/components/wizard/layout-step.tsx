@@ -1,5 +1,6 @@
 'use client';
 
+import { holdTextValues } from '../../lib/hold-text';
 import {
   effectiveSpacing,
   minSheetMargin,
@@ -680,6 +681,7 @@ function NestSettings({
             {fill(t.tabSpacingNote, {
               gap: mmText.format(spacing.gap),
               margin: mmText.format(spacing.margin),
+              anchor: holdTextValues(project.stock.material).anchor ?? '3',
             })}
           </p>
         ) : null}

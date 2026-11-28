@@ -5,7 +5,11 @@ import { usePageBarClearance } from '../../lib/use-page-bar';
 import {
   defaultTabHeight,
   KNOWN_POSTS,
+  chipLoadBand,
+  materialFamilyIssues,
   materialTabIssues,
+  setChipLoad,
+  stepDownCeiling,
   maxTabHeight,
   parseMachineProfile,
   traitsOf,
@@ -92,6 +96,8 @@ export interface MachineFormProps {
   addParams?: { material: MaterialKind; thickness: number } | null | undefined;
   /** T302: with `addParams`, land on the set's tab fields ("Malzeme ayarında değiştir"). */
   focusTabs?: boolean;
+  /** T349: opened from step 1 "Makineyi düzenle: Metal kesim": land on the metal section. */
+  focusMetal?: boolean;
 }
 
 function Section({
@@ -178,6 +184,7 @@ export function MachineForm({
   onCancel,
   addParams = null,
   focusTabs = false,
+  focusMetal = false,
 }: MachineFormProps) {
   const f = t.form.fields;
   const o = t.form.options;
@@ -225,6 +232,15 @@ export function MachineForm({
     });
     return () => cancelAnimationFrame(raf);
   }, [startIndex, focusTabs]);
+
+  useEffect(() => {
+    if (!focusMetal) return;
+    const raf = requestAnimationFrame(() => {
+      document.getElementById('sec-metal')?.scrollIntoView({ block: 'start' });
+      document.getElementById(fieldId('metal.enabled'))?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [focusMetal]);
 
   const dirty = isDirty(initial, profile) || Object.keys(parseErrors).length > 0;
 
@@ -297,7 +313,8 @@ export function MachineForm({
     if (!submitted) return out;
     const r = parseMachineProfile(profile);
     // T302: the save-only tab bounds are checked on the form state too, so they show with the rest.
-    const tabIssues = materialTabIssues(profile);
+    // T351: the material-family limits (chip load band, step-down ceiling, ramp) likewise.
+    const tabIssues = [...materialTabIssues(profile), ...materialFamilyIssues(profile)];
     const issues = r.ok
       ? [...tabIssues, ...serverIssues]
       : [...r.issues, ...tabIssues, ...serverIssues];
@@ -1276,6 +1293,22 @@ export function MachineForm({
                         </Button>
                       </div>
                     ) : null}
+                    <MaterialFamilyDetail
+                      t={t.form.family}
+                      index={i}
+                      set={set}
+                      profile={profile}
+                      error={e}
+                      onParseError={onParseError}
+                      onChange={(fn) =>
+                        update((p) => {
+                          const x = p.materials[i] as MaterialParams;
+                          fn(x);
+                          delete x.copiedFrom;
+                          delete x.unverified;
+                        })
+                      }
+                    />
                     <MaterialTabsDetail
                       t={t.form.tabs}
                       index={i}
@@ -1295,6 +1328,29 @@ export function MachineForm({
                 );
               }}
             />
+            {/* T351: example ACM 3 and 4 mm sets in one action, always unverified (D-130). */}
+            {ACM_EXAMPLES.some((th) => !hasSet(profile, 'acm', th)) ? (
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  // 320 px: the label wraps instead of widening the page.
+                  className="h-auto max-w-full py-1.5 text-left whitespace-normal"
+                  data-testid="materials-add-acm"
+                  onClick={() => {
+                    const missing = ACM_EXAMPLES.filter((th) => !hasSet(profile, 'acm', th));
+                    missing.forEach(() => materialRows.add());
+                    update((p) => {
+                      for (const th of missing) p.materials.push(newParamSet(p, 'acm', th));
+                    });
+                  }}
+                >
+                  <Plus aria-hidden />
+                  {t.form.addAcmExamples}
+                </Button>
+              </div>
+            ) : null}
           </Section>
         </div>
       </div>
@@ -1524,6 +1580,7 @@ function MaterialTabsDetail({
                 count: builtIn.count,
                 width: nf(builtIn.width),
                 height: nf(builtIn.height),
+                cap: nf(td.materialLeft),
               })
         }
         checked={!!tabs}
@@ -1570,5 +1627,124 @@ function MaterialTabsDetail({
         </div>
       ) : null}
     </fieldset>
+  );
+}
+
+/**
+ * T351 (§3.6 "Malzeme = parametre seti", §7.1): the material-family part of a set, under its row,
+ * only for families whose traits use it (ACM, aluminium; wood and plastic rows get nothing). The
+ * chip load (feed / rpm × flutes) marked against the traits band (`limit`: the save refuses it,
+ * `materialFamilyIssues`), the step-down ceiling, and the coolant, finish and ramp fields.
+ */
+function MaterialFamilyDetail({
+  t,
+  index,
+  set,
+  profile,
+  error,
+  onParseError,
+  onChange,
+}: {
+  t: Text['form']['family'];
+  index: number;
+  set: MaterialParams;
+  profile: MachineProfile;
+  error: (path: string) => string | undefined;
+  onParseError: (path: string, error: NumberParseError | null) => void;
+  onChange: (fn: (x: MaterialParams) => void) => void;
+}) {
+  const traits = traitsOf(set.material);
+  const ramp = traits.entry.rampDeg;
+  const finish = traits.finish.defaultAllowance;
+  const used =
+    traits.chipLoad !== null ||
+    traits.coolant !== 'none' ||
+    finish !== null ||
+    ramp !== null ||
+    traits.stepDown.maxPerDiameter !== null;
+  if (!used) return null;
+  const path = (k: string) => `materials[${index}].${k}`;
+  const nf = (v: number) => String(Math.round(v * 1000) / 1000).replace('.', ',');
+  const tool = profile.tools.find((x) => x.number === set.tool);
+  const cl =
+    Number.isFinite(set.feed) && Number.isFinite(set.rpm) ? setChipLoad(profile, set) : null;
+  const band = cl ? chipLoadBand(traits, cl.diameter) : null;
+  const outside = cl && band ? cl.value < band.min - 1e-9 || cl.value > band.max + 1e-9 : false;
+  const ceiling = tool
+    ? stepDownCeiling(traits, tool.diameter, profile.metal?.rigidity ?? 'standard')
+    : null;
+  return (
+    <fieldset
+      className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2"
+      data-testid={`material-family-${index}`}
+    >
+      <legend className="sr-only">{t.title}</legend>
+      {cl && tool ? (
+        <p
+          className={`text-xs ${outside ? (band?.enforce === 'limit' ? 'text-danger-text' : 'text-warning-text') : 'text-fg-muted'}`}
+          data-testid={`material-chip-load-${index}`}
+          data-outside={outside || undefined}
+        >
+          {fill(t.chipLoad, { value: nf(cl.value), flutes: tool.flutes })}
+          {band ? ` · ${fill(t.band, { min: nf(band.min), max: nf(band.max) })}. ` : '. '}
+          {band
+            ? outside
+              ? band.enforce === 'limit'
+                ? t.outsideLimit
+                : t.outsideWarn
+              : t.inside
+            : null}
+        </p>
+      ) : null}
+      {ceiling !== null ? (
+        <p className="text-xs text-fg-muted" data-testid={`material-step-ceiling-${index}`}>
+          {fill(t.stepDown, { max: nf(ceiling), share: nf(ceiling / (tool?.diameter ?? 1)) })}
+        </p>
+      ) : null}
+      {traits.coolant !== 'none' ? (
+        <CheckField
+          path={path('coolant')}
+          label={t.coolant}
+          help={traits.coolant === 'required' ? t.coolantRequired : t.coolantRecommended}
+          checked={set.coolant ?? traits.coolant === 'required'}
+          onChange={(on) => onChange((x) => void (x.coolant = on))}
+        />
+      ) : null}
+      {finish !== null || ramp !== null ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:max-w-2xl">
+          {finish !== null ? (
+            <NumberField
+              path={path('finishAllowance')}
+              label={t.finishAllowance}
+              help={fill(t.finishHelp, { value: nf(finish) })}
+              value={set.finishAllowance ?? finish}
+              error={error(path('finishAllowance'))}
+              onParseError={onParseError}
+              onChange={(v) => onChange((x) => void (x.finishAllowance = v))}
+            />
+          ) : null}
+          {ramp !== null ? (
+            <NumberField
+              path={path('rampDeg')}
+              label={t.rampDeg}
+              help={fill(t.rampHelp, { def: nf(ramp.default), max: nf(ramp.max) })}
+              value={set.rampDeg ?? ramp.default}
+              error={error(path('rampDeg'))}
+              onParseError={onParseError}
+              onChange={(v) => onChange((x) => void (x.rampDeg = v))}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </fieldset>
+  );
+}
+
+/** T351: the thicknesses of the example ACM sets (analysis §4.2: 3 and 4 mm panels). */
+const ACM_EXAMPLES = [3, 4] as const;
+
+function hasSet(profile: MachineProfile, material: MaterialKind, thickness: number): boolean {
+  return profile.materials.some(
+    (m) => m.material === material && Math.abs(m.thickness - thickness) <= 1e-6,
   );
 }
