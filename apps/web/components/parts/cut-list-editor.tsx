@@ -136,14 +136,14 @@ import {
 } from './cut-list-cells';
 import { BulkEditSheet } from './cut-list-bulk';
 import { IssuesOkChip } from '../wizard/issues-ok-chip';
+// Static on purpose: pasting must work offline right after the page opens (D-117 drafts).
+import { PastePanel } from './paste-panel';
 import { IssueJumpContext } from '../wizard/validation-panel';
 
 /** The DXF dialog and its parser load when the dialog opens (T186). */
 const DxfImportDialog = dynamic(() => import('./dxf-import-dialog').then((m) => m.DxfImportDialog));
 /** "Dolap ekle" opens on demand, so its dialog loads then, not with every wizard page (T186). */
 const CabinetDialog = dynamic(() => import('./cabinet-dialog').then((m) => m.CabinetDialog));
-/** "Yapıştır / içe aktar" likewise (T186). */
-const PastePanel = dynamic(() => import('./paste-panel').then((m) => m.PastePanel));
 
 export type { Run } from './cut-list-cells';
 

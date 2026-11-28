@@ -1580,6 +1580,9 @@ Done in B51 (#155, D-091); goldens approved per D-051.
 - Manual tool change 20 mm above the material, no park position → field-test list.
 - Removed as done or covered: project name appending (T283), holes in Dizilim (B24), multi-file "İndir" label (T176 zip), Çizim view remembered (T290).
 
+### T385 Slim the wizard's first load back under 450 kB   [status: todo]   (D-133)
+Source: round 44. Wizard routes ship ~451 kB gzip (budget raised to 460 by D-133). Acceptance: route-split the `tr.json` messages (each route gets only its namespaces) or an equivalent; find other eager imports that can load on demand without breaking offline drafts (D-117: paste stays static); wizard ≤ 450 kB again and the budget returned to 450.
+
 ## M9: Cila ve saha hazırlığı (exit = ~90 % line: field-test ready, owner sign-off)
 
 ### Batch B29: T184–T186 (onboarding, accessibility, performance)
