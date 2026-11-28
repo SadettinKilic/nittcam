@@ -22,6 +22,7 @@ export type StartingValueSourceId =
   | 'S5'
   | 'S6'
   | 'S7'
+  | 'S8'
   | 'S9'
   | 'S11'
   | 'S12'
@@ -29,7 +30,9 @@ export type StartingValueSourceId =
   | 'S15'
   | 'S16'
   | 'S18'
-  | 'S19';
+  | 'S19'
+  | 'S20'
+  | 'S21';
 
 /** Short display name of each source (maker names, shown as is). */
 export const STARTING_VALUE_SOURCE_NAMES: Record<StartingValueSourceId, string> = {
@@ -40,6 +43,7 @@ export const STARTING_VALUE_SOURCE_NAMES: Record<StartingValueSourceId, string> 
   S5: 'Amana',
   S6: 'Amana',
   S7: 'Amana',
+  S8: 'Amana',
   S9: 'ShopBot/Onsrud',
   S11: 'Sorotec',
   S12: 'Leuco',
@@ -48,6 +52,8 @@ export const STARTING_VALUE_SOURCE_NAMES: Record<StartingValueSourceId, string> 
   S16: 'Leitz',
   S18: '3A Composites (Dibond)',
   S19: '3A Composites (Alucobond)',
+  S20: '3A Composites (Alucobond)',
+  S21: '3A Composites (Alucolux)',
 };
 
 /** How the tool enters the cut: straight plunge is fine, or a ramp is preferred / required. */
@@ -71,6 +77,8 @@ export interface StartingValueRow {
   flutes: number;
   /** Nominal diameter of the band (mm); see `DIAMETER_BANDS`. */
   diameter: number;
+  /** T424: the row holds for every diameter of its tool type (the V-bit row). */
+  anyDiameter?: true;
   /**
    * Chip load, mm per tooth. `min` / `max` are the lowest and highest industrial source values
    * (research §c `cl_min` / `cl_max`); `typ` is the cautious start (§c `cl_start`, §d). The start
@@ -151,6 +159,31 @@ const PLASTIC = { rpm: PLASTIC_RPM, plungeShare: 0.25, coolant: 'air' } as const
 const ACM = { rpm: WOOD_RPM, plungeShare: 0.25, coolant: 'air', entry: 'rampRequired' } as const;
 const ALU = { plungeShare: 0.25, coolant: 'mql', entry: 'rampRequired' } as const;
 const aluRpm = (min: number, typ: number, max: number) => ({ min, typ, max });
+
+/**
+ * T424 (CTO #15 M2): the ACM V-groove row (research §c "acm (V-kanal)", §d): flat-bottom V-bit,
+ * two flutes, 18 000 rpm, 1500 mm/min, chip load 0,025 / 0,042 / 0,05 mm per tooth (Amana ACM
+ * V-groove chart, aluminium row 3–5 mm deep [S8]; depth [S18, S20, S21]). Plunge 0,25 × feed like
+ * every row (PO B61; research 0,3). Marked "weak" in the research: doğrulanacak until T357. One row
+ * for every V-bit diameter (the chart gives one feed for its whole V-bit range): `anyDiameter`,
+ * nominal Ø12 (the sample V-bit), so `startingValueRow` matches it by kind, type and flutes.
+ */
+export const ACM_V_GROOVE_ROW: StartingValueRow = {
+  id: 'acm-vBit-2',
+  kind: 'acm',
+  toolType: 'vBit',
+  flutes: 2,
+  diameter: 12,
+  anyDiameter: true,
+  chipLoad: { min: 0.025, typ: 0.042, max: 0.05 },
+  rpm: { min: 18000, typ: 18000, max: 24000 },
+  stepDownFactor: 1,
+  // PO B61: plunge 0,25 × feed for every material (research 0,3)
+  plungeShare: 0.25,
+  entry: 'rampRequired',
+  coolant: 'none',
+  sources: ['S8', 'S18', 'S20', 'S21'],
+};
 
 /** The table (research §c; §d where §c has no row). */
 export const STARTING_VALUE_ROWS: readonly StartingValueRow[] = [
@@ -259,6 +292,7 @@ export const STARTING_VALUE_ROWS: readonly StartingValueRow[] = [
     [6, 0.076, 0.11, 0.21, 0.67, ['S6', 'S18', 'S19']],
     [8, 0.1, 0.139, 0.21, 0.5, ['S6', 'S19']],
   ]),
+  ACM_V_GROOVE_ROW,
   // Aluminium (§c aluminium), chip load clamped to the analysis §4.5 band (Ø 3–6: 0,02–0,05;
   // Ø ≥ 6: 0,04–0,10; the conservative value wins; the start stays below the ceiling), step-down
   // 0,25 × D.
@@ -298,6 +332,15 @@ export function startingValueRow(
   kind: MaterialKind,
   tool: Pick<Tool, 'type' | 'diameter' | 'flutes'>,
 ): StartingValueRow | undefined {
+  // T424: V-bit rows hold for any diameter.
+  const any = STARTING_VALUE_ROWS.find(
+    (r) =>
+      r.anyDiameter === true &&
+      r.kind === kind &&
+      r.toolType === tool.type &&
+      r.flutes === tool.flutes,
+  );
+  if (any) return any;
   const band = diameterBand(tool.diameter);
   if (band === undefined) return undefined;
   return STARTING_VALUE_ROWS.find(

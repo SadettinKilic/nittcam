@@ -1430,6 +1430,7 @@
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
       "TABS_REDUCED": "Köprü sayısı azaltıldı.",
       "TABS_NOT_HELD": "Köprülerin bir kısmı tutmuyor: komşu kesim ya da plaka kenarı köprünün arkasındaki {anchor} mm malzemeyi alıyor, bu köprüler bırakıldı (G-code başlığı da yazar). Parça arası payı en az takım Ø + {anchor} mm yap ya da ince tabakayı aç.",
+      "TABS_REDUCED_RAMP_REQUIRED": "Köprü sayısı azaltıldı: bu malzemede giriş rampayla olur ve rampa köprülerin yerini kaplıyor. Köprü genişliğini ya da adedini azaltın.",
       "TABS_REDUCED_RAMP": "Köprü sayısı azaltıldı: rampa girişi köprülerin yerini kaplıyor (G-code başlığı da yazar). Tüm köprüler için Kesim ayarlarında girişi düz dalmaya alın.",
       "TABS_NOT_PLACED": "Köprüler yerleştirilemedi.",
       "UNPLACED_COPIES": "Bazı parçalar plakaya yerleşmedi ve kesilmeyecek.",
@@ -1594,6 +1595,7 @@
         "length": "En az boy",
         "degree": "°",
         "hintStraight": "Takım her pasoda konturun başında dik iner.",
+        "lockedStraight": "Bu malzemede dik dalma yok: takım konturda, V-kanalda ve köprü sonlarında rampayla iner.",
         "hintRamp": "Takım kontur çizgisi üzerinde ileri-geri giderek iner; her bacak en fazla {angle}° eğimli ve en az {length} mm. Dalma ilerlemesiyle iner, kontur dışına çıkmaz.",
         "bounds": {
           "angle": "{min}–{max}° arası",
@@ -1669,12 +1671,14 @@
         "chipLoadHigh": "Talaş yükü malzeme ayarındakinin 2 katından fazla: takım kırılabilir; dışa aktarırken ayrıca onaylamanız istenir.",
         "feedSource": {
           "recommended": "İlerleme ve dalma malzeme ayarından ({feed} / {plunge} mm/dk).",
-          "project": "Bu projeye özel ilerleme/dalma (önerilen {feed} / {plunge} mm/dk)."
+          "project": "Bu projeye özel ilerleme/dalma (önerilen {feed} / {plunge} mm/dk).",
+          "startingValue": "İlerleme ve dalma V uçun kendi başlangıç değerinden ({feed} / {plunge} mm/dk, araştırma tablosu); makinede doğrulayın."
         },
         "feedReset": "İlerlemede önerilene dön",
         "source": {
           "recommended": "Malzeme ayarındaki devir kullanılıyor.",
-          "project": "Bu projeye özel devir."
+          "project": "Bu projeye özel devir.",
+          "startingValue": "V uçun başlangıç değerindeki devir kullanılıyor."
         },
         "reset": "Önerilene dön",
         "none": "Bu iş için malzeme ayarı yok; devir malzeme ayarı eklenince gelir."

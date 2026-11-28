@@ -25,6 +25,8 @@ export type GcodeCheckRule =
   | 'R8'
   | 'R9'
   | 'R10'
+  /** T423 (§7.2 rule 12): no descent into a metal or composite panel steeper than its limit. */
+  | 'R12'
   /** T354 (§7.2 rule 17): V-grooves of a composite panel (depth floor, V-bit only, every fold). */
   | 'R17'
   | 'MODEL'
@@ -43,6 +45,7 @@ export const GCODE_CHECK_RULES: readonly GcodeCheckRule[] = [
   'R8',
   'R9',
   'R10',
+  'R12',
   'R17',
   'MODEL',
   'LAYOUT',
@@ -171,6 +174,13 @@ export interface GcodeCheckContext {
    * silent (materials without a V-groove).
    */
   vGroove?: { minRemaining: number };
+  /**
+   * T423 (§7.2 rule 12): the stock takes no straight plunge (`traits.entry.straightPlunge` false:
+   * ACM, aluminium). Every feed move that goes down below the material top, with any tool but a
+   * drill, must be at most `maxDeg` steep over its XY travel (the part below the top), else
+   * `R12/STRAIGHT_PLUNGE_IN_METAL`. Omitted = rule 12 is silent (wood, plastic).
+   */
+  noStraightPlunge?: { maxDeg: number };
   tolerance?: GcodeCheckTolerance;
 }
 

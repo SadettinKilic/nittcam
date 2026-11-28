@@ -10,6 +10,9 @@ import { fileURLToPath } from 'node:url';
 import genericPost from '../../../machines/generic/v1/post.json';
 import mach3Post from '../../../machines/mach3/v1/post.json';
 import {
+  backFaceFixtureProject,
+  backFaceProfile,
+  GOLDEN_BACK_FACE_FIXTURE,
   GOLDEN_VGROOVE_FIXTURE,
   goldenFixtureProjects,
   goldenProfile,
@@ -107,6 +110,45 @@ export function goldenTray(post: PostId): GoldenInput {
       layout: expectedLayout(project, 0),
       machinedFace: 'back',
       vGroove: { minRemaining: 0.7 },
+      // T423: rule 12 on (ACM: at most 5°)
+      noStraightPlunge: { maxDeg: 5 },
+    },
+  };
+}
+
+/** T423: the ACM back-face golden (tabs, ramps) with its full check context (rule 12 on). */
+export function goldenBackFace(post: PostId): GoldenInput {
+  const profile = backFaceProfile(post);
+  const set = profile.materials.find((m) => m.material === 'acm' && m.thickness === 4);
+  const tool = profile.tools.find((t) => t.number === set?.tool);
+  if (!tool) throw new Error('back-face profile has no ACM 4 tool');
+  const project = backFaceFixtureProject(tool.diameter);
+  const tp = buildToolpath(project, profile);
+  if (!tp.ok) throw new Error(JSON.stringify(tp.errors));
+  const fixture = GOLDEN_BACK_FACE_FIXTURE.id;
+  const file = `${fixture}_S1.${post === 'generic' ? 'nc' : 'tap'}`;
+  const text = readFileSync(join(MACHINES, post, 'v1', 'golden', file), 'utf8');
+  return {
+    post,
+    fixture,
+    file,
+    text,
+    project,
+    toolpath: tp.toolpath,
+    context: {
+      profile,
+      verification: 'draft',
+      post: postConfig(post),
+      toolpath: tp.toolpath,
+      stock: {
+        thickness: project.stock.thickness,
+        sheetWidth: project.stock.sheet.width,
+        sheetHeight: project.stock.sheet.height,
+      },
+      sheet: 0,
+      layout: expectedLayout(project, 0),
+      machinedFace: 'back',
+      noStraightPlunge: { maxDeg: 5 },
     },
   };
 }

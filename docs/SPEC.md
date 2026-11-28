@@ -504,7 +504,7 @@ Bu kurallar üreticide uygulanır ve geri okuyucuda ayrıca denetlenir.
 11–18 arası kurallar malzeme davranışına bağlıdır; ahşap ve plastikte devreye girmez (M-Metal, D-118; ayrıntı `docs/metal/metal-analizi.md` bölüm 7). Hepsi hatadır, aksi yazılmadıkça.
 
 11. Soğutma şartsa her spindle açılışından sonra, ilk kesimden önce soğutma açıktır; takım değişimi, duraklama ve program sonunda kapalıdır; elle soğutmada ilk kesimden önce duraklama ve mesaj vardır.
-12. Demir dışı metal ve kompozit panelde malzemeye giren iniş tablo sınırından (5°) dik olamaz; matkapla delmede gagalama en çok 1 × Ø.
+12. Demir dışı metal ve kompozit panelde malzemeye giren iniş tablo sınırından (5°) dik olamaz; matkapla delmede gagalama en çok 1 × Ø. Kural kontur girişi kadar V-kanal pasolarının girişini ve köprü (tab) sonundaki inişi de kapsar: bunlar yolun üzerinde ileri-geri zikzak rampayla iner (D-143); bağımsız okuyucu her inişi okunan yoldan ölçer (`STRAIGHT_PLUNGE_IN_METAL`).
 13. Ardışık iki kesim seviyesi arası paso, tablo × makine sertliği × takım Ø tavanını aşamaz.
 14. Talaş yükü F / (S × ağız) tablo bandının içindedir (üst sınır ve besleme tabanı).
 15. Demir dışı metalde düşen her parça köprü veya ince tabaka ile tutulur; tablo sınırından küçük parça kesilmez.

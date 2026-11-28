@@ -83,7 +83,7 @@ import {
   contourPocketStart,
 } from './contour-pocket';
 import { partInHoleHosts } from './enclose';
-import { contourEntryOf } from './cutting-settings';
+import { contourEntryOf, descentOf } from './cutting-settings';
 import { cutOrder, type CutOrderMode, type CutOrderResult, type OrderItem } from './order';
 
 import {
@@ -287,6 +287,11 @@ interface Params {
   lead: LeadType;
   leadLength: number;
   plunge: PlungeOption;
+  /**
+   * T423 (§7.2 rule 12): a material without a straight plunge goes back down after each tab on a
+   * zig-zag at this angle (tabs keep a tool-radius gap for it). Null = vertical (wood, plastic).
+   */
+  descent: { angleDeg: number } | null;
   travel: 'cw' | 'ccw';
   sheet: { width: number; height: number };
   tabs: TabParams;
@@ -583,6 +588,7 @@ function buildOuterOperation(
       keepBack: leadIn + toolRadius,
       minCount: small ? p.limits.tabs.defaults.smallPartMinCount : 1,
       z: p.tabs.top,
+      ...(p.descent ? { gap: toolRadius } : {}),
     };
     // T338 (D-129): only where the tab holds (the loop is CCW unless the travel reversed it).
     const hold = p.hold;
@@ -674,7 +680,10 @@ function buildOuterOperation(
           'warning',
           partId,
           ramped
-            ? `Only ${tabs.length} of ${count} tabs fit: the ramp entry takes the room of the others.`
+            ? p.descent
+              ? // T423: the material takes no straight plunge; switching the entry is no way out.
+                `Only ${tabs.length} of ${count} tabs fit: the ramp entry this material requires takes the room of the others.`
+              : `Only ${tabs.length} of ${count} tabs fit: the ramp entry takes the room of the others.`
             : `Only ${tabs.length} of ${count} tabs fit away from corners, arcs and the lead.`,
           where,
         ),
@@ -728,7 +737,7 @@ function buildOuterOperation(
     }
     // Passes deeper than the tab top fly over the tabs (D-022); the others are above them.
     if (tabs.length > 0 && z < p.tabs.top - EPS) {
-      moves.push(...passMovesWithTabs(segs, z, tabs, p.feed, p.plungeFeed));
+      moves.push(...passMovesWithTabs(segs, z, tabs, p.feed, p.plungeFeed, p.descent ?? undefined));
     } else {
       moves.push(...pathMoves(segs, z, z, p.feed));
     }
@@ -1237,6 +1246,7 @@ export function buildToolpath(
     lead: options.lead ?? project.cutting.leadIn,
     leadLength,
     plunge: plungeFor(tool.diameter),
+    descent: options.plunge === undefined ? descentOf(project) : null,
     // CW spindle (M3): climb on an outer contour = CW travel around the part (D-021).
     travel: direction === 'climb' ? 'cw' : 'ccw',
     sheet: defaultSheet(project),
@@ -1629,6 +1639,7 @@ export function buildToolpath(
           passDepths: depths,
           safeZ,
           clearanceZ,
+          ramp: params.descent ?? undefined,
         });
         items.push({
           sheet: sheetIndex,
@@ -1659,6 +1670,8 @@ export function buildToolpath(
           safeZ,
           clearanceZ,
           kind: 'vgroove',
+          // T423: no straight plunge into the panel (§7.2 rule 12)
+          ramp: params.descent ?? undefined,
         });
         items.push({
           sheet: sheetIndex,

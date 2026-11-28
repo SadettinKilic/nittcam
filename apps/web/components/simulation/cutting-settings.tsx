@@ -3,6 +3,7 @@
 import {
   RAMP_BOUNDS,
   contourEntryOf,
+  descentOf,
   cuttingSettingsOf,
   findMaterialParams,
   findTool,
@@ -276,6 +277,8 @@ function EntrySettings({
 }) {
   // T422: what the toolpath cuts, so an ACM stock shows its traits ramp (locking it is T358).
   const entry = contourEntryOf(project);
+  // T423 (CTO #15 M1): a material without a straight plunge (ACM) locks "Dik dalma" and says why.
+  const rampOnly = descentOf(project) !== null;
   const set = machine ? findMaterialParams(machine, project.stock) : undefined;
   const toolNo = project.cutting.tools?.outer ?? set?.tool;
   const toolD = machine && toolNo !== undefined ? findTool(machine, toolNo)?.diameter : undefined;
@@ -294,6 +297,7 @@ function EntrySettings({
           ['straight', t.straight],
           ['ramp', t.ramp],
         ]}
+        disabled={rampOnly ? new Set(['straight' as const]) : undefined}
         onChange={(v) =>
           run(
             'setEntry',
@@ -347,6 +351,11 @@ function EntrySettings({
           />
         </div>
       ) : null}
+      {rampOnly ? (
+        <p className="text-xs text-fg-muted" data-testid="sim-cutting-entry-locked">
+          {t.lockedStraight}
+        </p>
+      ) : null}
       <p className="text-xs text-fg-muted" data-testid="sim-cutting-entry-hint">
         {entry ? fill(t.hintRamp, { angle: f(entry.angleDeg), length: f(length) }) : t.hintStraight}
       </p>
@@ -366,7 +375,10 @@ function Choice<V extends string>({
   options,
   onChange,
   segmented = false,
+  disabled,
 }: {
+  /** T423: options that cannot be chosen (shown, not clickable). */
+  disabled?: ReadonlySet<V> | undefined;
   /** B44: one connected row (the radios visually hidden, labels share the width). */
   segmented?: boolean;
   legend: string;
@@ -389,6 +401,7 @@ function Choice<V extends string>({
       >
         {options.map(([v, label]) => {
           const on = v === value;
+          const off = disabled?.has(v) ?? false;
           return (
             <label
               key={v}
@@ -396,6 +409,7 @@ function Choice<V extends string>({
                 'flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors duration-(--duration-fast) has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus',
                 segmented &&
                   'relative min-w-0 flex-1 justify-center rounded-md px-1.5 text-center text-xs leading-tight',
+                off && 'cursor-not-allowed opacity-60',
                 on
                   ? 'border-accent-border bg-accent-subtle font-medium text-fg'
                   : segmented
@@ -414,8 +428,9 @@ function Choice<V extends string>({
                     : 'size-4 accent-(--color-accent)'
                 }
                 checked={on}
+                disabled={off}
                 onChange={() => {
-                  if (!on) onChange(v);
+                  if (!on && !off) onChange(v);
                 }}
               />
               {label}

@@ -10,6 +10,7 @@
  */
 import { EPS } from '../geometry/constants';
 import type { Point, Polyline, Vertex } from '../geometry/types';
+import { zigzagDescent } from './descent';
 import { loopSegments, pathMoves, reversePath, type PathSeg } from './path';
 import type { Move, MoveSegment, Operation } from './types';
 
@@ -31,6 +32,13 @@ export interface OnlineInput {
   clearanceZ: number;
   /** T353: `vgroove` = the same centre-line path as a V-groove (fold line). Default `online`. */
   kind?: 'online' | 'vgroove';
+  /**
+   * T423 (§7.2 rule 12): a material without a straight plunge. The tool feeds down to the material
+   * top (Z 0) and every pass goes down on a zig-zag along the start of its own path at most
+   * `angleDeg` steep (`zigzagDescent`), so the pass still covers the whole line at its depth.
+   * Absent = straight plunges (wood and plastic, unchanged).
+   */
+  ramp?: { angleDeg: number } | undefined;
 }
 
 /** Segments of an open polyline (no closing segment; the last vertex's bulge is unused). */
@@ -59,15 +67,30 @@ export function buildOnlineOperation(o: OnlineInput): Operation {
   if (o.clearanceZ < o.safeZ - EPS) {
     approach.push({ kind: 'rapid', x: start.x, y: start.y, z: o.clearanceZ });
   }
-  approach.push({ kind: 'plunge', x: start.x, y: start.y, z: firstZ, feed: o.plungeFeed });
+  // T423: with a ramp only down to the material top; the first pass ramps in from there.
+  const top = Math.min(0, o.clearanceZ);
+  const ramped = o.ramp !== undefined && fwd.length > 0 && firstZ < top - EPS;
+  approach.push({
+    kind: 'plunge',
+    x: start.x,
+    y: start.y,
+    z: ramped ? top : firstZ,
+    feed: o.plungeFeed,
+  });
   const segments: MoveSegment[] = [{ role: 'approach', moves: approach }];
 
   let at = start;
   o.passDepths.forEach((z, i) => {
     const moves: Move[] = [];
-    if (i > 0) moves.push({ kind: 'plunge', x: at.x, y: at.y, z, feed: o.plungeFeed });
     // Open line: odd passes run backwards from the end the previous pass reached.
     const path = o.line.closed || i % 2 === 0 ? fwd : back;
+    const zPrev = i === 0 ? top : (o.passDepths[i - 1] as number);
+    const down =
+      ramped && o.ramp ? zigzagDescent(path, zPrev, z, o.ramp.angleDeg, o.plungeFeed) : null;
+    if (down) moves.push(...down);
+    // (no room for a ramp on a stub line: the plunge stays and the checker refuses it)
+    else if (i > 0 || ramped)
+      moves.push({ kind: 'plunge', x: at.x, y: at.y, z, feed: o.plungeFeed });
     moves.push(...pathMoves(path, z, z, o.feed));
     const last = path[path.length - 1];
     if (last) at = last.p1;

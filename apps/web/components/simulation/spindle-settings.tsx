@@ -225,7 +225,13 @@ function SpindleRow({
       ) : null}
       <FeedFields t={t} row={row} limits={limits} errors={errors} run={run} testId={testId} />
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-muted">
-        <span>{row.override ? t.source.project : t.source.recommended}</span>
+        <span>
+          {row.override
+            ? t.source.project
+            : row.recommendedSource === 'startingValue'
+              ? t.source.startingValue
+              : t.source.recommended}
+        </span>
         {row.override ? (
           <button
             type="button"
@@ -307,7 +313,14 @@ function FeedFields({
       ) : null}
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-muted">
         <span data-testid={`${testId}-feed-source`}>
-          {fill(own ? t.feedSource.project : t.feedSource.recommended, values)}
+          {fill(
+            own
+              ? t.feedSource.project
+              : row.recommendedSource === 'startingValue'
+                ? t.feedSource.startingValue
+                : t.feedSource.recommended,
+            values,
+          )}
         </span>
         {own ? (
           <button

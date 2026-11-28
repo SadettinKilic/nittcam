@@ -586,8 +586,11 @@ export function backFaceGoldenCases(): GoldenCase[] {
 
 /**
  * T353: ACM 4 mm tray 200 × 200 with four 25 mm flanges (blank 250 × 250, square 25 mm corner
- * reliefs), machined from the back face. Its four fold lines run edge to edge between the reliefs
- * and are cut as V-grooves (remaining 0,8 mm → 3,2 mm deep, two passes) with the V-bit T7 (90°,
+ * reliefs), machined from the back face. B73 rider (T427, CTO #15): the front and back flanges are
+ * recessed by the panel thickness (4 mm) at both ends, so the folded walls close without a clash
+ * (the fold check of Montaj → Katla; a 25 mm square relief let the flanges collide by 3,5 mm). The
+ * side fold lines run edge to edge, the front and back ones over their flange only. They are cut as
+ * V-grooves (remaining 0,8 mm → 3,2 mm deep, two passes) with the V-bit T7 (90°,
  * tip 0,2) before the outline. Pins the groove passes, the tool change and the header byte for byte.
  */
 export const GOLDEN_VGROOVE_FIXTURE = {
@@ -620,25 +623,25 @@ export function vGrooveTrayProject(toolDiameter: number): Project {
         grain: { mode: 'free', angle: 0 },
         kind: 'freeform',
         outline: [
-          v(25, 0),
-          v(225, 0),
-          v(225, 25),
+          v(29, 0),
+          v(221, 0),
+          v(221, 25),
           v(250, 25),
           v(250, 225),
-          v(225, 225),
-          v(225, 250),
-          v(25, 250),
-          v(25, 225),
+          v(221, 225),
+          v(221, 250),
+          v(29, 250),
+          v(29, 225),
           v(0, 225),
           v(0, 25),
-          v(25, 25),
+          v(29, 25),
         ],
         inners: [],
         holes: [],
         lines: [
-          fold([25, 25], [225, 25]),
+          fold([29, 25], [221, 25]),
           fold([225, 25], [225, 225]),
-          fold([225, 225], [25, 225]),
+          fold([221, 225], [29, 225]),
           fold([25, 225], [25, 25]),
         ],
         edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
