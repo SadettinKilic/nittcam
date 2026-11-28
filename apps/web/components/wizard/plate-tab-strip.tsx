@@ -83,7 +83,9 @@ export function PlateTabStrip({
       variant="ghost"
       aria-label={dir < 0 ? scrollLabels.prev : scrollLabels.next}
       data-testid={`${testId ?? 'plate-tabs'}-${dir < 0 ? 'prev' : 'next'}`}
-      className="h-8 w-6 shrink-0 px-0"
+      // Phones keep the established contract (T199b): the strip is its own full-width row and
+      // scrolls by touch, so the arrows only show from 640 px up.
+      className="h-8 w-6 shrink-0 px-0 max-sm:hidden"
       onClick={() => page(dir)}
     >
       {dir < 0 ? <ChevronLeft aria-hidden /> : <ChevronRight aria-hidden />}
