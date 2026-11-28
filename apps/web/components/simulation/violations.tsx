@@ -49,6 +49,8 @@ export interface PartLinks {
    * link to the Dizilim clearance field.
    */
   hold?: { hint: string; onOpen: () => void } | undefined;
+  /** MB4: the holding bounds the texts name (`holdTextValues` of the stock). */
+  textValues?: Record<string, string> | undefined;
 }
 
 /** T300: errors a too-small sheet margin causes (the tool leaves the sheet or the envelope). */
@@ -153,8 +155,9 @@ export function knownCode(t: SimText, code: string): boolean {
   return code in (t.codes as Record<string, string>);
 }
 
-export function codeText(t: SimText, code: string): string {
-  return (t.codes as Record<string, string>)[code] ?? fill(t.codeFallback, { code });
+export function codeText(t: SimText, code: string, values: Record<string, string> = {}): string {
+  const text = (t.codes as Record<string, string>)[code];
+  return text !== undefined ? fill(text, values) : fill(t.codeFallback, { code });
 }
 
 function groupTitle(t: SimText, group: string): string {
@@ -214,7 +217,7 @@ function FindingList({
                   </span>
                 )}
                 <span className="min-w-0">
-                  {codeText(t, f.textCode ?? f.code)}
+                  {codeText(t, f.textCode ?? f.code, links.textValues)}
                   {/* D-045: the engine's English sentence only for a code without Turkish text. */}
                   {knownCode(t, f.code) ? null : (
                     <span className="block text-xs break-words text-fg-muted">
@@ -282,13 +285,20 @@ export function Violations({
   onOpenSkin,
   margin,
   hold,
+  textValues,
 }: {
   t: SimText;
   result: SimulateResult;
   /** T287: the validation errors that stop the export (same list as Dışa aktar). */
   blocking?: readonly Finding[];
 } & PartLinks) {
-  const links: PartLinks = { ...(parts ? { parts } : {}), onOpenPart, onOpenRow, onOpenSkin };
+  const links: PartLinks = {
+    ...(parts ? { parts } : {}),
+    onOpenPart,
+    onOpenRow,
+    onOpenSkin,
+    textValues,
+  };
   const all = withBlocking(findings(result), blocking);
   const errors = all.filter((f) => f.severity === 'error');
   const warnings = all.filter((f) => f.severity === 'warning');
@@ -329,7 +339,7 @@ export function Violations({
             {fill(t.blocked.warnings, { count: warnings.length })}
           </summary>
           <div className="mt-2">
-            <FindingList t={t} items={warnings} />
+            <FindingList t={t} items={warnings} links={{ textValues }} />
           </div>
         </details>
       ) : null}

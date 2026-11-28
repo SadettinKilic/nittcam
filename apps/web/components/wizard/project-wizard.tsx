@@ -1,5 +1,6 @@
 'use client';
 
+import { holdTextValues } from '../../lib/hold-text';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -914,7 +915,10 @@ function WizardSession({
   );
   const openMargin = useCallback(() => openNestField('layout-margin'), [openNestField]);
   const openGap = useCallback(() => openNestField('layout-gap'), [openNestField]);
-  const holdLink = { hint: messages.simulation.blocked.holdHint, onOpen: openGap };
+  const holdLink = {
+    hint: fill(messages.simulation.blocked.holdHint, holdTextValues(project.stock.material)),
+    onOpen: openGap,
+  };
   const marginLow = session.issues.some((i) => i.code === 'MARGIN_BELOW_TOOL_RADIUS');
   const marginLink = marginLow
     ? {

@@ -41,8 +41,10 @@ test('T345: example vacuum M7 + coolant M8/M9 is refused with the fix text; no c
   await expect(section.getByLabel(f.coolantOn)).toHaveValue('M8');
   await expect(section.getByLabel(f.coolantOff)).toHaveValue('M9');
   await save(page);
-  await expect(page.getByText(t.errors.vacuumUsesCoolantCode).first()).toBeVisible();
-  await expect(section.getByText(t.errors.mCodeConflict)).toBeVisible();
+  await expect(
+    page.getByText(t.errors.vacuumUsesCoolantCode.replace('{code}', 'M7')).first(),
+  ).toBeVisible();
+  await expect(section.getByText(t.errors.mCodeConflict.replace('{code}', 'M9'))).toBeVisible();
 
   // the fix: the vacuum on its own outputs
   await page.getByLabel(f.vacuumOn).fill('M10');

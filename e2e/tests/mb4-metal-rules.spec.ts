@@ -71,4 +71,24 @@ test.describe('MB4 metal rules', () => {
     await row.getByTestId('material-edit').click();
     await expect(dialog.getByTestId('material-alloy')).toHaveValue('5754');
   });
+
+  test('T351: example ACM 3 and 4 mm sets in one action; family cells only on metal rows', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const t = tr.machines;
+    await page.goto('/makineler');
+    await page.getByRole('button', { name: t.add }).click();
+    await expect(page.getByRole('heading', { name: t.form.createTitle })).toBeVisible();
+    const rows = await page.locator('[data-testid^="material-tabs-"]').count();
+    // wood rows: no family detail
+    await expect(page.locator('[data-testid^="material-family-"]')).toHaveCount(0);
+    await page.getByTestId('materials-add-acm').click();
+    await expect(page.locator('[data-testid^="material-tabs-"]')).toHaveCount(rows + 2);
+    await expect(page.locator('[data-testid^="material-family-"]')).toHaveCount(2);
+    await expect(page.getByTestId('materials-add-acm')).toHaveCount(0);
+    await expect(page.getByTestId(`material-family-${rows}`)).toContainText(t.form.family.rampDeg);
+    await expect(page.getByTestId('material-unverified-note').first()).toBeVisible();
+    await expectNoA11yViolations(page);
+  });
 });
