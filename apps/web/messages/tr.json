@@ -1,4 +1,30 @@
 {
+  "direction": {
+    "grain": {
+      "title": "Damar yönü",
+      "short": "Damar",
+      "label": "Damar açısı",
+      "input": "Damar açısı (derece)",
+      "note": "Damarın yönü yoktur: 30° ile 210° aynı damardır.",
+      "pdf": "Damar {angle}°"
+    },
+    "surface": {
+      "title": "Yüzey yönü",
+      "short": "Yüzey yönü",
+      "label": "Yüzey yönü açısı",
+      "input": "Yüzey yönü açısı (derece)",
+      "note": "Yüzey (hadde) yönünün ucu yoktur: 30° ile 210° aynıdır.",
+      "pdf": "Yüzey yönü {angle}°"
+    },
+    "film": {
+      "title": "Film oku yönü",
+      "short": "Film oku",
+      "label": "Film oku açısı",
+      "input": "Film oku açısı (derece)",
+      "note": "Film okunun ucu vardır: 30° ile 210° farklıdır; parçalar okun gösterdiği yöne yerleşir.",
+      "pdf": "Film oku {angle}°"
+    }
+  },
   "grainDial": {
     "label": "Damar açısı",
     "valueText": "{deg} derece",
@@ -491,7 +517,9 @@
           "melamine": "Melamin",
           "solidWood": "Masif ahşap",
           "acrylic": "Akrilik",
-          "pvc": "PVC"
+          "pvc": "PVC",
+          "acm": "Alüminyum kompozit",
+          "aluminium": "Alüminyum levha"
         }
       },
       "versionBadge": "Sürüm {version}",
@@ -1263,6 +1291,7 @@
       "TOOL_NOT_IN_PROFILE": "Gereken takım makine profilinde yok.",
       "NO_CUTTING_PARAMS": "Bu malzeme ve kalınlık için makine profilinde kesim parametresi yok (Makineler → Malzeme parametreleri).",
       "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı başlangıç değerlerinde ve doğrulanmadı (Makineler → Malzeme parametreleri).",
+      "MATERIAL_NOT_RELEASED": "Alüminyum için rampa giriş, kademe ve talaş sınırları (T358, T359) gelmeden G-code verilmez. DXF, PDF ve etiketler kullanılabilir.",
       "POST_MISMATCH": "Makine profilindeki post sürümü yüklü post ile uyuşmuyor.",
       "NO_PLACEMENTS": "Dizilimde yerleşmiş parça yok.",
       "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
@@ -1778,12 +1807,20 @@
     "solidWood": "Masif ahşap",
     "acrylic": "Akrilik",
     "pvc": "PVC",
+    "acm": "Alüminyum kompozit",
+    "aluminium": "Alüminyum levha",
     "groupWood": "Ahşap",
     "groupPlastic": "Plastik",
+    "groupMetal": "Metal ve kompozit",
     "stone": "Mermer / taş (yakında)",
+    "steel": "Çelik (desteklenmez)",
     "unknown": "{id} (tanınmayan malzeme)"
   },
   "wizard": {
+    "faceBadge": {
+      "drawing": "Ön yüzden çiziyorsunuz · makinede aynalanır",
+      "machined": "Arka yüz görünümü"
+    },
     "assistant": {
       "open": "Asistan",
       "openLabel": "Asistanı aç",
@@ -1943,6 +1980,10 @@
         "bounds": "{min}–{max} mm arası olmalı.",
         "none": "{t} mm plakada ince tabaka bırakılamaz (en az {min} mm tabaka, üstünde en az {below} mm kesim)."
       },
+      "face": {
+        "label": "Arka yüzden işle",
+        "hint": "Plaka yüzü alta gelecek şekilde yatırılır; parçalar makinede aynalanır. Çizimde ön yüzü görmeye devam edersiniz."
+      },
       "units": {
         "mm": "mm",
         "feed": "mm/dk",
@@ -2025,6 +2066,7 @@
     "simulation": {
       "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında bir hedefe tıklayarak parçaları yerleştirin.",
       "toLayout": "Dizilim adımına git",
+      "nesting": "Dizilim hesaplanıyor… Bitince simülasyon burada açılır.",
       "noMachine": "Simülasyon için önce Makine ve plaka adımında bir makine seçin."
     },
     "export": {
@@ -2056,6 +2098,7 @@
       "openSkin": "Tabaka kalınlığına git",
       "machinesLink": "Makineler sayfası",
       "noLayout": "Önce Dizilim adımında parçaları yerleştirin.",
+      "nesting": "Dizilim hesaplanıyor… Bitince dışa aktarma kontrolü kendiliğinden başlar.",
       "noMachine": "Önce bir makine seçin.",
       "notCreated": "Proje henüz kaydedilmedi. Bir değişiklik yapınca kaydedilir, sonra dışa aktarılabilir.",
       "waitingSave": "Son değişiklikler kaydediliyor; kontrol kaydedilen revizyonla çalışacak.",
@@ -2093,6 +2136,7 @@
         "other": "diğer ayarlar"
       },
       "checkTabsNotHeld": "{count} parçada köprü az: komşu kesim ya da plaka kenarı köprünün arkasındaki malzemeyi alıyor (G-code başlığı da yazar). Bu parçaların vakumla ya da elle tutulduğunu doğruladım.",
+      "checkUnverifiedMaterial": "Önce hava kesimi ve hurda parçada deneme: bu malzemenin kesim değerleri doğrulanmamış başlangıç değerleri (G-code başlığı da yazar). Bunu yapacağım.",
       "checkVacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
       "checkFeeds": "İlerleme önerilenin çok üstünde: {tools}. Fazladan sıfır olmadığını kontrol ettim; bu değerler bilerek girildi.",
       "checkFeedsTool": "T{tool} ilerleme {feed} (önerilen {recFeed}), dalma {plunge} (önerilen {recPlunge}) mm/dk",
@@ -2194,6 +2238,7 @@
         "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
         "NO_CUTTING_PARAMS": "Makinede bu malzeme ve kalınlık için kesim ayarı yok.",
         "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı.",
+        "MATERIAL_NOT_RELEASED": "Alüminyum için rampa giriş, kademe ve talaş sınırları (T358, T359) gelmeden G-code verilmez.",
         "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
         "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
@@ -3379,6 +3424,10 @@
     "sheetSize": "{w} × {h} mm",
     "material": "{material}, {thickness} mm",
     "grain": "Damar {angle}°",
+    "faceUp": {
+      "front": "Ön yüz üstte",
+      "back": "Arka yüz üstte · parçalar aynalı"
+    },
     "noGrain": "Damarsız plaka",
     "offcut": "Artık parçadan",
     "offcutInfo": "Artık parçadan: {w} × {h} · {material} · {source} · kayıt {ref}",
@@ -3453,7 +3502,11 @@
       "noSheet": "Dizilmedi",
       "size": "{w} × {h} mm",
       "cut": "Kesim {w} × {h}",
-      "pockets": "Cep ×{n}, {d} mm derin"
+      "pockets": "Cep ×{n}, {d} mm derin",
+      "faceUp": {
+        "front": "Ön yüz",
+        "back": "Arka yüz"
+      }
     }
   },
   "onboarding": {

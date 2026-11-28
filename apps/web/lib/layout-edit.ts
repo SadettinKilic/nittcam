@@ -1,4 +1,10 @@
-import { allowedRotations, defaultSheet, rotationPolicyOf, type Project } from '@nittcam/core';
+import {
+  allowedRotations,
+  grainSheetOf,
+  rotationPolicyOf,
+  toCutSizes,
+  type Project,
+} from '@nittcam/core';
 
 /**
  * Layout editing helpers (T170, spec §6.2): turning a part through its allowed angles and
@@ -11,9 +17,11 @@ import { allowedRotations, defaultSheet, rotationPolicyOf, type Project } from '
  * has a single allowed angle (or is unknown): nothing to turn to.
  */
 export function nextRotation(project: Project, partId: string, rot: number): number | null {
-  const part = project.parts.find((p) => p.id === partId);
+  // T347/T348: the directed sheet rule and the machined (mirrored) parts, as lockPlacement reads them.
+  const cut = toCutSizes(project);
+  const part = cut.parts.find((p) => p.id === partId);
   if (!part) return null;
-  const angles = allowedRotations(part, defaultSheet(project), rotationPolicyOf(project.nesting));
+  const angles = allowedRotations(part, grainSheetOf(cut), rotationPolicyOf(project.nesting));
   if (angles.length < 2) return null;
   const after = angles.find((a) => a > rot + 1e-6);
   return after ?? angles[0] ?? null;

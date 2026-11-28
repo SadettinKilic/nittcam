@@ -143,12 +143,12 @@ export function stockMaterials(
     };
   }
   const map = texture(look, base);
-  const { roughness } = surfaceOf(look);
-  const part = new MeshStandardMaterial({ map, roughness, metalness: 0, ...offset });
+  const { roughness, metalness } = surfaceOf(look);
+  const part = new MeshStandardMaterial({ map, roughness, metalness, ...offset });
   const waste = new MeshStandardMaterial({
     map,
     roughness,
-    metalness: 0,
+    metalness,
     color: new Color(1, 1, 1).multiplyScalar(1.08),
     ...offset,
   });

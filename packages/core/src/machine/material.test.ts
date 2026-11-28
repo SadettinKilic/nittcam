@@ -52,8 +52,18 @@ describe('materialKindOf (D-029)', () => {
       'plywood',
       'melamine',
       'solidWood',
+      // T346: ACM film arrow (directed) and aluminium rolling direction (axial, default off).
+      'acm',
+      'aluminium',
     ]);
     expect(materialHasGrain(null)).toBe(false);
+  });
+
+  it('T346: ACM and aluminium aliases', () => {
+    for (const a of ['ACM', 'kompozit', 'Alüminyum kompozit', 'Dibond', 'alucobond'])
+      expect(materialKindOf(a)).toBe('acm');
+    for (const a of ['alüminyum', 'Aluminyum', 'alu', 'aluminium'])
+      expect(materialKindOf(a)).toBe('aluminium');
   });
 });
 

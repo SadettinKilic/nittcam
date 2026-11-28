@@ -32,9 +32,13 @@ const issueKeys = (json: unknown) => {
 
 describe('tool types per material (T344)', () => {
   it("the six kinds and an unknown material give today's lists", () => {
-    for (const k of [...MATERIAL_KIND_IDS, 'MDF', 'unknown-stuff']) {
+    const today = MATERIAL_KIND_IDS.filter((k) => k !== 'acm' && k !== 'aluminium');
+    for (const k of [...today, 'MDF', 'unknown-stuff']) {
       expect(operationToolTypes(k)).toEqual(OPERATION_TOOL_TYPES);
     }
+    // T346: ACM and aluminium cut with flat end mills only (no compression).
+    expect(toolTypeAllowed('acm', 'outer', 'compression')).toBe(false);
+    expect(toolTypeAllowed('aluminium', 'outer', 'flatEndMill')).toBe(true);
     expect(toolTypeAllowed('mdf', 'hole', 'drill')).toBe(true);
     expect(toolTypeAllowed('mdf', 'outer', 'vBit')).toBe(false);
   });

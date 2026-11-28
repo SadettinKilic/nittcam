@@ -781,6 +781,7 @@ function headerLines(c: Ctx, plan: FilePlan, part: number, parts: number): strin
   if (c.unverified) lines.push(UNVERIFIED_HEADER);
   if (meta.unverifiedTemplates?.length)
     lines.push(unverifiedTemplateHeader(meta.unverifiedTemplates));
+  if (meta.unverifiedMaterial) lines.push(`DOGRULANMAMIS MALZEME: ${meta.unverifiedMaterial}`);
   lines.push(`PROJE: ${meta.projectName}`);
   lines.push(`REVİZYON: ${meta.revision}`);
   lines.push(
@@ -936,6 +937,7 @@ export function generateGcode(
     (meta.unverifiedTemplates !== undefined &&
       (!Array.isArray(meta.unverifiedTemplates) ||
         !meta.unverifiedTemplates.every((n) => typeof n === 'string'))) ||
+    (meta.unverifiedMaterial !== undefined && typeof meta.unverifiedMaterial !== 'string') ||
     !Number.isInteger(meta.revision) ||
     meta.revision < 0 ||
     !st ||

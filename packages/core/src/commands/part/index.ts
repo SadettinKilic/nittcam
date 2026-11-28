@@ -52,7 +52,7 @@ function pushRectPart(draft: Draft<Project>, p: RectPartInput): void {
     qty: p.qty,
     ...(p.note ? { note: p.note } : {}),
     ...(p.group ? { group: p.group } : {}),
-    grain: { mode: grain.mode, angle: grain.angle },
+    grain: { mode: grain.mode, angle: grain.angle, ...(grain.flip ? { flip: true } : {}) },
     kind: 'rect',
     params: { w: p.params.w, h: p.params.h, r: p.params.r },
     inners: [],

@@ -37,8 +37,10 @@ export function hasStripes(look: MaterialLook): boolean {
 }
 
 /** Surface parameters: matte everywhere (no glossy "game" look), acrylic a little smoother. */
-export function surfaceOf(look: MaterialLook): { roughness: number } {
-  return { roughness: MATERIAL_TRAITS[look].look.roughness };
+export function surfaceOf(look: MaterialLook): { roughness: number; metalness: number } {
+  // T346: aluminium is metallic; every other look keeps metalness 0 (today's matte boards).
+  const { roughness, metalness } = MATERIAL_TRAITS[look].look;
+  return { roughness, metalness };
 }
 
 /** Parses `#rgb`, `#rrggbb` or `rgb(r, g, b)`; unknown → mid grey. */

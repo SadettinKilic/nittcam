@@ -6,3 +6,4 @@ export * from './nest';
 export * from './tool';
 export * from './placement';
 export * from './offcuts';
+export { grainSheetOf } from './grain-sheet';

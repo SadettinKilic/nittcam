@@ -1,4 +1,5 @@
 /** Plate and machine commands (spec §5.1 "Plaka ve makine"). */
+import { current, isDraft, type Draft } from 'immer';
 import { z } from 'zod';
 import {
   dimensionModeSchema,
@@ -8,7 +9,11 @@ import {
   PLUNGE_FEED_BOUNDS,
   SPINDLE_RPM_BOUNDS,
   entrySchema,
+  sheetSizeOf,
   stockSchema,
+  toFrontCutSizes,
+  turnLayoutOver,
+  type Project,
 } from '../../schema';
 import { feedInRange, findTool, machineFeedLimits } from '../../machine/profile';
 import { rpmInRange } from '../../toolpath/spindle';
@@ -16,6 +21,8 @@ import { OPERATION_TOOL_KINDS } from '../../toolpath/op-tools';
 import { operationToolProblem, operationToolProblemText } from '../../toolpath/op-tool-choice';
 import { SKIN_BOUNDS, holdLimitsOf, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
+import { materialKindOf } from '../../machine/material';
+import { traitsOf } from '../../machine/material-traits';
 
 /** Selects the machine profile the project uses. Selecting is allowed for AI; editing a profile is not. */
 export const setMachine = defineCommand({
@@ -39,6 +46,7 @@ export const setMaterial = defineCommand({
     draft.stock.material = params.material;
     // A hand-picked material no longer comes from a library entry (T121).
     delete draft.stock.libraryId;
+    applyFaceDefault(draft);
   },
 });
 
@@ -72,6 +80,46 @@ export const applyLibraryMaterial = defineCommand({
     draft.stock.sheet.grain = params.grain;
     // The size list belonged to the previous stock: the library entry gives one size (T164).
     delete draft.stock.sheets;
+    applyFaceDefault(draft);
+  },
+});
+
+/**
+ * T348: a new material takes its kind's machined face (ACM: back). Front is stored as absent, so a
+ * wood or plastic stock never gains the field (no patch, today's projects unchanged).
+ */
+function applyFaceDefault(draft: Draft<Project>): void {
+  const back = traitsOf(materialKindOf(draft.stock.material)).machinedFace === 'back';
+  setFace(draft, back ? 'back' : 'front');
+}
+
+/**
+ * Sets the machined face (front stored as absent). When the face changes, the stored layout is
+ * turned over with the sheet (`turnLayoutOver`), so its placements stay valid for the mirrored
+ * (or un-mirrored) parts: layouts live in the machined frame.
+ */
+function setFace(draft: Draft<Project>, face: 'front' | 'back'): void {
+  const was = draft.stock.machinedFace === 'back' ? 'back' : 'front';
+  if (face === 'back') draft.stock.machinedFace = 'back';
+  else if (draft.stock.machinedFace !== undefined) delete draft.stock.machinedFace;
+  if (was === face || !draft.layout.sheets.some((sh) => sh.placements.length > 0)) return;
+  const now = (isDraft(draft) ? current(draft) : draft) as Project;
+  const cut = toFrontCutSizes(now);
+  draft.layout = turnLayoutOver(now.layout, cut.parts, (i) => sheetSizeOf(now, i).width);
+}
+
+/**
+ * T348 (§3.6 "İşlenen yüz"): "Arka yüzden işle" on or off; one undo step. Front is stored as
+ * absent. A setup choice the user makes: not an AI tool.
+ */
+export const setMachinedFace = defineCommand({
+  name: 'setMachinedFace',
+  area: 'plate',
+  description: 'Machine the sheet from its front or its back face (back: parts are mirrored).',
+  aiTool: false,
+  params: z.strictObject({ face: z.enum(['front', 'back']) }),
+  apply: (draft, params) => {
+    setFace(draft, params.face);
   },
 });
 

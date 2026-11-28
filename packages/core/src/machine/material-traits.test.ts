@@ -6,7 +6,8 @@ import { MATERIAL_FAMILIES, MATERIAL_TRAITS, kindsOfFamily, traitsOf } from './m
 
 const WOOD = ['mdf', 'plywood', 'melamine', 'solidWood'] as const;
 const PLASTIC = ['acrylic', 'pvc'] as const;
-const KINDS_AND_UNKNOWN = [...MATERIAL_KINDS, null] as const;
+/** Today's six kinds plus unknown: their rows carry today's constants exactly. */
+const KINDS_AND_UNKNOWN = [...WOOD, ...PLASTIC, null] as const;
 
 describe('material traits (T341)', () => {
   it('has one row per material kind', () => {
@@ -55,14 +56,40 @@ describe('material traits (T341)', () => {
     expect(traitsOf(null).family).toBe('woodBoard');
   });
 
-  it('groups the kinds by family in menu order, today wood and plastic', () => {
-    expect(MATERIAL_FAMILIES).toEqual(['woodBoard', 'plastic']);
+  it('groups the kinds by family in menu order (T346: composite and non-ferrous)', () => {
+    expect(MATERIAL_FAMILIES).toEqual(['woodBoard', 'plastic', 'composite', 'nonFerrous']);
+    expect(kindsOfFamily('composite')).toEqual(['acm']);
+    expect(kindsOfFamily('nonFerrous')).toEqual(['aluminium']);
     expect(kindsOfFamily('woodBoard')).toEqual([...WOOD]);
     expect(kindsOfFamily('plastic')).toEqual([...PLASTIC]);
     for (const k of MATERIAL_KINDS) expect(MATERIAL_TRAITS[k].release).toBe('released');
   });
 
-  it('locks the six rows', () => {
+  it('locks the rows', () => {
     expect(MATERIAL_TRAITS).toMatchSnapshot();
+  });
+
+  it("T346 (D-130): ACM ships unverified NC, aluminium none; today's kinds released", () => {
+    expect(traitsOf('acm')).toMatchObject({ nc: 'unverified', ncName: 'ACM' });
+    expect(traitsOf('aluminium').nc).toBe('blocked');
+    for (const k of KINDS_AND_UNKNOWN) expect(traitsOf(k).nc).toBe('released');
+    expect(traitsOf('acm').direction).toEqual({
+      kind: 'directed',
+      label: 'film',
+      defaultOn: false,
+    });
+    expect(traitsOf('aluminium').direction).toEqual({
+      kind: 'axial',
+      label: 'surface',
+      defaultOn: false,
+    });
+    for (const k of ['acm', 'aluminium'] as const) {
+      expect(traitsOf(k).toolTypes.outer).toEqual(['flatEndMill']);
+      expect(traitsOf(k).thicknessPresets.length).toBeGreaterThan(0);
+    }
+    for (const k of KINDS_AND_UNKNOWN) {
+      expect(traitsOf(k).thicknessPresets).toEqual([]);
+      expect(traitsOf(k).look.metalness).toBe(0);
+    }
   });
 });

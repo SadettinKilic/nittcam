@@ -40,6 +40,11 @@ export interface PostMeta {
    */
   unverifiedTemplates?: readonly string[];
   /**
+   * D-130 / T346: the stock's kind ships NC with unverified starting values (ACM): one header line
+   * "DOGRULANMAMIS MALZEME: <name>". Absent = no line (today's materials stay byte-identical).
+   */
+  unverifiedMaterial?: string;
+  /**
    * The cutting settings the toolpath used (T288, K3): one "KESİM" header line. Absent = no line,
    * so programs made without it (golden files) stay byte-identical.
    */

@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useDirectionText } from '../../lib/direction-context';
 import {
   cutListToCsv,
   cutSize,
@@ -527,6 +528,7 @@ function buildColumns(
   narrow: boolean,
   ctx: { current: GridContext },
   finished = false,
+  directionShort: string = t.columns.grainHeader,
 ) {
   const c = () => ctx.current;
   const size = (normal: number, small: number) => (narrow ? small : normal);
@@ -584,7 +586,8 @@ function buildColumns(
     }),
     column.display({
       id: 'grain',
-      header: t.columns.grainHeader,
+      // T347: "Damar" / "Yüzey yönü" / "Film oku" from the stock's traits.
+      header: directionShort,
       size: size(104, 66),
       minSize: size(100, 64),
       cell: (info) => (
@@ -931,9 +934,10 @@ function Grid({
   /** Reports the columns' total width (px), so the editor knows whether the panel fits. */
   onTotalSize?: (px: number) => void;
 }) {
+  const directionShort = useDirectionText().short;
   const columns = useMemo(
-    () => buildColumns(t, wideBands, narrow, ctx, finished),
-    [t, wideBands, narrow, ctx, finished],
+    () => buildColumns(t, wideBands, narrow, ctx, finished, directionShort),
+    [t, wideBands, narrow, ctx, finished, directionShort],
   );
   const table = useTable({
     features,

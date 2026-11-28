@@ -47,10 +47,16 @@ describe('procedural material textures (T154)', () => {
       solidWood: '--color-mat-solid-wood',
       acrylic: '--color-mat-acrylic',
       pvc: '--color-mat-pvc',
+      acm: '--color-mat-acm',
+      aluminium: '--color-mat-aluminium',
     });
     const looks = ['mdf', 'plywood', 'melamine', 'solidWood', 'acrylic', 'pvc'] as const;
     expect(looks.map((l) => surfaceOf(l).roughness)).toEqual([0.92, 0.92, 0.92, 0.92, 0.55, 0.7]);
     expect(looks.filter(hasStripes)).toEqual(['plywood', 'solidWood']);
+    // T346: today's looks stay matte; aluminium is metallic, ACM a flat colour.
+    expect(looks.map((l) => surfaceOf(l).metalness)).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(surfaceOf('aluminium').metalness).toBeGreaterThan(0);
+    expect(surfaceOf('acm').metalness).toBe(0);
   });
 
   it('parses token colours', () => {

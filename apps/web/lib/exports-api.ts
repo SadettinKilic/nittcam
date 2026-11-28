@@ -55,6 +55,11 @@ export interface ExportChecklistInfo {
    */
   vacuumByHand?: true;
   /**
+   * D-130 / T346: the stock's kind ships NC with unverified starting values (ACM); the line "Önce
+   * hava kesimi ve hurda parçada deneme" must be ticked. Absent for today's materials.
+   */
+  unverifiedMaterial?: true;
+  /**
    * T338 (D-129): parts that got fewer tabs because some would not hold; the line must be ticked.
    * Absent = every part has its tabs.
    */
