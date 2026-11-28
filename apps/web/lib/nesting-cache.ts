@@ -29,7 +29,10 @@ export function optionSetKey(project: Project, params: RunNestingParams): string
     rotation: project.nesting.rotation ?? 'free',
     partInHole: project.nesting.partInHole ?? false,
   };
-  return JSON.stringify([{ ...project, nesting, layout: locked }, params]);
+  // T386: the montaj tezgâhı never changes nesting, so it is not part of the key.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- dropped from the key on purpose
+  const { assembly: _assembly, ...rest } = project;
+  return JSON.stringify([{ ...rest, nesting, layout: locked }, params]);
 }
 
 /** The same key with another mode (for the per-mode figures on the mode cards). */

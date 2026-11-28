@@ -5,7 +5,8 @@
 import type { Patch } from 'immer';
 import { immer } from './immer';
 import { z } from 'zod';
-import { formatPath, projectSchema, type Project } from '../schema';
+import { formatPath, projectSchema, pruneAssembly, type Project } from '../schema';
+import { resetAssembly, setAssemblyInstances } from './assembly';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
 import {
   addPart,
@@ -148,6 +149,8 @@ export const COMMANDS = {
   updateTemplateInstance,
   removeTemplateInstance,
   updateTemplateVersion,
+  setAssemblyInstances,
+  resetAssembly,
 } as const satisfies Record<string, CommandDefinition>;
 
 export type CommandName = keyof typeof COMMANDS;
@@ -215,6 +218,8 @@ export function applyCommand(
   }
   const [next, patches, inversePatches] = immer.produceWithPatches(project, (draft) => {
     def.apply(draft, params);
+    // T386: a part edit never leaves assembly instances of missing part copies (no-op otherwise).
+    pruneAssembly(draft);
   });
   const check = projectSchema.safeParse(next);
   if (!check.success) {

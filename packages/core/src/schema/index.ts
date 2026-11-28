@@ -1,4 +1,5 @@
 export * from './project';
+export * from './assembly';
 export * from './outline';
 export * from './migrate';
 export * from './operations';

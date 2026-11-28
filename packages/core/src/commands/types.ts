@@ -30,7 +30,7 @@ export interface CommandEnv {
 }
 
 /** Where a command lives (`packages/core/src/commands/<area>/`). */
-export type CommandArea = 'plate' | 'part' | 'nesting';
+export type CommandArea = 'plate' | 'part' | 'nesting' | 'assembly';
 
 /** Definition of one command. `params` is the single source for validation and the AI tool schema. */
 export interface CommandDefinition<S extends z.ZodType = z.ZodType> {

@@ -250,3 +250,21 @@ export function applyMatrix(m: readonly number[], x: number, y: number, z: numbe
     e(2) * x + e(6) * y + e(10) * z + e(14),
   ];
 }
+
+/** Gap between two cabinets, mm. */
+export const CABINET_GAP = 300;
+
+/** x offset of each cabinet and the overall size (cabinets in a row, bottoms on the floor). */
+export function rowLayout(groups: readonly CabinetGroup[]) {
+  let x = 0;
+  const offsets: number[] = [];
+  let h = 0;
+  let d = 0;
+  for (const g of groups) {
+    offsets.push(x);
+    x += g.assembly.width + CABINET_GAP;
+    h = Math.max(h, g.assembly.height);
+    d = Math.max(d, g.assembly.depth);
+  }
+  return { offsets, width: Math.max(0, x - CABINET_GAP), height: h, depth: d };
+}
