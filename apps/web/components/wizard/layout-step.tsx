@@ -14,6 +14,7 @@ import {
   type Project,
   type RunNestingParams,
   type ValidationIssue,
+  summarizeLayout,
 } from '@nittcam/core';
 import type { OffcutItem } from '../../lib/offcuts-api';
 import { OffcutsPanel } from './offcuts-panel';
@@ -59,6 +60,8 @@ import { WorkspaceLayout } from './workspace-layout';
 import { drawnParts } from '../layout-view/model';
 import { copiesInHoles, rotationGainsNothing } from '../../lib/nest-gain';
 import type { TableSpec } from '../../lib/preview3d/stage';
+import { hintSkinThickness } from '../../lib/tab-sheet-hint';
+import { useTabSheetHint } from '../../lib/use-tab-sheet-hint';
 
 const MODES: readonly NestingMode[] = ['minWaste', 'fastest', 'minToolChanges'];
 const ROTATIONS: readonly NestingRotation[] = ['free', 'step45', 'step15', 'none'];
@@ -330,6 +333,15 @@ export function LayoutStep({
     return { rotationNone, inHoles };
   }, [cache, cacheVersion, project, params]);
 
+  // T428: tabs (D-129) cost a sheet? Probe the same project with thin skin.
+  const currentSummary = useMemo(() => {
+    void cacheVersion;
+    if (project.layout.sheets.length === 0) return undefined;
+    // After a reload the cache is empty: the stored layout's own figures.
+    return cache.peek(optionSetKey(project, params))?.summary ?? summarizeLayout(project);
+  }, [cache, cacheVersion, project, params]);
+  const tabSheetFix = useTabSheetHint(project, params, toolDiameter, currentSummary, running);
+
   const nestRun = useMemo<NestRun>(
     () => ({ running, runMode, progress, message, nest, nestMode, cancel }),
     [running, runMode, progress, message, nest, nestMode, cancel],
@@ -347,6 +359,7 @@ export function LayoutStep({
         modeResults={modeResults}
         modeCosts={modeCosts}
         gain={gain}
+        tabSheetFix={tabSheetFix}
         offcutCount={stock.offcuts.length}
         projectId={session.projectId}
       />
@@ -359,6 +372,7 @@ export function LayoutStep({
       modeResults,
       modeCosts,
       gain,
+      tabSheetFix,
       stock.offcuts.length,
       session.projectId,
     ],
@@ -495,6 +509,7 @@ function NestSettings({
   modeResults,
   modeCosts,
   gain,
+  tabSheetFix,
   offcutCount,
   projectId,
 }: {
@@ -505,6 +520,8 @@ function NestSettings({
   modeResults: Record<string, LayoutSummary | undefined>;
   modeCosts: Record<string, ObjectiveCost | undefined>;
   gain: NestGain;
+  /** T428: the sheet count with thin skin when it saves a sheet over the tab layout, else null. */
+  tabSheetFix: number | null;
   /** T168: usable stock offcuts (same material and thickness, matching grain). */
   offcutCount: number;
   projectId: string | null;
@@ -707,6 +724,35 @@ function NestSettings({
               anchor: holdTextValues(project.stock.material).anchor ?? '3',
             })}
           </p>
+        ) : null}
+        {tabSheetFix !== null ? (
+          // T428 (CTO #15 S6): the tab spacing cost a sheet; thin skin (the stored, smaller
+          // clearance) fits the job on fewer. One click switches and nests again.
+          <div
+            className="flex flex-col items-start gap-2 rounded-md border border-info-border bg-info-subtle p-2 text-xs text-fg"
+            data-testid="layout-tab-extra-sheet"
+            data-sheets={tabSheetFix}
+          >
+            <p>
+              {fill(t.tabExtraSheet, {
+                n: tabSheetFix,
+                gap: mmText.format(project.nesting.gap),
+              })}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-testid="layout-tab-extra-sheet-apply"
+              disabled={running}
+              onClick={() => {
+                if (run('setThinSkin', { thickness: hintSkinThickness(project.stock.thickness) }))
+                  nestMode(project.nesting.mode);
+              }}
+            >
+              {fill(t.tabExtraSheetApply, { n: tabSheetFix })}
+            </Button>
+          </div>
         ) : null}
         <div className="flex flex-col gap-1.5">
           <span id={rotationLabelId} className="text-sm font-medium text-fg">

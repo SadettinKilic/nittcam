@@ -1523,19 +1523,19 @@ Acceptance:
 - [ ] the V-groove row of `docs/materials/kesim-degerleri-arastirma.md` goes into the starting-value table; V-groove passes use the V-bit's own feed/rpm, chip load ≤ 0,05 mm/tooth
 - [ ] tray golden updated (no more F6000 on the groove), `needs-human`
 
-### T425 "Örnek ACM ayarlarını ekle" fills every required field; guesses are not "confirmed"   [status: todo]   (MUST M3; before T357)
+### T425 "Örnek ACM ayarlarını ekle" fills every required field; guesses are not "confirmed"   [status: done]   (MUST M3; before T357)
 Owner: dev
 Acceptance:
-- [ ] on the seeded example machine the button fills all required fields from starting values; no empty required field after it
-- [ ] values the user types without confirming keep the "başlangıç değeri, makinede doğrulayın" state; confirmation is an explicit action
+- [x] on the seeded example machine the button fills all required fields from starting values; no empty required field after it
+- [x] values the user types without confirming keep the "başlangıç değeri, makinede doğrulayın" state; confirmation is an explicit action
 
 ### T426 ACM Z-zero warning (panel tolerance vs remaining skin)   [status: todo]   (SHOULD; with MB7 or before T357)
 Acceptance: with Z zero on the material top, a ±0,2 mm panel can leave up to 0,6 mm skin: step 5 checklist line + Kesim ayarları note recommending the spoilboard zero or a measured thickness; field kit asks for the measured panel thickness.
 
-### T427 Fold preview: status texts and the tray fixture clash   [status: todo]   (SHOULD)
+### T427 Fold preview: status texts and the tray fixture clash   [status: partial: texts done B74; fixture geometry waits for PO (golden)]   (SHOULD)
 Acceptance: "Kapanıyor" not shown at 0 %, "Çakışma var" only where a real clash exists; fix the tray fixture geometry so our own sample folds without a clash.
 
-### T428 Hint when tabs cause an extra sheet   [status: todo]   (SHOULD)
+### T428 Hint when tabs cause an extra sheet   [status: done]   (SHOULD)
 Acceptance: when the third MDF sheet is filled ~95 % only because tab spacing (D-129) grew the gaps, step 3 says so and offers "ince tabaka" or a smaller pay where it holds.
 
 ## Polish queue (M9; D-047)

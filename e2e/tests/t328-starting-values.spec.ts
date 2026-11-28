@@ -64,11 +64,16 @@ test.describe('T328 starting values for a new cutting set', () => {
     await expect(detail.getByTestId('material-starting-note')).toContainText('O-flute');
     await expect(detail.getByTestId('material-tool-hint')).toBeVisible();
 
-    // A manual edit is the user's own: the mark goes and a kind change keeps the numbers.
+    // A manual edit is the user's own: a kind change keeps the numbers. T425 (D-140): typing
+    // never confirms; the mark stays until "Değerleri doğruladım".
     const feed = row.locator('[id$="-feed"]');
     await feed.fill('4100');
     await feed.press('Tab');
-    await expect(detail.getByTestId('material-unverified-note')).toHaveCount(0);
+    await expect(detail.getByTestId('material-unverified-note')).toBeVisible();
+    await expect(detail.getByTestId('material-starting-source')).toHaveAttribute(
+      'data-kind',
+      'other',
+    );
     await pickOption(row.locator('[id$="-material"]'), tr.machines.form.options.material.mdf);
     expect((await values(row))[0]).toBe(4100);
   });

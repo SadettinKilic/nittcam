@@ -62,6 +62,9 @@ test('ACM tray folds on the bench; no corner relief is red', async ({ page }) =>
   await expect(panel).toBeVisible();
   for (let i = 1; i <= 4; i++)
     await expect(panel.getByTestId(`bench-fold-groove-${i}`)).toBeVisible();
+  // T427 (CTO #15 S5): the verdict is at the designed angles, so already flat it says clash.
+  await expect(panel.getByTestId('bench-fold-part')).toHaveAttribute('data-state', 'clash');
+  await expect(panel.getByTestId('bench-fold-state')).toHaveText(f.states.clash);
 
   await panel.getByTestId('bench-fold-all').getByRole('slider').focus();
   await page.keyboard.press('End');
