@@ -4,6 +4,7 @@
  * Pure and deterministic: no randomness, stable sorts with id/index tie-breakers, first candidate
  * wins ties, so the same input gives a byte-identical result.
  */
+import { grainSheetOf } from './grain-sheet';
 import { allowedRotations, rotationPolicyOf } from '../geometry/grain';
 import { effectiveSpacing } from './tool';
 import { contour, signedArea } from '../geometry/polyline';
@@ -905,7 +906,7 @@ export function nestingInputFromProject(
       ...partBoxSize(part),
       qty: part.qty,
       // The grain rule (D-034): the single source of allowed rotations.
-      rotations: allowedRotations(part, defaultSheet(project), rotationPolicyOf(project.nesting)),
+      rotations: allowedRotations(part, grainSheetOf(project), rotationPolicyOf(project.nesting)),
       outline: contour(deriveOutline(part)),
       holeTools: part.holes.map((h) => h.tool),
       // Only cut-outs (through cuts) leave room for part-in-hole: a blind pocket (T325), an engraved
@@ -943,7 +944,7 @@ function isAxisRect(vertices: readonly { x: number; y: number; bulge: number }[]
  * switches the whole job to true-shape (mixed jobs: true-shape for all).
  */
 export function nestingEngineOf(project: Project): NestingEngine {
-  const sheet = defaultSheet(project);
+  const sheet = grainSheetOf(project);
   const policy = rotationPolicyOf(project.nesting);
   for (const part of project.parts) {
     if (part.kind !== 'rect' && !isAxisRect(deriveOutline(part))) return 'trueShape';

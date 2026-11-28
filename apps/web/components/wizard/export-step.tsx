@@ -10,6 +10,7 @@ import { Callout } from './panels';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fill } from '../../lib/fill';
+import { useNestingActivity } from '../../lib/use-nesting-worker';
 import { itemPlace, machineRelated, onDrawnItem, onPartRow } from '../../lib/part-items';
 import {
   downloadBlocker,
@@ -128,7 +129,9 @@ export function ExportStep({
   const acceptId = useId();
   const hasLayout = project.layout.sheets.length > 0;
   const busySaving = !saved || saveState === 'pending' || saveState === 'saving';
-  const canRun = machine !== null && hasLayout && projectId !== null && !busySaving;
+  // T384: a nesting run still busy (the user left Dizilim at once) brings a new layout; wait for it.
+  const nestingBusy = useNestingActivity() !== null;
+  const canRun = machine !== null && hasLayout && projectId !== null && !busySaving && !nestingBusy;
   const [attempt, setAttempt] = useState(0);
   const key = canRun ? `${projectId}@${revision}#${attempt}` : '';
 
@@ -267,7 +270,18 @@ export function ExportStep({
 
   let status: React.ReactNode;
   if (!machine) status = <p className="text-sm text-fg-muted">{t.noMachine}</p>;
-  else if (!hasLayout) status = <p className="text-sm text-fg-muted">{t.noLayout}</p>;
+  else if (nestingBusy) {
+    status = (
+      <p
+        role="status"
+        data-testid="export-nesting"
+        className="flex items-center gap-2 text-sm text-fg-muted"
+      >
+        <Spinner />
+        {t.nesting}
+      </p>
+    );
+  } else if (!hasLayout) status = <p className="text-sm text-fg-muted">{t.noLayout}</p>;
   else if (projectId === null) {
     status = (
       <p data-testid="export-not-created" className="text-sm text-fg-muted">

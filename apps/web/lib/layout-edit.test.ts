@@ -23,7 +23,7 @@ function rect(id: string, w: number, h: number, grain: Part['grain']): Part {
 function project(parts: Part[], grain: number | null, rotation?: string): Project {
   return {
     parts,
-    stock: { sheet: { width: 2800, height: 2070, grain } },
+    stock: { material: 'mdf', sheet: { width: 2800, height: 2070, grain } },
     nesting: { margin: 10, gap: 0.5, ...(rotation ? { rotation } : {}) },
     layout: {
       sheets: [

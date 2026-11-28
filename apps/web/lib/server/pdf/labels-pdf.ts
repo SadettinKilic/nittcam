@@ -4,6 +4,7 @@
  * from the saved revision; the grid and the print offset come from the request.
  */
 import {
+  faceUpOf,
   labelCells,
   LABEL_PAGE,
   MM_TO_PT,
@@ -120,6 +121,7 @@ function drawLabel(
   y: number,
   w: number,
   h: number,
+  face: 'front' | 'back' | null = null,
 ): void {
   // Scale everything to the label (70 × 37 mm = 1), never larger than 1.6 or smaller than 0.45.
   const k = Math.max(0.45, Math.min(1.6, w / (70 * MM_TO_PT), h / (37 * MM_TO_PT)));
@@ -134,7 +136,9 @@ function drawLabel(
   const numSize = 14 * k;
   line -= numSize * 0.8;
   text(page, label.number, x + pad, line, fonts.bold, numSize);
-  const sheet = label.sheet === null ? t.noSheet : fill(t.sheet, { n: label.sheet });
+  const placedOn = label.sheet === null ? t.noSheet : fill(t.sheet, { n: label.sheet });
+  // T348 (§3.6): the face that was up on the machine, next to the sheet number.
+  const sheet = face ? `${placedOn} · ${t.faceUp[face]}` : placedOn;
   right(page, sheet, x + w - pad, line, fonts.bold, 8.5 * k, label.sheet === null ? ACCENT : INK);
 
   // Line 2: name.
@@ -205,6 +209,7 @@ export async function renderLabelsPdf(input: LabelsPdfInput): Promise<Uint8Array
   const { doc, fonts } = await newDocument(`${projectName}: ${t.title}`, `rev ${revision}`);
   const company = input.company?.name.trim() ?? '';
   const labels = partLabels(project);
+  const face = faceUpOf(project);
   const cells = labelCells(grid, offset);
   const pw = LABEL_PAGE.width * MM_TO_PT;
   const ph = LABEL_PAGE.height * MM_TO_PT;
@@ -227,6 +232,7 @@ export async function renderLabelsPdf(input: LabelsPdfInput): Promise<Uint8Array
         ph - (c.y + c.height) * MM_TO_PT,
         c.width * MM_TO_PT,
         c.height * MM_TO_PT,
+        face,
       );
     });
   }

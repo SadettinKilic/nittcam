@@ -113,6 +113,15 @@ export function ExportChecklist({
           label={t.checkVacuumByHand}
         />
       ) : null}
+      {checklist?.unverifiedMaterial ? (
+        // D-130 / T346: ACM cutting values are unverified starting values.
+        <ChecklistItem
+          testId={`${testIdPrefix}-check-material`}
+          checked={checks.material ?? false}
+          onChange={(v) => set({ material: v })}
+          label={t.checkUnverifiedMaterial}
+        />
+      ) : null}
       {checklist?.tabsNotHeld ? (
         // T338 (D-129): some tabs were left out because they would not hold.
         <ChecklistItem

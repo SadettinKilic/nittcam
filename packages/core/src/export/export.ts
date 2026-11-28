@@ -28,6 +28,8 @@ import {
   type ToolpathOptions,
 } from '../toolpath';
 import { programTools, type ProgramTools } from './program-tools';
+import { materialKindOf } from '../machine/material';
+import { traitsOf } from '../machine/material-traits';
 import { unverifiedTemplateNames } from '../template';
 import { cuttingSettingsOf } from '../toolpath/cutting-settings';
 import { feedOverridesOf, spindleOverridesOf } from '../toolpath/spindle';
@@ -90,6 +92,7 @@ export function exportNc(
     ...(options.fileStem ? { fileStem: options.fileStem } : {}),
     ...(options.revisionInFileName ? { revisionInFileName: true } : {}),
     ...unverifiedTemplatesMeta(project),
+    ...unverifiedMaterialMeta(project),
     ...cuttingMeta(project, profile),
     stock: {
       material: project.stock.material,
@@ -143,6 +146,15 @@ export function cuttingMeta(
         : { angleDeg: entry.angleDeg, length: entry.length };
   }
   return { cutting };
+}
+
+/**
+ * D-130 / T346: a kind whose NC ships with unverified starting values (ACM) names itself in the
+ * header; nothing for today's kinds, so their programs stay byte-identical.
+ */
+function unverifiedMaterialMeta(project: Project): Pick<PostMeta, 'unverifiedMaterial'> {
+  const traits = traitsOf(materialKindOf(project.stock.material));
+  return traits.nc === 'unverified' ? { unverifiedMaterial: traits.ncName } : {};
 }
 
 /** The unverified ready templates of the project (T282); nothing when none, so output is unchanged. */

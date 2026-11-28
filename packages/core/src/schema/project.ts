@@ -309,6 +309,11 @@ export const partOperationsSchema = z.strictObject({
 export const partGrainSchema = z.strictObject({
   mode: z.enum(['free', 'fixed'], { error: 'grain mode must be "free" or "fixed"' }),
   angle: grainAngleSchema,
+  /**
+   * T347 (§3.6, §9.2): on a directed material (ACM film arrow) the part's arrow points the other
+   * way (angle + 180°). Absent = not flipped; ignored on axial materials (30° = 210° there).
+   */
+  flip: z.boolean({ error: 'must be true or false' }).optional(),
 });
 
 const partBase = {
@@ -422,6 +427,14 @@ export const stockSchema = z.strictObject({
    */
   sheets: z.array(projectSheetSizeSchema).min(1, { error: 'at least one sheet size' }).optional(),
   useOffcuts: z.boolean({ error: 'must be true or false' }),
+  /**
+   * T348 (§3.6 "İşlenen yüz"): the face that is up on the machine. `back`: parts are mirrored once
+   * in the layout stage (toolpath, G-code, simulation, DXF, PDF agree); the drawing board keeps the
+   * front view. Absent = front (today's projects, no migration).
+   */
+  machinedFace: z
+    .enum(['front', 'back'], { error: 'machined face must be "front" or "back"' })
+    .optional(),
 });
 
 /** Nesting goal (spec §6.2). */

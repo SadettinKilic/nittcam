@@ -9,6 +9,7 @@
  * measured from the finished edge, so they move by the left and bottom band thickness to stay at
  * the same place on the finished part.
  */
+import { machinedProject } from './machined-face';
 import type { DimensionMode, Part, Project, RectParams, Vertex } from './project';
 
 /** Smallest cut side kept when bands are as thick as the part (mm); never zero or negative. */
@@ -101,10 +102,19 @@ export function cutPart(part: Part, mode: DimensionMode): Part {
 }
 
 /**
- * The project as it is cut: rectangle parts at their cut size (see `cutPart`). Returns the same
- * object when nothing is deducted, so `cut` mode and unbanded projects are untouched.
+ * The project as it is cut: rectangle parts at their cut size (see `cutPart`) and, on a stock
+ * machined from its back (T348), every part mirrored (`machinedProject`). Returns the same object
+ * when nothing changes, so `cut` mode, unbanded and front-face projects are untouched.
  */
 export function toCutSizes(project: Project): Project {
+  return machinedProject(toFrontCutSizes(project));
+}
+
+/**
+ * Cut sizes in the front view (no back-face mirror). The G-code check builds its own mirrored
+ * expectation from this (T348), independent of `machinedProject`.
+ */
+export function toFrontCutSizes(project: Project): Project {
   // Partial projects (tests, older callers) may lack settings: absent = "cut".
   const settings = project.settings as Project['settings'] | undefined;
   const mode = settings?.dimensionMode ?? 'cut';

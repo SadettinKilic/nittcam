@@ -4,14 +4,15 @@ import { immer } from '../immer';
 import { z } from 'zod';
 import { PROFILE_BOUNDS } from '../../machine/profile';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../../geometry/grain';
+import { grainSheetOf } from '../../nesting/grain-sheet';
 import { nestProject, type NestHooks } from '../../nesting/nest';
 import type { ObjectiveCost } from '../../nesting/types';
 import { offcutSheetSchema } from '../../nesting/offcuts';
 import {
-  defaultSheet,
   nestingRotationSchema,
   nestingSchema,
   placementSchema,
+  toCutSizes,
   type Project,
 } from '../../schema';
 import { defineCommand } from '../types';
@@ -217,10 +218,12 @@ export const lockPlacement = defineCommand({
     if (!placed) return `copy ${params.index} of part "${params.partId}" is not placed`;
     if (params.rot !== undefined) {
       // The grain rule (D-034): only rotations from `allowedRotations` may be set by hand.
-      const part = project.parts.find((p) => p.id === params.partId);
+      // T348: placements live in the machined frame (mirrored parts on a back-face stock).
+      const cut = toCutSizes(project);
+      const part = cut.parts.find((p) => p.id === params.partId);
       const policy = rotationPolicyOf(project.nesting);
-      if (!part || !rotationAllowed(part, defaultSheet(project), params.rot, policy)) {
-        const allowed = part ? allowedRotations(part, defaultSheet(project), policy) : [];
+      if (!part || !rotationAllowed(part, grainSheetOf(cut), params.rot, policy)) {
+        const allowed = part ? allowedRotations(part, grainSheetOf(cut), policy) : [];
         return `rotation ${params.rot}° is not allowed for part "${params.partId}" (allowed: ${allowed.join(', ')})`;
       }
     }

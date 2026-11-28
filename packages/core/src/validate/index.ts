@@ -4,10 +4,17 @@
  * place (stock + part, tool table + hole) live here. Pure: same project, same list.
  */
 import { EPS } from '../geometry';
-import { findMaterialParams, findTool, machineFeedLimits, type MachineProfile } from '../machine';
+import {
+  findMaterialParams,
+  findTool,
+  machineFeedLimits,
+  materialNcStatus,
+  type MachineProfile,
+} from '../machine';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../geometry/grain';
 import { fitsUsableAny, partBoxSize, partShape, rotationOptions, usableSize } from '../nesting/fit';
 import { nestingEngineOf } from '../nesting/nest';
+import { grainSheetOf } from '../nesting/grain-sheet';
 import { checkPlacement, partSizes } from '../nesting/placement';
 import { effectiveSpacing, nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
@@ -52,6 +59,8 @@ export type ValidationCode =
   | 'PLACEMENT_GRAIN'
   | 'NO_CUTTING_PARAMS'
   | 'CUTTING_PARAMS_UNVERIFIED'
+  /** D-130 / T346: the stock's kind may not leave the app as NC yet (aluminium until T358/T359). */
+  | 'MATERIAL_NOT_RELEASED'
   | 'SPINDLE_RPM_OUT_OF_RANGE'
   | 'FEED_OUT_OF_RANGE'
   | 'MACHINE_FEED_ABOVE_MAX'
@@ -123,7 +132,7 @@ export const partLargerThanSheet: ValidationRule = (project, context) => {
     // The forced grain rotation counts (D-034): the same footprints the placer tries.
     const rotations = allowedRotations(
       part,
-      defaultSheet(project),
+      grainSheetOf(project),
       rotationPolicyOf(project.nesting),
     );
     const options = rotationOptions(partShape(part), rotations);
@@ -361,8 +370,8 @@ export const placementGrain: ValidationRule = (project) => {
     sheet.placements.forEach((pl, p) => {
       const part = parts.get(pl.partId);
       const policy = rotationPolicyOf(project.nesting);
-      if (!part || rotationAllowed(part, defaultSheet(project), pl.rot, policy)) return;
-      const allowed = allowedRotations(part, defaultSheet(project), policy);
+      if (!part || rotationAllowed(part, grainSheetOf(project), pl.rot, policy)) return;
+      const allowed = allowedRotations(part, grainSheetOf(project), policy);
       const what = pl.locked ? 'locked copy' : 'copy';
       issues.push({
         code: pl.locked ? 'LOCKED_PLACEMENT_GRAIN' : 'PLACEMENT_GRAIN',
@@ -399,6 +408,23 @@ export const noCuttingParams: ValidationRule = (project, context) => {
       severity: 'error',
       path: 'stock.material',
       message: `the machine has no cutting parameters for ${project.stock.material} ${mm(project.stock.thickness)} mm`,
+    },
+  ];
+};
+
+/**
+ * (e1) D-130 / T346: the stock's kind ships no NC yet (aluminium: ramp entry, step-down and chip
+ * load limits of T358 / T359 first). An error, so the export is blocked by the same gate as every
+ * blocking issue (server and Simülasyon badge); DXF, PDF and labels do not read it.
+ */
+export const materialNotReleased: ValidationRule = (project) => {
+  if (materialNcStatus(project.stock.material) !== 'blocked') return [];
+  return [
+    {
+      code: 'MATERIAL_NOT_RELEASED',
+      severity: 'error',
+      path: 'stock.material',
+      message: `no NC for ${project.stock.material} yet: ramp entry, step-down and chip load limits (T358, T359) come first`,
     },
   ];
 };
@@ -806,6 +832,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   lockedPlacementInvalid,
   placementGrain,
   noCuttingParams,
+  materialNotReleased,
   unverifiedCuttingParams,
   spindleRpmOutOfRange,
   feedOutOfRange,

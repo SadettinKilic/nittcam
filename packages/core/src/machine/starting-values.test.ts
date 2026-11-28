@@ -165,7 +165,7 @@ describe('STARTING_VALUE_ROWS', () => {
     }
   });
 
-  it('covers every kind, and only the six existing kinds (no metal)', () => {
+  it('covers every kind (T346: ACM and aluminium too)', () => {
     const kinds = new Set(STARTING_VALUE_ROWS.map((r) => r.kind));
     expect([...kinds].sort()).toEqual([...MATERIAL_KIND_IDS].sort());
   });

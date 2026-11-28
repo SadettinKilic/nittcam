@@ -11,6 +11,7 @@ import {
   stockFromLibrary,
   type MachineProfile,
   type MaterialFamily,
+  type MaterialTraits,
   type MaterialKind,
   type Project,
   type ValidationIssue,
@@ -29,6 +30,7 @@ import type { TableSpec } from '../../lib/preview3d/stage';
 import { useView3d } from '../../lib/preview3d/view-memory';
 import { fill } from '../../lib/fill';
 import { fillRich } from '../../lib/fill-rich';
+import { useDirectionText } from '../../lib/direction-context';
 import { grainDialLabels } from '../../lib/grain-labels';
 import { useMessages } from '../../lib/messages-context';
 import { paramFixHref } from '../../lib/machine-form';
@@ -69,13 +71,34 @@ const mm = (v: number) => mmFormat.format(v);
  */
 export const SHEET_PRESETS = traitsOf(null).sheetPresets;
 
+/** Profile thicknesses and the behaviour table's presets, ascending, without repeats. */
+export function mergeThicknesses(
+  profile: readonly number[],
+  traits: Pick<MaterialTraits, 'thicknessPresets'>,
+): number[] {
+  return [...new Set([...profile, ...traits.thicknessPresets])].sort((a, b) => a - b);
+}
+
 /** Picker groups (T342): the families present in the behaviour table, each with its kinds. */
-const GROUP_LABEL: Record<MaterialFamily, 'groupWood' | 'groupPlastic'> = {
+type GroupLabel = 'groupWood' | 'groupPlastic' | 'groupMetal';
+const GROUP_LABEL: Record<MaterialFamily, GroupLabel> = {
   woodBoard: 'groupWood',
   plastic: 'groupPlastic',
+  // D-130: composite and non-ferrous share one heading, "Metal ve kompozit".
+  composite: 'groupMetal',
+  nonFerrous: 'groupMetal',
 };
-const GROUPS = MATERIAL_FAMILIES.map((family) => ({ family, kinds: kindsOfFamily(family) })).filter(
-  (g) => g.kinds.length > 0,
+const GROUPS = MATERIAL_FAMILIES.reduce<{ label: GroupLabel; kinds: MaterialKind[] }[]>(
+  (out, family) => {
+    const kinds = kindsOfFamily(family);
+    if (kinds.length === 0) return out;
+    const label = GROUP_LABEL[family];
+    const group = out.find((g) => g.label === label);
+    if (group) group.kinds.push(...kinds);
+    else out.push({ label, kinds: [...kinds] });
+    return out;
+  },
+  [],
 );
 
 type Preset = { a: number; b: number };
@@ -158,8 +181,9 @@ export function MachineFields({
   const custom = preset < 0 || customOpen;
   const thicknesses = entry
     ? entry.thicknesses
-    : profile && kind
-      ? profileThicknesses(profile, kind)
+    : kind
+      ? // T346: the profile's thicknesses plus the kind's presets (none for today's kinds).
+        mergeThicknesses(profile ? profileThicknesses(profile, kind) : [], traitsOf(kind))
       : [];
   const found = profile ? findMaterialParams(profile, stock) : undefined;
   // T265: unconfirmed starting values do not count as a configured set.
@@ -327,8 +351,8 @@ export function MachineFields({
               </SelectGroup>
             ) : (
               GROUPS.map((g) => (
-                <SelectGroup key={g.family}>
-                  <SelectLabel>{materials[GROUP_LABEL[g.family]]}</SelectLabel>
+                <SelectGroup key={g.label} data-testid={`wizard-material-${g.label}`}>
+                  <SelectLabel>{materials[g.label]}</SelectLabel>
                   {g.kinds.map((k) => (
                     <SelectItem key={k} value={k}>
                       {materialName(k)}
@@ -340,6 +364,10 @@ export function MachineFields({
             <SelectSeparator />
             <SelectItem value="__stone" disabled>
               {materials.stone}
+            </SelectItem>
+            {/* D-118: steel and stainless are permanently out; shown disabled so nobody hunts. */}
+            <SelectItem value="__steel" disabled>
+              {materials.steel}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -429,6 +457,7 @@ export function MachineFields({
         {set || project.cutting.skin ? (
           <ThinSkin t={t} project={project} errors={errors} run={run} />
         ) : null}
+        <MachinedFace t={t} project={project} run={run} />
       </div>
 
       <fieldset className="flex flex-col gap-2">
@@ -594,6 +623,38 @@ function SheetSizesPick({
   );
 }
 
+/**
+ * T348 (§3.6 "İşlenen yüz"): "Arka yüzden işle". Shown for materials machined from the back by
+ * default (composite panels) and whenever a project is already set to the back face.
+ */
+function MachinedFace({ t, project, run }: { t: Text; project: Project; run: Run }) {
+  const id = useId();
+  const hintId = useId();
+  const back = project.stock.machinedFace === 'back';
+  if (!back && traitsOf(materialKindOf(project.stock.material)).machinedFace !== 'back') {
+    return null;
+  }
+  return (
+    <div className="flex flex-col gap-2" data-testid="machined-face">
+      <div className="flex items-center gap-2">
+        <Switch
+          id={id}
+          checked={back}
+          aria-describedby={hintId}
+          data-testid="machined-face-switch"
+          onCheckedChange={(on) => run('setMachinedFace', { face: on ? 'back' : 'front' })}
+        />
+        <label htmlFor={id} className="text-sm text-fg">
+          {t.face.label}
+        </label>
+      </div>
+      <p id={hintId} className="text-xs text-fg-muted">
+        {t.face.hint}
+      </p>
+    </div>
+  );
+}
+
 function ThinSkin({
   t,
   project,
@@ -684,6 +745,7 @@ export function SheetGrain({
   onGrainPreview?: (angle: number | null) => void;
 }) {
   const grainText = useMessages().grainDial;
+  const direction = useDirectionText();
   const { stock } = project;
   const sheet = defaultSheet(project);
   if (traitsOf(materialKindOf(stock.material)).direction.kind === 'none') {
@@ -711,7 +773,7 @@ export function SheetGrain({
   }
   return (
     <fieldset className="flex flex-col gap-2" data-testid="sheet-grain">
-      <legend className="mb-1.5 text-sm font-medium text-fg">{t.grain}</legend>
+      <legend className="mb-1.5 text-sm font-medium text-fg">{direction.title}</legend>
       <GrainDial
         value={sheet.grain}
         onValueChange={(a) => onGrainPreview?.(a)}
@@ -719,7 +781,7 @@ export function SheetGrain({
           onGrainPreview?.(null);
           if (a !== sheet.grain) run('setGrain', { grain: a });
         }}
-        labels={grainDialLabels(grainText)}
+        labels={grainDialLabels(grainText, { direction })}
         data-testid="sheet-grain-dial"
       />
     </fieldset>

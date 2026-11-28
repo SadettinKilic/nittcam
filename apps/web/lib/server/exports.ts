@@ -17,6 +17,7 @@ import {
   unverifiedReasons,
   vacuumByHand,
   unverifiedTemplateNames,
+  materialNcStatus,
   type ExportNcResult,
   type PostFile,
   type ProgramTools,
@@ -323,6 +324,10 @@ function checklistOf(
       })),
     fileNames: fileNameInfo(files.names, p.constraints.maxFileNameLength, files.latestLimit),
     ...(program && program.tabsNotHeld > 0 ? { tabsNotHeld: program.tabsNotHeld } : {}),
+    // D-130 / T346: ACM NC ships with unverified starting values; a required line to tick.
+    ...(materialNcStatus(data.stock.material) === 'unverified'
+      ? { unverifiedMaterial: true as const }
+      : {}),
   };
 }
 

@@ -8,7 +8,7 @@
  */
 import { EPS } from '../geometry/constants';
 import { MATERIAL_KIND_IDS, type MaterialKind } from './material-kinds';
-import { traitsOf } from './material-traits';
+import { traitsOf, type MaterialTraits } from './material-traits';
 import type { MachineProfile, MaterialParams } from './profile';
 import type { LibraryMaterial } from './library';
 
@@ -38,6 +38,8 @@ const ALIASES: Record<MaterialKind, readonly string[]> = {
   solidWood: ['solidwood', 'masif', 'masifahsap', 'ahsap', 'wood', 'kereste'],
   acrylic: ['acrylic', 'akrilik', 'pleksi', 'pleksiglas', 'plexiglass', 'pmma'],
   pvc: ['pvc', 'foreks', 'forex', 'pvcfoam', 'sertpvc'],
+  acm: ['acm', 'kompozit', 'aluminyumkompozit', 'alukompozit', 'dibond', 'alucobond'],
+  aluminium: ['aluminium', 'aluminum', 'aluminyum', 'alu', 'aluminyumlevha', 'aluminyumsac'],
 };
 
 const FOLD: Record<string, string> = {
@@ -75,6 +77,15 @@ export function materialKindOf(material: string): MaterialKind | null {
  */
 export function materialHasGrain(kind: MaterialKind | null): boolean {
   return traitsOf(kind).direction.kind !== 'none';
+}
+
+/**
+ * D-130 / T346: whether NC may leave the app for a project material: `released` (today's kinds and
+ * unknown materials), `unverified` (ACM: header line + required checklist item) or `blocked`
+ * (aluminium until T358 / T359).
+ */
+export function materialNcStatus(material: string): MaterialTraits['nc'] {
+  return traitsOf(materialKindOf(material)).nc;
 }
 
 /**

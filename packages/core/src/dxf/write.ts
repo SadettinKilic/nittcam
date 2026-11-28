@@ -9,6 +9,7 @@ import { bbox, contour, normalize } from '../geometry/polyline';
 import type { Polyline } from '../geometry/types';
 import type { Hole, Part, Project } from '../schema';
 import { innerOperation, outlineOperation } from '../schema/operations';
+import { machinedProject } from '../schema/machined-face';
 import { deriveOutline } from '../schema/outline';
 import { sheetSizeOf } from '../schema/sheet-size';
 import { placedHoleCentre } from '../toolpath/holes';
@@ -145,7 +146,9 @@ function rect(layer: string, x: number, y: number, w: number, h: number): DxfEnt
  * Layout entities: sheet i sits right of sheet i−1 with `DXF_EXPORT_GAP` between them; its frame
  * on PLAKA, its placed parts in the sheet frame. Placements of unknown parts are skipped.
  */
-export function layoutEntities(project: Pick<Project, 'parts' | 'layout' | 'stock'>): DxfEntity[] {
+export function layoutEntities(entered: Pick<Project, 'parts' | 'layout' | 'stock'>): DxfEntity[] {
+  // T348: the layout is in the machined frame; a back-face stock writes the mirrored parts.
+  const project = machinedProject(entered);
   const byId = new Map(project.parts.map((p) => [p.id, p]));
   const out: DxfEntity[] = [];
   let x0 = 0;

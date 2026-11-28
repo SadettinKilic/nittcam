@@ -110,6 +110,26 @@ describe('downloadBlocker (§6.6 checklist, §7.2 rules 9–10)', () => {
     expect(downloadBlocker(p, { ...ALL, tabsHeld: true }, false)).toBeNull();
   });
 
+  it('D-130 / T346: an unverified material (ACM) needs the air-cut and scrap-trial line', () => {
+    const checklist = {
+      origin: {
+        corner: 'frontLeft' as const,
+        xPositive: 'right' as const,
+        yPositive: 'back' as const,
+        sheetOffset: { x: 0, y: 0 },
+      },
+      zReference: 'materialTop' as const,
+      tools: [],
+      toolChanges: 0,
+      rezeroZ: false,
+      parkOff: false,
+      unverifiedMaterial: true as const,
+    };
+    const p = { ok: true, files: [FILE], needsAcceptance: false, checklist };
+    expect(downloadBlocker(p, ALL, false)).toBe('checklist');
+    expect(downloadBlocker(p, { ...ALL, material: true }, false)).toBeNull();
+  });
+
   it('manual tool changes need their own confirmation (T274)', () => {
     const checklist = {
       origin: {

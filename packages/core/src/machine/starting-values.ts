@@ -15,7 +15,21 @@ import { PROFILE_BOUNDS, type Tool, type ToolType } from './profile';
 
 /** Research doc source ids (§e) used by the rows. */
 export type StartingValueSourceId =
-  'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S9' | 'S12' | 'S13' | 'S15' | 'S16';
+  | 'S1'
+  | 'S2'
+  | 'S3'
+  | 'S4'
+  | 'S5'
+  | 'S6'
+  | 'S7'
+  | 'S9'
+  | 'S11'
+  | 'S12'
+  | 'S13'
+  | 'S15'
+  | 'S16'
+  | 'S18'
+  | 'S19';
 
 /** Short display name of each source (maker names, shown as is). */
 export const STARTING_VALUE_SOURCE_NAMES: Record<StartingValueSourceId, string> = {
@@ -24,16 +38,21 @@ export const STARTING_VALUE_SOURCE_NAMES: Record<StartingValueSourceId, string> 
   S3: 'Amana',
   S4: 'Amana',
   S5: 'Amana',
+  S6: 'Amana',
+  S7: 'Amana',
   S9: 'ShopBot/Onsrud',
+  S11: 'Sorotec',
   S12: 'Leuco',
   S13: 'Leitz',
   S15: 'Acrylite',
   S16: 'Leitz',
+  S18: '3A Composites (Dibond)',
+  S19: '3A Composites (Alucobond)',
 };
 
 /** How the tool enters the cut: straight plunge is fine, or a ramp is preferred / required. */
 export type StartingEntry = 'straight' | 'rampPreferred' | 'rampRequired';
-export type StartingCoolant = 'none' | 'air';
+export type StartingCoolant = 'none' | 'air' | 'mql';
 
 /** Translation key of the material note (UI text lives in the web translation files). */
 export type StartingNoteKey =
@@ -125,6 +144,13 @@ const WOOD = { rpm: WOOD_RPM, plungeShare: 0.25, coolant: 'none' } as const;
  * still says a ramp entry is recommended.
  */
 const PLASTIC = { rpm: PLASTIC_RPM, plungeShare: 0.25, coolant: 'air' } as const;
+/**
+ * T346 (D-130): ACM and aluminium (research §c / §d, analysis §4.5). Plunge 0,25 × feed like the
+ * plastics (PO B61; research 0,3). Every metal row is "doğrulanacak" until T357 / T369.
+ */
+const ACM = { rpm: WOOD_RPM, plungeShare: 0.25, coolant: 'air', entry: 'rampRequired' } as const;
+const ALU = { plungeShare: 0.25, coolant: 'mql', entry: 'rampRequired' } as const;
+const aluRpm = (min: number, typ: number, max: number) => ({ min, typ, max });
 
 /** The table (research §c; §d where §c has no row). */
 export const STARTING_VALUE_ROWS: readonly StartingValueRow[] = [
@@ -225,6 +251,40 @@ export const STARTING_VALUE_ROWS: readonly StartingValueRow[] = [
   ...rows('pvc', 'flatEndMill', 2, { ...PLASTIC, entry: 'rampRequired', note: 'pvcRigid' }, [
     [6, 0.13, 0.12, 0.22, 0.5, ['S1', 'S2']],
     [8, 0.18, 0.14, 0.24, 0.5, ['S2']],
+  ]),
+  // ACM contour, single-flute O-flute (§c acm). Start = the lower of §c cl_start and §d; one pass
+  // through a 4 mm panel (§c "tam ≤ 4 mm": Ø6 ≈ 0,67 × D, Ø8 0,5 × D).
+  ...rows('acm', 'flatEndMill', 1, ACM, [
+    [3, 0.05, 0.06, 0.21, 0.5, ['S6', 'S19']],
+    [6, 0.076, 0.11, 0.21, 0.67, ['S6', 'S18', 'S19']],
+    [8, 0.1, 0.139, 0.21, 0.5, ['S6', 'S19']],
+  ]),
+  // Aluminium (§c aluminium), chip load clamped to the analysis §4.5 band (Ø 3–6: 0,02–0,05;
+  // Ø ≥ 6: 0,04–0,10; the conservative value wins; the start stays below the ceiling), step-down
+  // 0,25 × D.
+  ...rows('aluminium', 'flatEndMill', 1, { ...ALU, rpm: aluRpm(18000, 18000, 24000) }, [
+    [3, 0.02, 0.04, 0.05, 0.25, ['S1', 'S2', 'S6']],
+  ]),
+  ...rows('aluminium', 'flatEndMill', 1, { ...ALU, rpm: aluRpm(14600, 18000, 24000) }, [
+    [4, 0.02, 0.04, 0.05, 0.25, ['S2', 'S6']],
+  ]),
+  ...rows('aluminium', 'flatEndMill', 1, { ...ALU, rpm: aluRpm(9700, 18000, 24000) }, [
+    [6, 0.04, 0.075, 0.1, 0.25, ['S1', 'S2', 'S6']],
+  ]),
+  ...rows('aluminium', 'flatEndMill', 1, { ...ALU, rpm: aluRpm(7300, 16000, 19900) }, [
+    [8, 0.04, 0.09, 0.1, 0.25, ['S2', 'S6', 'S11']],
+  ]),
+  ...rows('aluminium', 'flatEndMill', 1, { ...ALU, rpm: aluRpm(5800, 14000, 15900) }, [
+    [10, 0.04, 0.09, 0.1, 0.25, ['S1', 'S2', 'S6', 'S11']],
+  ]),
+  ...rows('aluminium', 'flatEndMill', 1, { ...ALU, rpm: aluRpm(4900, 12000, 13300) }, [
+    [12, 0.04, 0.09, 0.1, 0.25, ['S1', 'S2', 'S6', 'S11']],
+  ]),
+  ...rows('aluminium', 'flatEndMill', 2, { ...ALU, rpm: aluRpm(9700, 18000, 24000) }, [
+    [6, 0.04, 0.05, 0.1, 0.25, ['S2', 'S7', 'S11']],
+  ]),
+  ...rows('aluminium', 'flatEndMill', 2, { ...ALU, rpm: aluRpm(7300, 16000, 19900) }, [
+    [8, 0.04, 0.059, 0.1, 0.25, ['S2', 'S11']],
   ]),
 ];
 

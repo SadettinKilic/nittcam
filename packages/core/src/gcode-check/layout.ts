@@ -9,10 +9,17 @@
  * move with the copy.
  */
 import { offset } from '../geometry/offset';
-import { bbox, forEachSegment, normalize } from '../geometry/polyline';
+import { bbox, contour, forEachSegment, normalize } from '../geometry/polyline';
 import { sampleSegment } from '../geometry/segment';
 import type { Polyline } from '../geometry/types';
-import { innerOperation, outlineOperation, type Project } from '../schema';
+import {
+  deriveOutline,
+  innerOperation,
+  outlineOperation,
+  type Part,
+  type Project,
+  type Vertex,
+} from '../schema';
 import {
   holdLimitsOf,
   isSmallPart,
@@ -21,7 +28,7 @@ import {
   placedOutline,
 } from '../toolpath';
 import type { ExpectedPart } from './types';
-import { toCutSizes } from '../schema/cut-size';
+import { toFrontCutSizes } from '../schema/cut-size';
 
 function centre(pl: Polyline): { cx: number; cy: number } {
   const box = bbox(pl);
@@ -49,12 +56,39 @@ function polygonOf(pl: Polyline): { x: number; y: number }[] {
 }
 
 /**
+ * T348: the part as cut from the back face, built here on its own (not with `machinedProject`), so
+ * the check compares the program with an independent mirror: every point x → minX + maxX − x in
+ * the part frame, arcs reversed. Only what the expectation reads is kept (outline, cut-outs, holes).
+ */
+function backFacePart(part: Part): Part {
+  const outline = deriveOutline(part);
+  const box = bbox(contour(outline));
+  const sx = box.minX + box.maxX;
+  const flip = (vs: readonly Vertex[]): Vertex[] =>
+    vs.map((v) => ({ x: sx - v.x, y: v.y, bulge: v.bulge === 0 ? 0 : -v.bulge }));
+  const rest = { ...part } as Partial<Part> & { params?: unknown };
+  delete rest.params;
+  return {
+    ...(rest as Part),
+    kind: 'freeform',
+    outline: normalize(contour(flip(outline)), 'outer').vertices,
+    inners: part.inners.map((c) => normalize(contour(flip(c)), 'inner').vertices),
+    holes: part.holes.map((h) => ({ ...h, cx: sx - h.cx })),
+  } as Part;
+}
+
+/**
  * Parts expected on one sheet (index of `project.layout.sheets`). `toolDiameter`: the cutting
  * tool, for the cut-out loop centres (0 = the openings' own centres).
  */
 export function expectedLayout(entered: Project, sheet: number, toolDiameter = 0): ExpectedPart[] {
   // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
-  const project = toCutSizes(entered);
+  const front = toFrontCutSizes(entered);
+  // T348: a back-face stock is cut mirrored; the layout placements are in that machined frame.
+  const project =
+    entered.stock.machinedFace === 'back'
+      ? { ...front, parts: front.parts.map(backFacePart) }
+      : front;
   const out: ExpectedPart[] = [];
   // T343: small-part thresholds of the stock's traits row
   const { smallPart } = holdLimitsOf(project.stock.material);
