@@ -38,9 +38,14 @@ export type ShortcutId =
   | 'canvasZoomIn'
   | 'canvasZoomOut'
   | 'canvasFit'
-  | 'canvasFitJob';
+  | 'canvasFitJob'
+  | 'benchMove'
+  | 'benchRotate'
+  | 'benchMate'
+  | 'benchHide'
+  | 'benchCancel';
 
-export type ShortcutGroup = 'general' | 'navigation' | 'project' | 'board' | 'canvas';
+export type ShortcutGroup = 'general' | 'navigation' | 'project' | 'board' | 'canvas' | 'bench';
 
 export interface Shortcut {
   id: ShortcutId;
@@ -99,6 +104,12 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'canvasZoomOut', keys: '-', group: 'canvas', page: true },
   { id: 'canvasFit', keys: 'f', group: 'canvas', page: true },
   { id: 'canvasFitJob', keys: '0', group: 'canvas', page: true },
+  // T387: montaj tezgâhı tools (handled by the bench; zoom and fit use the canvas keys).
+  { id: 'benchMove', keys: 'w', group: 'bench', page: true },
+  { id: 'benchRotate', keys: 'e', group: 'bench', page: true },
+  { id: 'benchMate', keys: 'm', group: 'bench', page: true },
+  { id: 'benchHide', keys: 'h', group: 'bench', page: true },
+  { id: 'benchCancel', keys: 'escape', group: 'bench', page: true },
 ];
 
 export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
@@ -107,6 +118,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   'project',
   'board',
   'canvas',
+  'bench',
 ];
 
 /**

@@ -12,6 +12,7 @@ import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import {
   memo,
   useCallback,
+  useLayoutEffect,
   type ComponentRef,
   useEffect,
   useMemo,
@@ -23,6 +24,8 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  InstancedMesh,
+  Matrix4,
   DoubleSide,
   Group,
   LineBasicMaterial,
@@ -40,6 +43,7 @@ import type { BenchItem } from '../../lib/preview3d/assembly-model';
 import {
   boxCentre,
   cross,
+  instanceMatrix,
   faceFrame,
   faceFromNormal,
   qFromBasis,
@@ -269,19 +273,62 @@ function BenchContent({
     [slide, get, gl, cam, onSnap, onCommit, invalidate],
   );
 
+  // ---- batching (spec §3.8 budget): one instanced mesh per part shape, one merged edge set;
+  // the selected or dragged copy is drawn on its own (gizmo, highlight). ----
+  const loneId = dragPose?.id ?? null;
+  const { batches, single } = useMemo(() => {
+    const map = new Map<
+      MeshData,
+      { key: string; mesh: MeshData; door: boolean; items: BenchItem[] }
+    >();
+    const lone: BenchItem[] = [];
+    const doors = new Map<
+      MeshData,
+      { key: string; mesh: MeshData; door: boolean; items: BenchItem[] }
+    >();
+    for (const it of items) {
+      if (it.id === selectedId || it.id === loneId) {
+        lone.push(it);
+        continue;
+      }
+      const into = it.door ? doors : map;
+      const b = into.get(it.mesh) ?? {
+        key: `${it.door ? 'd' : 's'}:${it.id}`,
+        mesh: it.mesh,
+        door: it.door,
+        items: [],
+      };
+      b.items.push(it);
+      into.set(it.mesh, b);
+    }
+    return { batches: [...map.values(), ...doors.values()], single: lone };
+  }, [items, selectedId, loneId]);
+  const edges = useMemo(
+    () => mergedEdges(batches.flatMap((b) => (simple && !b.door ? [] : b.items))),
+    [batches, simple],
+  );
+  useEffect(() => () => edges?.dispose(), [edges]);
+
   // ---- picking ----
   const [hover, setHover] = useState<{ id: string; face: BoxFace } | null>(null);
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const itemOf = (e: ThreeEvent<PointerEvent | MouseEvent>) => {
-    const id = e.object.parent?.userData.id as string | undefined;
+    const ids = e.object.userData.ids as readonly string[] | undefined;
+    const id =
+      ids && e.instanceId !== undefined
+        ? ids[e.instanceId]
+        : (e.object.parent?.userData.id as string | undefined);
     return id ? byId.get(id) : undefined;
   };
   const worldNormal = (e: ThreeEvent<PointerEvent | MouseEvent>): V3 | null => {
     if (!e.face) return null;
-    const n = e.face.normal
-      .clone()
-      .applyMatrix3(new Matrix3().getNormalMatrix(e.object.matrixWorld))
-      .normalize();
+    const m = e.object.matrixWorld.clone();
+    if (e.object instanceof InstancedMesh && e.instanceId !== undefined) {
+      const inst = new Matrix4();
+      e.object.getMatrixAt(e.instanceId, inst);
+      m.multiply(inst);
+    }
+    const n = e.face.normal.clone().applyMatrix3(new Matrix3().getNormalMatrix(m)).normalize();
     return [n.x, n.y, n.z];
   };
   const onClick = (e: ThreeEvent<MouseEvent>) => {
@@ -424,7 +471,16 @@ function BenchContent({
           }
         }}
       >
-        {items.map((item) => {
+        {batches.map((b) => (
+          <Batch
+            key={b.key}
+            data={b.mesh}
+            items={b.items}
+            material={b.door ? mats.door : mats.solid}
+          />
+        ))}
+        {edges ? <lineSegments geometry={edges} material={mats.edge} raycast={() => null} /> : null}
+        {single.map((item) => {
           const selected = item.id === selectedId;
           const pose = dragPose?.id === item.id ? dragPose.pose : item.pose;
           return (
@@ -457,7 +513,7 @@ function BenchContent({
           object={selObj}
           mode={mode === 'rotate' ? 'rotate' : 'translate'}
           space="world"
-          size={0.9}
+          size={1.15}
           rotationSnap={rotationStep > 0 ? (rotationStep * Math.PI) / 180 : null}
           translationSnap={moveStep > 0 ? moveStep : null}
           onMouseUp={() => {
@@ -581,4 +637,67 @@ function Stats({ onStats }: { onStats: BenchSceneProps['onStats'] }) {
     onStats({ fps: watch.rate(), drawCalls: gl.info.render.calls });
   });
   return null;
+}
+
+/** All copies of one part shape as one instanced mesh (ids in `userData` for picking). */
+function Batch({
+  data,
+  items,
+  material,
+}: {
+  data: MeshData;
+  items: readonly BenchItem[];
+  material: MeshStandardMaterial;
+}) {
+  const ref = useRef<InstancedMesh>(null);
+  const invalidate = useThree((s) => s.invalidate);
+  const geo = geometryOf(data);
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const m = new Matrix4();
+    items.forEach((it, i) => {
+      m.fromArray(instanceMatrix(it.pose, boxCentre(it.box)));
+      mesh.setMatrixAt(i, m);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+    mesh.computeBoundingBox();
+    invalidate();
+  }, [items, invalidate]);
+  return (
+    <instancedMesh
+      // A new count needs a new mesh (three sizes the instance buffer once).
+      key={items.length}
+      ref={ref}
+      args={[geo.mesh, material, items.length]}
+      material={material}
+      userData={{ ids: items.map((i) => i.id) }}
+    />
+  );
+}
+
+/** The contour lines of many copies in one geometry (one draw call). */
+function mergedEdges(items: readonly BenchItem[]): BufferGeometry | null {
+  let n = 0;
+  for (const it of items) n += it.mesh.edges.length;
+  if (n === 0) return null;
+  const out = new Float32Array(n);
+  let o = 0;
+  for (const it of items) {
+    const m = instanceMatrix(it.pose, boxCentre(it.box));
+    const e = it.mesh.edges;
+    for (let i = 0; i + 2 < e.length; i += 3) {
+      const x = e[i] ?? 0;
+      const y = e[i + 1] ?? 0;
+      const z = e[i + 2] ?? 0;
+      out[o++] = (m[0] ?? 0) * x + (m[4] ?? 0) * y + (m[8] ?? 0) * z + (m[12] ?? 0);
+      out[o++] = (m[1] ?? 0) * x + (m[5] ?? 0) * y + (m[9] ?? 0) * z + (m[13] ?? 0);
+      out[o++] = (m[2] ?? 0) * x + (m[6] ?? 0) * y + (m[10] ?? 0) * z + (m[14] ?? 0);
+    }
+  }
+  const g = new BufferGeometry();
+  g.setAttribute('position', new BufferAttribute(out, 3));
+  g.computeBoundingSphere();
+  return g;
 }

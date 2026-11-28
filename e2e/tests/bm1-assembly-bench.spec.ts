@@ -55,13 +55,16 @@ test('every copy is listed; numeric move, 90° turn, hide, undo/redo, reset', as
   await expect(bench).toHaveAttribute('data-placed', '1');
   await expect(rows.nth(1)).toContainText(b.list.moved);
 
+  // Lying flat = -90° about X; a 90° turn stands it up (0°).
+  const angle = page.getByTestId('bench-angle-x');
+  await expect(angle).toHaveValue('-90');
   await page.getByTestId('bench-turn-x').click();
-  await expect(page.getByTestId('bench-angle-x')).toHaveValue(/90/);
+  await expect(angle).toHaveValue('0');
 
   await page.keyboard.press('Control+z');
-  await expect(page.getByTestId('bench-angle-x')).toHaveValue(/^0/);
+  await expect(angle).toHaveValue('-90');
   await page.keyboard.press('Control+y');
-  await expect(page.getByTestId('bench-angle-x')).toHaveValue(/90/);
+  await expect(angle).toHaveValue('0');
 
   await rows.nth(2).getByTestId('bench-part-eye').click();
   await expect(bench).toHaveAttribute('data-shown', '2');
@@ -111,4 +114,38 @@ test('390 px: the bench opens without a horizontal scroll', async ({ page }) => 
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+/** 300 parts in three shapes (spec §3.8 budget; asserted with PERF_BUDGET=1 on a GPU machine). */
+test('300 parts: the bench opens and orbits (frame rate read out)', async ({ page }) => {
+  test.slow();
+  await openNewProject(page, 'parcalar');
+  await paste(
+    page,
+    [
+      'Parça adı\tEn\tBoy\tAdet',
+      'Kapak\t150\t100\t100',
+      'Çekmece önü\t120\t80\t100',
+      'Kulp altlığı\t100\t60\t100',
+    ].join('\n'),
+    3,
+  );
+  await page.getByTestId('parts-view-assembly').click();
+  const bench = page.getByTestId('bench');
+  await expect(bench).toHaveAttribute('data-ready', 'true', { timeout: 30_000 });
+  await expect(bench).toHaveAttribute('data-shown', '300');
+  const box = await page.getByTestId('bench-canvas').boundingBox();
+  if (!box) throw new Error('no canvas');
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height * 0.15;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  for (let i = 0; i < 90; i++) await page.mouse.move(cx + Math.sin(i / 20) * 200, cy + 5);
+  const fps = Number(await bench.getAttribute('data-fps'));
+  await page.mouse.up();
+  console.log(
+    `[perf] bench 300 parts: orbit ${fps} fps, ${await bench.getAttribute('data-draw-calls')} draw calls`,
+  );
+  expect(fps).toBeGreaterThan(0);
+  if (process.env.PERF_BUDGET === '1') expect(fps).toBeGreaterThanOrEqual(45);
 });

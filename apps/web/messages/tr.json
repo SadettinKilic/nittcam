@@ -227,7 +227,8 @@
       "navigation": "Gezinme",
       "project": "Proje",
       "board": "Çizim tahtası",
-      "canvas": "Dizilim, simülasyon ve 3D"
+      "canvas": "Dizilim, simülasyon ve 3D",
+      "bench": "Montaj tezgâhı"
     },
     "items": {
       "palette": "Komut paletini aç",
@@ -266,7 +267,12 @@
       "canvasZoomIn": "Yakınlaştır",
       "canvasZoomOut": "Uzaklaştır",
       "canvasFit": "Plakayı sığdır",
-      "canvasFitJob": "İşe sığdır (yoksa plakaya)"
+      "canvasFitJob": "İşe sığdır (yoksa plakaya)",
+      "benchMove": "Taşı",
+      "benchRotate": "Döndür",
+      "benchMate": "Yüzey yüzeye oturt",
+      "benchHide": "Seçili parçayı gizle / göster",
+      "benchCancel": "Oturtmayı bitir / seçimi kaldır"
     },
     "boardTitle": "Çizim tahtası kısayolları",
     "boardDescription": "Çizerken sayı yazıp Enter'a basın; Ctrl+Z ya da Backspace son noktayı geri alır, Ctrl+Y geri getirir; Esc çizimi bitirir. Kısayollar metin kutusunda çalışmaz.",

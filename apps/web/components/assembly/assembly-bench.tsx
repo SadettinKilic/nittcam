@@ -32,7 +32,13 @@ import type { Messages } from '../../lib/messages';
 import { useMessages } from '../../lib/messages-context';
 import { fill } from '../../lib/fill';
 import { onThemeChange, readTokenColors } from '../../lib/canvas-theme';
-import { isTypingTarget, withShortcut } from '../../lib/shortcuts';
+import {
+  ariaKeyShortcuts,
+  claimPageGroup,
+  isTypingTarget,
+  shortcutById,
+  withShortcut,
+} from '../../lib/shortcuts';
 import { readSimple3d } from '../../lib/preferences';
 import { MATERIAL_TOKEN, materialLook } from '../../lib/preview3d/textures';
 import { exportPng } from '../../lib/preview3d/png';
@@ -196,6 +202,9 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
     return { id: slide.id, frame: faceFrame(a.pose, a.box, slide.face) };
   }, [slide, byId]);
 
+  // "?" opens the bench's own shortcut sheet first (T136 pattern).
+  useEffect(() => claimPageGroup('bench'), []);
+
   // Keys: W / E / M tools, Esc, H hide, F fit, + / − zoom; Shift = free, Ctrl = 90° while turning.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -312,19 +321,19 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
         >
           {(
             [
-              ['move', Move3d, 'W'],
-              ['rotate', Rotate3d, 'E'],
-              ['mate', Magnet, 'M'],
+              ['move', Move3d, 'benchMove'],
+              ['rotate', Rotate3d, 'benchRotate'],
+              ['mate', Magnet, 'benchMate'],
             ] as const
           ).map(([m, Icon, key]) => (
-            <Tooltip key={m} content={`${t.modeTips[m]} · ${key}`}>
+            <Tooltip key={m} content={withShortcut(t.modeTips[m], key)}>
               <Button
                 role="radio"
                 aria-checked={mode === m}
                 variant="ghost"
                 size="sm"
                 data-testid={`bench-mode-${m}`}
-                aria-keyshortcuts={key}
+                aria-keyshortcuts={ariaKeyShortcuts(shortcutById(key).keys, false)}
                 onClick={() => changeMode(m)}
                 className={cn(
                   'gap-1.5 px-2.5',
@@ -353,7 +362,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             <ZoomOut aria-hidden />
           </IconButton>
         </Tooltip>
-        <Tooltip content={`${t.fit} · F`}>
+        <Tooltip content={withShortcut(t.fit, 'canvasFit')}>
           <IconButton
             aria-label={t.fit}
             size="sm"
@@ -408,7 +417,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
         aria-live="polite"
         data-testid="bench-hint"
         className={cn(
-          'pointer-events-none absolute bottom-2 left-2 z-10 max-w-[min(36rem,calc(100%-1rem))] rounded-lg border bg-surface/95 px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm max-sm:bottom-2',
+          'pointer-events-none absolute bottom-2 left-2 z-10 max-w-[calc(100%-1rem)] sm:max-w-[min(36rem,calc(100%-21rem))] rounded-lg border bg-surface/95 px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm max-sm:bottom-2',
           snapped ? 'border-success-border text-success-text' : 'border-border text-fg-muted',
         )}
       >
