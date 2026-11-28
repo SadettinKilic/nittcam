@@ -3,6 +3,8 @@ export * from './registry';
 export {
   setMachine,
   setMaterial,
+  kindSheetDefault,
+  kindThicknessDefault,
   applyLibraryMaterial,
   setThickness,
   setThinSkin,

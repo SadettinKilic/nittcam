@@ -420,3 +420,15 @@ export function stepDownCeiling(
   if (share === null) return null;
   return Math.round(share * RIGIDITY_STEP_DOWN_FACTOR[rigidity] * diameter * 1000) / 1000;
 }
+
+/**
+ * The thickness a kind starts at (T390 bench, T396 step 1): its second common thickness when it
+ * has several presets (ACM 4 mm, aluminium 1,5 mm), else its only one; null = no presets (wood,
+ * plastic: the profile's thicknesses decide, the thickness is kept).
+ */
+export function defaultThicknessOf(
+  traits: Pick<MaterialTraits, 'thicknessPresets'>,
+): number | null {
+  const p = traits.thicknessPresets;
+  return p[p.length > 1 ? 1 : 0] ?? null;
+}

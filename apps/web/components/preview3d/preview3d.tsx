@@ -337,6 +337,7 @@ export function Preview3D({
         role="group"
         aria-label={t.presetsLabel}
         data-testid="preview3d-presets"
+        data-toast-avoid=""
         hidden={showAssembly}
         className="absolute right-2 bottom-2 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm max-sm:bottom-8"
       >
@@ -385,7 +386,10 @@ export function Preview3D({
           </Tooltip>
         ) : null}
       </div>
-      <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex flex-col items-start gap-2 max-sm:bottom-8">
+      <div
+        data-toast-avoid=""
+        className="pointer-events-none absolute bottom-2 left-2 z-10 flex flex-col items-start gap-2 max-sm:bottom-8"
+      >
         {autoSimple ? (
           <p
             role="status"

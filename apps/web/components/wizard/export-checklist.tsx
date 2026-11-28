@@ -122,6 +122,15 @@ export function ExportChecklist({
           label={t.checkUnverifiedMaterial}
         />
       ) : null}
+      {checklist?.backFace ? (
+        // T393 (CTO #14 M1): the program is mirrored; the sheet must lie back face up.
+        <ChecklistItem
+          testId={`${testIdPrefix}-check-back-face`}
+          checked={checks.backFace ?? false}
+          onChange={(v) => set({ backFace: v })}
+          label={t.checkBackFace}
+        />
+      ) : null}
       {checklist?.tabsNotHeld ? (
         // T338 (D-129): some tabs were left out because they would not hold.
         <ChecklistItem

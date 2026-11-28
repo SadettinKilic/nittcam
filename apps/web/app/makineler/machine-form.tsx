@@ -62,6 +62,9 @@ import {
   refreshStartingValues,
   startingNote,
   parseErrorText,
+  ACM_EXAMPLES,
+  hasParamSet,
+  withAcmExamples,
   withParamSet,
   type FormSection,
 } from '../../lib/machine-form';
@@ -93,7 +96,7 @@ export interface MachineFormProps {
    * T258: open with a new parameter set for this kind and thickness (step 1 "Kesim ayarı ekle"),
    * scrolled to "Malzeme parametreleri". The set stays unsaved until the user saves the form.
    */
-  addParams?: { material: MaterialKind; thickness: number } | null | undefined;
+  addParams?: { material: MaterialKind; thickness: number; examples?: true } | null | undefined;
   /** T302: with `addParams`, land on the set's tab fields ("Malzeme ayarında değiştir"). */
   focusTabs?: boolean;
   /** T349: opened from step 1 "Makineyi düzenle: Metal kesim": land on the metal section. */
@@ -191,7 +194,9 @@ export function MachineForm({
   const u = t.form.units;
   const router = useRouter();
   const [initial] = useState(() => initialProp ?? newMachineProfile());
-  const [start] = useState(() => (addParams ? withParamSet(initial, addParams) : null));
+  const [start] = useState(() =>
+    addParams ? (addParams.examples ? withAcmExamples : withParamSet)(initial, addParams) : null,
+  );
   const [profile, setProfile] = useState<MachineProfile>(start?.profile ?? initial);
   const [submitted, setSubmitted] = useState(false);
   const [serverIssues, setServerIssues] = useState<MachineProfileIssue[]>([]);
@@ -1329,7 +1334,7 @@ export function MachineForm({
               }}
             />
             {/* T351: example ACM 3 and 4 mm sets in one action, always unverified (D-130). */}
-            {ACM_EXAMPLES.some((th) => !hasSet(profile, 'acm', th)) ? (
+            {ACM_EXAMPLES.some((th) => !hasParamSet(profile, 'acm', th)) ? (
               <div>
                 <Button
                   type="button"
@@ -1339,7 +1344,7 @@ export function MachineForm({
                   className="h-auto max-w-full py-1.5 text-left whitespace-normal"
                   data-testid="materials-add-acm"
                   onClick={() => {
-                    const missing = ACM_EXAMPLES.filter((th) => !hasSet(profile, 'acm', th));
+                    const missing = ACM_EXAMPLES.filter((th) => !hasParamSet(profile, 'acm', th));
                     missing.forEach(() => materialRows.add());
                     update((p) => {
                       for (const th of missing) p.materials.push(newParamSet(p, 'acm', th));
@@ -1737,14 +1742,5 @@ function MaterialFamilyDetail({
         </div>
       ) : null}
     </fieldset>
-  );
-}
-
-/** T351: the thicknesses of the example ACM sets (analysis §4.2: 3 and 4 mm panels). */
-const ACM_EXAMPLES = [3, 4] as const;
-
-function hasSet(profile: MachineProfile, material: MaterialKind, thickness: number): boolean {
-  return profile.materials.some(
-    (m) => m.material === material && Math.abs(m.thickness - thickness) <= 1e-6,
   );
 }

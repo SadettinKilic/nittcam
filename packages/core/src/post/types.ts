@@ -45,6 +45,12 @@ export interface PostMeta {
    */
   unverifiedMaterial?: string;
   /**
+   * T393 (CTO #14 M1): the stock is machined from its back face (T348), so the parts are cut mirrored:
+   * one header line "PLAKA ARKA YUZU USTTE: PARCALAR AYNALI" beside the material line. Absent = no
+   * line (front-face programs, every golden before T393, stay byte-identical).
+   */
+  backFace?: boolean;
+  /**
    * The cutting settings the toolpath used (T288, K3): one "KESİM" header line. Absent = no line,
    * so programs made without it (golden files) stay byte-identical.
    */

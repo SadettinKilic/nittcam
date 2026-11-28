@@ -20,7 +20,7 @@ import {
   type PostProfileVersion,
 } from '../post';
 import type { Project } from '../schema';
-import { defaultSheet, sheetSizeOf } from '../schema';
+import { defaultSheet, isBackFace, sheetSizeOf } from '../schema';
 import {
   buildToolpath,
   type Toolpath,
@@ -93,7 +93,10 @@ export function exportNc(
     ...(options.revisionInFileName ? { revisionInFileName: true } : {}),
     ...unverifiedTemplatesMeta(project),
     ...unverifiedMaterialMeta(project),
+    ...backFaceMeta(project),
     ...cuttingMeta(project, profile),
+    // T393: the checker reads the face from the project itself, not from the post meta.
+    machinedFace: project.stock.machinedFace === 'back' ? 'back' : 'front',
     stock: {
       material: project.stock.material,
       thickness: project.stock.thickness,
@@ -152,9 +155,17 @@ export function cuttingMeta(
  * D-130 / T346: a kind whose NC ships with unverified starting values (ACM) names itself in the
  * header; nothing for today's kinds, so their programs stay byte-identical.
  */
-function unverifiedMaterialMeta(project: Project): Pick<PostMeta, 'unverifiedMaterial'> {
+export function unverifiedMaterialMeta(project: Project): Pick<PostMeta, 'unverifiedMaterial'> {
   const traits = traitsOf(materialKindOf(project.stock.material));
   return traits.nc === 'unverified' ? { unverifiedMaterial: traits.ncName } : {};
+}
+
+/**
+ * T393 (CTO #14 M1): a back-face stock (T348) is cut mirrored; the header says so. Nothing for a
+ * front-face stock, so its programs stay byte-identical.
+ */
+export function backFaceMeta(project: Project): Pick<PostMeta, 'backFace'> {
+  return isBackFace(project) ? { backFace: true } : {};
 }
 
 /** The unverified ready templates of the project (T282); nothing when none, so output is unchanged. */
@@ -196,6 +207,11 @@ export interface PostAndCheckMeta extends PostMeta {
   layout: ReadonlyMap<number, readonly ExpectedPart[]> | null;
   /** Lowest Z any move may reach, sheet frame (the air-cut floor, D-031); omitted = none. */
   zFloor?: number;
+  /**
+   * T393: the face the project says is machined, for the checker (back = the back-face header line
+   * is required, front = it is refused); omitted = not checked (test programs).
+   */
+  machinedFace?: 'front' | 'back';
 }
 
 /**
@@ -216,7 +232,7 @@ export function postAndCheck(
   const base = { files: [], postErrors: [], postWarnings: [], check: null, tools };
   // An invalid config is refused by the generator itself; the checks only need its declarations.
   const expectations: GcodeCheckPostExpectations | undefined = cfg.ok ? cfg.config : undefined;
-  const { layout, zFloor, ...postMeta } = meta;
+  const { layout, zFloor, machinedFace, ...postMeta } = meta;
   const stock = {
     thickness: meta.stock.thickness,
     sheetWidth: meta.stock.sheetWidth,
@@ -237,6 +253,7 @@ export function postAndCheck(
         }
       : {}),
     ...(zFloor !== undefined ? { zFloor } : {}),
+    ...(machinedFace ? { machinedFace } : {}),
   };
   let checked: { files: readonly PostFile[]; result: GcodeCheckFilesResult } | null = null;
   const run = (files: readonly PostFile[]) => {

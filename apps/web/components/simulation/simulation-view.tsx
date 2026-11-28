@@ -845,7 +845,10 @@ function Player({
           <span>{noWebGL === 'slow' ? view3d.t.fallbackSlow : view3d.t.fallback}</span>
         </div>
       ) : null}
-      <div className={cn('pointer-events-none absolute bottom-2 left-2 z-10', show3d && 'hidden')}>
+      <div
+        data-toast-avoid=""
+        className={cn('pointer-events-none absolute bottom-2 left-2 z-10', show3d && 'hidden')}
+      >
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -900,6 +903,7 @@ function Player({
           {sheetGrain !== null && !show3d ? (
             <span
               data-testid="sim-grain"
+              data-toast-avoid=""
               data-grain={stock.grain ?? 'none'}
               className="pointer-events-none absolute right-2 bottom-2 z-10 flex items-center gap-1.5 rounded-md border border-border bg-surface/90 px-2 py-1 text-xs text-fg shadow-xs backdrop-blur-sm"
             >

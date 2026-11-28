@@ -34,7 +34,7 @@ import { SaveBanner } from './save-banner';
 import { TemplateUpdatePrompt } from '../editor/template-update';
 import type { ProjectDetail, ProjectListItem } from '../../lib/projects-api';
 import { isUntitledName, untitledName } from '../../lib/untitled-name';
-import { CutListEditor } from '../parts/cut-list-editor';
+import { CUT_LIST_UNDO_TOASTS, CutListEditor } from '../parts/cut-list-editor';
 import { splitOffProject, type SplitTarget } from '../../lib/split-project';
 import { ProjectLinksBar } from './project-links';
 import type { SimMachine } from '../simulation/simulation-view';
@@ -596,6 +596,14 @@ function WizardSession({
     notify.dismiss();
   }, [step]);
 
+  // T394 (CTO #14 M2): a parts-view switch closes an open undo toast (undo stays on Ctrl+Z).
+  const shownView = useRef(partsView);
+  useEffect(() => {
+    if (shownView.current === partsView) return;
+    shownView.current = partsView;
+    for (const id of CUT_LIST_UNDO_TOASTS) notify.dismiss(id);
+  }, [partsView]);
+
   // P4: publish the bottom edge of the wizard header, so the toasts sit just under it (top-centre)
   // and never over the right panel or the canvas scale bar (see AppShell's Toaster).
   useEffect(() => {
@@ -799,14 +807,18 @@ function WizardSession({
   const params = profile !== null ? findMaterialParams(profile, project.stock) : undefined;
   const noParams = profile !== null && params === undefined;
   // T265: a set with unconfirmed starting values blocks like a missing one.
-  const machineError = noParams
-    ? t.steps.errors.noParams
-    : params?.unverified
-      ? t.steps.errors.unverifiedParams
-      : // T349: a tool type or machine the material may not be cut with
-        session.issues.some((i) => MATERIAL_RULE_CODES.has(i.code))
-        ? t.steps.errors.materialRule
-        : undefined;
+  // T395 (CTO #14 M3): aluminium ships no NC yet; that is the one reason shown.
+  const notReleased = session.issues.some((i) => i.code === 'MATERIAL_NOT_RELEASED');
+  const machineError = notReleased
+    ? t.steps.errors.materialNotReleased
+    : noParams
+      ? t.steps.errors.noParams
+      : params?.unverified
+        ? t.steps.errors.unverifiedParams
+        : // T349: a tool type or machine the material may not be cut with
+          session.issues.some((i) => MATERIAL_RULE_CODES.has(i.code))
+          ? t.steps.errors.materialRule
+          : undefined;
   // T270: a cut-out whose slug has no room for 2 tabs is caught on Parçalar, where it is drawn.
   const slugError = session.issues.some((i) => i.code === 'INNER_SLUG_UNSECURED')
     ? t.steps.errors.slugUnsecured

@@ -25,6 +25,7 @@ import {
 } from 'react';
 import { NEW_PROJECT_HREF } from '../../lib/shell-nav';
 import { useMediaQuery } from '../../lib/use-media-query';
+import { useToastDocked } from '../../lib/toast-dock';
 import {
   OPEN_SHORTCUTS_EVENT,
   SHORTCUT_GROUPS,
@@ -99,6 +100,7 @@ export function AppShell({ t, company, children }: AppShellProps) {
   const bare = isBare(pathname);
   const wizard = isWizard(pathname);
   const phone = !useMediaQuery('(min-width: 768px)', true);
+  const docked = useToastDocked();
 
   const actions = useMemo<CommandActions>(
     () => ({
@@ -320,15 +322,22 @@ export function AppShell({ t, company, children }: AppShellProps) {
           onCloseAutoFocus={helpFocus.onCloseAutoFocus}
         />
         {/* P4 (CTO #8–#10): in the project wizard the toasts sit top-centre just under the wizard
-            header (--wizard-head-bottom; plus --toast-clear-top, set by a canvas with a top toolbar such as
-            the montaj tezgâhı), so they never cover the right panel, the canvas scale bar
-            or the footer actions; a step change closes them. Elsewhere bottom-right as usual. */}
-        {wizard && !phone ? (
+            header (--wizard-head-bottom), so they never cover the right panel or the footer actions;
+            a step change closes them. T394 (CTO #14 M2): in a workspace view (Çizim, Montaj, Dizilim,
+            Simülasyon) they dock at the canvas's bottom-right instead, above every canvas toolbar
+            (--toast-dock-*, see lib/toast-dock). Elsewhere bottom-right as usual. */}
+        {wizard && !phone && docked ? (
+          <Toaster
+            position="bottom-right"
+            offset={{
+              right: 'var(--toast-dock-right, 24px)',
+              bottom: 'var(--toast-dock-bottom, 24px)',
+            }}
+          />
+        ) : wizard && !phone ? (
           <Toaster
             position="top-center"
-            offset={{
-              top: 'calc(var(--wizard-head-bottom, 56px) + 8px + var(--toast-clear-top, 0px))',
-            }}
+            offset={{ top: 'calc(var(--wizard-head-bottom, 56px) + 8px)' }}
           />
         ) : wizard ? (
           // Phones: top-centre would cover the canvas bar (Liste / Çizim, zoom); above the sticky

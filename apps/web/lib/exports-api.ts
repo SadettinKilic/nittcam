@@ -60,6 +60,11 @@ export interface ExportChecklistInfo {
    */
   unverifiedMaterial?: true;
   /**
+   * T393 (CTO #14 M1): the stock is machined from its back face (T348): the parts are cut mirrored and
+   * the line "Plakayı arka yüzü üstte yatırdım" must be ticked. Absent for a front-face stock.
+   */
+  backFace?: true;
+  /**
    * T338 (D-129): parts that got fewer tabs because some would not hold; the line must be ticked.
    * Absent = every part has its tabs.
    */

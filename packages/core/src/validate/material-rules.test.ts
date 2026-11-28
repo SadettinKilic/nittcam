@@ -4,7 +4,7 @@ import { goldenProfile, goldenProject } from '../post/golden.testing';
 import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import { cutPart, effectiveDimensionMode, type Project } from '../schema';
 import { projectReport } from '../report/report';
-import { projectNotices, validateProject } from '.';
+import { materialNotAllowedOnMachine, projectNotices, validateProject } from '.';
 
 // T349: material rules in validation (tool type per material, metal machine, ignored edge band).
 
@@ -78,12 +78,15 @@ describe('TOOL_TYPE_UNSUITABLE_FOR_MATERIAL (T349)', () => {
 
 describe('MATERIAL_NOT_ALLOWED_ON_MACHINE (T349)', () => {
   it('aluminium needs metal.enabled; ACM and MDF do not', () => {
+    // T395: the rule itself (validateProject folds it under MATERIAL_NOT_RELEASED today).
     const [alu, profile] = withMaterial('aluminium', 3);
-    expect(codes(alu, profile)).toContain('MATERIAL_NOT_ALLOWED_ON_MACHINE');
+    const rule = (p: Project, machine: MachineProfile) =>
+      materialNotAllowedOnMachine(p, { machine }).map((i) => i.code);
+    expect(rule(alu, profile)).toContain('MATERIAL_NOT_ALLOWED_ON_MACHINE');
     profile.metal = { enabled: false, rigidity: 'standard' };
-    expect(codes(alu, profile)).toContain('MATERIAL_NOT_ALLOWED_ON_MACHINE');
+    expect(rule(alu, profile)).toContain('MATERIAL_NOT_ALLOWED_ON_MACHINE');
     profile.metal = { enabled: true, rigidity: 'standard' };
-    expect(codes(alu, profile)).not.toContain('MATERIAL_NOT_ALLOWED_ON_MACHINE');
+    expect(rule(alu, profile)).not.toContain('MATERIAL_NOT_ALLOWED_ON_MACHINE');
     for (const [m, t] of [
       ['acm', 4],
       ['mdf', 18],
