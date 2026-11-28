@@ -20,6 +20,8 @@ export interface ChecklistState {
   vacuum?: boolean;
   /** T338: fewer tabs on some parts (they would not hold); the operator checks the hold-down. */
   tabsHeld?: boolean;
+  /** D-130 / T346: air cut and a scrap trial first (unverified material); only asked then. */
+  material?: boolean;
 }
 
 export const EMPTY_CHECKLIST: ChecklistState = {
@@ -52,6 +54,7 @@ export function downloadBlocker(
   if (preview.checklist?.staleProfile && !checklist.stale) return 'checklist';
   if (preview.checklist?.vacuumByHand && !checklist.vacuum) return 'checklist';
   if ((preview.checklist?.tabsNotHeld ?? 0) > 0 && !checklist.tabsHeld) return 'checklist';
+  if (preview.checklist?.unverifiedMaterial && !checklist.material) return 'checklist';
   if (preview.needsAcceptance && !accepted) return 'accept';
   return null;
 }

@@ -1265,6 +1265,7 @@
       "TOOL_NOT_IN_PROFILE": "Gereken takım makine profilinde yok.",
       "NO_CUTTING_PARAMS": "Bu malzeme ve kalınlık için makine profilinde kesim parametresi yok (Makineler → Malzeme parametreleri).",
       "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı başlangıç değerlerinde ve doğrulanmadı (Makineler → Malzeme parametreleri).",
+      "MATERIAL_NOT_RELEASED": "Alüminyum için rampa giriş, kademe ve talaş sınırları (T358, T359) gelmeden G-code verilmez. DXF, PDF ve etiketler kullanılabilir.",
       "POST_MISMATCH": "Makine profilindeki post sürümü yüklü post ile uyuşmuyor.",
       "NO_PLACEMENTS": "Dizilimde yerleşmiş parça yok.",
       "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
@@ -2101,6 +2102,7 @@
         "other": "diğer ayarlar"
       },
       "checkTabsNotHeld": "{count} parçada köprü az: komşu kesim ya da plaka kenarı köprünün arkasındaki malzemeyi alıyor (G-code başlığı da yazar). Bu parçaların vakumla ya da elle tutulduğunu doğruladım.",
+      "checkUnverifiedMaterial": "Önce hava kesimi ve hurda parçada deneme: bu malzemenin kesim değerleri doğrulanmamış başlangıç değerleri (G-code başlığı da yazar). Bunu yapacağım.",
       "checkVacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
       "checkFeeds": "İlerleme önerilenin çok üstünde: {tools}. Fazladan sıfır olmadığını kontrol ettim; bu değerler bilerek girildi.",
       "checkFeedsTool": "T{tool} ilerleme {feed} (önerilen {recFeed}), dalma {plunge} (önerilen {recPlunge}) mm/dk",
@@ -2202,6 +2204,7 @@
         "PLACEMENT_GRAIN": "Damar yönü değişti; parça damara ters duruyor. Yerleşimi yeniden dizin.",
         "NO_CUTTING_PARAMS": "Makinede bu malzeme ve kalınlık için kesim ayarı yok.",
         "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı.",
+        "MATERIAL_NOT_RELEASED": "Alüminyum için rampa giriş, kademe ve talaş sınırları (T358, T359) gelmeden G-code verilmez.",
         "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
         "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
