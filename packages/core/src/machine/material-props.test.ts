@@ -7,8 +7,6 @@ import { cleanProps, propsFieldsOf, propsHeadSuffix, propsMatch } from './materi
 
 // T350: kind-specific library / stock / offcut properties.
 
-const ctx = { actor: 'user' as const, at: '2026-11-28T10:00:00Z' };
-
 describe('material props (T350)', () => {
   it('fields per family: aluminium alloy…, ACM colour code…, wood and plastic none', () => {
     expect(propsFieldsOf('aluminium')).toEqual(['alloy', 'temper', 'finish', 'film']);
@@ -54,23 +52,18 @@ describe('material props (T350)', () => {
 
   it('applyLibraryMaterial stores the props; setMaterial drops them', () => {
     const p = projectOf({ parts: [{ id: 'a', w: 300, h: 200 }] });
-    const picked = applyCommand(
-      p,
-      'applyLibraryMaterial',
-      {
-        libraryId: 'lib1',
-        material: 'aluminium',
-        thickness: 3,
-        width: 2000,
-        height: 1000,
-        grain: null,
-        props: { alloy: '5754' },
-      },
-      ctx,
-    );
+    const picked = applyCommand(p, 'applyLibraryMaterial', {
+      libraryId: 'lib1',
+      material: 'aluminium',
+      thickness: 3,
+      width: 2000,
+      height: 1000,
+      grain: null,
+      props: { alloy: '5754' },
+    });
     if (!picked.ok) throw new Error(picked.error.message);
     expect(picked.project.stock.props).toEqual({ alloy: '5754' });
-    const hand = applyCommand(picked.project, 'setMaterial', { material: 'mdf' }, ctx);
+    const hand = applyCommand(picked.project, 'setMaterial', { material: 'mdf' });
     if (!hand.ok) throw new Error(hand.error.message);
     expect(hand.project.stock).not.toHaveProperty('props');
   });
