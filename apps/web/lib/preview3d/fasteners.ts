@@ -81,7 +81,7 @@ export function fastenersOf(items: readonly BenchItem[]): Fastener[] {
     id: it.id,
     box: it.box,
     pose: it.pose,
-    holes: fitHoles(it),
+    holes: it.fold?.holes ?? fitHoles(it),
     boxy: true,
   }));
   const byId = new Map(shown.map((it) => [it.id, it]));

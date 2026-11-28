@@ -30,6 +30,8 @@ const BOXY_SHARE = 0.995;
 const boxyCache = new WeakMap<MeshData, boolean>();
 
 function isBoxy(item: BenchItem): boolean {
+  // T391: a folded part is never its flat box.
+  if (item.fold) return false;
   const hit = boxyCache.get(item.mesh);
   if (hit !== undefined) return hit;
   const [w, h] = boxSize(item.box);
@@ -54,12 +56,18 @@ export function fitRequest(id: number, items: readonly BenchItem[]): FitRequest 
   const meshes: Record<string, FitMesh> = {};
   for (const it of items) {
     const boxy = isBoxy(it);
-    parts.push({ id: it.id, box: it.box, pose: it.pose, holes: fitHoles(it), boxy });
+    parts.push({
+      id: it.id,
+      box: it.box,
+      pose: it.pose,
+      holes: it.fold?.holes ?? fitHoles(it),
+      boxy,
+    });
     if (boxy) {
       meshKeys.push(null);
       continue;
     }
-    const key = shapeKey(it.part, it.thickness);
+    const key = it.fold?.key ?? shapeKey(it.part, it.thickness);
     meshKeys.push(key);
     meshes[key] ??= { positions: it.mesh.positions, indices: it.mesh.indices };
   }

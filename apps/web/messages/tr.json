@@ -4099,6 +4099,31 @@
         "rivet": "Perçin Ø{d} × {length}"
       }
     },
+    "fold": {
+      "title": "Katla (ACM)",
+      "hint": "V-kanallar menteşe olur; tava kapanıyor mu, kesmeden görün. Yalnızca görünüm: kesim ve G-kod değişmez.",
+      "all": "Hepsini katla",
+      "percent": "%{v}",
+      "part": "Parça",
+      "groove": "Kanal {n}",
+      "base": "Taban",
+      "angle": "{v}°",
+      "target": "Hedef açı",
+      "bend": "İç yarıçap {ri} mm · dış {ro} mm · büküm payı {ba} mm",
+      "overFold": "{v}° V-bıçak bu açıya kapanmaz: kanal duvarları ezilir.",
+      "noTool": "Makinede açılı V-bıçak yok; 90° ve sivri uç varsayıldı.",
+      "skipped": "{n} kanal eğri ya da kapalı; katlanmaz.",
+      "states": {
+        "closed": "Kapanıyor",
+        "gap": "Köşe boşluğu var",
+        "clash": "Çakışma var"
+      },
+      "issues": {
+        "relief": "{a} ile {b} köşede aynı malzemeyi paylaşıyor: köşe boşaltması gerekli.",
+        "overlap": "{a} ile {b} çakışıyor ({mm} mm).",
+        "corner": "{a} ile {b} arası köşe boşluğu {mm} mm."
+      }
+    },
     "measure": {
       "distance": "Mesafe {mm} mm",
       "delta": "ΔX {x} · ΔY {y} · ΔZ {z}",
