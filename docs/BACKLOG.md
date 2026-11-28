@@ -2358,7 +2358,7 @@ Acceptance:
 - [ ] fastener helper: standard screw/rivet marker through aligned holes (display only; counted in the PDF list as "bağlantı elemanı")
 Tester focus: mixed wood + aluminium assembly; PDF list.
 
-### T391 ACM fold preview ("Katla")   [status: todo]
+### T391 ACM fold preview ("Katla")   [status: done]
 Depends: T352 (V-groove operation)
 Acceptance:
 - [ ] an ACM part with V-groove lines shows folded: each groove is a hinge line; one slider folds all from 0 to the designed angle (default 90°), or per groove
