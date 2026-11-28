@@ -17,6 +17,7 @@ import {
   type MachineProfile,
 } from '../machine';
 import { feedOverride, jobToolNumbers, rpmInRange, spindleOverride } from './spindle';
+import { materialLimitFindings } from './material-limits';
 import {
   contourPocketTool,
   contourTool,
@@ -1251,6 +1252,10 @@ export function buildToolpath(
         ),
       );
     }
+  }
+  // T359 (D-150): the material's chip-load and step-down limits, and deep full-width slots.
+  for (const f of materialLimitFindings(project, machine)) {
+    (f.severity === 'error' ? errors : warnings).push(issue(f.code, f.severity, null, f.message));
   }
   if (errors.length > 0) return fail(clearanceZ);
 

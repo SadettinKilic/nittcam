@@ -23,6 +23,10 @@ exports[`material traits (T341) > locks the rows 1`] = `
         },
       ],
       "enforce": "warn",
+      "vBit": {
+        "max": 0.05,
+        "min": 0.02,
+      },
     },
     "coolant": "recommended",
     "cutDirection": "conventional",

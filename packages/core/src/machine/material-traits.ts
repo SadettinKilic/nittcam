@@ -137,6 +137,11 @@ export interface MaterialTraits {
   chipLoad: {
     enforce: 'warn' | 'limit';
     bands: readonly { minDiameter: number; min: number; max: number }[];
+    /**
+     * T359 (D-144 rest): the band of a V-bit (any diameter; it cuts with its tip). Absent = no
+     * band for V-bits. Drills never take a band (their feed is a plunge per revolution).
+     */
+    vBit?: { min: number; max: number };
   } | null;
   /** T351 (analysis §4.2 "Finiş pasosu"): default finish allowance, mm; `null` = no finish field. */
   finish: { defaultAllowance: number | null };
@@ -344,6 +349,8 @@ export const MATERIAL_TRAITS: Readonly<Record<MaterialKind, MaterialTraits>> = {
         { minDiameter: 6, min: 0.06, max: 0.21 },
         { minDiameter: 8, min: 0.08, max: 0.21 },
       ],
+      // T359 (D-144, research V-groove row 0,025 / 0,042 / 0,05): floor cl_min × 0,8, ceiling 0,05.
+      vBit: { min: 0.02, max: 0.05 },
     },
     // 1250 × 2440 first: it fits nearly every router table, so a switch to ACM never lands on a
     // sheet the machine cannot hold (B68 tester; the 3200 lengths exceed a 3050 table).
@@ -424,13 +431,18 @@ export function kindsOfFamily(family: MaterialFamily): MaterialKind[] {
   );
 }
 
-/** T351: the chip load band of a tool diameter, or `null` when the kind has none. */
+/**
+ * T351: the chip load band of a tool diameter, or `null` when the kind has none. T359: a V-bit
+ * takes the kind's `vBit` band (none without it); a drill never has one.
+ */
 export function chipLoadBand(
   traits: Pick<MaterialTraits, 'chipLoad'>,
   diameter: number,
+  toolType?: ToolType,
 ): { min: number; max: number; enforce: 'warn' | 'limit' } | null {
   const c = traits.chipLoad;
-  if (!c) return null;
+  if (!c || toolType === 'drill') return null;
+  if (toolType === 'vBit') return c.vBit ? { ...c.vBit, enforce: c.enforce } : null;
   let band: { min: number; max: number } | null = null;
   for (const b of c.bands) if (diameter >= b.minDiameter - 1e-9) band = b;
   return band ? { min: band.min, max: band.max, enforce: c.enforce } : null;

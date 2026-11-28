@@ -707,10 +707,10 @@ export function materialFeedIssues(profile: FeedLimitProfile): MachineProfileIss
 export function setChipLoad(
   profile: Pick<MachineProfile, 'tools'>,
   set: Pick<MaterialParams, 'feed' | 'rpm' | 'tool'>,
-): { value: number; diameter: number } | null {
+): { value: number; diameter: number; type: ToolType } | null {
   const tool = profile.tools.find((t) => t.number === set.tool);
   if (!tool || !(set.rpm > 0) || !(tool.flutes > 0)) return null;
-  return { value: set.feed / (set.rpm * tool.flutes), diameter: tool.diameter };
+  return { value: set.feed / (set.rpm * tool.flutes), diameter: tool.diameter, type: tool.type };
 }
 
 /**
@@ -729,7 +729,7 @@ export function materialFamilyIssues(
   profile.materials.forEach((m, i) => {
     const traits = traitsOf(m.material);
     const cl = setChipLoad(profile, m);
-    const band = cl ? chipLoadBand(traits, cl.diameter) : null;
+    const band = cl ? chipLoadBand(traits, cl.diameter, cl.type) : null;
     if (
       cl &&
       band?.enforce === 'limit' &&

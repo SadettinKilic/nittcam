@@ -1683,7 +1683,7 @@ function MaterialFamilyDetail({
   const tool = profile.tools.find((x) => x.number === set.tool);
   const cl =
     Number.isFinite(set.feed) && Number.isFinite(set.rpm) ? setChipLoad(profile, set) : null;
-  const band = cl ? chipLoadBand(traits, cl.diameter) : null;
+  const band = cl ? chipLoadBand(traits, cl.diameter, cl.type) : null;
   const outside = cl && band ? cl.value < band.min - 1e-9 || cl.value > band.max + 1e-9 : false;
   const ceiling = tool
     ? stepDownCeiling(traits, tool.diameter, profile.metal?.rigidity ?? 'standard')

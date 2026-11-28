@@ -2231,7 +2231,7 @@ Acceptance:
 - [ ] wood and plastic: unchanged entries
 Tester focus: property test over random aluminium jobs: no descent into material steeper than the limit except drill moves.
 
-### T359 Step-down and chip-load limits as errors   [status: todo]   (post-FT)
+### T359 Step-down and chip-load limits as errors   [status: review]   (post-FT)
 Spec: §7.2 (R13, R14), §6.3  ·  Depends: T345, T346  ·  Owner: dev
 Acceptance:
 - [ ] validation and toolpath: `STEP_DOWN_ABOVE_MATERIAL_LIMIT` (traits × rigidity × tool Ø) and `CHIP_LOAD_OUT_OF_RANGE` (upper and lower bound per tool Ø band) for every job tool, with the allowed range in the message

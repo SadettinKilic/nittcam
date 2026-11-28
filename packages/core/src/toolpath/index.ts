@@ -89,6 +89,14 @@ export {
   type ToolSpindle,
 } from './spindle';
 export {
+  chipLoadStatus,
+  materialLimitFindings,
+  SLOT_DEPTH_PER_DIAMETER,
+  type ChipLoadStatus,
+  type MaterialLimitCode,
+  type MaterialLimitFinding,
+} from './material-limits';
+export {
   OPERATION_TOOL_KINDS,
   OPERATION_TOOL_TYPES,
   operationToolTypes,

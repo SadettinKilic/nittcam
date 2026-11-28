@@ -42,6 +42,7 @@ import { contour } from '../geometry/polyline';
 import { contourPocketRings } from '../toolpath/contour-pocket';
 import { unsecuredSlugs } from '../toolpath/slug-check';
 import { spindleSettingsOf } from '../toolpath/spindle';
+import { materialLimitFindings } from '../toolpath/material-limits';
 import {
   contourPocketTool,
   contourTool,
@@ -104,7 +105,13 @@ export type ValidationCode =
   /** T352: the remaining skin outside the material's bounds or not below the thickness. */
   | 'VGROOVE_DEPTH_INVALID'
   /** T352: the fold line leaves the part outline. */
-  | 'VGROOVE_OUTSIDE_PART';
+  | 'VGROOVE_OUTSIDE_PART'
+  /** T359: a pass deeper than the material's step-down ceiling for a job tool. */
+  | 'STEP_DOWN_ABOVE_MATERIAL_LIMIT'
+  /** T359: a job tool's chip load outside the material's band (aluminium error, ACM warning). */
+  | 'CHIP_LOAD_OUT_OF_RANGE'
+  /** T359: a full-width slot deeper than 3 × the tool diameter (metal kinds). */
+  | 'SLOT_TOO_DEEP';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -634,6 +641,22 @@ export const machineFeedAboveMax: ValidationRule = (project, context) => {
 };
 
 /**
+ * (e2d) T359 (D-150, spec §7.2 R13 / R14): the material's step-down and chip-load limits per job
+ * tool and the deep-slot warning, the same findings the toolpath reports. Skipped without a
+ * profile; kinds without limits (wood, plastic) get nothing.
+ */
+export const materialCutLimits: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine) return [];
+  return materialLimitFindings(project, machine).map((f) => ({
+    code: f.code,
+    severity: f.severity,
+    path: f.path,
+    message: f.message,
+  }));
+};
+
+/**
  * (e2c) T330 (D-121, field rehearsal B1): a job feed or plunge feed more than 1,5 × its
  * recommendation, or a chip load more than 2 × the set's, typically one extra zero typed in
  * Kesim ayarları. A warning (counted in Uyarılar, a checklist line to tick), not an error: the
@@ -993,6 +1016,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   feedOutOfRange,
   machineFeedAboveMax,
   feedAboveRecommended,
+  materialCutLimits,
   operationToolUnsuitable,
   toolTypeUnsuitableForMaterial,
   marginBelowToolRadius,
