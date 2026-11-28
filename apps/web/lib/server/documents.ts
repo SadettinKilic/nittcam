@@ -11,6 +11,7 @@ import { companyStorage, defaultUser } from './company';
 import { snapshotKey, writeSnapshot } from './export-snapshot';
 import {
   exportFolder,
+  machineForJob,
   manifestHash,
   newExportId,
   sha256Hex,
@@ -120,9 +121,11 @@ export async function storeDocument(
   labels?: string,
 ): Promise<StoreResult> {
   const pin = project.data.machine;
-  const machine = await scope.machines.getProfileVersion(pin.machineId, {
-    version: pin.profileVersion,
-  });
+  // T356: the verification state recorded with the document is the job's family state.
+  const machine = machineForJob(
+    await scope.machines.getProfileVersion(pin.machineId, { version: pin.profileVersion }),
+    project.data,
+  );
   if (!machine) return { kind: 'noMachine' };
   const hash = sha256Hex(doc.bytes);
   const key = {

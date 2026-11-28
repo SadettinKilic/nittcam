@@ -7,6 +7,7 @@
 import {
   addMaintenanceEntry,
   currentVerificationState,
+  VERIFICATION_FAMILIES,
   maintenanceEntrySchema,
   parseMaintenanceLog,
   type MaintenanceEntry,
@@ -20,6 +21,7 @@ import {
   type MachineProfile,
   type MachineProfileIssue,
   type Project,
+  type VerificationFamily,
   type VerificationStage,
   type VerificationState,
 } from '@nittcam/core';
@@ -687,7 +689,18 @@ export interface MachineWithProfile {
   machine: MachineRow;
   version: MachineProfileVersionRow;
   profile: MachineProfile;
+  /** Verification state in the wood board family (every record before T356; wood and plastic). */
   state: VerificationState;
+  /**
+   * T356 (§7.3, D-138): the state per verification family; `woodBoard` equals `state`. A family
+   * without a record is `draft`.
+   */
+  families: Record<VerificationFamily, VerificationState>;
+}
+
+/** T356: the db value of a verification family (null = wood board, the records before T356). */
+export function familyColumn(family: VerificationFamily): 'composite' | 'nonFerrous' | null {
+  return family === 'woodBoard' ? null : family;
 }
 
 function validMachineProfile(json: unknown): MachineProfile {
@@ -759,8 +772,12 @@ function machinesRepo(db: Db, companyId: string) {
     );
   }
 
-  /** Latest recorded verification of the machine, with the profile it was recorded against. */
-  async function lastVerification(machineId: string) {
+  /**
+   * Latest recorded verification of the machine in a family (T356; wood board = no family), with
+   * the profile it was recorded against.
+   */
+  async function lastVerification(machineId: string, family: VerificationFamily) {
+    const col = familyColumn(family);
     const rows = await db
       .select({ stage: validations.stage, profile: machineProfileVersions.profile })
       .from(validations)
@@ -772,7 +789,11 @@ function machinesRepo(db: Db, companyId: string) {
         ),
       )
       .where(
-        and(eq(validations.companyId, companyId), eq(machineProfileVersions.machineId, machineId)),
+        and(
+          eq(validations.companyId, companyId),
+          eq(machineProfileVersions.machineId, machineId),
+          col === null ? isNull(validations.materialFamily) : eq(validations.materialFamily, col),
+        ),
       )
       .orderBy(desc(validations.createdAt))
       .limit(1);
@@ -781,6 +802,24 @@ function machinesRepo(db: Db, companyId: string) {
     const parsed = parseMachineProfile(row.profile);
     // A version that predates the T010 schema cannot be compared: count it as changed.
     return { stage: row.stage, profile: parsed.ok ? parsed.profile : null };
+  }
+
+  /** T356: the verification state of `profile` in every family (draft without a record). */
+  async function familyStates(
+    machineId: string,
+    profile: MachineProfile,
+  ): Promise<Record<VerificationFamily, VerificationState>> {
+    const families = {} as Record<VerificationFamily, VerificationState>;
+    for (const family of VERIFICATION_FAMILIES) {
+      const last = await lastVerification(machineId, family);
+      let state: VerificationState = 'draft';
+      if (last && last.profile === null) state = 'reverify_needed';
+      else if (last && last.profile) {
+        state = currentVerificationState(profile, { stage: last.stage, profile: last.profile });
+      }
+      families[family] = state;
+    }
+    return families;
   }
 
   async function withProfile(machine: MachineRow): Promise<MachineWithProfile | null> {
@@ -794,16 +833,8 @@ function machinesRepo(db: Db, companyId: string) {
     if (!version) return null;
     const parsed = parseMachineProfile(version.profile);
     if (!parsed.ok) return null;
-    const last = await lastVerification(machine.id);
-    let state: VerificationState = 'draft';
-    if (last && last.profile === null) state = 'reverify_needed';
-    else if (last && last.profile) {
-      state = currentVerificationState(parsed.profile, {
-        stage: last.stage,
-        profile: last.profile,
-      });
-    }
-    return { machine, version, profile: parsed.profile, state };
+    const families = await familyStates(machine.id, parsed.profile);
+    return { machine, version, profile: parsed.profile, state: families.woodBoard, families };
   }
 
   return {
@@ -850,7 +881,13 @@ function machinesRepo(db: Db, companyId: string) {
         await syncTools(tx, machine.id, profile);
         return { machine, version };
       });
-      return { machine, version, profile, state: 'draft' };
+      return {
+        machine,
+        version,
+        profile,
+        state: 'draft',
+        families: { woodBoard: 'draft', composite: 'draft', nonFerrous: 'draft' },
+      };
     },
     /**
      * Saves an edited profile as a new immutable version (`max + 1`), refreshes the machine's
@@ -904,16 +941,8 @@ function machinesRepo(db: Db, companyId: string) {
       if (!version) return null;
       const parsed = parseMachineProfile(version.profile);
       if (!parsed.ok) return null;
-      const last = await lastVerification(machineId);
-      let state: VerificationState = 'draft';
-      if (last && last.profile === null) state = 'reverify_needed';
-      else if (last && last.profile) {
-        state = currentVerificationState(parsed.profile, {
-          stage: last.stage,
-          profile: last.profile,
-        });
-      }
-      return { machine, version, profile: parsed.profile, state };
+      const families = await familyStates(machineId, parsed.profile);
+      return { machine, version, profile: parsed.profile, state: families.woodBoard, families };
     },
     /**
      * Records a verification step (§7.3, T022) against a profile version of this machine: the
@@ -928,6 +957,8 @@ function machinesRepo(db: Db, companyId: string) {
         stage: VerificationStage;
         measurements?: Record<string, unknown>;
         approvedBy?: string | null;
+        /** T356: the family the step was done in; absent = wood board (as before). */
+        family?: VerificationFamily;
       },
     ): Promise<ValidationRow> {
       const versions = await db
@@ -948,6 +979,7 @@ function machinesRepo(db: Db, companyId: string) {
           level: 'user_approved',
           measurements: values.measurements ?? {},
           approvedBy: values.approvedBy ?? null,
+          materialFamily: familyColumn(values.family ?? 'woodBoard'),
         })
         .returning();
       return rows[0] as ValidationRow;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { unverifiedMaterialName } from '../export/export';
 import { checkGcode } from '../gcode-check/check';
+import type { GcodeCheckContext } from '../gcode-check/types';
 import { goldenTray, postConfig } from '../gcode-check/check.testing';
 import { verificationFamilyOf } from '../machine/material-traits';
 import { vGrooveProfile } from '../post/golden.testing';
@@ -40,7 +41,8 @@ describe('verification family (T356)', () => {
 describe('checker: DOGRULANMAMIS MALZEME header (T356 rider, CTO #15)', () => {
   const tray = goldenTray('generic');
   const ctx = { ...tray.context, unverifiedMaterial: 'ACM' };
-  const codes = (text: string, c = ctx) => checkGcode(text, c).violations.map((v) => v.code);
+  const codes = (text: string, c: GcodeCheckContext = ctx) =>
+    checkGcode(text, c).violations.map((v) => v.code);
 
   it('accepts the golden tray, which carries the line', () => {
     expect(codes(tray.text)).not.toContain('UNVERIFIED_MATERIAL_HEADER_MISSING');

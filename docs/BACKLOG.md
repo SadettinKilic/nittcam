@@ -2162,7 +2162,7 @@ Acceptance:
 - [ ] step 5 checklist items for ACM (analysis §5.6); G-code header line `MALZEME: ...`
 Tester focus: PDF of the tray fixture at A4 and A3; wood PDFs byte-identical.
 
-### T356 Verification per material family; ACM field kit   [status: todo]   (post-FT)
+### T356 Verification per material family; ACM field kit   [status: done]   (post-FT)
 Spec: §7.3  ·  Depends: T353  ·  Owner: dev
 Acceptance:
 - [ ] migration `validations.material_family` (null = wood board); verification page shows a state per family; a family without a test cut gives the "DOĞRULANMADI" header and the extra acceptance at download (R10)

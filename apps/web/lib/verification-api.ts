@@ -7,6 +7,8 @@ import type {
   TestCutSuggestion,
   TestPartInfo,
   TestProgramKind,
+  TrayMeasurementItem,
+  TrayTestInfo,
   UnverifiedReason,
   VerificationStage,
   VerificationState,
@@ -17,7 +19,16 @@ import type { ExportFileInfo, ExportPostInfo, ExportViolation } from './exports-
  * A downloadable program: the §7.3 air cut / test cut, or the extended field-test part (T191,
  * D-092) as `extAirCut` / `extTestCut`.
  */
-export type ProgramKind = TestProgramKind | 'extAirCut' | 'extTestCut';
+export type ProgramKind =
+  | TestProgramKind
+  | 'extAirCut'
+  | 'extTestCut'
+  /** T356: the ACM tray (composite family). */
+  | 'acmAirCut'
+  | 'acmTestCut';
+
+/** T356: the verification families the page offers (aluminium's part comes with MB7). */
+export type VerificationPageFamily = 'woodBoard' | 'composite';
 
 /** One generated test program (dry run): files only when every check passed. */
 export interface TestProgramPreview {
@@ -37,7 +48,7 @@ export interface VerificationHistoryItem {
   /** ISO 8601. */
   createdAt: string;
   /** For test cuts: the measured values and the evaluation at the time. */
-  measurements: Partial<TestCutMeasurements> | null;
+  measurements: Partial<TestCutMeasurements> | Record<string, number> | null;
   inTolerance: boolean | null;
 }
 
@@ -47,7 +58,13 @@ export interface VerificationOverview {
   machineName: string;
   profileVersionId: string;
   version: number;
+  /** State in `family` (T356). */
   state: VerificationState;
+  /** T356: the family this overview is for, and the state of every family on the page. */
+  family: VerificationPageFamily;
+  families: Record<VerificationPageFamily, VerificationState>;
+  /** T356: the ACM tray test part (composite family only). */
+  tray: TrayTestInfo | null;
   example: boolean;
   post: ExportPostInfo | null;
   /** Why the files still say "DOĞRULANMADI, önce air cut" (empty = they do not). */
@@ -92,11 +109,15 @@ export type VerificationRequest =
       profileVersionId: string;
       /** Every air-cut checklist item ticked. */
       checks: Record<AirCutCheck, boolean>;
+      /** T356: the family the step is for; absent = wood board. */
+      family?: VerificationPageFamily;
     }
   | {
       step: 'testCut';
       profileVersionId: string;
-      measurements: Partial<Record<keyof TestCutMeasurements, unknown>>;
+      family?: VerificationPageFamily;
+      /** Board: `TestCutMeasurements`; ACM tray (T356): remaining, outerX, outerY. */
+      measurements: Record<string, unknown>;
     };
 
 export const AIR_CUT_CHECKS = ['axes', 'spindle', 'safeZ', 'noContact'] as const;
@@ -107,7 +128,7 @@ export interface VerificationResponse {
   stage: VerificationStage;
   /** Test cut only. */
   evaluation?: {
-    items: MeasurementItem[];
+    items: (MeasurementItem | TrayMeasurementItem)[];
     inTolerance: boolean;
     suggestions: TestCutSuggestion[];
   };
@@ -119,7 +140,10 @@ export type VerificationApiError =
   | { error: 'stale_version'; version: number }
   | { error: 'not_allowed'; state: VerificationState }
   | { error: 'checks_required' }
-  | { error: 'invalid_measurements'; issues: MeasurementIssue[] }
+  | {
+      error: 'invalid_measurements';
+      issues: (MeasurementIssue | { field: string; code: MeasurementIssue['code'] })[];
+    }
   | { error: 'program_failed'; message?: string }
   | { error: 'acceptance_required' }
   | { error: 'server_error' };

@@ -2459,8 +2459,12 @@
       "diagonal": "Köşegen (köşeden köşeye)",
       "holeDiameter": "Delik çapı",
       "pocketDepth": "Cep derinliği (üst yüzeyden)",
-      "thickness": "Plaka kalınlığı (ölçülen)"
+      "thickness": "Plaka kalınlığı (ölçülen)",
+      "remaining": "Kanalda kalan kalınlık (tabla tarafından)",
+      "outerX": "Katlanmış tepsi dış ölçüsü X",
+      "outerY": "Katlanmış tepsi dış ölçüsü Y"
     },
+    "trayHelp": "Kalan kalınlığı kanalın ortasında, panelin alt (tabla) yüzünden ölçün. Sonra dört kenarı 90° katlayın ve dış ölçüyü alın.",
     "thicknessHelp": "Z sıfırı tabla olduğu için cep derinliği gerçek kalınlığa bağlı: plakayı da ölçün.",
     "nominal": "beklenen {value} mm",
     "issues": {
@@ -2483,7 +2487,10 @@
       "edgeY": "Kenar Y",
       "diagonal": "Köşegen",
       "holeDiameter": "Delik çapı",
-      "pocketDepth": "Cep derinliği"
+      "pocketDepth": "Cep derinliği",
+      "remaining": "Kalan kalınlık",
+      "outerX": "Dış ölçü X",
+      "outerY": "Dış ölçü Y"
     },
     "inTol": "Tolerans içinde",
     "outTol": "Tolerans dışında",
@@ -2528,9 +2535,36 @@
       "current": "sıradaki adım",
       "upcoming": "bekliyor"
     },
-    "fieldKitLink": "Saha testi kiti"
+    "fieldKitLink": "Saha testi kiti",
+    "families": {
+      "label": "Malzeme ailesi",
+      "note": "Doğrulama malzeme ailesine bağlıdır: ahşapta doğrulanan makine kompozit panelde doğrulanmış sayılmaz. Alüminyum testi daha sonra eklenecek.",
+      "names": {
+        "woodBoard": "Ahşap ve plastik plaka",
+        "composite": "Kompozit panel (ACM)"
+      }
+    },
+    "trayTitle": "ACM test tepsisi",
+    "tray": "250 × 250 mm ACM {thickness} mm, köşelerde 25 mm kesik, 4 V-kanal (kanal merkezleri arası {span} mm). V uç T{vBit} {angle}°, kalan kalınlık {remaining} mm; dış kontur T{tool} Ø{diameter} mm. Arka yüzden kesilir: panel yüzü aşağı.",
+    "trayFolded": "Katlanınca beklenen dış ölçü {outer} mm (± 0,5); kalan kalınlık ± 0,1 mm."
   },
   "fieldKit": {
+    "acm": {
+      "title": "ACM test tepsisi (kompozit panel ailesi)",
+      "text": "Kompozit panel ayrı doğrulanır. ACM {thickness} mm fire panelden 250 × 250 mm tepsi: 4 V-kanal, V uç T{vBit} {angle}°, kalan kalınlık {remaining} mm. Katlanınca dış ölçü {outer} mm.",
+      "steps": [
+        "Önce ACM air cut: Z {gap} mm yukarıda, malzemeye temas yok.",
+        "Paneli yüzü aşağı (film alta) yatırın; parçalar aynalı kesilir.",
+        "V ucu takın (T{vBit}, {angle}°) ve Z sıfırını alın.",
+        "Test tepsisini kesin; kanallar konturdan önce kesilir.",
+        "Kanalın ortasında kalan kalınlığı tabla tarafından ölçün (hedef {remaining} mm ± 0,1).",
+        "Dört kenarı 90° katlayın; ön yüzde iz olmamalı. Dış ölçüyü X ve Y'de ölçün (hedef {outer} mm ± 0,5).",
+        "Ölçüleri Doğrulama sayfasında Kompozit panel sekmesine girin."
+      ],
+      "airCut": "ACM air cut",
+      "testCut": "ACM test tepsisi",
+      "unavailable": "ACM tepsisi için makinede bir kompozit panel (ACM) kesim ayarı ve açısı girilmiş bir V uç gerekir."
+    },
     "vacuumByHand": "Vakum programdan açılmıyor: kesimden önce vakumu elle açın ve parçaların tutulduğunu doğrulayın.",
     "title": "Saha testi kiti",
     "subtitle": "{machine} · profil v{version} · post {post}",
@@ -2664,7 +2698,9 @@
         "airCut": "Air cut",
         "testCut": "Test parçası",
         "extAirCut": "Genişletilmiş air cut",
-        "extTestCut": "Genişletilmiş test parçası"
+        "extTestCut": "Genişletilmiş test parçası",
+        "acmAirCut": "ACM air cut",
+        "acmTestCut": "ACM test tepsisi"
       }
     }
   },

@@ -6,6 +6,7 @@ import { getMessages } from '../../../../../lib/messages';
 import {
   apiError,
   evaluate,
+  isPageFamily,
   loadMachine,
   overview,
   programPasses,
@@ -24,12 +25,15 @@ export const dynamic = 'force-dynamic';
  * the unverified warning, the test part, both test programs as a dry run (checks + file hashes)
  * and the history (spec §7.3, T022). Nothing is stored.
  */
-export async function GET(_request: Request, ctx: RouteContext<'/api/machines/[id]/verification'>) {
+export async function GET(request: Request, ctx: RouteContext<'/api/machines/[id]/verification'>) {
   const { id } = await ctx.params;
   if (!UUID.test(id)) return apiError({ error: 'not_found' }, 404);
+  // T356: `?family=composite` = the ACM family (its own state, tray part and history).
+  const family = new URL(request.url).searchParams.get('family') ?? 'woodBoard';
+  if (!isPageFamily(family)) return apiError({ error: 'bad_request' }, 400);
   try {
     const scope = await companyScope();
-    const m = await loadMachine(scope, id);
+    const m = await loadMachine(scope, id, family);
     if (!m) return apiError({ error: 'not_found' }, 404);
     return NextResponse.json(await overview(scope, m));
   } catch (err) {
@@ -38,10 +42,17 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/machines/[i
   }
 }
 
+/** T356: the program a step of a family approves (the ACM tray for the composite family). */
+function programKindOf(family: 'woodBoard' | 'composite', step: 'airCut' | 'testCut') {
+  if (family === 'composite') return step === 'airCut' ? 'acmAirCut' : 'acmTestCut';
+  return step;
+}
+
 function parseRequest(body: unknown): VerificationRequest | null {
   if (!body || typeof body !== 'object') return null;
   const b = body as Record<string, unknown>;
   if (typeof b.profileVersionId !== 'string' || !UUID.test(b.profileVersionId)) return null;
+  if (b.family !== undefined && !isPageFamily(b.family)) return null;
   if (b.step === 'airCut' && b.checks && typeof b.checks === 'object') {
     return b as unknown as VerificationRequest;
   }
@@ -71,7 +82,8 @@ export async function POST(request: Request, ctx: RouteContext<'/api/machines/[i
   if (!req) return apiError({ error: 'bad_request' }, 400);
   try {
     const scope = await companyScope();
-    const m = await loadMachine(scope, id);
+    const family = req.family ?? 'woodBoard';
+    const m = await loadMachine(scope, id, family);
     if (!m) return apiError({ error: 'not_found' }, 404);
     if (m.machine.version.id !== req.profileVersionId) {
       return apiError({ error: 'stale_version', version: m.machine.version.version }, 409);
@@ -80,7 +92,7 @@ export async function POST(request: Request, ctx: RouteContext<'/api/machines/[i
     if (!canRecordVerification(state, req.step)) {
       return apiError({ error: 'not_allowed', state }, 409);
     }
-    if (!programPasses(m, req.step)) {
+    if (!programPasses(m, programKindOf(family, req.step))) {
       return apiError(
         { error: 'program_failed', message: getMessages().verification.programFailedSave },
         422,
@@ -97,6 +109,7 @@ export async function POST(request: Request, ctx: RouteContext<'/api/machines/[i
         stage: 'air_cut_approved',
         measurements: { airCutChecks: Object.fromEntries(AIR_CUT_CHECKS.map((k) => [k, true])) },
         approvedBy: user.id,
+        family,
       });
       const body: VerificationResponse = { state: 'air_cut_approved', stage: 'air_cut_approved' };
       return NextResponse.json(body);
@@ -107,9 +120,9 @@ export async function POST(request: Request, ctx: RouteContext<'/api/machines/[i
       return apiError({ error: 'invalid_measurements', issues: ev.evaluation.issues }, 422);
     }
     const input = Object.fromEntries(
-      ['edgeX', 'edgeY', 'diagonal', 'holeDiameter', 'pocketDepth', 'thickness']
-        .filter((k) => typeof req.measurements[k as keyof typeof req.measurements] === 'number')
-        .map((k) => [k, req.measurements[k as keyof typeof req.measurements]]),
+      ev.keys
+        .filter((k) => typeof req.measurements[k] === 'number')
+        .map((k) => [k, req.measurements[k]]),
     );
     await scope.machines.recordVerification(id, {
       profileVersionId: req.profileVersionId,
@@ -122,6 +135,7 @@ export async function POST(request: Request, ctx: RouteContext<'/api/machines/[i
         testPart: ev.info,
       },
       approvedBy: user.id,
+      family,
     });
     const body: VerificationResponse = {
       state: ev.stage,
