@@ -747,6 +747,7 @@ function Player({
             active={String(sim.sheet)}
             className={`${floating} max-w-full min-w-0 p-0.5 max-sm:self-stretch`}
             testId="sim-tabs-scroll"
+            scrollLabels={{ prev: t.sheetTabsPrev, next: t.sheetTabsNext }}
           >
             {tabs}
           </PlateTabStrip>

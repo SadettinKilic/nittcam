@@ -251,8 +251,11 @@ test.describe('B47 tester: T300 margin rule', () => {
     await saved(page);
     const warn = page.getByTestId('layout-margin-warning');
     const text = fill(tr.wizard.layout.marginWarning, { tool: '8', min: '8' });
-    await expect(page.getByTestId('layout-gap-note')).toHaveText(
-      fill(tr.wizard.layout.gapNote, { tool: '8', gap: '0,1', clear: '8,1' }),
+    // B67: short note on screen, the full sum in its detail (hover, screen readers).
+    const gapNote = page.getByTestId('layout-gap-note');
+    await expect(gapNote).toContainText(fill(tr.wizard.layout.gapNote, { clear: '8,1' }));
+    await expect(gapNote).toContainText(
+      fill(tr.wizard.layout.gapNoteDetail, { tool: '8', gap: '0,1', clear: '8,1' }),
     );
     for (const [m, low] of [
       ['0', true],

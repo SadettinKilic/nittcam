@@ -746,6 +746,7 @@ function LayoutViewImpl({
               active={String(sheet)}
               className={`${floating} max-w-full min-w-0 p-0.5`}
               testId="sheet-tabs-scroll"
+              scrollLabels={{ prev: t.sheetTabsPrev, next: t.sheetTabsNext }}
             >
               <TabsList
                 variant="segmented"
