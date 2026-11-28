@@ -65,7 +65,7 @@ import {
 import { toolpathSafetyViolations } from './safety';
 import { buildHoleOperation, holeOperationKind, holeStart, placedHoleCentre } from './holes';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
-import { grooveLeavesPart, lineLeavesPart } from '../editor/lines';
+import { grooveChain, grooveLeavesPart, lineLeavesPart } from '../editor/lines';
 import { summarizeToolpath } from './stats';
 import { buildOnlineOperation, onlineStart } from './online';
 import {
@@ -1287,8 +1287,13 @@ export function buildToolpath(
   for (const part of project.parts) {
     if (part.inners.length > 0) {
       const outline = deriveOutline(part);
+      // B70: a closed V-groove is a fold line, not an opening: it may run along the outline
+      // (fold lines chained at the relief corners); the V-groove checks below cover it.
+      const cutOthers = (k: number) =>
+        part.inners.slice(0, k).filter((_, j) => innerOperation(part, j).kind !== 'vgroove');
       for (const [k, inner] of part.inners.entries()) {
-        const invalid = checkInnerContour(outline, part.inners.slice(0, k), inner, 0);
+        if (innerOperation(part, k).kind === 'vgroove') continue;
+        const invalid = checkInnerContour(outline, cutOthers(k), inner, 0);
         if (invalid) {
           errors.push(
             issue(
@@ -1397,7 +1402,7 @@ export function buildToolpath(
         );
         continue;
       }
-      if (g.type === 'line' && grooveLeavesPart(outlineVs, g.vertices)) {
+      if (grooveLeavesPart(outlineVs, grooveChain(g))) {
         bad('VGROOVE_OUTSIDE_PART', 'the fold line leaves the part outline.');
         continue;
       }

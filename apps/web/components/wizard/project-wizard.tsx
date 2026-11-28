@@ -1262,6 +1262,7 @@ function WizardSession({
         project={project}
         run={session.run}
         viewSwitch={switchInCanvas ? viewSwitch : undefined}
+        vGroove={vGrooveInfo}
       />
     );
   } else if (drawing) {

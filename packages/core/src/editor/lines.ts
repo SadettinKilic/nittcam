@@ -74,6 +74,12 @@ export const GROOVE_EDGE_SLACK = 0.01;
  * than `GROOVE_EDGE_SLACK`. Unlike an engraving, a fold may run to the edge (its ends on the
  * outline), so the tool radius does not count.
  */
+/** The points of a V-groove as a chain: an open line as is, a closed contour back to its start. */
+export function grooveChain(g: { closed: boolean; vertices: readonly Vertex[] }): Vertex[] {
+  const first = g.vertices[0];
+  return g.closed && first ? [...g.vertices, { ...first, bulge: 0 }] : [...g.vertices];
+}
+
 export function grooveLeavesPart(outline: readonly Vertex[], line: readonly Vertex[]): boolean {
   return linePoints(line).some(
     (p) => !insideContour(p, outline) && contourDistance(p, outline) > GROOVE_EDGE_SLACK,

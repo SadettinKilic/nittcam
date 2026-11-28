@@ -10,6 +10,7 @@ import {
   defaultOnlineDepth,
   DXF_USER_UNITS,
   planDxfImport,
+  suggestedLayerOp,
   type DxfDrawing,
   type DxfLayerMap,
   type DxfLayerOp,
@@ -128,7 +129,22 @@ export function DxfImportDialog({
     [picked, unit, asRead],
   );
   const drawing: DxfDrawing | null = loaded?.ok ? loaded.drawing : null;
-  const map = useMemo(() => effectiveMap(stored, chosen), [stored, chosen]);
+  // B70: a layer named like a fold line (V-kanal, VKANAL, V_GROOVE, Büküm) starts as V-kanal on a
+  // folding stock, unless the company already mapped it.
+  const suggested = useMemo(() => {
+    const out: DxfLayerMap = {};
+    if (!drawing || !vGroove) return out;
+    for (const { layer } of layerCounts(drawing)) {
+      const key = layer.trim().toUpperCase();
+      const op = stored[key] === undefined ? suggestedLayerOp(layer, vGroove) : undefined;
+      if (op) out[key] = op;
+    }
+    return out;
+  }, [drawing, stored, vGroove]);
+  const map = useMemo(
+    () => effectiveMap({ ...suggested, ...stored }, chosen),
+    [suggested, stored, chosen],
+  );
   const plan = useMemo(() => (drawing ? planDxfImport(drawing, map) : null), [drawing, map]);
   const summary = drawing && plan ? summarize(drawing, plan, holeTool) : null;
   const uncertain = asRead?.ok ? asRead.drawing.units.uncertain : undefined;
@@ -512,6 +528,15 @@ export function DxfImportDialog({
                               className="px-3 py-1.5 text-left font-mono font-normal text-fg"
                             >
                               {layer}
+                              {suggested[layer.trim().toUpperCase()] &&
+                              chosen[layer] === undefined ? (
+                                <span
+                                  className="ml-2 font-sans text-xs text-fg-muted"
+                                  data-testid={`dxf-layer-suggested-${layer}`}
+                                >
+                                  {t.layers.suggested}
+                                </span>
+                              ) : null}
                             </th>
                             <td className="px-3 py-1.5 text-right text-fg-muted tabular-nums">
                               {n}

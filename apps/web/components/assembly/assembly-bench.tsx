@@ -94,6 +94,9 @@ import type {
   CameraCmd,
 } from './bench-scene';
 import { FitPanel } from './fit-panel';
+import { FoldTools } from './fold-tools';
+import { applyFold, foldToolOf, NO_FOLD, type FoldState } from '../../lib/preview3d/bench-fold';
+import type { VGrooveInfo } from '../../lib/vgroove-info';
 import { ViewTools } from './view-tools';
 import {
   boundsOf,
@@ -140,16 +143,27 @@ export interface AssemblyBenchProps {
   run: (command: string, params: unknown) => boolean;
   /** Liste / Çizim / Montaj switch for narrow screens (the header holds it on ≥ 1024 px). */
   viewSwitch?: ReactNode;
+  /** T391: the stock's V-groove facts and V-bit (ACM parts fold along their grooves). */
+  vGroove?: VGrooveInfo;
 }
 
 const now = () => new Date().toISOString();
 const MM1 = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 
-export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) {
+export function AssemblyBench({ project, run, viewSwitch, vGroove }: AssemblyBenchProps) {
   const messages = useMessages();
   const t = messages.bench;
   const roles = messages.cutList.cabinet.roles;
-  const items = useMemo(() => benchItems(project, roles), [project, roles]);
+  const flatItems = useMemo(() => benchItems(project, roles), [project, roles]);
+  // T391 "Katla": ACM parts folded along their V-grooves (view state, never stored).
+  const machinedFace = project.stock.machinedFace;
+  const foldTool = useMemo(
+    () => (vGroove?.traits ? foldToolOf({ stock: { machinedFace } }, vGroove) : null),
+    [vGroove, machinedFace],
+  );
+  const [fold, setFold] = useState<FoldState>(NO_FOLD);
+  const folded = useMemo(() => applyFold(flatItems, foldTool, fold), [flatItems, foldTool, fold]);
+  const items = folded.items;
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
   const material = project.stock.material;
@@ -204,8 +218,13 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
         for (const id of [x.a, x.b]) if (!m.has(id)) m.set(id, 'warning');
       }
     }
+    // T391: a folded part whose flanges clash (or miss a corner relief) is red.
+    const clash = new Set(
+      folded.parts.filter((p) => p.check.state === 'clash').map((p) => p.partId),
+    );
+    if (clash.size > 0) for (const it of shown) if (clash.has(it.partId)) m.set(it.id, 'danger');
     return m;
-  }, [fit.result]);
+  }, [fit.result, folded.parts, shown]);
 
   // Explode and section (T389): display only, never stored.
   const [explode, setExplode] = useState(0);
@@ -388,6 +407,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
       data-placed={placed}
       data-view={view}
       data-explode={explode}
+      data-fold={folded.parts.length > 0 ? fold.pct : ''}
       data-measure={measured ? measured.distance.toFixed(2) : ''}
       data-face-gap={measured?.faceGap != null ? measured.faceGap.toFixed(2) : ''}
       data-picks={picks.map((p) => p.kind).join(',')}
@@ -639,6 +659,17 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             onFasteners={setFastenersOn}
             fastenerRows={rows}
           />
+          {folded.parts.length > 0 && foldTool ? (
+            <FoldTools
+              t={t.fold}
+              parts={folded.parts}
+              state={fold}
+              onState={setFold}
+              focusPartId={selected?.partId ?? null}
+              vAngle={foldTool.angleDeg}
+              noTool={!vGroove?.tool}
+            />
+          ) : null}
           {checkOn ? (
             <FitPanel
               t={t}
