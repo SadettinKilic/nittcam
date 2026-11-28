@@ -16,6 +16,8 @@ import {
   assemblyFaceMatrix,
   hasFaceOnlyWork,
   hasFaceFeatures,
+  rowLayout,
+  CABINET_GAP,
   type CabinetGroup,
 } from '../../lib/preview3d/assembly';
 import { cachedPartMesh } from '../../lib/preview3d/sheet-scene';
@@ -27,8 +29,8 @@ import { installThreeConsole } from '../../lib/preview3d/three-console';
 // B44 (D-080): drop fiber's THREE.Clock deprecation warning; all other three messages stay.
 installThreeConsole();
 
-/** Gap between two cabinets, mm. */
-export const CABINET_GAP = 300;
+export { CABINET_GAP, rowLayout };
+
 const FOV = 35;
 /** First view: isometric from the front left (B44: distance fitted to the whole row). */
 const VIEW_DIR: Vec3 = [-0.45, 0.45, 0.77];
@@ -41,21 +43,6 @@ export interface AssemblySceneProps {
   base: string;
   simple: boolean;
   onCapture?: (fn: CaptureFn | null) => void;
-}
-
-/** x offset of each cabinet and the overall size (cabinets in a row, bottoms on the floor). */
-export function rowLayout(groups: readonly CabinetGroup[]) {
-  let x = 0;
-  const offsets: number[] = [];
-  let h = 0;
-  let d = 0;
-  for (const g of groups) {
-    offsets.push(x);
-    x += g.assembly.width + CABINET_GAP;
-    h = Math.max(h, g.assembly.height);
-    d = Math.max(d, g.assembly.depth);
-  }
-  return { offsets, width: Math.max(0, x - CABINET_GAP), height: h, depth: d };
 }
 
 export default function AssemblyScene({
