@@ -315,10 +315,12 @@ export const MATERIAL_TRAITS: Readonly<Record<MaterialKind, MaterialTraits>> = {
         { minDiameter: 8, min: 0.08, max: 0.21 },
       ],
     },
+    // 1250 × 2440 first: it fits nearly every router table, so a switch to ACM never lands on a
+    // sheet the machine cannot hold (B68 tester; the 3200 lengths exceed a 3050 table).
     sheetPresets: [
+      { a: 1250, b: 2440 },
       { a: 1250, b: 3200 },
       { a: 1500, b: 3200 },
-      { a: 1250, b: 2440 },
     ],
     thicknessPresets: [3, 4, 6],
     look: {

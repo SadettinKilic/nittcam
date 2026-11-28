@@ -57,15 +57,15 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "sheetPresets": [
       {
         "a": 1250,
+        "b": 2440,
+      },
+      {
+        "a": 1250,
         "b": 3200,
       },
       {
         "a": 1500,
         "b": 3200,
-      },
-      {
-        "a": 1250,
-        "b": 2440,
       },
     ],
     "skin": {
