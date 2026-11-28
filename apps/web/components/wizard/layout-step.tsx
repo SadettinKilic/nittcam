@@ -632,7 +632,12 @@ function NestSettings({
             note={
               toolDiameter > 0
                 ? {
+                    // B67: short on screen (one line in the half-width column at 1440 px),
+                    // the full sum on hover and for screen readers.
                     text: fill(t.gapNote, {
+                      clear: mmText.format(partClearDistance(toolDiameter, spacing.gap)),
+                    }),
+                    detail: fill(t.gapNoteDetail, {
                       tool: mmText.format(toolDiameter),
                       gap: mmText.format(spacing.gap),
                       clear: mmText.format(partClearDistance(toolDiameter, spacing.gap)),

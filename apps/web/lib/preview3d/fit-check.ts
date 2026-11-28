@@ -177,13 +177,25 @@ function insideFace(p: FitPart, world: V3): boolean {
   );
 }
 
+/** A hole of A on a face mating with B, and its nearest partner hole of B (T388, T390). */
+export interface MatedHole {
+  /** World centre of A's hole on A's face. */
+  at: V3;
+  /** A's face normal (out of A, into B). */
+  normal: V3;
+  a: FitHole;
+  b: FitHole;
+  /** In-plane offset between the two centres, mm (unrounded). */
+  offset: number;
+}
+
 /**
  * Holes on mating faces of A and B (large faces facing each other within MATE_FACE_MM): every
- * hole of A that lands on B's face looks for the nearest hole of B within HOLE_SEARCH_MM.
+ * hole of A that lands on B's face with its nearest hole of B within HOLE_SEARCH_MM.
  */
-export function holeAlignment(a: FitPart, b: FitPart): FitIssue[] {
+export function matedHoles(a: FitPart, b: FitPart): MatedHole[] {
   if (a.holes.length === 0 || b.holes.length === 0) return [];
-  const out: FitIssue[] = [];
+  const out: MatedHole[] = [];
   for (const fa of zFaces(a)) {
     if (fa.holes.length === 0) continue;
     for (const fb of zFaces(b)) {
@@ -193,18 +205,33 @@ export function holeAlignment(a: FitPart, b: FitPart): FitIssue[] {
       for (const ha of fa.holes) {
         if (!insideFace(b, ha.w)) continue;
         let best = Infinity;
+        let partner: FitHole | null = null;
         for (const hb of fb.holes) {
           const d = sub(hb.w, ha.w);
-          const inPlane = sub(d, scale(fa.normal, dot(d, fa.normal)));
-          best = Math.min(best, len(inPlane));
+          const inPlane = len(sub(d, scale(fa.normal, dot(d, fa.normal))));
+          if (inPlane < best) {
+            best = inPlane;
+            partner = hb.h;
+          }
         }
-        if (best > HOLE_SEARCH_MM) continue;
-        const offset = Math.round(best * 100) / 100;
-        out.push({ kind: 'hole', a: a.id, b: b.id, offset, ok: best <= HOLE_OK_MM, at: ha.w });
+        if (best > HOLE_SEARCH_MM || !partner) continue;
+        out.push({ at: ha.w, normal: fa.normal, a: ha.h, b: partner, offset: best });
       }
     }
   }
   return out;
+}
+
+/** Hole alignment issues of A and B: one per mated hole, green within HOLE_OK_MM. */
+export function holeAlignment(a: FitPart, b: FitPart): FitIssue[] {
+  return matedHoles(a, b).map((m) => ({
+    kind: 'hole',
+    a: a.id,
+    b: b.id,
+    offset: Math.round(m.offset * 100) / 100,
+    ok: m.offset <= HOLE_OK_MM,
+    at: m.at,
+  }));
 }
 
 /** Candidate pairs whose world boxes come within `margin` (sweep along x). */

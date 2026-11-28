@@ -6,7 +6,9 @@
  */
 import {
   assemblyInstanceId,
+  materialKindOf,
   type AssemblyInstance,
+  type MaterialKind,
   type CabinetPartRole,
   type Part,
   type Project,
@@ -57,6 +59,10 @@ export interface BenchItem {
   group?: string;
   /** Doors are drawn see-through (T158). */
   door: boolean;
+  /** T390: the look it is drawn with (its own material in the assembly, else the stock's). */
+  look: MaterialKind;
+  /** T390: true when the part is shown in its own material (not the stock's). */
+  ownLook: boolean;
 }
 
 const boxes = new WeakMap<MeshData, LocalBox>();
@@ -80,8 +86,20 @@ export function localBoxOf(mesh: MeshData): LocalBox {
   return out;
 }
 
+/**
+ * Board thickness of a part on the bench: its own look's (T390, mixed materials), else the
+ * generator's note for other-thickness rows, else the stock's.
+ */
 export function partThickness(part: Part, project: Project): number {
-  return noteThickness(part.note) ?? project.stock.thickness;
+  const own = project.assembly?.parts?.find((p) => p.partId === part.id);
+  return own?.thickness ?? noteThickness(part.note) ?? project.stock.thickness;
+}
+
+/** The stock's look: its kind, unknown ids (aliases of nothing) read as MDF like the 3D view. */
+export function stockLook(project: Project): MaterialKind {
+  // Partial projects (cut-list previews, tests) may come without a stock material.
+  const id = project.stock.material as string | undefined;
+  return (id ? materialKindOf(id) : null) ?? 'mdf';
 }
 
 interface Seeded {
@@ -157,7 +175,10 @@ export function benchItems(
   const stored = new Map<string, AssemblyInstance>();
   for (const i of project.assembly?.instances ?? []) stored.set(i.id, i);
   const items: BenchItem[] = [];
+  const stock = stockLook(project);
+  const looks = new Map((project.assembly?.parts ?? []).map((p) => [p.partId, p.material]));
   for (const part of project.parts) {
+    const own = looks.get(part.id);
     const thickness = partThickness(part, project);
     const mesh = cachedPartMesh(part, thickness);
     const box = localBoxOf(mesh);
@@ -181,6 +202,8 @@ export function benchItems(
         ...(seed.role ? { role: seed.role } : {}),
         ...(seed.group ? { group: seed.group } : {}),
         door: seed.role === 'door',
+        look: own ?? stock,
+        ownLook: own !== undefined,
       });
     }
   }

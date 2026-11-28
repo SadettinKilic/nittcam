@@ -47,7 +47,7 @@ for (const width of [1440, 1024]) {
     expect(Math.abs(gapNote.y - marginHint.y)).toBeLessThanOrEqual(1);
     expect(gapNote.x).toBeLessThan(margin.x);
     expect(marginHint.x).toBeGreaterThanOrEqual(margin.x - 1);
-    await expect(panel.getByTestId('layout-gap-note')).toContainText(/^Boşluk = Ø/);
+    await expect(panel.getByTestId('layout-gap-note')).toContainText(/^Boşluk [\d,]+ mm/);
     // Tabs on (default): the D-129 note once, under the whole group.
     const note = panel.getByTestId('layout-tab-spacing-note');
     await expect(note).toHaveCount(1);

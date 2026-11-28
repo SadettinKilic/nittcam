@@ -4,12 +4,13 @@
  * and a numbered part list. Pure and deterministic (same project → same drawing), so the server
  * PDF stays byte-stable.
  */
-import type { CabinetPartRole, Project } from '@nittcam/core';
+import type { CabinetPartRole, MaterialKind, Project } from '@nittcam/core';
 import { boxSize, cross, dot, norm, qRotate, type V3 } from './assembly-math';
 import { benchItems } from './assembly-model';
 import { exploded, explodeOffsets } from './assembly-explode';
 import { toWorld } from './fit-check';
 import { localOutline, ringArea } from './part-mesh';
+import { fastenerRows, fastenersOf, type FastenerRow } from './fasteners';
 
 /** Explode amount on the sheet (0–1). */
 export const SHEET_EXPLODE = 0.6;
@@ -35,12 +36,16 @@ export interface SheetRow {
   size: [number, number, number];
   /** Visible copies. */
   qty: number;
+  /** T390: the material it is shown in (its own in the assembly, else the stock's). */
+  material: MaterialKind;
 }
 
 export interface AssemblySheet {
   faces: SheetFace[];
   balloons: { no: number; x: number; y: number }[];
   rows: SheetRow[];
+  /** T390: bağlantı elemanları through aligned holes (assembled places, not exploded). */
+  fasteners: FastenerRow[];
   bounds: { minX: number; minY: number; maxX: number; maxY: number };
 }
 
@@ -62,7 +67,13 @@ export function assemblySheet(
       no = rows.length + 1;
       numbers.set(it.partId, no);
       const s = boxSize(it.box);
-      rows.push({ no, name: it.part.name || it.partId, size: [s[0], s[1], s[2]], qty: 0 });
+      rows.push({
+        no,
+        name: it.part.name || it.partId,
+        size: [s[0], s[1], s[2]],
+        qty: 0,
+        material: it.look,
+      });
     }
     const row = rows[no - 1];
     if (row) row.qty++;
@@ -121,5 +132,5 @@ export function assemblySheet(
     balloons.push({ no, x: centre[0], y: centre[1] });
   }
   faces.sort((p, q) => p.depth - q.depth || p.no - q.no);
-  return { faces, balloons, rows, bounds: b };
+  return { faces, balloons, rows, fasteners: fastenerRows(fastenersOf(items)), bounds: b };
 }
