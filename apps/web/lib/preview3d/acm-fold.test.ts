@@ -9,6 +9,7 @@ import {
   foldPlan,
   foldTransforms,
   outerFlange90,
+  straightRuns,
   type FoldTool,
 } from './acm-fold';
 
@@ -199,16 +200,74 @@ describe('fold plan and folded tray (T391)', () => {
     expect(b.min[1]).toBeGreaterThan(90);
   });
 
-  it('curved and closed grooves are skipped', () => {
+  it('a curved groove segment is skipped and counted; straight runs of a polyline are hinges', () => {
     const part = {
       ...tray(T),
       lines: [
-        { vertices: [v(0, 100), v(200, 120), v(460, 100)], op: { kind: 'vgroove' } },
+        { vertices: [{ x: 0, y: 100, bulge: 0.3 }, v(460, 100)], op: { kind: 'vgroove' } },
         groove([XL, YT], [XL, YB]),
       ],
     } as unknown as Part;
     const plan = foldPlan(part, traits);
     expect(plan.skipped).toBe(1);
     expect(plan.hinges).toHaveLength(1);
+    expect(straightRuns([v(0, 0), v(50, 0), v(100, 0), v(100, 80)], false).runs).toHaveLength(2);
+  });
+});
+
+describe('closed groove chained from four fold lines (B70 tester repro)', () => {
+  // 200 × 200 cross-shaped outline (25 × 25 corner reliefs); the importer joins the four V-kanal
+  // lines (25,25)-(25,175)-(175,175)-(175,25)-(25,25) into one closed inner contour.
+  const ring = [v(25, 25), v(25, 175), v(175, 175), v(175, 25)];
+  const cross = (recess: number) =>
+    ({
+      id: 'x',
+      name: 'Tepsi',
+      qty: 1,
+      kind: 'freeform',
+      outline: [
+        v(25 + recess, 0),
+        v(175 - recess, 0),
+        v(175 - recess, 25),
+        v(200, 25),
+        v(200, 175),
+        v(175 - recess, 175),
+        v(175 - recess, 200),
+        v(25 + recess, 200),
+        v(25 + recess, 175),
+        v(0, 175),
+        v(0, 25),
+        v(25 + recess, 25),
+      ],
+      grain: { mode: 'free', angle: 0 },
+      inners: [ring],
+      ops: { inners: [{ kind: 'vgroove' }] },
+      holes: [],
+      edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+      templates: [],
+    }) as unknown as Part;
+
+  it('one hinge per straight edge: 4 hinges, a base and 4 flanges, nothing skipped', () => {
+    const plan = foldPlan(cross(0), traits);
+    expect(plan.skipped).toBe(0);
+    expect(plan.hinges).toHaveLength(4);
+    expect(new Set(plan.hinges.map((h) => h.key)).size).toBe(4);
+    expect(plan.pieces.map((p) => p.hinge).sort()).toEqual([-1, 0, 1, 2, 3]);
+  });
+
+  it('90°: plain corner squares overlap at every corner (red)', () => {
+    const plan = foldPlan(cross(0), traits);
+    const rigid = foldTransforms(plan, T, TOOL, [90, 90, 90, 90], [90, 90, 90, 90]);
+    const check = foldCheck(plan, T, rigid);
+    expect(check.state).toBe('clash');
+    expect(check.issues.filter((i) => i.kind === 'overlap')).toHaveLength(4);
+    const b = bounds(foldedMesh(cross(0), plan, T, rigid).positions);
+    expect(T - (b.min[2] as number)).toBeCloseTo(outerFlange90(25, bendOf(0.8, TOOL, 90)), 2);
+  });
+
+  it('90°: side flanges recessed by the thickness close the tray', () => {
+    const plan = foldPlan(cross(T), traits);
+    const rigid = foldTransforms(plan, T, TOOL, [90, 90, 90, 90], [90, 90, 90, 90]);
+    expect(foldCheck(plan, T, rigid).state).toBe('closed');
   });
 });

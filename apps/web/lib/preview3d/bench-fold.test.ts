@@ -97,4 +97,15 @@ describe('bench fold (T391)', () => {
     expect(t?.angles).toEqual([60]);
     expect(t?.bends[0]?.overFold).toBe(true);
   });
+
+  it('a part whose only groove is curved is still listed (no hinges, skipped note)', () => {
+    const p = project();
+    const tray = p.parts[0] as unknown as { lines: unknown[] };
+    tray.lines = [{ vertices: [{ x: 0, y: 30, bulge: 0.4 }, v(200, 30)], op: { kind: 'vgroove' } }];
+    const r = applyFold(benchItems(p, roles), tool, { ...NO_FOLD, pct: 100 });
+    expect(r.parts).toHaveLength(1);
+    expect(r.parts[0]?.plan.hinges).toEqual([]);
+    expect(r.parts[0]?.plan.skipped).toBe(1);
+    expect(r.items.every((it) => it.fold === undefined)).toBe(true);
+  });
 });

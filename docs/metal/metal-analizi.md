@@ -269,9 +269,9 @@ Yalnızca görünüm: dizilim, takım yolu ve NC değişmez. Kod: `apps/web/lib/
 - katlanmış hâlde 0,05 mm'den fazla iç içe geçme: **çakışma** (kırmızı, parça 3B'de kırmızı);
 - komşu (paralel olmayan) iki flanş arası: **köşe boşluğu**; 1 mm'ye kadar "Kapanıyor", üstü "Köşe boşluğu var".
 
-Kural pratiği: köşe boşaltması kanal kesişiminde biterse katlanmış flanşlar köşede T − (r_o − BA / 2) kadar çakışır; boşaltmayı bir flanş yönünde plaka kalınlığı kadar uzatmak köşeyi kapatır (boşluk r_o − BA / 2 ≈ 0,49 mm). Birim testleri: `acm-fold.test.ts` (4 flanşlı tava).
+**Yan flanşlar köşelerde plaka kalınlığı kadar geri çekilmelidir; düz 25 × 25 köşe boşaltmasında katlanan flanşlar köşede iç içe girer ve kontrol bunu kırmızı gösterir.** Kural pratiği: köşe boşaltması kanal kesişiminde biterse katlanmış flanşlar köşede T − (r_o − BA / 2) kadar çakışır; boşaltmayı bir flanş yönünde plaka kalınlığı kadar uzatmak köşeyi kapatır (boşluk r_o − BA / 2 ≈ 0,49 mm). Birim testleri: `acm-fold.test.ts` (4 flanşlı tava).
 
-**Sınırlar (ilk sürüm).** Yalnız düz kanallar menteşe olur (eğri ve kapalı kanallar sayılır, katlanmaz); kanal sonsuz doğru gibi bölünür (kenardan kenara kanal varsayılır); flanşlardaki delikler 3B'de görünür ama delik hizası kontrolüne yalnız tabandaki delikler girer. Model başlangıç değeridir; ilk gerçek tavada ölçüp doğrulayın.
+**Sınırlar (ilk sürüm).** Kanal çizgisinin (açık ya da kapalı) her düz kenarı bir menteşedir: köşelerde birleşen dört kanal çizgisi içe aktarmada tek kapalı kontura bağlansa da dört menteşe olarak katlanır; yay kenarlar sayılır, katlanmaz. Kapalı V-kanal bir açıklık değil katlama çizgisidir: dış hatta değebilir, iç kontur kuralına (INNER_CONTOUR_INVALID) girmez, dış hattan çıkarsa VGROOVE_OUTSIDE_PART verir; kanal sonsuz doğru gibi bölünür (kenardan kenara kanal varsayılır); flanşlardaki delikler 3B'de görünür ama delik hizası kontrolüne yalnız tabandaki delikler girer. Model başlangıç değeridir; ilk gerçek tavada ölçüp doğrulayın.
 
 ## 5. Ekranlar: ne görünür, ne kaybolur
 

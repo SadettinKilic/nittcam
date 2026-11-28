@@ -126,22 +126,65 @@ export interface FoldPlan {
 
 const STRAIGHT_MM = 0.05;
 
-function straight(vs: readonly Vertex[]): [P, P] | null {
-  const first = vs[0];
-  const last = vs[vs.length - 1];
-  if (!first || !last || vs.length < 2) return null;
-  if (vs.slice(0, -1).some((v) => Math.abs(v.bulge) > 1e-9)) return null;
-  const dx = last.x - first.x;
-  const dy = last.y - first.y;
-  const l = Math.hypot(dx, dy);
-  if (l < 1) return null;
-  for (const v of vs) {
-    if (Math.abs((v.x - first.x) * dy - (v.y - first.y) * dx) / l > STRAIGHT_MM) return null;
+/**
+ * The straight runs of a groove polyline (closed or open): consecutive collinear straight segments
+ * make one run, each run is one hinge. Arc segments (bulge) break a run and are counted in
+ * `curved`. A closed groove (four fold lines chained at the tray corners) gives its edges.
+ */
+export function straightRuns(
+  vs: readonly Vertex[],
+  closed: boolean,
+): { runs: [P, P][]; curved: number } {
+  const n = vs.length;
+  const segs: ({ a: P; b: P } | null)[] = [];
+  const last = closed ? n : n - 1;
+  for (let i = 0; i < last; i++) {
+    const p = vs[i] as Vertex;
+    const q = vs[(i + 1) % n] as Vertex;
+    if (Math.hypot(q.x - p.x, q.y - p.y) < 1e-6) continue;
+    segs.push(Math.abs(p.bulge) > 1e-9 ? null : { a: { x: p.x, y: p.y }, b: { x: q.x, y: q.y } });
   }
-  return [
-    { x: first.x, y: first.y },
-    { x: last.x, y: last.y },
-  ];
+  const curved = segs.filter((g) => g === null).length;
+  const collinear = (r: { a: P; b: P }, g: { a: P; b: P }) => {
+    const dx = r.b.x - r.a.x;
+    const dy = r.b.y - r.a.y;
+    const l = Math.hypot(dx, dy);
+    if (l < 1e-9) return false;
+    const off = (p: P) => Math.abs((p.x - r.a.x) * dy - (p.y - r.a.y) * dx) / l;
+    const along = (g.b.x - g.a.x) * dx + (g.b.y - g.a.y) * dy;
+    return off(g.a) <= STRAIGHT_MM && off(g.b) <= STRAIGHT_MM && along > 0;
+  };
+  const runs: { a: P; b: P }[] = [];
+  let cur: { a: P; b: P } | null = null;
+  const startsStraight = segs[0] !== null && segs[0] !== undefined;
+  for (const g of segs) {
+    if (!g) {
+      if (cur) runs.push(cur);
+      cur = null;
+      continue;
+    }
+    if (cur && collinear(cur, g)) cur = { a: cur.a, b: g.b };
+    else {
+      if (cur) runs.push(cur);
+      cur = { ...g };
+    }
+  }
+  if (cur) runs.push(cur);
+  // Closed: the last run may continue into the first one across the start vertex.
+  if (closed && runs.length > 1 && startsStraight && segs[segs.length - 1] !== null) {
+    const head = runs[0] as { a: P; b: P };
+    const tail = runs[runs.length - 1] as { a: P; b: P };
+    if (collinear(tail, head)) {
+      runs[0] = { a: tail.a, b: head.b };
+      runs.pop();
+    }
+  }
+  return {
+    runs: runs
+      .filter((r) => Math.hypot(r.b.x - r.a.x, r.b.y - r.a.y) >= 1)
+      .map((r) => [r.a, r.b] as [P, P]),
+    curved,
+  };
 }
 
 /** Signed distance of `p` from the line a→b, positive on the side of `n`. */
@@ -239,12 +282,16 @@ export function foldPlan(part: Part, traits: VGrooveTraits | null): FoldPlan {
   const lines: { key: string; a: P; b: P; remaining: number }[] = [];
   let skipped = 0;
   for (const g of vGrooveLines(part, traits)) {
-    const ab = g.closed ? null : straight(g.vertices);
-    if (!ab) {
-      skipped++;
-      continue;
-    }
-    lines.push({ key: `${g.type}-${g.index}`, a: ab[0], b: ab[1], remaining: g.remaining });
+    const { runs, curved } = straightRuns(g.vertices, g.closed);
+    skipped += curved;
+    runs.forEach(([a, b], k) =>
+      lines.push({
+        key: runs.length === 1 ? `${g.type}-${g.index}` : `${g.type}-${g.index}-${k}`,
+        a,
+        b,
+        remaining: g.remaining,
+      }),
+    );
   }
   const normalTo = (l: { a: P; b: P }, from: P): P => {
     const dx = l.b.x - l.a.x;

@@ -88,7 +88,9 @@ export function FoldTools({
               <span className={cn('truncate text-fg', p === focus && 'font-semibold')}>
                 {p.name}
               </span>
-              <span className={STATE_TONE[p.check.state]}>{t.states[p.check.state]}</span>
+              {p.plan.hinges.length > 0 ? (
+                <span className={STATE_TONE[p.check.state]}>{t.states[p.check.state]}</span>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -97,16 +99,18 @@ export function FoldTools({
         <div
           className="flex flex-col gap-2 border-border border-t pt-2"
           data-testid="bench-fold-part"
-          data-state={focus.check.state}
+          data-state={focus.plan.hinges.length > 0 ? focus.check.state : 'none'}
         >
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="truncate font-semibold text-fg">{focus.name}</span>
-            <span
-              className={cn('font-semibold', STATE_TONE[focus.check.state])}
-              data-testid="bench-fold-state"
-            >
-              {t.states[focus.check.state]}
-            </span>
+            {focus.plan.hinges.length > 0 ? (
+              <span
+                className={cn('font-semibold', STATE_TONE[focus.check.state])}
+                data-testid="bench-fold-state"
+              >
+                {t.states[focus.check.state]}
+              </span>
+            ) : null}
           </div>
           {focus.plan.hinges.map((h, i) => {
             const key = foldKey(focus.partId, h.key);
@@ -173,7 +177,9 @@ export function FoldTools({
             );
           })}
           {focus.plan.skipped > 0 ? (
-            <p className="text-xs text-fg-muted">{fill(t.skipped, { n: focus.plan.skipped })}</p>
+            <p className="text-xs text-fg-muted" data-testid="bench-fold-skipped">
+              {fill(t.skipped, { n: focus.plan.skipped })}
+            </p>
           ) : null}
           {focus.check.issues.length > 0 ? (
             <ul className="flex flex-col gap-0.5 text-xs" data-testid="bench-fold-issues">

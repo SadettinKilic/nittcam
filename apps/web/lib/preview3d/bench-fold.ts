@@ -92,7 +92,8 @@ export function applyFold(
     if (f === undefined) {
       f = null;
       const plan = planOf(it, tool);
-      if (plan.hinges.length > 0) {
+      // A part whose grooves all fail to fold is still listed (the panel shows why).
+      if (plan.hinges.length > 0 || plan.skipped > 0) {
         const targets = plan.hinges.map(
           (h) => state.target[foldKey(it.partId, h.key)] ?? DEFAULT_FOLD_DEG,
         );

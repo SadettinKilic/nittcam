@@ -4113,7 +4113,7 @@
       "bend": "İç yarıçap {ri} mm · dış {ro} mm · büküm payı {ba} mm",
       "overFold": "{v}° V-bıçak bu açıya kapanmaz: kanal duvarları ezilir.",
       "noTool": "Makinede açılı V-bıçak yok; 90° ve sivri uç varsayıldı.",
-      "skipped": "{n} kanal eğri ya da kapalı; katlanmaz.",
+      "skipped": "{n} eğri kanal parçası katlanmaz; yalnız düz kanallar menteşe olur.",
       "states": {
         "closed": "Kapanıyor",
         "gap": "Köşe boşluğu var",
