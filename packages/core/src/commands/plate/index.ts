@@ -17,6 +17,7 @@ import {
 } from '../../schema';
 import { feedInRange, findTool, machineFeedLimits } from '../../machine/profile';
 import { rpmInRange } from '../../toolpath/spindle';
+import { chipLoadRefusal } from '../../toolpath/material-limits';
 import { OPERATION_TOOL_KINDS } from '../../toolpath/op-tools';
 import { operationToolProblem, operationToolProblemText } from '../../toolpath/op-tool-choice';
 import { SKIN_BOUNDS, holdLimitsOf, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
@@ -460,14 +461,15 @@ export const setSpindleRpm = defineCommand({
       .max(SPINDLE_RPM_BOUNDS.max, { error: `rpm must be at most ${SPINDLE_RPM_BOUNDS.max}` })
       .nullable(),
   }),
-  check: (_project, p, env) => {
+  check: (project, p, env) => {
     const machine = env.machine;
     if (!machine) return undefined;
     if (!findTool(machine, p.tool)) return `tool T${p.tool} is not in the machine profile`;
     if (p.rpm !== null && !rpmInRange(machine, p.rpm)) {
       return `spindle speed ${p.rpm} rpm is outside the machine's range ${machine.spindle.minRpm}–${machine.spindle.maxRpm}`;
     }
-    return undefined;
+    // T359: never leave the material's chip-load band (aluminium)
+    return chipLoadRefusal(project, machine, p.tool, { rpm: p.rpm });
   },
   apply: (draft, p) => {
     const key = String(p.tool);
@@ -524,7 +526,7 @@ export const setToolFeed = defineCommand({
     .refine((p) => p.feed !== undefined || p.plungeFeed !== undefined, {
       error: 'give feed or plungeFeed',
     }),
-  check: (_project, p, env) => {
+  check: (project, p, env) => {
     const machine = env.machine;
     if (!machine) return undefined;
     if (!findTool(machine, p.tool)) return `tool T${p.tool} is not in the machine profile`;
@@ -535,7 +537,8 @@ export const setToolFeed = defineCommand({
     if (typeof p.plungeFeed === 'number' && !feedInRange(limits.plungeFeed, p.plungeFeed)) {
       return `plunge feed ${p.plungeFeed} mm/min is outside the machine's range ${limits.plungeFeed.min}–${limits.plungeFeed.max}`;
     }
-    return undefined;
+    // T359: never leave the material's chip-load band (aluminium)
+    return chipLoadRefusal(project, machine, p.tool, { feed: p.feed });
   },
   apply: (draft, p) => {
     const key = String(p.tool);

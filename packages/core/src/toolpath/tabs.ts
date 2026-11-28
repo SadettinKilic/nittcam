@@ -15,6 +15,7 @@ import { bbox, signedArea } from '../geometry/polyline';
 import type { Polyline } from '../geometry/types';
 import { materialKindOf } from '../machine/material';
 import { traitsOf, type MaterialTraits } from '../machine/material-traits';
+import { zigzagDescent } from './descent';
 import { pathMoves, segLength, slicePath, type PathSeg } from './path';
 import type { Move, Tab } from './types';
 
@@ -255,8 +256,14 @@ export function placeTabs(
      * do not allow it, the tabs spread over them as evenly as they can.
      */
     holding?: ((allowed: readonly Interval[]) => Interval[]) | undefined;
+    /**
+     * T423: least free path between two raised spans, mm (room for the zig-zag descent after a
+     * tab in a material without a straight plunge). Absent = 0 (the spans only must not touch).
+     */
+    gap?: number | undefined;
   },
 ): Tab[] {
+  const gap = o.gap ?? 0;
   const total = segs.reduce((s, x) => s + segLength(x), 0);
   const half = (o.width + o.toolDiameter) / 2;
   const allowed = tabCentreIntervals(
@@ -279,9 +286,10 @@ export function placeTabs(
     );
   for (let n = o.count; n >= Math.max(1, o.minCount); n--) {
     // neighbouring raised spans must not touch (n = 1 has no neighbour)
-    if (n > 1 && total / n <= 2 * half + EPS) continue;
+    if (n > 1 && total / n <= 2 * half + gap + EPS) continue;
     const centres =
-      evenTabCentres(held, total, n) ?? (narrowed ? spreadTabCentres(held, total, n, half) : null);
+      evenTabCentres(held, total, n) ??
+      (narrowed ? spreadTabCentres(held, total, n, half + gap / 2) : null);
     if (!centres) continue;
     return centres.map((c) => {
       const start = c - half;
@@ -356,6 +364,10 @@ export function pointAt(segs: readonly PathSeg[], s: number): { x: number; y: nu
  * vertically to the tab top (feed move at the plunge feed), flies the raised span at the cutting
  * feed and goes back down vertically with a plunge at the plunge feed (D-022). The loop ends at P
  * at depth `z`, as without tabs.
+ *
+ * T423 (§7.2 rule 12): with `descent` (a material without a straight plunge) the way back down is a
+ * zig-zag along the path after the tab, at most `descent.angleDeg` steep, ending at the tab's end
+ * at depth `z` (the tab keeps its flank). The rise stays vertical (it leaves the material).
  */
 export function passMovesWithTabs(
   segs: readonly PathSeg[],
@@ -363,11 +375,12 @@ export function passMovesWithTabs(
   tabs: readonly Tab[],
   feed: number,
   plungeFeed: number,
+  descent?: { angleDeg: number },
 ): Move[] {
   const total = segs.reduce((s, x) => s + segLength(x), 0);
   const moves: Move[] = [];
   let at = 0;
-  for (const t of tabs) {
+  for (const [k, t] of tabs.entries()) {
     moves.push(...pathMoves(slicePath(segs, at, t.start), z, z, feed));
     moves.push({ kind: 'linear', x: t.x0, y: t.y0, z: t.z, feed: plungeFeed });
     const top = pathMoves(slicePath(segs, t.start, t.end), t.z, t.z, feed);
@@ -378,7 +391,18 @@ export function passMovesWithTabs(
       lastTop.y = t.y1;
     }
     moves.push(...top);
-    moves.push({ kind: 'plunge', x: t.x1, y: t.y1, z, feed: plungeFeed });
+    const ramp = descent
+      ? zigzagDescent(
+          slicePath(segs, t.end, tabs[k + 1]?.start ?? total),
+          t.z,
+          z,
+          descent.angleDeg,
+          plungeFeed,
+        )
+      : null;
+    // No room for a ramp (`placeTabs` keeps a gap): the plunge stays and the checker refuses it.
+    if (ramp) moves.push(...ramp);
+    else moves.push({ kind: 'plunge', x: t.x1, y: t.y1, z, feed: plungeFeed });
     at = t.end;
   }
   moves.push(...pathMoves(slicePath(segs, at, total), z, z, feed));

@@ -124,3 +124,20 @@ export function contourEntryOf(project: Project): ContourEntry | null {
   if (entry.straightPlunge || entry.rampDeg === null) return null;
   return { angleDeg: entry.rampDeg.default };
 }
+
+/**
+ * T423 (spec §7.2 rule 12): how a kind without a straight plunge (ACM, aluminium) goes down inside
+ * the cut away from the contour entry (V-groove passes, the end of each tab): a zig-zag at the
+ * contour entry's angle, never steeper than the traits' maximum. Null = straight plunges are
+ * allowed (wood and plastic: unchanged).
+ */
+export function descentOf(project: Project, machine?: MachineProfile): { angleDeg: number } | null {
+  const entry = traitsOf(materialKindOf(project.stock.material)).entry;
+  if (entry.straightPlunge || entry.rampDeg === null) return null;
+  // T358 (D-149): the project's angle, else the material set's (T351 `rampDeg`), else the traits'.
+  const own = project.cutting.entry?.angleDeg;
+  const set = machine ? findMaterialParams(machine, project.stock)?.rampDeg : undefined;
+  const angle =
+    own !== undefined && own > 0 ? own : set !== undefined && set > 0 ? set : entry.rampDeg.default;
+  return { angleDeg: Math.min(angle, entry.rampDeg.max) };
+}

@@ -10,7 +10,8 @@ const codes = (text: string, g: ReturnType<typeof goldenTray>) => {
 
 describe.each(['generic', 'mach3'] as const)('R17 mutations (%s)', (post) => {
   const g = goldenTray(post);
-  const deepZ = post === 'generic' ? 'G1 Z-3.200 F1500' : 'G1 Z-3.2000 F1500';
+  // T423: the final pass ramps in; the first Z-3.2 is the end of its last ramp leg
+  const deepZ = post === 'generic' ? 'Z-3.200' : 'Z-3.2000';
   const fmt = (n: number) => n.toFixed(post === 'generic' ? 3 : 4);
 
   it('baseline passes', () => {
@@ -18,7 +19,7 @@ describe.each(['generic', 'mach3'] as const)('R17 mutations (%s)', (post) => {
   });
 
   it('deepen one groove by 0.4 mm is refused', () => {
-    const t = g.text.replace(deepZ, `G1 Z-${fmt(3.6)} F1500`);
+    const t = g.text.replace(deepZ, `Z-${fmt(3.6)}`);
     const r = codes(t, g);
     expect(r.codes).toContain('VGROOVE_TOO_DEEP');
     expect(r.ok).toBe(false);
@@ -26,7 +27,7 @@ describe.each(['generic', 'mach3'] as const)('R17 mutations (%s)', (post) => {
 
   it('dropping a whole groove is refused', () => {
     const lines = g.text.split('\n');
-    const first = lines.findIndex((l) => l.includes('G1 Z-1.6'));
+    const first = lines.findIndex((l) => l.startsWith('G1 Z0.0')); // T423: the feed to the top
     // a groove block runs from the rapid to Z2 before the first plunge to the G0 Z20 after it
     const start = first - 2;
     const end = lines.findIndex((l, i) => i > first && l.startsWith('G0 Z20'));

@@ -204,7 +204,17 @@ export type ToolpathCode =
   | 'VGROOVE_TOO_DEEP'
   | 'VGROOVE_OUTSIDE_PART'
   | 'VGROOVE_TOOL_MISSING'
+  /** T358: a contour too short for the ramp entry its material requires (no plunge fallback). */
+  | 'ENTRY_RAMP_REQUIRED'
+  /** T358: a hole, groove or contour pocket too small for the helix entry its material requires. */
+  | 'HOLE_SMALLER_THAN_ENTRY'
+  /** T359: a pass deeper than the material's step-down ceiling for this tool. */
+  | 'STEP_DOWN_ABOVE_MATERIAL_LIMIT'
+  /** T359: feed / (rpm × flutes) outside the material's chip-load band for this tool. */
+  | 'CHIP_LOAD_OUT_OF_RANGE'
   // warnings
+  /** T359: a full-width slot deeper than 3 × the tool diameter. */
+  | 'SLOT_TOO_DEEP'
   | 'ARC_COLLAPSED'
   | 'LEAD_SHORTENED'
   | 'LEAD_REMOVED'

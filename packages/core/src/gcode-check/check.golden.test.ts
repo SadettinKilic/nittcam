@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { canDownload, checkGcode } from './check';
-import { golden, GOLDEN_IDS, goldenTray, type PostId } from './check.testing';
+import { golden, goldenBackFace, GOLDEN_IDS, goldenTray, type PostId } from './check.testing';
 import { MUTATIONS } from './mutations.testing';
 import { GCODE_CHECK_RULES } from './types';
 
@@ -15,6 +15,7 @@ const POSTS: PostId[] = ['generic', 'mach3'];
 const CASES = [
   ...POSTS.flatMap((p) => GOLDEN_IDS.map((f) => golden(p, f))),
   ...POSTS.map((p) => goldenTray(p)),
+  ...POSTS.map((p) => goldenBackFace(p)),
 ];
 
 describe('golden files pass every check', () => {

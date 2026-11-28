@@ -5,6 +5,10 @@
  */
 export function tabTextCode(code: string, message: string): string | null {
   // T334 (N1): the ramp entry took the room of tabs; the NC header says the same.
+  // T423 (CTO #15 M1): a material without a straight plunge cannot switch the entry.
+  if (code === 'TABS_REDUCED' && /ramp entry this material requires/.test(message)) {
+    return 'TABS_REDUCED_RAMP_REQUIRED';
+  }
   if (code === 'TABS_REDUCED') return /ramp entry/.test(message) ? 'TABS_REDUCED_RAMP' : null;
   if (code !== 'SMALL_PART_TAB_TOO_SMALL' && code !== 'TABS_TOO_SMALL') return null;
   const size = /× (-?[\d.]+) mm tabs/.exec(message);

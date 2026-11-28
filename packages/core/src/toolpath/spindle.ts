@@ -23,8 +23,10 @@ import {
   hasContourPocket,
   hasInnerCut,
   hasVGroove,
+  recommendationSource,
   recommendedFeeds,
   recommendedRpm,
+  type RecommendationSource,
 } from './op-tools';
 
 /** Slider step, typed-value step, and the half-width of the "uygun aralık" band (±20 %). */
@@ -37,6 +39,11 @@ export type RpmBand = 'ok' | 'high' | 'low';
 
 export interface ToolSpindle {
   tool: number;
+  /**
+   * T424: where the recommended feeds and rpm come from: the job's material set, a set of the
+   * tool's own, or the research starting value (a V-bit without a set). Absent = `set`.
+   */
+  recommendedSource?: RecommendationSource;
   diameter: number;
   flutes: number;
   /** The material set's rpm for this job. */
@@ -144,6 +151,7 @@ export function spindleSettingsOf(project: Project, machine: MachineProfile): To
     const feed = ownFeed.feed ?? rec.feed;
     const row: ToolSpindle = {
       tool: n,
+      recommendedSource: recommendationSource(project, machine, set, n),
       diameter: tool.diameter,
       flutes: tool.flutes,
       recommended,

@@ -7,6 +7,8 @@
  * Pure.
  */
 import type { MachineProfile, MaterialParams, ToolType } from '../machine';
+import { machineFeedLimits } from '../machine/profile';
+import { suggestCuttingSet } from '../machine/starting-values';
 import { materialKindOf } from '../machine/material';
 import { traitsOf } from '../machine/material-traits';
 import { innerOperation } from '../schema/operations';
@@ -149,26 +151,87 @@ function recommendationSet(
   return own ?? set;
 }
 
+/** The machine fields the recommendations read. */
+type RecommendationMachine = Pick<MachineProfile, 'materials'> &
+  Partial<Pick<MachineProfile, 'tools' | 'spindle' | 'rapidFeed' | 'maxFeed' | 'maxPlungeFeed'>>;
+
+/** Where a job tool's recommended feeds and rpm come from (T424). */
+export type RecommendationSource = 'set' | 'toolSet' | 'startingValue';
+
+/**
+ * T424 (CTO #15 M2): a V-bit cuts with its own values, never with the contour tool's set: a
+ * verified set of the job's material that names the V-bit (nearest thickness), else the research
+ * starting-value row of the V-bit (`starting-values.ts`, ACM × vBit × 2 flutes) clamped to the
+ * spindle and the machine's feed limits. Null for any other tool, or when neither exists (the job
+ * set then stays, as before).
+ */
+export function vBitRecommendation(
+  project: Project,
+  machine: RecommendationMachine,
+  set: MaterialParams,
+  tool: number,
+): { feed: number; plungeFeed: number; rpm: number; source: RecommendationSource } | null {
+  const t = machine.tools?.find((x) => x.number === tool);
+  if (!t || t.type !== 'vBit' || tool === set.tool) return null;
+  const kind = materialKindOf(project.stock.material);
+  const own = machine.materials
+    .filter((m) => m.material === kind && m.tool === tool && !m.unverified)
+    .sort(
+      (a, b) =>
+        Math.abs(a.thickness - project.stock.thickness) -
+          Math.abs(b.thickness - project.stock.thickness) || a.thickness - b.thickness,
+    )[0];
+  if (own) return { feed: own.feed, plungeFeed: own.plungeFeed, rpm: own.rpm, source: 'toolSet' };
+  if (!machine.spindle || kind === null) return null;
+  const s = suggestCuttingSet(kind, project.stock.thickness, t, machine.spindle);
+  if (!s) return null;
+  const lim = machineFeedLimits(machine);
+  const clamp = (v: number, r: { min: number; max: number }) => Math.min(Math.max(v, r.min), r.max);
+  const feed = clamp(s.feed, lim.feed);
+  return {
+    feed,
+    plungeFeed: Math.min(clamp(s.plungeFeed, lim.plungeFeed), feed),
+    rpm: s.rpm,
+    source: 'startingValue',
+  };
+}
+
+/** T424: where `recommendedFeeds` / `recommendedRpm` take a job tool's values from. */
+export function recommendationSource(
+  project: Project,
+  machine: RecommendationMachine,
+  set: MaterialParams,
+  tool: number,
+): RecommendationSource {
+  const v = vBitRecommendation(project, machine, set, tool);
+  if (v) return v.source;
+  return recommendationSet(project, machine, set, tool) === set ? 'set' : 'toolSet';
+}
+
 /**
  * T308 + T307: the recommended spindle speed of a job tool: the rpm of its recommendation set
  * (the job set, or for a tool the project chose, that tool's own set of the same material).
  */
 export function recommendedRpm(
   project: Project,
-  machine: Pick<MachineProfile, 'materials'>,
+  machine: RecommendationMachine,
   set: MaterialParams,
   tool: number,
 ): number {
+  const v = vBitRecommendation(project, machine, set, tool);
+  if (v) return v.rpm;
   return recommendationSet(project, machine, set, tool).rpm;
 }
 
 /** T323: the recommended cutting and plunge feed of a job tool, from the same set as its rpm. */
 export function recommendedFeeds(
   project: Project,
-  machine: Pick<MachineProfile, 'materials'>,
+  machine: RecommendationMachine,
   set: MaterialParams,
   tool: number,
 ): { feed: number; plungeFeed: number } {
+  const v = vBitRecommendation(project, machine, set, tool);
+  if (v) return { feed: v.feed, plungeFeed: v.plungeFeed };
   const own = recommendationSet(project, machine, set, tool);
   return { feed: own.feed, plungeFeed: own.plungeFeed };
 }

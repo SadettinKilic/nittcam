@@ -271,3 +271,56 @@ describe('closed groove chained from four fold lines (B70 tester repro)', () => 
     expect(foldCheck(plan, T, rigid).state).toBe('closed');
   });
 });
+
+describe('the acm-tray golden fixture folds without a clash (B73 rider, T427)', () => {
+  // Same geometry as `vGrooveTrayProject` (packages/core/src/post/golden.testing.ts): 250 × 250
+  // blank, 25 mm flanges, the front and back flanges recessed by the thickness at both ends.
+  const tray = (recess: number) =>
+    ({
+      id: 'tray',
+      name: 'Tepsi',
+      qty: 1,
+      kind: 'freeform',
+      grain: { mode: 'free', angle: 0 },
+      outline: [
+        v(25 + recess, 0),
+        v(225 - recess, 0),
+        v(225 - recess, 25),
+        v(250, 25),
+        v(250, 225),
+        v(225 - recess, 225),
+        v(225 - recess, 250),
+        v(25 + recess, 250),
+        v(25 + recess, 225),
+        v(0, 225),
+        v(0, 25),
+        v(25 + recess, 25),
+      ],
+      inners: [],
+      holes: [],
+      lines: [
+        groove([25 + recess, 25], [225 - recess, 25]),
+        groove([225, 25], [225, 225]),
+        groove([225 - recess, 225], [25 + recess, 225]),
+        groove([25, 225], [25, 25]),
+      ],
+      edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+      templates: [],
+    }) as unknown as Part;
+
+  const check = (part: Part) => {
+    const plan = foldPlan(part, traits);
+    const n = plan.hinges.length;
+    const deg = plan.hinges.map(() => 90);
+    expect(n).toBe(4);
+    return foldCheck(plan, T, foldTransforms(plan, T, TOOL, deg, deg));
+  };
+
+  it('the old square reliefs clash at 90°', () => {
+    expect(check(tray(0)).state).toBe('clash');
+  });
+
+  it('recessed by the thickness (the fixture now): closed', () => {
+    expect(check(tray(T)).state).toBe('closed');
+  });
+});

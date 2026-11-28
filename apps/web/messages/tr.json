@@ -1350,6 +1350,8 @@
       "POCKET_SPLIT": "Cep dar bir boğazla ikiye ayrılıyor; tek girişle boşaltılamıyor. Boğazı genişletin ya da iki ayrı cep çizin.",
       "POCKET_DEPTH_INVALID": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
       "POCKET_PLUNGE_ENTRY": "Cep rampaya yetmeyecek kadar küçük; takım düz dalıyor (dalma ilerlemesiyle).",
+      "ENTRY_RAMP_REQUIRED": "Kontur, bu malzemenin istediği rampa girişine yetmeyecek kadar kısa; metalde dik dalma takım kırar. Konturu büyütün ya da daha ince bir takımla kesin.",
+      "HOLE_SMALLER_THAN_ENTRY": "Delik ya da cep, bu malzemenin istediği helis girişine yetmeyecek kadar küçük; metalde dik dalma takım kırar. Kendi çapında bir matkapla delin ya da daha ince bir takım seçin.",
       "POCKET_OUTSIDE_BOUNDARY": "Takım cebin dışına (ya da duvarına takım yarıçapından yakın) çıkıyor.",
       "POCKET_TOO_DEEP": "Takım cebin derinliğinden aşağı iniyor.",
       "POCKET_NOT_CUT": "Bir cep programda boşaltılmıyor.",
@@ -1430,6 +1432,7 @@
       "SMALL_SLUG_AUTO_TABS": "İç kesimin küçük göbeğine otomatik köprü eklendi.",
       "TABS_REDUCED": "Köprü sayısı azaltıldı.",
       "TABS_NOT_HELD": "Köprülerin bir kısmı tutmuyor: komşu kesim ya da plaka kenarı köprünün arkasındaki {anchor} mm malzemeyi alıyor, bu köprüler bırakıldı (G-code başlığı da yazar). Parça arası payı en az takım Ø + {anchor} mm yap ya da ince tabakayı aç.",
+      "TABS_REDUCED_RAMP_REQUIRED": "Köprü sayısı azaltıldı: bu malzemede giriş rampayla olur ve rampa köprülerin yerini kaplıyor. Köprü genişliğini ya da adedini azaltın.",
       "TABS_REDUCED_RAMP": "Köprü sayısı azaltıldı: rampa girişi köprülerin yerini kaplıyor (G-code başlığı da yazar). Tüm köprüler için Kesim ayarlarında girişi düz dalmaya alın.",
       "TABS_NOT_PLACED": "Köprüler yerleştirilemedi.",
       "UNPLACED_COPIES": "Bazı parçalar plakaya yerleşmedi ve kesilmeyecek.",
@@ -1462,6 +1465,9 @@
       "SPINDLE_RPM_OUT_OF_RANGE": "Bir takımın devri makinenin devir aralığının dışında. Kesim ayarlarında “Önerilene dön” deyin ya da aralık içinde bir değer seçin.",
       "FEED_OUT_OF_RANGE": "Bir takımın ilerlemesi ya da dalması makinenin sınırlarının dışında. Kesim ayarlarında “İlerlemede önerilene dön” deyin ya da sınır içinde bir değer girin.",
       "MACHINE_FEED_ABOVE_MAX": "Makinenin malzeme ayarındaki ilerleme bu makinenin en yüksek ilerlemesinin üstünde (en yüksek ilerleme girilmediyse hızlı hareket hızı, dalmada yarısı). Makineler'de değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
+      "STEP_DOWN_ABOVE_MATERIAL_LIMIT": "Paso derinliği bu malzemenin sınırının üstünde (takım çapının payı × makine sağlamlığı). Makinede malzeme ayarındaki paso derinliğini düşürün.",
+      "CHIP_LOAD_OUT_OF_RANGE": "Bir takımın talaş yükü bu malzemenin aralığının dışında. Simülasyon → Kesim ayarlarında talaş yükü satırındaki ilerlemeyi uygulayın.",
+      "SLOT_TOO_DEEP": "Kontur takımı çapının 3 katından derin bir kanal kesiyor; takım eğilebilir ya da kırılabilir. Daha kalın bir takım seçin.",
       "FEED_ABOVE_RECOMMENDED": "Bir takımın ilerlemesi ya da dalması önerilenin 1,5 katından fazla (ya da talaş yükü 2 katından fazla); fazladan bir sıfır yazılmış olabilir. Kesim ayarlarında değeri kontrol edin ya da “İlerlemede önerilene dön” deyin.",
       "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor (türü, boyu ya da çapı). Kesim ayarlarında “Önerilene dön” deyin ya da listeden başka bir takım seçin."
     },
@@ -1594,6 +1600,7 @@
         "length": "En az boy",
         "degree": "°",
         "hintStraight": "Takım her pasoda konturun başında dik iner.",
+        "lockedStraight": "Bu malzemede dik dalma yok: takım konturda, V-kanalda ve köprü sonlarında rampayla iner.",
         "hintRamp": "Takım kontur çizgisi üzerinde ileri-geri giderek iner; her bacak en fazla {angle}° eğimli ve en az {length} mm. Dalma ilerlemesiyle iner, kontur dışına çıkmaz.",
         "bounds": {
           "angle": "{min}–{max}° arası",
@@ -1660,6 +1667,10 @@
         "low": "Önerilenden %{percent} düşük: talaş kalınlaşır, takım kırılma riski artar.",
         "outOfRange": "Bu makinenin devir aralığı {min}–{max}; bu değer kesilmez.",
         "chipLoad": "Talaş yükü {value} mm/diş ({flutes} ağızlı, ilerleme {feed} mm/dk)",
+        "chipLoadBand": "Talaş yükü {value} mm/diş · bu malzemede {min}–{max} ({flutes} ağızlı, ilerleme {feed} mm/dk)",
+        "chipLoadOutLimit": "Aralığın dışında: takım kırılır ya da talaş kaynar; bu ayarla program çıkmaz. İlerlemeyi {fix} mm/dk yapın.",
+        "chipLoadOutWarn": "Aralığın dışında: takım zorlanır ya da talaş kaynar. İlerlemeyi {fix} mm/dk yapın.",
+        "chipLoadApply": "{fix} mm/dk uygula",
         "feed": "İlerleme",
         "plungeFeed": "Dalma",
         "feedUnit": "mm/dk",
@@ -1669,12 +1680,14 @@
         "chipLoadHigh": "Talaş yükü malzeme ayarındakinin 2 katından fazla: takım kırılabilir; dışa aktarırken ayrıca onaylamanız istenir.",
         "feedSource": {
           "recommended": "İlerleme ve dalma malzeme ayarından ({feed} / {plunge} mm/dk).",
-          "project": "Bu projeye özel ilerleme/dalma (önerilen {feed} / {plunge} mm/dk)."
+          "project": "Bu projeye özel ilerleme/dalma (önerilen {feed} / {plunge} mm/dk).",
+          "startingValue": "İlerleme ve dalma V uçun kendi başlangıç değerinden ({feed} / {plunge} mm/dk, araştırma tablosu); makinede doğrulayın."
         },
         "feedReset": "İlerlemede önerilene dön",
         "source": {
           "recommended": "Malzeme ayarındaki devir kullanılıyor.",
-          "project": "Bu projeye özel devir."
+          "project": "Bu projeye özel devir.",
+          "startingValue": "V uçun başlangıç değerindeki devir kullanılıyor."
         },
         "reset": "Önerilene dön",
         "none": "Bu iş için malzeme ayarı yok; devir malzeme ayarı eklenince gelir."
@@ -2334,6 +2347,9 @@
         "SPINDLE_RPM_OUT_OF_RANGE": "Takım devri makinenin devir aralığının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
         "FEED_OUT_OF_RANGE": "Takım ilerlemesi ya da dalması makinenin sınırlarının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
         "MACHINE_FEED_ABOVE_MAX": "Makinenin malzeme ayarındaki ilerleme bu makinenin en yüksek ilerlemesinin üstünde (en yüksek ilerleme girilmediyse hızlı hareket hızı, dalmada yarısı). Makineler'de değeri düşürün ya da makinenin en yüksek ilerlemesini düzeltin.",
+        "STEP_DOWN_ABOVE_MATERIAL_LIMIT": "Paso derinliği bu malzemenin sınırının üstünde; Makineler → malzeme ayarında paso derinliğini düşürün.",
+        "CHIP_LOAD_OUT_OF_RANGE": "Bir takımın talaş yükü bu malzemenin aralığının dışında; Simülasyon → Kesim ayarlarında önerilen ilerlemeyi uygulayın.",
+        "SLOT_TOO_DEEP": "Kontur takımı çapının 3 katından derin kanal kesiyor; daha kalın bir takım seçin.",
         "FEED_ABOVE_RECOMMENDED": "Takım ilerlemesi ya da dalması önerilenin çok üstünde; Simülasyon → Kesim ayarlarında kontrol edin.",
         "PROFILE_VERSION_OUTDATED": "Proje makinenin eski profil sürümüyle kayıtlı; dosya eski takım ve sınır değerleriyle üretilir. Makine ve plaka adımında “Güncel makine sürümüne geç” deyin.",
         "OPERATION_TOOL_UNSUITABLE": "Bir işlem için seçilen takım bu işe uymuyor; Simülasyon → Kesim ayarlarında başka takım seçin."

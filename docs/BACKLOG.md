@@ -1510,18 +1510,20 @@ Tester focus: bounding boxes at 390 × 844 and 360 × 740; play/pause e2e green.
 
 Source: `docs/reviews/2026-11-28-cto-design-review-15.md`. T423–T425 (MUST) land before the ACM machine test T357. MB7 change: T358 also covers tab exits and V-groove entries; T362 moves directly after T358/T359, ahead of T364. 3D: at most the pure-core T400–T402 before field test 1 reports.
 
-### T423 No straight plunge in ACM: V-groove entry and tab exits ramp; checker catches it   [status: todo]   (MUST M1; before T357)
+### T423 No straight plunge in ACM: V-groove entry and tab exits ramp; checker catches it   [status: review]   (MUST M1; before T357)
 Spec: §7.2 rule 12, §6.3  ·  Owner: dev
 Acceptance:
-- [ ] when `traits.entry.straightPlunge = false`, the V-groove entry and every tab up/down move descend on a ramp (angle from traits); no vertical feed move into material
-- [ ] checker rule for composite pulled forward from T362: `STRAIGHT_PLUNGE_IN_METAL` (descent angle of every feed move entering material, from the read path) for ACM; mutation test puts a straight plunge back
-- [ ] wood/plastic goldens byte-identical; ACM goldens change (`needs-human`, PO + tester)
+- [x] when `traits.entry.straightPlunge = false`, the V-groove entry and every tab up/down move descend on a ramp (angle from traits); no vertical feed move into material
+- [x] checker rule for composite pulled forward from T362: `STRAIGHT_PLUNGE_IN_METAL` (descent angle of every feed move entering material, from the read path) for ACM; mutation test puts a straight plunge back
+- [x] wood/plastic goldens byte-identical; ACM goldens change (`needs-human`, PO + tester)
+Done in B73 (D-143): zig-zag descents (`zigzagDescent`) at V-groove entries, on-line operations and tab ends; tabs keep a tool-radius gap; `R12/STRAIGHT_PLUNGE_IN_METAL` with mutations at a groove entry and a tab; "Dik dalma" locked with the reason, `TABS_REDUCED` text for these materials.
 
-### T424 V-bit feed from its own research row   [status: todo]   (MUST M2; before T357)
+### T424 V-bit feed from its own research row   [status: review]   (MUST M2; before T357)
 Spec: §6.3  ·  Owner: dev
 Acceptance:
-- [ ] the V-groove row of `docs/materials/kesim-degerleri-arastirma.md` goes into the starting-value table; V-groove passes use the V-bit's own feed/rpm, chip load ≤ 0,05 mm/tooth
-- [ ] tray golden updated (no more F6000 on the groove), `needs-human`
+- [x] the V-groove row of `docs/materials/kesim-degerleri-arastirma.md` goes into the starting-value table; V-groove passes use the V-bit's own feed/rpm, chip load ≤ 0,05 mm/tooth
+- [x] tray golden updated (no more F6000 on the groove), `needs-human`
+Done in B73 (D-144): row `acm × vBit × 2` → 1500 / 300 mm/min at 18 000 rpm (0,042 mm/tooth). Left for T359: a V-bit chip-load band in the ACM traits; research values for the tray fixture's contour tool.
 
 ### T425 "Örnek ACM ayarlarını ekle" fills every required field; guesses are not "confirmed"   [status: todo]   (MUST M3; before T357)
 Owner: dev
@@ -1534,9 +1536,17 @@ Acceptance: with Z zero on the material top, a ±0,2 mm panel can leave up to 0,
 
 ### T427 Fold preview: status texts and the tray fixture clash   [status: todo]   (SHOULD)
 Acceptance: "Kapanıyor" not shown at 0 %, "Çakışma var" only where a real clash exists; fix the tray fixture geometry so our own sample folds without a clash.
+- [x] tray fixture folds closed (B73 rider, D-145): front/back flanges recessed by the thickness; `foldCheck` "closed" at 90°, test in `acm-fold.test.ts`
 
 ### T428 Hint when tabs cause an extra sheet   [status: todo]   (SHOULD)
 Acceptance: when the third MDF sheet is filled ~95 % only because tab spacing (D-129) grew the gaps, step 3 says so and offers "ince tabaka" or a smaller pay where it holds.
+
+### T429 Test cut follows the entry traits; rule 12 on the test program   [status: review]   (MUST, PO rider in B76; before T357)
+Source: B73 tester bug 1 (pinned `it.fails` in `plunge.tester.test.ts`). The field-kit air cut / test cut plunged straight into ACM at the pocket centres (`G1 Z-2.0/-2.25/-4.5 F1500`) and the checker did not refuse it.
+Acceptance:
+- [x] in a kind without a straight plunge the test cut's pockets enter on a helix at the entry angle (same rule as T358, D-149); the test program runs rule 12 like every export
+- [x] the pinned tester test passes as `it`; a hand-made straight plunge in the ACM test cut is refused by R12
+- [x] wood test-cut output byte-identical (test-cut goldens unchanged)
 
 ## Polish queue (M9; D-047)
 
@@ -2212,16 +2222,16 @@ Acceptance:
 - [ ] owner releases tier A to users (flag per company)
 Tester focus: none (human gate).
 
-### T358 Entry rule from the traits: ramp or helix only in metal   [status: todo]   (post-FT)
+### T358 Entry rule from the traits: ramp or helix only in metal   [status: review]   (post-FT)
 Spec: §6.3 "Giriş/çıkış"  ·  Depends: T346  ·  Owner: dev
 Acceptance:
 - [ ] `traits.entry.straightPlunge = false`: contours always ramp (default and maximum angle from traits); "Dalma (konturda)" shows "Rampa" locked with the reason; `ENTRY_RAMP_REQUIRED` when a ramp does not fit (part too short) instead of falling back to a plunge
-- [ ] hole pockets, grooves and contour pockets use the traits helix angle; a ring too small for a helix is refused (`HOLE_SMALLER_THAN_ENTRY`), never plunged
+- [ ] hole pockets, grooves and contour pockets use the traits helix angle (moved to T423 in B73: V-groove entries, on-line lines and tab ends already ramp on a zig-zag, D-143); a ring too small for a helix is refused (`HOLE_SMALLER_THAN_ENTRY`), never plunged
 - [ ] drilling with a drill tool: peck ≤ 1 × Ø with a retract that clears chips
 - [ ] wood and plastic: unchanged entries
 Tester focus: property test over random aluminium jobs: no descent into material steeper than the limit except drill moves.
 
-### T359 Step-down and chip-load limits as errors   [status: todo]   (post-FT)
+### T359 Step-down and chip-load limits as errors   [status: review]   (post-FT)
 Spec: §7.2 (R13, R14), §6.3  ·  Depends: T345, T346  ·  Owner: dev
 Acceptance:
 - [ ] validation and toolpath: `STEP_DOWN_ABOVE_MATERIAL_LIMIT` (traits × rigidity × tool Ø) and `CHIP_LOAD_OUT_OF_RANGE` (upper and lower bound per tool Ø band) for every job tool, with the allowed range in the message
@@ -2250,7 +2260,7 @@ Tester focus: multi-tool and split-file programs; coolant state across a manual 
 ### T362 Checker rules R12–R14: plunge, step-down, chip load   [status: todo]   (post-FT)
 Spec: §7.2 (R12–R14)  ·  Depends: T358, T359  ·  Owner: dev
 Acceptance:
-- [ ] `STRAIGHT_PLUNGE_IN_METAL`: descent angle of every feed move that enters material, measured on the read path against already-cut levels; drill tools excepted; `PECK_MISSING`
+- [ ] `STRAIGHT_PLUNGE_IN_METAL`: descent angle of every feed move that enters material, measured on the read path against already-cut levels; drill tools excepted; `PECK_MISSING` (moved to T423 in B73: the rule exists as `R12`, conservative: every descent below the top, drills excepted, no level credit; left here: level credit if needed, `PECK_MISSING`)
 - [ ] `STEP_DOWN_ABOVE_LIMIT`: level differences per operation from the read path; `CHIP_LOAD_ABOVE_LIMIT` / `CHIP_LOAD_BELOW_LIMIT` from read F, S and the profile's flute count
 - [ ] R4 extended: dwell after every spindle start and every S change in metal (≥ 3 s)
 - [ ] mutation tests per rule; all silent for wood and plastic goldens

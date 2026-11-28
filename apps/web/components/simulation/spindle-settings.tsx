@@ -5,6 +5,7 @@ import {
   SPINDLE_RPM_INPUT_STEP,
   SPINDLE_RPM_PAGE_STEP,
   SPINDLE_RPM_STEP,
+  chipLoadStatus,
   feedAboveRecommendation,
   machineFeedLimits,
   rpmBand,
@@ -71,6 +72,8 @@ export function SpindleSettings({
             limits={limits}
             errors={errors}
             run={run}
+            project={project}
+            machine={machine}
           />
         ))
       )}
@@ -86,6 +89,8 @@ function SpindleRow({
   limits,
   errors,
   run,
+  project,
+  machine,
 }: {
   t: Text;
   row: ToolSpindle;
@@ -94,6 +99,8 @@ function SpindleRow({
   limits: Limits;
   errors: FieldErrors;
   run: Run;
+  project: Project;
+  machine: MachineProfile;
 }) {
   const id = useId();
   const [draft, setDraft] = useState(row.rpm);
@@ -113,6 +120,9 @@ function SpindleRow({
   const inRange = draft >= min && draft <= max;
   const warn = !inRange || live.band !== 'ok';
   const chipLoad = draft > 0 && row.flutes > 0 ? row.feed / (draft * row.flutes) : null;
+  // T359 (D-150): a metal kind's chip-load band leads the row, with the feed that fixes it.
+  const chip =
+    chipLoad === null ? null : chipLoadStatus(project, { ...row, rpm: draft, chipLoad }, machine);
   const testId = `sim-spindle-T${row.tool}`;
 
   function commit(v: number): void {
@@ -131,6 +141,48 @@ function SpindleRow({
   const statusId = `${id}-status`;
   return (
     <div className="flex flex-col gap-1.5" data-testid={testId} data-value={row.rpm}>
+      {chip && chipLoad !== null ? (
+        <div
+          className={cn(
+            'flex flex-col gap-1 rounded-md border px-2 py-1.5 text-xs numeric',
+            chip.inBand
+              ? 'border-border text-fg'
+              : 'border-warning-border bg-warning-subtle text-warning-text',
+          )}
+          data-testid={`${testId}-chipband`}
+          data-in-band={chip.inBand}
+          aria-live="polite"
+        >
+          <p className="font-medium">
+            {fill(t.chipLoadBand, {
+              value: chipFormat.format(chipLoad),
+              min: chipFormat.format(chip.min),
+              max: chipFormat.format(chip.max),
+              flutes: row.flutes,
+              feed: rpmText(row.feed),
+            })}
+          </p>
+          {chip.fixFeed !== null ? (
+            <p className="flex flex-wrap items-baseline gap-x-2">
+              <span>
+                {fill(chip.enforce === 'limit' ? t.chipLoadOutLimit : t.chipLoadOutWarn, {
+                  fix: rpmText(chip.fixFeed),
+                })}
+              </span>
+              {draft === row.rpm ? (
+                <button
+                  type="button"
+                  data-testid={`${testId}-chipfix`}
+                  onClick={() => run('setToolFeed', { tool: row.tool, feed: chip.fixFeed })}
+                  className="rounded-sm font-medium text-accent-text underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {fill(t.chipLoadApply, { fix: rpmText(chip.fixFeed) })}
+                </button>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex items-center justify-between gap-2">
         <label htmlFor={`${id}-input`} className="text-xs text-fg-muted">
           {fill(t.tool, {
@@ -214,7 +266,7 @@ function SpindleRow({
               ? fill(t.low, { percent: Math.abs(live.deviation) })
               : fill(t.band, { min: rpmText(lo), max: rpmText(hi) })}
       </p>
-      {chipLoad !== null ? (
+      {chipLoad !== null && !chip ? (
         <p className="text-xs text-fg-muted numeric" data-testid={`${testId}-chip`}>
           {fill(t.chipLoad, {
             value: chipFormat.format(chipLoad),
@@ -225,7 +277,13 @@ function SpindleRow({
       ) : null}
       <FeedFields t={t} row={row} limits={limits} errors={errors} run={run} testId={testId} />
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-muted">
-        <span>{row.override ? t.source.project : t.source.recommended}</span>
+        <span>
+          {row.override
+            ? t.source.project
+            : row.recommendedSource === 'startingValue'
+              ? t.source.startingValue
+              : t.source.recommended}
+        </span>
         {row.override ? (
           <button
             type="button"
@@ -307,7 +365,14 @@ function FeedFields({
       ) : null}
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-muted">
         <span data-testid={`${testId}-feed-source`}>
-          {fill(own ? t.feedSource.project : t.feedSource.recommended, values)}
+          {fill(
+            own
+              ? t.feedSource.project
+              : row.recommendedSource === 'startingValue'
+                ? t.feedSource.startingValue
+                : t.feedSource.recommended,
+            values,
+          )}
         </span>
         {own ? (
           <button

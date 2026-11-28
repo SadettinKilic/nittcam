@@ -60,7 +60,14 @@ export {
   pocketRings,
 } from './holes';
 export { buildOnlineOperation, openSegments, type OnlineInput } from './online';
-export { contourEntryOf, cuttingSettingsOf, inheritedTabs, tabModeOf } from './cutting-settings';
+export { zigzagDescent } from './descent';
+export {
+  contourEntryOf,
+  cuttingSettingsOf,
+  descentOf,
+  inheritedTabs,
+  tabModeOf,
+} from './cutting-settings';
 export type { ContourEntry, CuttingSettings, TabMode, TabSource } from './cutting-settings';
 export {
   CHIP_LOAD_HIGH_FACTOR,
@@ -82,6 +89,14 @@ export {
   type ToolSpindle,
 } from './spindle';
 export {
+  chipLoadStatus,
+  materialLimitFindings,
+  SLOT_DEPTH_PER_DIAMETER,
+  type ChipLoadStatus,
+  type MaterialLimitCode,
+  type MaterialLimitFinding,
+} from './material-limits';
+export {
   OPERATION_TOOL_KINDS,
   OPERATION_TOOL_TYPES,
   operationToolTypes,
@@ -94,9 +109,12 @@ export {
   holeToolKind,
   operationToolChoice,
   operationsInJob,
+  recommendationSource,
   recommendedFeeds,
   recommendedRpm,
+  vBitRecommendation,
   type OperationToolKind,
+  type RecommendationSource,
 } from './op-tools';
 export {
   CONTOUR_POCKET_DEFAULTS,
