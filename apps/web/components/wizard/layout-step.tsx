@@ -515,6 +515,12 @@ function NestSettings({
   const nt = messages.cutList.nesting;
   const errors = messages.wizard.machine.errors;
   const spacing = effectiveSpacing(project, toolDiameter);
+  // D-129: the least margin the placer keeps with tabs (Ø + web); null without tabs or tool.
+  const tabMargin =
+    toolDiameter > 0 && project.cutting.skin === undefined
+      ? effectiveSpacing({ ...project, nesting: { ...project.nesting, margin: 0 } }, toolDiameter)
+          .margin
+      : null;
   const modeLabelId = useId();
   const rotationLabelId = useId();
   const rotationHintId = useId();
@@ -669,9 +675,21 @@ function NestSettings({
                   }
                 : toolDiameter > 0
                   ? {
+                      // T398 (CTO #14 P8): with tabs the helper shows the margin the placer
+                      // keeps (D-129: Ø + 3 mm web), the same pattern as the pay note: short on
+                      // screen, the sum on hover and for screen readers.
                       text: fill(t.marginHint, {
-                        min: mmText.format(minSheetMargin(toolDiameter)),
+                        min: mmText.format(tabMargin ?? minSheetMargin(toolDiameter)),
                       }),
+                      ...(tabMargin
+                        ? {
+                            detail: fill(t.marginHintTabs, {
+                              tool: mmText.format(toolDiameter),
+                              anchor: mmText.format(tabMargin - toolDiameter),
+                              min: mmText.format(tabMargin),
+                            }),
+                          }
+                        : {}),
                       tone: 'muted',
                       testId: 'layout-margin-hint',
                     }

@@ -76,6 +76,11 @@ export interface FitResult {
   /** Pairs that touch within ±TOUCH_MM (a fit). */
   touching: number;
   parts: number;
+  /**
+   * T397 (CTO #14 P5): ids of parts that touch (or overlap) no other part. Empty with fewer than
+   * two parts: a lone part has nothing to fit against.
+   */
+  loose: string[];
 }
 
 /**
@@ -270,6 +275,7 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 export function checkFit(parts: readonly FitPart[], narrow?: NarrowTest): FitResult {
   const issues: FitIssue[] = [];
   let touching = 0;
+  const contact = new Set<number>();
   const obbs = parts.map((p) => obbOf(p.pose, p.box));
   for (const [i, j] of candidatePairs(parts, GAP_LIST_MM)) {
     const a = at(parts, i);
@@ -283,6 +289,10 @@ export function checkFit(parts: readonly FitPart[], narrow?: NarrowTest): FitRes
       if (exact && !exact.overlap) s = -exact.distance;
       else if (exact?.depth !== undefined) s = Math.max(exact.depth, TOUCH_MM * 1.01);
       if (s < -GAP_LIST_MM) continue;
+    }
+    if (s >= -TOUCH_MM) {
+      contact.add(i);
+      contact.add(j);
     }
     if (s > TOUCH_MM) issues.push({ kind: 'overlap', a: a.id, b: b.id, depth: round2(s) });
     else if (s >= -TOUCH_MM) touching++;
@@ -298,5 +308,6 @@ export function checkFit(parts: readonly FitPart[], narrow?: NarrowTest): FitRes
     if (x.kind === 'gap' && y.kind === 'gap') return x.gap - y.gap;
     return 0;
   });
-  return { issues, touching, parts: parts.length };
+  const loose = parts.length < 2 ? [] : parts.filter((_, i) => !contact.has(i)).map((p) => p.id);
+  return { issues, touching, parts: parts.length, loose };
 }

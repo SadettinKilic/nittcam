@@ -1,7 +1,13 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { libraryParamLinks, type LibraryMaterial, type MachineProfile } from '@nittcam/core';
+import {
+  libraryParamLinks,
+  traitsOf,
+  type LibraryMaterial,
+  type MachineProfile,
+  type MaterialFamily,
+} from '@nittcam/core';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +43,9 @@ const MaterialDialog = dynamic(() => import('./material-dialog').then((m) => m.M
 
 type Text = Messages['materialLibrary'];
 type KindText = Messages['materials'];
+
+/** ACM (composite) and aluminium (non-ferrous): the kinds the metal hint names (T398). */
+const METAL_FAMILIES: ReadonlySet<MaterialFamily> = new Set(['composite', 'nonFerrous']);
 
 type ListState =
   { status: 'loading' } | { status: 'error' } | { status: 'ready'; items: MaterialItem[] };
@@ -160,6 +169,20 @@ export function MaterialsView({ t, kinds }: { t: Text; kinds: KindText }) {
         <EmptyState icon={<SheetIcon />} title={t.emptyTitle} description={t.empty} />
       ) : (
         <ul className="flex flex-col gap-2" data-testid="material-list" aria-label={t.title}>
+          {/* T398 (CTO #14 P11): column names over the wide table layout (each value keeps its
+              own <dt> for screen readers and the stacked layout below xl). */}
+          <li
+            aria-hidden
+            data-testid="material-list-head"
+            className="hidden gap-x-4 px-4 text-xs font-medium text-fg-muted xl:grid xl:grid-cols-[minmax(10rem,1.2fr)_minmax(6rem,0.7fr)_minmax(9rem,1fr)_minmax(4rem,0.4fr)_minmax(10rem,1.3fr)_auto]"
+          >
+            <span>{t.columns.name}</span>
+            <span>{t.columns.thicknesses}</span>
+            <span>{t.columns.sheets}</span>
+            <span>{t.columns.grain}</span>
+            <span>{t.columns.params}</span>
+            <span className="w-21" />
+          </li>
           {list.items.map((m) => (
             <MaterialRow
               key={m.id}
@@ -173,6 +196,14 @@ export function MaterialsView({ t, kinds }: { t: Text; kinds: KindText }) {
           ))}
         </ul>
       )}
+      {/* T398 (CTO #14 P11): metal kinds do not show until added; say how to add them. */}
+      {list.status === 'ready' &&
+      list.items.length > 0 &&
+      !list.items.some((m) => METAL_FAMILIES.has(traitsOf(m.kind).family)) ? (
+        <p className="text-sm text-fg-muted" data-testid="material-metal-hint">
+          {t.metalHint}
+        </p>
+      ) : null}
 
       {editing ? (
         <MaterialDialog

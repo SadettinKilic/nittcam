@@ -1,6 +1,7 @@
 'use client';
 
 import type { SimulateResult } from '@nittcam/core';
+import type { ReactNode } from 'react';
 import { focusCuttingSettings } from './cutting-settings';
 import Link from 'next/link';
 import { fill } from '../../lib/fill';
@@ -170,6 +171,25 @@ function innerPlace(t: SimText, f: Finding, links: PartLinks): string | null {
   return itemPlace(f, links.parts, t.blocked, fill);
 }
 
+/**
+ * T398 (CTO #14 P9): where a finding applies ("Plaka 2", "Plaka 2 · Satır 14", file and line in
+ * mono). Null for the whole program: no "Tüm program" chip in front of the sentence.
+ */
+export function scopeOf(t: SimText, f: Finding): ReactNode {
+  const sheet = f.sheet !== undefined && !f.file ? fill(t.sheetTab, { n: f.sheet + 1 }) : null;
+  const code = [f.file, f.line && f.line > 0 ? fill(t.blocked.line, { line: f.line }) : null]
+    .filter((x): x is string => !!x)
+    .join(' · ');
+  if (!sheet && !code) return null;
+  return (
+    <>
+      {sheet}
+      {sheet && code ? ' · ' : null}
+      {code ? <span className="font-mono">{code}</span> : null}
+    </>
+  );
+}
+
 function FindingList({
   t,
   items,
@@ -206,17 +226,13 @@ function FindingList({
                   <span className="shrink-0 text-xs font-medium" data-testid="violation-place">
                     {innerPlace(t, f, links)}
                   </span>
-                ) : (
-                  <span className="shrink-0 font-mono text-xs text-fg-muted">
-                    {f.sheet !== undefined && !f.file
-                      ? `${fill(t.sheetTab, { n: f.sheet + 1 })} · `
-                      : ''}
-                    {f.file ? `${f.file} · ` : ''}
-                    {f.line && f.line > 0
-                      ? fill(t.blocked.line, { line: f.line })
-                      : t.blocked.wholeProgram}
+                ) : scopeOf(t, f) ? (
+                  // T398 (CTO #14 P9): a scope only for a sheet, file or line; none for the
+                  // whole program. Plain text for the sheet, mono only for file and line.
+                  <span className="shrink-0 text-xs text-fg-muted" data-testid="violation-scope">
+                    {scopeOf(t, f)}
                   </span>
-                )}
+                ) : null}
                 <span className="min-w-0">
                   {codeText(t, f.textCode ?? f.code, links.textValues)}
                   {/* D-045: the engine's English sentence only for a code without Turkish text. */}
