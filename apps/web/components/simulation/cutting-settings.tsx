@@ -2,6 +2,7 @@
 
 import {
   RAMP_BOUNDS,
+  contourEntryOf,
   cuttingSettingsOf,
   findMaterialParams,
   findTool,
@@ -273,7 +274,8 @@ function EntrySettings({
   machine: MachineProfile | null;
   run: Run;
 }) {
-  const entry = project.cutting.entry;
+  // T422: what the toolpath cuts, so an ACM stock shows its traits ramp (locking it is T358).
+  const entry = contourEntryOf(project);
   const set = machine ? findMaterialParams(machine, project.stock) : undefined;
   const toolNo = project.cutting.tools?.outer ?? set?.tool;
   const toolD = machine && toolNo !== undefined ? findTool(machine, toolNo)?.diameter : undefined;
