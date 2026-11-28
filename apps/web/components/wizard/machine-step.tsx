@@ -194,6 +194,8 @@ export function MachineFields({
     set: kind ? { material: kind, thickness: stock.thickness } : null,
   };
   const tableIssue = issues.find((i) => i.code === 'SHEET_LARGER_THAN_TABLE');
+  // T395 (CTO #14 M3): aluminium ships no NC yet: one message, no fix buttons that cannot help.
+  const notReleased = issues.some((i) => i.code === 'MATERIAL_NOT_RELEASED');
   const errors = t.errors;
 
   const materialName = (k: MaterialKind) => materials[k];
@@ -406,7 +408,15 @@ export function MachineFields({
           </>
         ) : null}
         {/* B53 (CTO #5): no "no thicknesses" line here; the red box below says it once. */}
-        {profile && !set ? (
+        {notReleased ? (
+          <div
+            role="alert"
+            data-testid="material-not-released"
+            className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
+          >
+            <p>{t.materialNotReleased}</p>
+          </div>
+        ) : profile && !set ? (
           <div
             role="alert"
             data-testid="no-cutting-params"
@@ -442,7 +452,7 @@ export function MachineFields({
             </Button>
           </div>
         ) : null}
-        {profile ? (
+        {profile && !notReleased ? (
           <MaterialRuleBox
             t={t}
             issues={issues}
