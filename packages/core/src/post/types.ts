@@ -78,7 +78,7 @@ export interface PostCuttingMeta {
    * T308 (D-099): the tools the project chose per operation of the job. Absent or empty = the
    * defaults, and no line is written.
    */
-  tools?: { op: 'outer' | 'inner' | 'pocket' | 'hole'; tool: number }[];
+  tools?: { op: 'outer' | 'inner' | 'pocket' | 'hole' | 'vgroove'; tool: number }[];
   /**
    * T323: the tools the project runs at its own cutting or plunge feed (the feeds used and the
    * recommended ones), mm/min. Absent or empty = recommended feeds, and no line is written.

@@ -16,6 +16,7 @@ import {
   type Part,
   type Project,
   type ValidationIssue,
+  vGrooveTraitsOf,
 } from '@nittcam/core';
 import {
   columnResizingFeature,
@@ -2213,6 +2214,7 @@ export function CutListEditor({
               newId={newPartId}
               {...(holeTool !== undefined ? { holeTool } : {})}
               thickness={project.stock.thickness}
+              vGroove={vGrooveTraitsOf(project.stock.material) !== null}
             />
           ) : null}
           {cabinetOpen > 0 ? (

@@ -65,3 +65,17 @@ export const POCKET_DEPTH = 5;
 export function defaultPocketDepth(thickness: number): number {
   return Math.min(POCKET_DEPTH, Math.round((thickness / 2) * 1000) / 1000);
 }
+
+/** Slack of a fold line on the outline, mm (a fold runs edge to edge; the ends lie on the outline). */
+export const GROOVE_EDGE_SLACK = 0.01;
+
+/**
+ * T352: whether a V-groove's fold line leaves its part: some point outside the outline by more
+ * than `GROOVE_EDGE_SLACK`. Unlike an engraving, a fold may run to the edge (its ends on the
+ * outline), so the tool radius does not count.
+ */
+export function grooveLeavesPart(outline: readonly Vertex[], line: readonly Vertex[]): boolean {
+  return linePoints(line).some(
+    (p) => !insideContour(p, outline) && contourDistance(p, outline) > GROOVE_EDGE_SLACK,
+  );
+}

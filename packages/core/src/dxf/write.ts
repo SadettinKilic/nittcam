@@ -31,6 +31,8 @@ export const DXF_EXPORT_LAYERS = {
   drill: 'DELIK',
   /** On-line contours and open lines (engraving). */
   online: 'CIZGI',
+  /** T352: V-groove fold lines (ACM). */
+  vgroove: 'VKANAL',
   /** Sheet frames in the layout file (not cut). */
   sheet: 'PLAKA',
 } as const;
@@ -42,6 +44,7 @@ const LAYER_COLOURS: Readonly<Record<string, number>> = {
   CEP: 3,
   DELIK: 1,
   CIZGI: 6,
+  VKANAL: 4,
   PLAKA: 8,
 };
 
@@ -55,6 +58,7 @@ export const DXF_EXPORT_LAYER_MAP: DxfLayerMap = {
   CEP: 'pocket',
   DELIK: 'drill',
   CIZGI: 'online',
+  VKANAL: 'vgroove',
   PLAKA: 'ignore',
 };
 
@@ -99,10 +103,12 @@ export function partEntities(
       ? undefined
       : kind === 'online'
         ? DXF_EXPORT_LAYERS.online
-        : // T325: a blind contour pocket goes on the pocket layer, never on a through-cut layer.
-          kind === 'pocket'
-          ? DXF_EXPORT_LAYERS.pocket
-          : cut;
+        : kind === 'vgroove'
+          ? DXF_EXPORT_LAYERS.vgroove
+          : // T325: a blind contour pocket goes on the pocket layer, never on a through-cut layer.
+            kind === 'pocket'
+            ? DXF_EXPORT_LAYERS.pocket
+            : cut;
   const outlineLayer = opLayer(outlineOperation(part).kind, DXF_EXPORT_LAYERS.outside);
   if (outlineLayer) {
     out.push({
@@ -121,7 +127,8 @@ export function partEntities(
   }
   for (const l of placedLines(part, placement)) {
     if (l.op.kind === 'none') continue;
-    out.push({ type: 'polyline', layer: DXF_EXPORT_LAYERS.online, poly: shift(l.poly, dx, dy) });
+    const layer = l.op.kind === 'vgroove' ? DXF_EXPORT_LAYERS.vgroove : DXF_EXPORT_LAYERS.online;
+    out.push({ type: 'polyline', layer, poly: shift(l.poly, dx, dy) });
   }
   return out;
 }
@@ -195,7 +202,10 @@ export function writeDxfEntities(entities: readonly DxfEntity[]): string {
   const g = (code: number, value: string | number): void => {
     lines.push(String(code).padStart(3, ' '), typeof value === 'number' ? dxfNumber(value) : value);
   };
-  const layers = Object.values(DXF_EXPORT_LAYERS);
+  // T352: VKANAL only when a fold line is written, so files without grooves stay byte-identical.
+  const layers = Object.values(DXF_EXPORT_LAYERS).filter(
+    (l) => l !== DXF_EXPORT_LAYERS.vgroove || entities.some((e) => e.layer === l),
+  );
 
   g(0, 'SECTION');
   g(2, 'HEADER');

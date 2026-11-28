@@ -90,6 +90,7 @@ export {
   contourTool,
   effectiveHoleTool,
   hasContourPocket,
+  hasVGroove,
   holeToolKind,
   operationToolChoice,
   operationsInJob,
@@ -109,3 +110,18 @@ export {
   type OperationToolProblem,
   type OperationToolRow,
 } from './op-tool-choice';
+export {
+  deepestVGroove,
+  hasVGeometry,
+  vConeDepth,
+  vGrooveDepth,
+  vGrooveLines,
+  vGroovePassDepths,
+  vGrooveRemaining,
+  vGrooveRemainingProblem,
+  vGrooveToolOf,
+  vGrooveTraitsOf,
+  vGrooveWidth,
+  type VGrooveLine,
+  type VGrooveTraits,
+} from './vgroove';

@@ -12,7 +12,7 @@ import { traitsOf } from '../machine/material-traits';
 import { innerOperation } from '../schema/operations';
 import type { Hole, Project } from '../schema';
 
-export const OPERATION_TOOL_KINDS = ['outer', 'inner', 'pocket', 'hole'] as const;
+export const OPERATION_TOOL_KINDS = ['outer', 'inner', 'pocket', 'hole', 'vgroove'] as const;
 export type OperationToolKind = (typeof OPERATION_TOOL_KINDS)[number];
 
 /**
@@ -24,6 +24,8 @@ export const OPERATION_TOOL_TYPES: Record<OperationToolKind, readonly ToolType[]
   inner: ['flatEndMill', 'compression'],
   pocket: ['flatEndMill', 'compression'],
   hole: ['drill', 'flatEndMill'],
+  // T352: no V-groove on today's kinds (ACM's traits row allows a V-bit).
+  vgroove: [],
 };
 
 /**
@@ -76,6 +78,15 @@ export function hasInnerCut(project: Project): boolean {
   return project.parts.some((p) => p.inners.some((_, k) => innerOperation(p, k).kind === 'inside'));
 }
 
+/** T352: whether any part has a V-groove (inner contour or open line). */
+export function hasVGroove(project: Project): boolean {
+  return project.parts.some(
+    (p) =>
+      p.inners.some((_, k) => innerOperation(p, k).kind === 'vgroove') ||
+      (p.lines ?? []).some((l) => l.op.kind === 'vgroove'),
+  );
+}
+
 /** Whether any part has an inner contour cleared as a blind pocket (T325, the `pocket` operation). */
 export function hasContourPocket(project: Project): boolean {
   return project.parts.some((p) => p.inners.some((_, k) => innerOperation(p, k).kind === 'pocket'));
@@ -101,6 +112,7 @@ export function operationsInJob(project: Project): OperationToolKind[] {
     out.push('pocket');
   }
   if (holes.some((h) => holeToolKind(h) === 'hole')) out.push('hole');
+  if (hasVGroove(project)) out.push('vgroove');
   return out;
 }
 

@@ -31,7 +31,7 @@ export interface DxfImportPart {
   inners: Vertex[][];
   holes: Hole[];
   /** On-line (engraving) lines, drawing mm (T277). */
-  lines: { vertices: Vertex[]; op: { kind: 'online'; depth: number } }[];
+  lines: { vertices: Vertex[]; op: { kind: 'online'; depth: number } | { kind: 'vgroove' } }[];
 }
 
 /**
@@ -64,7 +64,11 @@ export function dxfImportParts(
     }
     const lines = (p.lines ?? []).map((l) => ({
       vertices: copy(l.poly.vertices),
-      op: { kind: 'online' as const, depth: onlineDepth },
+      // T352: lines from a "V-kanal" layer become fold grooves (remaining = the material default).
+      op:
+        l.vgroove === true
+          ? { kind: 'vgroove' as const }
+          : { kind: 'online' as const, depth: onlineDepth },
     }));
     return {
       id: idFor(i),

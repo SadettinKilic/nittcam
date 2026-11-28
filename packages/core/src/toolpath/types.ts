@@ -100,7 +100,7 @@ export interface Tab {
  * one plunge per pass (peck, D-050). `groove`: a ring groove around the hole's centreline (T140).
  */
 export type OperationKind =
-  'outerContour' | 'innerContour' | 'pocket' | 'drill' | 'groove' | 'online';
+  'outerContour' | 'innerContour' | 'pocket' | 'drill' | 'groove' | 'online' | 'vgroove';
 
 export interface Operation {
   /** `<partId>#<copy>` (unique in the toolpath). */

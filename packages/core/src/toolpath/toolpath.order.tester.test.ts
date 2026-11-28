@@ -225,6 +225,7 @@ const RANK: Record<Cls, number> = {
   pocket: 0,
   groove: 0,
   online: 0,
+  vgroove: 0,
   inner: 1,
   outer: 2,
 };

@@ -33,6 +33,11 @@ export interface EditorCanvasProps {
   height: number;
   view: Viewport;
   parts: readonly BoardPart[];
+  /**
+   * T352: open width of a V-groove on the machined face for a remaining skin (absent = the
+   * material default), mm; omitted = the grooves draw as a centre line only.
+   */
+  vGrooveWidth?: ((remaining: number | undefined) => number) | undefined;
   /** Label text per part id: number + name (and ×qty). */
   names: ReadonlyMap<string, { number: string; name: string }>;
   selection: ReadonlySet<string>;
@@ -219,10 +224,12 @@ function drawParts(ctx: Ctx, p: EditorCanvasProps) {
     const selected = p.selection.has(part.id);
     const d = selected && p.drag ? p.drag : { x: 0, y: 0 };
     const pockets = new Set(part.pockets ?? []);
+    // T352: an inner contour that is a V-groove is a fold line, not an opening.
+    const grooveInners = new Set((part.grooves ?? []).flatMap((g) => g.inner ?? []));
     ctx.beginPath();
     traceContour(ctx, part.outline, v, d.x, d.y);
     part.inners.forEach((inner, k) => {
-      if (!pockets.has(k)) traceContour(ctx, inner, v, d.x, d.y);
+      if (!pockets.has(k) && !grooveInners.has(k)) traceContour(ctx, inner, v, d.x, d.y);
     });
     // B50 (CTO #5, #7): a selected part keeps its wood tone; the 2 px accent outline marks it.
     ctx.fillStyle = colors.part;
@@ -246,6 +253,7 @@ function drawParts(ctx: Ctx, p: EditorCanvasProps) {
       ctx.stroke();
       ctx.setLineDash([]);
     }
+    if (part.grooves) drawGrooves(ctx, p, part.grooves, d);
     if (part.holes.length > 0) {
       // B50 (CTO #7): through = solid disc, blind pocket = light disc, groove = ring only.
       for (const h of part.holes) {
@@ -638,6 +646,52 @@ function traceSegment(ctx: Ctx, a: Pt, b: Pt, bulge: number, v: Viewport) {
 }
 
 /** Open path: segments between the given vertices (the last vertex's bulge is ignored). */
+/**
+ * T352 (analysis §5.3): a V-groove as a light band as wide as the groove opens on the machined
+ * face, its two edges, and a dashed centre line (the fold line).
+ */
+function drawGrooves(
+  ctx: Ctx,
+  p: EditorCanvasProps,
+  grooves: NonNullable<BoardPart['grooves']>,
+  d: Pt,
+) {
+  const { view: v, colors } = p;
+  for (const g of grooves) {
+    const vs = g.vertices.map((q) => ({ x: q.x + d.x, y: q.y + d.y, bulge: q.bulge }));
+    const path = () => {
+      ctx.beginPath();
+      if (g.closed) traceContour(ctx, vs, v);
+      else traceOpen(ctx, vs, v);
+    };
+    const w = (p.vGrooveWidth?.(g.remaining) ?? 0) * v.scale;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'round';
+    if (w > 2) {
+      path();
+      ctx.lineWidth = w;
+      ctx.strokeStyle = colors.partStroke;
+      ctx.stroke();
+      path();
+      ctx.lineWidth = Math.max(w - 2, 0.5);
+      ctx.strokeStyle = colors.part;
+      ctx.stroke();
+      path();
+      ctx.globalAlpha = 0.25;
+      ctx.strokeStyle = colors.partStroke;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    path();
+    ctx.setLineDash([6, 4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = colors.partStroke;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 function traceOpen(ctx: Ctx, vs: readonly Vertex[], v: Viewport) {
   const first = vs[0];
   if (!first) return;

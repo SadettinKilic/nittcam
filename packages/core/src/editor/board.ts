@@ -30,6 +30,12 @@ export interface BoardPart {
   inners: Vertex[][];
   /** Indices into `inners` of the blind contour pockets (T325); omitted = none. */
   pockets?: number[];
+  /**
+   * T352: V-groove fold lines in board coordinates (open lines and inner contours with the
+   * `vgroove` operation), with their remaining skin (absent = the material default); omitted = none.
+   * Their inner contours are not openings.
+   */
+  grooves?: { vertices: Vertex[]; closed: boolean; inner?: number; remaining?: number }[];
   /** Hole centres and diameters in board coordinates. */
   holes: { id: string; x: number; y: number; d: number; type: Hole['type'] }[];
   /** Linear dimensions (T133, annotations) in board coordinates. */
@@ -94,6 +100,29 @@ function holeCentre(hole: Hole, at: Point) {
   return { id: hole.id, x: hole.cx + at.x, y: hole.cy + at.y, d: hole.d, type: hole.type };
 }
 
+function grooveField(part: Part, at: Point): Pick<BoardPart, 'grooves'> {
+  const grooves: NonNullable<BoardPart['grooves']> = [];
+  part.inners.forEach((c, k) => {
+    const op = innerOperation(part, k);
+    if (op.kind !== 'vgroove') return;
+    grooves.push({
+      vertices: shift(c, at.x, at.y),
+      closed: true,
+      inner: k,
+      ...(op.remaining === undefined ? {} : { remaining: op.remaining }),
+    });
+  });
+  for (const l of part.lines ?? []) {
+    if (l.op.kind !== 'vgroove') continue;
+    grooves.push({
+      vertices: shift(l.vertices, at.x, at.y),
+      closed: false,
+      ...(l.op.remaining === undefined ? {} : { remaining: l.op.remaining }),
+    });
+  }
+  return grooves.length > 0 ? { grooves } : {};
+}
+
 /** Every part as drawn on the board, in project order. */
 export function boardParts(project: Project): BoardPart[] {
   const pos = boardPositions(project);
@@ -113,6 +142,7 @@ export function boardParts(project: Project): BoardPart[] {
             ),
           }
         : {}),
+      ...grooveField(part, at),
       holes: part.holes.map((h) => holeCentre(h, at)),
       dims: (part.dims ?? []).map((d) => ({
         id: d.id,

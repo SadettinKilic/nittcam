@@ -10,8 +10,8 @@ import type { BBox, Point, Polyline, Vertex } from '../geometry/types';
 import { insidePolygon } from '../toolpath/lead';
 import type { DxfContour, DxfJoinResult, DxfOpenChain } from './join';
 import { layerOp, type DxfLayerMap, type DxfLayerOp } from './layers';
-import { insideContour } from '../editor/holes';
-import { linePoints } from '../editor/lines';
+import { contourDistance, insideContour } from '../editor/holes';
+import { GROOVE_EDGE_SLACK, linePoints } from '../editor/lines';
 
 /** An inner contour of a recognised part (world mm, CW). */
 export interface DxfInner {
@@ -32,7 +32,7 @@ export interface DxfPart {
    * Contours and open chains on `online` ("Çizgi üzerinden") layers inside this part (T277), world
    * mm, as open polylines (a closed contour repeats its first point at the end).
    */
-  lines: { poly: Polyline; layer: string }[];
+  lines: { poly: Polyline; layer: string; vgroove?: true }[];
   box: BBox;
 }
 
@@ -83,6 +83,11 @@ function ring(poly: Polyline): Point[] {
   return out;
 }
 
+/** A box shrunk by `d` on every side. */
+function shrink(b: BBox, d: number): BBox {
+  return { minX: b.minX + d, minY: b.minY + d, maxX: b.maxX - d, maxY: b.maxY - d };
+}
+
 function boxInside(inner: BBox, outer: BBox): boolean {
   return (
     inner.minX >= outer.minX - EPS &&
@@ -109,7 +114,7 @@ export function recognizeParts(
 ): DxfRecognition {
   let ignored = 0;
   const pending: DxfContour[] = [];
-  const online: { poly: Polyline; layer: string }[] = [];
+  const online: { poly: Polyline; layer: string; vgroove?: true }[] = [];
   const nodes: Node[] = [];
   for (const c of joined.contours) {
     const op = layerOp(map, c.layer);
@@ -123,6 +128,10 @@ export function recognizeParts(
     }
     if (op === 'online') {
       online.push({ poly: closedAsOpen(c.poly), layer: c.layer });
+      continue;
+    }
+    if (op === 'vgroove') {
+      online.push({ poly: closedAsOpen(c.poly), layer: c.layer, vgroove: true });
       continue;
     }
     const area = Math.abs(signedArea(c.poly));
@@ -143,7 +152,8 @@ export function recognizeParts(
     if (op === 'ignore') ignored += 1;
     // T277: an open chain on a "Çizgi üzerinden" layer is an engraving line, not an error.
     if (op === 'online') online.push({ poly: o.poly, layer: o.layer });
-    return op !== 'ignore' && op !== 'online';
+    if (op === 'vgroove') online.push({ poly: o.poly, layer: o.layer, vgroove: true });
+    return op !== 'ignore' && op !== 'online' && op !== 'vgroove';
   });
   // Largest first, so every parent is decided before its children.
   const order = nodes
@@ -203,7 +213,15 @@ export function recognizeParts(
     const pts = linePoints(line.poly.vertices);
     const owner = bySize.find((i) => {
       const node = nodes[i] as Node;
-      return boxInside(box, node.box) && pts.every((p) => insideContour(p, node.c.poly.vertices));
+      const vs = node.c.poly.vertices;
+      // T352: a fold line may end on the outline (edge to edge).
+      const near = (p: Point) =>
+        line.vgroove === true && contourDistance(p, vs) <= GROOVE_EDGE_SLACK;
+      const slack = line.vgroove === true ? GROOVE_EDGE_SLACK : 0;
+      return (
+        boxInside(shrink(box, slack), node.box) &&
+        pts.every((p) => insideContour(p, vs) || near(p))
+      );
     });
     const part = owner === undefined ? undefined : partOf.get(owner);
     if (part) part.lines.push(line);

@@ -114,6 +114,15 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "pocket": [
         "flatEndMill",
       ],
+      "vgroove": [
+        "vBit",
+      ],
+    },
+    "vGroove": {
+      "defaultRemaining": 0.8,
+      "maxRemaining": 1.2,
+      "minRemaining": 0.7,
+      "step": 3,
     },
   },
   "acrylic": {
@@ -205,7 +214,9 @@ exports[`material traits (T341) > locks the rows 1`] = `
         "flatEndMill",
         "compression",
       ],
+      "vgroove": [],
     },
+    "vGroove": null,
   },
   "aluminium": {
     "cabinet": false,
@@ -326,7 +337,9 @@ exports[`material traits (T341) > locks the rows 1`] = `
       "pocket": [
         "flatEndMill",
       ],
+      "vgroove": [],
     },
+    "vGroove": null,
   },
   "mdf": {
     "cabinet": true,
@@ -417,7 +430,9 @@ exports[`material traits (T341) > locks the rows 1`] = `
         "flatEndMill",
         "compression",
       ],
+      "vgroove": [],
     },
+    "vGroove": null,
   },
   "melamine": {
     "cabinet": true,
@@ -508,7 +523,9 @@ exports[`material traits (T341) > locks the rows 1`] = `
         "flatEndMill",
         "compression",
       ],
+      "vgroove": [],
     },
+    "vGroove": null,
   },
   "plywood": {
     "cabinet": true,
@@ -599,7 +616,9 @@ exports[`material traits (T341) > locks the rows 1`] = `
         "flatEndMill",
         "compression",
       ],
+      "vgroove": [],
     },
+    "vGroove": null,
   },
   "pvc": {
     "cabinet": true,
@@ -690,7 +709,9 @@ exports[`material traits (T341) > locks the rows 1`] = `
         "flatEndMill",
         "compression",
       ],
+      "vgroove": [],
     },
+    "vGroove": null,
   },
   "solidWood": {
     "cabinet": true,
@@ -781,7 +802,9 @@ exports[`material traits (T341) > locks the rows 1`] = `
         "flatEndMill",
         "compression",
       ],
+      "vgroove": [],
     },
+    "vGroove": null,
   },
 }
 `;

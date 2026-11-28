@@ -13,9 +13,21 @@ export const ALLOWED_OPERATIONS: Readonly<
   Record<ContourRef['type'], readonly ContourOperationKind[]>
 > = {
   outline: ['outside', 'online', 'none'],
-  inner: ['inside', 'online', 'pocket', 'none'],
-  line: ['online', 'none'],
+  inner: ['inside', 'online', 'pocket', 'vgroove', 'none'],
+  line: ['online', 'vgroove', 'none'],
 };
+
+/**
+ * T352: kinds offered on a contour type for a stock: `vgroove` only where the material has a
+ * V-groove (`traits.vGroove`, ACM).
+ */
+export function allowedOperations(
+  type: ContourRef['type'],
+  vGroove: boolean,
+): readonly ContourOperationKind[] {
+  const all = ALLOWED_OPERATIONS[type];
+  return vGroove ? all : all.filter((k) => k !== 'vgroove');
+}
 
 export const OUTLINE_DEFAULT: ContourOperation = { kind: 'outside' };
 export const INNER_DEFAULT: ContourOperation = { kind: 'inside' };

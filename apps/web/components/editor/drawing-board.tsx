@@ -18,6 +18,9 @@ import {
   type SnapKind,
   defaultSheet,
   withVertexAt,
+  vGrooveDepth,
+  vGrooveTraitsOf,
+  vGrooveWidth,
 } from '@nittcam/core';
 import { Button, IconButton, Tooltip, cn, notify } from '@nittcam/ui';
 import {
@@ -116,6 +119,7 @@ import { DynamicInput } from './dynamic-input';
 import type { EditorFocus, SnapGlyph } from './editor-canvas';
 import { RULER_PX } from './ruler';
 import { BoardActionBar, EditorInspector } from './inspector';
+import { useVGroove } from './vgroove-context';
 import type { SubSelection } from './properties';
 import { boardSummary } from '../../lib/editor/summary';
 import {
@@ -514,6 +518,14 @@ export function DrawingBoard({
       : null;
   // B52 (D-096): a hole or cut-out of the selected part dragged on the canvas (live preview).
   const [itemDrag, setItemDrag] = useState<{ id: string; item: PartItem; d: Pt } | null>(null);
+  // T352: the V-groove band width on the canvas (V-bit angle and tip, thickness − remaining).
+  const vg = useVGroove();
+  const vGrooveWidthOf = useMemo(() => {
+    const { tool, traits, thickness } = vg;
+    if (!tool || !traits) return undefined;
+    return (remaining: number | undefined) =>
+      vGrooveWidth(tool, vGrooveDepth(thickness, remaining ?? traits.defaultRemaining));
+  }, [vg]);
   const shownParts = useMemo(
     () => (itemDrag ? withItemMoved(parts, itemDrag.id, itemDrag.item, itemDrag.d) : parts),
     [parts, itemDrag],
@@ -1625,6 +1637,7 @@ export function DrawingBoard({
         newId={newPartId}
         {...(holeTool ? { holeTool: holeTool.number } : {})}
         thickness={project.stock.thickness}
+        vGroove={vGrooveTraitsOf(project.stock.material) !== null}
       />
     ) : null;
 
@@ -1892,6 +1905,7 @@ export function DrawingBoard({
             height={size.h}
             view={view}
             parts={shownParts}
+            vGrooveWidth={vGrooveWidthOf}
             names={names}
             selection={selection}
             hover={state.hover}

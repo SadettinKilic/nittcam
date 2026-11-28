@@ -21,6 +21,12 @@ import { checkPlacement, partSizes } from '../nesting/placement';
 import { effectiveSpacing, nestingToolDiameter } from '../nesting/tool';
 import type { Hole, Project } from '../schema';
 import {
+  vGrooveLines,
+  vGrooveRemainingProblem,
+  vGrooveToolOf,
+  vGrooveTraitsOf,
+} from '../toolpath/vgroove';
+import {
   defaultSheet,
   deriveOutline,
   edgeBandIgnored,
@@ -31,7 +37,7 @@ import {
 } from '../schema';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
 import { checkInnerContour, innerFitsTool } from '../editor/inners';
-import { lineLeavesPart } from '../editor/lines';
+import { grooveLeavesPart, lineLeavesPart } from '../editor/lines';
 import { contour } from '../geometry/polyline';
 import { contourPocketRings } from '../toolpath/contour-pocket';
 import { unsecuredSlugs } from '../toolpath/slug-check';
@@ -90,7 +96,15 @@ export type ValidationCode =
   | 'MARGIN_BELOW_TOOL_RADIUS'
   | 'POCKET_DEPTH_NOT_BELOW_THICKNESS'
   | 'POCKET_DEPTH_NEAR_THICKNESS'
-  | 'POCKET_TOO_SMALL';
+  | 'POCKET_TOO_SMALL'
+  /** T352: a V-groove on a material that does not fold (only ACM has `traits.vGroove`). */
+  | 'VGROOVE_MATERIAL'
+  /** T352: no V-bit with an angle (or the default V-bit cannot reach the groove depth). */
+  | 'VGROOVE_TOOL_MISSING'
+  /** T352: the remaining skin outside the material's bounds or not below the thickness. */
+  | 'VGROOVE_DEPTH_INVALID'
+  /** T352: the fold line leaves the part outline. */
+  | 'VGROOVE_OUTSIDE_PART';
 
 export interface ValidationIssue {
   code: ValidationCode;
@@ -890,6 +904,71 @@ export const lineInsidePart: ValidationRule = (project, context) => {
   return issues;
 };
 
+/**
+ * (j) T352 (§6.3 "V-kanal"): V-grooves where they are drawn: only on a material that folds
+ * (`VGROOVE_MATERIAL`), remaining skin within the traits bounds (`VGROOVE_DEPTH_INVALID`), the
+ * fold line inside the part (to its edge, `VGROOVE_OUTSIDE_PART`) and, with a machine, a V-bit that
+ * cuts the deepest groove (`VGROOVE_TOOL_MISSING`; a chosen unsuitable V-bit is
+ * `OPERATION_TOOL_UNSUITABLE`). The toolpath refuses the same.
+ */
+export const vGrooveRules: ValidationRule = (project, context) => {
+  const traits = vGrooveTraitsOf(project.stock.material);
+  const issues: ValidationIssue[] = [];
+  let any = false;
+  project.parts.forEach((part, i) => {
+    const grooves = vGrooveLines(part, traits);
+    if (grooves.length === 0) return;
+    any = true;
+    const outline = deriveOutline(part);
+    for (const g of grooves) {
+      const path = formatPath(['parts', i, g.type === 'line' ? 'lines' : 'inners', g.index]);
+      const what = `${g.type === 'line' ? 'line' : 'inner contour'} ${g.index + 1} of part "${part.name}"`;
+      if (!traits) {
+        issues.push({
+          code: 'VGROOVE_MATERIAL',
+          severity: 'error',
+          path,
+          message: `${what}: a V-groove is only for a composite panel (ACM), not for ${project.stock.material}`,
+        });
+        continue;
+      }
+      const bad = vGrooveRemainingProblem(g.remaining, project.stock.thickness, traits);
+      if (bad) {
+        issues.push({
+          code: 'VGROOVE_DEPTH_INVALID',
+          severity: 'error',
+          path,
+          message: `${what}: ${bad}`,
+        });
+      }
+      if (g.type === 'line' && grooveLeavesPart(outline, g.vertices)) {
+        issues.push({
+          code: 'VGROOVE_OUTSIDE_PART',
+          severity: 'error',
+          path,
+          message: `${what}: the fold line leaves the part outline`,
+        });
+      }
+    }
+  });
+  const machine = context?.machine;
+  if (any && traits && machine && project.cutting.tools?.vgroove === undefined) {
+    const tool = vGrooveToolOf(project, machine);
+    const problem = tool ? operationToolProblem(project, machine, 'vgroove', tool.number) : null;
+    if (!tool || problem) {
+      issues.push({
+        code: 'VGROOVE_TOOL_MISSING',
+        severity: 'error',
+        path: 'cutting.tools.vgroove',
+        message: tool
+          ? `the V-bit T${tool.number} cannot cut the deepest groove (${problem})`
+          : 'the machine has no V-bit with an angle for the V-grooves',
+      });
+    }
+  }
+  return issues;
+};
+
 /** Rules run after every command, in this order. */
 export const VALIDATION_RULES: readonly ValidationRule[] = [
   partLargerThanSheet,
@@ -915,6 +994,7 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   innerPocketRules,
   innerSlugTabs,
   lineInsidePart,
+  vGrooveRules,
 ];
 
 /** Runs every rule and returns the combined list (errors and warnings, in rule order). */

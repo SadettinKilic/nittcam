@@ -751,7 +751,11 @@
       "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
       "holeN": "Delik {n}: {text}",
       "lineN": "Çizgi {n}: {text}",
-      "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor."
+      "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor.",
+      "VGROOVE_MATERIAL": "V-kanal yalnız alüminyum kompozit panelde açılır; bu çizginin işlemini değiştirin.",
+      "VGROOVE_TOOL_MISSING": "V-kanal için makinede uygun açılı V uç yok (ya da kanal derinliğine yetmiyor); Makineler'de V uç ekleyin.",
+      "VGROOVE_DEPTH_INVALID": "V-kanal kalan kalınlığı malzeme sınırlarının dışında; ön yüz sacı kesilmemeli.",
+      "VGROOVE_OUTSIDE_PART": "Büküm çizgisi parçanın dışına taşıyor; çizgiyi parça içine alın."
     },
     "paste": {
       "title": "İçe aktar",
@@ -1351,6 +1355,10 @@
       "POCKET_NOT_CUT": "Bir cep programda boşaltılmıyor.",
       "ONLINE_DEPTH_INVALID": "Çizgi üzerinden işlem derinliği malzeme kalınlığından az olmalı.",
       "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
+      "VGROOVE_MATERIAL": "V-kanal yalnız alüminyum kompozit panelde açılır; bu çizginin işlemini değiştirin.",
+      "VGROOVE_TOOL_MISSING": "V-kanal için makinede uygun açılı V uç yok (ya da kanal derinliğine yetmiyor); Makineler'de V uç ekleyin.",
+      "VGROOVE_DEPTH_INVALID": "V-kanal kalan kalınlığı malzeme sınırlarının dışında; ön yüz sacı kesilmemeli.",
+      "VGROOVE_OUTSIDE_PART": "Büküm çizgisi parçanın dışına taşıyor; çizgiyi parça içine alın.",
       "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor, dış hatla kesişiyor ya da başka bir iç kesime değiyor; parça bu haliyle kesilemez.",
       "SPINDLE_INVALID": "Devir spindle aralığının dışında.",
       "SPINDLE_RPM_RANGE": "Devir spindle aralığının dışında.",
@@ -1615,7 +1623,8 @@
           "outer": "Dış kontur",
           "inner": "İç kontur",
           "pocket": "Cep",
-          "hole": "Delik"
+          "hole": "Delik",
+          "vgroove": "V-kanal"
         },
         "option": "T{tool} · Ø{diameter} mm {type}",
         "recommendedSuffix": "(önerilen)",
@@ -2312,6 +2321,10 @@
         "POCKET_TOO_SMALL": "Cep takımdan dar; takım cebe girmiyor. Cebi büyütün ya da daha ince bir takım seçin.",
         "INNER_SLUG_UNSECURED": "İç kesimden düşecek göbeğe 2 köprü sığmıyor; kesici onu fırlatabilir. Açıklığı büyütün; yuvarlak bir açıklıksa delik aracıyla çizin.",
         "LINE_OUTSIDE_PART": "Çizgi parçanın dışına taşıyor (takım yarıçapı dahil); komşu parçayı keser. Çizgiyi içeri alın ya da işlemini kapatın.",
+        "VGROOVE_MATERIAL": "V-kanal yalnız alüminyum kompozit panelde açılır; bu çizginin işlemini değiştirin.",
+        "VGROOVE_TOOL_MISSING": "V-kanal için makinede uygun açılı V uç yok (ya da kanal derinliğine yetmiyor); Makineler'de V uç ekleyin.",
+        "VGROOVE_DEPTH_INVALID": "V-kanal kalan kalınlığı malzeme sınırlarının dışında; ön yüz sacı kesilmemeli.",
+        "VGROOVE_OUTSIDE_PART": "Büküm çizgisi parçanın dışına taşıyor; çizgiyi parça içine alın.",
         "PART_NOT_IN_LAYOUT": "Parça dizilimde yok (dizilimden sonra eklendi ya da plaka yetmedi); G-code'a girmez. Yeniden dizin.",
         "MARGIN_BELOW_TOOL_RADIUS": "Kenar payı takım çapından küçük; takımın kenarı plakanın dışına çıkar. Dizilim adımında kenar payını büyütün.",
         "SPINDLE_RPM_OUT_OF_RANGE": "Takım devri makinenin devir aralığının dışında; Simülasyon → Kesim ayarlarında düzeltin.",
@@ -3020,11 +3033,19 @@
         "pocketDepth": "Cep derinliği",
         "pocketDepthError": "Cep derinliği malzeme kalınlığından az olmalı; tam kalınlık için İçten kesim seçin.",
         "pocketCorners": "Köşeler R{r} kalır (takım yarıçapı).",
+        "vTool": "Takım",
+        "vToolMissing": "Makinede açılı V uç yok",
+        "vToolName": "T{n} V uç {angle}°, uç {tip} mm",
+        "remaining": "Kalan kalınlık ({min}–{max})",
+        "remainingError": "Kalan kalınlık {min} ile {max} mm arasında ve kalınlıktan az olmalı.",
+        "grooveWidth": "Kanal genişliği",
+        "grooveWidthValue": "{w} mm (hesap)",
         "kinds": {
           "outside": "Dıştan kesim",
           "inside": "İçten kesim",
           "online": "Çizgi üzerinden",
           "pocket": "Cep (kör)",
+          "vgroove": "V-kanal (büküm)",
           "none": "Kesilmez"
         }
       },
@@ -3443,6 +3464,7 @@
         "drill": "Delik (daireler delik olur)",
         "pocket": "Cep",
         "online": "Çizgi üzerinden",
+        "vgroove": "V-kanal (büküm)",
         "ignore": "Alma"
       }
     },

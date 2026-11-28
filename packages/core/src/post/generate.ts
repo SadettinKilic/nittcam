@@ -154,6 +154,7 @@ const OPERATION_HEADER = {
   inner: 'iç kontur',
   pocket: 'cep',
   hole: 'delik',
+  vgroove: 'V-kanal',
 } as const;
 
 /**
@@ -252,6 +253,7 @@ const OPERATION_KINDS: ReadonlySet<string> = new Set([
   'drill',
   'groove',
   'online',
+  'vgroove',
 ]);
 
 /** Writes one program; holds the modal state and enforces the rules move by move. */
