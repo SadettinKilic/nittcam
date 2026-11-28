@@ -59,6 +59,7 @@ import { ProfileStatusChip, profileReasons } from './profile-status';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
 import { profileChanges } from '../../lib/profile-version';
 import { InnerIssuesContext, unsecuredInners } from '../editor/inner-issues';
+import { VGrooveContext, vGrooveInfoOf } from '../editor/vgroove-context';
 import { HoleIssuesContext, holeErrors } from '../editor/hole-issues';
 import { ValidationPanel } from './validation-panel';
 import {
@@ -973,6 +974,8 @@ function WizardSession({
     () => unsecuredInners(project, session.issues),
     [project, session.issues],
   );
+  // T352: V-groove row, V-bits and the groove V-bit for the drawing board.
+  const vGrooveInfo = useMemo(() => vGrooveInfoOf(project, profile), [project, profile]);
   const profileTools = profile?.tools;
   // T275: "Çizimde aç" on a hole error also brings that hole's rows into view.
   const [holeFocus, setHoleFocus] = useState<{ partId: string; hole: number } | null>(null);
@@ -1265,22 +1268,24 @@ function WizardSession({
     both = (
       <InnerIssuesContext.Provider value={innerIssues}>
         <HoleIssuesContext.Provider value={holeIssues}>
-          <DrawingBoard
-            t={messages.editor}
-            project={project}
-            run={session.run}
-            onToList={() => setPartsView('list')}
-            viewSwitch={switchInCanvas ? viewSwitch : undefined}
-            toolDiameter={toolDiameter}
-            pocketToolDiameter={pocketToolDiameterFor(project, profile)}
-            holeTool={{
-              number: holeToolNo,
-              diameter: (profile && findTool(profile, holeToolNo)?.diameter) ?? toolDiameter,
-            }}
-            initialSelection={partsSelection}
-            onSelectionChange={setPartsSelection}
-            dxfText={messages.dxfImport}
-          />
+          <VGrooveContext.Provider value={vGrooveInfo}>
+            <DrawingBoard
+              t={messages.editor}
+              project={project}
+              run={session.run}
+              onToList={() => setPartsView('list')}
+              viewSwitch={switchInCanvas ? viewSwitch : undefined}
+              toolDiameter={toolDiameter}
+              pocketToolDiameter={pocketToolDiameterFor(project, profile)}
+              holeTool={{
+                number: holeToolNo,
+                diameter: (profile && findTool(profile, holeToolNo)?.diameter) ?? toolDiameter,
+              }}
+              initialSelection={partsSelection}
+              onSelectionChange={setPartsSelection}
+              dxfText={messages.dxfImport}
+            />
+          </VGrooveContext.Provider>
         </HoleIssuesContext.Provider>
       </InnerIssuesContext.Provider>
     );

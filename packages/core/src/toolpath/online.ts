@@ -29,6 +29,8 @@ export interface OnlineInput {
   passDepths: number[];
   safeZ: number;
   clearanceZ: number;
+  /** T353: `vgroove` = the same centre-line path as a V-groove (fold line). Default `online`. */
+  kind?: 'online' | 'vgroove';
 }
 
 /** Segments of an open polyline (no closing segment; the last vertex's bulge is unused). */
@@ -81,7 +83,7 @@ export function buildOnlineOperation(o: OnlineInput): Operation {
 
   return {
     id: o.id,
-    kind: 'online',
+    kind: o.kind ?? 'online',
     sheet: o.sheet,
     partId: o.partId,
     copy: o.copy,

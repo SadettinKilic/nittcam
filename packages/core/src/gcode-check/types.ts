@@ -25,6 +25,8 @@ export type GcodeCheckRule =
   | 'R8'
   | 'R9'
   | 'R10'
+  /** T354 (§7.2 rule 17): V-grooves of a composite panel (depth floor, V-bit only, every fold). */
+  | 'R17'
   | 'MODEL'
   | 'LAYOUT'
   | 'TOOLS'
@@ -41,6 +43,7 @@ export const GCODE_CHECK_RULES: readonly GcodeCheckRule[] = [
   'R8',
   'R9',
   'R10',
+  'R17',
   'MODEL',
   'LAYOUT',
   'TOOLS',
@@ -116,6 +119,12 @@ export interface ExpectedPart {
     boundary: readonly { x: number; y: number }[];
     depth: number;
   }[];
+  /**
+   * T354 (rule 17): its V-groove fold lines: an id (`line<k>` / `inner<k>`), the fold line sampled
+   * in the sheet frame (arcs followed, at most 0,25 mm apart) and the groove depth from the
+   * machined face (thickness − remaining, mm). Omitted = none.
+   */
+  grooves?: readonly { id: string; line: readonly { x: number; y: number }[]; depth: number }[];
 }
 
 export interface GcodeCheckTolerance {
@@ -156,6 +165,12 @@ export interface GcodeCheckContext {
    * `front`: that statement must not appear (LAYOUT/BACK_FACE_HEADER_UNEXPECTED). Omitted = not checked.
    */
   machinedFace?: 'front' | 'back';
+  /**
+   * T354 (rule 17): the stock's material folds (`traits.vGroove`): its minimum remaining skin, mm
+   * (0,7 on ACM). No V-bit move may go below −(thickness − minRemaining). Omitted = rule 17 is
+   * silent (materials without a V-groove).
+   */
+  vGroove?: { minRemaining: number };
   tolerance?: GcodeCheckTolerance;
 }
 

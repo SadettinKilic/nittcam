@@ -25,8 +25,13 @@ import {
   isSmallPart,
   placedHoleCentre,
   placedInners,
+  placedLines,
   placedOutline,
+  vGrooveDepth,
+  vGrooveRemaining,
+  vGrooveTraitsOf,
 } from '../toolpath';
+import { linePoints } from '../editor/lines';
 import type { ExpectedPart } from './types';
 import { toFrontCutSizes } from '../schema/cut-size';
 
@@ -74,6 +79,8 @@ function backFacePart(part: Part): Part {
     outline: normalize(contour(flip(outline)), 'outer').vertices,
     inners: part.inners.map((c) => normalize(contour(flip(c)), 'inner').vertices),
     holes: part.holes.map((h) => ({ ...h, cx: sx - h.cx })),
+    // T354: the fold lines too (direction kept, like the machined part).
+    ...(part.lines ? { lines: part.lines.map((l) => ({ ...l, vertices: flip(l.vertices) })) } : {}),
   } as Part;
 }
 
@@ -92,6 +99,16 @@ export function expectedLayout(entered: Project, sheet: number, toolDiameter = 0
   const out: ExpectedPart[] = [];
   // T343: small-part thresholds of the stock's traits row
   const { smallPart } = holdLimitsOf(project.stock.material);
+  // T354: fold lines of a material that folds (rule 17).
+  const vTraits = vGrooveTraitsOf(project.stock.material);
+  const depthOf = (op: { kind: string; remaining?: number | undefined }) =>
+    vGrooveDepth(
+      project.stock.thickness,
+      vGrooveRemaining(
+        { kind: 'vgroove', ...(op.remaining === undefined ? {} : { remaining: op.remaining }) },
+        vTraits,
+      ),
+    );
   for (const pl of project.layout.sheets[sheet]?.placements ?? []) {
     const part = project.parts.find((p) => p.id === pl.partId);
     if (!part) continue;
@@ -115,6 +132,7 @@ export function expectedLayout(entered: Project, sheet: number, toolDiameter = 0
         const op = innerOperation(part, k);
         return op.kind === 'pocket' ? [{ inner: k, boundary: polygonOf(c), depth: op.depth }] : [];
       }),
+      ...(vTraits ? grooveField(part, pl, depthOf) : {}),
       holes: part.holes
         .filter((h) => h.type === 'through')
         .map((h) => {
@@ -124,6 +142,26 @@ export function expectedLayout(entered: Project, sheet: number, toolDiameter = 0
     });
   }
   return out;
+}
+
+/** T354: the placed fold lines of a part, sampled in the sheet frame, with their depths. */
+function grooveField(
+  part: Part,
+  pl: Parameters<typeof placedOutline>[1],
+  depthOf: (op: { kind: string; remaining?: number | undefined }) => number,
+): Pick<ExpectedPart, 'grooves'> {
+  const grooves: NonNullable<ExpectedPart['grooves']>[number][] = [];
+  placedInners(part, pl).forEach((c, k) => {
+    const op = innerOperation(part, k);
+    if (op.kind !== 'vgroove') return;
+    const ring = [...c.vertices, { ...(c.vertices[0] as Vertex), bulge: 0 }];
+    grooves.push({ id: `inner${k}`, line: linePoints(ring), depth: depthOf(op) });
+  });
+  placedLines(part, pl).forEach((l, k) => {
+    if (l.op.kind !== 'vgroove') return;
+    grooves.push({ id: `line${k}`, line: linePoints(l.poly.vertices), depth: depthOf(l.op) });
+  });
+  return grooves.length > 0 ? { grooves } : {};
 }
 
 /** `expectedLayout` for every sheet of the project. */

@@ -285,10 +285,17 @@ export const contourOperationSchema = z.discriminatedUnion(
     z.strictObject({ kind: z.literal('none') }),
     z.strictObject({ kind: z.literal('online'), depth: positiveMm }),
     z.strictObject({ kind: z.literal('pocket'), depth: positiveMm }),
+    /**
+     * T352 (§6.3 "V-kanal", M-Metal): a fold groove along the line, cut with a V-bit from the
+     * machined face so that `remaining` mm of the far face stays (absent = the traits default,
+     * 0,8 mm on ACM). Only on materials with `traits.vGroove`; inner contours and open lines.
+     * The fold line itself is the line's vertices; its V angle is the V-bit's `angleDeg`.
+     */
+    z.strictObject({ kind: z.literal('vgroove'), remaining: positiveMm.optional() }),
   ],
   {
     error:
-      'operation must be "outside", "inside", "online" (with depth), "pocket" (with depth) or "none"',
+      'operation must be "outside", "inside", "online" (with depth), "pocket" (with depth), "vgroove" or "none"',
   },
 );
 
@@ -625,6 +632,8 @@ export const cuttingSchema = z.strictObject({
       inner: operationToolNumber.optional(),
       pocket: operationToolNumber.optional(),
       hole: operationToolNumber.optional(),
+      /** T352: the V-bit of the V-grooves (absent = the machine's first suitable V-bit). */
+      vgroove: operationToolNumber.optional(),
     })
     .optional(),
 });

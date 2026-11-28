@@ -76,6 +76,7 @@ const RULE_ORDER = [
   'R8',
   'R9',
   'R10',
+  'R17',
   'MODEL',
   'LAYOUT',
   'TOOLS',

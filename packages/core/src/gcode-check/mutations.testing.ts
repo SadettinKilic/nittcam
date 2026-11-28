@@ -10,11 +10,15 @@ export interface Mutation {
   /** Expected code (optional: some mutations are caught by several codes of the rule). */
   code?: string;
   posts: readonly ('generic' | 'mach3')[];
+  /** T354: golden fixtures it applies to (default: the wood fixtures). */
+  fixtures?: readonly string[];
   what: string;
   apply: (lines: string[]) => string[];
 }
 
 const BOTH = ['generic', 'mach3'] as const;
+/** T354: the ACM tray golden (V-grooves). */
+const TRAY = ['acm-tray'] as const;
 
 /** Index of the first line matching, or throws (a catalogue entry must change something). */
 function find(lines: readonly string[], re: RegExp, from = 0): number {
@@ -469,6 +473,46 @@ export const MUTATIONS: readonly Mutation[] = [
     posts: BOTH,
     what: 'unverified header not first',
     apply: (l) => [l[1] ?? '', l[0] ?? '', ...l.slice(2)],
+  },
+  // R17 V-groove (T354, ACM tray only)
+  {
+    id: 'R17-deeper',
+    rule: 'R17',
+    code: 'VGROOVE_TOO_DEEP',
+    posts: BOTH,
+    fixtures: TRAY,
+    what: 'one groove pass 0.4 mm deeper (remaining 0.4 < 0.7)',
+    apply: (l) => edit(l, find(l, /^G1 Z-3\.20+ /), (s) => s.replace(/Z-3\.2(0+)/, 'Z-3.6$1')),
+  },
+  {
+    id: 'R17-dropped',
+    rule: 'R17',
+    code: 'VGROOVE_MISSING',
+    posts: BOTH,
+    fixtures: TRAY,
+    what: 'the final pass of the first groove leaves out (stays at the first pass depth)',
+    apply: (l) => {
+      const i = find(l, /^G1 Z-3\.20+ /);
+      return remove(remove(l, i + 1), i);
+    },
+  },
+  {
+    id: 'R17-flat-tool',
+    rule: 'R17',
+    code: 'VGROOVE_WRONG_TOOL',
+    posts: ['generic'],
+    fixtures: TRAY,
+    what: 'the grooves cut with the end mill T2 instead of the V-bit T7',
+    apply: (l) => edit(l, find(l, /^T7 M6$/), () => 'T2 M6'),
+  },
+  {
+    id: 'R17-vbit-through',
+    rule: 'R17',
+    code: 'VGROOVE_WRONG_TOOL',
+    posts: ['generic'],
+    fixtures: TRAY,
+    what: 'the outline cut with the V-bit T7 instead of T2',
+    apply: (l) => edit(l, find(l, /^T2 M6$/), () => 'T7 M6'),
   },
   // MODEL
   {

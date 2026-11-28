@@ -1,6 +1,12 @@
 'use client';
 
-import { positionAt, simPlayheadAt, type SimMachineFrame, type SimSheet } from '@nittcam/core';
+import {
+  positionAt,
+  simPlayheadAt,
+  vGrooveWidth,
+  type SimMachineFrame,
+  type SimSheet,
+} from '@nittcam/core';
 import type Konva from 'konva';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import { Arrow, Circle, Group, Layer, Line, Rect, Shape, Stage, Text } from 'react-konva';
@@ -415,6 +421,30 @@ export default function SimulationCanvas(props: SimulationCanvasProps) {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
+
+    // T353: V-grooves show their V section: a band as wide as the groove opens at the step's
+    // deepest point (tip + 2 · depth · tan(angle / 2)), under the centre line.
+    const vBits = sim.vBits;
+    if (vBits) {
+      ctx.globalAlpha = 0.35;
+      ctx.lineCap = 'butt';
+      for (let i = 0; i <= last; i += 1) {
+        const s = steps[i];
+        const v = s && s.kind === 'cut' && s.tool !== null ? vBits[s.tool] : undefined;
+        if (!s || !v) continue;
+        let z = 0;
+        for (let k = s.p0; k <= s.p1; k += 1) z = Math.min(z, sim.points[3 * k + 2] ?? 0);
+        const w = vGrooveWidth(v, -z);
+        if (w <= 0) continue;
+        ctx.beginPath();
+        add(i);
+        ctx.lineWidth = w;
+        ctx.strokeStyle = ramp[pre.level[i] ?? 0] ?? colors.depthBottom;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'round';
+    }
 
     // Cuts: one stroke per run of equal depth colour, in machining order (a tab band drawn after
     // the deeper pass shows lighter on top of it).

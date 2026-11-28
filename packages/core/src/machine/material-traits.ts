@@ -26,7 +26,7 @@ export const MATERIAL_FAMILIES: readonly MaterialFamily[] = [
 ];
 
 /** Operations that pick a cutting tool (mirrors `OPERATION_TOOL_KINDS` in `toolpath/op-tools`). */
-export type TraitsOperation = 'outer' | 'inner' | 'pocket' | 'hole';
+export type TraitsOperation = 'outer' | 'inner' | 'pocket' | 'hole' | 'vgroove';
 
 export interface MaterialTraits {
   family: MaterialFamily;
@@ -56,8 +56,21 @@ export interface MaterialTraits {
    * the back (parts mirrored); every other kind from the front (today).
    */
   machinedFace: 'front' | 'back';
-  /** Tool types each operation may cut with. */
+  /** Tool types each operation may cut with (`vgroove`: empty where the kind has no V-groove). */
   toolTypes: Readonly<Record<TraitsOperation, readonly ToolType[]>>;
+  /**
+   * T352 (§6.3 "V-kanal", analysis §4.5): the fold groove of a composite panel, cut from the machined
+   * face with a V-bit, leaving `remaining` mm of the far face. Remaining skin default 0,8 mm, at
+   * least `minRemaining` (0,7; checker rule 17 uses the same value, never the user's), at most
+   * `maxRemaining`. `step`: deepest single pass, mm (deeper grooves take two even passes).
+   * `null`: the kind has no V-groove (every kind but ACM; the operation is not offered).
+   */
+  vGroove: {
+    defaultRemaining: number;
+    minRemaining: number;
+    maxRemaining: number;
+    step: number;
+  } | null;
   tabs: {
     defaults: {
       count: number;
@@ -152,6 +165,7 @@ const WOOD_TOOLS: MaterialTraits['toolTypes'] = {
   inner: ['flatEndMill', 'compression'],
   pocket: ['flatEndMill', 'compression'],
   hole: ['drill', 'flatEndMill'],
+  vgroove: [],
 };
 
 /** ACM and aluminium (§4.2): flat end mills only (no compression, no ball); holes as today. */
@@ -160,7 +174,11 @@ const METAL_TOOLS: MaterialTraits['toolTypes'] = {
   inner: ['flatEndMill'],
   pocket: ['flatEndMill'],
   hole: ['drill', 'flatEndMill'],
+  vgroove: [],
 };
+
+/** T352: ACM also cuts fold grooves, with a V-bit only (rule 17). */
+const ACM_TOOLS: MaterialTraits['toolTypes'] = { ...METAL_TOOLS, vgroove: ['vBit'] };
 
 const TABS: MaterialTraits['tabs'] = {
   defaults: { count: 4, width: 10, materialLeft: 3, smallPartMinCount: 2 },
@@ -184,6 +202,7 @@ const BOARD = {
   ncName: '',
   machinedFace: 'front',
   toolTypes: WOOD_TOOLS,
+  vGroove: null,
   tabs: TABS,
   skin: SKIN,
   smallPart: SMALL_PART,
@@ -301,7 +320,10 @@ export const MATERIAL_TRAITS: Readonly<Record<MaterialKind, MaterialTraits>> = {
     nc: 'unverified',
     ncName: 'ACM',
     machinedFace: 'back',
-    toolTypes: METAL_TOOLS,
+    toolTypes: ACM_TOOLS,
+    // T352 (analysis §4.5): remaining 0,8 default, 0,7 minimum, 1,2 ceiling; one pass up to 3 mm deep
+    // (3 mm ACM: 2,2 mm; 4 mm: 3,2 mm → two passes). "doğrulanacak" until the machine test T357.
+    vGroove: { defaultRemaining: 0.8, minRemaining: 0.7, maxRemaining: 1.2, step: 3 },
     direction: { kind: 'directed', label: 'film', defaultOn: false },
     tabs: {
       defaults: { count: 4, width: 6, materialLeft: 1, smallPartMinCount: 2 },

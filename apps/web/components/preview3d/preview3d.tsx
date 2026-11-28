@@ -118,10 +118,13 @@ export interface Preview3DProps {
   children?: ReactNode;
   /** Toolpath overlay from the read program (T156); adds the "Takım yolu" toggle. */
   toolpath?: SceneToolpath | null;
+  /** T353: the V-bit of the V-grooves (their V section is drawn). */
+  vBit?: { angleDeg: number; tipDiameter: number } | undefined;
 }
 
 export function Preview3D({
   t,
+  vBit,
   project,
   sheet,
   table,
@@ -303,6 +306,7 @@ export function Preview3D({
       ) : colors ? (
         <SceneBoundary onError={() => onFallback('webgl')}>
           <Scene
+            vBit={vBit}
             project={project}
             sheet={sheet}
             table={table}

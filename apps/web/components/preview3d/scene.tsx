@@ -98,6 +98,8 @@ export interface CameraCommand {
 export interface SceneProps {
   project: Project;
   sheet: number;
+  /** T353: the V-bit of the V-grooves (their V section is drawn); omitted = not drawn. */
+  vBit?: { angleDeg: number; tipDiameter: number } | undefined;
   table: TableSpec | null;
   colors: SceneColors;
   reduced: boolean;
@@ -155,7 +157,17 @@ export default function Scene(props: SceneProps) {
   );
   const look = materialLook(stock.material);
   const base = colors.materials[look];
-  const sheetScene = useMemo(() => buildSheetScene(project, sheet), [project, sheet]);
+  const vAngle = props.vBit?.angleDeg;
+  const vTip = props.vBit?.tipDiameter;
+  const sheetScene = useMemo(
+    () =>
+      buildSheetScene(
+        project,
+        sheet,
+        vAngle === undefined ? undefined : { angleDeg: vAngle, tipDiameter: vTip ?? 0 },
+      ),
+    [project, sheet, vAngle, vTip],
+  );
   const slots = useMemo(
     () => new SlotState(sheetScene.parts, colors.highlight),
     [sheetScene.parts, colors.highlight],

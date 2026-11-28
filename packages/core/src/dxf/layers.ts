@@ -12,6 +12,8 @@ import { z } from 'zod';
  * - `drill`: delik; circles are hole candidates, other shapes inner contours
  * - `online`: çizgi üzerinden: open and closed contours become on-line (engraving) lines of the
  *   part they lie in (T277); a line in no part is reported
+ * - `vgroove`: V-kanal (T352): open and closed contours become V-groove fold lines of the part they
+ *   lie in (a fold may end on the outline); only offered on a material that folds (ACM)
  * - `pocket`: cep: reported and not imported yet
  * - `ignore`: not imported
  */
@@ -22,6 +24,7 @@ export const DXF_LAYER_OPS = [
   'drill',
   'pocket',
   'online',
+  'vgroove',
   'ignore',
 ] as const;
 export const dxfLayerOpSchema = z.enum(DXF_LAYER_OPS, { error: 'unknown layer operation' });
@@ -34,6 +37,7 @@ export const DXF_LAYER_OPS_READY: readonly DxfLayerOp[] = [
   'inside',
   'drill',
   'online',
+  'vgroove',
   'ignore',
 ];
 
