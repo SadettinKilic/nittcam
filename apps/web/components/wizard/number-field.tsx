@@ -58,7 +58,15 @@ export function NumberField({
   /** B44: shown with a refused value, so the value still in use is visible ("kullanılan: 4"). */
   inUse?: string | undefined;
   /** T300: a standing note under the field (a hint, or a warning that does not refuse the value). */
-  note?: { text: string; tone: 'muted' | 'warning'; testId?: string } | undefined;
+  note?:
+    | {
+        text: string;
+        tone: 'muted' | 'warning';
+        testId?: string;
+        /** B67: the longer form, on hover (title) and for screen readers; the short text stays on one line. */
+        detail?: string;
+      }
+    | undefined;
   /**
    * Several fields side by side in a parent grid with 4 rows per field (`grid-cols-n gap-y-1.5`):
    * the field joins the parent rows (subgrid), so the inputs line up even when a label wraps and
@@ -167,12 +175,14 @@ export function NumberField({
         <p
           id={`${id}-note`}
           data-testid={note.testId}
+          title={note.detail}
           className={cn(
             'text-xs',
             note.tone === 'warning' ? 'font-medium text-warning-text' : 'text-fg-muted',
           )}
         >
           {note.text}
+          {note.detail ? <span className="sr-only"> ({note.detail})</span> : null}
         </p>
       ) : null}
     </div>

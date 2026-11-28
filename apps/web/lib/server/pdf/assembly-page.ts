@@ -49,14 +49,38 @@ export function addAssemblyPage(
   drawFrame(page, fonts, head, t.title, fill(t.details, { count: copies }), pageNo, pageCount);
   const box = contentBox(page);
 
-  // ---- part list (bottom), as many rows as fit; the rest summed up ----
+  // ---- part list (bottom), as many rows as fit; the rest summed up. T390: the bağlantı
+  // elemanları follow the parts (no balloon number), and a material column when the
+  // assembly mixes materials. ----
+  type Row = { no: string; name: string; size: string; material: string; qty: number };
+  const mixed = new Set(sheet.rows.map((r) => r.material)).size > 1;
+  const all: Row[] = [
+    ...sheet.rows.map((r) => ({
+      no: String(r.no),
+      name: r.name,
+      size: `${mm(r.size[0])} × ${mm(r.size[1])} × ${mm(r.size[2])}`,
+      material: messages.materials[r.material],
+      qty: r.qty,
+    })),
+    ...sheet.fasteners.map((f) => ({
+      no: '',
+      name: fill(t.fastener, {
+        name: fill(t.fastenerKinds[f.kind], { d: mm(f.d), length: mm(f.length) }),
+      }),
+      size: '',
+      material: '',
+      qty: f.qty,
+    })),
+  ];
   const maxRows = Math.max(1, Math.floor((box.height * (1 - MIN_DRAWING) - HEAD_H) / ROW_H));
-  const shown = sheet.rows.length > maxRows ? sheet.rows.slice(0, maxRows - 1) : sheet.rows;
-  const more = sheet.rows.length - shown.length;
+  const shown = all.length > maxRows ? all.slice(0, maxRows - 1) : all;
+  const more = all.length - shown.length;
   const tableH = HEAD_H + (shown.length + (more > 0 ? 1 : 0)) * ROW_H;
+  const matW = mixed ? 120 : 0;
   const cols = [
     { title: t.no, w: 40, align: 'right' as const },
-    { title: t.name, w: box.width - 40 - 160 - 60, align: 'left' as const },
+    { title: t.name, w: box.width - 40 - 160 - 60 - matW, align: 'left' as const },
+    ...(mixed ? [{ title: t.material, w: matW, align: 'left' as const }] : []),
     { title: t.size, w: 160, align: 'right' as const },
     { title: t.qty, w: 60, align: 'right' as const },
   ];
@@ -84,12 +108,7 @@ export function addAssemblyPage(
       thickness: 0.3,
       color: LINE,
     });
-    const cells = [
-      String(r.no),
-      r.name,
-      `${mm(r.size[0])} × ${mm(r.size[1])} × ${mm(r.size[2])}`,
-      String(r.qty),
-    ];
+    const cells = [r.no, r.name, ...(mixed ? [r.material] : []), r.size, String(r.qty)];
     let x = box.x;
     cols.forEach((c, k) => {
       const value = fitText(cells[k] ?? '', fonts.regular, 8, c.w - 12);

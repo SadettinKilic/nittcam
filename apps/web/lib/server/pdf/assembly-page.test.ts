@@ -88,3 +88,59 @@ describe('Montaj föyü page in the project PDF (T389)', () => {
     expect(b.getPageCount()).toBe(a.getPageCount() + 1);
   });
 });
+
+describe('Montaj föyü: mixed materials and bağlantı elemanları (T390)', () => {
+  it('rows carry the shown material; aligned holes count as fasteners', async () => {
+    const { applyCommand } = await import('@nittcam/core');
+    const { newProject } = await import('../../draft-project');
+    const { FLAT } = await import('../../preview3d/assembly-model');
+    const run = (p: Project, name: string, params: unknown): Project => {
+      const r = applyCommand(p, name, params);
+      if (!r.ok) throw new Error(r.error.message);
+      return r.project;
+    };
+    let p = newProject();
+    p = run(p, 'addPart', { id: 'pn', name: 'Panel', params: { w: 300, h: 200, r: 0 }, qty: 1 });
+    p = run(p, 'addPart', { id: 'br', name: 'Braket', params: { w: 60, h: 40, r: 0 }, qty: 1 });
+    for (const [id, cx, cy] of [
+      ['pn', 50, 50],
+      ['br', 30, 20],
+    ] as const)
+      p = run(p, 'addHole', { id, hole: { id: 'h', type: 'through', tool: 1, d: 4, cx, cy } });
+    p = run(p, 'setAssemblyPartLook', {
+      partId: 'br',
+      material: 'aluminium',
+      thickness: 3,
+      updatedAt: at,
+    });
+    const t = p.stock.thickness;
+    p = run(p, 'setAssemblyInstances', {
+      instances: [
+        {
+          id: 'pn#0',
+          partId: 'pn',
+          copy: 0,
+          position: [150, t / 2, 0],
+          rotation: FLAT,
+          hidden: false,
+        },
+        {
+          id: 'br#0',
+          partId: 'br',
+          copy: 0,
+          position: [50, t + 1.5, 50],
+          rotation: FLAT,
+          hidden: false,
+        },
+      ],
+      updatedAt: at,
+    });
+    p = run(p, 'setAssemblySheet', { on: true, updatedAt: at });
+    const s = assemblySheet(p, tr.cutList.cabinet.roles);
+    expect(s?.rows.map((r) => r.material)).toEqual([expect.any(String), 'aluminium']);
+    expect(s?.rows[1]?.size[2]).toBe(3);
+    expect(s?.fasteners).toEqual([{ kind: 'screw', d: 4, length: expect.any(Number), qty: 1 }]);
+    const a = await pdf(p);
+    expect(sha(await pdf(p))).toBe(sha(a));
+  });
+});

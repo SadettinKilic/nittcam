@@ -6,7 +6,12 @@ import type { Patch } from 'immer';
 import { immer } from './immer';
 import { z } from 'zod';
 import { formatPath, projectSchema, pruneAssembly, type Project } from '../schema';
-import { resetAssembly, setAssemblyInstances, setAssemblySheet } from './assembly';
+import {
+  resetAssembly,
+  setAssemblyInstances,
+  setAssemblyPartLook,
+  setAssemblySheet,
+} from './assembly';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
 import {
   addPart,
@@ -152,6 +157,7 @@ export const COMMANDS = {
   setAssemblyInstances,
   resetAssembly,
   setAssemblySheet,
+  setAssemblyPartLook,
 } as const satisfies Record<string, CommandDefinition>;
 
 export type CommandName = keyof typeof COMMANDS;

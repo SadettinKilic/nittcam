@@ -8,9 +8,11 @@ import { FlipHorizontal2 } from 'lucide-react';
 import type { Messages } from '../../lib/messages';
 import { fill } from '../../lib/fill';
 import type { Bounds, Section } from '../../lib/preview3d/assembly-explode';
+import type { FastenerRow } from '../../lib/preview3d/fasteners';
 
 type T = Messages['bench'];
 const MM = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 });
+const MM1 = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
 const AXES = ['x', 'y', 'z'] as const;
 
 export function ViewTools({
@@ -22,6 +24,9 @@ export function ViewTools({
   bounds,
   sheet,
   onSheet,
+  fasteners,
+  onFasteners,
+  fastenerRows,
 }: {
   t: T;
   /** 0 … 100 %. */
@@ -33,6 +38,11 @@ export function ViewTools({
   /** The "Montaj föyü" page in the project PDF (stored in the project). */
   sheet: boolean;
   onSheet: (on: boolean) => void;
+  /** T390: fastener markers through aligned holes shown (view state, not stored). */
+  fasteners: boolean;
+  onFasteners: (on: boolean) => void;
+  /** The markers of the visible parts, grouped (empty = no aligned hole pair). */
+  fastenerRows: readonly FastenerRow[];
 }) {
   const v = t.tools;
   const range = (axis: 0 | 1 | 2): [number, number] =>
@@ -122,6 +132,38 @@ export function ViewTools({
             </Button>
           </>
         ) : null}
+      </div>
+      <div className="flex items-start gap-2 border-border border-t pt-2">
+        <Switch
+          id="bench-fasteners"
+          checked={fasteners}
+          onCheckedChange={onFasteners}
+          data-testid="bench-fasteners"
+          aria-describedby="bench-fasteners-hint"
+        />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <label htmlFor="bench-fasteners" className="text-xs text-fg">
+            {v.fasteners}
+          </label>
+          <p id="bench-fasteners-hint" className="text-xs text-fg-muted">
+            {fastenerRows.length === 0 ? v.fastenersNone : v.fastenersHint}
+          </p>
+          {fastenerRows.length > 0 ? (
+            <ul className="flex flex-col text-xs text-fg" data-testid="bench-fastener-rows">
+              {fastenerRows.map((r) => (
+                <li key={`${r.kind}:${r.d}:${r.length}`} className="tabular-nums">
+                  {fill(v.fastenerRow, {
+                    qty: r.qty,
+                    name: fill(v.fastenerKinds[r.kind], {
+                      d: MM1.format(r.d),
+                      length: MM1.format(r.length),
+                    }),
+                  })}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       </div>
       <div className="flex items-start gap-2 border-border border-t pt-2">
         <Switch
