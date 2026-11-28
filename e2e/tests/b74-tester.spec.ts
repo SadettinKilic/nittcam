@@ -38,7 +38,9 @@ async function freshMachine(request: APIRequestContext): Promise<string> {
   const p = structuredClone(d.profile);
   p.example = false;
   p.identity.name = `B74 ${Date.now() % 100000}`;
-  p.materials = p.materials.filter((m) => m.material !== 'acm');
+  // Also without unverified sets: other specs in the shared CI db leave some on the first machine,
+  // and this test counts the unverified notes of the ACM rows only.
+  p.materials = p.materials.filter((m) => m.material !== 'acm' && m.unverified !== true);
   const res = await request.post('/api/machines', { data: { profile: p } });
   expect(res.status(), await res.text()).toBe(201);
   return ((await res.json()) as { id: string }).id;
