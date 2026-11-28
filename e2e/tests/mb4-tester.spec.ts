@@ -7,7 +7,7 @@ import { pickOption } from './wizard-helpers';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 async function seeded(request: APIRequestContext) {
   const list = (await (await request.get('/api/machines')).json()) as { id: string }[];
-  return (await (await request.get(`/api/machines/${list[0]!.id}`)).json()) as {
+  return (await (await request.get(`/api/machines/${list[0]?.id}`)).json()) as {
     id: string;
     profile: any;
   };
