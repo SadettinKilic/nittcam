@@ -14,6 +14,8 @@ async function seeded(request: APIRequestContext) {
 }
 function withSet(profile: any, material: string, patch: Record<string, number>) {
   const p = structuredClone(profile);
+  // Own name: a copy named like the seeded example would make t010 see two example rows.
+  p.identity = { ...p.identity, name: `MB4 ${material} ${Date.now()}` };
   p.spindle = { ...p.spindle, minRpm: 6000, maxRpm: 24000 };
   p.materials = [
     ...p.materials,
