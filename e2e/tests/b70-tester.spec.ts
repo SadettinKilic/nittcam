@@ -68,15 +68,14 @@ function trayDxf(layer: string, relief: boolean): string {
     g(90, pts.length),
     g(70, 1),
     ...pts.flatMap(([x, y]) => [g(10, x), g(20, y)]),
-    // Fold lines end on the outline. With corner reliefs they are drawn as a pinwheel, 0.5 mm short
-    // at one end: lines that touch end to end chain into a closed rectangle, which does not fold
-    // and shows no panel and no note (finding, reported on the PR).
+    // Fold lines end on the outline. With corner reliefs they meet at the corners and chain into
+    // one closed contour (round 1 blocker; each edge is a hinge now).
     ...(relief
       ? [
-          ...line(layer, 25, 25, 25, 174.5),
-          ...line(layer, 25, 175, 174.5, 175),
-          ...line(layer, 175, 175, 175, 25.5),
-          ...line(layer, 175, 25, 25.5, 25),
+          ...line(layer, 25, 25, 25, 175),
+          ...line(layer, 25, 175, 175, 175),
+          ...line(layer, 175, 175, 175, 25),
+          ...line(layer, 175, 25, 25, 25),
         ]
       : [
           ...line(layer, 25, 0, 25, 200),
@@ -174,6 +173,7 @@ test('ACM tray with corner reliefs closes; groove sliders; crush warning; reload
   await expect(panel).toBeVisible();
   await expect(bench).toHaveAttribute('data-fold', '0');
   await expect(panel.getByTestId('bench-fold-groove-4')).toBeVisible();
+  await expect(panel.getByTestId('bench-fold-groove-5')).toHaveCount(0);
   // the seeded example V-bit gives the groove a tool: no "no V-bit" note
   await expect(panel).not.toContainText(f.noTool);
 
