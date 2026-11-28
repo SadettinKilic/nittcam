@@ -472,6 +472,8 @@ export function goldenCases(): GoldenCase[] {
   }
   // T393: the ACM back-face fixture (its own profile set and header meta).
   out.push(...backFaceGoldenCases());
+  // T353: the ACM tray with V-grooves.
+  out.push(...vGrooveGoldenCases());
   return out;
 }
 
@@ -579,5 +581,123 @@ export function backFaceGoldenCases(): GoldenCase[] {
       },
     });
     return { postId: post.id, dir: post.dir, fixtureId: GOLDEN_BACK_FACE_FIXTURE.id, result };
+  });
+}
+
+/**
+ * T353: ACM 4 mm tray 200 × 200 with four 25 mm flanges (blank 250 × 250, square 25 mm corner
+ * reliefs), machined from the back face. Its four fold lines run edge to edge between the reliefs
+ * and are cut as V-grooves (remaining 0,8 mm → 3,2 mm deep, two passes) with the V-bit T7 (90°,
+ * tip 0,2) before the outline. Pins the groove passes, the tool change and the header byte for byte.
+ */
+export const GOLDEN_VGROOVE_FIXTURE = {
+  id: 'acm-tray',
+  name: 'ACM tepsi 200x200',
+  revision: 1,
+} as const;
+
+export function vGrooveTrayProject(toolDiameter: number): Project {
+  const v = (x: number, y: number) => ({ x, y, bulge: 0 });
+  const fold = (a: [number, number], b: [number, number]) => ({
+    vertices: [v(...a), v(...b)],
+    op: { kind: 'vgroove' as const },
+  });
+  const parsed = parseProject({
+    schemaVersion: 2,
+    machine: { machineId: 'golden', profileVersion: 1 },
+    stock: {
+      material: 'acm',
+      thickness: 4,
+      sheet: { width: 500, height: 400, grain: 0 },
+      useOffcuts: false,
+      machinedFace: 'back',
+    },
+    parts: [
+      {
+        id: 'tray',
+        name: 'Tepsi',
+        qty: 1,
+        grain: { mode: 'free', angle: 0 },
+        kind: 'freeform',
+        outline: [
+          v(25, 0),
+          v(225, 0),
+          v(225, 25),
+          v(250, 25),
+          v(250, 225),
+          v(225, 225),
+          v(225, 250),
+          v(25, 250),
+          v(25, 225),
+          v(0, 225),
+          v(0, 25),
+          v(25, 25),
+        ],
+        inners: [],
+        holes: [],
+        lines: [
+          fold([25, 25], [225, 25]),
+          fold([225, 25], [225, 225]),
+          fold([225, 225], [25, 225]),
+          fold([25, 225], [25, 25]),
+        ],
+        edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+        templates: [],
+      },
+    ],
+    nesting: { mode: 'minWaste', gap: 10, margin: 12 },
+    layout: { sheets: [] },
+    cutting: { ...structuredClone(DEFAULT_CUTTING), direction: traitsOf('acm').cutDirection },
+  });
+  if (!parsed.ok) throw new Error(`tray fixture invalid: ${JSON.stringify(parsed.issues)}`);
+  const nested = nestProject(parsed.project, { toolDiameter });
+  return { ...parsed.project, layout: nested.layout };
+}
+
+/** The ACM back-face profile plus the V-bit T7 (90°, tip 0,2 mm, Ø12). */
+export function vGrooveProfile(postId: 'generic' | 'mach3'): MachineProfile {
+  const p = backFaceProfile(postId);
+  p.tools = [
+    ...p.tools,
+    {
+      number: 7,
+      type: 'vBit',
+      diameter: 12,
+      fluteLength: 8,
+      flutes: 2,
+      angleDeg: 90,
+      tipDiameter: 0.2,
+    },
+  ];
+  if (p.toolChanger.type === 'auto') p.toolChanger = { ...p.toolChanger, capacity: 8 };
+  return p;
+}
+
+/** T353: the ACM tray program per post, with the same header meta as `exportNc`. */
+export function vGrooveGoldenCases(): GoldenCase[] {
+  return GOLDEN_POSTS.map((post) => {
+    const profile = vGrooveProfile(post.id);
+    const set = profile.materials.find((m) => m.material === 'acm' && m.thickness === 4);
+    const tool = profile.tools.find((t) => t.number === set?.tool);
+    if (!tool) throw new Error('tray profile has no ACM 4 tool');
+    const project = vGrooveTrayProject(tool.diameter);
+    const tp = buildToolpath(project, profile);
+    if (!tp.ok) throw new Error(`tray toolpath failed: ${JSON.stringify(tp.errors)}`);
+    const version: PostProfileVersion = { profile, version: 1, verification: 'draft' };
+    const result = generateGcode(tp.toolpath, version, post.config, {
+      projectName: GOLDEN_VGROOVE_FIXTURE.name,
+      revision: GOLDEN_VGROOVE_FIXTURE.revision,
+      fileStem: GOLDEN_VGROOVE_FIXTURE.id,
+      ...unverifiedMaterialMeta(project),
+      ...backFaceMeta(project),
+      ...cuttingMeta(project, profile),
+      stock: {
+        material: project.stock.material,
+        thickness: project.stock.thickness,
+        sheetWidth: project.stock.sheet.width,
+        sheetHeight: project.stock.sheet.height,
+      },
+    });
+    return { postId: post.id, dir: post.dir, fixtureId: GOLDEN_VGROOVE_FIXTURE.id, result };
   });
 }

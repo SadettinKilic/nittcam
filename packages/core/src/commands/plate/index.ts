@@ -597,10 +597,12 @@ export const setOperationTool = defineCommand({
   name: 'setOperationTool',
   area: 'plate',
   description:
-    'Choose the cutting tool of one operation (outer, inner, pocket, hole) for this project; null = the default tool.',
+    'Choose the cutting tool of one operation (outer, inner, pocket, hole, vgroove) for this project; null = the default tool.',
   aiTool: false,
   params: z.strictObject({
-    op: z.enum(OPERATION_TOOL_KINDS, { error: 'op must be "outer", "inner", "pocket" or "hole"' }),
+    op: z.enum(OPERATION_TOOL_KINDS, {
+      error: 'op must be "outer", "inner", "pocket", "hole" or "vgroove"',
+    }),
     tool: z
       .number({ error: 'tool must be a number' })
       .int({ error: 'tool must be a whole number' })

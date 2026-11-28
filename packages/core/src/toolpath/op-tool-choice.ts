@@ -26,6 +26,7 @@ import { innerOperation, outlineOperation } from '../schema/operations';
 import { innerContourPath, outerContourPath } from './build';
 import { throughCutTarget } from './depth';
 import { contourPocketRings } from './contour-pocket';
+import { deepestVGroove, vConeDepth, vGrooveToolOf } from './vgroove';
 import {
   hasContourPocket,
   holeToolKind,
@@ -42,7 +43,9 @@ export type OperationToolProblem =
   | 'WIDER_THAN_LAYOUT'
   | 'CONTOUR'
   | 'HOLE_SMALLER'
-  | 'DRILL_SIZE';
+  | 'DRILL_SIZE'
+  /** T352: a V-groove tool without its V angle (the groove width and depth need it). */
+  | 'V_GEOMETRY';
 
 /**
  * T344: the problem in words for messages; `TYPE` names the stock material (the allowed types
@@ -69,6 +72,13 @@ export function operationToolProblem(
   const r = tool.diameter / 2;
   const reach = (depth: number) => depth <= tool.fluteLength + EPS;
   switch (op) {
+    case 'vgroove': {
+      // T352: a V-bit with its angle whose cone and flutes reach the deepest groove.
+      if (tool.angleDeg === undefined) return 'V_GEOMETRY';
+      const deepest = deepestVGroove(project);
+      if (!reach(deepest) || deepest > vConeDepth(tool) + EPS) return 'FLUTE_LENGTH';
+      return null;
+    }
     case 'outer': {
       if (!reach(through)) return 'FLUTE_LENGTH';
       const spaced = nestingToolDiameter(machine, project.stock);
@@ -156,6 +166,11 @@ export function operationToolsOf(project: Project, machine: MachineProfile): Ope
       // T325: contour pockets cut with the set's tool by default.
       if (op === 'pocket' && hasContourPocket(project)) own.add(set.tool);
       defaultTool = own.size === 1 ? ([...own][0] as number) : null;
+    }
+    // T352: the grooves cut with the machine's first V-bit by default.
+    if (op === 'vgroove') {
+      const rest = { ...project, cutting: { ...project.cutting, tools: undefined } } as Project;
+      defaultTool = vGrooveToolOf(rest, machine)?.number ?? null;
     }
     const chosen = operationToolChoice(project, op);
     const candidates = machine.tools

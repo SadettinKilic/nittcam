@@ -21,6 +21,7 @@ import {
   contourPocketTool,
   contourTool,
   effectiveHoleTool,
+  hasVGroove,
   holeToolKind,
   operationToolChoice,
   recommendedFeeds,
@@ -64,9 +65,18 @@ import {
 import { toolpathSafetyViolations } from './safety';
 import { buildHoleOperation, holeOperationKind, holeStart, placedHoleCentre } from './holes';
 import { blindDepthInvalid, checkHolePlacement, holeToolProblem } from '../editor/holes';
-import { lineLeavesPart } from '../editor/lines';
+import { grooveLeavesPart, lineLeavesPart } from '../editor/lines';
 import { summarizeToolpath } from './stats';
 import { buildOnlineOperation, onlineStart } from './online';
+import {
+  hasVGeometry,
+  vConeDepth,
+  vGrooveDepth,
+  vGrooveLines,
+  vGroovePassDepths,
+  vGrooveToolOf,
+  vGrooveTraitsOf,
+} from './vgroove';
 import {
   buildContourPocketOperation,
   contourPocketRings,
@@ -1355,6 +1365,64 @@ export function buildToolpath(
     }
   }
 
+  // V-grooves (T353, §6.3 "V-kanal"): fold lines cut with a V-bit at depth = thickness −
+  // remaining, never leaving less than the traits minimum (whatever the project says). Checked once
+  // per part; cut per placed copy, before the part's contours.
+  const vTraits = vGrooveTraitsOf(project.stock.material);
+  const vTool = hasVGroove(project) ? vGrooveToolOf(project, machine) : undefined;
+  const grooveDepths = new Map<string, number[]>();
+  for (const part of project.parts) {
+    const grooves = vGrooveLines(part, vTraits);
+    if (grooves.length === 0) continue;
+    const outlineVs = deriveOutline(part);
+    for (const g of grooves) {
+      const what = `${g.type === 'line' ? 'Line' : 'Inner contour'} ${g.index + 1} (V-groove)`;
+      const bad = (code: ToolpathCode, message: string) =>
+        errors.push(
+          issue(code, 'error', part.id, `${what}: ${message}`, {
+            ...(g.type === 'line' ? { openLine: g.index } : { inner: g.index }),
+          }),
+        );
+      if (!vTraits) {
+        bad(
+          'VGROOVE_MATERIAL',
+          `a V-groove is only for a composite panel, not ${project.stock.material}.`,
+        );
+        continue;
+      }
+      if (g.remaining < vTraits.minRemaining - EPS || !(g.remaining < thickness - EPS)) {
+        bad(
+          'VGROOVE_TOO_DEEP',
+          `remaining ${g.remaining} mm would leave less than ${vTraits.minRemaining} mm of the front face.`,
+        );
+        continue;
+      }
+      if (g.type === 'line' && grooveLeavesPart(outlineVs, g.vertices)) {
+        bad('VGROOVE_OUTSIDE_PART', 'the fold line leaves the part outline.');
+        continue;
+      }
+      const depth = vGrooveDepth(thickness, g.remaining);
+      // The op-tool-choice rule inline (no import cycle): a V-bit with its angle, cone and flutes
+      // reaching the depth.
+      if (
+        !vTool ||
+        !hasVGeometry(vTool) ||
+        !toolTypeAllowed(project.stock.material, 'vgroove', vTool.type) ||
+        depth > vTool.fluteLength + EPS ||
+        depth > vConeDepth(vTool) + EPS
+      ) {
+        bad(
+          'VGROOVE_TOOL_MISSING',
+          vTool
+            ? `the V-bit T${vTool.number} cannot cut ${depth} mm deep.`
+            : 'the machine has no V-bit with an angle.',
+        );
+        continue;
+      }
+      grooveDepths.set(`${part.id}/${g.type}${g.index}`, vGroovePassDepths(depth, vTraits.step));
+    }
+  }
+
   // Contour pockets (T325, D-112): an inner contour cleared flat to a blind depth with the
   // `pocket` operation's tool (the set's tool by default). Checked once per part; cut per copy.
   const pocketNo = contourPocketTool(project, toolNo);
@@ -1568,6 +1636,36 @@ export function buildToolpath(
         itemCtx.push(-1);
         itemHole.push(op);
       };
+      // V-grooves (T353): prebuilt like the on-line operations, with the V-bit's own feeds.
+      const addVGroove = (line: Polyline, type: 'inner' | 'line', k: number) => {
+        const depths = grooveDepths.get(`${x.part.id}/${type}${k}`);
+        if (!depths || !vTool) return;
+        const op = buildOnlineOperation({
+          id: `${copyKey}/vgroove-${type}${k}`,
+          sheet: sheetIndex,
+          partId: x.part.id,
+          copy: x.placement.index,
+          line,
+          tool: vTool.number,
+          toolDiameter: vTool.diameter,
+          ...feedsOf(vTool.number),
+          rpm: rpmOf(vTool.number),
+          passDepths: depths,
+          safeZ,
+          clearanceZ,
+          kind: 'vgroove',
+        });
+        items.push({
+          sheet: sheetIndex,
+          part: copyKey,
+          cls: 'vgroove',
+          tool: vTool.number,
+          area: 0,
+          starts: [onlineStart(op)],
+        });
+        itemCtx.push(-1);
+        itemHole.push(op);
+      };
       // Contour pockets (T325): prebuilt like holes (one start point), cut with the holes.
       const addPocket = (inner: Polyline, k: number) => {
         const depths = pocketDepths.get(`${x.part.id}/${k}`);
@@ -1671,6 +1769,7 @@ export function buildToolpath(
         const innerOp = innerOperation(x.part, k);
         if (innerOp.kind === 'online') addOnline(innerPoly, `inner${k}`, innerOp.depth);
         if (innerOp.kind === 'pocket') addPocket(innerPoly, k);
+        if (innerOp.kind === 'vgroove') addVGroove(innerPoly, 'inner', k);
         if (innerOp.kind !== 'inside') return;
         const res = innerContourPath(innerPoly, innerRadius);
         const loop = res.paths[0];
@@ -1710,6 +1809,7 @@ export function buildToolpath(
       });
       placedLines(x.part, x.placement).forEach((line, k) => {
         if (line.op.kind === 'online') addOnline(line.poly, `line${k}`, line.op.depth);
+        if (line.op.kind === 'vgroove') addVGroove(line.poly, 'line', k);
       });
       if (outlineOp.kind === 'online') addOnline(x.outline, 'outline', outlineOp.depth);
       prepared.push(ctx);

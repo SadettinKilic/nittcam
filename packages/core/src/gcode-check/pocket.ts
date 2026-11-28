@@ -51,7 +51,7 @@ function boundaryDistance(p: XY, poly: readonly XY[]): number {
 }
 
 /** Points along a read move (start and end included), Z linear along the move. */
-function samples(m: SheetMove): (XY & { z: number })[] {
+export function moveSamples(m: SheetMove): (XY & { z: number })[] {
   const out: (XY & { z: number })[] = [];
   if (m.arc) {
     const a = m.arc;
@@ -123,7 +123,7 @@ export function pocketMoveRule(
   const reported = new Set<number>();
   sm.forEach((m, i) => {
     if (m.kind === 'rapid' || Math.min(m.from.z, m.to.z) >= -d.posTol) return;
-    const pts = samples(m);
+    const pts = moveSamples(m);
     pockets.forEach((p, pi) => {
       if (reported.has(pi)) return;
       if (!pts.some((q) => insidePolygon(q, p.boundary))) return;

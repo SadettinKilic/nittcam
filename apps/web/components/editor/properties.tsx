@@ -18,8 +18,11 @@ import {
   withSegmentAngle,
   withSegmentLength,
   withVertexAt,
-  ALLOWED_OPERATIONS,
+  allowedOperations,
   contourOperation,
+  vGrooveDepth,
+  vGrooveRemaining,
+  vGrooveWidth,
   defaultOnlineDepth,
   defaultPocketDepth,
   type ContourRef,
@@ -46,6 +49,7 @@ import {
 } from '@nittcam/ui';
 import { CircleAlert, Move, Plus, X } from 'lucide-react';
 import { useInnerIssues } from './inner-issues';
+import { useVGroove } from './vgroove-context';
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { formatMm, sizeText } from '../../lib/canvas-labels';
 import { cornerLabels } from '../../lib/editor/corner-labels';
@@ -291,9 +295,11 @@ function OperationRow({
   toolRadius?: number;
 }) {
   const id = useId();
+  const vg = useVGroove();
   const current = contourOperation(part, contour);
   if (!current) return null;
-  const kinds = ALLOWED_OPERATIONS[contour.type];
+  // T352: "V-kanal (büküm)" only where the material folds (ACM).
+  const kinds = allowedOperations(contour.type, vg.traits !== null);
   return (
     <>
       <Row
@@ -346,10 +352,99 @@ function OperationRow({
           }
         />
       ) : null}
+      {current.kind === 'vgroove' ? (
+        <VGrooveRows t={t} part={part} run={run} contour={contour} testId={testId} />
+      ) : null}
       {current.kind === 'pocket' && toolRadius > 0 ? (
         <p className="px-1 text-xs text-fg-muted" data-testid={`${testId}-corners`}>
           {fill(t.operation.pocketCorners, { r: formatMm(toolRadius) })}
         </p>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * T352 (§6.3 "V-kanal", analysis §5.3): the V-groove rows: the V-bit (V-bits with an angle only;
+ * the job's one V-groove tool, `setOperationTool`), the remaining skin (default and bounds from the
+ * material traits) and the computed open width of the groove on the machined face.
+ */
+function VGrooveRows({
+  t,
+  part,
+  run,
+  contour,
+  testId,
+}: {
+  t: T;
+  part: Part;
+  run: Run;
+  contour: ContourRef;
+  testId: string;
+}) {
+  const id = useId();
+  const vg = useVGroove();
+  const current = contourOperation(part, contour);
+  if (current?.kind !== 'vgroove' || !vg.traits) return null;
+  const op = t.operation;
+  const remaining = vGrooveRemaining(current, vg.traits);
+  const depth = vGrooveDepth(vg.thickness, remaining);
+  const tool = vg.tool;
+  return (
+    <>
+      <Row
+        label={<label htmlFor={id}>{op.vTool}</label>}
+        mono={false}
+        valueProps={{ className: 'overflow-visible' }}
+      >
+        {vg.vBits.length === 0 ? (
+          <span className="text-xs text-danger-text" data-testid={`${testId}-vtool-missing`}>
+            {op.vToolMissing}
+          </span>
+        ) : (
+          <Select
+            value={tool ? String(tool.number) : ''}
+            onValueChange={(v) => run('setOperationTool', { op: 'vgroove', tool: Number(v) })}
+          >
+            <SelectTrigger id={id} className="w-44 max-w-full" data-testid={`${testId}-vtool`}>
+              <SelectValue placeholder={op.vToolMissing} />
+            </SelectTrigger>
+            <SelectContent>
+              {vg.vBits.map((b) => (
+                <SelectItem key={b.number} value={String(b.number)}>
+                  {fill(op.vToolName, {
+                    n: b.number,
+                    angle: b.angleDeg ?? 0,
+                    tip: formatMm(b.tipDiameter ?? 0),
+                  })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </Row>
+      <NumberRow
+        label={fill(op.remaining, {
+          min: formatMm(vg.traits.minRemaining),
+          max: formatMm(vg.traits.maxRemaining),
+        })}
+        value={remaining}
+        testId={`${testId}-remaining`}
+        onCommit={(v) =>
+          v === null || v <= 0
+            ? t.errors.length
+            : run('setOperation', { id: part.id, contour, kind: 'vgroove', remaining: v })
+              ? null
+              : fill(op.remainingError, {
+                  min: formatMm(vg.traits?.minRemaining ?? 0),
+                  max: formatMm(vg.traits?.maxRemaining ?? 0),
+                })
+        }
+      />
+      {tool ? (
+        <Row label={op.grooveWidth} valueProps={{ 'data-testid': `${testId}-width` }}>
+          {fill(op.grooveWidthValue, { w: formatMm(vGrooveWidth(tool, depth)) })}
+        </Row>
       ) : null}
     </>
   );

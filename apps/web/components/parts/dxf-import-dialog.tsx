@@ -85,6 +85,7 @@ export function DxfImportDialog({
   newId,
   holeTool,
   thickness,
+  vGroove = false,
 }: {
   t: Text;
   open: boolean;
@@ -96,6 +97,8 @@ export function DxfImportDialog({
   holeTool?: number;
   /** Stock thickness, mm: the depth of "Çizgi üzerinden" lines (T277). */
   thickness?: number;
+  /** T352: the stock folds (ACM): the layer mapping offers "V-kanal". */
+  vGroove?: boolean;
 }) {
   const ids = { file: useId(), unit: useId() };
   const input = useRef<HTMLInputElement>(null);
@@ -496,9 +499,12 @@ export function DxfImportDialog({
                     <tbody>
                       {layerCounts(drawing).map(({ layer, count: n }) => {
                         const op = map[layer.trim().toUpperCase()] ?? 'auto';
-                        const options: readonly DxfLayerOp[] = DXF_LAYER_OPS_READY.includes(op)
+                        const ready = vGroove
                           ? DXF_LAYER_OPS_READY
-                          : [...DXF_LAYER_OPS_READY, op];
+                          : DXF_LAYER_OPS_READY.filter((o) => o !== 'vgroove');
+                        const options: readonly DxfLayerOp[] = ready.includes(op)
+                          ? ready
+                          : [...ready, op];
                         return (
                           <tr key={layer} className="border-t border-border-subtle">
                             <th

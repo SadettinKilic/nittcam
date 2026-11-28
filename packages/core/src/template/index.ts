@@ -420,7 +420,8 @@ export function templateFromPart(
         contour: normalizeInner(
           moved.vertices.map((v) => ({ x: tidy(v.x), y: tidy(v.y), bulge: v.bulge })),
         ),
-        ...(op.kind === 'inside' || op.kind === 'outside' ? {} : { op }),
+        // T352: a V-groove is a fold of this panel, not part of a reusable template.
+        ...(op.kind === 'inside' || op.kind === 'outside' || op.kind === 'vgroove' ? {} : { op }),
       };
     }),
     ...(lines.length > 0

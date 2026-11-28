@@ -9,7 +9,13 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import genericPost from '../../../machines/generic/v1/post.json';
 import mach3Post from '../../../machines/mach3/v1/post.json';
-import { goldenFixtureProjects, goldenProfile } from '../post/golden.testing';
+import {
+  GOLDEN_VGROOVE_FIXTURE,
+  goldenFixtureProjects,
+  goldenProfile,
+  vGrooveProfile,
+  vGrooveTrayProject,
+} from '../post/golden.testing';
 import { parsePostConfig, type PostConfig } from '../post';
 import type { Project } from '../schema';
 import { buildToolpath, type Toolpath } from '../toolpath';
@@ -70,3 +76,37 @@ export function golden(post: PostId, fixture: string): GoldenInput {
 }
 
 export const GOLDEN_IDS = goldenFixtureProjects(8).map((f) => f.id);
+
+/** T354: the ACM tray golden (V-grooves, back face) with its full check context (rule 17 on). */
+export function goldenTray(post: PostId): GoldenInput {
+  const profile = vGrooveProfile(post);
+  const project = vGrooveTrayProject(8);
+  const tp = buildToolpath(project, profile);
+  if (!tp.ok) throw new Error(JSON.stringify(tp.errors));
+  const fixture = GOLDEN_VGROOVE_FIXTURE.id;
+  const file = `${fixture}_S1.${post === 'generic' ? 'nc' : 'tap'}`;
+  const text = readFileSync(join(MACHINES, post, 'v1', 'golden', file), 'utf8');
+  return {
+    post,
+    fixture,
+    file,
+    text,
+    project,
+    toolpath: tp.toolpath,
+    context: {
+      profile,
+      verification: 'draft',
+      post: postConfig(post),
+      toolpath: tp.toolpath,
+      stock: {
+        thickness: project.stock.thickness,
+        sheetWidth: project.stock.sheet.width,
+        sheetHeight: project.stock.sheet.height,
+      },
+      sheet: 0,
+      layout: expectedLayout(project, 0),
+      machinedFace: 'back',
+      vGroove: { minRemaining: 0.7 },
+    },
+  };
+}

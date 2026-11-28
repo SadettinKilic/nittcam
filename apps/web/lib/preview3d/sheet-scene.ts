@@ -5,7 +5,15 @@
  * draw-call count stays bounded: one per shared shape + one merged mesh + waste + edges, so 300
  * parts never need more than ~150 + 3 calls (spec §3.8 perf budget). Pure data.
  */
-import { defaultSheet, placedOutline, sheetSizeOf, type Project, toCutSizes } from '@nittcam/core';
+import {
+  defaultSheet,
+  placedOutline,
+  sheetSizeOf,
+  toCutSizes,
+  vGrooveTraitsOf,
+  type Project,
+} from '@nittcam/core';
+import type { VGroove3d } from './vgroove-3d';
 import { flatten } from './outlines';
 import { effectiveGrain } from './textures';
 import {
@@ -71,11 +79,15 @@ export interface SheetScene {
 const cache = new Map<string, MeshData>();
 const CACHE_MAX = 500;
 
-export function cachedPartMesh(part: Parameters<typeof partMesh>[0], thickness: number): MeshData {
-  const key = shapeKey(part, thickness);
+export function cachedPartMesh(
+  part: Parameters<typeof partMesh>[0],
+  thickness: number,
+  vGroove?: VGroove3d,
+): MeshData {
+  const key = shapeKey(part, thickness, vGroove);
   const hit = cache.get(key);
   if (hit) return hit;
-  const mesh = partMesh(part, thickness);
+  const mesh = partMesh(part, thickness, vGroove);
   if (cache.size >= CACHE_MAX) {
     const first = cache.keys().next().value;
     if (first !== undefined) cache.delete(first);
@@ -93,10 +105,20 @@ export function meshCacheSize(): number {
   return cache.size;
 }
 
-export function buildSheetScene(entered: Project, sheet: number): SheetScene {
+export function buildSheetScene(
+  entered: Project,
+  sheet: number,
+  /** T353: the V-bit of the grooves (angle, tip); omitted = grooves are not drawn. */
+  vBit?: { angleDeg: number; tipDiameter: number },
+): SheetScene {
   // T169: parts are drawn at their cut size (edge-band deduction).
   const project = toCutSizes(entered);
   const T = project.stock.thickness;
+  const traits = vBit ? vGrooveTraitsOf(project.stock.material) : null;
+  const vGroove: VGroove3d | undefined =
+    vBit && traits
+      ? { ...vBit, traits, face: project.stock.machinedFace === 'back' ? 'back' : 'front' }
+      : undefined;
   const parts = new Map(project.parts.map((p) => [p.id, p]));
   const groups = new Map<string, ShapeGroup>();
   const outlines: number[][] = [];
@@ -105,10 +127,10 @@ export function buildSheetScene(entered: Project, sheet: number): SheetScene {
     const part = parts.get(pl.partId);
     if (!part) continue;
     count++;
-    const shape = shapeKey(part, T);
+    const shape = shapeKey(part, T, vGroove);
     let g = groups.get(shape);
     if (!g) {
-      g = { shape, mesh: cachedPartMesh(part, T), instances: [] };
+      g = { shape, mesh: cachedPartMesh(part, T, vGroove), instances: [] };
       groups.set(shape, g);
     }
     g.instances.push({

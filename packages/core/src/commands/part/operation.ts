@@ -13,6 +13,7 @@ import {
   type Project,
 } from '../../schema';
 import { defineCommand } from '../types';
+import { vGrooveRemainingProblem, vGrooveTraitsOf } from '../../toolpath/vgroove';
 
 const index = z.number().int({ error: 'index must be an integer' }).min(0);
 
@@ -24,8 +25,8 @@ const params = z.strictObject({
     z.strictObject({ type: z.literal('inner'), index }),
     z.strictObject({ type: z.literal('line'), index }),
   ]),
-  kind: z.enum(['outside', 'inside', 'online', 'pocket', 'none'], {
-    error: 'operation must be "outside", "inside", "online", "pocket" or "none"',
+  kind: z.enum(['outside', 'inside', 'online', 'pocket', 'vgroove', 'none'], {
+    error: 'operation must be "outside", "inside", "online", "pocket", "vgroove" or "none"',
   }),
   /**
    * Depth of an `online` or `pocket` (T325) operation in mm, from the material top; less than the
@@ -35,12 +36,24 @@ const params = z.strictObject({
     .number({ error: 'depth must be a finite number (mm)' })
     .positive({ error: 'depth must be greater than 0' })
     .optional(),
+  /**
+   * T352: remaining skin of a `vgroove` operation, mm (the far face left under the groove); absent
+   * = the material's default (0,8 mm on ACM). Bounds from the material traits (0,7 … 1,2 on ACM).
+   */
+  remaining: z
+    .number({ error: 'remaining must be a finite number (mm)' })
+    .positive({ error: 'remaining must be greater than 0' })
+    .optional(),
 });
 
 type Params = z.output<typeof params>;
 
 function operationOf(p: Params): ContourOperation {
   if (p.kind === 'online' || p.kind === 'pocket') return { kind: p.kind, depth: p.depth ?? 0 };
+  if (p.kind === 'vgroove')
+    return p.remaining === undefined
+      ? { kind: 'vgroove' }
+      : { kind: 'vgroove', remaining: p.remaining };
   return { kind: p.kind };
 }
 
@@ -53,7 +66,21 @@ function check(project: Project, p: Params): string | undefined {
   if (!ALLOWED_OPERATIONS[c.type].includes(p.kind)) {
     return `operation "${p.kind}" is not allowed on ${c.type === 'line' ? 'an open line' : `the ${c.type === 'outline' ? 'outline' : 'inner contour'}`} (allowed: ${ALLOWED_OPERATIONS[c.type].join(', ')})`;
   }
-  if (p.kind === 'online' || p.kind === 'pocket') {
+  if (p.kind !== 'vgroove' && p.remaining !== undefined) {
+    return 'only a V-groove operation takes a remaining thickness';
+  }
+  if (p.kind === 'vgroove') {
+    // T352 (§6.3 "V-kanal"): only where the material folds (ACM); remaining within its bounds.
+    const traits = vGrooveTraitsOf(project.stock.material);
+    if (!traits) {
+      return `a V-groove is only for a composite panel (ACM), not for ${project.stock.material}`;
+    }
+    if (p.depth !== undefined) return 'a V-groove takes a remaining thickness, not a depth';
+    if (p.remaining !== undefined) {
+      const bad = vGrooveRemainingProblem(p.remaining, project.stock.thickness, traits);
+      if (bad) return `V-groove ${bad}`;
+    }
+  } else if (p.kind === 'online' || p.kind === 'pocket') {
     const what = p.kind === 'online' ? 'on-line' : 'pocket';
     if (p.depth === undefined) return `a ${what} operation needs a depth`;
     // Engraving and pockets never cut through (no tabs or small-part rules apply to them).
@@ -74,7 +101,8 @@ export const setOperation = defineCommand({
   area: 'part',
   description:
     'Set the operation of one contour of a part: outline (outside | online | none), inner ' +
-    'contour (inside | online | pocket | none) or open line (online | none). "online" = the tool ' +
+    'contour (inside | online | pocket | vgroove | none) or open line (online | vgroove | none). ' +
+    '"vgroove" = fold groove with a V-bit leaving remaining mm of the far face (ACM only). "online" = the tool ' +
     'centre follows the line at depth mm (less than the thickness); "pocket" = the inner contour ' +
     'is cleared flat to depth mm (blind pocket, less than the thickness); "none" = not cut.',
   aiTool: true,

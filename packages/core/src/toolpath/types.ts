@@ -100,7 +100,7 @@ export interface Tab {
  * one plunge per pass (peck, D-050). `groove`: a ring groove around the hole's centreline (T140).
  */
 export type OperationKind =
-  'outerContour' | 'innerContour' | 'pocket' | 'drill' | 'groove' | 'online';
+  'outerContour' | 'innerContour' | 'pocket' | 'drill' | 'groove' | 'online' | 'vgroove';
 
 export interface Operation {
   /** `<partId>#<copy>` (unique in the toolpath). */
@@ -198,6 +198,12 @@ export type ToolpathCode =
   | 'SMALL_SLUG_UNSECURED'
   | 'SMALL_PART_TAB_TOO_SMALL'
   | 'SMALL_PART_SKIN_OUT_OF_BOUNDS'
+  /** T353: V-groove on a material that does not fold. */
+  | 'VGROOVE_MATERIAL'
+  /** T353: a groove that would leave less than `traits.vGroove.minRemaining`. */
+  | 'VGROOVE_TOO_DEEP'
+  | 'VGROOVE_OUTSIDE_PART'
+  | 'VGROOVE_TOOL_MISSING'
   // warnings
   | 'ARC_COLLAPSED'
   | 'LEAD_SHORTENED'
