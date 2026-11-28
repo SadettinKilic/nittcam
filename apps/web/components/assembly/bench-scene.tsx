@@ -27,6 +27,7 @@ import {
   InstancedMesh,
   Matrix4,
   DoubleSide,
+  FrontSide,
   Group,
   LineBasicMaterial,
   Matrix3,
@@ -40,6 +41,7 @@ import {
 import { Capture, type CaptureFn } from '../preview3d/capture';
 import type { MeshData } from '../../lib/preview3d/part-mesh';
 import type { BenchItem } from '../../lib/preview3d/assembly-model';
+import { sectionPlane, type Section } from '../../lib/preview3d/assembly-explode';
 import {
   boxCentre,
   cross,
@@ -102,6 +104,10 @@ export interface BenchSceneProps {
   slide: BenchSlide | null;
   /** Fit-check marks by item id (T388). */
   marks?: ReadonlyMap<string, BenchMark>;
+  /** Section plane (T389); null = whole parts. */
+  section?: Section | null;
+  /** Exploded view (T389): poses are display-only, so no gizmo, mate or slide. */
+  locked?: boolean;
   /** Rotation snap in degrees; 0 = free (Shift). */
   rotationStep: number;
   /** Move snap in mm; 0 = free (Shift). */
@@ -184,6 +190,7 @@ export default function BenchScene(props: BenchSceneProps) {
       onCreated={({ gl }) => {
         gl.toneMapping = NeutralToneMapping;
         gl.setClearColor(0x000000, 0);
+        gl.localClippingEnabled = true; // section plane (T389)
       }}
       data-testid="bench-canvas"
     >
@@ -201,6 +208,8 @@ function BenchContent({
   pickedFace,
   slide,
   marks,
+  section = null,
+  locked = false,
   rotationStep,
   moveStep,
   camera: cmd,
@@ -230,6 +239,24 @@ function BenchContent({
     invalidate();
     return () => Object.values(mats).forEach((m) => m.dispose());
   }, [mats, invalidate]);
+
+  // ---- section plane (T389): every part material clips; inner faces show through the cut ----
+  const sectionKey = section ? `${section.axis}:${section.at}:${section.flip}` : '';
+  useEffect(() => {
+    const planes = section
+      ? (() => {
+          const p = sectionPlane(section);
+          return [new Plane(new Vector3(...p.normal), p.constant)];
+        })()
+      : [];
+    for (const m of Object.values(mats)) {
+      m.clippingPlanes = planes;
+      if (m instanceof MeshStandardMaterial) m.side = section ? DoubleSide : FrontSide;
+      m.needsUpdate = true;
+    }
+    invalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the section value
+  }, [mats, sectionKey, invalidate]);
 
   // The selected copy's group, for the gizmo (callback ref → state).
   const [selObj, setSelObj] = useState<Group | null>(null);
@@ -347,7 +374,7 @@ function BenchContent({
     e.stopPropagation();
     // A click that ends a gizmo drag (or lands on the gizmo) is not a pick.
     if (performance.now() - lastDrag.current < 250 || gizmoHot(tc.current)) return;
-    if (mode === 'mate') {
+    if (mode === 'mate' && !locked) {
       const n = worldNormal(e);
       if (n) onPick(item.id, n, [e.point.x, e.point.y, e.point.z]);
       return;
@@ -355,7 +382,7 @@ function BenchContent({
     onSelect(item.id);
   };
   const onMove = (e: ThreeEvent<PointerEvent>) => {
-    if (mode !== 'mate') return;
+    if (mode !== 'mate' || locked) return;
     e.stopPropagation();
     const item = itemOf(e);
     const n = worldNormal(e);
@@ -368,7 +395,7 @@ function BenchContent({
   };
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     const item = itemOf(e);
-    if (item && slide && item.id === slide.id) startSlide(e, item);
+    if (item && slide && !locked && item.id === slide.id) startSlide(e, item);
   };
 
   // ---- camera ----
@@ -520,7 +547,7 @@ function BenchContent({
       {mode === 'mate' && hover && byId.get(hover.id) ? (
         <FaceMark item={byId.get(hover.id) as BenchItem} face={hover.face} color={colors.hover} />
       ) : null}
-      {selObj && selectedItem && mode !== 'mate' && !slide ? (
+      {selObj && selectedItem && mode !== 'mate' && !slide && !locked ? (
         <TransformControls
           ref={tc}
           object={selObj}

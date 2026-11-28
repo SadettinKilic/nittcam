@@ -67,3 +67,34 @@ test('an empty bench is ready at once (B-M1 tester note)', async ({ page }) => {
   await expect(page.getByTestId('bench')).toHaveAttribute('data-ready', 'true');
   await expect(page.getByTestId('bench')).toContainText(tr.bench.empty);
 });
+
+test('explode and section are display only (T389)', async ({ page }) => {
+  const errors = watchConsole(page);
+  const bench = await openBench(page);
+  await setX(page, 1, '700');
+  const x = page.getByTestId('bench-pos-x');
+  await expect(x).toHaveValue('700');
+
+  const thumb = page.getByTestId('bench-explode').getByRole('slider');
+  await thumb.focus();
+  await thumb.press('End');
+  await expect(bench).toHaveAttribute('data-explode', '100');
+  await expect(page.getByTestId('bench-tools')).toContainText(tr.bench.tools.locked);
+  // The stored place does not change; the bench still counts one moved part.
+  await expect(x).toHaveValue('700');
+  await expect(bench).toHaveAttribute('data-placed', '1');
+  await thumb.press('Home');
+  await expect(bench).toHaveAttribute('data-explode', '0');
+
+  await page.getByTestId('bench-section-y').click();
+  await expect(bench).toHaveAttribute('data-section', /^y:\d+$/);
+  const cut = page.getByTestId('bench-section-at').getByRole('slider');
+  await cut.focus();
+  await cut.press('Home');
+  await expect(bench).toHaveAttribute('data-section', /^y:-?\d+$/);
+  await page.getByTestId('bench-section-flip').click();
+  await expect(bench).toHaveAttribute('data-section', /:flip$/);
+  await page.getByTestId('bench-section-off').click();
+  await expect(bench).toHaveAttribute('data-section', '');
+  expect(errors).toEqual([]);
+});

@@ -4013,6 +4013,16 @@
         "gap": "{count} boşluk"
       },
       "rules": "Temas: ±0,05 mm. Boşluk: 1 mm'ye kadar listelenir. Delik: merkezler 0,2 mm içinde hizalı."
+    },
+    "tools": {
+      "title": "Görünüm araçları",
+      "explode": "Patlat",
+      "percent": "%{v}",
+      "locked": "Patlatılmış görünümde parçalar taşınamaz; taşımak için patlatmayı sıfıra alın.",
+      "section": "Kesit",
+      "sectionOff": "Kapalı",
+      "sectionAt": "Kesit konumu",
+      "flip": "Diğer yarıyı göster"
     }
   }
 }

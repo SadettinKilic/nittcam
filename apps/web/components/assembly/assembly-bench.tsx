@@ -67,6 +67,13 @@ import type {
   CameraCmd,
 } from './bench-scene';
 import { FitPanel } from './fit-panel';
+import { ViewTools } from './view-tools';
+import {
+  boundsOf,
+  exploded,
+  explodeOffsets,
+  type Section,
+} from '../../lib/preview3d/assembly-explode';
 import { useFitCheck } from './use-fit-check';
 import { CanvasBoundary } from '../feedback/canvas-boundary';
 
@@ -169,6 +176,17 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
     }
     return m;
   }, [fit.result]);
+
+  // Explode and section (T389): display only, never stored.
+  const [explode, setExplode] = useState(0);
+  const [section, setSection] = useState<Section | null>(null);
+  const display = useMemo(() => {
+    if (explode <= 0) return shown;
+    const off = explodeOffsets(shown, explode / 100);
+    return shown.map((i) => exploded(i, off));
+  }, [shown, explode]);
+  const displayBounds = useMemo(() => boundsOf(display), [display]);
+  const locked = explode > 0;
 
   const commit = useCallback(
     (id: string, pose: Pose, hidden?: boolean) => {
@@ -318,6 +336,10 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
       data-shown={shown.length}
       data-placed={placed}
       data-view={view}
+      data-explode={explode}
+      data-section={
+        section ? `${'xyz'[section.axis]}:${section.at}${section.flip ? ':flip' : ''}` : ''
+      }
       data-check={checkOn ? (fit.result && !fit.busy ? 'done' : 'busy') : ''}
       // An empty bench has no scene to report a frame: it is ready at once (B-M1 tester note).
       {...(total === 0 ? { 'data-ready': 'true' } : {})}
@@ -329,7 +351,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
       ) : colors ? (
         <CanvasBoundary testId="bench-crashed">
           <BenchScene
-            items={shown}
+            items={display}
             colors={colors}
             simple={simple}
             mode={mode}
@@ -337,6 +359,8 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             pickedFace={mateA ? { id: mateA.id, face: mateA.face } : null}
             slide={slideFrame}
             marks={marks}
+            section={section}
+            locked={locked}
             rotationStep={step.rot}
             moveStep={step.move}
             camera={camera}
@@ -520,6 +544,17 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
       rightHeader={<h2 className="truncate font-semibold text-fg">{t.workspace.right}</h2>}
       right={
         <>
+          <ViewTools
+            t={t}
+            explode={explode}
+            onExplode={(v) => {
+              if (v > 0) endMate();
+              setExplode(v);
+            }}
+            section={section}
+            onSection={setSection}
+            bounds={displayBounds}
+          />
           {checkOn ? (
             <FitPanel
               t={t}
