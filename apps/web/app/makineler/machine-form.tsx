@@ -885,6 +885,119 @@ export function MachineForm({
             </div>
           </Section>
 
+          <Section id="metal" title={s.metal} hint={h.metal}>
+            {/* T345 (§7.1 "Soğutma", "Metal kesim"; analysis §5.7): every field optional */}
+            <div className="sm:col-span-2">
+              <CheckField
+                path="metal.enabled"
+                label={f.metalEnabled}
+                help={f.metalEnabledHelp}
+                checked={profile.metal?.enabled === true}
+                onChange={(on) =>
+                  update((p) => {
+                    // off = no declaration at all (absent, as in today's profiles)
+                    if (on) p.metal = { enabled: true, rigidity: p.metal?.rigidity ?? 'standard' };
+                    else delete p.metal;
+                  })
+                }
+              />
+            </div>
+            {profile.metal?.enabled ? (
+              <SelectField
+                path="metal.rigidity"
+                label={f.rigidity}
+                help={f.rigidityHelp}
+                value={profile.metal.rigidity}
+                options={o.rigidity}
+                error={e('metal.rigidity')}
+                onChange={(v) => update((p) => void (p.metal = { enabled: true, rigidity: v }))}
+              />
+            ) : null}
+            {profile.metal?.enabled ? <div className="hidden sm:block" /> : null}
+            <SelectField
+              path="coolant.type"
+              label={f.coolantType}
+              value={profile.coolant?.type ?? 'none'}
+              options={o.coolantType}
+              error={e('coolant.type')}
+              onChange={(v) =>
+                update((p) => {
+                  // "Yok" = no coolant block at all (today's profiles)
+                  if (v === 'none') delete p.coolant;
+                  else
+                    p.coolant = {
+                      control: 'program',
+                      on: v === 'flood' ? 'M8' : 'M7',
+                      off: 'M9',
+                      ...p.coolant,
+                      type: v,
+                    };
+                })
+              }
+            />
+            {profile.coolant ? (
+              <SelectField
+                path="coolant.control"
+                label={f.coolantControl}
+                value={profile.coolant.control}
+                options={o.coolantControl}
+                error={e('coolant.control')}
+                onChange={(v) =>
+                  update((p) => {
+                    if (p.coolant) p.coolant.control = v;
+                  })
+                }
+              />
+            ) : (
+              <div className="hidden sm:block" />
+            )}
+            {profile.coolant?.control === 'program' ? (
+              <>
+                <TextField
+                  path="coolant.on"
+                  label={f.coolantOn}
+                  help={f.mCodeHelp}
+                  value={profile.coolant.on}
+                  error={e('coolant.on')}
+                  onChange={(v) =>
+                    update((p) => {
+                      if (p.coolant) p.coolant.on = v;
+                    })
+                  }
+                />
+                <TextField
+                  path="coolant.off"
+                  label={f.coolantOff}
+                  help={f.mCodeHelpOff}
+                  value={profile.coolant.off}
+                  error={e('coolant.off')}
+                  onChange={(v) =>
+                    update((p) => {
+                      if (p.coolant) p.coolant.off = v;
+                    })
+                  }
+                />
+              </>
+            ) : null}
+            {profile.holdDown.type !== 'vacuum' ? (
+              <OptionalNumberField
+                path="holdDown.clampHeight"
+                label={f.clampHeight}
+                help={f.clampHeightHelp}
+                unit={u.mm}
+                value={profile.holdDown.clampHeight}
+                error={e('holdDown.clampHeight')}
+                onParseError={onParseError}
+                onChange={(v) =>
+                  update((p) => {
+                    if (v === undefined) delete p.holdDown.clampHeight;
+                    else p.holdDown.clampHeight = v;
+                  })
+                }
+              />
+            ) : null}
+          </Section>
+
           <Section id="tools" title={s.tools} hint={h.tools} wide>
             <RowTable
               headers={[f.toolNumber, f.toolType, f.toolDiameter, f.fluteLength, f.flutes]}
@@ -965,8 +1078,9 @@ export function MachineForm({
                 const set = (k: 'angleDeg' | 'tipDiameter', v: number | undefined) =>
                   update((p) => {
                     const x = p.tools[i] as Tool;
-                    const { [k]: _old, ...rest } = x;
-                    p.tools[i] = v === undefined ? rest : { ...rest, [k]: v };
+                    if (v !== undefined) x[k] = v;
+                    else if (k === 'angleDeg') delete x.angleDeg;
+                    else delete x.tipDiameter;
                   });
                 return (
                   <div

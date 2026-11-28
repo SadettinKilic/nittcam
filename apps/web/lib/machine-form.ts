@@ -25,6 +25,8 @@ export const FORM_SECTIONS = [
   'holdDown',
   'post',
   'constraints',
+  // T345: coolant, metal declaration, clamp height
+  'metal',
   'tools',
   'materials',
 ] as const;

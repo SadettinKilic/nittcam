@@ -171,6 +171,37 @@ export const holdDownSchema = z.strictObject({
   type: z.enum(['vacuum', 'clamp', 'tSlot'], { error: 'must be vacuum, clamp or tSlot' }),
   vacuumOn: mCode,
   vacuumOff: mCode,
+  /**
+   * T345 (§7.1 "Metal kesim"): height of the clamps / T-slot hold-downs above Z zero, mm. Optional;
+   * when given for clamp or T-slot, safe Z must clear it by `CLAMP_CLEARANCE` (`safeZBelowClamps`).
+   */
+  clampHeight: lengthUpTo(PROFILE_BOUNDS.axisZ.max).optional(),
+});
+
+/** T345: safe Z at least this far above the clamps, mm (analysis §6.1). */
+export const CLAMP_CLEARANCE = 5;
+
+/** M codes the standard reserves for coolant (M7 mist, M8 flood, M9 off; analysis §6.2). */
+export const COOLANT_M_CODES: readonly string[] = ['M7', 'M8', 'M9'];
+
+/**
+ * T345 (§7.1 "Soğutma", analysis §6.1): the machine's coolant. Optional: absent = no coolant, as
+ * today. `program` = switched by M codes `on` / `off`; `manual` = the program stops and asks.
+ */
+export const coolantSchema = z.strictObject({
+  type: z.enum(['none', 'mist', 'flood', 'air'], { error: 'must be none, mist, flood or air' }),
+  control: z.enum(['program', 'manual'], { error: 'must be program or manual' }),
+  on: mCode,
+  off: mCode,
+});
+
+/**
+ * T345 (§7.1 "Metal kesim"): the declaration that the machine may cut non-ferrous metal, and its
+ * rigidity (scales the step-down ceiling later, "doğrulanacak"). Optional: absent = no metal.
+ */
+export const metalSchema = z.strictObject({
+  enabled: z.boolean({ error: 'must be true or false' }),
+  rigidity: z.enum(['light', 'standard', 'heavy'], { error: 'must be light, standard or heavy' }),
 });
 
 /** Program biçimi: which post config and which version (the config itself is T017). */
@@ -277,6 +308,61 @@ function crossIssue(
   ctx.addIssue({ code: 'custom', path, message, params: { key } });
 }
 
+/**
+ * T345 (analysis §6.2): rules that only apply to a profile that declares program-controlled
+ * coolant, plus the clamp clearance once a clamp height is given. Today's profiles have neither,
+ * so they are not affected.
+ */
+function coolantRules(
+  p: {
+    safeZ: number;
+    holdDown: z.infer<typeof holdDownSchema>;
+    coolant?: z.infer<typeof coolantSchema> | undefined;
+  },
+  ctx: z.core.$RefinementCtx,
+): void {
+  const hd = p.holdDown;
+  const c = p.coolant;
+  if (c && c.type !== 'none' && c.control === 'program') {
+    if (c.on === '') {
+      crossIssue(ctx, ['coolant', 'on'], 'coolantOnMissing', 'program coolant needs an on code');
+    }
+    if (hd.type === 'vacuum') {
+      const vacuum = new Set([hd.vacuumOn, hd.vacuumOff].filter((x) => x !== ''));
+      for (const k of ['on', 'off'] as const) {
+        if (c[k] !== '' && vacuum.has(c[k])) {
+          crossIssue(ctx, ['coolant', k], 'mCodeConflict', `coolant and vacuum both use ${c[k]}`);
+        }
+      }
+      for (const k of ['vacuumOn', 'vacuumOff'] as const) {
+        if (COOLANT_M_CODES.includes(hd[k])) {
+          crossIssue(
+            ctx,
+            ['holdDown', k],
+            'vacuumUsesCoolantCode',
+            `vacuum uses ${hd[k]}, a coolant code`,
+          );
+        }
+      }
+    }
+  }
+  if (
+    (hd.type === 'clamp' || hd.type === 'tSlot') &&
+    hd.clampHeight !== undefined &&
+    p.safeZ < hd.clampHeight + CLAMP_CLEARANCE
+  ) {
+    // on both fields: the form shows it next to the clamp height too
+    for (const path of [['safeZ'], ['holdDown', 'clampHeight']]) {
+      crossIssue(
+        ctx,
+        path,
+        'safeZBelowClamps',
+        `safe Z must be at least the clamp height + ${CLAMP_CLEARANCE} mm`,
+      );
+    }
+  }
+}
+
 export const machineProfileSchema = z
   .strictObject({
     schemaVersion: z.literal(MACHINE_PROFILE_SCHEMA_VERSION, {
@@ -309,6 +395,10 @@ export const machineProfileSchema = z
     spindle: spindleSchema,
     toolChanger: toolChangerSchema,
     holdDown: holdDownSchema,
+    /** T345: coolant (optional; absent = none, today's behaviour). */
+    coolant: coolantSchema.optional(),
+    /** T345: metal declaration (optional; absent = the machine does not cut metal). */
+    metal: metalSchema.optional(),
     post: postRefSchema,
     constraints: constraintsSchema,
     tools: z.array(toolSchema).min(PROFILE_BOUNDS.tools.min).max(PROFILE_BOUNDS.tools.max),
@@ -347,6 +437,7 @@ export const machineProfileSchema = z
         'vacuum off code without on code',
       );
     }
+    coolantRules(p, ctx);
     const seen = new Set<number>();
     p.tools.forEach((tool, i) => {
       if (seen.has(tool.number)) {
@@ -452,6 +543,8 @@ export type Tool = z.infer<typeof toolSchema>;
 export type ToolType = z.infer<typeof toolTypeSchema>;
 export type MaterialParams = z.infer<typeof materialParamsSchema>;
 export type TabParams = z.infer<typeof tabParamsSchema>;
+export type Coolant = z.infer<typeof coolantSchema>;
+export type MetalDeclaration = z.infer<typeof metalSchema>;
 export type { MaterialKind };
 export type OriginCorner = z.infer<typeof originCornerSchema>;
 

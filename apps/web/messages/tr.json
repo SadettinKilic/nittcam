@@ -349,6 +349,7 @@
         "holdDown": "Tutma",
         "post": "Program biçimi (post)",
         "constraints": "Kontrol ünitesi kısıtları",
+        "metal": "Metal kesim",
         "tools": "Takımlar",
         "materials": "Malzeme parametreleri"
       },
@@ -397,6 +398,16 @@
         "vacuumOff": "Vakum kapat kodu",
         "mCodeHelp": "Boş bırakılabilir. Örnek: M7",
         "mCodeHelpOff": "Boş bırakılabilir. Örnek: M9",
+        "metalEnabled": "Bu makine alüminyum kesebilir",
+        "metalEnabledHelp": "Açık beyan. Kapalıyken alüminyum işi dosya vermez; kompozit panel (ACM) bu beyanı istemez.",
+        "rigidity": "Makine sertliği",
+        "rigidityHelp": "Paso tavanını ölçekler; doğrulanacak.",
+        "coolantType": "Soğutma",
+        "coolantControl": "Soğutma kontrolü",
+        "coolantOn": "Soğutma aç kodu",
+        "coolantOff": "Soğutma kapat kodu",
+        "clampHeight": "Mengene yüksekliği (mm)",
+        "clampHeightHelp": "Boş bırakılabilir. Güvenli Z bundan en az 5 mm yüksek olmalı.",
         "postId": "Post ayarı",
         "postVersion": "Post sürümü",
         "postHelp": "Makinenizin kontrol ünitesine uyan G-code biçimi. İki post da saha testine kadar doğrulanmadı.",
@@ -447,6 +458,21 @@
           "manual": "Elle (durur, mesaj verir)",
           "none": "Yok (her takım ayrı dosya)"
         },
+        "rigidity": {
+          "light": "Hafif (kayış / kremayer)",
+          "standard": "Orta",
+          "heavy": "Sağlam (vidalı mil, döküm gövde)"
+        },
+        "coolantType": {
+          "none": "Yok",
+          "mist": "Sis",
+          "flood": "Sıvı",
+          "air": "Hava üfleme"
+        },
+        "coolantControl": {
+          "program": "Programdan (M kodu)",
+          "manual": "Elle (program durur ve sorar)"
+        },
         "holdDownType": {
           "vacuum": "Vakum",
           "clamp": "Mengene / kıskaç",
@@ -480,6 +506,7 @@
         "holdDown": "Plakanın tablada nasıl tutulduğu.",
         "post": "G-code dosyasının hangi biçimde yazılacağı.",
         "constraints": "Kontrol ünitesinin dosya ve komut sınırları.",
+        "metal": "Soğutma, alüminyum kesme beyanı ve mengene yüksekliği. Ahşap ve plastik için boş bırakın.",
         "tools": "Makinede kullandığınız takımlar.",
         "materials": "Her malzeme ve kalınlık için kesim değerleri."
       },
@@ -542,6 +569,10 @@
       "duplicateTool": "Bu takım numarası zaten var.",
       "vBitOnly": "Uç açısı ve uç düzlüğü yalnız V uç için girilir.",
       "tipNotBelowDiameter": "Uç düzlüğü takım çapından küçük olmalı.",
+      "coolantOnMissing": "Programdan soğutmada aç kodu girin.",
+      "mCodeConflict": "Soğutma ve vakum aynı kodu kullanıyor. Takım değişiminde soğutma kapanırken vakum da kapanır ve parça kayar. Kodları ayırın.",
+      "vacuumUsesCoolantCode": "Vakum bir soğutma kodu (M7, M8 ya da M9) kullanıyor. Bu kodlar soğutmanındır. Vakum kodunu makinenin gerçek çıkış koduna (ör. M10 / M11) değiştirin ya da vakum kodlarını boş bırakıp vakumu elle açın.",
+      "safeZBelowClamps": "Güvenli Z, mengene yüksekliğinden en az 5 mm yüksek olmalı; yoksa takım mengeneye çarpar.",
       "toolAboveCapacity": "Takım numarası takım kapasitesini aşıyor.",
       "parkOutOfTravel": "Park noktası makinenin eksen hareket alanının içinde olmalı (makine koordinatı).",
       "duplicateMaterial": "Bu malzeme ve kalınlık zaten var.",
