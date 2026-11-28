@@ -42,6 +42,7 @@ import { DRAFT_PARAM, discardLeftDraft, leftDrafts, type LeftDraft } from '../..
 import { LeftDraftNotice } from './left-draft-notice';
 import type { Messages } from '../../lib/messages';
 import { materialHeadName } from '../../lib/material-head';
+import { writeAddress } from '../../lib/address-write';
 
 import {
   NO_FILTERS,
@@ -157,11 +158,8 @@ export function ProjectsView({
     const key: ProjectTab = next in PROJECT_TABS ? (next as ProjectTab) : 'projects';
     setTab(key);
     try {
-      const url = new URL(window.location.href);
-      const v = PROJECT_TABS[key];
-      if (v) url.searchParams.set('sekme', v);
-      else url.searchParams.delete('sekme');
-      window.history.replaceState(window.history.state, '', url);
+      // T399: seen by Next's router, so its next commit does not put the old tab back.
+      writeAddress('replace', { query: { sekme: PROJECT_TABS[key] ?? null } });
     } catch {
       // URL sync is a convenience only.
     }
