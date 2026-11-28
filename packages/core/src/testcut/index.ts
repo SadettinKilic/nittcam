@@ -2,3 +2,4 @@
 export * from './program';
 export * from './measure';
 export * from './extended';
+export * from './tray';

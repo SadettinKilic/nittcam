@@ -1,0 +1,2 @@
+ALTER TABLE "validations" ADD COLUMN "material_family" text;--> statement-breakpoint
+ALTER TABLE "validations" ADD CONSTRAINT "validations_material_family_known" CHECK ("validations"."material_family" is null or "validations"."material_family" in ('composite', 'nonFerrous'));

@@ -139,3 +139,37 @@ export function vGrooveToolOf(project: Project, machine: MachineProfile): Tool |
   if (chosen !== undefined) return findTool(machine, chosen);
   return [...machine.tools].sort((a, b) => a.number - b.number).find(hasVGeometry);
 }
+
+/** T355: what the export checklist names for a job with V-grooves (analysis §5.6). */
+export interface VGrooveChecklist {
+  /** Tool number of the V-bit; `null` when the machine has none (the checks refuse the job). */
+  tool: number | null;
+  /** Included angle of the V-bit, degrees; `null` when unknown. */
+  angle: number | null;
+  /** The job's distinct remaining skins, mm, ascending. */
+  remaining: number[];
+}
+
+/**
+ * T355: the V-bit and the remaining skins of the job's grooves, for the export checklist lines
+ * "V uç takılı: T5, 90°" and "Kalan kalınlık 0,8 mm; önce fire parçada deneyin". `null` when the
+ * job has no groove (wood and plastic: no new lines).
+ */
+export function vGrooveChecklistOf(
+  project: Project,
+  machine: MachineProfile,
+): VGrooveChecklist | null {
+  const traits = vGrooveTraitsOf(project.stock.material);
+  if (traits === null) return null;
+  const remaining = new Set<number>();
+  for (const p of project.parts) {
+    for (const g of vGrooveLines(p, traits)) remaining.add(Math.round(g.remaining * 1e6) / 1e6);
+  }
+  if (remaining.size === 0) return null;
+  const tool = vGrooveToolOf(project, machine);
+  return {
+    tool: tool?.number ?? null,
+    angle: tool?.angleDeg ?? null,
+    remaining: [...remaining].sort((a, b) => a - b),
+  };
+}

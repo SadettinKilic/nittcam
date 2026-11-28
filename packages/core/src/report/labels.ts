@@ -7,6 +7,9 @@ import { z } from 'zod';
 import type { Part, Project } from '../schema/project';
 import { innerOperation } from '../schema/operations';
 import { partNumber } from '../cutlist/part-number';
+import { materialKindOf } from '../machine/material';
+import { traitsOf } from '../machine/material-traits';
+import { vGrooveLines, vGrooveTraitsOf } from '../toolpath/vgroove';
 import { projectReport, type BandEdge, type ReportPartRow } from './report';
 
 /** A4 portrait, mm. Label sheets are always A4. */
@@ -124,6 +127,29 @@ export interface PartLabel {
   sheet: number | null;
   /** Depths of the part's blind contour pockets, mm (T325), in inner contour order; empty = none. */
   pocketDepths: number[];
+  /**
+   * T355 (analysis §5.9 "Etiket"): the stock's direction is directed (ACM film arrow, T347), so the
+   * arrow has one head; this is its part-frame direction, degrees [0, 360) (the part's angle plus
+   * 180° when flipped). Absent on axial and directionless kinds (their labels are unchanged).
+   */
+  filmArrow?: number;
+  /** T355: number of V-grooves (folds) of the part; absent when none (labels unchanged). */
+  folds?: number;
+}
+
+/** T355: number of V-grooves (fold lines) of a part on this stock; 0 where the kind has none. */
+export function foldCountOf(part: Part | undefined, material: string): number {
+  if (!part) return 0;
+  const traits = vGrooveTraitsOf(material);
+  return traits === null ? 0 : vGrooveLines(part, traits).length;
+}
+
+/** T355: the part-frame film arrow direction on a directed stock, else `undefined`. */
+function filmArrowOf(part: Part | undefined, material: string): number | undefined {
+  if (!part || part.grain.mode !== 'fixed') return undefined;
+  if (traitsOf(materialKindOf(material)).direction.kind !== 'directed') return undefined;
+  const a = part.grain.angle + (part.grain.flip === true ? 180 : 0);
+  return ((a % 360) + 360) % 360;
 }
 
 /** Depths of a part's blind contour pockets (T325), in inner contour order. */
@@ -146,7 +172,11 @@ export function partLabels(project: Project): PartLabel[] {
     for (const pl of sheet.placements) sheetOf.set(`${pl.partId}#${pl.index}`, s + 1);
   });
   const out: (PartLabel & { row: number; copy: number })[] = [];
+  const material = project.stock.material;
   for (const row of rows) {
+    const part = project.parts.find((p) => p.id === row.partId);
+    const filmArrow = filmArrowOf(part, material);
+    const folds = foldCountOf(part, material);
     for (let copy = 0; copy < row.qty; copy++) {
       out.push({
         row: row.row,
@@ -160,7 +190,9 @@ export function partLabels(project: Project): PartLabel[] {
         band: row.band,
         bandedEdges: row.bandedEdges,
         sheet: sheetOf.get(`${row.partId}#${copy}`) ?? null,
-        pocketDepths: pocketDepthsOf(project.parts.find((p) => p.id === row.partId)),
+        pocketDepths: pocketDepthsOf(part),
+        ...(filmArrow !== undefined ? { filmArrow } : {}),
+        ...(folds > 0 ? { folds } : {}),
       });
     }
   }
@@ -177,5 +209,7 @@ export function partLabels(project: Project): PartLabel[] {
     bandedEdges: l.bandedEdges,
     sheet: l.sheet,
     pocketDepths: l.pocketDepths,
+    ...(l.filmArrow !== undefined ? { filmArrow: l.filmArrow } : {}),
+    ...(l.folds !== undefined ? { folds: l.folds } : {}),
   }));
 }

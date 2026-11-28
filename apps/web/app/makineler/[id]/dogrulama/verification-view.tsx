@@ -5,6 +5,7 @@ import {
   type MeasurementIssue,
   type TestCutMeasurements,
   type TestCutSuggestion,
+  type TrayMeasurementKey,
   type UnverifiedReason,
   type VerificationState,
 } from '@nittcam/core';
@@ -47,12 +48,22 @@ import {
   type TestProgramPreview,
   type VerificationApiError,
   type VerificationOverview,
+  type VerificationPageFamily,
   type VerificationRequest,
   type VerificationResponse,
 } from '../../../../lib/verification-api';
 
 type Text = Messages['verification'];
-type FieldKey = keyof TestCutMeasurements;
+type FieldKey = keyof TestCutMeasurements | TrayMeasurementKey;
+type FormIssue = { field: string; code: MeasurementIssue['code'] };
+
+/** T356: the page families and their address (`?aile=kompozit`). */
+const PAGE_FAMILIES: readonly VerificationPageFamily[] = ['woodBoard', 'composite'];
+const FAMILY_QUERY: Record<VerificationPageFamily, string> = {
+  woodBoard: '',
+  composite: '?aile=kompozit',
+};
+const TRAY_FIELDS: FieldKey[] = ['remaining', 'outerX', 'outerY'];
 
 type Load =
   | { status: 'loading' }
@@ -77,11 +88,14 @@ const FIELDS: FieldKey[] = ['edgeX', 'edgeY', 'diagonal', 'holeDiameter', 'pocke
 
 export function VerificationView({
   machineId,
+  family = 'woodBoard',
   t,
   states,
   reasons,
 }: {
   machineId: string;
+  /** T356: the material family the page verifies. */
+  family?: VerificationPageFamily;
   t: Text;
   states: Messages['machines']['state'];
   reasons: Messages['wizard']['export']['reasons'];
@@ -93,9 +107,12 @@ export function VerificationView({
     async (silent = false) => {
       if (!silent) setLoad({ status: 'loading' });
       try {
-        const res = await fetch(`/api/machines/${encodeURIComponent(machineId)}/verification`, {
-          cache: 'no-store',
-        });
+        const res = await fetch(
+          `/api/machines/${encodeURIComponent(machineId)}/verification${
+            family === 'woodBoard' ? '' : `?family=${family}`
+          }`,
+          { cache: 'no-store' },
+        );
         if (res.status === 404) return setLoad({ status: 'notFound' });
         if (!res.ok) throw new Error(String(res.status));
         setLoad({ status: 'ready', data: (await res.json()) as VerificationOverview });
@@ -103,7 +120,7 @@ export function VerificationView({
         setLoad({ status: 'error' });
       }
     },
-    [machineId],
+    [machineId, family],
   );
 
   useEffect(() => {
@@ -146,6 +163,9 @@ export function VerificationView({
             />
           ) : null}
         </header>
+        {load.status === 'ready' ? (
+          <FamilyTabs machineId={machineId} data={load.data} t={t} states={states} />
+        ) : null}
       </div>
       {load.status === 'loading' ? (
         <div role="status" className="flex flex-col gap-4">
@@ -171,6 +191,51 @@ export function VerificationView({
 }
 
 /** Taslak → Air cut → Test kesimi → Doğrulanmış, with done / current / upcoming marks (T108). */
+/** T356 (§7.3): one tab per material family, each with its own state. */
+function FamilyTabs({
+  machineId,
+  data,
+  t,
+  states,
+}: {
+  machineId: string;
+  data: VerificationOverview;
+  t: Text;
+  states: Messages['machines']['state'];
+}) {
+  return (
+    <nav
+      aria-label={t.families.label}
+      className="flex flex-col gap-2"
+      data-testid="verification-families"
+    >
+      <ul className="flex flex-wrap gap-2">
+        {PAGE_FAMILIES.map((f) => {
+          const current = f === data.family;
+          return (
+            <li key={f}>
+              <Link
+                href={`/makineler/${encodeURIComponent(machineId)}/dogrulama${FAMILY_QUERY[f]}`}
+                aria-current={current ? 'page' : undefined}
+                data-testid={`verification-family-${f}`}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${focusRing} ${
+                  current
+                    ? 'border-accent-border bg-accent-subtle font-medium text-fg'
+                    : 'border-border text-fg-muted'
+                }`}
+              >
+                {t.families.names[f]}
+                <MachineStateBadge state={data.families[f]} label={states[data.families[f]]} />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-xs text-fg-muted">{t.families.note}</p>
+    </nav>
+  );
+}
+
 function Stepper({ state, t }: { state: VerificationState; t: Text }) {
   const statuses = stepStatuses(state);
   return (
@@ -308,6 +373,7 @@ function Ready({
   onChanged: () => void;
 }) {
   const part = data.testPart;
+  const tray = data.tray;
   return (
     <div className="flex flex-col gap-6">
       <Stepper state={data.state} t={t} />
@@ -362,6 +428,30 @@ function Ready({
                   x: mm.format(data.origin.sheetOffset.x),
                   y: mm.format(data.origin.sheetOffset.y),
                 })}
+              </p>
+            </Card>
+          ) : null}
+
+          {tray ? (
+            // T356: the ACM tray test part of the composite family.
+            <Card className="flex flex-col gap-3 p-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-fg">
+                <Ruler aria-hidden className="size-4 text-fg-muted" />
+                {t.trayTitle}
+              </h2>
+              <p data-testid="verification-tray" className="text-sm text-fg">
+                {fill(t.tray, {
+                  thickness: mm.format(tray.thickness),
+                  span: mm.format(tray.foldSpan),
+                  vBit: tray.vBit,
+                  angle: tray.vAngle,
+                  remaining: mm.format(tray.remaining),
+                  tool: tray.tool,
+                  diameter: mm.format(tray.toolDiameter),
+                })}
+              </p>
+              <p className="text-sm text-fg-muted">
+                {fill(t.trayFolded, { outer: mm.format(tray.foldedOuter) })}
               </p>
             </Card>
           ) : null}
@@ -523,6 +613,7 @@ function AirCutStep({
       step: 'airCut',
       profileVersionId: data.profileVersionId,
       checks,
+      family: data.family,
     });
     if (r.ok) {
       setSave({ status: 'done', response: r.response });
@@ -532,7 +623,9 @@ function AirCutStep({
 
   return (
     <StepCard id="air-title" index={1} title={t.airTitle} done={approved}>
-      <p className="text-sm text-fg">{fill(t.airBody, { gap: data.testPart?.airCutGap ?? '' })}</p>
+      <p className="text-sm text-fg">
+        {fill(t.airBody, { gap: data.testPart?.airCutGap ?? data.tray?.airCutGap ?? '' })}
+      </p>
       <Callout tone="info" icon={<CircleAlert />}>
         {t.airSafety}
       </Callout>
@@ -620,31 +713,35 @@ function TestCutStep({
   onChanged: () => void;
 }) {
   const part = data.testPart;
+  const tray = data.tray;
   const program = data.programs.testCut;
-  const needThickness = part?.zReference === 'table';
-  const fields: FieldKey[] = needThickness ? [...FIELDS, 'thickness'] : FIELDS;
+  const needThickness = !tray && part?.zReference === 'table';
+  // T356: the ACM tray asks the remaining skin and the folded outer size.
+  const fields: FieldKey[] = tray ? TRAY_FIELDS : needThickness ? [...FIELDS, 'thickness'] : FIELDS;
   const [values, setValues] = useState<Partial<Record<FieldKey, number | null>>>({});
   const [typing, setTyping] = useState<Partial<Record<FieldKey, NumberParseError>>>({});
-  const [issues, setIssues] = useState<MeasurementIssue[]>([]);
+  const [issues, setIssues] = useState<FormIssue[]>([]);
   const [save, setSave] = useState<Save>({ status: 'idle' });
 
-  const nominal: Partial<Record<FieldKey, number>> = part
-    ? {
-        edgeX: part.edge,
-        edgeY: part.edge,
-        diagonal: part.diagonal,
-        holeDiameter: part.holeDiameter,
-        pocketDepth: part.pocketDepth,
-        thickness: part.thickness,
-      }
-    : {};
+  const nominal: Partial<Record<FieldKey, number>> = tray
+    ? { remaining: tray.remaining, outerX: tray.foldedOuter, outerY: tray.foldedOuter }
+    : part
+      ? {
+          edgeX: part.edge,
+          edgeY: part.edge,
+          diagonal: part.diagonal,
+          holeDiameter: part.holeDiameter,
+          pocketDepth: part.pocketDepth,
+          thickness: part.thickness,
+        }
+      : {};
 
   async function submit(ev: React.FormEvent) {
     ev.preventDefault();
     // Text that is not a number yet stays in the form with an inline message (not sent).
     const bad = fields.filter((f) => typing[f] && typing[f] !== 'empty');
     if (bad.length > 0) {
-      setIssues(bad.map((field) => ({ field, code: 'NOT_A_NUMBER' }) as MeasurementIssue));
+      setIssues(bad.map((field) => ({ field, code: 'NOT_A_NUMBER' }) as FormIssue));
       return;
     }
     const measurements: Partial<Record<FieldKey, unknown>> = {};
@@ -658,6 +755,7 @@ function TestCutStep({
       step: 'testCut',
       profileVersionId: data.profileVersionId,
       measurements,
+      family: data.family,
     });
     if (r.ok) {
       setSave({ status: 'done', response: r.response });
@@ -703,6 +801,7 @@ function TestCutStep({
                 {t.formTitle}
               </h3>
               {needThickness ? <p className="text-xs text-fg-muted">{t.thicknessHelp}</p> : null}
+              {tray ? <p className="text-xs text-fg-muted">{t.trayHelp}</p> : null}
             </div>
             <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
               {fields.map((f) => {

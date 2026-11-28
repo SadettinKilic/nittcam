@@ -18,7 +18,11 @@ import {
   vacuumByHand,
   unverifiedTemplateNames,
   isBackFace,
+  materialKindOf,
   materialNcStatus,
+  unverifiedMaterialName,
+  verificationFamilyOf,
+  vGrooveChecklistOf,
   type ExportNcResult,
   type PostFile,
   type ProgramTools,
@@ -182,6 +186,20 @@ export async function runExport(
  * profile version (`profileVersionId`, else the one the project stores), every blocking validation
  * error, `exportNc` and its checks. Files only when everything passed (rule 9).
  */
+/**
+ * T356 (§7.3, D-118, D-138): the machine as a job sees it: `state` is the machine's state in the
+ * job's material family (wood and plastic: the board record, unchanged; ACM: its own test cut). A
+ * family without a passed test cut gives the "DOĞRULANMADI" header and the extra acceptance (R10).
+ */
+export function machineForJob<M extends MachineWithProfile | null>(
+  machine: M,
+  data: Pick<ProjectRow['data'], 'stock'>,
+): M {
+  if (!machine) return machine;
+  const family = verificationFamilyOf(materialKindOf(data.stock.material));
+  return { ...machine, state: machine.families[family] };
+}
+
 export async function runExportOf(
   scope: CompanyScope,
   project: ExportSource,
@@ -189,9 +207,12 @@ export async function runExportOf(
 ): Promise<ExportRun> {
   const data = project.data;
   const machineId = data.machine.machineId;
-  const machine = await scope.machines.getProfileVersion(
-    machineId,
-    profileVersionId ? { id: profileVersionId } : { version: data.machine.profileVersion },
+  const machine = machineForJob(
+    await scope.machines.getProfileVersion(
+      machineId,
+      profileVersionId ? { id: profileVersionId } : { version: data.machine.profileVersion },
+    ),
+    data,
   );
   const latest = await scope.machines.getWithProfile(machineId);
   const base = {
@@ -326,12 +347,24 @@ function checklistOf(
     fileNames: fileNameInfo(files.names, p.constraints.maxFileNameLength, files.latestLimit),
     ...(program && program.tabsNotHeld > 0 ? { tabsNotHeld: program.tabsNotHeld } : {}),
     // D-130 / T346: ACM NC ships with unverified starting values; a required line to tick.
-    ...(materialNcStatus(data.stock.material) === 'unverified'
+    // T356: until the machine has a passed test cut in the job's family.
+    ...(materialNcStatus(data.stock.material) === 'unverified' &&
+    unverifiedMaterialName(data, machine.state) !== undefined
       ? { unverifiedMaterial: true as const }
       : {}),
     // T393 (CTO #14 M1): a back-face stock is cut mirrored; a required line to tick.
     ...(isBackFace(data) ? { backFace: true as const } : {}),
+    // T355 (analysis §5.6): a job with V-grooves names the V-bit and the remaining skin.
+    ...vGrooveChecklist(data, p),
   };
+}
+
+function vGrooveChecklist(
+  data: ProjectRow['data'],
+  profile: MachineWithProfile['profile'],
+): Pick<ExportChecklistInfo, 'vGroove'> {
+  const v = vGrooveChecklistOf(data, profile);
+  return v ? { vGroove: v } : {};
 }
 
 export function profileInfo(run: ExportRun): ExportProfileInfo | null {

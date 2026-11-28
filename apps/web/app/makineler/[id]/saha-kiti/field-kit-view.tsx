@@ -17,7 +17,7 @@ type Load =
   | { status: 'loading' }
   | { status: 'notFound' }
   | { status: 'error' }
-  | { status: 'ready'; data: VerificationOverview };
+  | { status: 'ready'; data: VerificationOverview; acm: VerificationOverview | null };
 
 const mm = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
@@ -49,12 +49,16 @@ export function FieldKitView({
   const reload = useCallback(async () => {
     setLoad({ status: 'loading' });
     try {
-      const res = await fetch(`/api/machines/${encodeURIComponent(machineId)}/verification`, {
-        cache: 'no-store',
-      });
+      const base = `/api/machines/${encodeURIComponent(machineId)}/verification`;
+      // T356: the composite family's overview brings the ACM tray (null when it cannot load).
+      const [res, acmRes] = await Promise.all([
+        fetch(base, { cache: 'no-store' }),
+        fetch(`${base}?family=composite`, { cache: 'no-store' }).catch(() => null),
+      ]);
       if (res.status === 404) return setLoad({ status: 'notFound' });
       if (!res.ok) throw new Error(String(res.status));
-      setLoad({ status: 'ready', data: (await res.json()) as VerificationOverview });
+      const acm = acmRes?.ok ? ((await acmRes.json()) as VerificationOverview) : null;
+      setLoad({ status: 'ready', data: (await res.json()) as VerificationOverview, acm });
     } catch {
       setLoad({ status: 'error' });
     }
@@ -114,7 +118,7 @@ export function FieldKitView({
       ) : load.status === 'error' ? (
         <ErrorState title={t.loadError} onRetry={() => void reload()} retryLabel={t.retry} />
       ) : (
-        <Kit data={load.data} t={t} verification={verification} options={options} />
+        <Kit data={load.data} acm={load.acm} t={t} verification={verification} options={options} />
       )}
     </main>
   );
@@ -161,13 +165,119 @@ function Checklist({ items, ordered = false }: { items: string[]; ordered?: bool
   );
 }
 
+/**
+ * T356 (§7.3, analysis §9.2 A2): the composite family's test part, the V-groove tray: programs,
+ * the protocol and the measurement rows. Shown only when the machine can cut it (an ACM set and a
+ * V-bit); otherwise a note says what is missing.
+ */
+function AcmTray({
+  acm,
+  t,
+  verification,
+}: {
+  acm: VerificationOverview | null;
+  t: Text;
+  verification: Messages['verification'];
+}) {
+  const tray = acm?.tray ?? null;
+  const values = tray
+    ? {
+        thickness: mm.format(tray.thickness),
+        vBit: tray.vBit,
+        angle: tray.vAngle,
+        remaining: mm.format(tray.remaining),
+        outer: mm.format(tray.foldedOuter),
+        gap: tray.airCutGap,
+      }
+    : {};
+  return (
+    <Section title={t.acm.title} testId="field-kit-acm">
+      {!acm || !tray ? (
+        <p className="text-sm text-fg-muted" data-testid="field-kit-acm-unavailable">
+          {t.acm.unavailable}
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-fg">{fill(t.acm.text, values)}</p>
+          <Checklist items={t.acm.steps.map((s) => fill(s, values))} ordered />
+          <div className="grid gap-4 md:grid-cols-2" data-no-print>
+            <div className="flex flex-col gap-2">
+              <h3 className="text-sm font-medium text-fg">{t.acm.airCut}</h3>
+              <ProgramFiles
+                program={acm.programs.airCut}
+                t={verification}
+                testId="field-kit-acm-air"
+                needsAccept={acm.unverifiedReasons.length > 0}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <h3 className="text-sm font-medium text-fg">{t.acm.testCut}</h3>
+              {acm.programs.testCut.allowed ? (
+                <ProgramFiles
+                  program={acm.programs.testCut}
+                  t={verification}
+                  testId="field-kit-acm-cut"
+                  needsAccept={acm.unverifiedReasons.length > 0}
+                />
+              ) : (
+                <p className="text-sm text-fg-muted" data-testid="field-kit-acm-cut-blocked">
+                  {t.extended.blocked}
+                </p>
+              )}
+            </div>
+          </div>
+          <table className="w-full text-left text-sm text-fg" data-testid="field-kit-acm-form">
+            <caption className="sr-only">{t.acm.title}</caption>
+            <thead className="text-xs text-fg-muted">
+              <tr>
+                <th scope="col" className="py-1.5 pr-3 font-medium">
+                  {t.form.measure}
+                </th>
+                <th scope="col" className="py-1.5 pr-3 font-medium">
+                  {t.form.target}
+                </th>
+                <th scope="col" className="w-28 py-1.5 font-medium">
+                  {t.form.measured}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {(
+                [
+                  ['remaining', `${mm.format(tray.remaining)} ± 0,1`],
+                  ['outerX', `${mm.format(tray.foldedOuter)} ± 0,5`],
+                  ['outerY', `${mm.format(tray.foldedOuter)} ± 0,5`],
+                ] as const
+              ).map(([key, target]) => (
+                <tr key={key} className="border-t border-border-subtle">
+                  <th scope="row" className="py-2 pr-3 font-normal">
+                    {verification.fields[key]}
+                  </th>
+                  <td className="numeric py-2 pr-3" data-testid={`field-kit-acm-target-${key}`}>
+                    {target}
+                  </td>
+                  <td className="py-2">
+                    <span aria-hidden className="block h-5 border-b border-border-strong" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </Section>
+  );
+}
+
 function Kit({
   data,
+  acm,
   t,
   verification,
   options,
 }: {
   data: VerificationOverview;
+  acm: VerificationOverview | null;
   t: Text;
   verification: Messages['verification'];
   options: Options;
@@ -331,6 +441,7 @@ function Kit({
           </div>
         </Section>
       ) : null}
+      <AcmTray acm={acm} t={t} verification={verification} />
       <Section title={t.record.title} testId="field-kit-record">
         <Checklist items={t.record.items} />
       </Section>
