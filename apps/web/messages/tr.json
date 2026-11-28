@@ -3582,6 +3582,16 @@
         "front": "Ön yüz",
         "back": "Arka yüz"
       }
+    },
+    "assembly": {
+      "title": "Montaj föyü",
+      "details": "Patlatılmış görünüm · {count} parça",
+      "no": "No",
+      "name": "Parça",
+      "size": "Ölçü (mm)",
+      "qty": "Adet",
+      "more": "… ve {count} parça daha (tam liste: Parça listesi sayfası)",
+      "note": "Montaj tezgâhındaki yerleşimden çizilmiştir; yalnızca görünüm."
     }
   },
   "onboarding": {
@@ -3944,7 +3954,7 @@
     "fit": "Tümünü sığdır",
     "zoomIn": "Yakınlaştır",
     "zoomOut": "Uzaklaştır",
-    "savePng": "Görüntü kaydet",
+    "savePng": "Montaj görseli (PNG)",
     "hints": {
       "select": "Bir parçayı tıklayıp seçin. W taşı, E döndür, M yüzey yüzeye oturt.",
       "move": "Okla bir eksende, kareyle bir düzlemde taşıyın. Shift: serbest (1 mm adım kapalı).",
@@ -4027,7 +4037,9 @@
       "section": "Kesit",
       "sectionOff": "Kapalı",
       "sectionAt": "Kesit konumu",
-      "flip": "Diğer yarıyı göster"
+      "flip": "Diğer yarıyı göster",
+      "sheet": "Montaj föyünü proje PDF'ine ekle",
+      "sheetHint": "PDF'in sonuna patlatılmış görünüm ve numaralı parça listesi sayfası eklenir (gizli parçalar hariç)."
     },
     "measure": {
       "distance": "Mesafe {mm} mm",

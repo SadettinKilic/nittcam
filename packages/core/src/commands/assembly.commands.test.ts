@@ -166,3 +166,34 @@ describe('part edits keep the assembly valid', () => {
     );
   });
 });
+
+describe('setAssemblySheet (T389)', () => {
+  it('on adds the flag (valid project); off with nothing placed restores the project', () => {
+    const p0 = load();
+    const on = applied(p0, 'setAssemblySheet', { on: true, updatedAt: at });
+    expect(on.assembly).toEqual({ instances: [], sheet: true, updatedAt: at });
+    expect(projectSchema.safeParse(on).success).toBe(true);
+    const off = applied(on, 'setAssemblySheet', { on: false, updatedAt: at });
+    expect(off).toEqual(p0);
+  });
+  it('off keeps placed copies; reset all keeps the flag', () => {
+    let p = applied(load(), 'setAssemblyInstances', {
+      instances: [inst('door-left', 0)],
+      updatedAt: at,
+    });
+    p = applied(p, 'setAssemblySheet', { on: true, updatedAt: at });
+    p = applied(p, 'resetAssembly', { updatedAt: at });
+    expect(p.assembly).toEqual({ instances: [], sheet: true, updatedAt: at });
+    p = applied(p, 'setAssemblyInstances', { instances: [inst('door-left', 0)], updatedAt: at });
+    p = applied(p, 'setAssemblySheet', { on: false, updatedAt: at });
+    expect(p.assembly?.sheet).toBeUndefined();
+    expect(p.assembly?.instances).toHaveLength(1);
+  });
+  it('one undo step', () => {
+    const stack = new CommandStack(load());
+    const before = stack.project;
+    expect(stack.execute('setAssemblySheet', { on: true, updatedAt: at }, user).ok).toBe(true);
+    stack.undo();
+    expect(stack.project).toEqual(before);
+  });
+});

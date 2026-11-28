@@ -504,7 +504,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             size="sm"
             onClick={() => {
               const url = capture.current?.();
-              if (url) void exportPng(url, 'nittcam-montaj-tezgahi.png');
+              if (url) void exportPng(url, 'nittcam-montaj-gorseli.png');
             }}
           >
             <ImageDown aria-hidden />
@@ -596,6 +596,8 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
             section={section}
             onSection={setSection}
             bounds={displayBounds}
+            sheet={project.assembly?.sheet === true}
+            onSheet={(on) => run('setAssemblySheet', { on, updatedAt: now() })}
           />
           {checkOn ? (
             <FitPanel

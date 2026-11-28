@@ -25,6 +25,8 @@ import {
   type CompanyMark,
 } from './document';
 import { addReportPages, reportPageCount } from './report-pages';
+import { addAssemblyPage } from './assembly-page';
+import { assemblySheet } from '../../preview3d/assembly-sheet';
 import {
   addLayoutPages,
   contentBox,
@@ -82,7 +84,12 @@ export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Arr
   const sheets = layoutDrawing(project);
   const report = projectReport(project, cutSeconds);
   const layoutPages = Math.max(1, sheets.length);
-  const pageCount = layoutPages + reportPageCount(report, paper);
+  // T389: the optional "Montaj föyü" page last (only with at least one visible copy).
+  const sheet = project.assembly?.sheet
+    ? assemblySheet(project, messages.cutList.cabinet.roles)
+    : null;
+  const reportPages = reportPageCount(report, paper);
+  const pageCount = layoutPages + reportPages + (sheet ? 1 : 0);
   if (sheets.length === 0) {
     const size = PAPER_SIZES[paper];
     const page = doc.addPage([size.width, size.height]);
@@ -104,5 +111,6 @@ export async function renderProjectPdf(input: ProjectPdfInput): Promise<Uint8Arr
     );
   }
   addReportPages(doc, fonts, head, report, paper, layoutPages, pageCount);
+  if (sheet) addAssemblyPage(doc, fonts, head, sheet, paper, pageCount, pageCount);
   return saveDocument(doc);
 }

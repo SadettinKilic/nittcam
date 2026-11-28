@@ -86,13 +86,48 @@ export const resetAssembly = defineCommand({
     const assembly = draft.assembly;
     if (!assembly) return;
     if (!params.ids) {
-      delete draft.assembly;
+      // The PDF page choice (T389) survives "Tümünü başa al".
+      if (assembly.sheet) {
+        if (assembly.instances.length === 0) return;
+        assembly.instances = [];
+        assembly.updatedAt = params.updatedAt;
+      } else delete draft.assembly;
       return;
     }
     const drop = new Set(params.ids);
     const kept = assembly.instances.filter((i) => !drop.has(i.id));
     if (kept.length === assembly.instances.length) return;
     assembly.instances = kept;
+    assembly.updatedAt = params.updatedAt;
+  },
+});
+
+/**
+ * T389: the "Montaj föyü" page in the project PDF on or off. Off with nothing placed leaves the
+ * project as it was before any assembly edit.
+ */
+export const setAssemblySheet = defineCommand({
+  name: 'setAssemblySheet',
+  area: 'assembly',
+  description:
+    'Add or remove the assembly sheet page (exploded view + part list) in the project PDF.',
+  aiTool: false,
+  params: z.strictObject({ on: z.boolean(), updatedAt }),
+  apply: (draft, params) => {
+    const assembly = draft.assembly;
+    if (Boolean(assembly?.sheet) === params.on) return;
+    if (params.on) {
+      const a = (draft.assembly ??= { instances: [], updatedAt: params.updatedAt });
+      a.sheet = true;
+      a.updatedAt = params.updatedAt;
+      return;
+    }
+    if (!assembly) return;
+    if (assembly.instances.length === 0) {
+      delete draft.assembly;
+      return;
+    }
+    delete assembly.sheet;
     assembly.updatedAt = params.updatedAt;
   },
 });

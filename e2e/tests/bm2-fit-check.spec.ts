@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
-import { openNewProject, paste, watchConsole } from './wizard-helpers';
+import { openNewProject, paste, saved, watchConsole } from './wizard-helpers';
 
 /**
  * B-M2 T388: "Oturuyor mu?" on the montaj tezgâhı. Two panels overlapping by 2 mm turn red with
@@ -136,5 +136,25 @@ test('measure: two face points, distance and face gap (T389)', async ({ page }) 
   await expect(page.getByTestId('bench-hint')).toContainText('Yüzeyler arası 0 mm');
   await page.keyboard.press('Escape');
   await expect(bench).toHaveAttribute('data-picks', '');
+  expect(errors).toEqual([]);
+});
+
+test('Montaj föyü switch is stored with the project and undoable (T389)', async ({ page }) => {
+  const errors = watchConsole(page);
+  await openBench(page);
+  const sw = page.getByTestId('bench-sheet');
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  await saved(page);
+  await page.reload();
+  await expect(page.getByTestId('bench')).toHaveAttribute('data-ready', 'true', {
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId('bench-sheet')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('bench-sheet').click();
+  await expect(page.getByTestId('bench-sheet')).toHaveAttribute('aria-checked', 'false');
+  await page.keyboard.press('Control+z');
+  await expect(page.getByTestId('bench-sheet')).toHaveAttribute('aria-checked', 'true');
   expect(errors).toEqual([]);
 });

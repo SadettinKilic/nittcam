@@ -6,7 +6,7 @@ import type { Patch } from 'immer';
 import { immer } from './immer';
 import { z } from 'zod';
 import { formatPath, projectSchema, pruneAssembly, type Project } from '../schema';
-import { resetAssembly, setAssemblyInstances } from './assembly';
+import { resetAssembly, setAssemblyInstances, setAssemblySheet } from './assembly';
 import { validateProject, type ValidationContext, type ValidationIssue } from '../validate';
 import {
   addPart,
@@ -151,6 +151,7 @@ export const COMMANDS = {
   updateTemplateVersion,
   setAssemblyInstances,
   resetAssembly,
+  setAssemblySheet,
 } as const satisfies Record<string, CommandDefinition>;
 
 export type CommandName = keyof typeof COMMANDS;

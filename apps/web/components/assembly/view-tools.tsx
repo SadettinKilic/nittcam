@@ -3,7 +3,7 @@
  * Explode slider and section plane of the montaj tezgâhı (T389). Display only: the exploded poses
  * and the cut are never stored.
  */
-import { Button, Slider, cn } from '@nittcam/ui';
+import { Button, Slider, Switch, cn } from '@nittcam/ui';
 import { FlipHorizontal2 } from 'lucide-react';
 import type { Messages } from '../../lib/messages';
 import { fill } from '../../lib/fill';
@@ -20,6 +20,8 @@ export function ViewTools({
   section,
   onSection,
   bounds,
+  sheet,
+  onSheet,
 }: {
   t: T;
   /** 0 … 100 %. */
@@ -28,6 +30,9 @@ export function ViewTools({
   section: Section | null;
   onSection: (s: Section | null) => void;
   bounds: Bounds | null;
+  /** The "Montaj föyü" page in the project PDF (stored in the project). */
+  sheet: boolean;
+  onSheet: (on: boolean) => void;
 }) {
   const v = t.tools;
   const range = (axis: 0 | 1 | 2): [number, number] =>
@@ -117,6 +122,23 @@ export function ViewTools({
             </Button>
           </>
         ) : null}
+      </div>
+      <div className="flex items-start gap-2 border-border border-t pt-2">
+        <Switch
+          id="bench-sheet"
+          checked={sheet}
+          onCheckedChange={onSheet}
+          data-testid="bench-sheet"
+          aria-describedby="bench-sheet-hint"
+        />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <label htmlFor="bench-sheet" className="text-xs text-fg">
+            {v.sheet}
+          </label>
+          <p id="bench-sheet-hint" className="text-xs text-fg-muted">
+            {v.sheetHint}
+          </p>
+        </div>
       </div>
     </section>
   );

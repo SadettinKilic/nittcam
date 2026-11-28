@@ -52,4 +52,4 @@ export {
   nextInstanceId,
 } from './part/templates';
 export * from './project-defaults';
-export { setAssemblyInstances, resetAssembly } from './assembly';
+export { setAssemblyInstances, resetAssembly, setAssemblySheet } from './assembly';

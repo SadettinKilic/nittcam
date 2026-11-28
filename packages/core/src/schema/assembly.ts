@@ -46,6 +46,8 @@ export const assemblyInstanceSchema = z.strictObject({
 
 export const assemblySchema = z.strictObject({
   instances: z.array(assemblyInstanceSchema).max(ASSEMBLY_INSTANCES_MAX),
+  /** T389: add the "Montaj föyü" page (exploded view + numbered part list) to the project PDF. */
+  sheet: z.boolean({ error: 'must be true or false' }).optional(),
   /** Last edit (ISO 8601), passed in by the caller (core has no clock). */
   updatedAt: z.iso.datetime({ offset: true, error: 'updatedAt must be an ISO 8601 date-time' }),
 });
