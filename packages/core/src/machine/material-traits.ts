@@ -107,6 +107,11 @@ export interface MaterialTraits {
    */
   entry: { straightPlunge: boolean; rampDeg: { default: number; max: number } | null };
   /**
+   * T422 (analysis §4.2 "Kesim yönü", §4.5): the cut direction a stock of this kind starts with.
+   * Wood, plastic and aluminium: climb (today); ACM: conventional (Alucobond).
+   */
+  cutDirection: 'climb' | 'conventional';
+  /**
    * T351 (analysis §4.2 "Paso derinliği tavanı"): the step-down ceiling as a share of the tool
    * diameter (scaled by the machine rigidity, `stepDownCeiling`); `null` = no ceiling (today).
    */
@@ -189,6 +194,7 @@ const BOARD = {
   needsMetalMachine: false,
   coolant: 'none',
   entry: { straightPlunge: true, rampDeg: null },
+  cutDirection: 'climb',
   stepDown: { maxPerDiameter: null },
   chipLoad: null,
   finish: { defaultAllowance: null },
@@ -302,6 +308,8 @@ export const MATERIAL_TRAITS: Readonly<Record<MaterialKind, MaterialTraits>> = {
       bounds: { minWidth: 3, minAnchor: 3, minHeight: 0.5, belowThickness: 0.5 },
     },
     ...METAL_COMMON,
+    // T422 (§4.5): Alucobond cuts conventional; the toolpath starts so.
+    cutDirection: 'conventional',
     // §4.2 "İnce tabaka: gizli"; bounds like the tab heights (0,5 … t − 0,5) for a carried-over skin.
     skin: { min: 0.5, belowThickness: 0.5, offered: false },
     coolant: 'recommended',

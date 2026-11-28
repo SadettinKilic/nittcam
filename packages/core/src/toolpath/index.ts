@@ -60,8 +60,8 @@ export {
   pocketRings,
 } from './holes';
 export { buildOnlineOperation, openSegments, type OnlineInput } from './online';
-export { cuttingSettingsOf, inheritedTabs, tabModeOf } from './cutting-settings';
-export type { CuttingSettings, TabMode, TabSource } from './cutting-settings';
+export { contourEntryOf, cuttingSettingsOf, inheritedTabs, tabModeOf } from './cutting-settings';
+export type { ContourEntry, CuttingSettings, TabMode, TabSource } from './cutting-settings';
 export {
   CHIP_LOAD_HIGH_FACTOR,
   FEED_HIGH_FACTOR,

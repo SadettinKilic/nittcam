@@ -119,6 +119,7 @@ import { ariaKeyShortcuts, shortcutById } from '../../lib/shortcuts';
 import { useMediaQuery, WORKSPACE_DESKTOP } from '../../lib/use-media-query';
 import { setSidebarWorkspace } from '../../lib/sidebar-state';
 import { PageSkeleton } from '../feedback/page-skeleton';
+import { STEP_STATE, writeAddress } from '../../lib/address-write';
 import { ShellStatus, useShellTitle } from '../shell/shell-context';
 
 const mmText = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
@@ -139,7 +140,6 @@ function stepUrl(id: string | null, step: StepKey, draft?: string): string {
  * History entries of wizard steps carry this marker (D-029, D-030: steps are `pushState` entries,
  * so browser Back goes to the previous step). Next.js keeps extra keys in its history state.
  */
-const STEP_STATE = 'nittcamStep';
 
 function isStepEntry(): boolean {
   if (typeof window === 'undefined') return false;
@@ -549,11 +549,8 @@ function WizardSession({
   });
   const setPartsView = useCallback((v: PartsView) => {
     setPartsViewState(v);
-    const url = new URL(window.location.href);
-    const param = VIEW_PARAM[v];
-    if (param) url.searchParams.set('gorunum', param);
-    else url.searchParams.delete('gorunum');
-    window.history.replaceState(window.history.state, '', url);
+    // T399: merged into the address as it is now, and seen by Next's router (address-write).
+    writeAddress('replace', { query: { gorunum: VIEW_PARAM[v] ?? null } });
   }, []);
   // T240: below 640 px the wizard header is one compact row; T241: on ≥ 1024 px the
   // Liste / Çizim switch sits in the header row, below that (drawing view) in the canvas band.
@@ -641,6 +638,7 @@ function WizardSession({
   // navigation, so the address swaps below wait while one may be on its way.
   const leaving = useRef(false);
   const swapTimer = useRef<number | undefined>(undefined);
+  const savedId = useRef<string | null>(null);
   useEffect(() => {
     const mark = () => {
       leaving.current = true;
@@ -659,17 +657,20 @@ function WizardSession({
 
   const created = useCallback(
     (id: string) => {
+      // T399: step changes before the session re-renders with its id already name the project.
+      savedId.current = id;
       const swap = () => {
         // T264: a save that lands after the user left the wizard (e.g. for the machine form) must
         // not rewrite that page's address.
         if (window.location.pathname !== NEW_PATH) return;
-        // Keep the step's other query params (e.g. `?gorunum=cizim`, T124) across the first save.
-        const url = new URL(stepUrl(id, stepRef.current), window.location.origin);
-        new URLSearchParams(window.location.search).forEach((value, key) => {
-          if (key !== 'adim' && key !== DRAFT_PARAM) url.searchParams.set(key, value);
-        });
-        const next = url.pathname + url.search;
-        window.history.replaceState({ [STEP_STATE]: stepRef.current }, '', next);
+        // Keep the step's other query params (e.g. `?gorunum=cizim`, T124) across the first save;
+        // T399: read at the moment of the swap and told to Next's router, so a step or view change
+        // in the same moment is neither dropped here nor undone by the router's next commit.
+        writeAddress(
+          'replace',
+          { path: `/projeler/${id}`, query: { adim: stepRef.current, [DRAFT_PARAM]: null } },
+          { [STEP_STATE]: stepRef.current },
+        );
       };
       if (leaving.current) {
         // A navigation may still be loading: leaving unmounts the wizard (and clears the timer);
@@ -746,9 +747,8 @@ function WizardSession({
     const pinned = session.project.machine;
     if (detail.id === pinned.machineId && detail.version !== pinned.profileVersion)
       session.run('setMachine', { machineId: detail.id, profileVersion: detail.version });
-    const url = new URL(window.location.href);
-    url.searchParams.delete(LATEST_PARAM);
-    window.history.replaceState(window.history.state, '', url);
+    // T392: a clean-up the router does not hear about comes back with its next commit.
+    writeAddress('replace', { query: { [LATEST_PARAM]: null } });
   }, [takeLatest, detail, session]);
   // T187: offline or a failed save shows a banner with the unsent queue and Tekrar dene (it
   // replaces the T105 toast); autosave keeps retrying and sends at once when the network is back.
@@ -905,7 +905,7 @@ function WizardSession({
         window.history.pushState(
           { [STEP_STATE]: next },
           '',
-          stepUrl(session.projectId, next, session.draftId),
+          stepUrl(session.projectId ?? savedId.current, next, session.draftId),
         );
       }
       stepRef.current = next;
@@ -1000,7 +1000,7 @@ function WizardSession({
       window.history.pushState(
         { [STEP_STATE]: 'parcalar' },
         '',
-        `${stepUrl(session.projectId, 'parcalar', session.draftId)}&gorunum=cizim`,
+        `${stepUrl(session.projectId ?? savedId.current, 'parcalar', session.draftId)}&gorunum=cizim`,
       );
       stepRef.current = 'parcalar';
     },
@@ -1019,7 +1019,7 @@ function WizardSession({
       window.history.pushState(
         { [STEP_STATE]: 'parcalar' },
         '',
-        stepUrl(session.projectId, 'parcalar', session.draftId),
+        stepUrl(session.projectId ?? savedId.current, 'parcalar', session.draftId),
       );
       stepRef.current = 'parcalar';
     },

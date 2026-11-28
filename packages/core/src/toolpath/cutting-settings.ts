@@ -5,6 +5,8 @@
  */
 import { findMaterialParams, type MachineProfile } from '../machine';
 import type { Project } from '../schema';
+import { materialKindOf } from '../machine/material';
+import { traitsOf } from '../machine/material-traits';
 import { defaultTabHeight, holdLimitsOf } from './tabs';
 
 export type TabMode = 'all' | 'small' | 'off';
@@ -99,4 +101,26 @@ export function inheritedTabs(
     height: tabs.height,
     source: tabs.source.count === 'material' ? 'material' : 'default',
   };
+}
+
+/** A contour ramp entry: angle in degrees, leg at least `length` mm (absent = the tool diameter). */
+export interface ContourEntry {
+  angleDeg: number;
+  length?: number;
+}
+
+/**
+ * The contour entry the toolpath cuts (T324, T422): the project's own ramp, else the stock's
+ * traits: a kind without a straight plunge (ACM, aluminium; analysis §4.5 rule 12) ramps in at its
+ * default angle; null = straight plunge (wood and plastic, today).
+ */
+export function contourEntryOf(project: Project): ContourEntry | null {
+  const own = project.cutting.entry;
+  if (own)
+    return own.length === undefined
+      ? { angleDeg: own.angleDeg }
+      : { angleDeg: own.angleDeg, length: own.length };
+  const entry = traitsOf(materialKindOf(project.stock.material)).entry;
+  if (entry.straightPlunge || entry.rampDeg === null) return null;
+  return { angleDeg: entry.rampDeg.default };
 }
