@@ -6,6 +6,7 @@
  * - `usableOffcuts`: the stored offcuts a project can nest on (same material and thickness,
  *   available, grain matching the sheet grain), as sheets in the sheet frame.
  */
+import { propsMatch, type MaterialProps } from '../machine/material-props';
 import { z } from 'zod';
 import { defaultSheet, sheetSizeOf, type Project } from '../schema';
 import { toCutSizes } from '../schema/cut-size';
@@ -44,6 +45,8 @@ export interface OffcutRow {
   height: number;
   grain: number | null;
   status: string;
+  /** T350: alloy / colour code of the sheet it came from (absent or `{}` = none). */
+  props?: MaterialProps | undefined;
 }
 
 /** Sheet grain as the offcuts table stores it; `undefined` = not storable (a free angle). */
@@ -102,7 +105,8 @@ export function proposeOffcuts(
 }
 
 /**
- * Stored offcuts usable for `project` (T168): available, same material and thickness, and a grain
+ * Stored offcuts usable for `project` (T168): available, same material and thickness (T350: and the
+ * same alloy or colour code when both sides have one), and a grain
  * that matches the sheet grain (an offcut stored at 90° on a 0° sheet is turned: width and height
  * swap). With a grained sheet an offcut without grain is skipped, and a sheet grain other than
  * 0°/90° uses no offcuts. Order: smallest area first, then id.
@@ -117,6 +121,8 @@ export function usableOffcuts(
   for (const r of rows) {
     if (r.status !== 'available') continue;
     if (r.material !== project.stock.material || r.thickness !== project.stock.thickness) continue;
+    // T350: same alloy / colour code when both sides have one
+    if (!propsMatch(project.stock.props, r.props)) continue;
     if (g === null || r.grain === g) out.push({ id: r.id, width: r.width, height: r.height });
     else if (r.grain === 0 || r.grain === 90)
       out.push({ id: r.id, width: r.height, height: r.width });

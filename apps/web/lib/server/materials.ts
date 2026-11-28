@@ -1,4 +1,9 @@
-import type { MaterialKind, MaterialTone } from '@nittcam/core';
+import {
+  cleanProps,
+  type MaterialKind,
+  type MaterialProps,
+  type MaterialTone,
+} from '@nittcam/core';
 import { InvalidMaterial, NotFound, type MaterialRow } from '@nittcam/db';
 import { NextResponse } from 'next/server';
 import { isRepoError } from './errors';
@@ -13,6 +18,8 @@ export function toItem(row: MaterialRow): MaterialItem {
     tone: row.tone as MaterialTone,
     grain: row.grain,
     sheetSizes: row.sheetSizes,
+    // T350: only the kind's fields (a hand-edited row cannot leak others)
+    props: cleanProps(row.kind as MaterialKind, row.props as MaterialProps),
   };
 }
 

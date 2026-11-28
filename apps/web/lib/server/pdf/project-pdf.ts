@@ -8,11 +8,13 @@ import {
   materialKindOf,
   projectReport,
   traitsOf,
+  type MaterialProps,
   type PaperSize,
   type Project,
 } from '@nittcam/core';
 import { PAPER_SIZES } from '@nittcam/core';
 import { fill } from '../../fill';
+import { materialHeadName } from '../../material-head';
 import { getMessages } from '../../messages';
 import {
   centred,
@@ -56,15 +58,13 @@ export interface ProjectPdfInput {
 
 /** Turkish material label and thickness for the page header. */
 export function materialLabel(project: Project): string {
-  return materialText(project.stock.material, project.stock.thickness);
+  return materialText(project.stock.material, project.stock.thickness, project.stock.props);
 }
 
 /** "MDF, 18 mm" for a material id and thickness (the header and the offcut line, B51). */
-export function materialText(material: string, thickness: number): string {
-  const kind = materialKindOf(material);
-  const names = messages.materials as Record<string, string>;
-  const name =
-    kind !== null && names[kind] ? names[kind] : fill(names['unknown'] ?? '{id}', { id: material });
+export function materialText(material: string, thickness: number, props?: MaterialProps): string {
+  // T350: "Alüminyum 5754, 3 mm" / "Kompozit panel, 4 mm"; wood and plastic as before
+  const name = materialHeadName(messages.materials, messages.materialHead, material, props);
   return fill(t.material, { material: name, thickness: mm(thickness) });
 }
 

@@ -40,7 +40,11 @@ import { fill } from '../../lib/fill';
 import { OffcutStock } from './offcut-stock';
 import { DRAFT_PARAM, discardLeftDraft, leftDrafts, type LeftDraft } from '../../lib/autosave';
 import { LeftDraftNotice } from './left-draft-notice';
-import type { Messages } from '../../lib/messages';
+import { getMessages, type Messages } from '../../lib/messages';
+import { materialHeadName } from '../../lib/material-head';
+
+/** T350: header names of the metal kinds (Kompozit panel, Alüminyum 5754). */
+const materialHead = getMessages().materialHead;
 import {
   NO_FILTERS,
   NO_MACHINE,
@@ -666,7 +670,13 @@ function ProjectList({
                         <dt className="lg:sr-only">{t.columns.material}:</dt>
                         <dd className="numeric">
                           {fill(t.material, {
-                            material: materialLabel(materials, item.material),
+                            // T350: "Alüminyum 5754" / "Kompozit panel"
+                            material: materialHeadName(
+                              materials,
+                              materialHead,
+                              item.material,
+                              item.materialProps,
+                            ),
                             thickness: mmFormat.format(item.thickness),
                           })}
                           {' · '}

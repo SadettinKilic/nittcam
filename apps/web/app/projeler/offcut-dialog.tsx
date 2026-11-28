@@ -1,6 +1,6 @@
 'use client';
 
-import { MATERIAL_KINDS, traitsOf, materialKindOf } from '@nittcam/core';
+import { MATERIAL_KINDS, propsFieldsOf, traitsOf, materialKindOf } from '@nittcam/core';
 import {
   Button,
   Dialog,
@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   FormField,
+  Input,
   NumberInput,
   Select,
   SelectContent,
@@ -66,6 +67,8 @@ export function OffcutDialog({
   const ids = { material: useId(), grain: useId() };
   const kind = materialKindOf(v.material);
   const grainable = traitsOf(kind).direction.kind !== 'none';
+  // T350: the kind's matching property (aluminium alloy, ACM colour code)
+  const fields = propsFieldsOf(kind);
   // A stored material that is not a known kind stays selectable as itself.
   const options: string[] = kind || !item ? [...MATERIAL_KINDS] : [v.material, ...MATERIAL_KINDS];
 
@@ -172,6 +175,26 @@ export function OffcutDialog({
               {grainable ? null : <p className="text-xs text-fg-muted">{f.grainNoneHint}</p>}
             </div>
           </div>
+          {fields.includes('alloy') ? (
+            <FormField label={f.alloy} hint={f.alloyHint}>
+              <Input
+                data-testid="offcut-form-alloy"
+                value={v.alloy}
+                maxLength={20}
+                onChange={(e) => setV((x) => ({ ...x, alloy: e.target.value }))}
+              />
+            </FormField>
+          ) : null}
+          {fields.includes('colorCode') ? (
+            <FormField label={f.colorCode} hint={f.colorCodeHint}>
+              <Input
+                data-testid="offcut-form-colorCode"
+                value={v.colorCode}
+                maxLength={30}
+                onChange={(e) => setV((x) => ({ ...x, colorCode: e.target.value }))}
+              />
+            </FormField>
+          ) : null}
           {message ? (
             <p role="alert" className="text-sm text-danger-text" data-testid="offcut-form-message">
               {message}

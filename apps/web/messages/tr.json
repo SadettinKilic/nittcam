@@ -1786,6 +1786,10 @@
         "grain0": "Boyuna (0°)",
         "grain90": "Enine (90°)",
         "grainNoneHint": "Bu malzemede damar yok.",
+        "alloy": "Alaşım",
+        "alloyHint": "Boşsa her alaşımlı projede kullanılır.",
+        "colorCode": "Renk kodu",
+        "colorCodeHint": "Boşsa her renkli projede kullanılır.",
         "save": "Kaydet",
         "cancel": "Vazgeç",
         "invalid": "En, boy ve kalınlık 0'dan büyük ve en çok 10.000 mm olmalı.",
@@ -1802,6 +1806,10 @@
     },
     "changed": "değişti",
     "changedTitle": "Üretildikten sonra değişti (Rev. {current}; son NC Rev. {nc})"
+  },
+  "materialHead": {
+    "names": { "acm": "Kompozit panel" },
+    "alloyNames": { "aluminium": "Alüminyum {alloy}" }
   },
   "materials": {
     "mdf": "MDF",
@@ -3265,6 +3273,24 @@
       "grainAngle": "Damar açısı",
       "grainHint": "0° = uzun kenar boyunca, 90° = kısa kenar boyunca.",
       "grainPlastic": "Plastikte damar yoktur.",
+      "directionOn": "{direction} ver",
+      "props": {
+        "title": "Malzeme özellikleri",
+        "alloy": "Alaşım",
+        "alloyPlaceholder": "ör. 5754",
+        "temper": "Temper",
+        "temperPlaceholder": "ör. H22",
+        "finish": "Yüzey",
+        "finishNone": "Belirtilmedi",
+        "finishes": { "raw": "Ham", "brushed": "Fırçalı (satine)", "anodized": "Eloksallı" },
+        "film": "Koruyucu film var",
+        "colorCode": "Renk kodu",
+        "colorCodePlaceholder": "ör. RAL 9006",
+        "metallic": "Metalik / fırçalı renk (film oku yönü önemli)",
+        "skin": "Yüzey sacı kalınlığı",
+        "skinHint": "Genelde 0,3 ya da 0,5 mm.",
+        "invalid": "Özellikleri kontrol edin (yüzey sacı en çok 2 mm)."
+      },
       "save": "Kaydet",
       "cancel": "Vazgeç",
       "errors": {
@@ -3282,7 +3308,10 @@
       "grey": "Gri",
       "anthracite": "Antrasit",
       "black": "Siyah",
-      "clear": "Şeffaf"
+      "clear": "Şeffaf",
+      "aluminium": "Alüminyum",
+      "silver": "Gümüş",
+      "brass": "Pirinç"
     }
   },
   "dxfImport": {

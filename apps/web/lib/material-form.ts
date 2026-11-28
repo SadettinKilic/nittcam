@@ -2,7 +2,7 @@
  * Form model of the material library dialog (T121). Pure: the draft keeps `null` for empty or
  * unparsable number fields; `toMaterial` validates and returns the entry or the field errors.
  */
-import { libraryMaterialSchema, traitsOf, type LibraryMaterial } from '@nittcam/core';
+import { cleanProps, libraryMaterialSchema, traitsOf, type LibraryMaterial } from '@nittcam/core';
 
 export {
   draftFrom,
@@ -53,6 +53,8 @@ export function toMaterial(
     tone: d.tone,
     grain,
     sheetSizes: sheets,
+    // T350: only the kind's own fields (a kind change leaves no stale alloy)
+    props: cleanProps(d.kind, d.props),
   });
   if (!parsed.success) {
     const out: MaterialFormErrors = {};
@@ -62,6 +64,7 @@ export function toMaterial(
       else if (key === 'thicknesses') out.thicknesses = true;
       else if (key === 'sheetSizes') out.sheets = true;
       else if (key === 'grain') out.grain = true;
+      else if (key === 'props') out.props = true;
     }
     return { ok: false, errors: out };
   }

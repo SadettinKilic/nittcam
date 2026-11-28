@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import tr from '../../apps/web/messages/tr.json' with { type: 'json' };
+import { expectNoA11yViolations } from './visual/helpers';
 import { goStep, openNewProject, paste, pickOption } from './wizard-helpers';
 
 /**
@@ -18,10 +19,7 @@ test.describe('MB4 metal rules', () => {
     const select = page.getByTestId('wizard-material');
     await pickOption(select, m.aluminium);
     await expect(page.getByTestId('material-rule-metal')).toBeVisible();
-    await expect(page.getByTestId('material-rule-fix-metal')).toHaveAttribute(
-      'href',
-      /alan=metal/,
-    );
+    await expect(page.getByTestId('material-rule-fix-metal')).toHaveAttribute('href', /alan=metal/);
 
     await pickOption(select, m.mdf);
     await expect(page.getByTestId('material-rules')).toHaveCount(0);
@@ -46,5 +44,31 @@ test.describe('MB4 metal rules', () => {
     await expect(page.getByTestId('dimension-mode')).toBeChecked();
     await expect(page.getByTestId('cell-cut')).toHaveAttribute('data-w', '596');
     await expect(page.getByTestId('cell-cut')).toHaveAttribute('data-h', '398');
+  });
+
+  test('T350: library entry of aluminium keeps its alloy; ACM shows colour code and film arrow', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const f = tr.materialLibrary.form;
+    await page.goto('/ayarlar/malzemeler');
+    await page.getByTestId('material-add').click();
+    const dialog = page.getByTestId('material-dialog');
+    await dialog.getByTestId('material-name').fill('Alu 5754');
+    await expect(dialog.getByTestId('material-props')).toHaveCount(0);
+    await pickOption(dialog.getByTestId('material-kind'), m.acm);
+    await expect(dialog.getByTestId('material-color-code')).toBeVisible();
+    await expect(dialog.getByText(tr.direction.film.title).first()).toBeVisible();
+    await pickOption(dialog.getByTestId('material-kind'), m.aluminium);
+    await expect(dialog.getByTestId('material-color-code')).toHaveCount(0);
+    await dialog.getByTestId('material-alloy').fill('5754');
+    await pickOption(dialog.getByTestId('material-tone'), tr.materialLibrary.tones.aluminium);
+    await dialog.getByLabel(f.thicknessLabel.replace('{n}', '1')).fill('3');
+    await expectNoA11yViolations(page);
+    await dialog.getByTestId('material-save').click();
+    await expect(dialog).toHaveCount(0);
+    const row = page.locator('[data-testid=material-row][data-name="Alu 5754"]');
+    await row.getByTestId('material-edit').click();
+    await expect(dialog.getByTestId('material-alloy')).toHaveValue('5754');
   });
 });

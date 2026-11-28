@@ -31,7 +31,13 @@ describe('offcut form (T291)', () => {
       grain: 0,
     });
     expect(
-      offcutBody({ material: 'acrylic', thickness: 5, width: 300, height: 200, grain: 90 })?.grain,
+      offcutBody({
+        ...emptyOffcutForm('acrylic'),
+        thickness: 5,
+        width: 300,
+        height: 200,
+        grain: 90,
+      })?.grain,
     ).toBeNull();
     for (const bad of [0, -5, 10_001, Number.NaN, null]) {
       expect(offcutBody({ ...emptyOffcutForm(), width: bad, height: 400 })).toBeNull();
@@ -46,6 +52,25 @@ describe('offcut form (T291)', () => {
     expect(offcutChanges(item, { ...body, width: 850, grain: 90 })).toEqual({
       width: 850,
       grain: 90,
+    });
+  });
+
+  it('T350: only the own property of the kind is sent; a changed alloy is an edit', () => {
+    const alu = { ...emptyOffcutForm('aluminium'), thickness: 3, width: 500, height: 400 };
+    expect(offcutBody({ ...alu, alloy: ' 5754 ', colorCode: 'RAL 9006' })?.props).toEqual({
+      alloy: '5754',
+    });
+    expect(offcutBody({ ...alu, colorCode: 'RAL 9006' })).not.toHaveProperty('props');
+    const acm = { ...emptyOffcutForm('acm'), thickness: 4, width: 500, height: 400 };
+    expect(offcutBody({ ...acm, alloy: '5754', colorCode: 'RAL 9006' })?.props).toEqual({
+      colorCode: 'RAL 9006',
+    });
+    const stored = { ...item, material: 'aluminium', props: { alloy: '5754' } };
+    const body = offcutBody(offcutFormOf(stored));
+    if (!body) throw new Error('no body');
+    expect(offcutChanges(stored, body)).toEqual({});
+    expect(offcutChanges(stored, { ...body, props: { alloy: '6082' } })).toEqual({
+      props: { alloy: '6082' },
     });
   });
 });

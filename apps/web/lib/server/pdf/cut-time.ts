@@ -9,6 +9,7 @@ import {
   programTools,
   simulateProject,
   validateProject,
+  type MaterialProps,
 } from '@nittcam/core';
 import type { CompanyScope, ProjectRow } from '@nittcam/db';
 import { POST_CONFIGS } from '@nittcam/machines';
@@ -71,7 +72,7 @@ export async function pdfOffcuts(
     out[id] = {
       width: row.width,
       height: row.height,
-      material: materialText(row.material, row.thickness),
+      material: materialText(row.material, row.thickness, row.props as MaterialProps),
       source: source?.name ?? null,
       ref: id.slice(0, 8),
     };
