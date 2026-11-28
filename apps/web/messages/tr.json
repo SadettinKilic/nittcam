@@ -3461,6 +3461,7 @@
       "layer": "Katman",
       "count": "Nesne",
       "op": "İşlem",
+      "suggested": "katman adından önerildi",
       "ops": {
         "auto": "Otomatik (dış = parça, iç = iç kontur)",
         "outside": "Dış kesim (parça)",

@@ -41,6 +41,32 @@ export const DXF_LAYER_OPS_READY: readonly DxfLayerOp[] = [
   'ignore',
 ];
 
+/** Layer names that mean a fold line (B70 rider), compared without case, diacritics or separators. */
+const VGROOVE_LAYER_NAMES = ['VKANAL', 'VGROOVE', 'BUKUM'] as const;
+
+/** A layer name upper-cased, without diacritics (ü → U, ı → I) and without spaces, - or _. */
+function plainLayerName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/ı/g, 'i')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * The operation a layer name suggests before the company has mapped it: "V-kanal", "VKANAL",
+ * "V_GROOVE", "Büküm" (any case) → `vgroove`, only where the stock folds (`vGroove`). Else
+ * `undefined` (geometry decides, `auto`).
+ */
+export function suggestedLayerOp(layer: string, vGroove: boolean): DxfLayerOp | undefined {
+  if (!vGroove) return undefined;
+  const key = plainLayerName(layer);
+  return VGROOVE_LAYER_NAMES.includes(key as (typeof VGROOVE_LAYER_NAMES)[number])
+    ? 'vgroove'
+    : undefined;
+}
+
 /** Most layers one company keeps a mapping for. */
 export const MAX_DXF_LAYER_MAP = 500;
 

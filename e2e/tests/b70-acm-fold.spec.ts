@@ -49,7 +49,8 @@ test('ACM tray folds on the bench; no corner relief is red', async ({ page }) =>
   await dialog
     .getByTestId('dxf-file')
     .setInputFiles({ name: 'tepsi.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
-  await pickOption(dialog.getByTestId('dxf-layer-V-kanal'), tr.dxfImport.layers.ops.vgroove);
+  // B70 rider: the layer name alone makes it V-kanal on ACM (or the company mapping already does).
+  await expect(dialog.getByTestId('dxf-layer-V-kanal')).toHaveAttribute('data-value', 'vgroove');
   await dialog.getByTestId('dxf-confirm').click();
   await expect(dialog).toBeHidden();
 
