@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import tr from '../messages/tr.json';
 import {
   FORM_SECTIONS,
+  followsStartingValues,
   isDirty,
   newParamSet,
   paramFixHref,
@@ -357,5 +358,61 @@ describe('T396: "Örnek ACM ayarlarını ekle" from step 1', () => {
     const again = withAcmExamples(r.profile, { material: 'acm', thickness: 4 });
     expect(again.added).toBe(false);
     expect(again.profile.materials.length).toBe(r.profile.materials.length);
+  });
+});
+
+describe('T425: example ACM sets start filled; typed values stay unverified', () => {
+  it('the seeded machine (two-flute cutters) gets the O-flute cutter and every required field filled', () => {
+    const p = defaultMachineProfile();
+    const r = withAcmExamples(p, { material: 'acm', thickness: 4 });
+    const cutter = r.profile.tools.find((t) => t.type === 'flatEndMill' && t.flutes === 1);
+    expect(cutter).toMatchObject({ diameter: 6, flutes: 1 });
+    const acm = r.profile.materials.filter((m) => m.material === 'acm');
+    expect(acm.map((m) => m.thickness).sort()).toEqual([3, 4]);
+    for (const m of acm) {
+      expect(m.tool).toBe(cutter?.number);
+      expect(m.unverified).toBe(true);
+      expect(startingNote(r.profile, m).kind).toBe('table');
+    }
+    const four = acm.find((m) => m.thickness === 4);
+    const three = acm.find((m) => m.thickness === 3);
+    expect([four?.feed, four?.plungeFeed, four?.rpm, four?.stepDown]).toEqual([
+      2000, 500, 18000, 4,
+    ]);
+    expect(three?.stepDown).toBe(3);
+    // the whole profile is valid: Kaydet works without typing a number
+    expect(machineProfileSchema.safeParse(r.profile).success).toBe(true);
+  });
+
+  it('the form button (no stock set) adds the same, and never a second cutter', () => {
+    const once = withAcmExamples(defaultMachineProfile());
+    expect(once.index).toBe(-1);
+    expect(once.added).toBe(true);
+    const twice = withAcmExamples(once.profile);
+    expect(twice.added).toBe(false);
+    expect(twice.profile.tools.length).toBe(once.profile.tools.length);
+  });
+
+  it('a machine with a fitting ACM cutter gets no extra cutter', () => {
+    const p = defaultMachineProfile();
+    p.tools.push({ number: 9, type: 'flatEndMill', diameter: 8, fluteLength: 20, flutes: 1 });
+    const r = withAcmExamples(p, { material: 'acm', thickness: 4 });
+    expect(r.profile.tools.filter((t) => t.flutes === 1)).toHaveLength(1);
+    expect(r.profile.materials.find((m) => m.material === 'acm')?.tool).toBe(9);
+  });
+
+  it('a typed row no longer follows the table, but stays unverified', () => {
+    const p = withAcmExamples(defaultMachineProfile()).profile;
+    const found = p.materials.find((m) => m.material === 'acm');
+    if (!found) throw new Error('no ACM set');
+    const set = { ...found };
+    expect(followsStartingValues(p, set)).toBe(true);
+    set.feed = 1500; // typed by hand: the form keeps the unverified mark
+    expect(set.unverified).toBe(true);
+    expect(followsStartingValues(p, set)).toBe(false);
+    expect(startingNote(p, set).kind).toBe('other');
+    const empty = { ...set, feed: NaN, plungeFeed: NaN, rpm: NaN, stepDown: NaN };
+    expect(followsStartingValues(p, empty)).toBe(true);
+    expect(followsStartingValues(p, { ...set, unverified: undefined })).toBe(false);
   });
 });

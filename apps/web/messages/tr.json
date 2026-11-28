@@ -2136,7 +2136,9 @@
       "marginHint": "En az {min} mm",
       "marginHintTabs": "Köprüyle en az Ø{tool} + {anchor} = {min} mm",
       "spacingGroup": "Parça arası ve kenar payı",
-      "tabSpacingNote": "Köprü açıkken parça arası pay en az takım Ø + {anchor} mm ({gap} mm), kenar payı en az takım Ø + {anchor} mm ({margin} mm) kullanılır."
+      "tabSpacingNote": "Köprü açıkken parça arası pay en az takım Ø + {anchor} mm ({gap} mm), kenar payı en az takım Ø + {anchor} mm ({margin} mm) kullanılır.",
+      "tabExtraSheet": "Köprüler için açılan pay bir plaka ekledi: son plaka neredeyse boş. İnce tabakayla parça arası pay {gap} mm kalır ve iş {n} plakaya sığar.",
+      "tabExtraSheetApply": "İnce tabakayla {n} plakaya sığdır"
     },
     "simulation": {
       "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında bir hedefe tıklayarak parçaları yerleştirin.",
@@ -4161,13 +4163,13 @@
       "noTool": "Makinede açılı V-bıçak yok; 90° ve sivri uç varsayıldı.",
       "skipped": "{n} eğri kanal parçası katlanmaz; yalnız düz kanallar menteşe olur.",
       "states": {
-        "closed": "Kapanıyor",
-        "gap": "Köşe boşluğu var",
-        "clash": "Çakışma var"
+        "closed": "Hedef açıda kapanıyor",
+        "gap": "Hedef açıda köşe boşluğu var",
+        "clash": "Hedef açıda çakışıyor"
       },
       "issues": {
         "relief": "{a} ile {b} köşede aynı malzemeyi paylaşıyor: köşe boşaltması gerekli.",
-        "overlap": "{a} ile {b} çakışıyor ({mm} mm).",
+        "overlap": "{a} ile {b} çakışıyor ({mm} mm): flanş uçlarını {mm} mm kısaltın ya da köşe boşaltmasını büyütün.",
         "corner": "{a} ile {b} arası köşe boşluğu {mm} mm."
       }
     },

@@ -109,3 +109,79 @@ describe('bench fold (T391)', () => {
     expect(r.items.every((it) => it.fold === undefined)).toBe(true);
   });
 });
+
+describe('T427: the fold verdict is at the designed angles', () => {
+  // 250 × 250 blank, 25 mm flanges, square reliefs only up to the groove crossing (the CTO #15 S5
+  // tray): its 4 mm flanges collide once folded.
+  const clashing = (): Project =>
+    ({
+      stock: { material: 'acm', thickness: 4, machinedFace: 'back' },
+      settings: { dimensionMode: 'finished' },
+      parts: [
+        {
+          id: 'tray',
+          name: 'Tepsi',
+          qty: 1,
+          kind: 'freeform',
+          grain: { mode: 'free', angle: 0 },
+          outline: [
+            v(25, 0),
+            v(225, 0),
+            v(225, 25),
+            v(250, 25),
+            v(250, 225),
+            v(225, 225),
+            v(225, 250),
+            v(25, 250),
+            v(25, 225),
+            v(0, 225),
+            v(0, 25),
+            v(25, 25),
+          ],
+          holes: [],
+          inners: [],
+          lines: [
+            [
+              [25, 25],
+              [225, 25],
+            ],
+            [
+              [225, 25],
+              [225, 225],
+            ],
+            [
+              [225, 225],
+              [25, 225],
+            ],
+            [
+              [25, 225],
+              [25, 25],
+            ],
+          ].map(([a, b]) => ({
+            vertices: [v(...(a as [number, number])), v(...(b as [number, number]))],
+            op: { kind: 'vgroove' },
+          })),
+        },
+      ],
+    }) as unknown as Project;
+
+  it('flat (0 %): the verdict already says clash, but nothing is tinted red yet', () => {
+    const r = applyFold(benchItems(clashing(), roles), tool, NO_FOLD);
+    const part = r.parts[0];
+    expect(part?.angles).toEqual([0, 0, 0, 0]);
+    expect(part?.check.state).toBe('clash');
+    expect(part?.check.issues.some((i) => i.kind === 'overlap')).toBe(true);
+    expect(part?.clashNow).toBe(false);
+  });
+
+  it('folded (100 %): the same verdict, and the part is red now', () => {
+    const r = applyFold(benchItems(clashing(), roles), tool, { ...NO_FOLD, pct: 100 });
+    expect(r.parts[0]?.check.state).toBe('clash');
+    expect(r.parts[0]?.clashNow).toBe(true);
+  });
+
+  it('the overlap text names the fix', () => {
+    expect(tr.bench.fold.issues.overlap).toContain('kısaltın');
+    expect(tr.bench.fold.states.closed).not.toBe('Kapanıyor');
+  });
+});

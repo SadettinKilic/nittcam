@@ -59,6 +59,7 @@ import {
   FORM_SECTIONS,
   isDirty,
   newParamSet,
+  followsStartingValues,
   refreshStartingValues,
   startingNote,
   parseErrorText,
@@ -68,7 +69,6 @@ import {
   withParamSet,
   type FormSection,
 } from '../../lib/machine-form';
-import { withSampleVBit } from '../../lib/sample-vbit';
 import type { Messages } from '../../lib/messages';
 import { CornerPicker } from './corner-picker';
 import {
@@ -198,10 +198,9 @@ export function MachineForm({
   const [start] = useState(() => {
     if (!addParams) return null;
     if (!addParams.examples) return withParamSet(initial, addParams);
-    // B70 rider: the example ACM sets come with a V-bit when the machine has none.
-    const r = withAcmExamples(initial, addParams);
-    const v = withSampleVBit(r.profile);
-    return { ...r, profile: v.profile, added: r.added || v.added };
+    // B70 rider / T425: the example ACM sets come with an O-flute cutter and a V-bit when the
+    // machine has none.
+    return withAcmExamples(initial, addParams);
   });
   const [profile, setProfile] = useState<MachineProfile>(start?.profile ?? initial);
   const [submitted, setSubmitted] = useState(false);
@@ -1168,22 +1167,23 @@ export function MachineForm({
               renderRow={(i) => {
                 const m = profile.materials[i] as MaterialParams;
                 const path = (k: keyof MaterialParams) => `materials[${i}].${k}`;
-                // D-046 / T265: an edited row is the user's own; the "copied from" and
-                // "starting values" marks go away.
+                // D-046 / T265: an edited row is the user's own; the "copied from" mark goes
+                // away. T425 (D-140): typing never confirms: an unverified row stays unverified
+                // until "Değerleri doğruladım".
                 const set = (fn: (x: MaterialParams) => void) =>
                   update((p) => {
                     const x = p.materials[i] as MaterialParams;
                     fn(x);
                     delete x.copiedFrom;
-                    delete x.unverified;
                   });
-                // T328 (D-120): kind, thickness or tool of a starting-value row not yet edited by
-                // hand: the values follow the table. An edited row keeps its numbers.
+                // T328 (D-120): kind, thickness or tool of a starting-value row not yet typed
+                // into: the values follow the table. Typed values stay (T425).
                 const choose = (fn: (x: MaterialParams) => void) =>
                   update((p) => {
                     const x = p.materials[i] as MaterialParams;
+                    const follow = followsStartingValues(p, x);
                     fn(x);
-                    if (x.unverified) refreshStartingValues(p, x);
+                    if (follow) refreshStartingValues(p, x);
                     else delete x.copiedFrom;
                   });
                 // T265: the headers carry the units, so the cells stay narrow and the whole row
@@ -1316,7 +1316,6 @@ export function MachineForm({
                           const x = p.materials[i] as MaterialParams;
                           fn(x);
                           delete x.copiedFrom;
-                          delete x.unverified;
                         })
                       }
                     />
@@ -1331,7 +1330,6 @@ export function MachineForm({
                           const x = p.materials[i] as MaterialParams;
                           fn(x);
                           delete x.copiedFrom;
-                          delete x.unverified;
                         })
                       }
                     />
@@ -1350,14 +1348,15 @@ export function MachineForm({
                   className="h-auto max-w-full py-1.5 text-left whitespace-normal"
                   data-testid="materials-add-acm"
                   onClick={() => {
-                    const missing = ACM_EXAMPLES.filter((th) => !hasParamSet(profile, 'acm', th));
-                    missing.forEach(() => materialRows.add());
-                    // B70 rider: plus the example V-bit when the machine has none.
-                    const vBit = withSampleVBit(profile).added;
-                    if (vBit) toolRows.add();
+                    // B70 rider / T425: plus the example O-flute cutter and V-bit when the
+                    // machine has none, so every example set starts filled.
+                    const next = withAcmExamples(profile).profile;
+                    for (let k = profile.materials.length; k < next.materials.length; k++)
+                      materialRows.add();
+                    for (let k = profile.tools.length; k < next.tools.length; k++) toolRows.add();
                     update((p) => {
-                      for (const th of missing) p.materials.push(newParamSet(p, 'acm', th));
-                      if (vBit) p.tools = withSampleVBit(p).profile.tools;
+                      p.tools = next.tools;
+                      p.materials = next.materials;
                     });
                   }}
                 >

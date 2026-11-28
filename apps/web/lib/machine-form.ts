@@ -14,6 +14,7 @@ import {
 } from '@nittcam/core';
 import type { NumberParseError } from '@nittcam/ui';
 import type { Messages } from './messages';
+import { withSampleAcmCutter, withSampleVBit } from './sample-vbit';
 
 /** Form sections in page order; also the side index and the `#sec-<id>` anchors. */
 export const FORM_SECTIONS = [
@@ -259,21 +260,41 @@ export function hasParamSet(
 
 /**
  * T396 (CTO #14 P3): `withParamSet` for the stock's set plus the missing example ACM sets, in one
- * step (all from the starting-value table, unverified). The index is the stock's set.
+ * step (all from the starting-value table, unverified). The index is the stock's set. T425: first
+ * the example O-flute cutter when no tool has an ACM starting row (so no example set starts with
+ * empty fields), and the example V-bit when the machine has none (B70 rider). Without `set` only
+ * the examples (the form's own button); the index is then -1.
  */
 export function withAcmExamples(
   profile: MachineProfile,
-  set: { material: MaterialKind; thickness: number },
+  set?: { material: MaterialKind; thickness: number },
 ): { profile: MachineProfile; index: number; added: boolean } {
-  let p = profile;
-  let added = false;
-  for (const th of ACM_EXAMPLES) {
-    if (hasParamSet(p, 'acm', th)) continue;
-    p = { ...p, materials: [...p.materials, newParamSet(p, 'acm', th)] };
-    added = true;
-  }
+  const missing = ACM_EXAMPLES.filter((th) => !hasParamSet(profile, 'acm', th));
+  const ownMissing = set?.material === 'acm' && !hasParamSet(profile, 'acm', set.thickness);
+  const cutter =
+    missing.length > 0 || ownMissing ? withSampleAcmCutter(profile) : { profile, added: false };
+  const vBit = withSampleVBit(cutter.profile);
+  let p = vBit.profile;
+  for (const th of missing) p = { ...p, materials: [...p.materials, newParamSet(p, 'acm', th)] };
+  const added = cutter.added || vBit.added || missing.length > 0;
+  if (!set) return { profile: p, index: -1, added };
   const own = withParamSet(p, set);
   return { ...own, added: added || own.added };
+}
+
+/**
+ * T425 (CTO #15 M3, D-140): a starting-value row the user has not typed into yet (its four values
+ * are the table's suggestion, or all empty): a change of kind, thickness or tool refreshes its
+ * values. Hand-typed values stay, and stay unverified until "Değerleri doğruladım".
+ */
+export function followsStartingValues(
+  profile: Pick<MachineProfile, 'spindle' | 'tools'>,
+  set: MaterialParams,
+): boolean {
+  if (!set.unverified) return false;
+  const values = [set.feed, set.plungeFeed, set.rpm, set.stepDown];
+  if (values.every((v) => Number.isNaN(v))) return true;
+  return startingNote(profile, set).kind === 'table';
 }
 
 /**
