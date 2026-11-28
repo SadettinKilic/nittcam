@@ -1,7 +1,81 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`material traits (T341) > locks the six rows 1`] = `
+exports[`material traits (T341) > locks the rows 1`] = `
 {
+  "acm": {
+    "direction": {
+      "defaultOn": false,
+      "kind": "directed",
+      "label": "film",
+    },
+    "family": "composite",
+    "look": {
+      "metalness": 0,
+      "noise": 0.008,
+      "roughness": 0.6,
+      "stripes": false,
+      "token": "--color-mat-acm",
+    },
+    "nc": "unverified",
+    "ncName": "ACM",
+    "release": "released",
+    "sheetPresets": [
+      {
+        "a": 1250,
+        "b": 3200,
+      },
+      {
+        "a": 1500,
+        "b": 3200,
+      },
+      {
+        "a": 1250,
+        "b": 2440,
+      },
+    ],
+    "skin": {
+      "belowThickness": 1,
+      "min": 0.2,
+    },
+    "smallPart": {
+      "area": 50000,
+      "minSide": 100,
+    },
+    "tabs": {
+      "bounds": {
+        "belowThickness": 0.5,
+        "minAnchor": 3,
+        "minHeight": 0.5,
+        "minWidth": 3,
+      },
+      "defaults": {
+        "count": 4,
+        "materialLeft": 1,
+        "smallPartMinCount": 2,
+        "width": 6,
+      },
+    },
+    "thicknessPresets": [
+      3,
+      4,
+      6,
+    ],
+    "toolTypes": {
+      "hole": [
+        "drill",
+        "flatEndMill",
+      ],
+      "inner": [
+        "flatEndMill",
+      ],
+      "outer": [
+        "flatEndMill",
+      ],
+      "pocket": [
+        "flatEndMill",
+      ],
+    },
+  },
   "acrylic": {
     "direction": {
       "defaultOn": false,
@@ -10,11 +84,14 @@ exports[`material traits (T341) > locks the six rows 1`] = `
     },
     "family": "plastic",
     "look": {
+      "metalness": 0,
       "noise": 0.008,
       "roughness": 0.55,
       "stripes": false,
       "token": "--color-mat-acrylic",
     },
+    "nc": "released",
+    "ncName": "",
     "release": "released",
     "sheetPresets": [
       {
@@ -52,6 +129,7 @@ exports[`material traits (T341) > locks the six rows 1`] = `
         "width": 10,
       },
     },
+    "thicknessPresets": [],
     "toolTypes": {
       "hole": [
         "drill",
@@ -71,6 +149,86 @@ exports[`material traits (T341) > locks the six rows 1`] = `
       ],
     },
   },
+  "aluminium": {
+    "direction": {
+      "defaultOn": false,
+      "kind": "axial",
+      "label": "surface",
+    },
+    "family": "nonFerrous",
+    "look": {
+      "metalness": 0.6,
+      "noise": 0.008,
+      "roughness": 0.4,
+      "stripes": false,
+      "token": "--color-mat-aluminium",
+    },
+    "nc": "blocked",
+    "ncName": "ALUMINYUM",
+    "release": "released",
+    "sheetPresets": [
+      {
+        "a": 1000,
+        "b": 2000,
+      },
+      {
+        "a": 1250,
+        "b": 2500,
+      },
+      {
+        "a": 1500,
+        "b": 3000,
+      },
+    ],
+    "skin": {
+      "belowThickness": 1,
+      "min": 0.2,
+    },
+    "smallPart": {
+      "area": 50000,
+      "minSide": 100,
+    },
+    "tabs": {
+      "bounds": {
+        "belowThickness": 0.3,
+        "minAnchor": 3,
+        "minHeight": 0.3,
+        "minWidth": 3,
+      },
+      "defaults": {
+        "count": 4,
+        "materialLeft": 0.8,
+        "smallPartMinCount": 2,
+        "width": 5,
+      },
+    },
+    "thicknessPresets": [
+      1,
+      1.5,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      10,
+    ],
+    "toolTypes": {
+      "hole": [
+        "drill",
+        "flatEndMill",
+      ],
+      "inner": [
+        "flatEndMill",
+      ],
+      "outer": [
+        "flatEndMill",
+      ],
+      "pocket": [
+        "flatEndMill",
+      ],
+    },
+  },
   "mdf": {
     "direction": {
       "defaultOn": true,
@@ -79,11 +237,14 @@ exports[`material traits (T341) > locks the six rows 1`] = `
     },
     "family": "woodBoard",
     "look": {
+      "metalness": 0,
       "noise": 0.045,
       "roughness": 0.92,
       "stripes": false,
       "token": "--color-mat-mdf",
     },
+    "nc": "released",
+    "ncName": "",
     "release": "released",
     "sheetPresets": [
       {
@@ -121,6 +282,7 @@ exports[`material traits (T341) > locks the six rows 1`] = `
         "width": 10,
       },
     },
+    "thicknessPresets": [],
     "toolTypes": {
       "hole": [
         "drill",
@@ -148,11 +310,14 @@ exports[`material traits (T341) > locks the six rows 1`] = `
     },
     "family": "woodBoard",
     "look": {
+      "metalness": 0,
       "noise": 0.008,
       "roughness": 0.92,
       "stripes": false,
       "token": "--color-mat-melamine",
     },
+    "nc": "released",
+    "ncName": "",
     "release": "released",
     "sheetPresets": [
       {
@@ -190,6 +355,7 @@ exports[`material traits (T341) > locks the six rows 1`] = `
         "width": 10,
       },
     },
+    "thicknessPresets": [],
     "toolTypes": {
       "hole": [
         "drill",
@@ -217,11 +383,14 @@ exports[`material traits (T341) > locks the six rows 1`] = `
     },
     "family": "woodBoard",
     "look": {
+      "metalness": 0,
       "noise": 0.02,
       "roughness": 0.92,
       "stripes": true,
       "token": "--color-mat-plywood",
     },
+    "nc": "released",
+    "ncName": "",
     "release": "released",
     "sheetPresets": [
       {
@@ -259,6 +428,7 @@ exports[`material traits (T341) > locks the six rows 1`] = `
         "width": 10,
       },
     },
+    "thicknessPresets": [],
     "toolTypes": {
       "hole": [
         "drill",
@@ -286,11 +456,14 @@ exports[`material traits (T341) > locks the six rows 1`] = `
     },
     "family": "plastic",
     "look": {
+      "metalness": 0,
       "noise": 0.008,
       "roughness": 0.7,
       "stripes": false,
       "token": "--color-mat-pvc",
     },
+    "nc": "released",
+    "ncName": "",
     "release": "released",
     "sheetPresets": [
       {
@@ -328,6 +501,7 @@ exports[`material traits (T341) > locks the six rows 1`] = `
         "width": 10,
       },
     },
+    "thicknessPresets": [],
     "toolTypes": {
       "hole": [
         "drill",
@@ -355,11 +529,14 @@ exports[`material traits (T341) > locks the six rows 1`] = `
     },
     "family": "woodBoard",
     "look": {
+      "metalness": 0,
       "noise": 0.02,
       "roughness": 0.92,
       "stripes": true,
       "token": "--color-mat-solid-wood",
     },
+    "nc": "released",
+    "ncName": "",
     "release": "released",
     "sheetPresets": [
       {
@@ -397,6 +574,7 @@ exports[`material traits (T341) > locks the six rows 1`] = `
         "width": 10,
       },
     },
+    "thicknessPresets": [],
     "toolTypes": {
       "hole": [
         "drill",

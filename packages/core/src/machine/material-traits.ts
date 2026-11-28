@@ -15,26 +15,39 @@ import { MATERIAL_KIND_IDS, type MaterialKind } from './material-kinds';
 import type { ToolType } from './profile';
 
 /** Family of a kind: shared defaults, the picker group and (later) the verification family. */
-export type MaterialFamily = 'woodBoard' | 'plastic';
+export type MaterialFamily = 'woodBoard' | 'plastic' | 'composite' | 'nonFerrous';
 
 /** Every family in picker order. */
-export const MATERIAL_FAMILIES: readonly MaterialFamily[] = ['woodBoard', 'plastic'];
+export const MATERIAL_FAMILIES: readonly MaterialFamily[] = [
+  'woodBoard',
+  'plastic',
+  'composite',
+  'nonFerrous',
+];
 
 /** Operations that pick a cutting tool (mirrors `OPERATION_TOOL_KINDS` in `toolpath/op-tools`). */
 export type TraitsOperation = 'outer' | 'inner' | 'pocket' | 'hole';
 
 export interface MaterialTraits {
   family: MaterialFamily;
-  /** `flagged`: shown only behind a feature flag (none of today's kinds). */
+  /** `flagged`: shown only behind a feature flag (none today; D-130 shows ACM and aluminium). */
   release: 'released' | 'flagged';
+  /**
+   * Whether NC may leave the app for this kind (D-130): `released` = as today; `unverified` = NC with
+   * the header line `DOGRULANMAMIS MALZEME: <name>` and a required export checklist item;
+   * `blocked` = no NC download (DXF / PDF / labels still work) until the tier's own tasks land.
+   */
+  nc: 'released' | 'unverified' | 'blocked';
+  /** Name used in the NC header line of an `unverified` kind (ASCII, upper case). */
+  ncName: string;
   direction: {
     /**
      * `none`: the material has no direction (no grain field anywhere); `axial`: 30° = 210°
-     * (wood grain, today's only kind of direction).
+     * (wood grain, aluminium rolling direction); `directed`: 30° ≠ 210° (ACM film arrow, T347).
      */
-    kind: 'none' | 'axial';
-    /** Which wording the screens use for the direction ("Damar yönü"). */
-    label: 'grain';
+    kind: 'none' | 'axial' | 'directed';
+    /** Which wording the screens use: "Damar yönü" / "Yüzey yönü" / "Film oku yönü". */
+    label: 'grain' | 'surface' | 'film';
     /** Whether a new sheet / offcut of this kind starts with a direction (0°). */
     defaultOn: boolean;
   };
@@ -68,6 +81,8 @@ export interface MaterialTraits {
   smallPart: { area: number; minSide: number };
   /** Sheet size presets of step 1 (short × long side, mm). */
   sheetPresets: readonly { a: number; b: number }[];
+  /** Thickness presets of step 1, mm (empty: the profile's thicknesses only, as today). */
+  thicknessPresets: readonly number[];
   look: {
     /** Token custom property of the base colour (`packages/ui/src/tokens.css`). */
     token: string;
@@ -77,6 +92,8 @@ export interface MaterialTraits {
     stripes: boolean;
     /** Procedural texture noise amplitude. */
     noise: number;
+    /** 3D metalness (0 = today's matte boards; aluminium is metallic). */
+    metalness: number;
   };
 }
 
@@ -84,6 +101,14 @@ const WOOD_TOOLS: MaterialTraits['toolTypes'] = {
   outer: ['flatEndMill', 'compression'],
   inner: ['flatEndMill', 'compression'],
   pocket: ['flatEndMill', 'compression'],
+  hole: ['drill', 'flatEndMill'],
+};
+
+/** ACM and aluminium (§4.2): flat end mills only (no compression, no ball); holes as today. */
+const METAL_TOOLS: MaterialTraits['toolTypes'] = {
+  outer: ['flatEndMill'],
+  inner: ['flatEndMill'],
+  pocket: ['flatEndMill'],
   hole: ['drill', 'flatEndMill'],
 };
 
@@ -105,11 +130,14 @@ const SHEET_PRESETS: MaterialTraits['sheetPresets'] = [
 /** Shared part of the two families today: everything but the family, direction and look. */
 const BOARD = {
   release: 'released',
+  nc: 'released',
+  ncName: '',
   toolTypes: WOOD_TOOLS,
   tabs: TABS,
   skin: SKIN,
   smallPart: SMALL_PART,
   sheetPresets: SHEET_PRESETS,
+  thicknessPresets: [],
 } as const satisfies Partial<MaterialTraits>;
 
 const GRAIN: MaterialTraits['direction'] = { kind: 'axial', label: 'grain', defaultOn: true };
@@ -127,37 +155,125 @@ export const MATERIAL_TRAITS: Readonly<Record<MaterialKind, MaterialTraits>> = {
     ...BOARD,
     family: 'woodBoard',
     direction: GRAIN,
-    look: { token: '--color-mat-mdf', roughness: 0.92, stripes: false, noise: NOISE.fibre },
+    look: {
+      token: '--color-mat-mdf',
+      roughness: 0.92,
+      stripes: false,
+      noise: NOISE.fibre,
+      metalness: 0,
+    },
   },
   plywood: {
     ...BOARD,
     family: 'woodBoard',
     direction: GRAIN,
-    look: { token: '--color-mat-plywood', roughness: 0.92, stripes: true, noise: NOISE.stripes },
+    look: {
+      token: '--color-mat-plywood',
+      roughness: 0.92,
+      stripes: true,
+      noise: NOISE.stripes,
+      metalness: 0,
+    },
   },
   melamine: {
     ...BOARD,
     family: 'woodBoard',
     direction: GRAIN,
-    look: { token: '--color-mat-melamine', roughness: 0.92, stripes: false, noise: NOISE.flat },
+    look: {
+      token: '--color-mat-melamine',
+      roughness: 0.92,
+      stripes: false,
+      noise: NOISE.flat,
+      metalness: 0,
+    },
   },
   solidWood: {
     ...BOARD,
     family: 'woodBoard',
     direction: GRAIN,
-    look: { token: '--color-mat-solid-wood', roughness: 0.92, stripes: true, noise: NOISE.stripes },
+    look: {
+      token: '--color-mat-solid-wood',
+      roughness: 0.92,
+      stripes: true,
+      noise: NOISE.stripes,
+      metalness: 0,
+    },
   },
   acrylic: {
     ...BOARD,
     family: 'plastic',
     direction: NO_DIRECTION,
-    look: { token: '--color-mat-acrylic', roughness: 0.55, stripes: false, noise: NOISE.flat },
+    look: {
+      token: '--color-mat-acrylic',
+      roughness: 0.55,
+      stripes: false,
+      noise: NOISE.flat,
+      metalness: 0,
+    },
   },
   pvc: {
     ...BOARD,
     family: 'plastic',
     direction: NO_DIRECTION,
-    look: { token: '--color-mat-pvc', roughness: 0.7, stripes: false, noise: NOISE.flat },
+    look: {
+      token: '--color-mat-pvc',
+      roughness: 0.7,
+      stripes: false,
+      noise: NOISE.flat,
+      metalness: 0,
+    },
+  },
+  // T346 (D-130): starting values from analysis §4.2 / §4.5 (conservative value wins; every
+  // number below is "doğrulanacak" until the owner's machine tests T357 / T369).
+  acm: {
+    ...BOARD,
+    family: 'composite',
+    nc: 'unverified',
+    ncName: 'ACM',
+    toolTypes: METAL_TOOLS,
+    direction: { kind: 'directed', label: 'film', defaultOn: false },
+    tabs: {
+      defaults: { count: 4, width: 6, materialLeft: 1, smallPartMinCount: 2 },
+      bounds: { minWidth: 3, minAnchor: 3, minHeight: 0.5, belowThickness: 0.5 },
+    },
+    sheetPresets: [
+      { a: 1250, b: 3200 },
+      { a: 1500, b: 3200 },
+      { a: 1250, b: 2440 },
+    ],
+    thicknessPresets: [3, 4, 6],
+    look: {
+      token: '--color-mat-acm',
+      roughness: 0.6,
+      stripes: false,
+      noise: NOISE.flat,
+      metalness: 0,
+    },
+  },
+  aluminium: {
+    ...BOARD,
+    family: 'nonFerrous',
+    nc: 'blocked',
+    ncName: 'ALUMINYUM',
+    toolTypes: METAL_TOOLS,
+    direction: { kind: 'axial', label: 'surface', defaultOn: false },
+    tabs: {
+      defaults: { count: 4, width: 5, materialLeft: 0.8, smallPartMinCount: 2 },
+      bounds: { minWidth: 3, minAnchor: 3, minHeight: 0.3, belowThickness: 0.3 },
+    },
+    sheetPresets: [
+      { a: 1000, b: 2000 },
+      { a: 1250, b: 2500 },
+      { a: 1500, b: 3000 },
+    ],
+    thicknessPresets: [1, 1.5, 2, 3, 4, 5, 6, 8, 10],
+    look: {
+      token: '--color-mat-aluminium',
+      roughness: 0.4,
+      stripes: false,
+      noise: NOISE.flat,
+      metalness: 0.6,
+    },
   },
 };
 

@@ -491,7 +491,9 @@
           "melamine": "Melamin",
           "solidWood": "Masif ahşap",
           "acrylic": "Akrilik",
-          "pvc": "PVC"
+          "pvc": "PVC",
+          "acm": "Alüminyum kompozit",
+          "aluminium": "Alüminyum levha"
         }
       },
       "versionBadge": "Sürüm {version}",
@@ -1778,9 +1780,13 @@
     "solidWood": "Masif ahşap",
     "acrylic": "Akrilik",
     "pvc": "PVC",
+    "acm": "Alüminyum kompozit",
+    "aluminium": "Alüminyum levha",
     "groupWood": "Ahşap",
     "groupPlastic": "Plastik",
+    "groupMetal": "Metal ve kompozit",
     "stone": "Mermer / taş (yakında)",
+    "steel": "Çelik (desteklenmez)",
     "unknown": "{id} (tanınmayan malzeme)"
   },
   "wizard": {

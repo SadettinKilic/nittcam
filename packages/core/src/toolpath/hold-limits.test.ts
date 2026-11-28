@@ -1,6 +1,9 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { MATERIAL_KIND_IDS } from '../machine/material-kinds';
+
+/** Today's six kinds (T346 adds metal kinds with their own limits). */
+const TODAY = MATERIAL_KIND_IDS.filter((k) => k !== 'acm' && k !== 'aluminium');
 import { MATERIAL_TRAITS } from '../machine/material-traits';
 import {
   DEFAULT_HOLD_LIMITS,
@@ -32,7 +35,7 @@ const old = {
   defaultTabHeight: (t: number) => Math.min(3, t / 2),
 };
 
-const materialIds = [...MATERIAL_KIND_IDS, 'MDF', 'kontrplak', 'unknown-stuff', ''];
+const materialIds = [...TODAY, 'MDF', 'kontrplak', 'unknown-stuff', ''];
 
 describe('hold limits from the traits (T343)', () => {
   it('the default limits are the old constants', () => {
@@ -42,7 +45,7 @@ describe('hold limits from the traits (T343)', () => {
       area: TAB_DEFAULTS.smallPartArea,
       minSide: TAB_DEFAULTS.smallPartMinSide,
     });
-    for (const k of MATERIAL_KIND_IDS) {
+    for (const k of TODAY) {
       expect(holdLimitsOf(k).tabs).toEqual(MATERIAL_TRAITS[k].tabs);
     }
   });
