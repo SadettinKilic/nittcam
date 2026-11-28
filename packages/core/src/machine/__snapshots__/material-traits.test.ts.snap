@@ -3,12 +3,45 @@
 exports[`material traits (T341) > locks the rows 1`] = `
 {
   "acm": {
+    "cabinet": false,
+    "chipLoad": {
+      "bands": [
+        {
+          "max": 0.21,
+          "min": 0.04,
+          "minDiameter": 0,
+        },
+        {
+          "max": 0.21,
+          "min": 0.06,
+          "minDiameter": 6,
+        },
+        {
+          "max": 0.21,
+          "min": 0.08,
+          "minDiameter": 8,
+        },
+      ],
+      "enforce": "warn",
+    },
+    "coolant": "recommended",
     "direction": {
       "defaultOn": false,
       "kind": "directed",
       "label": "film",
     },
+    "edgeBand": false,
+    "entry": {
+      "rampDeg": {
+        "default": 2,
+        "max": 5,
+      },
+      "straightPlunge": false,
+    },
     "family": "composite",
+    "finish": {
+      "defaultAllowance": null,
+    },
     "look": {
       "metalness": 0,
       "noise": 0.008,
@@ -19,6 +52,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "machinedFace": "back",
     "nc": "unverified",
     "ncName": "ACM",
+    "needsMetalMachine": false,
     "release": "released",
     "sheetPresets": [
       {
@@ -35,12 +69,16 @@ exports[`material traits (T341) > locks the rows 1`] = `
       },
     ],
     "skin": {
-      "belowThickness": 1,
-      "min": 0.2,
+      "belowThickness": 0.5,
+      "min": 0.5,
+      "offered": false,
     },
     "smallPart": {
       "area": 50000,
       "minSide": 100,
+    },
+    "stepDown": {
+      "maxPerDiameter": null,
     },
     "tabs": {
       "bounds": {
@@ -78,12 +116,23 @@ exports[`material traits (T341) > locks the rows 1`] = `
     },
   },
   "acrylic": {
+    "cabinet": true,
+    "chipLoad": null,
+    "coolant": "none",
     "direction": {
       "defaultOn": false,
       "kind": "none",
       "label": "grain",
     },
+    "edgeBand": true,
+    "entry": {
+      "rampDeg": null,
+      "straightPlunge": true,
+    },
     "family": "plastic",
+    "finish": {
+      "defaultAllowance": null,
+    },
     "look": {
       "metalness": 0,
       "noise": 0.008,
@@ -94,6 +143,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "machinedFace": "front",
     "nc": "released",
     "ncName": "",
+    "needsMetalMachine": false,
     "release": "released",
     "sheetPresets": [
       {
@@ -112,10 +162,14 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "skin": {
       "belowThickness": 1,
       "min": 0.2,
+      "offered": true,
     },
     "smallPart": {
       "area": 50000,
       "minSide": 100,
+    },
+    "stepDown": {
+      "maxPerDiameter": null,
     },
     "tabs": {
       "bounds": {
@@ -152,12 +206,45 @@ exports[`material traits (T341) > locks the rows 1`] = `
     },
   },
   "aluminium": {
+    "cabinet": false,
+    "chipLoad": {
+      "bands": [
+        {
+          "max": 0.02,
+          "min": 0.005,
+          "minDiameter": 0,
+        },
+        {
+          "max": 0.05,
+          "min": 0.02,
+          "minDiameter": 3,
+        },
+        {
+          "max": 0.1,
+          "min": 0.04,
+          "minDiameter": 6,
+        },
+      ],
+      "enforce": "limit",
+    },
+    "coolant": "required",
     "direction": {
       "defaultOn": false,
       "kind": "axial",
       "label": "surface",
     },
+    "edgeBand": false,
+    "entry": {
+      "rampDeg": {
+        "default": 2,
+        "max": 5,
+      },
+      "straightPlunge": false,
+    },
     "family": "nonFerrous",
+    "finish": {
+      "defaultAllowance": 0.2,
+    },
     "look": {
       "metalness": 0.6,
       "noise": 0.008,
@@ -168,6 +255,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "machinedFace": "front",
     "nc": "blocked",
     "ncName": "ALUMINYUM",
+    "needsMetalMachine": true,
     "release": "released",
     "sheetPresets": [
       {
@@ -184,12 +272,17 @@ exports[`material traits (T341) > locks the rows 1`] = `
       },
     ],
     "skin": {
-      "belowThickness": 1,
-      "min": 0.2,
+      "belowThickness": 0.3,
+      "max": 0.3,
+      "min": 0.1,
+      "offered": true,
     },
     "smallPart": {
       "area": 50000,
       "minSide": 100,
+    },
+    "stepDown": {
+      "maxPerDiameter": 0.5,
     },
     "tabs": {
       "bounds": {
@@ -233,12 +326,23 @@ exports[`material traits (T341) > locks the rows 1`] = `
     },
   },
   "mdf": {
+    "cabinet": true,
+    "chipLoad": null,
+    "coolant": "none",
     "direction": {
       "defaultOn": true,
       "kind": "axial",
       "label": "grain",
     },
+    "edgeBand": true,
+    "entry": {
+      "rampDeg": null,
+      "straightPlunge": true,
+    },
     "family": "woodBoard",
+    "finish": {
+      "defaultAllowance": null,
+    },
     "look": {
       "metalness": 0,
       "noise": 0.045,
@@ -249,6 +353,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "machinedFace": "front",
     "nc": "released",
     "ncName": "",
+    "needsMetalMachine": false,
     "release": "released",
     "sheetPresets": [
       {
@@ -267,10 +372,14 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "skin": {
       "belowThickness": 1,
       "min": 0.2,
+      "offered": true,
     },
     "smallPart": {
       "area": 50000,
       "minSide": 100,
+    },
+    "stepDown": {
+      "maxPerDiameter": null,
     },
     "tabs": {
       "bounds": {
@@ -307,12 +416,23 @@ exports[`material traits (T341) > locks the rows 1`] = `
     },
   },
   "melamine": {
+    "cabinet": true,
+    "chipLoad": null,
+    "coolant": "none",
     "direction": {
       "defaultOn": true,
       "kind": "axial",
       "label": "grain",
     },
+    "edgeBand": true,
+    "entry": {
+      "rampDeg": null,
+      "straightPlunge": true,
+    },
     "family": "woodBoard",
+    "finish": {
+      "defaultAllowance": null,
+    },
     "look": {
       "metalness": 0,
       "noise": 0.008,
@@ -323,6 +443,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "machinedFace": "front",
     "nc": "released",
     "ncName": "",
+    "needsMetalMachine": false,
     "release": "released",
     "sheetPresets": [
       {
@@ -341,10 +462,14 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "skin": {
       "belowThickness": 1,
       "min": 0.2,
+      "offered": true,
     },
     "smallPart": {
       "area": 50000,
       "minSide": 100,
+    },
+    "stepDown": {
+      "maxPerDiameter": null,
     },
     "tabs": {
       "bounds": {
@@ -381,12 +506,23 @@ exports[`material traits (T341) > locks the rows 1`] = `
     },
   },
   "plywood": {
+    "cabinet": true,
+    "chipLoad": null,
+    "coolant": "none",
     "direction": {
       "defaultOn": true,
       "kind": "axial",
       "label": "grain",
     },
+    "edgeBand": true,
+    "entry": {
+      "rampDeg": null,
+      "straightPlunge": true,
+    },
     "family": "woodBoard",
+    "finish": {
+      "defaultAllowance": null,
+    },
     "look": {
       "metalness": 0,
       "noise": 0.02,
@@ -397,6 +533,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "machinedFace": "front",
     "nc": "released",
     "ncName": "",
+    "needsMetalMachine": false,
     "release": "released",
     "sheetPresets": [
       {
@@ -415,10 +552,14 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "skin": {
       "belowThickness": 1,
       "min": 0.2,
+      "offered": true,
     },
     "smallPart": {
       "area": 50000,
       "minSide": 100,
+    },
+    "stepDown": {
+      "maxPerDiameter": null,
     },
     "tabs": {
       "bounds": {
@@ -455,12 +596,23 @@ exports[`material traits (T341) > locks the rows 1`] = `
     },
   },
   "pvc": {
+    "cabinet": true,
+    "chipLoad": null,
+    "coolant": "none",
     "direction": {
       "defaultOn": false,
       "kind": "none",
       "label": "grain",
     },
+    "edgeBand": true,
+    "entry": {
+      "rampDeg": null,
+      "straightPlunge": true,
+    },
     "family": "plastic",
+    "finish": {
+      "defaultAllowance": null,
+    },
     "look": {
       "metalness": 0,
       "noise": 0.008,
@@ -471,6 +623,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "machinedFace": "front",
     "nc": "released",
     "ncName": "",
+    "needsMetalMachine": false,
     "release": "released",
     "sheetPresets": [
       {
@@ -489,10 +642,14 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "skin": {
       "belowThickness": 1,
       "min": 0.2,
+      "offered": true,
     },
     "smallPart": {
       "area": 50000,
       "minSide": 100,
+    },
+    "stepDown": {
+      "maxPerDiameter": null,
     },
     "tabs": {
       "bounds": {
@@ -529,12 +686,23 @@ exports[`material traits (T341) > locks the rows 1`] = `
     },
   },
   "solidWood": {
+    "cabinet": true,
+    "chipLoad": null,
+    "coolant": "none",
     "direction": {
       "defaultOn": true,
       "kind": "axial",
       "label": "grain",
     },
+    "edgeBand": true,
+    "entry": {
+      "rampDeg": null,
+      "straightPlunge": true,
+    },
     "family": "woodBoard",
+    "finish": {
+      "defaultAllowance": null,
+    },
     "look": {
       "metalness": 0,
       "noise": 0.02,
@@ -545,6 +713,7 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "machinedFace": "front",
     "nc": "released",
     "ncName": "",
+    "needsMetalMachine": false,
     "release": "released",
     "sheetPresets": [
       {
@@ -563,10 +732,14 @@ exports[`material traits (T341) > locks the rows 1`] = `
     "skin": {
       "belowThickness": 1,
       "min": 0.2,
+      "offered": true,
     },
     "smallPart": {
       "area": 50000,
       "minSide": 100,
+    },
+    "stepDown": {
+      "maxPerDiameter": null,
     },
     "tabs": {
       "bounds": {

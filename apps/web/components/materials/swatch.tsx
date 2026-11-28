@@ -11,6 +11,10 @@ const TONE_CLASS: Record<MaterialTone, string> = {
   anthracite: 'bg-fg-muted border-fg-muted',
   black: 'bg-fg border-fg',
   clear: 'bg-canvas border-dashed border-border-strong',
+  // T350: the metal tones
+  aluminium: 'bg-mat-aluminium border-border-strong',
+  silver: 'bg-mat-acm border-border-strong',
+  brass: 'bg-mat-brass border-border-strong',
 };
 
 /** A small colour chip for a library material (T121). Decorative: the name carries the meaning. */

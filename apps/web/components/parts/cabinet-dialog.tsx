@@ -39,16 +39,7 @@ import type { SplitTarget } from '../../lib/split-project';
 
 type Text = Messages['cutList']['cabinet'];
 
-/** "Dolap N" with the first N not used as a group yet. */
-export function nextCabinetName(pattern: string, groups: readonly (string | undefined)[]): string {
-  const used = new Set(groups);
-  for (let n = 1; ; n++) {
-    const name = fill(pattern, { n });
-    if (!used.has(name)) return name;
-  }
-}
-
-export { cabinetRows } from '../../lib/cabinet-rows';
+export { cabinetRows, nextCabinetName } from '../../lib/cabinet-rows';
 
 type NumKey =
   'width' | 'height' | 'depth' | 'thickness' | 'shelves' | 'doorGap' | 'plinth' | 'band';

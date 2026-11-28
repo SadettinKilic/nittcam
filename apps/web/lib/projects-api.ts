@@ -1,3 +1,4 @@
+import type { MaterialProps } from '@nittcam/core';
 /** Shapes of the `/api/projects` route handlers, shared by server and client (T023, D-029). */
 import type { CommandLogEntry, Project } from '@nittcam/core';
 import type { ExportRecord } from './exports-api';
@@ -23,6 +24,8 @@ export interface ProjectListItem {
   /** ISO 8601 when soft-deleted (T178), else null. */
   deletedAt: string | null;
   material: string;
+  /** T350: the stock's kind-specific properties (the card prints the alloy). */
+  materialProps?: MaterialProps;
   thickness: number;
   sheet: { width: number; height: number };
   /** Total part count (sum of quantities). */

@@ -10,6 +10,7 @@ import {
   type MachineProfile,
   type MaterialKind,
   type MaterialParams,
+  toolTypeAllowed,
 } from '@nittcam/core';
 import type { NumberParseError } from '@nittcam/ui';
 import type { Messages } from './messages';
@@ -108,7 +109,10 @@ export function suitingTool(
     profile.tools.find(
       (t) => suggestCuttingSet(material, thickness, t, profile.spindle) !== undefined,
     );
-  return (withRow ?? profile.tools[0])?.number ?? 1;
+  // T349: never a tool type the material may not be cut with when another tool exists (no
+  // compression for ACM / aluminium); with no allowed tool, the first one (validation says it).
+  const allowed = profile.tools.find((t) => toolTypeAllowed(material, 'outer', t.type));
+  return (withRow ?? allowed ?? profile.tools[0])?.number ?? 1;
 }
 
 /**
@@ -188,14 +192,18 @@ export interface ParamFix {
   machineId: string;
   set: { material: MaterialKind; thickness: number } | null;
   returnTo: string | null;
-  /** T302: `alan=kopru` lands on the set's tab fields instead of its feed. */
-  field?: 'tabs' | null;
+  /**
+   * T302: `alan=kopru` lands on the set's tab fields instead of its feed; T349: `alan=metal` on the
+   * machine's metal section (coolant, metal declaration).
+   */
+  field?: 'tabs' | 'metal' | null;
 }
 
 export function paramFixHref(fix: ParamFix): string {
   const q = new URLSearchParams({ duzenle: fix.machineId });
   if (fix.set) q.set('ayar', `${fix.set.material}-${fix.set.thickness}`);
   if (fix.field === 'tabs') q.set('alan', 'kopru');
+  if (fix.field === 'metal') q.set('alan', 'metal');
   if (fix.returnTo) q.set('donus', fix.returnTo);
   return `/makineler?${q.toString()}`;
 }
@@ -223,7 +231,7 @@ export function parseParamFix(q: Record<string, string | string[] | undefined>):
     machineId,
     set,
     returnTo: safeReturnPath(one('donus')),
-    field: one('alan') === 'kopru' ? 'tabs' : null,
+    field: one('alan') === 'kopru' ? 'tabs' : one('alan') === 'metal' ? 'metal' : null,
   };
 }
 

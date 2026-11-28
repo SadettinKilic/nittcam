@@ -1,5 +1,6 @@
 'use client';
 
+import { holdTextValues } from '../../lib/hold-text';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -265,6 +266,12 @@ interface ProjectWizardProps {
   /** The URL's `?adim=`; null = none (a saved project then opens where work stopped, T290). */
   step: StepKey | null;
 }
+
+/** T349: step 1 material rules (marked on Makine ve plaka). */
+const MATERIAL_RULE_CODES: ReadonlySet<string> = new Set([
+  'TOOL_TYPE_UNSUITABLE_FOR_MATERIAL',
+  'MATERIAL_NOT_ALLOWED_ON_MACHINE',
+]);
 
 export function ProjectWizard(props: ProjectWizardProps) {
   // T186: deep components read texts from here instead of importing tr.json.
@@ -781,7 +788,10 @@ function WizardSession({
     ? t.steps.errors.noParams
     : params?.unverified
       ? t.steps.errors.unverifiedParams
-      : undefined;
+      : // T349: a tool type or machine the material may not be cut with
+        session.issues.some((i) => MATERIAL_RULE_CODES.has(i.code))
+        ? t.steps.errors.materialRule
+        : undefined;
   // T270: a cut-out whose slug has no room for 2 tabs is caught on Parçalar, where it is drawn.
   const slugError = session.issues.some((i) => i.code === 'INNER_SLUG_UNSECURED')
     ? t.steps.errors.slugUnsecured
@@ -905,7 +915,10 @@ function WizardSession({
   );
   const openMargin = useCallback(() => openNestField('layout-margin'), [openNestField]);
   const openGap = useCallback(() => openNestField('layout-gap'), [openNestField]);
-  const holdLink = { hint: messages.simulation.blocked.holdHint, onOpen: openGap };
+  const holdLink = {
+    hint: fill(messages.simulation.blocked.holdHint, holdTextValues(project.stock.material)),
+    onOpen: openGap,
+  };
   const marginLow = session.issues.some((i) => i.code === 'MARGIN_BELOW_TOOL_RADIUS');
   const marginLink = marginLow
     ? {

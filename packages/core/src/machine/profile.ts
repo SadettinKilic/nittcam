@@ -7,7 +7,7 @@
  */
 import { z } from 'zod';
 import { maxTabHeight } from '../toolpath/tabs';
-import { traitsOf } from './material-traits';
+import { chipLoadBand, stepDownCeiling, traitsOf } from './material-traits';
 import { MATERIAL_KIND_IDS, type MaterialKind } from './material-kinds';
 
 /** The machine profile schema version this build writes and reads. */
@@ -41,6 +41,10 @@ export const PROFILE_BOUNDS = {
   /** Rapid traverse rate (G0), mm/min. */
   rapidFeed: { min: 500, max: 200_000 },
   stepDown: { max: 50 },
+  /** T351: finish allowance of a metal set, mm. */
+  finishAllowance: { max: 2 },
+  /** T351: ramp entry angle of a metal set, degrees (the family ceiling is checked on save). */
+  rampDeg: { min: 0.5, max: 45 },
   tabCount: { min: 1, max: 20 },
   tabWidth: { max: 200 },
   tabHeight: { max: 200 },
@@ -292,6 +296,18 @@ export const materialParamsSchema = z.strictObject({
    * confirms or edits the row (the form drops the mark). Optional; older profiles stay valid.
    */
   unverified: z.literal(true).optional(),
+  /**
+   * T351 (§3.6 "Malzeme = parametre seti", §7.1): metal set fields, used only by families whose
+   * traits use them (coolant: `traits.coolant` ≠ none; finish: `traits.finish`; ramp: no straight
+   * plunge). Stored for the metal toolpath of MB7–MB8; nothing reads them for G-code yet. Optional;
+   * older profiles stay valid.
+   */
+  /** Switch the coolant on for this set. */
+  coolant: z.boolean({ error: 'must be true or false' }).optional(),
+  /** Finish pass allowance, mm (0 = no finish pass). */
+  finishAllowance: num().min(0).max(PROFILE_BOUNDS.finishAllowance.max).optional(),
+  /** Ramp entry angle, degrees (at most the family's ceiling, checked on save). */
+  rampDeg: num().min(PROFILE_BOUNDS.rampDeg.min).max(PROFILE_BOUNDS.rampDeg.max).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -304,8 +320,9 @@ function crossIssue(
   path: (string | number)[],
   key: string,
   message: string,
+  values?: Record<string, string | number>,
 ): void {
-  ctx.addIssue({ code: 'custom', path, message, params: { key } });
+  ctx.addIssue({ code: 'custom', path, message, params: values ? { key, values } : { key } });
 }
 
 /**
@@ -331,7 +348,9 @@ function coolantRules(
       const vacuum = new Set([hd.vacuumOn, hd.vacuumOff].filter((x) => x !== ''));
       for (const k of ['on', 'off'] as const) {
         if (c[k] !== '' && vacuum.has(c[k])) {
-          crossIssue(ctx, ['coolant', k], 'mCodeConflict', `coolant and vacuum both use ${c[k]}`);
+          crossIssue(ctx, ['coolant', k], 'mCodeConflict', `coolant and vacuum both use ${c[k]}`, {
+            code: c[k],
+          });
         }
       }
       for (const k of ['vacuumOn', 'vacuumOff'] as const) {
@@ -341,6 +360,7 @@ function coolantRules(
             ['holdDown', k],
             'vacuumUsesCoolantCode',
             `vacuum uses ${hd[k]}, a coolant code`,
+            { code: hd[k] },
           );
         }
       }
@@ -523,6 +543,7 @@ export const machineProfileSchema = z
           ['materials', i, 'tabs', 'height'],
           'tabHeightAboveThickness',
           'tab height must be less than the material thickness',
+          { below: traitsOf(m.material).tabs.bounds.belowThickness },
         );
       }
       if (m.rpm < p.spindle.minRpm || m.rpm > p.spindle.maxRpm) {
@@ -564,6 +585,8 @@ export interface MachineProfileIssue {
   origin?: string;
   /** Translation key of a cross-field rule. */
   key?: string;
+  /** Values the rule's text names (`{code}`, `{min}`, …; T351 / MB4). */
+  values?: Record<string, string | number>;
 }
 
 export type ParseMachineProfileResult =
@@ -595,8 +618,10 @@ function toIssue(issue: z.core.$ZodIssue): MachineProfileIssue {
   } else if (issue.code === 'invalid_type') {
     out.origin = issue.expected;
   } else if (issue.code === 'custom') {
-    const key = (issue.params as { key?: unknown } | undefined)?.key;
-    if (typeof key === 'string') out.key = key;
+    const params = issue.params as { key?: unknown; values?: unknown } | undefined;
+    if (typeof params?.key === 'string') out.key = params.key;
+    if (params?.values && typeof params.values === 'object')
+      out.values = params.values as Record<string, string | number>;
   }
   return out;
 }
@@ -678,10 +703,79 @@ export function materialFeedIssues(profile: FeedLimitProfile): MachineProfileIss
   return out;
 }
 
+/** T351: the chip load of a set, mm per tooth (feed / (rpm × flutes)); `null` without its tool. */
+export function setChipLoad(
+  profile: Pick<MachineProfile, 'tools'>,
+  set: Pick<MaterialParams, 'feed' | 'rpm' | 'tool'>,
+): { value: number; diameter: number } | null {
+  const tool = profile.tools.find((t) => t.number === set.tool);
+  if (!tool || !(set.rpm > 0) || !(tool.flutes > 0)) return null;
+  return { value: set.feed / (set.rpm * tool.flutes), diameter: tool.diameter };
+}
+
+/**
+ * T351 (§3.6, §7.1, analysis §4.2 / §4.5): the material-family limits of the sets, checked on save
+ * (stored profiles still load). A chip load outside a `limit` band (aluminium), a step-down above
+ * the traits ceiling × machine rigidity and a ramp angle above the family's ceiling are refused;
+ * each issue names its limit. A `warn` band (ACM) is only marked by the form. Kinds without
+ * limits (wood, plastic) never get an issue.
+ */
+export function materialFamilyIssues(
+  profile: Pick<MachineProfile, 'tools' | 'materials' | 'metal'>,
+): MachineProfileIssue[] {
+  const out: MachineProfileIssue[] = [];
+  const rigidity = profile.metal?.rigidity ?? 'standard';
+  const r3 = (v: number) => Math.round(v * 1000) / 1000;
+  profile.materials.forEach((m, i) => {
+    const traits = traitsOf(m.material);
+    const cl = setChipLoad(profile, m);
+    const band = cl ? chipLoadBand(traits, cl.diameter) : null;
+    if (
+      cl &&
+      band?.enforce === 'limit' &&
+      (cl.value < band.min - 1e-9 || cl.value > band.max + 1e-9)
+    ) {
+      out.push({
+        path: `materials[${i}].feed`,
+        code: 'custom',
+        key: 'chipLoadOutsideBand',
+        message: `chip load ${r3(cl.value)} mm/tooth is outside ${band.min}–${band.max} for ${m.material}`,
+        values: { value: r3(cl.value), min: band.min, max: band.max },
+      });
+    }
+    const tool = profile.tools.find((t) => t.number === m.tool);
+    const ceiling = tool ? stepDownCeiling(traits, tool.diameter, rigidity) : null;
+    if (ceiling !== null && m.stepDown > ceiling + 1e-9) {
+      out.push({
+        path: `materials[${i}].stepDown`,
+        code: 'custom',
+        key: 'stepDownAboveCeiling',
+        message: `step-down ${m.stepDown} mm is above the ${ceiling} mm ceiling for ${m.material}`,
+        values: { max: ceiling, share: traits.stepDown.maxPerDiameter ?? 0 },
+      });
+    }
+    const ramp = traits.entry.rampDeg;
+    if (ramp && m.rampDeg !== undefined && m.rampDeg > ramp.max + 1e-9) {
+      out.push({
+        path: `materials[${i}].rampDeg`,
+        code: 'custom',
+        key: 'rampAboveMax',
+        message: `ramp angle ${m.rampDeg}° is above ${ramp.max}° for ${m.material}`,
+        values: { max: ramp.max },
+      });
+    }
+  });
+  return out;
+}
+
 export function parseMachineProfileForSave(json: unknown): ParseMachineProfileResult {
   const parsed = parseMachineProfile(json);
   if (!parsed.ok) return parsed;
-  const issues = [...materialTabIssues(parsed.profile), ...materialFeedIssues(parsed.profile)];
+  const issues = [
+    ...materialTabIssues(parsed.profile),
+    ...materialFeedIssues(parsed.profile),
+    ...materialFamilyIssues(parsed.profile),
+  ];
   return issues.length > 0 ? { ok: false, issues } : parsed;
 }
 

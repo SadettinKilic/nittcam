@@ -1,3 +1,4 @@
+import type { MaterialProps } from '@nittcam/core';
 /** Offcut stock API shapes (T168), shared by the routes and the client. */
 export type OffcutStatus = 'available' | 'reserved' | 'used';
 
@@ -14,6 +15,8 @@ export interface OffcutItem {
   sourceProjectName?: string | null;
   status: OffcutStatus;
   createdAt: string;
+  /** T350: alloy / colour code of the sheet it came from; `{}` = none. */
+  props?: MaterialProps;
 }
 
 export interface NewOffcut {
@@ -23,6 +26,8 @@ export interface NewOffcut {
   height: number;
   grain: 0 | 90 | null;
   sourceProjectId?: string | null | undefined;
+  /** T350: the stock's alloy / colour code (absent = none). */
+  props?: MaterialProps | undefined;
 }
 
 export type OffcutApiError = { error: 'bad_request' | 'not_found' | 'server_error' };

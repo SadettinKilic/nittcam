@@ -290,9 +290,18 @@ function materialsRepo(db: Db, companyId: string) {
     async update(id: string, patch: unknown): Promise<MaterialRow | null> {
       const current = await get(id);
       if (!current) return null;
-      const { kind, name, thicknesses, tone, grain, sheetSizes } = current;
+      const { kind, name, thicknesses, tone, grain, sheetSizes, props } = current;
       const changes = patch !== null && typeof patch === 'object' ? stripOwned(patch) : {};
-      const m = validMaterial({ kind, name, thicknesses, tone, grain, sheetSizes, ...changes });
+      const m = validMaterial({
+        kind,
+        name,
+        thicknesses,
+        tone,
+        grain,
+        sheetSizes,
+        props,
+        ...changes,
+      });
       const rows = await db
         .update(materials)
         .set({ ...m, updatedAt: new Date() })

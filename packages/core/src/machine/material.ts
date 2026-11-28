@@ -66,9 +66,21 @@ const LOOKUP: ReadonlyMap<string, MaterialKind> = new Map(
   ),
 );
 
+/**
+ * T351 (perf): `materialKindOf` runs per part in validation and nesting; the Turkish-locale
+ * lower-casing is slow, so results are memoised. Same input, same output (pure); bounded size.
+ */
+const KIND_CACHE = new Map<string, MaterialKind | null>();
+const KIND_CACHE_MAX = 512;
+
 /** The profile material kind for a project material id, or null when we do not know it. */
 export function materialKindOf(material: string): MaterialKind | null {
-  return LOOKUP.get(normalizeMaterialId(material)) ?? null;
+  const hit = KIND_CACHE.get(material);
+  if (hit !== undefined) return hit;
+  const kind = LOOKUP.get(normalizeMaterialId(material)) ?? null;
+  if (KIND_CACHE.size >= KIND_CACHE_MAX) KIND_CACHE.clear();
+  KIND_CACHE.set(material, kind);
+  return kind;
 }
 
 /**

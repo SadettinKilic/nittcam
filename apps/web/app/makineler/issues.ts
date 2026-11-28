@@ -8,16 +8,17 @@ export type FieldErrors = Record<string, string>;
 
 const nf = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
 
-function fill(template: string, values: Record<string, number | undefined>): string {
+function fill(template: string, values: Record<string, number | string | undefined>): string {
   return template.replace(/\{(\w+)\}/g, (_m, k: string) => {
     const v = values[k];
-    return v === undefined ? '' : nf.format(v);
+    return v === undefined ? '' : typeof v === 'string' ? v : nf.format(v);
   });
 }
 
 /** Turkish message for one core profile issue (by rule key, then by Zod code and bound). */
 export function issueMessage(issue: MachineProfileIssue, t: ErrorText): string {
-  if (issue.key && issue.key in t) return t[issue.key as keyof ErrorText];
+  // MB4: a rule names its values (`{code}`, `{max}`, …)
+  if (issue.key && issue.key in t) return fill(t[issue.key as keyof ErrorText], issue.values ?? {});
   const bounds = { min: issue.minimum, max: issue.maximum };
   switch (issue.code) {
     case 'invalid_type':

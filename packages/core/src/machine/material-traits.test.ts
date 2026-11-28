@@ -24,7 +24,7 @@ describe('material traits (T341)', () => {
       smallPartMinCount: TAB_DEFAULTS.smallPartMinCount,
     });
     expect(t.tabs.bounds).toEqual({ ...TAB_BOUNDS });
-    expect(t.skin).toEqual({ ...SKIN_BOUNDS });
+    expect(t.skin).toEqual({ ...SKIN_BOUNDS, offered: true });
     expect(t.smallPart).toEqual({
       area: TAB_DEFAULTS.smallPartArea,
       minSide: TAB_DEFAULTS.smallPartMinSide,
