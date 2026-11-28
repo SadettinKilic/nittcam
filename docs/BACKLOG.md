@@ -1449,6 +1449,28 @@ The true-shape placer starts candidates 1e-4 mm off a neighbour (`nesting/truesh
 - [x] goldens regenerated with the per-file reason; no post-side rounding change (mach3 true-shape, arc-tabs, thin-skin; generic true-shape, arc-tabs: see PR #192)
 Tester focus: true-shape and arc-tabs goldens read back clean; nesting property tests.
 
+## CTO review #14 follow-ups (2026-11-28, D-047; review `docs/reviews/2026-11-28-cto-review-14.md`)
+
+### Batch B68: T393–T395 + rider T396 (CTO #14 MUSTs)
+
+### T393 Back-face machining stated in the NC header and the export checklist   [status: todo]   (CTO #14 M1)
+Acceptance: the fix list of M1 in the review: NC header line `(PLAKA ARKA YUZU USTTE: PARCALAR AYNALI)` when `machinedFace = back`; required export checklist item "Plakayı arka yüzü üstte (film alta) yatırdım; parçalar aynalı kesilir."; the independent checker asserts the header line for back-face projects; existing goldens unchanged; a new small ACM back-face golden fixture (`needs-human`, PO + tester approve).
+
+### T394 Toasts never cover canvas toolbars   [status: todo]   (CTO #14 M2)
+Acceptance: the fix list of M2: workspace views (Çizim, Montaj, Dizilim, Simülasyon) put toasts bottom-right clear of every canvas toolbar; switching the parts view dismisses an open undo toast (undo stays on Ctrl+Z); e2e with `elementFromPoint` that the arc options and the bench toolbar are clickable right after a paste at 1440 and 1024. Supersedes the B-M2/B67 toast offsets.
+
+### T395 Aluminium: one honest message, no fixes that cannot work   [status: todo]   (CTO #14 M3)
+Acceptance: the fix list of M3: while `MATERIAL_NOT_RELEASED` holds it is the only aluminium error (set and metal-machine errors folded under it), step 1 hides the two fix buttons, Simülasyon shows one error; text without task ids; machine form hint "Alüminyum G-code'u henüz kapalı; beyan şimdiden kaydedilir."; no task ids anywhere in `tr.json` (grep test).
+
+### T396 ACM step 1: right sheet, honest set hint, one click for starting values   [status: todo]   (rider; CTO #14 P1–P3)
+Acceptance: switching to ACM (or aluminium) switches the sheet to the kind's first preset when the current sheet is not one of its presets (undoable, notice shown); the thickness hint and the "no cutting set" line never contradict each other; when the machine has no ACM set, step 1 offers "Örnek ACM ayarlarını ekle" (the MB4 action) inline.
+
+### T397 Montaj polish from CTO #14   [status: todo]   (Polish queue; P5–P7)
+P5: the fit check never says "Her şey oturuyor" while a visible part touches nothing (list "temas yok" parts); P6: mate mode turns off while exploded; P7: the fit results open as an overlay/drawer so the part position fields stay in view.
+
+### T398 Text and table polish from CTO #14   [status: todo]   (Polish queue; P8–P11)
+P8: Kenar payı helper follows D-129 (effective margin with tabs); P9: "Tüm program" chips not in code style; P10: no research hedges ("doğrulanacak") in UI texts, use a single "başlangıç değeri, makinede doğrulayın" badge; P11: Ayarlar → Malzemeler list gets column names.
+
 ## Mobile UI pass (D-043; one or two batches, scheduled by the PO before the field test, at the latest in M9)
 
 Until then the product is **desktop-first**: at phone widths screens only must not break (no page-level horizontal scroll, no hidden primary action, no crash, axe clean). Phone-specific polish collects here.
