@@ -2025,6 +2025,7 @@
     "simulation": {
       "empty": "Simüle edilecek dizilim yok. Önce Dizilim adımında bir hedefe tıklayarak parçaları yerleştirin.",
       "toLayout": "Dizilim adımına git",
+      "nesting": "Dizilim hesaplanıyor… Bitince simülasyon burada açılır.",
       "noMachine": "Simülasyon için önce Makine ve plaka adımında bir makine seçin."
     },
     "export": {
@@ -2056,6 +2057,7 @@
       "openSkin": "Tabaka kalınlığına git",
       "machinesLink": "Makineler sayfası",
       "noLayout": "Önce Dizilim adımında parçaları yerleştirin.",
+      "nesting": "Dizilim hesaplanıyor… Bitince dışa aktarma kontrolü kendiliğinden başlar.",
       "noMachine": "Önce bir makine seçin.",
       "notCreated": "Proje henüz kaydedilmedi. Bir değişiklik yapınca kaydedilir, sonra dışa aktarılabilir.",
       "waitingSave": "Son değişiklikler kaydediliyor; kontrol kaydedilen revizyonla çalışacak.",

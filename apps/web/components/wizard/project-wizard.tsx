@@ -23,6 +23,7 @@ import {
   useProjectSession,
   type SessionInit,
 } from '../../lib/project-session';
+import { useNestingActivity } from '../../lib/use-nesting-worker';
 import { STEP_REQUEST_EVENT } from '../../lib/step-request';
 import { leavingLinkHref, onNavigationStart } from '../../lib/navigation-guard';
 import { nextFailing, saveBannerKind } from '../../lib/save-banner';
@@ -506,6 +507,8 @@ function WizardSession({
   const t = messages.wizard;
   const router = useRouter();
   const [step, setStep] = useState<StepKey>(initialStep);
+  // T384: a nesting run still busy after leaving Dizilim (Simülasyon shows it instead of empty).
+  const nestingBusy = useNestingActivity() !== null;
   // Parts step view (T124, §3.6): "Liste" (cut list) or "Çizim" (drawing board), same data.
   // One part selection for both views of the Parçalar step (T135): Liste ↔ Çizim keep it.
   const [partsSelection, setPartsSelection] = useState<string[]>([]);
@@ -1343,7 +1346,16 @@ function WizardSession({
           saved: session.projectId !== null && !session.dirty,
         }}
         empty={{
-          noLayout: (
+          noLayout: nestingBusy ? (
+            <section
+              role="status"
+              data-testid="sim-nesting"
+              className={`${canvasWellClass} flex items-center gap-3 border-dashed p-6 sm:p-8`}
+            >
+              <Loader2 aria-hidden className="size-4 animate-spin text-fg-muted" />
+              <p className="max-w-prose text-sm text-fg-muted">{t.simulation.nesting}</p>
+            </section>
+          ) : (
             <section
               data-testid="sim-empty"
               className={`${canvasWellClass} flex flex-col items-start gap-4 border-dashed p-6 sm:p-8`}

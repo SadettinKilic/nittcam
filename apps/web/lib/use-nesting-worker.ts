@@ -1,19 +1,19 @@
 'use client';
 
 import type { Project, RunNestingParams } from '@nittcam/core';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import type { NestingRequest, NestingResponse, NestingWorkerMessage } from './nesting-messages';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import type { NestingResponse } from './nesting-messages';
+import {
+  createNestingHost,
+  type NestActivity,
+  type NestingHost,
+  NESTING_CANCELLED,
+} from './nesting-host';
 
-/** Error of a request that was cancelled with `cancel()` (T163). */
-export const NESTING_CANCELLED = 'cancelled';
-
-interface Pending {
-  resolve: (r: NestingResponse) => void;
-  onProgress: ((done: number, total: number) => void) | undefined;
-}
+export { NESTING_CANCELLED };
 
 export interface NestingWorker {
-  /** Runs `runNesting` in the worker; resolves with its response (or `cancelled`/`terminated`). */
+  /** Runs `runNesting` in the worker; resolves with its response (or `cancelled`). */
   run: (
     project: Project,
     params: RunNestingParams,
@@ -24,59 +24,38 @@ export interface NestingWorker {
    * resolves with `cancelled` and nothing is recorded. The next `run` starts a fresh worker.
    */
   cancel: () => void;
+  /** The page-wide host (T384: run state shared by Dizilim, Simülasyon and Dışa aktar). */
+  host: NestingHost;
+}
+
+let shared: NestingHost | null = null;
+
+/** The page's nesting host, created on first use (browser only). */
+export function nestingHost(): NestingHost {
+  shared ??= createNestingHost(
+    () => new Worker(new URL('./nesting.worker.ts', import.meta.url), { type: 'module' }),
+  );
+  return shared;
 }
 
 /**
- * Runs nesting in a Web Worker (spec §8.2). The worker is created on first use and terminated on
- * unmount or cancel. Progress messages go to the request's `onProgress`.
+ * Runs nesting in a Web Worker (spec §8.2). T384: the worker belongs to the page, not to the
+ * Dizilim step; unmounting the step keeps a busy run alive until its result is in, so the caller
+ * still records it.
  */
 export function useNestingWorker(): NestingWorker {
-  const worker = useRef<Worker | null>(null);
-  const pending = useRef(new Map<number, Pending>());
-  const nextId = useRef(1);
-
-  const stop = useCallback((error: string) => {
-    worker.current?.terminate();
-    worker.current = null;
-    for (const [id, p] of pending.current) p.resolve({ id, ok: false, error });
-    pending.current.clear();
+  useEffect(() => nestingHost().acquire(), []);
+  return useMemo(() => {
+    const host = nestingHost();
+    return { run: host.run, cancel: host.cancel, host };
   }, []);
+}
 
-  useEffect(() => () => stop('terminated'), [stop]);
+const subscribeActivity = (listener: () => void) => nestingHost().subscribe(listener);
+const getActivity = () => nestingHost().activity();
+const nothing = () => null;
 
-  const run = useCallback<NestingWorker['run']>((project, params, onProgress) => {
-    if (!worker.current) {
-      const w = new Worker(new URL('./nesting.worker.ts', import.meta.url), { type: 'module' });
-      w.addEventListener('message', (e: MessageEvent<NestingWorkerMessage>) => {
-        // T379: a worker stopped by cancel (a mode click restarts the run) may still report; the
-        // pending requests belong to its successor then.
-        if (worker.current !== w) return;
-        const p = pending.current.get(e.data.id);
-        if (!p) return;
-        if (e.data.kind === 'progress') {
-          p.onProgress?.(e.data.done, e.data.total);
-          return;
-        }
-        pending.current.delete(e.data.id);
-        p.resolve(e.data);
-      });
-      w.addEventListener('error', (e) => {
-        if (worker.current !== w) return;
-        for (const [id, p] of pending.current) {
-          p.resolve({ id, ok: false, error: e.message || 'worker error' });
-        }
-        pending.current.clear();
-      });
-      worker.current = w;
-    }
-    const id = nextId.current++;
-    const request: NestingRequest = { id, project, params };
-    return new Promise<NestingResponse>((resolve) => {
-      pending.current.set(id, { resolve, onProgress });
-      worker.current?.postMessage(request);
-    });
-  }, []);
-
-  const cancel = useCallback(() => stop(NESTING_CANCELLED), [stop]);
-  return useMemo(() => ({ run, cancel }), [run, cancel]);
+/** T384: the nesting run in progress anywhere on the page, null when idle. */
+export function useNestingActivity(): NestActivity | null {
+  return useSyncExternalStore(subscribeActivity, getActivity, nothing);
 }

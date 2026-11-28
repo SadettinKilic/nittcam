@@ -35,9 +35,14 @@ import {
   optionSetKey,
   optionSetKeyForMode,
 } from '../../lib/nesting-cache';
-import { createNestProgressStore, type NestProgressStore } from '../../lib/nesting-progress';
+import type { NestProgressStore } from '../../lib/nesting-progress';
 import type { ProjectSession } from '../../lib/project-session';
-import { NESTING_CANCELLED, useNestingWorker } from '../../lib/use-nesting-worker';
+import {
+  NESTING_CANCELLED,
+  nestingHost,
+  useNestingActivity,
+  useNestingWorker,
+} from '../../lib/use-nesting-worker';
 import {
   LayoutView,
   RenestingContext,
@@ -83,9 +88,13 @@ function useNest(
   t: Messages['cutList']['nesting'],
 ) {
   const worker = useNestingWorker();
-  const [running, setRunning] = useState(false);
+  // T384: the run state lives in the page's nesting host, so a run that outlives this step (the
+  // user left Dizilim) still records its result and shows as running when the step comes back.
+  const activity = useNestingActivity();
+  const running = activity !== null;
+  const runMode = activity?.mode ?? null;
   // Progress lives in a small store read only by the bar (no re-render of the canvas per tick).
-  const [progress] = useState(createNestProgressStore);
+  const progress = worker.host.progress;
   const [message, setMessage] = useState<NestMessage>(null);
   // Counts new "Diz" results so the layout plays its fade/settle-in once per result (T196).
   const [nested, setNested] = useState(0);
@@ -99,9 +108,6 @@ function useNest(
   });
   // T379: a mode click during a run restarts it; only the latest run may report or stop "running".
   const runId = useRef(0);
-  const runningRef = useRef(false);
-  // The mode of the run in progress (its button shows the progress), null when idle.
-  const [runMode, setRunMode] = useState<NestingMode | null>(null);
   // Bumped by a mode click: the run starts after the render that carries the new mode (the session
   // of the click's render is stale once `setNestingMode` ran).
   const [pendingRun, setPendingRun] = useState(0);
@@ -133,9 +139,7 @@ function useNest(
       record(base, appliedFromCache(base, params, hit.layout));
       return;
     }
-    setRunning(true);
-    runningRef.current = true;
-    setRunMode(base.nesting.mode);
+    const token = worker.host.begin(base.nesting.mode);
     progress.set(null);
     try {
       const res = await worker.run(base, params, (done, total) => progress.set({ done, total }));
@@ -154,12 +158,7 @@ function useNest(
         setCacheVersion((v) => v + 1);
       }
     } finally {
-      if (id === runId.current) {
-        setRunning(false);
-        runningRef.current = false;
-        setRunMode(null);
-        progress.set(null);
-      }
+      worker.host.end(token);
     }
   }, [worker, cache, progress, t]);
 
@@ -170,7 +169,7 @@ function useNest(
   const nestMode = useCallback(
     (mode: NestingMode) => {
       const { session } = latest.current;
-      if (runningRef.current) worker.cancel();
+      if (worker.host.activity() !== null) worker.cancel();
       if (session.project.nesting.mode !== mode && !session.run('setNestingMode', { mode })) return;
       setPendingRun((n) => n + 1);
     },
@@ -284,7 +283,9 @@ export function LayoutStep({
       // would drop the redo steps). Other redo steps (e.g. the phantom row the cut list took back
       // with undo on leaving) do not stop the first-entry nesting.
       const redoNests = a.session.redoCommand === 'runNesting';
-      if (p.parts.length > 0 && !hasLayout && !redoNests) void a.nest();
+      // T384: a run that outlived an earlier visit of the step is still busy; it brings the layout.
+      const busy = nestingHost().activity() !== null;
+      if (p.parts.length > 0 && !hasLayout && !redoNests && !busy) void a.nest();
     }, 0);
     return () => clearTimeout(timer);
   }, [stock.ready]);
