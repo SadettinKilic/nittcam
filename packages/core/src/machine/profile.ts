@@ -6,7 +6,8 @@
  * and, for cross-field rules, by `params.key` (see `MachineProfileIssue`).
  */
 import { z } from 'zod';
-import { maxTabHeight, TAB_BOUNDS } from '../toolpath/tabs';
+import { maxTabHeight } from '../toolpath/tabs';
+import { traitsOf } from './material-traits';
 import { MATERIAL_KIND_IDS, type MaterialKind } from './material-kinds';
 
 /** The machine profile schema version this build writes and reads. */
@@ -31,6 +32,8 @@ export const PROFILE_BOUNDS = {
   toolDiameter: { max: 50 },
   fluteLength: { max: 200 },
   flutes: { min: 1, max: 8 },
+  /** T344: V-bit included angle, degrees. */
+  vBitAngle: { min: 10, max: 179 },
   tools: { min: 1, max: 99 },
   materialThickness: { max: 200 },
   feed: { min: 100, max: 60_000 },
@@ -168,6 +171,37 @@ export const holdDownSchema = z.strictObject({
   type: z.enum(['vacuum', 'clamp', 'tSlot'], { error: 'must be vacuum, clamp or tSlot' }),
   vacuumOn: mCode,
   vacuumOff: mCode,
+  /**
+   * T345 (§7.1 "Metal kesim"): height of the clamps / T-slot hold-downs above Z zero, mm. Optional;
+   * when given for clamp or T-slot, safe Z must clear it by `CLAMP_CLEARANCE` (`safeZBelowClamps`).
+   */
+  clampHeight: lengthUpTo(PROFILE_BOUNDS.axisZ.max).optional(),
+});
+
+/** T345: safe Z at least this far above the clamps, mm (analysis §6.1). */
+export const CLAMP_CLEARANCE = 5;
+
+/** M codes the standard reserves for coolant (M7 mist, M8 flood, M9 off; analysis §6.2). */
+export const COOLANT_M_CODES: readonly string[] = ['M7', 'M8', 'M9'];
+
+/**
+ * T345 (§7.1 "Soğutma", analysis §6.1): the machine's coolant. Optional: absent = no coolant, as
+ * today. `program` = switched by M codes `on` / `off`; `manual` = the program stops and asks.
+ */
+export const coolantSchema = z.strictObject({
+  type: z.enum(['none', 'mist', 'flood', 'air'], { error: 'must be none, mist, flood or air' }),
+  control: z.enum(['program', 'manual'], { error: 'must be program or manual' }),
+  on: mCode,
+  off: mCode,
+});
+
+/**
+ * T345 (§7.1 "Metal kesim"): the declaration that the machine may cut non-ferrous metal, and its
+ * rigidity (scales the step-down ceiling later, "doğrulanacak"). Optional: absent = no metal.
+ */
+export const metalSchema = z.strictObject({
+  enabled: z.boolean({ error: 'must be true or false' }),
+  rigidity: z.enum(['light', 'standard', 'heavy'], { error: 'must be light, standard or heavy' }),
 });
 
 /** Program biçimi: which post config and which version (the config itself is T017). */
@@ -208,6 +242,13 @@ export const toolSchema = z.strictObject({
   diameter: lengthUpTo(PROFILE_BOUNDS.toolDiameter.max),
   fluteLength: lengthUpTo(PROFILE_BOUNDS.fluteLength.max),
   flutes: int().min(PROFILE_BOUNDS.flutes.min).max(PROFILE_BOUNDS.flutes.max),
+  /**
+   * T344 (§7.1 "Takım profili"): V-bit included angle, degrees (10–179). Only for `vBit`; optional,
+   * older profiles stay valid (V-groove width and depth use it, M-Metal).
+   */
+  angleDeg: num().min(PROFILE_BOUNDS.vBitAngle.min).max(PROFILE_BOUNDS.vBitAngle.max).optional(),
+  /** T344: V-bit flat tip diameter, mm (≥ 0, below the diameter). Only for `vBit`; optional. */
+  tipDiameter: num().min(0).max(PROFILE_BOUNDS.toolDiameter.max).optional(),
 });
 
 /** Materials of the Oluştur sihirbazı (§3.6). Stone is "yakında" and not listed. */
@@ -267,6 +308,61 @@ function crossIssue(
   ctx.addIssue({ code: 'custom', path, message, params: { key } });
 }
 
+/**
+ * T345 (analysis §6.2): rules that only apply to a profile that declares program-controlled
+ * coolant, plus the clamp clearance once a clamp height is given. Today's profiles have neither,
+ * so they are not affected.
+ */
+function coolantRules(
+  p: {
+    safeZ: number;
+    holdDown: z.infer<typeof holdDownSchema>;
+    coolant?: z.infer<typeof coolantSchema> | undefined;
+  },
+  ctx: z.core.$RefinementCtx,
+): void {
+  const hd = p.holdDown;
+  const c = p.coolant;
+  if (c && c.type !== 'none' && c.control === 'program') {
+    if (c.on === '') {
+      crossIssue(ctx, ['coolant', 'on'], 'coolantOnMissing', 'program coolant needs an on code');
+    }
+    if (hd.type === 'vacuum') {
+      const vacuum = new Set([hd.vacuumOn, hd.vacuumOff].filter((x) => x !== ''));
+      for (const k of ['on', 'off'] as const) {
+        if (c[k] !== '' && vacuum.has(c[k])) {
+          crossIssue(ctx, ['coolant', k], 'mCodeConflict', `coolant and vacuum both use ${c[k]}`);
+        }
+      }
+      for (const k of ['vacuumOn', 'vacuumOff'] as const) {
+        if (COOLANT_M_CODES.includes(hd[k])) {
+          crossIssue(
+            ctx,
+            ['holdDown', k],
+            'vacuumUsesCoolantCode',
+            `vacuum uses ${hd[k]}, a coolant code`,
+          );
+        }
+      }
+    }
+  }
+  if (
+    (hd.type === 'clamp' || hd.type === 'tSlot') &&
+    hd.clampHeight !== undefined &&
+    p.safeZ < hd.clampHeight + CLAMP_CLEARANCE
+  ) {
+    // on both fields: the form shows it next to the clamp height too
+    for (const path of [['safeZ'], ['holdDown', 'clampHeight']]) {
+      crossIssue(
+        ctx,
+        path,
+        'safeZBelowClamps',
+        `safe Z must be at least the clamp height + ${CLAMP_CLEARANCE} mm`,
+      );
+    }
+  }
+}
+
 export const machineProfileSchema = z
   .strictObject({
     schemaVersion: z.literal(MACHINE_PROFILE_SCHEMA_VERSION, {
@@ -299,6 +395,10 @@ export const machineProfileSchema = z
     spindle: spindleSchema,
     toolChanger: toolChangerSchema,
     holdDown: holdDownSchema,
+    /** T345: coolant (optional; absent = none, today's behaviour). */
+    coolant: coolantSchema.optional(),
+    /** T345: metal declaration (optional; absent = the machine does not cut metal). */
+    metal: metalSchema.optional(),
     post: postRefSchema,
     constraints: constraintsSchema,
     tools: z.array(toolSchema).min(PROFILE_BOUNDS.tools.min).max(PROFILE_BOUNDS.tools.max),
@@ -337,6 +437,7 @@ export const machineProfileSchema = z
         'vacuum off code without on code',
       );
     }
+    coolantRules(p, ctx);
     const seen = new Set<number>();
     p.tools.forEach((tool, i) => {
       if (seen.has(tool.number)) {
@@ -348,6 +449,21 @@ export const machineProfileSchema = z
         );
       }
       seen.add(tool.number);
+      // T344: the V-bit geometry belongs to V-bits only; a flat tip is narrower than the bit.
+      if (tool.type !== 'vBit') {
+        for (const k of ['angleDeg', 'tipDiameter'] as const) {
+          if (tool[k] !== undefined) {
+            crossIssue(ctx, ['tools', i, k], 'vBitOnly', `${k} is only for a V-bit`);
+          }
+        }
+      } else if (tool.tipDiameter !== undefined && tool.tipDiameter >= tool.diameter) {
+        crossIssue(
+          ctx,
+          ['tools', i, 'tipDiameter'],
+          'tipNotBelowDiameter',
+          'the tip diameter must be less than the tool diameter',
+        );
+      }
       if (p.toolChanger.type === 'auto' && tool.number > p.toolChanger.capacity) {
         crossIssue(
           ctx,
@@ -427,6 +543,8 @@ export type Tool = z.infer<typeof toolSchema>;
 export type ToolType = z.infer<typeof toolTypeSchema>;
 export type MaterialParams = z.infer<typeof materialParamsSchema>;
 export type TabParams = z.infer<typeof tabParamsSchema>;
+export type Coolant = z.infer<typeof coolantSchema>;
+export type MetalDeclaration = z.infer<typeof metalSchema>;
 export type { MaterialKind };
 export type OriginCorner = z.infer<typeof originCornerSchema>;
 
@@ -503,6 +621,9 @@ export function materialTabIssues(
   profile.materials.forEach((m, i) => {
     if (!m.tabs) return;
     const at = (k: string) => `materials[${i}].tabs.${k}`;
+    // T343: the bounds of the set's material kind (its traits row)
+    const limits = traitsOf(m.material);
+    const b = limits.tabs.bounds;
     const small = (k: string, minimum: number) =>
       out.push({
         path: at(k),
@@ -512,14 +633,14 @@ export function materialTabIssues(
         inclusive: true,
         origin: 'number',
       });
-    if (m.tabs.width < TAB_BOUNDS.minWidth) small('width', TAB_BOUNDS.minWidth);
-    if (m.tabs.height < TAB_BOUNDS.minHeight) small('height', TAB_BOUNDS.minHeight);
-    else if (m.tabs.height > maxTabHeight(m.thickness)) {
-      const maximum = maxTabHeight(m.thickness);
+    if (m.tabs.width < b.minWidth) small('width', b.minWidth);
+    if (m.tabs.height < b.minHeight) small('height', b.minHeight);
+    else if (m.tabs.height > maxTabHeight(m.thickness, limits)) {
+      const maximum = maxTabHeight(m.thickness, limits);
       out.push({
         path: at('height'),
         code: 'too_big',
-        message: `height must be at most ${maximum} mm (thickness minus ${TAB_BOUNDS.belowThickness} mm)`,
+        message: `height must be at most ${maximum} mm (thickness minus ${b.belowThickness} mm)`,
         maximum,
         inclusive: true,
         origin: 'number',

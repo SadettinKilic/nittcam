@@ -9,7 +9,13 @@
  */
 import { EPS } from '../geometry/constants';
 import { contour, normalize } from '../geometry/polyline';
-import { findMaterialParams, findTool, type MachineProfile, type Tool } from '../machine';
+import {
+  findMaterialParams,
+  findTool,
+  materialKindOf,
+  type MachineProfile,
+  type Tool,
+} from '../machine';
 import { nestingToolDiameter } from '../nesting/tool';
 import { holeToolProblem } from '../editor/holes';
 import { lineLeavesPart } from '../editor/lines';
@@ -21,11 +27,11 @@ import { innerContourPath, outerContourPath } from './build';
 import { throughCutTarget } from './depth';
 import { contourPocketRings } from './contour-pocket';
 import {
-  OPERATION_TOOL_TYPES,
   hasContourPocket,
   holeToolKind,
   operationToolChoice,
   operationsInJob,
+  toolTypeAllowed,
   type OperationToolKind,
 } from './op-tools';
 
@@ -38,6 +44,16 @@ export type OperationToolProblem =
   | 'HOLE_SMALLER'
   | 'DRILL_SIZE';
 
+/**
+ * T344: the problem in words for messages; `TYPE` names the stock material (the allowed types
+ * come from its traits row).
+ */
+export function operationToolProblemText(project: Project, problem: OperationToolProblem): string {
+  if (problem !== 'TYPE') return problem;
+  const material = materialKindOf(project.stock.material) ?? project.stock.material;
+  return `TYPE: this tool type does not cut it in ${material}`;
+}
+
 /** Why `toolNo` cannot cut operation `op` of this job, or `null` when it can. */
 export function operationToolProblem(
   entered: Project,
@@ -47,7 +63,7 @@ export function operationToolProblem(
 ): OperationToolProblem | null {
   const tool = findTool(machine, toolNo);
   if (!tool) return 'NOT_IN_PROFILE';
-  if (!OPERATION_TOOL_TYPES[op].includes(tool.type)) return 'TYPE';
+  if (!toolTypeAllowed(entered.stock.material, op, tool.type)) return 'TYPE';
   const project = toCutSizes(entered);
   const through = -throughCutTarget(project.stock.thickness, machine.zZero.spoilboardAllowance);
   const r = tool.diameter / 2;

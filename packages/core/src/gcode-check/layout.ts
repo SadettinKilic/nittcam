@@ -14,7 +14,7 @@ import { sampleSegment } from '../geometry/segment';
 import type { Polyline } from '../geometry/types';
 import { innerOperation, outlineOperation, type Project } from '../schema';
 import {
-  TAB_DEFAULTS,
+  holdLimitsOf,
   isSmallPart,
   placedHoleCentre,
   placedInners,
@@ -56,6 +56,8 @@ export function expectedLayout(entered: Project, sheet: number, toolDiameter = 0
   // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
   const project = toCutSizes(entered);
   const out: ExpectedPart[] = [];
+  // T343: small-part thresholds of the stock's traits row
+  const { smallPart } = holdLimitsOf(project.stock.material);
   for (const pl of project.layout.sheets[sheet]?.placements ?? []) {
     const part = project.parts.find((p) => p.id === pl.partId);
     if (!part) continue;
@@ -66,7 +68,7 @@ export function expectedLayout(entered: Project, sheet: number, toolDiameter = 0
       ...centre(outline),
       // T338 (D-129): the outline and small/skin flags for the hold rule (PART_NOT_HELD)
       outline: polygonOf(outline),
-      small: isSmallPart(outline, TAB_DEFAULTS.smallPartArea, TAB_DEFAULTS.smallPartMinSide),
+      small: isSmallPart(outline, smallPart.area, smallPart.minSide),
       skin: project.cutting.skin !== undefined,
       // T142: only through cuts are closed loops at the target depth.
       ...(outlineOperation(part).kind === 'outside' ? {} : { outlineCut: false }),

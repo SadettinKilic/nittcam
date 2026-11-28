@@ -13,10 +13,25 @@
 import { EPS, NOISE } from '../geometry/constants';
 import { bbox, signedArea } from '../geometry/polyline';
 import type { Polyline } from '../geometry/types';
+import { materialKindOf } from '../machine/material';
+import { traitsOf, type MaterialTraits } from '../machine/material-traits';
 import { pathMoves, segLength, slicePath, type PathSeg } from './path';
 import type { Move, Tab } from './types';
 
-/** Built-in tab defaults, used when the material parameter set has none (D-022). */
+/**
+ * Holding limits of a stock (T343): the tab, skin and small-part rows of the material traits
+ * (`traitsOf(materialKindOf(stock.material))`). Every function below takes them; the default is
+ * the unknown-material row, which carries today's numbers (the constants below).
+ */
+export type HoldLimits = Pick<MaterialTraits, 'tabs' | 'skin' | 'smallPart'>;
+
+/** Today's limits (every existing kind and an unknown material share them). */
+export const DEFAULT_HOLD_LIMITS: HoldLimits = traitsOf(null);
+
+/**
+ * Built-in tab defaults, used when the material parameter set has none (D-022). Today's values of
+ * every kind; code that knows the stock reads `HoldLimits` instead (T343).
+ */
 export const TAB_DEFAULTS = {
   count: 4,
   /** Bridge width, mm. */
@@ -49,8 +64,8 @@ export const TAB_BOUNDS = {
 } as const;
 
 /** Largest allowed tab height on `thickness` mm stock (may be below `minHeight`: no valid tab). */
-export function maxTabHeight(thickness: number): number {
-  return thickness - TAB_BOUNDS.belowThickness;
+export function maxTabHeight(thickness: number, limits: HoldLimits = DEFAULT_HOLD_LIMITS): number {
+  return thickness - limits.tabs.bounds.belowThickness;
 }
 
 /** Why a resolved tab size cannot hold a part, or `null` when it can (T293). */
@@ -58,10 +73,12 @@ export function tabSizeProblem(
   width: number,
   height: number,
   thickness: number,
+  limits: HoldLimits = DEFAULT_HOLD_LIMITS,
 ): 'width' | 'height' | null {
   const eps = 1e-9;
-  if (!(width >= TAB_BOUNDS.minWidth - eps)) return 'width';
-  if (!(height >= TAB_BOUNDS.minHeight - eps) || height > maxTabHeight(thickness) + eps) {
+  const b = limits.tabs.bounds;
+  if (!(width >= b.minWidth - eps)) return 'width';
+  if (!(height >= b.minHeight - eps) || height > maxTabHeight(thickness, limits) + eps) {
     return 'height';
   }
   return null;
@@ -79,18 +96,34 @@ export const SKIN_BOUNDS = {
 } as const;
 
 /** Thickest allowed skin on `thickness` mm stock (may be below `SKIN_BOUNDS.min`: no valid skin). */
-export function maxSkinThickness(thickness: number): number {
-  return thickness - SKIN_BOUNDS.belowThickness;
+export function maxSkinThickness(
+  thickness: number,
+  limits: HoldLimits = DEFAULT_HOLD_LIMITS,
+): number {
+  return thickness - limits.skin.belowThickness;
 }
 
 /** Whether a skin of `skin` mm holds a small part on `thickness` mm stock (T298). */
-export function skinThicknessOk(skin: number, thickness: number): boolean {
+export function skinThicknessOk(
+  skin: number,
+  thickness: number,
+  limits: HoldLimits = DEFAULT_HOLD_LIMITS,
+): boolean {
   const eps = 1e-9;
-  return skin >= SKIN_BOUNDS.min - eps && skin <= maxSkinThickness(thickness) + eps;
+  return skin >= limits.skin.min - eps && skin <= maxSkinThickness(thickness, limits) + eps;
 }
-/** Built-in default height (material left in the bridge): min(3, t / 2) mm. */
-export function defaultTabHeight(thickness: number): number {
-  return Math.min(TAB_DEFAULTS.materialLeft, thickness / 2);
+
+/** Built-in default height (material left in the bridge): min(3, t / 2) mm for today's kinds. */
+export function defaultTabHeight(
+  thickness: number,
+  limits: HoldLimits = DEFAULT_HOLD_LIMITS,
+): number {
+  return Math.min(limits.tabs.defaults.materialLeft, thickness / 2);
+}
+
+/** Holding limits of a stock material id (`project.stock.material`, a library id or a kind; T343). */
+export function holdLimitsOf(material: string): HoldLimits {
+  return traitsOf(materialKindOf(material));
 }
 
 /**

@@ -34,7 +34,7 @@ import {
   operationToolChoice,
   operationsInJob,
 } from '../toolpath/op-tools';
-import { operationToolProblem } from '../toolpath/op-tool-choice';
+import { operationToolProblem, operationToolProblemText } from '../toolpath/op-tool-choice';
 import { toCutSizes } from '../schema/cut-size';
 
 export type ValidationSeverity = 'error' | 'warning';
@@ -441,7 +441,7 @@ export const operationToolUnsuitable: ValidationRule = (project, context) => {
         code: 'OPERATION_TOOL_UNSUITABLE' as const,
         severity: 'error' as const,
         path: `cutting.tools.${op}`,
-        message: `tool T${tool} chosen for the ${op} operation does not suit this job (${problem})`,
+        message: `tool T${tool} chosen for the ${op} operation does not suit this job (${operationToolProblemText(project, problem)})`,
       },
     ];
   });

@@ -37,6 +37,9 @@ const CHANGE_FIELDS: Record<ProfileChange, readonly string[]> = {
     'spindle',
     'constraints',
     'holdDown',
+    // T345: coolant and the metal declaration change what the machine does
+    'coolant',
+    'metal',
   ],
   post: ['post'],
   origin: ['origin'],

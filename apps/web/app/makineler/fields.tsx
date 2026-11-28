@@ -100,6 +100,35 @@ export function NumberField(
   );
 }
 
+/**
+ * T344: an optional number (V-bit angle and tip): empty is allowed and means "not given"
+ * (`undefined`), so older profiles without the field stay as they are.
+ */
+export function OptionalNumberField(
+  props: FieldProps & {
+    value: number | undefined;
+    onChange: (value: number | undefined) => void;
+    onParseError: (path: string, error: NumberParseError | null) => void;
+    unit?: string | undefined;
+  },
+) {
+  const { path, label, error, help, value, onChange, onParseError, unit } = props;
+  return (
+    <FormField id={fieldId(path)} label={label} hint={help} error={error}>
+      <NumberInput
+        id={fieldId(path)}
+        name={path}
+        value={value !== undefined && Number.isFinite(value) ? value : null}
+        {...(unit ? { unit } : {})}
+        maxDecimals={3}
+        invalid={!!error}
+        onValueChange={(v) => onChange(v ?? undefined)}
+        onValidityChange={(e) => onParseError(path, e)}
+      />
+    </FormField>
+  );
+}
+
 export function TextField(
   props: FieldProps & { value: string; onChange: (value: string) => void; multiline?: boolean },
 ) {

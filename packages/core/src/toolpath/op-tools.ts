@@ -8,19 +8,38 @@
  */
 import type { MachineProfile, MaterialParams, ToolType } from '../machine';
 import { materialKindOf } from '../machine/material';
+import { traitsOf } from '../machine/material-traits';
 import { innerOperation } from '../schema/operations';
 import type { Hole, Project } from '../schema';
 
 export const OPERATION_TOOL_KINDS = ['outer', 'inner', 'pocket', 'hole'] as const;
 export type OperationToolKind = (typeof OPERATION_TOOL_KINDS)[number];
 
-/** Tool types an operation may cut with: contours and pockets end mills, through holes also a drill. */
+/**
+ * Tool types an operation may cut with on today's kinds: contours and pockets end mills, through
+ * holes also a drill. Code that knows the stock reads `operationToolTypes` (T344).
+ */
 export const OPERATION_TOOL_TYPES: Record<OperationToolKind, readonly ToolType[]> = {
   outer: ['flatEndMill', 'compression'],
   inner: ['flatEndMill', 'compression'],
   pocket: ['flatEndMill', 'compression'],
   hole: ['drill', 'flatEndMill'],
 };
+
+/**
+ * T344: the tool types each operation may cut with on a stock material (its traits row); the six
+ * kinds of today and an unknown material give `OPERATION_TOOL_TYPES`.
+ */
+export function operationToolTypes(
+  material: string,
+): Readonly<Record<OperationToolKind, readonly ToolType[]>> {
+  return traitsOf(materialKindOf(material)).toolTypes;
+}
+
+/** Whether a tool type may cut operation `op` on the stock material (T344). */
+export function toolTypeAllowed(material: string, op: OperationToolKind, type: ToolType): boolean {
+  return operationToolTypes(material)[op].includes(type);
+}
 
 /**
  * The project's own tool for an operation, if any. A choice left for an operation the job does

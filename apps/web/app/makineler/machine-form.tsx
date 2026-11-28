@@ -8,8 +8,7 @@ import {
   materialTabIssues,
   maxTabHeight,
   parseMachineProfile,
-  TAB_BOUNDS,
-  TAB_DEFAULTS,
+  traitsOf,
   TOOLPATH_DEFAULTS,
   defaultMachineProfile,
   type MachineProfile,
@@ -64,7 +63,14 @@ import {
 } from '../../lib/machine-form';
 import type { Messages } from '../../lib/messages';
 import { CornerPicker } from './corner-picker';
-import { CheckField, fieldId, NumberField, SelectField, TextField } from './fields';
+import {
+  CheckField,
+  fieldId,
+  NumberField,
+  OptionalNumberField,
+  SelectField,
+  TextField,
+} from './fields';
 import { fieldErrors, type FieldErrors } from './issues';
 
 type Text = Messages['machines'];
@@ -879,6 +885,119 @@ export function MachineForm({
             </div>
           </Section>
 
+          <Section id="metal" title={s.metal} hint={h.metal}>
+            {/* T345 (§7.1 "Soğutma", "Metal kesim"; analysis §5.7): every field optional */}
+            <div className="sm:col-span-2">
+              <CheckField
+                path="metal.enabled"
+                label={f.metalEnabled}
+                help={f.metalEnabledHelp}
+                checked={profile.metal?.enabled === true}
+                onChange={(on) =>
+                  update((p) => {
+                    // off = no declaration at all (absent, as in today's profiles)
+                    if (on) p.metal = { enabled: true, rigidity: p.metal?.rigidity ?? 'standard' };
+                    else delete p.metal;
+                  })
+                }
+              />
+            </div>
+            {profile.metal?.enabled ? (
+              <SelectField
+                path="metal.rigidity"
+                label={f.rigidity}
+                help={f.rigidityHelp}
+                value={profile.metal.rigidity}
+                options={o.rigidity}
+                error={e('metal.rigidity')}
+                onChange={(v) => update((p) => void (p.metal = { enabled: true, rigidity: v }))}
+              />
+            ) : null}
+            {profile.metal?.enabled ? <div className="hidden sm:block" /> : null}
+            <SelectField
+              path="coolant.type"
+              label={f.coolantType}
+              value={profile.coolant?.type ?? 'none'}
+              options={o.coolantType}
+              error={e('coolant.type')}
+              onChange={(v) =>
+                update((p) => {
+                  // "Yok" = no coolant block at all (today's profiles)
+                  if (v === 'none') delete p.coolant;
+                  else
+                    p.coolant = {
+                      control: 'program',
+                      on: v === 'flood' ? 'M8' : 'M7',
+                      off: 'M9',
+                      ...p.coolant,
+                      type: v,
+                    };
+                })
+              }
+            />
+            {profile.coolant ? (
+              <SelectField
+                path="coolant.control"
+                label={f.coolantControl}
+                value={profile.coolant.control}
+                options={o.coolantControl}
+                error={e('coolant.control')}
+                onChange={(v) =>
+                  update((p) => {
+                    if (p.coolant) p.coolant.control = v;
+                  })
+                }
+              />
+            ) : (
+              <div className="hidden sm:block" />
+            )}
+            {profile.coolant?.control === 'program' ? (
+              <>
+                <TextField
+                  path="coolant.on"
+                  label={f.coolantOn}
+                  help={f.mCodeHelp}
+                  value={profile.coolant.on}
+                  error={e('coolant.on')}
+                  onChange={(v) =>
+                    update((p) => {
+                      if (p.coolant) p.coolant.on = v;
+                    })
+                  }
+                />
+                <TextField
+                  path="coolant.off"
+                  label={f.coolantOff}
+                  help={f.mCodeHelpOff}
+                  value={profile.coolant.off}
+                  error={e('coolant.off')}
+                  onChange={(v) =>
+                    update((p) => {
+                      if (p.coolant) p.coolant.off = v;
+                    })
+                  }
+                />
+              </>
+            ) : null}
+            {profile.holdDown.type !== 'vacuum' ? (
+              <OptionalNumberField
+                path="holdDown.clampHeight"
+                label={f.clampHeight}
+                help={f.clampHeightHelp}
+                unit={u.mm}
+                value={profile.holdDown.clampHeight}
+                error={e('holdDown.clampHeight')}
+                onParseError={onParseError}
+                onChange={(v) =>
+                  update((p) => {
+                    if (v === undefined) delete p.holdDown.clampHeight;
+                    else p.holdDown.clampHeight = v;
+                  })
+                }
+              />
+            ) : null}
+          </Section>
+
           <Section id="tools" title={s.tools} hint={h.tools} wide>
             <RowTable
               headers={[f.toolNumber, f.toolType, f.toolDiameter, f.fluteLength, f.flutes]}
@@ -935,12 +1054,60 @@ export function MachineForm({
                     value={tool.type}
                     options={o.toolType}
                     error={e(path('type'))}
-                    onChange={(v) => set((x) => void (x.type = v))}
+                    onChange={(v) =>
+                      set((x) => {
+                        x.type = v;
+                        // T344: the V-bit geometry belongs to V-bits only
+                        if (v !== 'vBit') {
+                          delete x.angleDeg;
+                          delete x.tipDiameter;
+                        }
+                      })
+                    }
                   />,
                   cell('diameter', f.toolDiameter, u.mm),
                   cell('fluteLength', f.fluteLength, u.mm),
                   cell('flutes', f.flutes),
                 ];
+              }}
+              renderDetail={(i) => {
+                // T344 (§7.1 "Takım profili"): a V-bit's angle and flat tip, both optional
+                const tool = profile.tools[i] as Tool;
+                if (tool.type !== 'vBit') return null;
+                const path = (k: keyof Tool) => `tools[${i}].${k}`;
+                const set = (k: 'angleDeg' | 'tipDiameter', v: number | undefined) =>
+                  update((p) => {
+                    const x = p.tools[i] as Tool;
+                    if (v !== undefined) x[k] = v;
+                    else if (k === 'angleDeg') delete x.angleDeg;
+                    else delete x.tipDiameter;
+                  });
+                return (
+                  <div
+                    className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-xl"
+                    data-testid={`tool-vbit-${i}`}
+                  >
+                    <OptionalNumberField
+                      path={path('angleDeg')}
+                      label={f.vBitAngle}
+                      help={f.vBitAngleHelp}
+                      value={tool.angleDeg}
+                      error={e(path('angleDeg'))}
+                      onParseError={onParseError}
+                      onChange={(v) => set('angleDeg', v)}
+                    />
+                    <OptionalNumberField
+                      path={path('tipDiameter')}
+                      label={f.vBitTip}
+                      help={f.vBitTipHelp}
+                      unit={u.mm}
+                      value={tool.tipDiameter}
+                      error={e(path('tipDiameter'))}
+                      onParseError={onParseError}
+                      onChange={(v) => set('tipDiameter', v)}
+                    />
+                  </div>
+                );
               }}
             />
           </Section>
@@ -1205,7 +1372,10 @@ function RowTable(props: {
   onAdd: () => void;
   onRemove: (index: number) => void;
   renderRow: (index: number) => ReactNode[];
-  /** T302: a full-width line under each row (the material set's tab defaults). */
+  /**
+   * T302: a full-width line under each row (the material set's tab defaults). T344: `null` = no
+   * line under that row (tools other than a V-bit).
+   */
   renderDetail?: (index: number) => ReactNode;
   /** Narrow cells and wrapping headers (T265, materials table). */
   dense?: boolean;
@@ -1242,51 +1412,55 @@ function RowTable(props: {
           <tbody
             className={`divide-y divide-border-subtle ${m('@max-[52rem]:flex @max-[52rem]:flex-col @max-[52rem]:gap-2 @max-[52rem]:divide-y-0 @max-[52rem]:p-2')}`}
           >
-            {keys.map((key, i) => (
-              <Fragment key={key}>
-                <tr
-                  className={`${props.renderDetail ? 'border-b-0! ' : ''}align-top ${m('@max-[52rem]:grid @max-[52rem]:grid-cols-2 @min-[32rem]:@max-[52rem]:grid-cols-4 @max-[52rem]:gap-x-3 @max-[52rem]:gap-y-2 @max-[52rem]:rounded-lg @max-[52rem]:border @max-[52rem]:border-border-subtle @max-[52rem]:p-2')}`}
-                  data-testid={cards ? `${testId}-row` : undefined}
-                >
-                  {renderRow(i).map((cell, c) => (
-                    <td
-                      key={c}
-                      className={`${pad} py-2 ${m('@max-[52rem]:flex @max-[52rem]:min-w-0 @max-[52rem]:flex-col @max-[52rem]:gap-1 @max-[52rem]:p-0')} ${c === 0 ? m('@max-[52rem]:col-span-2') : ''}`}
-                    >
-                      {cards ? (
-                        <span aria-hidden className="text-2xs text-fg-subtle @min-[52rem]:hidden">
-                          {headers[c]}
-                        </span>
-                      ) : null}
-                      {cell}
-                    </td>
-                  ))}
-                  <td
-                    className={`px-2 py-2 text-right ${m('@max-[52rem]:col-span-full @max-[52rem]:p-0')}`}
+            {keys.map((key, i) => {
+              const detail = props.renderDetail ? props.renderDetail(i) : null;
+              const hasDetail = detail !== null && detail !== undefined;
+              return (
+                <Fragment key={key}>
+                  <tr
+                    className={`${hasDetail ? 'border-b-0! ' : ''}align-top ${m('@max-[52rem]:grid @max-[52rem]:grid-cols-2 @min-[32rem]:@max-[52rem]:grid-cols-4 @max-[52rem]:gap-x-3 @max-[52rem]:gap-y-2 @max-[52rem]:rounded-lg @max-[52rem]:border @max-[52rem]:border-border-subtle @max-[52rem]:p-2')}`}
+                    data-testid={cards ? `${testId}-row` : undefined}
                   >
-                    <IconButton
-                      type="button"
-                      size="sm"
-                      aria-label={`${removeLabel} (${i + 1})`}
-                      onClick={() => onRemove(i)}
-                      className="hover:text-danger-text"
-                    >
-                      <Trash2 aria-hidden />
-                    </IconButton>
-                  </td>
-                </tr>
-                {props.renderDetail ? (
-                  <tr data-detail="" className={m('@max-[52rem]:block')}>
+                    {renderRow(i).map((cell, c) => (
+                      <td
+                        key={c}
+                        className={`${pad} py-2 ${m('@max-[52rem]:flex @max-[52rem]:min-w-0 @max-[52rem]:flex-col @max-[52rem]:gap-1 @max-[52rem]:p-0')} ${c === 0 ? m('@max-[52rem]:col-span-2') : ''}`}
+                      >
+                        {cards ? (
+                          <span aria-hidden className="text-2xs text-fg-subtle @min-[52rem]:hidden">
+                            {headers[c]}
+                          </span>
+                        ) : null}
+                        {cell}
+                      </td>
+                    ))}
                     <td
-                      colSpan={headers.length + 1}
-                      className={`${pad} pt-0 pb-3 ${m('@max-[52rem]:block @max-[52rem]:p-0')}`}
+                      className={`px-2 py-2 text-right ${m('@max-[52rem]:col-span-full @max-[52rem]:p-0')}`}
                     >
-                      {props.renderDetail(i)}
+                      <IconButton
+                        type="button"
+                        size="sm"
+                        aria-label={`${removeLabel} (${i + 1})`}
+                        onClick={() => onRemove(i)}
+                        className="hover:text-danger-text"
+                      >
+                        <Trash2 aria-hidden />
+                      </IconButton>
                     </td>
                   </tr>
-                ) : null}
-              </Fragment>
-            ))}
+                  {hasDetail ? (
+                    <tr data-detail="" className={m('@max-[52rem]:block')}>
+                      <td
+                        colSpan={headers.length + 1}
+                        className={`${pad} pt-0 pb-3 ${m('@max-[52rem]:block @max-[52rem]:p-0')}`}
+                      >
+                        {detail}
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1323,10 +1497,14 @@ function MaterialTabsDetail({
 }) {
   const path = (k: string) => `materials[${index}].tabs${k ? `.${k}` : ''}`;
   const thickness = Number.isFinite(set.thickness) && set.thickness > 0 ? set.thickness : 0;
+  // T343: defaults and bounds of the set's material kind (traits row)
+  const limits = traitsOf(set.material);
+  const td = limits.tabs.defaults;
+  const tb = limits.tabs.bounds;
   const builtIn = {
-    count: TAB_DEFAULTS.count,
-    width: TAB_DEFAULTS.width,
-    height: thickness > 0 ? defaultTabHeight(thickness) : TAB_DEFAULTS.materialLeft,
+    count: td.count,
+    width: td.width,
+    height: thickness > 0 ? defaultTabHeight(thickness, limits) : td.materialLeft,
   };
   const nf = (v: number) => String(Math.round(v * 1000) / 1000).replace('.', ',');
   const tabs = set.tabs;
@@ -1371,7 +1549,7 @@ function MaterialTabsDetail({
           <NumberField
             path={path('width')}
             label={t.width}
-            help={fill(t.widthHelp, { min: nf(TAB_BOUNDS.minWidth) })}
+            help={fill(t.widthHelp, { min: nf(tb.minWidth) })}
             value={tabs.width}
             error={error(path('width'))}
             onParseError={onParseError}
@@ -1381,8 +1559,8 @@ function MaterialTabsDetail({
             path={path('height')}
             label={t.height}
             help={fill(t.heightHelp, {
-              min: nf(TAB_BOUNDS.minHeight),
-              max: nf(Math.max(TAB_BOUNDS.minHeight, maxTabHeight(thickness))),
+              min: nf(tb.minHeight),
+              max: nf(Math.max(tb.minHeight, maxTabHeight(thickness, limits))),
             })}
             value={tabs.height}
             error={error(path('height'))}
