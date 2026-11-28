@@ -51,6 +51,11 @@ export interface MaterialTraits {
     /** Whether a new sheet / offcut of this kind starts with a direction (0°). */
     defaultOn: boolean;
   };
+  /**
+   * T348 (§3.6 "İşlenen yüz"): the face a new stock of this kind is machined from. ACM is cut from
+   * the back (parts mirrored); every other kind from the front (today).
+   */
+  machinedFace: 'front' | 'back';
   /** Tool types each operation may cut with. */
   toolTypes: Readonly<Record<TraitsOperation, readonly ToolType[]>>;
   tabs: {
@@ -132,6 +137,7 @@ const BOARD = {
   release: 'released',
   nc: 'released',
   ncName: '',
+  machinedFace: 'front',
   toolTypes: WOOD_TOOLS,
   tabs: TABS,
   skin: SKIN,
@@ -230,6 +236,7 @@ export const MATERIAL_TRAITS: Readonly<Record<MaterialKind, MaterialTraits>> = {
     family: 'composite',
     nc: 'unverified',
     ncName: 'ACM',
+    machinedFace: 'back',
     toolTypes: METAL_TOOLS,
     direction: { kind: 'directed', label: 'film', defaultOn: false },
     tabs: {

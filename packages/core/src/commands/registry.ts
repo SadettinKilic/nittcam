@@ -59,6 +59,7 @@ import {
 } from './part/templates';
 import {
   applyLibraryMaterial,
+  setMachinedFace,
   setGrain,
   setMachine,
   setMaterial,
@@ -101,6 +102,7 @@ export const COMMANDS = {
   setSheetSize,
   setStockSheets,
   setGrain,
+  setMachinedFace,
   setDimensionMode,
   addPart,
   drawPart,

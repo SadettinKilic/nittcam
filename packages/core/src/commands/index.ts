@@ -14,6 +14,7 @@ export {
   setSheetSize,
   setStockSheets,
   setGrain,
+  setMachinedFace,
   setDimensionMode,
 } from './plate';
 export * from './log';

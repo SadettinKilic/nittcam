@@ -427,6 +427,14 @@ export const stockSchema = z.strictObject({
    */
   sheets: z.array(projectSheetSizeSchema).min(1, { error: 'at least one sheet size' }).optional(),
   useOffcuts: z.boolean({ error: 'must be true or false' }),
+  /**
+   * T348 (§3.6 "İşlenen yüz"): the face that is up on the machine. `back`: parts are mirrored once
+   * in the layout stage (toolpath, G-code, simulation, DXF, PDF agree); the drawing board keeps the
+   * front view. Absent = front (today's projects, no migration).
+   */
+  machinedFace: z
+    .enum(['front', 'back'], { error: 'machined face must be "front" or "back"' })
+    .optional(),
 });
 
 /** Nesting goal (spec §6.2). */

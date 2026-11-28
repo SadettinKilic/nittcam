@@ -16,6 +16,8 @@ import { OPERATION_TOOL_KINDS } from '../../toolpath/op-tools';
 import { operationToolProblem, operationToolProblemText } from '../../toolpath/op-tool-choice';
 import { SKIN_BOUNDS, holdLimitsOf, maxSkinThickness, maxTabHeight } from '../../toolpath/tabs';
 import { defineCommand } from '../types';
+import { materialKindOf } from '../../machine/material';
+import { traitsOf } from '../../machine/material-traits';
 
 /** Selects the machine profile the project uses. Selecting is allowed for AI; editing a profile is not. */
 export const setMachine = defineCommand({
@@ -39,6 +41,7 @@ export const setMaterial = defineCommand({
     draft.stock.material = params.material;
     // A hand-picked material no longer comes from a library entry (T121).
     delete draft.stock.libraryId;
+    applyFaceDefault(draft.stock);
   },
 });
 
@@ -72,6 +75,35 @@ export const applyLibraryMaterial = defineCommand({
     draft.stock.sheet.grain = params.grain;
     // The size list belonged to the previous stock: the library entry gives one size (T164).
     delete draft.stock.sheets;
+    applyFaceDefault(draft.stock);
+  },
+});
+
+/**
+ * T348: a new material takes its kind's machined face (ACM: back). Front is stored as absent, so a
+ * wood or plastic stock never gains the field (no patch, today's projects unchanged).
+ */
+function applyFaceDefault(stock: {
+  material: string;
+  machinedFace?: 'front' | 'back' | undefined;
+}) {
+  if (traitsOf(materialKindOf(stock.material)).machinedFace === 'back') stock.machinedFace = 'back';
+  else if (stock.machinedFace !== undefined) delete stock.machinedFace;
+}
+
+/**
+ * T348 (§3.6 "İşlenen yüz"): "Arka yüzden işle" on or off; one undo step. Front is stored as
+ * absent. A setup choice the user makes: not an AI tool.
+ */
+export const setMachinedFace = defineCommand({
+  name: 'setMachinedFace',
+  area: 'plate',
+  description: 'Machine the sheet from its front or its back face (back: parts are mirrored).',
+  aiTool: false,
+  params: z.strictObject({ face: z.enum(['front', 'back']) }),
+  apply: (draft, params) => {
+    if (params.face === 'back') draft.stock.machinedFace = 'back';
+    else delete draft.stock.machinedFace;
   },
 });
 
