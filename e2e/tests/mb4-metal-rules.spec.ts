@@ -18,8 +18,12 @@ test.describe('MB4 metal rules', () => {
     await openNewProject(page, 'makine');
     const select = page.getByTestId('wizard-material');
     await pickOption(select, m.aluminium);
-    await expect(page.getByTestId('material-rule-metal')).toBeVisible();
-    await expect(page.getByTestId('material-rule-fix-metal')).toHaveAttribute('href', /alan=metal/);
+    // T395 (CTO #14 M3): aluminium ships no NC yet: one message, no fix buttons.
+    await expect(page.getByTestId('material-not-released')).toHaveText(
+      tr.wizard.machine.materialNotReleased,
+    );
+    await expect(page.getByTestId('material-rules')).toHaveCount(0);
+    await expect(page.getByTestId('add-cutting-params')).toHaveCount(0);
 
     await pickOption(select, m.mdf);
     await expect(page.getByTestId('material-rules')).toHaveCount(0);

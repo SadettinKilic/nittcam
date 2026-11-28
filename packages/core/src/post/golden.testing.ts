@@ -12,7 +12,7 @@ import cabinetDoors from '../schema/__fixtures__/cabinet-doors.json';
 import mixed from '../schema/__fixtures__/mixed.json';
 import shelfSet from '../schema/__fixtures__/shelf-set.json';
 import { buildToolpath } from '../toolpath';
-import { cuttingMeta } from '../export/export';
+import { backFaceMeta, cuttingMeta, unverifiedMaterialMeta } from '../export/export';
 import { generateGcode } from './generate';
 import type { PostProfileVersion, PostResult } from './types';
 
@@ -469,5 +469,112 @@ export function goldenCases(): GoldenCase[] {
       out.push({ postId: post.id, dir: post.dir, fixtureId: fx.id, result });
     }
   }
+  // T393: the ACM back-face fixture (its own profile set and header meta).
+  out.push(...backFaceGoldenCases());
   return out;
+}
+
+/**
+ * T393 (CTO #14 M1): ACM 4 mm machined from the back face (T348): an L part and a narrow strip on a
+ * small sheet, so the mirrored layout and the header lines "DOGRULANMAMIS MALZEME: ACM" and
+ * "PLAKA ARKA YUZU USTTE: PARCALAR AYNALI" are pinned byte for byte. The profile gets an ACM 4 set
+ * copied from its MDF 18 set (same tool), step-down limited to the thickness.
+ */
+export const GOLDEN_BACK_FACE_FIXTURE = {
+  id: 'acm-back-face',
+  name: 'ACM arka yüz',
+  revision: 1,
+} as const;
+
+export function backFaceFixtureProject(toolDiameter: number): Project {
+  const parsed = parseProject({
+    schemaVersion: 2,
+    machine: { machineId: 'golden', profileVersion: 1 },
+    stock: {
+      material: 'acm',
+      thickness: 4,
+      sheet: { width: 800, height: 500, grain: 0 },
+      useOffcuts: false,
+      machinedFace: 'back',
+    },
+    parts: [
+      {
+        id: 'ell',
+        name: 'L parça',
+        qty: 1,
+        grain: { mode: 'free', angle: 0 },
+        kind: 'freeform',
+        outline: lShape(360, 240, 90),
+        inners: [],
+        holes: [],
+        edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+        templates: [],
+      },
+      {
+        id: 'strip',
+        name: 'Şerit',
+        qty: 1,
+        grain: { mode: 'free', angle: 0 },
+        kind: 'rect',
+        params: { w: 300, h: 120, r: 0 },
+        inners: [],
+        holes: [],
+        edgeBand: { top: 0, right: 0, bottom: 0, left: 0 },
+        templates: [],
+      },
+    ],
+    nesting: { mode: 'minWaste', gap: 10, margin: 12 },
+    layout: { sheets: [] },
+    cutting: structuredClone(DEFAULT_CUTTING),
+  });
+  if (!parsed.ok) throw new Error(`back-face fixture invalid: ${JSON.stringify(parsed.issues)}`);
+  const nested = nestProject(parsed.project, { toolDiameter });
+  return { ...parsed.project, layout: nested.layout };
+}
+
+/** The golden profile plus an ACM 4 mm set (copy of its MDF 18 set). */
+export function backFaceProfile(postId: 'generic' | 'mach3'): MachineProfile {
+  const p = goldenProfile(postId);
+  const base = p.materials.find((m) => m.material === 'mdf' && m.thickness === 18);
+  if (!base) throw new Error('golden profile has no MDF 18 set');
+  p.materials = [
+    ...p.materials,
+    {
+      ...base,
+      material: 'acm',
+      thickness: 4,
+      stepDown: Math.min(base.stepDown, 4),
+      tabs: undefined,
+    },
+  ];
+  return p;
+}
+
+/** T393: the ACM back-face program per post, with the same header meta as `exportNc`. */
+export function backFaceGoldenCases(): GoldenCase[] {
+  return GOLDEN_POSTS.map((post) => {
+    const profile = backFaceProfile(post.id);
+    const set = profile.materials.find((m) => m.material === 'acm' && m.thickness === 4);
+    const tool = profile.tools.find((t) => t.number === set?.tool);
+    if (!tool) throw new Error('back-face profile has no ACM 4 tool');
+    const project = backFaceFixtureProject(tool.diameter);
+    const tp = buildToolpath(project, profile);
+    if (!tp.ok) throw new Error(`back-face toolpath failed: ${JSON.stringify(tp.errors)}`);
+    const version: PostProfileVersion = { profile, version: 1, verification: 'draft' };
+    const result = generateGcode(tp.toolpath, version, post.config, {
+      projectName: GOLDEN_BACK_FACE_FIXTURE.name,
+      revision: GOLDEN_BACK_FACE_FIXTURE.revision,
+      fileStem: GOLDEN_BACK_FACE_FIXTURE.id,
+      ...unverifiedMaterialMeta(project),
+      ...backFaceMeta(project),
+      ...cuttingMeta(project, profile),
+      stock: {
+        material: project.stock.material,
+        thickness: project.stock.thickness,
+        sheetWidth: project.stock.sheet.width,
+        sheetHeight: project.stock.sheet.height,
+      },
+    });
+    return { postId: post.id, dir: post.dir, fixtureId: GOLDEN_BACK_FACE_FIXTURE.id, result };
+  });
 }

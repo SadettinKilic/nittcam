@@ -36,9 +36,6 @@ import type { Messages } from '../../lib/messages';
 import { Callout } from '../wizard/panels';
 import type { Run } from './properties';
 
-/** T266: corner-tool toasts show beside the inspector, never on the "Köşe" group's fields. */
-const BESIDE_PANEL = { position: 'bottom-center' } as const;
-
 type T = Messages['editor']['inspector'];
 
 const mm = (v: number) => formatNumberTr(v, { maxDecimals: 2 });
@@ -82,14 +79,11 @@ export function TightCornerNotice({
           onClick={() => {
             const res = fixTightCorners(outline, toolRadius);
             if (!res?.ok) {
-              notify.error(res ? errorText(t, res.error) : t.errors.failed, BESIDE_PANEL);
+              notify.error(res ? errorText(t, res.error) : t.errors.failed);
               return;
             }
             if (run('filletCorners', { id: part.id, corners: fixable, r: toolRadius })) {
-              notify.success(
-                fill(t.concave.fixed, { count: fixable.length, r: mm(toolRadius) }),
-                BESIDE_PANEL,
-              );
+              notify.success(fill(t.concave.fixed, { count: fixable.length, r: mm(toolRadius) }));
             }
           }}
         >
@@ -156,7 +150,8 @@ export function CornerTools({
     }
     if (run('addDogbone', { id: part.id, corner: vertex, r: toolRadius, style })) {
       setNote(null);
-      notify.success(fill(t.dogbone.added, { r: mm(toolRadius) }), BESIDE_PANEL);
+      // T266 / T394: the toast docks at the canvas bottom-right, never on the "Köşe" fields.
+      notify.success(fill(t.dogbone.added, { r: mm(toolRadius) }));
     } else setNote({ tone: 'danger', text: t.errors.failed });
   }
 

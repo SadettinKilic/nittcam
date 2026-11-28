@@ -16,11 +16,13 @@ import {
   type Project,
   type ValidationIssue,
   holdLimitsOf,
+  kindSheetDefault,
+  kindThicknessDefault,
   defaultSheet,
   maxSkinThickness,
   stockSheetSizes,
 } from '@nittcam/core';
-import { Archive, Plus, TriangleAlert } from 'lucide-react';
+import { Archive, Check, Plus, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useMemo, useState, type ReactNode } from 'react';
@@ -33,7 +35,7 @@ import { fillRich } from '../../lib/fill-rich';
 import { useDirectionText } from '../../lib/direction-context';
 import { grainDialLabels } from '../../lib/grain-labels';
 import { useMessages } from '../../lib/messages-context';
-import { paramFixHref } from '../../lib/machine-form';
+import { ACM_EXAMPLES, hasParamSet, paramFixHref } from '../../lib/machine-form';
 import type { MachineDetail, MachineListItem } from '../../lib/machines-api';
 import type { MaterialItem } from '../../lib/materials-api';
 import { MaterialSwatch } from '../materials/swatch';
@@ -53,6 +55,7 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
+  notify,
 } from '@nittcam/ui';
 import { NumberField } from './number-field';
 import { ProfileVersionNotice, versionGap } from './profile-version-notice';
@@ -194,6 +197,22 @@ export function MachineFields({
     set: kind ? { material: kind, thickness: stock.thickness } : null,
   };
   const tableIssue = issues.find((i) => i.code === 'SHEET_LARGER_THAN_TABLE');
+  // T395 (CTO #14 M3): aluminium ships no NC yet: one message, no fix buttons that cannot help.
+  const notReleased = issues.some((i) => i.code === 'MATERIAL_NOT_RELEASED');
+  // T396 (CTO #14 P3): the example ACM sets in one click, while the machine misses one of them.
+  const acmExamples =
+    kind === 'acm' &&
+    !unverified &&
+    profile !== null &&
+    ACM_EXAMPLES.some((th) => !hasParamSet(profile, 'acm', th));
+  const exampleFix = fix.set ? { ...fix, set: { ...fix.set, examples: true as const } } : null;
+  // T396 (CTO #14 P1): with kind presets the chips are the material's thicknesses; ✓ marks the
+  // ones this machine has a confirmed set for, so the hint never contradicts the box below.
+  const kindChips = !entry && kind !== null && traitsOf(kind).thicknessPresets.length > 0;
+  const hasSetFor = (v: number) => {
+    const p = profile ? findMaterialParams(profile, { ...stock, thickness: v }) : undefined;
+    return p !== undefined && p.unverified !== true;
+  };
   const errors = t.errors;
 
   const materialName = (k: MaterialKind) => materials[k];
@@ -272,7 +291,24 @@ export function MachineFields({
             if (pick) {
               run('applyLibraryMaterial', { libraryId: pick.id, ...stockFromLibrary(pick, stock) });
               setCustomOpen(false);
-            } else run('setMaterial', { material: v });
+            } else {
+              // T396 (CTO #14 P2): the command also takes the kind's sheet; say so (Ctrl+Z undoes).
+              const sheetTo = kindSheetDefault(project, v);
+              const thicknessTo = kindThicknessDefault(project, v);
+              const changes = [
+                ...(sheetTo
+                  ? [fill(t.switchedSheet, { w: mm(sheetTo.width), h: mm(sheetTo.height) })]
+                  : []),
+                ...(thicknessTo !== null
+                  ? [fill(t.switchedThickness, { t: mm(thicknessTo) })]
+                  : []),
+              ];
+              if (run('setMaterial', { material: v }) && changes.length > 0) {
+                notify.info(fill(t.materialSwitched, { list: changes.join(', ') }), {
+                  id: 'sheet-switched',
+                });
+              }
+            }
           }}
         >
           <SelectTrigger
@@ -387,26 +423,42 @@ export function MachineFields({
             {/* T259: the chips are the list; no native datalist arrow next to the number. */}
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-fg-muted">
-                {fill(entry ? t.libraryThicknessHint : t.thicknessHint, {
-                  list: thicknesses.map(mm).join(', '),
-                })}
+                {kindChips
+                  ? t.kindThicknessHint
+                  : fill(entry ? t.libraryThicknessHint : t.thicknessHint, {
+                      list: thicknesses.map(mm).join(', '),
+                    })}
               </span>
-              {thicknesses.map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  aria-pressed={v === stock.thickness}
-                  onClick={() => run('setThickness', { thickness: v })}
-                  className={`h-control-sm min-w-11 rounded-md border px-2.5 text-xs font-medium tabular-nums transition-colors duration-(--duration-fast) ${focusRing} ${v === stock.thickness ? 'border-accent bg-accent text-accent-fg shadow-xs' : 'border-border-strong bg-surface text-fg hover:bg-surface-hover'}`}
-                >
-                  {mm(v)}
-                </button>
-              ))}
+              {thicknesses.map((v) => {
+                const marked = kindChips && hasSetFor(v);
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={v === stock.thickness}
+                    data-has-set={kindChips ? String(marked) : undefined}
+                    onClick={() => run('setThickness', { thickness: v })}
+                    className={`inline-flex h-control-sm min-w-11 items-center justify-center gap-1 rounded-md border px-2.5 text-xs font-medium tabular-nums transition-colors duration-(--duration-fast) ${focusRing} ${v === stock.thickness ? 'border-accent bg-accent text-accent-fg shadow-xs' : 'border-border-strong bg-surface text-fg hover:bg-surface-hover'}`}
+                  >
+                    {marked ? <Check aria-hidden className="size-3.5" /> : null}
+                    {mm(v)}
+                    {marked ? <span className="sr-only">{t.thicknessHasSet}</span> : null}
+                  </button>
+                );
+              })}
             </div>
           </>
         ) : null}
         {/* B53 (CTO #5): no "no thicknesses" line here; the red box below says it once. */}
-        {profile && !set ? (
+        {notReleased ? (
+          <div
+            role="alert"
+            data-testid="material-not-released"
+            className="rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
+          >
+            <p>{t.materialNotReleased}</p>
+          </div>
+        ) : profile && !set ? (
           <div
             role="alert"
             data-testid="no-cutting-params"
@@ -440,9 +492,33 @@ export function MachineFields({
                 {unverified ? t.verifyParams : t.addParams}
               </Link>
             </Button>
+            {acmExamples && exampleFix ? (
+              // T396 (CTO #14 P3): the machine form's "Örnek ACM ayarları ekle" in one click.
+              <Button asChild size="sm" variant="outline">
+                <Link
+                  data-testid="add-acm-examples"
+                  aria-busy={leaving || undefined}
+                  href={paramFixHref({ ...exampleFix, returnTo })}
+                  onClick={(e) => {
+                    if (!resolveReturnTo || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
+                      return;
+                    e.preventDefault();
+                    if (leaving) return;
+                    setLeaving(true);
+                    void resolveReturnTo().then(
+                      (back) => router.push(paramFixHref({ ...exampleFix, returnTo: back })),
+                      () => setLeaving(false),
+                    );
+                  }}
+                >
+                  <Plus aria-hidden />
+                  {t.addAcmExamples}
+                </Link>
+              </Button>
+            ) : null}
           </div>
         ) : null}
-        {profile ? (
+        {profile && !notReleased ? (
           <MaterialRuleBox
             t={t}
             issues={issues}

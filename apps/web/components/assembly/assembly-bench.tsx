@@ -45,6 +45,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   MATERIAL_KINDS,
   MATERIAL_TRAITS,
+  defaultThicknessOf,
   materialKindOf,
   type MaterialKind,
   type Project,
@@ -288,37 +289,8 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
     return { id: slide.id, frame: faceFrame(a.pose, a.box, slide.face) };
   }, [slide, byId]);
 
-  // Wizard toasts sit top-centre under the header: keep them below the bench toolbar
-  // (B-M1 tester note: "N satır eklendi" covered it). B67: measured, not a fixed 48 px: the
-  // toolbar sits below the canvas top and wraps to two rows on a narrow canvas.
-  const toolbar = useRef<HTMLDivElement>(null);
-  const tools = useRef<HTMLDivElement>(null);
-  const hasParts = items.length > 0;
-  useEffect(() => {
-    const root = document.documentElement;
-    let frame = 0;
-    const measure = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const bottom = Math.max(
-          toolbar.current?.getBoundingClientRect().bottom ?? 0,
-          tools.current?.getBoundingClientRect().bottom ?? 0,
-        );
-        const head = Number.parseFloat(root.style.getPropertyValue('--wizard-head-bottom')) || 56;
-        root.style.setProperty('--toast-clear-top', `${Math.max(48, Math.ceil(bottom - head))}px`);
-      });
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    for (const el of [toolbar.current, tools.current]) if (el) ro.observe(el);
-    window.addEventListener('resize', measure);
-    return () => {
-      cancelAnimationFrame(frame);
-      ro.disconnect();
-      window.removeEventListener('resize', measure);
-      root.style.removeProperty('--toast-clear-top');
-    };
-  }, [hasParts]);
+  // T394 (CTO #14 M2): toasts dock at the canvas bottom-right (WorkspaceLayout, lib/toast-dock);
+  // the B-M1 / B67 top offset under the bench toolbar is gone.
 
   // "?" opens the bench's own shortcut sheet first (T136 pattern).
   useEffect(() => claimPageGroup('bench'), []);
@@ -479,7 +451,6 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
           "Oturuyor mu?" wraps to a second row instead of sliding under the zoom buttons.
           The empty part of a wrapped row lets canvas drags (orbit) through. */}
       <div
-        ref={toolbar}
         data-testid="bench-toolbar"
         className="absolute top-2 left-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 sm:max-w-[calc(100%-11rem)] pointer-events-none [&>*]:pointer-events-auto"
       >
@@ -535,7 +506,6 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
         </Tooltip>
       </div>
       <div
-        ref={tools}
         data-testid="bench-zoom"
         className="absolute top-2 right-2 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm max-sm:top-14"
       >
@@ -580,6 +550,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
         role="group"
         aria-label={t.views.label}
         data-testid="bench-views"
+        data-toast-avoid=""
         className="absolute right-2 bottom-2 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-0.5 shadow-sm backdrop-blur-sm max-sm:bottom-14"
       >
         {(['top', 'front', 'right', 'iso'] as const).map((v) => (
@@ -607,6 +578,7 @@ export function AssemblyBench({ project, run, viewSwitch }: AssemblyBenchProps) 
         role="status"
         aria-live="polite"
         data-testid="bench-hint"
+        data-toast-avoid=""
         className={cn(
           'pointer-events-none absolute bottom-2 left-2 z-10 max-w-[calc(100%-1rem)] sm:max-w-[min(36rem,calc(100%-21rem))] rounded-lg border bg-surface/95 px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm max-sm:bottom-2',
           snapped ? 'border-success-border text-success-text' : 'border-border text-fg-muted',
@@ -944,7 +916,7 @@ function LookFields({
           // A metal part starts at its kind's first common thickness unless it has its own.
           const presets = MATERIAL_TRAITS[kind].thicknessPresets;
           const keep = item.ownLook || presets.length === 0 || presets.includes(thickness);
-          onLook(kind, keep ? thickness : (presets[presets.length > 1 ? 1 : 0] ?? thickness));
+          onLook(kind, keep ? thickness : (defaultThicknessOf(MATERIAL_TRAITS[kind]) ?? thickness));
         }}
       >
         <SelectTrigger size="sm" aria-label={t.inspector.material} data-testid="bench-material">

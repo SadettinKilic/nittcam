@@ -130,6 +130,30 @@ describe('downloadBlocker (§6.6 checklist, §7.2 rules 9–10)', () => {
     expect(downloadBlocker(p, { ...ALL, material: true }, false)).toBeNull();
   });
 
+  it('T393: a back-face stock needs the "arka yüzü üstte" line (required, not optional)', () => {
+    const checklist = {
+      origin: {
+        corner: 'frontLeft' as const,
+        xPositive: 'right' as const,
+        yPositive: 'back' as const,
+        sheetOffset: { x: 0, y: 0 },
+      },
+      zReference: 'materialTop' as const,
+      tools: [],
+      toolChanges: 0,
+      rezeroZ: false,
+      parkOff: false,
+      backFace: true as const,
+    };
+    const p = { ok: true, files: [FILE], needsAcceptance: false, checklist };
+    expect(downloadBlocker(p, ALL, false)).toBe('checklist');
+    expect(downloadBlocker(p, { ...ALL, backFace: true }, false)).toBeNull();
+    // a front-face stock does not ask
+    const front: Partial<typeof checklist> = { ...checklist };
+    delete front.backFace;
+    expect(downloadBlocker({ ...p, checklist: front as typeof checklist }, ALL, false)).toBeNull();
+  });
+
   it('manual tool changes need their own confirmation (T274)', () => {
     const checklist = {
       origin: {

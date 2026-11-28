@@ -26,7 +26,7 @@ test.describe('MB3 tester', () => {
       await pasteAndNest(page, undefined, undefined, 'makine');
       await goStep(page, 'simulasyon');
       await expect(
-        page.getByText('Alüminyum için rampa giriş', { exact: false }).first(),
+        page.getByText('Alüminyum için G-code henüz verilmiyor', { exact: false }).first(),
       ).toBeVisible();
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),

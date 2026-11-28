@@ -67,3 +67,32 @@ describe('metal NC gating (T346, D-130)', () => {
     }
   });
 });
+
+describe('aluminium: one error while NC is not released (T395, CTO #14 M3)', () => {
+  it('MATERIAL_NOT_RELEASED is the only material error; set and metal-machine errors fold under it', () => {
+    const [alu] = withMaterial('alüminyum', 3);
+    // the golden profile: no aluminium set, no metal declaration
+    const codes = validateProject(alu, { machine: goldenProfile('mach3') }).map((i) => i.code);
+    expect(codes).toContain('MATERIAL_NOT_RELEASED');
+    for (const c of [
+      'NO_CUTTING_PARAMS',
+      'CUTTING_PARAMS_UNVERIFIED',
+      'MATERIAL_NOT_ALLOWED_ON_MACHINE',
+      'TOOL_TYPE_UNSUITABLE_FOR_MATERIAL',
+    ])
+      expect(codes).not.toContain(c);
+    expect(codes.filter((c) => c === 'MATERIAL_NOT_RELEASED')).toHaveLength(1);
+    // still blocking
+    expect(exportBlockingIssues(alu, { machine: goldenProfile('mach3') }).length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('ACM without a set still reports NO_CUTTING_PARAMS (nothing folded)', () => {
+    const p = goldenProject(shelfSet, 8);
+    p.stock = { ...p.stock, material: 'acm', thickness: 4 };
+    const codes = validateProject(p, { machine: goldenProfile('mach3') }).map((i) => i.code);
+    expect(codes).toContain('NO_CUTTING_PARAMS');
+    expect(codes).not.toContain('MATERIAL_NOT_RELEASED');
+  });
+});

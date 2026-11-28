@@ -436,7 +436,7 @@ export const materialNotReleased: ValidationRule = (project) => {
       code: 'MATERIAL_NOT_RELEASED',
       severity: 'error',
       path: 'stock.material',
-      message: `no NC for ${project.stock.material} yet: ramp entry, step-down and chip load limits (T358, T359) come first`,
+      message: `no NC for ${project.stock.material} yet: ramp entry and chip load limits come first`,
     },
   ];
 };
@@ -924,8 +924,20 @@ export function validateProject(
 ): ValidationIssue[] {
   // T169: geometry is read at cut size (edge-band deduction, spec §4.8).
   const project = toCutSizes(entered);
-  return VALIDATION_RULES.flatMap((rule) => rule(project, context));
+  const issues = VALIDATION_RULES.flatMap((rule) => rule(project, context));
+  // T395 (CTO #14 M3): while the kind ships no NC (aluminium), that is the only material error:
+  // the set and metal-machine errors are folded under it, since fixing them cannot give a file.
+  if (!issues.some((i) => i.code === 'MATERIAL_NOT_RELEASED')) return issues;
+  return issues.filter((i) => !FOLDED_UNDER_NOT_RELEASED.has(i.code));
 }
+
+/** T395: the errors `MATERIAL_NOT_RELEASED` stands for (a set or machine fix cannot unblock NC). */
+export const FOLDED_UNDER_NOT_RELEASED: ReadonlySet<ValidationIssue['code']> = new Set([
+  'NO_CUTTING_PARAMS',
+  'CUTTING_PARAMS_UNVERIFIED',
+  'MATERIAL_NOT_ALLOWED_ON_MACHINE',
+  'TOOL_TYPE_UNSUITABLE_FOR_MATERIAL',
+]);
 
 /**
  * The errors that stop the NC export (web `runExport`: every validation error, spec §8.2), with the

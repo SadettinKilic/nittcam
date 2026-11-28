@@ -25,7 +25,7 @@ for (const [w, h] of [
   [1440, 900],
   [1024, 768],
 ] as const) {
-  test(`${w} × ${h}: a wizard toast covers neither the inspector, the canvas bottom nor the footer`, async ({
+  test(`${w} × ${h}: a wizard toast covers neither the inspector, a canvas toolbar nor the footer`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: w, height: h });
@@ -40,8 +40,16 @@ for (const [w, h] of [
     const inspector = await page.getByTestId('editor-inspector').boundingBox();
     if (!tb || !canvas || !next) throw new Error('no box');
     if (inspector) expect(overlaps(tb, inspector)).toBe(false);
-    // Scale bar / cursor read-out live in the canvas's bottom corners: the toast stays in the top half.
-    expect(tb.y + tb.height).toBeLessThanOrEqual(canvas.y + canvas.height / 2);
+    // T394 (CTO #14 M2, supersedes P4 here): workspace toasts dock at the canvas's bottom-right,
+    // inside the canvas and off every canvas toolbar.
+    expect(tb.x + tb.width).toBeLessThanOrEqual(canvas.x + canvas.width + 1);
+    expect(tb.y + tb.height).toBeLessThanOrEqual(canvas.y + canvas.height + 1);
+    for (const bar of await page
+      .locator('[data-toast-avoid]:visible, [role="toolbar"]:visible')
+      .all()) {
+      const bb = await bar.boundingBox();
+      if (bb) expect(overlaps(tb, bb)).toBe(false);
+    }
     expect(overlaps(tb, next)).toBe(false);
 
     // A step change closes it.
