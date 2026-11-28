@@ -1888,7 +1888,7 @@ Acceptance:
 - [ ] shortcuts listed in the command palette / help shortcuts list
 Tester focus: hover each control; keys work on each canvas and not inside inputs.
 
-### T384 Leaving Dizilim while a nesting run is busy loses the result   [status: todo]   (must-fix, found in round 41)
+### T384 Leaving Dizilim while a nesting run is busy loses the result   [status: done]   (must-fix, found in round 41)
 Source: MB1 integration (b58-tester T321 flaky 1/6 on main). Leaving the step closes the nesting worker; a run that is still busy (cold start, big lists) is dropped and no layout is stored, so a user who clicks a mode and then at once "İleri" or a stepper step lands on an empty Simülasyon.
 Acceptance:
 - [ ] a running nesting finishes and its result is stored even when the user leaves Dizilim (worker kept alive until done, or the step change waits with "Diziliyor… %n" and an İptal); never a silent loss
@@ -2014,7 +2014,7 @@ Acceptance:
 - [x] no visual baseline changes; e2e of steps 1–5 unchanged
 Tester focus: visual diff of step 1, Parçalar, Dizilim, Ayarlar → Malzemeler, offcut dialog is empty.
 
-### T343 Tab, skin and small-part limits come from the traits   [status: todo]   (post-FT)
+### T343 Tab, skin and small-part limits come from the traits   [status: done]   (post-FT)
 Spec: §6.3  ·  Depends: T341  ·  Owner: dev
 Acceptance:
 - [ ] `tabSizeProblem`, `maxTabHeight`, `defaultTabHeight`, `skinThicknessOk`, the small-part thresholds, `materialTabIssues` and the tab help texts of the machine form take the stock's traits instead of module constants
@@ -2022,7 +2022,7 @@ Acceptance:
 - [ ] a traits row with other bounds (test-only kind) changes the limits end to end: profile save, validation, toolpath, Kesim ayarları texts
 Tester focus: 1,5 mm stock with a test-only metal row accepts a 0,5 mm tab; MDF 18 behaves as before.
 
-### T344 Tool types per material; V-bit geometry   [status: todo]   (post-FT)
+### T344 Tool types per material; V-bit geometry   [status: done]   (post-FT)
 Spec: §7.1 "Takım profili", §6.3  ·  Depends: T341  ·  Owner: dev
 Acceptance:
 - [ ] `OPERATION_TOOL_TYPES` becomes a function of the material traits; the six kinds return today's lists
@@ -2030,7 +2030,7 @@ Acceptance:
 - [ ] `OPERATION_TOOL_UNSUITABLE` names the material when the type is not allowed for it
 Tester focus: saving a profile with a V-bit without angle still works; an existing profile round-trips unchanged.
 
-### T345 Machine profile: coolant, metal declaration, M-code conflict   [status: todo]   (post-FT)
+### T345 Machine profile: coolant, metal declaration, M-code conflict   [status: done]   (post-FT)
 Spec: §7.1 (new rows "Soğutma", "Metal kesim")  ·  Depends: –  ·  Owner: dev
 Acceptance:
 - [ ] optional `coolant { type: none|mist|flood|air, control: program|manual, on, off }`, `metal { enabled, rigidity: light|standard|heavy }`, `holdDown.clampHeight`; schema version stays 1; absent = today
@@ -2039,7 +2039,7 @@ Acceptance:
 - [ ] the example profiles and their goldens are untouched
 Tester focus: example profile (vacuum M7) + coolant M8/M9 is refused with the fix text; without coolant it saves as today.
 
-### T346 Kinds `acm` and `aluminium` behind the flag   [status: todo]   (post-FT)
+### T346 Kinds `acm` and `aluminium` behind the flag   [status: done]   (post-FT)
 Spec: §3.6  ·  Depends: T342, T343, T344  ·  Owner: dev
 Acceptance:
 - [ ] `MATERIAL_KIND_IDS` gains `acm` and `aluminium` with aliases (kompozit, alüminyum kompozit, dibond, alucobond; aluminyum, alüminyum, alu) and traits rows (`release: 'flagged'`); families `composite`, `nonFerrous`
@@ -2048,7 +2048,7 @@ Acceptance:
 - [ ] aluminium stays without NC: validation `MATERIAL_NOT_RELEASED` until T366
 Tester focus: flag off = no visual diff anywhere; flag on = step 1 with ACM 4 mm 1500×3200 fits or warns against the table.
 
-### T347 Direction: axial or directed, labelled per material   [status: todo]   (post-FT)
+### T347 Direction: axial or directed, labelled per material   [status: done]   (post-FT)
 Spec: §3.6 "Yön", §6.2  ·  Depends: T346  ·  Owner: dev
 Acceptance:
 - [ ] labels from the traits: "Damar yönü" / "Yüzey yönü" / "Film oku yönü" on the dial, the cut-list header, bulk edit, layout legend, label arrow; aluminium default off, ACM on when the library entry is metallic
@@ -2057,7 +2057,7 @@ Acceptance:
 - [ ] property test: with a directed sheet no fixed part is ever placed 180° off
 Tester focus: ACM metallic job with an asymmetric part: all copies point the same way; the same job on MDF still uses both rotations.
 
-### T348 Machined face: "Arka yüzden işle"   [status: todo]   (post-FT)
+### T348 Machined face: "Arka yüzden işle"   [status: done]   (post-FT)
 Spec: §3.6 "İşlenen yüz"  ·  Depends: T346  ·  Owner: dev
 Acceptance:
 - [ ] optional `stock.machinedFace` (absent = front); command `setMachinedFace`, undoable; default from the traits (ACM back)
@@ -2066,7 +2066,7 @@ Acceptance:
 - [ ] checker LAYOUT compares against the mirrored expectation built independently from the project
 Tester focus: an "L" part on ACM: G-code path is the mirror image; on MDF nothing changes; mirrored + rotated grain part still passes the checker.
 
-### T349 Material rules in validation and the parts screens   [status: todo]   (post-FT)
+### T349 Material rules in validation and the parts screens   [status: done]   (post-FT)
 Spec: §4.1, §4.8, §7.1  ·  Depends: T346  ·  Owner: dev
 Acceptance:
 - [ ] `TOOL_TYPE_UNSUITABLE_FOR_MATERIAL` (compression or ball-nose on ACM/aluminium), `MATERIAL_NOT_ALLOWED_ON_MACHINE` (non-ferrous without `metal.enabled`), each with a fix link, shown at step 1
@@ -2075,7 +2075,7 @@ Acceptance:
 - [ ] wood and plastic screens unchanged
 Tester focus: switch a banded MDF job to ACM and back: sizes return exactly; no band value is lost.
 
-### T350 Library and offcut properties for ACM and aluminium   [status: todo]   (post-FT)
+### T350 Library and offcut properties for ACM and aluminium   [status: done]   (post-FT)
 Spec: §3.4, §9.1  ·  Depends: T346  ·  Owner: dev
 Acceptance:
 - [ ] migration: `materials.props jsonb not null default '{}'`, `offcuts.props jsonb not null default '{}'`; core schema per family (aluminium: alloy, temper, finish, film; ACM: colorCode, metallic, skin)
@@ -2084,7 +2084,7 @@ Acceptance:
 - [ ] PDF header and project cards print "Alüminyum 5754, 3 mm" / "Kompozit panel, 4 mm"
 Tester focus: tenant isolation of the new columns; an MDF entry saves with empty props as before.
 
-### T351 Machine parameter table per material family   [status: todo]   (post-FT)
+### T351 Machine parameter table per material family   [status: done]   (post-FT)
 Spec: §3.6 "Malzeme = parametre seti", §7.1  ·  Depends: T345, T346  ·  Owner: dev
 Acceptance:
 - [ ] optional set fields `coolant`, `finishAllowance`, `rampDeg`; shown only for families whose traits use them
