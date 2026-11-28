@@ -12,6 +12,7 @@ import {
   startingNote,
   suitingTool,
   safeReturnPath,
+  withAcmExamples,
   withParamSet,
 } from './machine-form';
 
@@ -326,5 +327,35 @@ describe('PO B61: a new set takes the first tool that suits the material', () =>
     const acr = newParamSet(p, 'acrylic', 10);
     expect(acr.tool).toBe(1);
     expect(startingNote(p, acr)).toMatchObject({ hint: 'plasticSingleFlute' });
+  });
+});
+
+describe('T396: "Örnek ACM ayarlarını ekle" from step 1', () => {
+  it('the fix link carries ornek=1 and parses back (ACM only)', () => {
+    const href = paramFixHref({
+      machineId: 'm1',
+      set: { material: 'acm', thickness: 4, examples: true },
+      returnTo: '/projeler/p1?adim=makine',
+    });
+    expect(href).toContain('ornek=1');
+    const q = Object.fromEntries(new URLSearchParams(href.split('?')[1]));
+    expect(parseParamFix(q)?.set).toEqual({ material: 'acm', thickness: 4, examples: true });
+    expect(parseParamFix({ ...q, ayar: 'mdf-18' })?.set).toEqual({
+      material: 'mdf',
+      thickness: 18,
+    });
+  });
+
+  it('adds the missing example sets (unverified) and the stock set, pointing at the stock set', () => {
+    const p = defaultMachineProfile();
+    const r = withAcmExamples(p, { material: 'acm', thickness: 6 });
+    const acm = r.profile.materials.filter((m) => m.material === 'acm');
+    expect(acm.map((m) => m.thickness).sort()).toEqual([3, 4, 6]);
+    expect(acm.every((m) => m.unverified === true)).toBe(true);
+    expect(r.profile.materials[r.index]).toMatchObject({ material: 'acm', thickness: 6 });
+    expect(r.added).toBe(true);
+    const again = withAcmExamples(r.profile, { material: 'acm', thickness: 4 });
+    expect(again.added).toBe(false);
+    expect(again.profile.materials.length).toBe(r.profile.materials.length);
   });
 });

@@ -190,7 +190,11 @@ export function startingNote(
  */
 export interface ParamFix {
   machineId: string;
-  set: { material: MaterialKind; thickness: number } | null;
+  /**
+   * T396 (CTO #14 P3): `examples` (query `ornek=1`, ACM only) also adds the example ACM sets
+   * (`ACM_EXAMPLES`, unverified starting values) in the same step.
+   */
+  set: { material: MaterialKind; thickness: number; examples?: true } | null;
   returnTo: string | null;
   /**
    * T302: `alan=kopru` lands on the set's tab fields instead of its feed; T349: `alan=metal` on the
@@ -202,6 +206,7 @@ export interface ParamFix {
 export function paramFixHref(fix: ParamFix): string {
   const q = new URLSearchParams({ duzenle: fix.machineId });
   if (fix.set) q.set('ayar', `${fix.set.material}-${fix.set.thickness}`);
+  if (fix.set?.examples) q.set('ornek', '1');
   if (fix.field === 'tabs') q.set('alan', 'kopru');
   if (fix.field === 'metal') q.set('alan', 'metal');
   if (fix.returnTo) q.set('donus', fix.returnTo);
@@ -225,7 +230,10 @@ export function parseParamFix(q: Record<string, string | string[] | undefined>):
     const material = m[1] as MaterialKind;
     const thickness = Number(m[2]);
     if ((MATERIAL_KINDS as readonly string[]).includes(material) && thickness > 0)
-      set = { material, thickness };
+      set =
+        material === 'acm' && one('ornek') === '1'
+          ? { material, thickness, examples: true }
+          : { material, thickness };
   }
   return {
     machineId,
@@ -233,6 +241,39 @@ export function parseParamFix(q: Record<string, string | string[] | undefined>):
     returnTo: safeReturnPath(one('donus')),
     field: one('alan') === 'kopru' ? 'tabs' : one('alan') === 'metal' ? 'metal' : null,
   };
+}
+
+/** T351: the example ACM thicknesses of "Örnek ACM ayarları ekle" (unverified, D-130). */
+export const ACM_EXAMPLES = [3, 4] as const;
+
+/** True when the profile has a set for that kind and thickness (verified or not). */
+export function hasParamSet(
+  profile: MachineProfile,
+  material: MaterialKind,
+  thickness: number,
+): boolean {
+  return profile.materials.some(
+    (m) => m.material === material && Math.abs(m.thickness - thickness) <= 1e-6,
+  );
+}
+
+/**
+ * T396 (CTO #14 P3): `withParamSet` for the stock's set plus the missing example ACM sets, in one
+ * step (all from the starting-value table, unverified). The index is the stock's set.
+ */
+export function withAcmExamples(
+  profile: MachineProfile,
+  set: { material: MaterialKind; thickness: number },
+): { profile: MachineProfile; index: number; added: boolean } {
+  let p = profile;
+  let added = false;
+  for (const th of ACM_EXAMPLES) {
+    if (hasParamSet(p, 'acm', th)) continue;
+    p = { ...p, materials: [...p.materials, newParamSet(p, 'acm', th)] };
+    added = true;
+  }
+  const own = withParamSet(p, set);
+  return { ...own, added: added || own.added };
 }
 
 /**

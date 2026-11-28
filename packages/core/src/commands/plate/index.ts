@@ -39,17 +39,48 @@ export const setMachine = defineCommand({
 export const setMaterial = defineCommand({
   name: 'setMaterial',
   area: 'plate',
-  description: 'Set the stock material id (for example "mdf" or "melamine-chipboard").',
+  description:
+    'Set the stock material id (for example "mdf" or "melamine-chipboard"). A kind with other ' +
+    'sheet sizes (ACM, aluminium) also takes its first preset sheet unless the sheet is one of them.',
   aiTool: true,
   params: z.strictObject({ material: stockSchema.shape.material }),
   apply: (draft, params) => {
+    const sheet = kindSheetDefault(draft as Project, params.material);
     draft.stock.material = params.material;
     // A hand-picked material no longer comes from a library entry (T121), nor its props (T350).
     delete draft.stock.libraryId;
     delete draft.stock.props;
     applyFaceDefault(draft);
+    // T396 (CTO #14 P2): a wood sheet does not stay under an ACM job (and the reverse).
+    if (sheet) applySheetSize(draft, sheet.width, sheet.height);
   },
 });
+
+/**
+ * T396 (CTO #14 P2): the sheet a material change switches to: the new kind's first preset when the
+ * kind has other presets than the current one (wood ↔ ACM ↔ aluminium) and the current sheet is not
+ * one of them; null = keep the sheet (same preset family, or already a preset of the new kind).
+ * Presets are short × long; the sheet is stored with the long side along X.
+ */
+export function kindSheetDefault(
+  project: Pick<Project, 'stock'>,
+  material: string,
+): { width: number; height: number } | null {
+  const from = traitsOf(materialKindOf(project.stock.material)).sheetPresets;
+  const to = traitsOf(materialKindOf(material)).sheetPresets;
+  const first = to[0];
+  if (!first || samePresets(from, to)) return null;
+  const { width, height } = project.stock.sheet;
+  if (to.some((p) => p.b === width && p.a === height)) return null;
+  return { width: first.b, height: first.a };
+}
+
+function samePresets(
+  a: readonly { a: number; b: number }[],
+  b: readonly { a: number; b: number }[],
+): boolean {
+  return a.length === b.length && a.every((p, i) => p.a === b[i]?.a && p.b === b[i]?.b);
+}
 
 /**
  * Picks a stock from the company material library in one undo step (T121): material kind,
@@ -147,20 +178,22 @@ export const setSheetSize = defineCommand({
   aiTool: true,
   params: stockSchema.shape.sheet.pick({ width: true, height: true }),
   apply: (draft, params) => {
-    draft.stock.sheet.width = params.width;
-    draft.stock.sheet.height = params.height;
-    // With several stock sizes the default sheet is the first listed one (T164): it changes with
-    // it, keeps its stock quantity, and a later entry of the same size is dropped.
-    const list = draft.stock.sheets;
-    if (list && list[0]) {
-      list[0].width = params.width;
-      list[0].height = params.height;
-      draft.stock.sheets = list.filter(
-        (s, i) => i === 0 || s.width !== params.width || s.height !== params.height,
-      );
-    }
+    applySheetSize(draft, params.width, params.height);
   },
 });
+
+function applySheetSize(draft: Draft<Project>, width: number, height: number): void {
+  draft.stock.sheet.width = width;
+  draft.stock.sheet.height = height;
+  // With several stock sizes the default sheet is the first listed one (T164): it changes with
+  // it, keeps its stock quantity, and a later entry of the same size is dropped.
+  const list = draft.stock.sheets;
+  if (list && list[0]) {
+    list[0].width = width;
+    list[0].height = height;
+    draft.stock.sheets = list.filter((s, i) => i === 0 || s.width !== width || s.height !== height);
+  }
+}
 
 /**
  * The stock sheet sizes the nesting may use, in order, with optional stock quantities (T164,
