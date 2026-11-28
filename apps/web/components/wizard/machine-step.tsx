@@ -442,6 +442,27 @@ export function MachineFields({
             </Button>
           </div>
         ) : null}
+        {profile ? (
+          <MaterialRuleBox
+            t={t}
+            issues={issues}
+            materialName={kind ? materialName(kind) : stock.material}
+            thickness={mm(stock.thickness)}
+            profile={profile}
+            hrefs={{
+              tool: (back) => paramFixHref({ ...fix, returnTo: back }),
+              metal: (back) =>
+                paramFixHref({
+                  machineId: fix.machineId,
+                  set: null,
+                  field: 'metal',
+                  returnTo: back,
+                }),
+            }}
+            returnTo={returnTo}
+            resolveReturnTo={resolveReturnTo}
+          />
+        ) : null}
         {set ? (
           <p className="text-xs text-fg-muted" data-testid="cutting-params">
             {fillRich(fill(t.paramsOk, { tool: set.tool }), {
@@ -676,6 +697,8 @@ function ThinSkin({
   const fmt = (v: number) => String(v).replace('.', ',');
   const noSkin = max < skinMin;
   const noneId = useId();
+  // T349: ACM offers no thin skin (§4.2); a carried-over one stays visible to turn off.
+  if (!limits.skin.offered && skin === undefined) return null;
   return (
     <div className="flex flex-col gap-2" data-testid="thin-skin">
       <div className="flex items-center gap-2">
@@ -997,5 +1020,92 @@ export function SheetPreview({
       </div>
       {footer ? <div className="border-t border-border-subtle pt-3">{footer}</div> : null}
     </figure>
+  );
+}
+
+/**
+ * T349 (§4.1, §7.1): the material rules of step 1, each with one action that leads to the fix and
+ * back (D-045): a set tool of a type the material may not be cut with (`TOOL_TYPE_UNSUITABLE_FOR_
+ * MATERIAL`), a metal kind on a machine without the metal declaration (`MATERIAL_NOT_ALLOWED_ON_
+ * MACHINE`). Nothing for today's kinds on today's machines.
+ */
+function MaterialRuleBox({
+  t,
+  issues,
+  materialName,
+  thickness,
+  profile,
+  hrefs,
+  returnTo,
+  resolveReturnTo,
+}: {
+  t: Text;
+  issues: readonly ValidationIssue[];
+  materialName: string;
+  thickness: string;
+  profile: MachineProfile;
+  hrefs: Record<'tool' | 'metal', (returnTo: string | null) => string>;
+  returnTo: string | null;
+  resolveReturnTo?: (() => Promise<string | null>) | undefined;
+}) {
+  const router = useRouter();
+  const types = useMessages().pdf.toolTypes;
+  const [leaving, setLeaving] = useState(false);
+  const metal = issues.some((i) => i.code === 'MATERIAL_NOT_ALLOWED_ON_MACHINE');
+  const toolIssue = issues.find((i) => i.code === 'TOOL_TYPE_UNSUITABLE_FOR_MATERIAL');
+  if (!metal && !toolIssue) return null;
+  const tool = toolIssue ? /^T(d+)/.exec(toolIssue.message)?.[1] : undefined;
+  const toolType = profile.tools.find((x) => String(x.number) === tool)?.type;
+  const rows: { key: 'metal' | 'tool'; text: string; action: string }[] = [];
+  if (metal)
+    rows.push({
+      key: 'metal',
+      text: fill(t.metalNotDeclared, { material: materialName }),
+      action: t.fixMetal,
+    });
+  if (toolIssue)
+    rows.push({
+      key: 'tool',
+      text: fill(t.toolTypeUnsuitable, {
+        material: materialName,
+        thickness,
+        tool: tool ?? '?',
+        type: toolType ? types[toolType] : '',
+      }),
+      action: t.fixToolType,
+    });
+  return (
+    <div className="flex flex-col gap-2" data-testid="material-rules">
+      {rows.map((r) => (
+        <div
+          key={r.key}
+          role="alert"
+          data-testid={`material-rule-${r.key}`}
+          className="flex flex-col items-start gap-2.5 rounded-lg border border-danger-border bg-danger-subtle px-3 py-2.5 text-sm text-danger-text"
+        >
+          <p>{r.text}</p>
+          <Button asChild size="sm" variant="outline">
+            <Link
+              data-testid={`material-rule-fix-${r.key}`}
+              aria-busy={leaving || undefined}
+              href={hrefs[r.key](returnTo)}
+              onClick={(e) => {
+                if (!resolveReturnTo || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
+                  return;
+                e.preventDefault();
+                if (leaving) return;
+                setLeaving(true);
+                void resolveReturnTo().then(
+                  (back) => router.push(hrefs[r.key](back)),
+                  () => setLeaving(false),
+                );
+              }}
+            >
+              {r.action}
+            </Link>
+          </Button>
+        </div>
+      ))}
+    </div>
   );
 }

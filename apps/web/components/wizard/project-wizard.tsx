@@ -266,6 +266,12 @@ interface ProjectWizardProps {
   step: StepKey | null;
 }
 
+/** T349: step 1 material rules (marked on Makine ve plaka). */
+const MATERIAL_RULE_CODES: ReadonlySet<string> = new Set([
+  'TOOL_TYPE_UNSUITABLE_FOR_MATERIAL',
+  'MATERIAL_NOT_ALLOWED_ON_MACHINE',
+]);
+
 export function ProjectWizard(props: ProjectWizardProps) {
   // T186: deep components read texts from here instead of importing tr.json.
   return (
@@ -781,7 +787,10 @@ function WizardSession({
     ? t.steps.errors.noParams
     : params?.unverified
       ? t.steps.errors.unverifiedParams
-      : undefined;
+      : // T349: a tool type or machine the material may not be cut with
+        session.issues.some((i) => MATERIAL_RULE_CODES.has(i.code))
+        ? t.steps.errors.materialRule
+        : undefined;
   // T270: a cut-out whose slug has no room for 2 tabs is caught on Parçalar, where it is drawn.
   const slugError = session.issues.some((i) => i.code === 'INNER_SLUG_UNSECURED')
     ? t.steps.errors.slugUnsecured

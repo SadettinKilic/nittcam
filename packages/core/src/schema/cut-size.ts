@@ -9,6 +9,8 @@
  * measured from the finished edge, so they move by the left and bottom band thickness to stay at
  * the same place on the finished part.
  */
+import { materialKindOf } from '../machine/material';
+import { traitsOf } from '../machine/material-traits';
 import { machinedProject } from './machined-face';
 import type { DimensionMode, Part, Project, RectParams, Vertex } from './project';
 
@@ -116,8 +118,34 @@ export function toCutSizes(project: Project): Project {
  */
 export function toFrontCutSizes(project: Project): Project {
   // Partial projects (tests, older callers) may lack settings: absent = "cut".
-  const settings = project.settings as Project['settings'] | undefined;
-  const mode = settings?.dimensionMode ?? 'cut';
+  const mode = effectiveDimensionMode(project);
   if (mode !== 'finished' || !project.parts.some((p) => hasBandDeduction(p, mode))) return project;
   return { ...project, parts: project.parts.map((p) => cutPart(p, mode)) };
+}
+
+/**
+ * T349 (§4.8, analysis §5.2): the dimension mode that applies to the stock. A kind without edge
+ * band (`traits.edgeBand`, ACM and aluminium) reads every size as a cut size: the stored mode and
+ * band values are kept (switching back restores them exactly) but ignored. Partial projects
+ * (tests, older callers) may lack settings or stock: absent = "cut" / today's behaviour.
+ */
+export function effectiveDimensionMode(
+  project: Pick<Project, 'settings' | 'stock'>,
+): DimensionMode {
+  const settings = project.settings as Project['settings'] | undefined;
+  const mode = settings?.dimensionMode ?? 'cut';
+  const material = (project.stock as Project['stock'] | undefined)?.material;
+  if (mode === 'finished' && material !== undefined && !traitsOf(materialKindOf(material)).edgeBand)
+    return 'cut';
+  return mode;
+}
+
+/** T349: whether the stock's kind ignores edge band values the parts carry (`EDGE_BAND_IGNORED`). */
+export function edgeBandIgnored(project: Pick<Project, 'parts' | 'stock'>): boolean {
+  const material = (project.stock as Project['stock'] | undefined)?.material;
+  if (material === undefined || traitsOf(materialKindOf(material)).edgeBand) return false;
+  return project.parts.some(
+    (p) =>
+      p.edgeBand.top > 0 || p.edgeBand.right > 0 || p.edgeBand.bottom > 0 || p.edgeBand.left > 0,
+  );
 }

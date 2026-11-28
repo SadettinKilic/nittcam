@@ -299,6 +299,28 @@ describe('PO B61: a new set takes the first tool that suits the material', () =>
     expect(Number.isNaN(set.feed)).toBe(true);
   });
 
+  it('T349: ACM starts from its own cautious row, never compression or wood values', () => {
+    const prof = {
+      ...p,
+      tools: [
+        { number: 1, type: 'compression', diameter: 6, fluteLength: 22, flutes: 2 },
+        { number: 2, type: 'flatEndMill', diameter: 6, fluteLength: 22, flutes: 1 },
+      ],
+    };
+    const acm = newParamSet(prof as never, 'acm', 4);
+    expect(acm.tool).toBe(2);
+    expect(acm.unverified).toBe(true);
+    // research §c acm Ø6 single flute: 0,11 mm/tooth at 18 000 rpm ≈ 2 000 mm/min, one 4 mm pass
+    expect(acm.rpm).toBe(18000);
+    expect(acm.feed).toBe(2000);
+    expect(acm.stepDown).toBe(4);
+    // no allowed tool with a row: the first allowed tool (empty fields), not the compression
+    const noRow = { ...p, tools: [prof.tools[0], { ...prof.tools[1], diameter: 5 }] };
+    const set = newParamSet(noRow as never, 'acm', 4);
+    expect(set.tool).toBe(2);
+    expect(Number.isNaN(set.feed)).toBe(true);
+  });
+
   it('none suits: the first tool, with the hint', () => {
     // the default profile has only two-flute spirals
     const acr = newParamSet(p, 'acrylic', 10);

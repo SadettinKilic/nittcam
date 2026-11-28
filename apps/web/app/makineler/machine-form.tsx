@@ -92,6 +92,8 @@ export interface MachineFormProps {
   addParams?: { material: MaterialKind; thickness: number } | null | undefined;
   /** T302: with `addParams`, land on the set's tab fields ("Malzeme ayarında değiştir"). */
   focusTabs?: boolean;
+  /** T349: opened from step 1 "Makineyi düzenle: Metal kesim": land on the metal section. */
+  focusMetal?: boolean;
 }
 
 function Section({
@@ -178,6 +180,7 @@ export function MachineForm({
   onCancel,
   addParams = null,
   focusTabs = false,
+  focusMetal = false,
 }: MachineFormProps) {
   const f = t.form.fields;
   const o = t.form.options;
@@ -225,6 +228,15 @@ export function MachineForm({
     });
     return () => cancelAnimationFrame(raf);
   }, [startIndex, focusTabs]);
+
+  useEffect(() => {
+    if (!focusMetal) return;
+    const raf = requestAnimationFrame(() => {
+      document.getElementById('sec-metal')?.scrollIntoView({ block: 'start' });
+      document.getElementById(fieldId('metal.enabled'))?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [focusMetal]);
 
   const dirty = isDirty(initial, profile) || Object.keys(parseErrors).length > 0;
 

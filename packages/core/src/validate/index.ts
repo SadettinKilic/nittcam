@@ -8,7 +8,9 @@ import {
   findMaterialParams,
   findTool,
   machineFeedLimits,
+  materialKindOf,
   materialNcStatus,
+  traitsOf,
   type MachineProfile,
 } from '../machine';
 import { allowedRotations, rotationAllowed, rotationPolicyOf } from '../geometry/grain';
@@ -21,6 +23,7 @@ import type { Hole, Project } from '../schema';
 import {
   defaultSheet,
   deriveOutline,
+  edgeBandIgnored,
   stockSheetSizes,
   sheetSizeOf,
   formatPath,
@@ -37,14 +40,17 @@ import {
   contourPocketTool,
   contourTool,
   effectiveHoleTool,
+  hasContourPocket,
   holeToolKind,
   operationToolChoice,
   operationsInJob,
+  toolTypeAllowed,
 } from '../toolpath/op-tools';
 import { operationToolProblem, operationToolProblemText } from '../toolpath/op-tool-choice';
 import { toCutSizes } from '../schema/cut-size';
 
-export type ValidationSeverity = 'error' | 'warning';
+/** `info` (T349): a notice only (`projectNotices`), never part of `validateProject`. */
+export type ValidationSeverity = 'error' | 'warning' | 'info';
 
 export type ValidationCode =
   | 'PART_LARGER_THAN_SHEET'
@@ -61,6 +67,12 @@ export type ValidationCode =
   | 'CUTTING_PARAMS_UNVERIFIED'
   /** D-130 / T346: the stock's kind may not leave the app as NC yet (aluminium until T358/T359). */
   | 'MATERIAL_NOT_RELEASED'
+  /** T349: the default tool of an operation is of a type the stock material may not be cut with. */
+  | 'TOOL_TYPE_UNSUITABLE_FOR_MATERIAL'
+  /** T349: a non-ferrous kind on a machine that does not declare metal cutting. */
+  | 'MATERIAL_NOT_ALLOWED_ON_MACHINE'
+  /** T349: info notice: the parts carry edge band values the stock kind ignores. */
+  | 'EDGE_BAND_IGNORED'
   | 'SPINDLE_RPM_OUT_OF_RANGE'
   | 'FEED_OUT_OF_RANGE'
   | 'MACHINE_FEED_ABOVE_MAX'
@@ -427,6 +439,61 @@ export const materialNotReleased: ValidationRule = (project) => {
       message: `no NC for ${project.stock.material} yet: ramp entry, step-down and chip load limits (T358, T359) come first`,
     },
   ];
+};
+
+/**
+ * (e1b) T349 (§7.1 "Metal kesim"): a kind that needs a metal-cutting machine
+ * (`traits.needsMetalMachine`, aluminium) on a profile without `metal.enabled`. An error, shown
+ * at step 1 with "Makineyi düzenle: Metal kesim"; DXF and PDF still work. Skipped without a profile.
+ */
+export const materialNotAllowedOnMachine: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine || machine.metal?.enabled === true) return [];
+  if (!traitsOf(materialKindOf(project.stock.material)).needsMetalMachine) return [];
+  return [
+    {
+      code: 'MATERIAL_NOT_ALLOWED_ON_MACHINE',
+      severity: 'error',
+      path: 'stock.material',
+      message: `the machine does not declare metal cutting, needed for ${project.stock.material}`,
+    },
+  ];
+};
+
+/**
+ * (e3b) T349 (§4.1, §7.1): the tool an operation cuts with by default (the set's tool for contours
+ * and contour pockets, each hole's own tool for holes) is of a type the stock's traits do not allow
+ * for it (compression or ball-nose on ACM / aluminium). A tool chosen per operation is reported by
+ * `OPERATION_TOOL_UNSUITABLE` instead. An error, shown at step 1 with a link to the set. Skipped
+ * without a profile or without a set.
+ */
+export const toolTypeUnsuitableForMaterial: ValidationRule = (project, context) => {
+  const machine = context?.machine;
+  if (!machine) return [];
+  const set = findMaterialParams(machine, project.stock);
+  if (!set) return [];
+  const out: ValidationIssue[] = [];
+  for (const op of operationsInJob(project)) {
+    if (operationToolChoice(project, op) !== undefined) continue;
+    const tools = new Set<number>();
+    if (op === 'outer' || op === 'inner') tools.add(set.tool);
+    else {
+      for (const p of project.parts)
+        for (const h of p.holes) if (holeToolKind(h) === op) tools.add(h.tool);
+      if (op === 'pocket' && hasContourPocket(project)) tools.add(set.tool);
+    }
+    for (const n of [...tools].sort((a, b) => a - b)) {
+      const tool = findTool(machine, n);
+      if (!tool || toolTypeAllowed(project.stock.material, op, tool.type)) continue;
+      out.push({
+        code: 'TOOL_TYPE_UNSUITABLE_FOR_MATERIAL',
+        severity: 'error',
+        path: 'stock.material',
+        message: `T${n} (${tool.type}) may not cut the ${op} operation in ${project.stock.material}`,
+      });
+    }
+  }
+  return out;
 };
 
 /**
@@ -833,12 +900,14 @@ export const VALIDATION_RULES: readonly ValidationRule[] = [
   placementGrain,
   noCuttingParams,
   materialNotReleased,
+  materialNotAllowedOnMachine,
   unverifiedCuttingParams,
   spindleRpmOutOfRange,
   feedOutOfRange,
   machineFeedAboveMax,
   feedAboveRecommended,
   operationToolUnsuitable,
+  toolTypeUnsuitableForMaterial,
   marginBelowToolRadius,
   sheetLargerThanTable,
   holeInsidePart,
@@ -868,4 +937,22 @@ export function exportBlockingIssues(
   context: ValidationContext = {},
 ): ValidationIssue[] {
   return validateProject(project, context).filter((i) => i.severity === 'error');
+}
+
+/**
+ * T349 (analysis §5.2): notices (severity `info`) that inform without blocking anything. Kept out
+ * of `validateProject`, so issue counts, "Sorun bulunmadı" and the step marks stay as they are.
+ * `EDGE_BAND_IGNORED`: the parts carry edge band values the stock's kind does not use (ACM,
+ * aluminium); the values are kept and sizes count as cut sizes.
+ */
+export function projectNotices(project: Project): ValidationIssue[] {
+  if (!edgeBandIgnored(project)) return [];
+  return [
+    {
+      code: 'EDGE_BAND_IGNORED',
+      severity: 'info',
+      path: 'parts',
+      message: `edge band values are kept but not used for ${project.stock.material}; sizes are cut sizes`,
+    },
+  ];
 }

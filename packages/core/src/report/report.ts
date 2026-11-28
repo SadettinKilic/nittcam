@@ -6,7 +6,9 @@
 import { normalizeGrain } from '../geometry/grain';
 import { partShape } from '../nesting/fit';
 import { summarizeLayout } from '../nesting/nest';
-import { cutSize } from '../schema/cut-size';
+import { cutSize, effectiveDimensionMode } from '../schema/cut-size';
+import { materialKindOf } from '../machine/material';
+import { traitsOf } from '../machine/material-traits';
 import type { EdgeBand, Part, Project } from '../schema/project';
 
 export const BAND_EDGES = ['top', 'right', 'bottom', 'left'] as const;
@@ -68,6 +70,8 @@ export interface ProjectReport {
 const round3 = (v: number): number => Math.round(v * 1000) / 1000;
 const M2 = 1e6;
 
+const NO_BAND: EdgeBand = { top: 0, right: 0, bottom: 0, left: 0 };
+
 function sizes(part: Part, mode: Project['settings']['dimensionMode']) {
   if (part.kind !== 'rect') {
     const box = partShape(part);
@@ -85,13 +89,16 @@ function sizes(part: Part, mode: Project['settings']['dimensionMode']) {
 
 /** The report of a project's saved layout. */
 export function projectReport(project: Project, cutSeconds: number | null = null): ProjectReport {
-  const mode = project.settings.dimensionMode;
+  // T349: a kind without edge band (ACM, aluminium) reads sizes as cut sizes and prints no band.
+  const mode = effectiveDimensionMode(project);
+  const banded = traitsOf(materialKindOf(project.stock.material)).edgeBand;
   const summary = summarizeLayout(project);
   const placed = new Map<string, number>();
   for (const sheet of project.layout.sheets) {
     for (const pl of sheet.placements) placed.set(pl.partId, (placed.get(pl.partId) ?? 0) + 1);
   }
-  const parts = project.parts.map((part, i): ReportPartRow => {
+  const parts = project.parts.map((entered, i): ReportPartRow => {
+    const part = banded ? entered : { ...entered, edgeBand: NO_BAND };
     const { finished, cut } = sizes(part, mode);
     return {
       row: i + 1,

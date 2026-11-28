@@ -100,7 +100,8 @@ export function maxSkinThickness(
   thickness: number,
   limits: HoldLimits = DEFAULT_HOLD_LIMITS,
 ): number {
-  return thickness - limits.skin.belowThickness;
+  const below = thickness - limits.skin.belowThickness;
+  return limits.skin.max === undefined ? below : Math.min(below, limits.skin.max);
 }
 
 /** Whether a skin of `skin` mm holds a small part on `thickness` mm stock (T298). */

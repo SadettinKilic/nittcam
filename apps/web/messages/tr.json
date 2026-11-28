@@ -650,6 +650,7 @@
     }
   },
   "cutList": {
+    "edgeBandIgnored": "Kenar bandı bu malzemede kullanılmaz; ölçüler kesim ölçüsü sayılır. Bant değerleri silinmedi: ahşaba dönünce geri gelir.",
     "title": "Parçalar",
     "subtitle": "Kesim listesini tabloya girin ya da Excel'den yapıştırın. Ölçüler milimetredir.",
     "tableLabel": "Kesim listesi",
@@ -1292,6 +1293,8 @@
       "NO_CUTTING_PARAMS": "Bu malzeme ve kalınlık için makine profilinde kesim parametresi yok (Makineler → Malzeme parametreleri).",
       "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı başlangıç değerlerinde ve doğrulanmadı (Makineler → Malzeme parametreleri).",
       "MATERIAL_NOT_RELEASED": "Alüminyum için rampa giriş, kademe ve talaş sınırları (T358, T359) gelmeden G-code verilmez. DXF, PDF ve etiketler kullanılabilir.",
+      "TOOL_TYPE_UNSUITABLE_FOR_MATERIAL": "Bu malzemede kullanılamayan takım tipi seçili (ör. sıkıştırma ya da küresel uç); ACM ve alüminyum yalnız düz frezeyle kesilir. Makinede bu malzemenin kesim ayarındaki takımı değiştirin.",
+      "MATERIAL_NOT_ALLOWED_ON_MACHINE": "Bu makine alüminyum için tanımlı değil: soğutma ve tutma bilgisi gerekir. Makineyi düzenleyip “Metal kesim” bölümünü doldurun. DXF ve PDF yine alınabilir.",
       "POST_MISMATCH": "Makine profilindeki post sürümü yüklü post ile uyuşmuyor.",
       "NO_PLACEMENTS": "Dizilimde yerleşmiş parça yok.",
       "LOCKED_PLACEMENT_GRAIN": "Kilitli parça damar yönüne uymuyor; kilidi kaldırın ya da döndürün.",
@@ -1889,6 +1892,7 @@
       "errors": {
         "noParams": "Bu malzeme ve kalınlık için kesim ayarı yok; G-code üretilemez.",
         "unverifiedParams": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı; G-code üretilemez.",
+        "materialRule": "Bu malzeme bu makinede ya da bu takımla kesilemez; G-code üretilemez.",
         "slugUnsecured": "Bir iç kesimin göbeğine 2 köprü sığmıyor; G-code üretilemez.",
         "holeInvalid": "Bir delik bu makineyle delinemiyor ya da parçaya uymuyor; G-code üretilemez.",
         "lineOutside": "Bir çizgi parçanın dışına taşıyor; G-code üretilemez.",
@@ -1972,6 +1976,10 @@
       "addParams": "Kesim ayarı ekle",
       "unverifiedParams": "{material} {thickness} mm kesim ayarı başlangıç değerleriyle kaydedildi ve doğrulanmadı. Bu haliyle G-code üretilemez: değerleri makinenizde doğrulayıp onaylayın.",
       "verifyParams": "Kesim ayarını doğrula",
+      "toolTypeUnsuitable": "{material} {thickness} mm kesim ayarındaki T{tool} takımı bu malzemeyi kesemez ({type}). {material} yalnız düz frezeyle kesilir; kesim ayarında takımı değiştirin.",
+      "fixToolType": "Kesim ayarında takımı değiştir",
+      "metalNotDeclared": "Bu makine {material} için tanımlı değil. Kesmek için makinede soğutma ve tutma bilgisi gerekir. DXF ve PDF yine alınabilir.",
+      "fixMetal": "Makineyi düzenle: Metal kesim",
       "paramsOk": "Kesim ayarı: T{tool} takım, {feed} besleme, {rpm}, {step} paso.",
       "skin": {
         "label": "Son pasoda ince tabaka bırak",
@@ -2239,6 +2247,8 @@
         "NO_CUTTING_PARAMS": "Makinede bu malzeme ve kalınlık için kesim ayarı yok.",
         "CUTTING_PARAMS_UNVERIFIED": "Bu malzeme ve kalınlık için kesim ayarı doğrulanmadı.",
         "MATERIAL_NOT_RELEASED": "Alüminyum için rampa giriş, kademe ve talaş sınırları (T358, T359) gelmeden G-code verilmez.",
+        "TOOL_TYPE_UNSUITABLE_FOR_MATERIAL": "Bu malzemede kullanılamayan takım tipi seçili (ör. sıkıştırma ya da küresel uç); ACM ve alüminyum yalnız düz frezeyle kesilir. Makinede bu malzemenin kesim ayarındaki takımı değiştirin.",
+        "MATERIAL_NOT_ALLOWED_ON_MACHINE": "Bu makine alüminyum için tanımlı değil: soğutma ve tutma bilgisi gerekir. Makineyi düzenleyip “Metal kesim” bölümünü doldurun. DXF ve PDF yine alınabilir.",
         "SHEET_LARGER_THAN_TABLE": "Plaka makine tablasına sığmıyor.",
         "HOLE_OUTSIDE_PART": "Delik parçanın dışına taşıyor ya da bir iç boşluğa değiyor.",
         "INNER_CONTOUR_INVALID": "İç kesim parçanın dışına taşıyor ya da başka bir iç kesime değiyor.",
