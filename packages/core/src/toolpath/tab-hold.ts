@@ -39,6 +39,11 @@ export interface Cutter {
   op: string;
   /** False for the operation's own lead-in/out (they count for its own tabs, D-129). */
   pass: boolean;
+  /**
+   * T373: the move belongs to the entry or exit (lead-in/out, the plunge and the retract at their
+   * ends). Set by `cuttersOf`; such moves can be shortened to spare a neighbour's tab.
+   */
+  lead?: true;
 }
 
 /** Cutters of a sheet bucketed on a grid for nearby queries. */
@@ -61,6 +66,8 @@ export function cuttersOf(ops: readonly Operation[], zLimit: number): Cutter[] {
     let prev: { x: number; y: number; z: number } | null = null;
     for (const seg of op.segments) {
       const pass = !(seg.role === 'leadIn' || seg.role === 'leadOut');
+      const lead =
+        !pass || seg.role === 'approach' || seg.role === 'retract' ? { lead: true as const } : {};
       for (const m of seg.moves) {
         const from = prev;
         prev = { x: m.x, y: m.y, z: m.z };
@@ -71,7 +78,7 @@ export function cuttersOf(ops: readonly Operation[], zLimit: number): Cutter[] {
           const key = `${op.id}|${pass}|${ax.toFixed(4)},${ay.toFixed(4)},${bx.toFixed(4)},${by.toFixed(4)},${rr}`;
           if (seen.has(key)) return;
           seen.add(key);
-          out.push({ ax, ay, bx, by, r: rr, op: op.id, pass });
+          out.push({ ax, ay, bx, by, r: rr, op: op.id, pass, ...lead });
         };
         if (m.kind === 'arc') {
           const rad = Math.hypot(from.x - m.cx, from.y - m.cy);
@@ -246,7 +253,11 @@ export interface HoldOptions {
 }
 
 /** The spoke of the tab region at arc length `s` (see the module comment). */
-function spokeAt(segs: readonly PathSeg[], s: number, o: HoldOptions) {
+function spokeAt(
+  segs: readonly PathSeg[],
+  s: number,
+  o: Pick<HoldOptions, 'ccw' | 'toolRadius' | 'anchor'>,
+) {
   const p = pointTangentAt(segs, s);
   // outward normal: right of travel on a CCW loop, left on a CW loop
   const nx = o.ccw ? p.ty : -p.ty;
@@ -261,7 +272,7 @@ function spokeAt(segs: readonly PathSeg[], s: number, o: HoldOptions) {
 }
 
 /** Sample step along the loop: at most half a cutter radius, so no cutter slips between spokes. */
-function stepOf(o: HoldOptions): number {
+function stepOf(o: Pick<HoldOptions, 'toolRadius'>): number {
   return Math.min(0.5, Math.max(0.05, o.toolRadius / 2));
 }
 
@@ -321,6 +332,75 @@ export function holdingCentres(
   }
   // a single point that survived exactly at a boundary is no room for a tab
   return out.filter((x) => x.hi - x.lo > NOISE || within.some((w) => w.hi - w.lo <= NOISE));
+}
+
+/**
+ * T373 (D-146): the region a placed tab needs (its spokes, see the module comment) as zero-radius
+ * "cutters" of operation `op`, sampled like `tabHolds` (both ends included). A neighbour's lead
+ * that comes within its cutter radius of one of them cuts into the tab's web.
+ */
+export function tabZone(
+  segs: readonly PathSeg[],
+  from: number,
+  to: number,
+  o: Pick<HoldOptions, 'ccw' | 'toolRadius' | 'anchor'> & { op: string },
+): Cutter[] {
+  const h = stepOf(o);
+  const n = Math.max(1, Math.ceil((to - from) / h));
+  const out: Cutter[] = [];
+  for (let k = 0; k <= n; k++) {
+    const sp = spokeAt(segs, from + ((to - from) * k) / n, o);
+    out.push({ ...sp, r: 0, op: o.op, pass: true });
+  }
+  return out;
+}
+
+/** A lead (or any path segment) as cutter capsules of operation `op`, arcs as chords. */
+export function pathSegCutters(seg: PathSeg, r: number, op: string): Cutter[] {
+  const arc = arcOf(seg.p0, seg.p1, seg.bulge);
+  if (!arc) {
+    return [{ ax: seg.p0.x, ay: seg.p0.y, bx: seg.p1.x, by: seg.p1.y, r, op, pass: false }];
+  }
+  const sweep = bulgeToSweep(seg.bulge);
+  const rad = arc.radius;
+  const maxStep = rad > ARC_TOL ? 2 * Math.acos(1 - ARC_TOL / rad) : Math.PI;
+  const n = Math.max(1, Math.ceil(Math.abs(sweep) / maxStep));
+  const out: Cutter[] = [];
+  let px = seg.p0.x;
+  let py = seg.p0.y;
+  for (let k = 1; k <= n; k++) {
+    const a = arc.startAngle + (sweep * k) / n;
+    const qx = k === n ? seg.p1.x : arc.center.x + rad * Math.cos(a);
+    const qy = k === n ? seg.p1.y : arc.center.y + rad * Math.sin(a);
+    out.push({ ax: px, ay: py, bx: qx, by: qy, r: r + ARC_TOL, op, pass: false });
+    px = qx;
+    py = qy;
+  }
+  return out;
+}
+
+/**
+ * T373 (D-146): whether one of `cutters` (a lead's capsules) cuts into the region of a tab of
+ * another operation in `zones` (an index of `tabZone` spokes).
+ */
+export function cutsIntoTabs(zones: CutterIndex, own: string, cutters: readonly Cutter[]): boolean {
+  const cell = zones.cell;
+  for (const c of cutters) {
+    const g = c.r + SLACK;
+    const i0 = Math.floor((Math.min(c.ax, c.bx) - g) / cell);
+    const i1 = Math.floor((Math.max(c.ax, c.bx) + g) / cell);
+    const j0 = Math.floor((Math.min(c.ay, c.by) - g) / cell);
+    const j1 = Math.floor((Math.max(c.ay, c.by) + g) / cell);
+    for (let i = i0; i <= i1; i++) {
+      for (let j = j0; j <= j1; j++) {
+        for (const z of zones.cells.get(keyOf(i, j)) ?? []) {
+          if (z.op === own) continue;
+          if (segSegDist(c.ax, c.ay, c.bx, c.by, z.ax, z.ay, z.bx, z.by) < g) return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 /** Roles whose moves are an operation's own lead (`Cutter.pass` false). */

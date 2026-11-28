@@ -6,6 +6,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Polyline } from '../geometry/types';
 import { GOLDEN_OP_FIXTURES, goldenProfile, opFixtureProject } from '../post/golden.testing';
+import { nestProject } from '../nesting';
 import { buildToolpath } from './build';
 import { loopSegments } from './path';
 import { cutterIndex, cuttersOf, tabHolds, type Cutter } from './tab-hold';
@@ -92,7 +93,7 @@ function badTabs(ops: readonly Operation[], sheet: { width: number; height: numb
   for (const op of outer(ops)) {
     const r = op.toolDiameter / 2;
     const others = cuttersOf(
-      ops.filter((o) => o.id !== op.id),
+      ops.filter((o) => o.id !== op.id && o.sheet === op.sheet),
       op.tabs[0]?.z ?? 0,
     );
     const moves = op.segments.filter((s) => s.role === 'pass').flatMap((s) => s.moves);
@@ -258,5 +259,105 @@ describe('golden fixture small-rows (D-129)', () => {
     expect(ops).toHaveLength(8);
     for (const op of ops) expect(op.tabs.length).toBe(op.tabsWanted ?? op.tabs.length);
     expect(badTabs(res.toolpath.operations, p.stock.sheet)).toEqual([]);
+  });
+});
+
+describe("T373 (D-146): a neighbour's lead gives way to a tab", () => {
+  const notHeld = (res: ReturnType<typeof buildToolpath>) =>
+    res.errors
+      .filter((e) => e.code === 'SMALL_PART_NOT_HELD')
+      .map((e) => `${e.partId}#${e.copy ?? ''}`)
+      .sort();
+
+  /** Nested by the engine at the tab-hold spacing (pay ≥ Ø + 3.1, margin ≥ Ø + 3). */
+  function nested(
+    parts: { id: string; w: number; h: number; qty: number }[],
+    sheet: { width: number; height: number },
+    tool: number,
+  ) {
+    const unplaced = projectOf({ parts, sheet, thickness: 30, gap: 0, margin: 0 });
+    return { ...unplaced, layout: nestProject(unplaced, { toolDiameter: tool }).layout };
+  }
+
+  // Property seed of B64 (shrunk): the lead-out of a small part and the plunge/retract at its end
+  // reached into the 3 mm web behind the tabs of the next small part; it was refused.
+  const p = nested(
+    [
+      { id: 'p0', w: 60.23043966226971, h: 25.370539101757107, qty: 2 },
+      { id: 'p1', w: 599.9999999999993, h: 70.22699614932442, qty: 3 },
+      { id: 'p2', w: 20, h: 69.84284589008992, qty: 2 },
+      { id: 'p3', w: 30.58383197162895, h: 399.9999999999998, qty: 1 },
+      { id: 'p4', w: 20.311592735240477, h: 23.400607727813092, qty: 1 },
+    ],
+    { width: 1728.7780972101584, height: 711.8610592778441 },
+    12,
+  );
+  const machine = machineOf({ toolDiameter: 12, thickness: 30, passDepth: 3.162437018455697 });
+  const options = {
+    lead: 'line' as const,
+    plunge: { type: 'ramp' as const, angleDeg: 12.991003027261971 },
+    direction: 'climb' as const,
+  };
+
+  it('the small part is held: the neighbour lead is shortened instead', () => {
+    const res = buildToolpath(p, machine, options);
+    expect(notHeld(res)).toEqual([]);
+    const lead = res.warnings.find((w) => w.code === 'LEAD_SHORTENED' && w.partId === 'p0');
+    expect(lead?.message).toContain("a neighbour's tab");
+    for (const op of outer(res.toolpath.operations).filter((o) => o.partId === 'p0')) {
+      expect(op.tabs.length).toBeGreaterThanOrEqual(2);
+    }
+    expect(badTabs(res.toolpath.operations, p.stock.sheet)).toEqual([]);
+  });
+
+  it('without the guard (tabHold off) nothing changes; leads off gives the same holding', () => {
+    const none = buildToolpath(p, machine, { ...options, lead: 'none' });
+    expect(notHeld(none)).toEqual([]);
+    const off = buildToolpath(p, machine, { ...options, tabHold: false });
+    expect(off.warnings.some((w) => w.message.includes("neighbour's tab"))).toBe(false);
+  });
+
+  it('deterministic', () => {
+    const a = JSON.stringify(buildToolpath(p, machine, options));
+    expect(JSON.stringify(buildToolpath(structuredClone(p), machine, options))).toBe(a);
+  });
+
+  it('property: every tab holds against the final leads; leads never cause a refusal', () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          tool: fc.constantFrom(6, 8, 12),
+          parts: fc.array(
+            fc.record({
+              w: fc.integer({ min: 20, max: 160 }),
+              h: fc.integer({ min: 20, max: 120 }),
+              qty: fc.integer({ min: 1, max: 4 }),
+            }),
+            { minLength: 2, maxLength: 5 },
+          ),
+          lead: fc.constantFrom('arc' as const, 'line' as const),
+          leadLength: fc.integer({ min: 2, max: 15 }),
+          plunge: fc.constantFrom(
+            { type: 'straight' as const },
+            { type: 'ramp' as const, angleDeg: 10 },
+          ),
+          passDepth: fc.constantFrom(6, 30),
+        }),
+        (c) => {
+          const proj = nested(
+            c.parts.map((x, i) => ({ id: `q${i}`, ...x })),
+            { width: 600, height: 400 },
+            c.tool,
+          );
+          const m = machineOf({ toolDiameter: c.tool, thickness: 30, passDepth: c.passDepth });
+          const o = { lead: c.lead, leadLength: c.leadLength, plunge: c.plunge };
+          const res = buildToolpath(proj, m, o);
+          expect(badTabs(res.toolpath.operations, proj.stock.sheet)).toEqual([]);
+          const bare = buildToolpath(proj, m, { ...o, lead: 'none' });
+          for (const k of notHeld(res)) expect(notHeld(bare)).toContain(k);
+        },
+      ),
+      { numRuns: 40 },
+    );
   });
 });

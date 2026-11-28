@@ -1984,7 +1984,7 @@ Tester focus: square with a wrong third side, undo/redo during and after the cha
 
 ## After field test 1: findings from 2026-11-24 (PO; first batch after the field test)
 
-### T373 Tab hold counts the neighbour's lead-in/out   [status: todo]
+### T373 Tab hold counts the neighbour's lead-in/out   [status: review]
 Source: B64 dev (property seed 1094944943), T193 report known issue 1 (job C header "KOPRU AZ: 2 parcada 3 kopru" while all 4 Takoz have 3 holding). A neighbour's lead dive can cut into the 3 mm web behind a tab. Today: safe side (SMALL_PART_NOT_HELD / fewer holding tabs), but the header count is optimistic and the fix text ("pay ≥ Ø + 3") is already met. Acceptance: hold predicate and header use the final lead moves; leads facing a tab are shortened or moved first; the fix text names the lead.
 
 ### T374 Below 1024 px a fast "Diz" click cancels the auto-nest   [status: done] (closed by T379)

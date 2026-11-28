@@ -116,7 +116,16 @@ import type {
   ToolpathSeverity,
 } from './types';
 import { toCutSizes } from '../schema/cut-size';
-import { cutterIndex, cuttersOf, holdingCentres, type CutterIndex } from './tab-hold';
+import {
+  cutterIndex,
+  cuttersOf,
+  cutsIntoTabs,
+  holdingCentres,
+  pathSegCutters,
+  tabZone,
+  type Cutter,
+  type CutterIndex,
+} from './tab-hold';
 
 /** Defaults of the toolpath options (D-021). */
 export const TOOLPATH_DEFAULTS = {
@@ -305,6 +314,13 @@ interface Params {
    * while the cut order is chosen (the start edges) and in the first build of the sheet.
    */
   hold?: CutterIndex | undefined;
+  /**
+   * T373 (D-146): the regions the other operations' tabs need (`tabZone`). A lead that would cut
+   * into one is shortened or removed (`LEAD_FALLBACK`), so the neighbour's tab keeps its web.
+   */
+  leadGuard?: CutterIndex | undefined;
+  /** T373: receives the regions of the tabs this operation places. */
+  zones?: Cutter[] | undefined;
 }
 
 /** Resolved tab settings (D-022). */
@@ -466,15 +482,38 @@ function buildOuterOperation(
   let leads: Leads = { leadIn: null, leadOut: null };
   /** Length of the chosen leads (0 = none). */
   let leadLen = 0;
+  /** T373: a longer lead was dropped because it would cut into a neighbour's tab web. */
+  let leadForTab = false;
   if (p.lead !== 'none' && p.leadLength > 0) {
     const tIn = tangent(firstSeg, 0);
     const tOut = tangent(lastSeg, 1);
     let chosen: number | null = null;
+    // T373 (D-146): a lead that would cut into the web behind a neighbour's tab is shortened (or
+    // removed) first, so the neighbour keeps its tab. Only the lead moves that reach the tab top
+    // count: the lead-in runs at the first depth (surface with a ramp), the lead-out at the target.
+    const guard = p.leadGuard;
+    const guardId = isInner
+      ? `${partId}#${ctx.placement.index}/inner${ctx.inner}`
+      : `${partId}#${ctx.placement.index}`;
+    const inZ = p.plunge.type === 'ramp' ? 0 : (p.passDepths[0] as number);
+    const hitsTab = (l: Leads): boolean => {
+      if (!guard) return false;
+      const deep = (z: number) => z <= p.tabs.top + EPS;
+      const caps = [
+        ...(l.leadIn && deep(inZ) ? pathSegCutters(l.leadIn, toolRadius, guardId) : []),
+        ...(l.leadOut && deep(p.target) ? pathSegCutters(l.leadOut, toolRadius, guardId) : []),
+      ];
+      return caps.length > 0 && cutsIntoTabs(guard, guardId, caps);
+    };
     for (const f of LEAD_FALLBACK) {
       const both = leadSegments(start, tIn, tOut, p.travel, p.lead, p.leadLength * f, waste);
       // Opening: lead-in only. A lead-out would cut on into a slug that may already be loose.
       const cand: Leads = isInner ? { leadIn: both.leadIn, leadOut: null } : both;
       if (leadsClear(cand, own, ctx.neighbours, toolRadius, bounds, waste)) {
+        if (hitsTab(cand)) {
+          leadForTab = true;
+          continue;
+        }
         leads = cand;
         chosen = f;
         leadLen = p.leadLength * f;
@@ -489,7 +528,9 @@ function buildOuterOperation(
           partId,
           isInner
             ? 'No room for a lead-in inside the opening; the tool enters on the contour.'
-            : 'No room for a lead-in/out; the tool enters on the contour.',
+            : leadForTab
+              ? "No room for a lead-in/out clear of a neighbour's tab; the tool enters on the contour."
+              : 'No room for a lead-in/out; the tool enters on the contour.',
           where,
         ),
       );
@@ -499,7 +540,7 @@ function buildOuterOperation(
           'LEAD_SHORTENED',
           'warning',
           partId,
-          `Lead shortened to ${(p.leadLength * chosen).toFixed(3)} mm (${isInner ? 'small opening' : 'neighbour part or sheet edge'}).`,
+          `Lead shortened to ${(p.leadLength * chosen).toFixed(3)} mm (${isInner ? 'small opening' : leadForTab ? "a neighbour's tab" : 'neighbour part or sheet edge'}).`,
           where,
         ),
       );
@@ -622,7 +663,7 @@ function buildOuterOperation(
           'SMALL_PART_NOT_HELD',
           'error',
           partId,
-          `Small part: fewer than ${p.limits.tabs.defaults.smallPartMinCount} of its tabs would hold; the others face a neighbour's cut or the sheet edge, so it would be cut free. Raise the clearance between parts to at least the tool diameter + ${TAB_BOUNDS.minAnchor} mm, or turn on the thin skin.`,
+          `Small part: fewer than ${p.limits.tabs.defaults.smallPartMinCount} of its tabs would hold; the others face a neighbour's cut (its contour, lead-in/out or ramp) or the sheet edge, so it would be cut free. Raise the clearance between parts to at least the tool diameter + ${TAB_BOUNDS.minAnchor} mm, or turn on the thin skin.`,
           where,
         ),
       );
@@ -647,7 +688,7 @@ function buildOuterOperation(
           'TABS_NOT_HELD',
           'warning',
           partId,
-          `Only ${tabs.length} of ${count} tabs hold: the others would face a neighbour's cut or the sheet edge.`,
+          `Only ${tabs.length} of ${count} tabs hold: the others would face a neighbour's cut (its contour, lead-in/out or ramp) or the sheet edge.`,
           where,
         ),
       );
@@ -752,6 +793,17 @@ function buildOuterOperation(
   const id = isInner
     ? `${partId}#${ctx.placement.index}/inner${ctx.inner}`
     : `${partId}#${ctx.placement.index}`;
+  if (p.zones) {
+    for (const t of tabs) {
+      p.zones.push(
+        ...tabZone(segs, t.centre - p.tabs.width / 2, t.centre + p.tabs.width / 2, {
+          ccw: p.travel === 'ccw',
+          toolRadius,
+          op: id,
+        }),
+      );
+    }
+  }
   if (skinned && p.skin) {
     // T298 (CTO #12 A, D-083): a skin outside the holding bounds does not hold the small part
     // (too thin: it is cut free on the last pass). An error, whatever project the value came from.
@@ -1884,23 +1936,82 @@ export function buildToolpath(
     if (itemHole[o.item] || k === undefined) continue;
     (prepared[k] as OperationContext).startEdge = (edges[k] as number[])[o.start] ?? -1;
   }
+  // T373 (D-146): between phase A and B, leads that would cut into the web behind a neighbour's
+  // tab are shortened or removed. Phase A2 places each operation's tabs as if no other lead
+  // existed (holding against the passes only) and records the regions those tabs need; an
+  // operation whose lead reaches into another one's region is rebuilt with that guard (in phase B
+  // too, so the leads are the same), and the hold index is taken from the final leads. Phase B
+  // still checks every tab against every cut, so a tab that does not hold is never counted.
   const holdBySheet = new Map<number, CutterIndex>();
+  const guardBySheet = new Map<number, CutterIndex>();
+  const guarded = new Set<number>();
   if (options.tabHold !== false) {
-    const phaseA = new Map<number, Operation[]>();
+    const aOps: Operation[] = [];
+    const aItem: (number | null)[] = [];
     const cleanA: Operation[] = [];
+    const paramsA = (ctx: OperationContext, extra: Partial<Params> = {}): Params => ({
+      ...paramsOf(ctx),
+      sheet: sheetSizeOf(project, ctx.sheetIndex),
+      ...extra,
+    });
     for (const o of order.sequence) {
       let op = itemHole[o.item];
       if (!op) {
         const ctx = prepared[itemCtx[o.item] as number] as OperationContext;
-        const sheet = sheetSizeOf(project, ctx.sheetIndex);
-        op = buildOuterOperation(ctx, { ...paramsOf(ctx), sheet }, [], [], new Set(), cleanA);
+        op = buildOuterOperation(ctx, paramsA(ctx), [], [], new Set(), cleanA);
       }
-      const list = phaseA.get(op.sheet) ?? [];
-      list.push(op);
-      phaseA.set(op.sheet, list);
+      aOps.push(op);
+      aItem.push(itemHole[o.item] ? null : o.item);
     }
-    for (const op of cleanA) phaseA.get(op.sheet)?.push(op);
-    for (const [sheet, ops] of phaseA) {
+    const sheets = [...new Set(aOps.map((op) => op.sheet))];
+    for (const sheet of sheets) {
+      const idx = aOps.flatMap((op, i) => (op.sheet === sheet ? [i] : []));
+      const ops = [
+        ...idx.map((i) => aOps[i] as Operation),
+        ...cleanA.filter((c) => c.sheet === sheet),
+      ];
+      const cutters = cuttersOf(ops, params.tabs.top);
+      const leadCuts = cutters.filter((c) => c.lead);
+      if (leadCuts.length === 0) continue;
+      const passIndex = cutterIndex(
+        cutters.filter((c) => !c.lead),
+        sheetSizeOf(project, sheet),
+      );
+      const zones: Cutter[] = [];
+      for (const i of idx) {
+        const op = aOps[i] as Operation;
+        const item = aItem[i];
+        if (item === null || item === undefined || op.tabs.length === 0) continue;
+        if (!leadCuts.some((c) => c.op !== op.id && nearOp(op, c, TAB_BOUNDS.minAnchor))) continue;
+        const ctx = prepared[itemCtx[item] as number] as OperationContext;
+        buildOuterOperation(ctx, paramsA(ctx, { hold: passIndex, zones }), [], [], new Set(), []);
+      }
+      if (zones.length === 0) continue;
+      const zoneIndex = cutterIndex(zones, sheetSizeOf(project, sheet));
+      for (const i of idx) {
+        const op = aOps[i] as Operation;
+        const item = aItem[i];
+        if (item === null || item === undefined) continue;
+        const own = leadCuts.filter((c) => c.op === op.id);
+        if (own.length === 0 || !cutsIntoTabs(zoneIndex, op.id, own)) continue;
+        guarded.add(item);
+        guardBySheet.set(sheet, zoneIndex);
+        const ctx = prepared[itemCtx[item] as number] as OperationContext;
+        aOps[i] = buildOuterOperation(
+          ctx,
+          paramsA(ctx, { leadGuard: zoneIndex }),
+          [],
+          [],
+          new Set(),
+          [],
+        );
+      }
+    }
+    for (const sheet of sheets) {
+      const ops = [
+        ...aOps.filter((op) => op.sheet === sheet),
+        ...cleanA.filter((c) => c.sheet === sheet),
+      ];
       const index = cutterIndex(cuttersOf(ops, params.tabs.top), sheetSizeOf(project, sheet));
       holdBySheet.set(sheet, index);
     }
@@ -1924,6 +2035,7 @@ export function buildToolpath(
           ...paramsOf(ctx),
           sheet: sheetSizeOf(project, ctx.sheetIndex),
           hold: holdBySheet.get(ctx.sheetIndex),
+          leadGuard: guarded.has(o.item) ? guardBySheet.get(ctx.sheetIndex) : undefined,
         },
         ctx.warnings,
         ctx.errors,
@@ -1978,6 +2090,37 @@ export function buildToolpath(
     }),
     order: orderSummary(order),
   };
+}
+
+/**
+ * T373: whether cutter `c` can reach the tab regions of `op` (its pass moves' box grown by the
+ * kerf, the anchor and the cutter): a cheap filter before the zones are built.
+ */
+function nearOp(op: Operation, c: Cutter, anchor: number): boolean {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const s of op.segments) {
+    if (s.role !== 'pass') continue;
+    for (const m of s.moves) {
+      // an arc may bulge past its end points: take its whole circle
+      const rr = m.kind === 'arc' ? Math.hypot(m.x - m.cx, m.y - m.cy) : 0;
+      const cx = m.kind === 'arc' ? m.cx : m.x;
+      const cy = m.kind === 'arc' ? m.cy : m.y;
+      minX = Math.min(minX, m.x, cx - rr);
+      minY = Math.min(minY, m.y, cy - rr);
+      maxX = Math.max(maxX, m.x, cx + rr);
+      maxY = Math.max(maxY, m.y, cy + rr);
+    }
+  }
+  const g = op.toolDiameter + anchor + c.r + 1;
+  return (
+    Math.max(c.ax, c.bx) >= minX - g &&
+    Math.min(c.ax, c.bx) <= maxX + g &&
+    Math.max(c.ay, c.by) >= minY - g &&
+    Math.min(c.ay, c.by) <= maxY + g
+  );
 }
 
 function orderSummary(o: CutOrderResult): CutOrderSummary {
